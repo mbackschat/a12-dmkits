@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.workspace;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -73,8 +74,8 @@ final class WorkspaceRolesCommand extends BaseCommand {
         WorkspaceRoles.Resolution resolution;
         try {
             resolution = WorkspaceRoles.resolve(root,
-                    java.util.Optional.ofNullable(rolesOverride).map(Path::of),
-                    java.util.Optional.ofNullable(usersOverride).map(Path::of));
+                    Optional.ofNullable(rolesOverride).map(Path::of),
+                    Optional.ofNullable(usersOverride).map(Path::of));
         } catch (java.io.UncheckedIOException unreadable) {
             // Split from the parse failure below: `resolve` documents two distinct throws, and one catch over
             // both reported an unreadable file and an unparseable one identically. A file the caller named that

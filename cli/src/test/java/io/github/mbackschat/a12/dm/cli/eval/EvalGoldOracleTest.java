@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -440,7 +441,7 @@ class EvalGoldOracleTest {
         }
         try {
             return Path.of(url.toURI());
-        } catch (java.net.URISyntaxException e) {
+        } catch (URISyntaxException e) {
             throw new IllegalStateException("bad workspace dir URI: " + url, e);
         }
     }
@@ -708,7 +709,7 @@ class EvalGoldOracleTest {
         }
         try {
             return ReferenceResolvers.directory(Path.of(url.toURI()));
-        } catch (java.net.URISyntaxException e) {
+        } catch (URISyntaxException e) {
             throw new IllegalStateException("bad include-dir URI: " + url, e);
         }
     }

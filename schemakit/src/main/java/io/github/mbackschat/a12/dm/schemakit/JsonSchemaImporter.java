@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.Verification;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -77,10 +80,10 @@ public final class JsonSchemaImporter {
 
         private final String dmJson;
         private final TranscodeReport report;
-        private final java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate;
+        private final Optional<Verification> consistencyGate;
 
         private ImportResult(String dmJson, TranscodeReport report,
-                             java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate) {
+                             Optional<Verification> consistencyGate) {
             this.dmJson = dmJson;
             this.report = report;
             this.consistencyGate = consistencyGate;
@@ -97,7 +100,7 @@ public final class JsonSchemaImporter {
         }
 
         /** The gate that cleared {@link #dmJson()} — empty unless rule synthesis bound it and nothing rewrote it. */
-        public java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate() {
+        public Optional<Verification> consistencyGate() {
             return consistencyGate;
         }
     }
@@ -117,7 +120,7 @@ public final class JsonSchemaImporter {
 
     /** A multi-model bundle: each {@code components/schemas} entry as its own model (id → result), wired by
      *  includes/mounts (SCHEMAKIT-SPEC §4g/§4e). */
-    public record BundleResult(java.util.Map<String, ImportResult> models) {}
+    public record BundleResult(Map<String, ImportResult> models) {}
 
     public ImportResult importSchema(String jsonSchema) {
         return importSchema(jsonSchema, MappingProfile.defaults());
@@ -158,17 +161,17 @@ public final class JsonSchemaImporter {
         Set<String> breakEdges = cycleBreakEdges(schemas, root);   // inline (not mount) one edge per include cycle
         // id → schema, for the rule-synthesis resolver: a mounting component loads its sibling's STRUCTURE skeleton
         // (built on demand, no rules → no recursion) so its own typed rules can be authored. Order-independent.
-        java.util.Map<String, JsonNode> schemaById = new java.util.LinkedHashMap<>();
+        Map<String, JsonNode> schemaById = new LinkedHashMap<>();
         for (Iterator<Map.Entry<String, JsonNode>> it = schemas.fields(); it.hasNext(); ) {
             Map.Entry<String, JsonNode> e = it.next();
             schemaById.put(identifier(e.getKey()), e.getValue());
         }
-        io.github.mbackschat.a12.dm.core.ModelResolver ruleResolver = id -> {
+        ModelResolver ruleResolver = id -> {
             JsonNode sch = schemaById.get(id);
             return sch == null ? null
                     : buildStructure(root, sch, id, dialect, profile, TranscodeReport.builder(), true, breakEdges).dmJson();
         };
-        java.util.Map<String, ImportResult> models = new java.util.LinkedHashMap<>();
+        Map<String, ImportResult> models = new LinkedHashMap<>();
         for (Iterator<Map.Entry<String, JsonNode>> it = schemas.fields(); it.hasNext(); ) {
             Map.Entry<String, JsonNode> e = it.next();
             TranscodeReport.Builder report = TranscodeReport.builder();
@@ -182,7 +185,7 @@ public final class JsonSchemaImporter {
     /** The include edges to break (inline instead of mount) so no cycle survives — the kernel rejects cyclic
      *  includes (like self-includes). A DFS over the cross-component object-ref graph collects each back-edge. */
     private static Set<String> cycleBreakEdges(JsonNode schemas, JsonNode root) {
-        java.util.Map<String, Set<String>> graph = new java.util.LinkedHashMap<>();
+        Map<String, Set<String>> graph = new LinkedHashMap<>();
         for (Iterator<Map.Entry<String, JsonNode>> it = schemas.fields(); it.hasNext(); ) {
             Map.Entry<String, JsonNode> e = it.next();
             graph.put(identifier(e.getKey()), objectComponentRefs(e.getValue(), root));
@@ -196,7 +199,7 @@ public final class JsonSchemaImporter {
         return breakEdges;
     }
 
-    private static void dfsBackEdges(String node, java.util.Map<String, Set<String>> graph, Set<String> gray,
+    private static void dfsBackEdges(String node, Map<String, Set<String>> graph, Set<String> gray,
                                      Set<String> done, Set<String> breakEdges) {
         if (done.contains(node)) {
             return;
@@ -280,7 +283,7 @@ public final class JsonSchemaImporter {
      *  load for rule synthesis — {@code null} for a single self-contained model. */
     private static ImportResult buildModel(JsonNode root, JsonNode rootSchema, String modelId, Dialect dialect,
                                            MappingProfile profile, TranscodeReport.Builder report, boolean bundle,
-                                           Set<String> breakEdges, io.github.mbackschat.a12.dm.core.ModelResolver ruleResolver) {
+                                           Set<String> breakEdges, ModelResolver ruleResolver) {
         Structure s = buildStructure(root, rootSchema, modelId, dialect, profile, report, bundle, breakEdges);
         List<RuleSynthesis.Need> needs = s.ruleNeeds();
         if (rootSchema.has(Carriage.X_RULE)) {
@@ -298,7 +301,7 @@ public final class JsonSchemaImporter {
             dmJson = tree.toString();
             // Carriage rewrote the tree AFTER the gate, so the receipt no longer describes what we return.
             // Dropping it under-reports; keeping it would attest a model the oracle never saw.
-            gate = java.util.Optional.empty();
+            gate = Optional.empty();
         }
         return new ImportResult(dmJson, report.build(), gate);
     }

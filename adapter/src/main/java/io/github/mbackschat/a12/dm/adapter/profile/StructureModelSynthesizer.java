@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.adapter.profile;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -238,15 +240,15 @@ final class StructureModelSynthesizer {
         List<Long> midTargetList = new ArrayList<>((midDist != null
                 ? sampleMultiset(midDist, nestedCount, rnd)
                 : sampleMultiset(rep.chainProduct(), nestedCount, rnd)).stream().map(Long::valueOf).toList());
-        midTargetList.sort(java.util.Comparator.naturalOrder());
-        java.util.ArrayDeque<Long> chainTargets = new java.util.ArrayDeque<>(midTargetList);
+        midTargetList.sort(Comparator.naturalOrder());
+        ArrayDeque<Long> chainTargets = new ArrayDeque<>(midTargetList);
 
         // the deep chains' final level compounds THREE-plus factors (root x child x grandchild x ...), so it —
         // and only it — is structurally capable of reaching the distribution's extreme upper tail (the target's
         // OWN max sits at the deepest bucket).
-        java.util.ArrayDeque<Long> deepFinalTargets;
+        ArrayDeque<Long> deepFinalTargets;
         if (deepDist != null) {
-            deepFinalTargets = new java.util.ArrayDeque<>(
+            deepFinalTargets = new ArrayDeque<>(
                     sampleMultiset(deepDist, deepChains, rnd).stream().map(Long::valueOf).toList());
         } else {
             // fallback (no chainProductByDepth): reserve the largest overall chainProduct draws — an
@@ -254,8 +256,8 @@ final class StructureModelSynthesizer {
             // depth-4+ sub-distribution.
             List<Long> combined = new ArrayList<>(sampleMultiset(rep.chainProduct(), deepChains, rnd).stream()
                     .map(Long::valueOf).toList());
-            combined.sort(java.util.Comparator.reverseOrder());
-            deepFinalTargets = new java.util.ArrayDeque<>(combined);
+            combined.sort(Comparator.reverseOrder());
+            deepFinalTargets = new ArrayDeque<>(combined);
         }
         int hubDepthForChain = Math.max(2, maxDepth - nestDepth);
 
@@ -323,12 +325,12 @@ final class StructureModelSynthesizer {
         // implied child size (target / rootSize) closest in log-space to a typical maxRepetitions value —
         // never to a hard-coded threshold or rank.
         List<Long> remainingTargets = new ArrayList<>(chainTargets);
-        remainingTargets.sort(java.util.Comparator.reverseOrder());
+        remainingTargets.sort(Comparator.reverseOrder());
         double typicalChildLog = Math.log(Math.max(1, repsDist.median()));
-        List<java.util.ArrayDeque<Long>> targetsForRoot = new ArrayList<>(rootCount);
+        List<ArrayDeque<Long>> targetsForRoot = new ArrayList<>(rootCount);
         int[] capacity = new int[rootCount];
         for (int i = 0; i < rootCount; i++) {
-            targetsForRoot.add(new java.util.ArrayDeque<>());
+            targetsForRoot.add(new ArrayDeque<>());
             capacity[i] = i < fans.size() ? fans.get(i) : 0;
         }
         for (long target : remainingTargets) {
@@ -384,7 +386,7 @@ final class StructureModelSynthesizer {
             left[0]--;
             prevHub = hub;
 
-            java.util.ArrayDeque<Long> myTargets = targetsForRoot.get(i);
+            ArrayDeque<Long> myTargets = targetsForRoot.get(i);
             int fan = i < fans.size() ? fans.get(i) : 0;
             for (int b = 0; b < fan && repsLeft > 0 && left[0] > 0 && rootRep.depth < maxDepth; b++) {
                 int childSize = sizeForTarget(myTargets.poll(), size, repSizePool, repsDist, rnd);
@@ -572,7 +574,7 @@ final class StructureModelSynthesizer {
             return out;
         }
         List<Integer> sorted = new ArrayList<>(raw);
-        sorted.sort(java.util.Comparator.reverseOrder());          // largest branchers first — deterministic
+        sorted.sort(Comparator.reverseOrder());          // largest branchers first — deterministic
 
         double multiWayFraction = multiWayHubFraction(siblingBranchFan);
         int wantMultiWay = Math.min(rootCount,
@@ -679,7 +681,7 @@ final class StructureModelSynthesizer {
      * replacement). Falls back to i.i.d. {@link #sampleReps} once either pool is exhausted (should only happen
      * on a rep-count/target-count mismatch at the margins).
      */
-    private static int nextRepSize(long parentProduct, java.util.ArrayDeque<Long> chainTargets,
+    private static int nextRepSize(long parentProduct, ArrayDeque<Long> chainTargets,
             List<Integer> repSizePool, Distribution repsDist, Random rnd) {
         if (repSizePool.isEmpty()) {
             return sampleReps(repsDist, rnd);
@@ -971,7 +973,7 @@ final class StructureModelSynthesizer {
                 continue;
             }
             List<GroupPlan> byAlloc = new ArrayList<>(branches);
-            byAlloc.sort(java.util.Comparator.comparingInt((GroupPlan b) -> alloc[indexOf.get(b)]).reversed());
+            byAlloc.sort(Comparator.comparingInt((GroupPlan b) -> alloc[indexOf.get(b)]).reversed());
             List<GroupPlan> pair = byAlloc.subList(0, 2);
             designatedPairs.add(pair);
             reservedBranches.addAll(pair);
@@ -1208,7 +1210,7 @@ final class StructureModelSynthesizer {
                 donorOrder.add(gi);
             }
         }
-        donorOrder.sort(java.util.Comparator.comparingLong(
+        donorOrder.sort(Comparator.comparingLong(
                 gi -> groups.get(gi).fields.stream().filter(k -> k == ValueKind.NUMBER).count()));
         for (int recv : needy) {
             int targetSlot = -1;

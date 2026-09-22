@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.eval.CascadeOverlay
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayContext
@@ -7,6 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.OverlayViews
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
+import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
@@ -118,7 +120,7 @@ class BareGroupComputeExactnessTest {
         val ctx = model.newDocument().field(FLAG, "9", 1, 1).computeContexts(ROOT).single()
         val counting = CountingRepsContext(ctx)
         val cascade = CascadeOverlay().apply {
-            overlay(SOURCE, listOf(1, 1, 1), io.github.mbackschat.a12.dm.interpreter.ast.Val.Num(dec(5)))
+            overlay(SOURCE, listOf(1, 1, 1), Val.Num(dec(5)))
         }
         val overlay = OverlayContext(
             counting,
@@ -141,8 +143,8 @@ class BareGroupComputeExactnessTest {
 
     /** Counts only what [OverlayContext] asks of its delegate; the real context's internal calls are its own. */
     private class CountingRepsContext(
-        private val d: io.github.mbackschat.a12.dm.interpreter.eval.EvalContext,
-    ) : io.github.mbackschat.a12.dm.interpreter.eval.EvalContext by d {
+        private val d: EvalContext,
+    ) : EvalContext by d {
         var repsCalls = 0
         override fun repsOf(path: String): List<Int> {
             repsCalls++
@@ -158,7 +160,7 @@ class BareGroupComputeExactnessTest {
         )
         val ctx = model.newDocument().field(FLAG, "9", 1, 1).computeContexts(ROOT).single()
         val cascade = CascadeOverlay().apply {
-            overlay(SOURCE, listOf(1, 1, 1), io.github.mbackschat.a12.dm.interpreter.ast.Val.Num(dec(5)))
+            overlay(SOURCE, listOf(1, 1, 1), Val.Num(dec(5)))
         }
         val overlay = OverlayContext(
             ctx,

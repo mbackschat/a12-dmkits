@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import io.github.mbackschat.a12.dm.core.KernelPatternPolicy;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A typed handle to a string field. Offers string equality (the kernel has no ordering on strings —
@@ -127,8 +129,8 @@ public record StringRef(FieldRef field, boolean correlated) {
         return new ValueListCondition(field, false, fieldValues(first, rest));
     }
 
-    static java.util.List<Calculation> fieldValues(StringRef first, StringRef... rest) {
-        var values = new java.util.ArrayList<Calculation>();
+    static List<Calculation> fieldValues(StringRef first, StringRef... rest) {
+        var values = new ArrayList<Calculation>();
         values.add(first.value());
         for (StringRef r : rest) {
             values.add(r.value());
@@ -136,8 +138,8 @@ public record StringRef(FieldRef field, boolean correlated) {
         return values;
     }
 
-    static java.util.List<Calculation> stringValues(String first, String... rest) {
-        var values = new java.util.ArrayList<Calculation>();
+    static List<Calculation> stringValues(String first, String... rest) {
+        var values = new ArrayList<Calculation>();
         values.add(new StringLiteral(first));
         for (String v : rest) {
             values.add(new StringLiteral(v));

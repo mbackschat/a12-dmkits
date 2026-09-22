@@ -3,7 +3,9 @@ package io.github.mbackschat.a12.dm.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -52,7 +54,7 @@ class OperatorsVerbTest {
         // G3: an operator's full view names the Java entry point(s) that render it — SemanticIndex names
         // BOTH arms (the presence/coercion handle + the value read), so an agent crosses from operator to call.
         JsonNode si = MAPPER.readTree(CliTestSupport.run("operators", "SemanticIndex").out());
-        java.util.Set<String> members = new java.util.HashSet<>();
+        Set<String> members = new HashSet<>();
         for (JsonNode m : si.path("dslEntry")) {
             members.add(m.asText());
         }
@@ -301,7 +303,7 @@ class OperatorsVerbTest {
         // so the counters' MEANING now carries "count" — the positional search matches id/keyword/meaning.
         CliTestSupport.Result res = CliTestSupport.run("operators", "count");
         assertEquals(0, res.code(), res::err);
-        java.util.Set<String> ids = new java.util.HashSet<>();
+        Set<String> ids = new HashSet<>();
         for (Iterator<JsonNode> it = MAPPER.readTree(res.out()).path("operators").elements(); it.hasNext();) {
             ids.add(it.next().path("id").asText());
         }

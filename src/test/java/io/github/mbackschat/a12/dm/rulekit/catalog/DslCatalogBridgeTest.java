@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -111,7 +112,7 @@ class DslCatalogBridgeTest {
                 () -> "catalog:<Id> markers naming non-existent operators: " + unknownIds);
 
         // every dslEntry member resolves to a public authoring method (catalog → code)
-        java.util.Set<String> authoringMethods = authoringMethodNames();
+        Set<String> authoringMethods = authoringMethodNames();
         List<String> unresolved = catalog.entries().stream()
                 .flatMap(e -> e.dslEntry().stream())
                 .distinct()
@@ -180,8 +181,8 @@ class DslCatalogBridgeTest {
         return '"' + s + '"';
     }
 
-    private java.util.Set<String> authoringMethodNames() {
-        java.util.Set<String> names = new TreeSet<>();
+    private Set<String> authoringMethodNames() {
+        Set<String> names = new TreeSet<>();
         for (String simple : AUTHORING_TYPES) {
             Class<?> type;
             try {

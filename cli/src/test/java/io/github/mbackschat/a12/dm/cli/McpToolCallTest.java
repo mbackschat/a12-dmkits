@@ -4,12 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -257,7 +261,7 @@ class McpToolCallTest {
 
     @Test
     void anUnknownToolIsInvalidParams() {
-        McpFailure failure = org.junit.jupiter.api.Assertions.assertThrows(McpFailure.class,
+        McpFailure failure = Assertions.assertThrows(McpFailure.class,
                 () -> call("dm.nope", arguments()));
         assertEquals(McpProtocol.INVALID_PARAMS, failure.code());
         assertTrue(failure.getMessage().contains("dm.nope"), failure::getMessage);
@@ -274,7 +278,7 @@ class McpToolCallTest {
         arguments.put("model", fixture());
         arguments.putObject("args").put("output", "/tmp/somewhere.json");
 
-        McpFailure failure = org.junit.jupiter.api.Assertions.assertThrows(McpFailure.class,
+        McpFailure failure = Assertions.assertThrows(McpFailure.class,
                 () -> call("dm.rule.edit", arguments));
 
         assertEquals(McpProtocol.INVALID_PARAMS, failure.code());
@@ -291,7 +295,7 @@ class McpToolCallTest {
             arguments.put("model", fixture());
             arguments.putObject("args").put(key, "/etc");
 
-            McpFailure failure = org.junit.jupiter.api.Assertions.assertThrows(McpFailure.class,
+            McpFailure failure = Assertions.assertThrows(McpFailure.class,
                     () -> call("dm.model.read", arguments));
 
             assertEquals(McpProtocol.INVALID_PARAMS, failure.code(), () -> "for args." + key);
@@ -344,7 +348,7 @@ class McpToolCallTest {
         arguments.put("model", fixture());
         arguments.putObject("files").put("custom-conditions-js", "export function check() { return true; }");
 
-        McpFailure failure = org.junit.jupiter.api.Assertions.assertThrows(McpFailure.class,
+        McpFailure failure = Assertions.assertThrows(McpFailure.class,
                 () -> call("dm.model.read", arguments));
 
         assertEquals(McpProtocol.INVALID_PARAMS, failure.code());
@@ -360,17 +364,17 @@ class McpToolCallTest {
      */
     @Test
     void aCallWritesNothingToTheProcessStdout() throws Exception {
-        java.io.PrintStream real = System.out;
-        java.io.ByteArrayOutputStream leaked = new java.io.ByteArrayOutputStream();
+        PrintStream real = System.out;
+        ByteArrayOutputStream leaked = new ByteArrayOutputStream();
         ObjectNode arguments = arguments();
         arguments.put("op", "operators");
         try {
-            System.setOut(new java.io.PrintStream(leaked, true, java.nio.charset.StandardCharsets.UTF_8));
+            System.setOut(new PrintStream(leaked, true, StandardCharsets.UTF_8));
             call("dm.catalog", arguments);
         } finally {
             System.setOut(real);
         }
-        assertEquals("", leaked.toString(java.nio.charset.StandardCharsets.UTF_8),
+        assertEquals("", leaked.toString(StandardCharsets.UTF_8),
                 "the verb's payload belongs in the response frame, never on the framer's stream");
     }
 
@@ -389,7 +393,7 @@ class McpToolCallTest {
         arguments.put("model", fixture());
         arguments.putObject("args").put("to", "renamed");
 
-        McpFailure refusal = org.junit.jupiter.api.Assertions.assertThrows(McpFailure.class,
+        McpFailure refusal = Assertions.assertThrows(McpFailure.class,
                 () -> call("dm.model.edit", arguments));
 
         assertEquals(McpProtocol.INVALID_PARAMS, refusal.code());

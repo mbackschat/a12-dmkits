@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -70,7 +71,7 @@ class NoBackendLaneTest {
     @Test
     void modelLoadAndIndexIsFullStructural_bindingIsStructuralOnly() {
         BoundModel m = BoundModel.ofJson(policyModel());
-        assertEquals(java.util.Optional.of(Verification.STRUCTURAL_ONLY), m.consistencyGate(),
+        assertEquals(Optional.of(Verification.STRUCTURAL_ONLY), m.consistencyGate(),
                 "a gated bind with no backend must carry STRUCTURAL_ONLY, never KERNEL_CONFIRMED — and the "
                         + "receipt must be PRESENT, because the gate did run; only an ungated bind has none");
         // the kernel-free index is fully available
@@ -83,7 +84,7 @@ class NoBackendLaneTest {
         // bind both reduce to "not kernel-confirmed", so under the old bare-Verification accessor they were
         // literally indistinguishable — and a consumer could publish STRUCTURAL_ONLY provenance for a path that
         // never gated. The gate that ran is present-and-degraded; the gate that never ran is absent.
-        assertEquals(java.util.Optional.empty(),
+        assertEquals(Optional.empty(),
                 io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJsonLenient(policyModel(),
                         io.github.mbackschat.a12.dm.core.ReferenceResolvers.selfContained()).consistencyGate(),
                 "an ungated bind must be distinguishable from a gated-but-unbacked one, even here");
@@ -111,7 +112,7 @@ class NoBackendLaneTest {
                 "FieldFilled(Limit) And [Limit] <= 0", "LIMIT_POSITIVE", "ERROR");
         ValidationResult result = new RuleValidator().check(policyModel(), wellFormed);
 
-        assertEquals(java.util.Optional.of(Verification.STRUCTURAL_ONLY), result.consistencyGate(),
+        assertEquals(Optional.of(Verification.STRUCTURAL_ONLY), result.consistencyGate(),
                 "the consistency gate did not run — the verdict is structural-only");
         assertTrue(hasCode(result, "RK_NO_KERNEL_BACKEND"),
                 () -> "a STRUCTURAL_ONLY consistency-gate result carries the RK_NO_KERNEL_BACKEND advisory, got: "
@@ -135,7 +136,7 @@ class NoBackendLaneTest {
         DraftRule candidate = new DraftRule("/Policy", "PremiumCheck", "Premium",
                 "[/Policy/Coverages/Limit] <= 0", "BAD", "ERROR");
         ValidationResult result = new RuleValidator().check(policyModel(), candidate);
-        assertEquals(java.util.Optional.of(Verification.STRUCTURAL_ONLY), result.consistencyGate(),
+        assertEquals(Optional.of(Verification.STRUCTURAL_ONLY), result.consistencyGate(),
                 "no backend ran, so whatever ok() says, the verdict is structural-only — not kernel-green");
     }
 

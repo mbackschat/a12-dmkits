@@ -14,6 +14,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
+import io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource;
 
@@ -261,11 +263,11 @@ class LinterTest {
     void flagsAnUnguardedToleranceComparisonThatFiresOnEmpty() {
         // [FEE] DiffersWithToleranceRange5 100 — empty reads 0, |0 − 100| > 5 fires.
         Condition fires = m.num(FEE).asNumber().differsWithTolerance(
-                io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance.RANGE_5, Dsl.number("100"));
+                Tolerance.RANGE_5, Dsl.number("100"));
         only(linter.lint(fires), "RK_UNGUARDED_NUMBER_COMPARISON");
         // |0 − 3| is within the tolerance of 5 → an empty value can't fire it
         Condition silent = m.num(FEE).asNumber().differsWithTolerance(
-                io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance.RANGE_5, Dsl.number("3"));
+                Tolerance.RANGE_5, Dsl.number("3"));
         assertTrue(noLint(silent, "RK_UNGUARDED_NUMBER_COMPARISON"),
                 () -> "a tolerance an empty-as-0 stays within should not be flagged: " + linter.lint(silent));
     }
@@ -350,8 +352,8 @@ class LinterTest {
                 () -> "a guarded concatenation comparison should not be flagged: " + linter.lint(c));
     }
 
-    private static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr orderStr(BoundModel m, String path) {
-        return new io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr(
+    private static StringExpr orderStr(BoundModel m, String path) {
+        return new StringExpr(
                 new io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue(m.field(path)));
     }
 

@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import com.fasterxml.jackson.core.JsonParser;
@@ -154,8 +155,8 @@ public final class ModelReader {
      * The model's declared base year ({@code modelInfo.baseYear}), or empty when it declares none. Read at the
      * model level like {@link #locales()} because it is model-level state a gate depends on, not a field's.
      */
-    public java.util.Optional<Integer> baseYear() {
-        return java.util.Optional.ofNullable(baseYear);
+    public Optional<Integer> baseYear() {
+        return Optional.ofNullable(baseYear);
     }
 
     /** The model's declared locales (header {@code locales}), each as a Java locale string (e.g. {@code en_US}). */

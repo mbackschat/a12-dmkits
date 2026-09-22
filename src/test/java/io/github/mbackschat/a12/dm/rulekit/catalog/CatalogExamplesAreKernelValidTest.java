@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -42,7 +43,7 @@ class CatalogExamplesAreKernelValidTest {
      * Legal because an enclosing group reference counts as referencing the error field (verified —
      * see KERNEL-INTEGRATION-NOTES).
      */
-    private static final java.util.Map<String, String> ORDER_GROUP_FIELDS = java.util.Map.of(
+    private static final Map<String, String> ORDER_GROUP_FIELDS = Map.of(
             "ShippingAddress", "ShippingAddress/Street",
             "BillingAddress", "BillingAddress/PostalCode");
 
@@ -152,7 +153,7 @@ class CatalogExamplesAreKernelValidTest {
                 .findFirst()
                 .or(() -> ORDER_GROUP_FIELDS.entrySet().stream()
                         .filter(e -> Pattern.compile("\\b" + e.getKey() + "\\b").matcher(dsl).find())
-                        .map(java.util.Map.Entry::getValue)
+                        .map(Map.Entry::getValue)
                         .findFirst())
                 .orElseThrow(() -> new IllegalStateException(
                         "no Order field or group is referenced in example: " + dsl

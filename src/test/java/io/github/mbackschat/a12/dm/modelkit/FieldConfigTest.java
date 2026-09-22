@@ -6,12 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.OptionalInt;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
 /**
  * modelkit M2 — type-specific config (String min/max/pattern, Number scale/min/max, Enumeration
@@ -63,10 +66,10 @@ class FieldConfigTest {
         ModelIndex index = index(permit());
 
         // numeric inclusive bounds + string length/pattern — the declared config read back (no longer dropped)
-        assertEquals(0, index.numberMin("/Permit/Fee").orElseThrow().compareTo(new java.math.BigDecimal("0")));
-        assertEquals(0, index.numberMax("/Permit/Fee").orElseThrow().compareTo(new java.math.BigDecimal("10000")));
-        assertEquals(java.util.OptionalInt.of(3), index.stringMinLength("/Permit/Code"));
-        assertEquals(java.util.OptionalInt.of(12), index.stringMaxLength("/Permit/Code"));
+        assertEquals(0, index.numberMin("/Permit/Fee").orElseThrow().compareTo(new BigDecimal("0")));
+        assertEquals(0, index.numberMax("/Permit/Fee").orElseThrow().compareTo(new BigDecimal("10000")));
+        assertEquals(OptionalInt.of(3), index.stringMinLength("/Permit/Code"));
+        assertEquals(OptionalInt.of(12), index.stringMaxLength("/Permit/Code"));
         assertEquals(java.util.Optional.of("[A-Z][A-Z0-9]+"), index.stringPattern("/Permit/Code"));
 
         // a config accessor probed on the wrong kind is empty, not an exception (safe to call on any field)
@@ -163,7 +166,7 @@ class FieldConfigTest {
         String inverted = legal.replaceFirst("(\"minLength\"\\s*:\\s*)2", "$19");
         assertNotEquals(legal, inverted, "the patch must land");
         assertThrows(RuntimeException.class,
-                () -> io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(inverted));
+                () -> BoundModel.ofJson(inverted));
     }
 
     @Test
@@ -174,7 +177,7 @@ class FieldConfigTest {
         String inverted = legal.replaceFirst("(\"minValue\"\\s*:\\s*)1\\b", "$199");
         assertNotEquals(legal, inverted, "the patch must land");
         assertThrows(RuntimeException.class,
-                () -> io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(inverted));
+                () -> BoundModel.ofJson(inverted));
     }
 
     @Test

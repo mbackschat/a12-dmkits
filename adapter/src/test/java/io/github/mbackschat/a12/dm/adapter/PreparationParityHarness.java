@@ -9,10 +9,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelReader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader;
 
 /**
@@ -41,9 +43,9 @@ final class PreparationParityHarness {
                         readerFacts(readerIndex),
                         readerModel.getRules().stream()
                                 .map(rule -> rule.getPath())
-                                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new)),
+                                .collect(Collectors.toCollection(LinkedHashSet::new)),
                         readerModel.getComputations().stream()
-                                .collect(java.util.stream.Collectors.toMap(
+                                .collect(Collectors.toMap(
                                         computation -> computation.getGroup() + "/" + requireName(computation.getName()),
                                         computation -> computation.getTargetPath(),
                                         (left, right) -> left,
@@ -102,7 +104,7 @@ final class PreparationParityHarness {
                     annotations(index.annotationsOfGroup(path)));
         }
         var kind = index.kindOf(path);
-        Integer scale = kind == io.github.mbackschat.a12.dm.core.ValueKind.NUMBER
+        Integer scale = kind == ValueKind.NUMBER
                 ? index.numberScale(path)
                 : null;
         var min = index.numberMin(path).map(BigDecimal::toPlainString).orElse(null);
@@ -116,7 +118,7 @@ final class PreparationParityHarness {
         var pattern = index.stringPattern(path).orElse(null);
         List<String> enumValues = null;
         Map<String, List<String>> enumCategories = null;
-        if (kind == io.github.mbackschat.a12.dm.core.ValueKind.ENUMERATION) {
+        if (kind == ValueKind.ENUMERATION) {
             enumValues = index.enumValues(path);
             enumCategories = index.enumCategories(path);
         }

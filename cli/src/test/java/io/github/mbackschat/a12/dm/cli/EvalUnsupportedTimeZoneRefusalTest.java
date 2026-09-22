@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -67,8 +68,8 @@ class EvalUnsupportedTimeZoneRefusalTest {
                 () -> "invalid input is not mislabeled as a legal scope limit: " + res.out());
     }
 
-    private static java.util.List<CliTestSupport.Result> runtimeResults(Path model, Path doc) {
-        return java.util.List.of(
+    private static List<CliTestSupport.Result> runtimeResults(Path model, Path doc) {
+        return List.of(
                 CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", doc.toString()),
                 CliTestSupport.run("-m", model.toString(), "model", "compute", "--instance", doc.toString()),
                 CliTestSupport.run("-m", model.toString(), "rule", "eval",
@@ -100,7 +101,7 @@ class EvalUnsupportedTimeZoneRefusalTest {
     @Test
     void allInterpreterVerbsRejectInvalidExplicitZonesInsteadOfEvaluatingUtc(@TempDir Path dir) throws Exception {
         Path doc = emptyDoc(dir);
-        for (String zone : java.util.List.of("", "   ", "Europe/Berln")) {
+        for (String zone : List.of("", "   ", "Europe/Berln")) {
             Path model = zoneModel(dir, zone);
             for (CliTestSupport.Result result : runtimeResults(model, doc)) {
                 assertZoneInvalid(result, zone);

@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 
 /**
  * A repeated computed field's rows must be identifiable from the output itself — the reported defect.
@@ -56,14 +57,14 @@ class ComputeRowIdentityTest {
                 .when(m.num("/Order/Lines/Quantity").gt(0))
                 .calc(new Arithmetic(Arithmetic.Op.MULTIPLY,
                         m.num("/Order/Lines/Quantity").value(), m.num("/Order/Lines/UnitPrice").value()))
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("Line total is quantity times unit price."))
+                .message(Dsl.en("Line total is quantity times unit price."))
                 .build());
         session.addComputation(m -> m.computation(m.num("/Order/Lines/Doubled"))
                 .name("DoubledComp")
                 .when(m.num("/Order/Lines/Quantity").gt(0))
                 .calc(new Arithmetic(Arithmetic.Op.ADD,
                         m.num("/Order/Lines/Quantity").value(), m.num("/Order/Lines/Quantity").value()))
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("Doubled is quantity plus itself."))
+                .message(Dsl.en("Doubled is quantity plus itself."))
                 .build());
         Path model = dir.resolve("orders.dm.json");
         Files.writeString(model, session.toJson());

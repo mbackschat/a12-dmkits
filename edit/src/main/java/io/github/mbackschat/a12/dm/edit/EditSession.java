@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import io.github.mbackschat.a12.dm.core.ModelLoader;
@@ -360,13 +361,13 @@ public final class EditSession {
 
     /** Add a Multi-Select group template (FEATURE-GAPS) under {@code parentPath}; see {@link ModelDocument#addMultiSelectGroup}. */
     public EditSession addMultiSelectGroup(String parentPath, String name,
-            java.util.function.Consumer<DocumentModelDraft.MultiSelectBuilder> body) {
+            Consumer<DocumentModelDraft.MultiSelectBuilder> body) {
         return editStructure(d -> d.addMultiSelectGroup(parentPath, name, body));
     }
 
     /** Add an Attachment group template (FEATURE-GAPS) under {@code parentPath}; see {@link ModelDocument#addAttachmentGroup}. */
     public EditSession addAttachmentGroup(String parentPath, String name,
-            java.util.function.Consumer<DocumentModelDraft.AttachmentBuilder> body) {
+            Consumer<DocumentModelDraft.AttachmentBuilder> body) {
         return editStructure(d -> d.addAttachmentGroup(parentPath, name, body));
     }
 

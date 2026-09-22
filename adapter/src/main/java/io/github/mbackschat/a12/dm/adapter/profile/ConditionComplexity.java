@@ -3,6 +3,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.*;
 
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -377,7 +378,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
         }
 
         /** A group scope contributes no operand depth: it is one slot whose extent the kernel expands. */
-        private int maxEntityOperandDepth(java.util.List<AggregateOperand> operands) {
+        private int maxEntityOperandDepth(List<AggregateOperand> operands) {
             int max = 0;
             for (AggregateOperand o : operands) {
                 max = Math.max(max, switch (o) {
@@ -389,7 +390,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
             return max;
         }
 
-        private int maxOperandDepth(java.util.List<? extends ValueListOperand> operands) {
+        private int maxOperandDepth(List<? extends ValueListOperand> operands) {
             int max = 0;
             for (ValueListOperand o : operands) {
                 max = Math.max(max, operandDepth(o));
@@ -404,7 +405,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
          * {@code collectionPaths} and {@code maxStarSegments} the same way — a profile that counted only the
          * field operands would rate {@code Sum(/Invoice/Lines*)} as though it iterated nothing.
          */
-        private int maxAggregateOperandDepth(java.util.List<AggregateOperand> operands) {
+        private int maxAggregateOperandDepth(List<AggregateOperand> operands) {
             int max = 0;
             for (AggregateOperand o : operands) {
                 max = Math.max(max, switch (o) {
@@ -426,7 +427,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
             return max;
         }
 
-        private int maxFirstFilledOperandDepth(java.util.List<? extends FirstFilledOperand> operands) {
+        private int maxFirstFilledOperandDepth(List<? extends FirstFilledOperand> operands) {
             int max = 0;
             for (FirstFilledOperand operand : operands) {
                 int depth = operand.field().map(this::operandDepth).orElseGet(() -> {
@@ -452,7 +453,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
             return max;
         }
 
-        private int maxCalcDepth(java.util.List<? extends Calculation> calcs) {
+        private int maxCalcDepth(List<? extends Calculation> calcs) {
             int max = 0;
             for (Calculation c : calcs) {
                 max = Math.max(max, depth(c));

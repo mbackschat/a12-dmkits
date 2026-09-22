@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,8 +58,8 @@ public record Computation(
         Comments comments,
         List<String> errorCodesToSuppress) {
 
-    private static final java.util.Set<String> SUPPORTED_ERROR_CODES_TO_SUPPRESS =
-            java.util.Set.of(KernelCode.MVK_INVALID_COMPARE_DEC_PLACES.name());
+    private static final Set<String> SUPPORTED_ERROR_CODES_TO_SUPPRESS =
+            Set.of(KernelCode.MVK_INVALID_COMPARE_DEC_PLACES.name());
 
     public Computation {
         alternatives = List.copyOf(alternatives);
@@ -105,7 +106,7 @@ public record Computation(
     }
 
     /** The kernel-measured domain accepted by A12's {@code IComputation.errorCodesToSuppress}. */
-    public static java.util.Set<String> supportedErrorCodesToSuppress() {
+    public static Set<String> supportedErrorCodesToSuppress() {
         return SUPPORTED_ERROR_CODES_TO_SUPPRESS;
     }
 

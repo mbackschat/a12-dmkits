@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
+
 /**
  * How a `$field.value$` message parameter is PRESENTED — the interpreter's clean-room twin of the kernel's
  * per-locale presentation information (KERNEL-FINDINGS [KF199]).
@@ -55,18 +57,18 @@ private const val PRESENTED_JOIN = " "
  */
 internal fun presentDisplayValue(
     stored: String,
-    kind: io.github.mbackschat.a12.dm.interpreter.model.Kind,
+    kind: Kind,
     declaredFormat: String?,
     rangeSeparator: String?,
     presentation: DisplayPresentation,
 ): String = when (kind) {
-    io.github.mbackschat.a12.dm.interpreter.model.Kind.DATE ->
+    Kind.DATE ->
         presentDate(stored, declaredFormat, presentation) ?: stored
-    io.github.mbackschat.a12.dm.interpreter.model.Kind.DATE_TIME ->
+    Kind.DATE_TIME ->
         presentDateTime(stored, declaredFormat, presentation) ?: stored
-    io.github.mbackschat.a12.dm.interpreter.model.Kind.DATE_RANGE ->
+    Kind.DATE_RANGE ->
         presentRange(stored, declaredFormat, rangeSeparator, presentation) ?: stored
-    io.github.mbackschat.a12.dm.interpreter.model.Kind.NUMBER -> presentNumber(stored, presentation)
+    Kind.NUMBER -> presentNumber(stored, presentation)
     else -> stored
 }
 

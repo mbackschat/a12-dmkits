@@ -7,7 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -202,15 +207,15 @@ class OperatorCatalogTest {
 
     /** The facet vocabulary is derived from the live typed domain; adding a {@code ValueKind} cannot leave
      *  this guard accepting yesterday's hand-list. UNKNOWN deliberately has no public machine token. */
-    private static final java.util.Set<String> KIND_TOKENS = java.util.Arrays.stream(ValueKind.values())
+    private static final Set<String> KIND_TOKENS = java.util.Arrays.stream(ValueKind.values())
             .map(OperatorCatalog::kindToken)
-            .filter(java.util.Objects::nonNull)
-            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            .filter(Objects::nonNull)
+            .collect(Collectors.toUnmodifiableSet());
 
     /** Operand-class tokens a corrective's {@code whenOperands} may use: a kind, or a literal marker. */
-    private static final java.util.Set<String> OPERAND_CLASS_TOKENS = java.util.stream.Stream.concat(
-            KIND_TOKENS.stream(), java.util.stream.Stream.of("string-literal", "number-literal"))
-            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    private static final Set<String> OPERAND_CLASS_TOKENS = Stream.concat(
+            KIND_TOKENS.stream(), Stream.of("string-literal", "number-literal"))
+            .collect(Collectors.toUnmodifiableSet());
 
     /**
      * The header {@code emptyOperandDefaults} table states the per-kind empty behavior ONCE
@@ -220,7 +225,7 @@ class OperatorCatalogTest {
     @Test
     void headerDeclaresEmptyOperandDefaultsForEveryComparableKind() {
         var defaults = CATALOG.emptyOperandDefaults();
-        var expectedKinds = java.util.Set.of("number", "string", "enum", "boolean", "confirm",
+        var expectedKinds = Set.of("number", "string", "enum", "boolean", "confirm",
                 "date", "time", "date-time");
         assertEquals(expectedKinds, defaults.keySet(), "primitive default header must declare exactly its eight kinds");
         for (String kind : expectedKinds) {
@@ -269,7 +274,7 @@ class OperatorCatalogTest {
     @Test
     void everyCorrectiveIsWellFormedAndProbed() {
         for (OperatorEntry e : CATALOG.entries()) {
-            java.util.Set<String> selectors = new java.util.HashSet<>();
+            Set<String> selectors = new java.util.HashSet<>();
             for (Corrective c : e.correctives()) {
                 String at = e.id() + " corrective " + c.code();
                 assertFalse(isBlank(c.code()), () -> e.id() + ": corrective missing code");
@@ -346,17 +351,17 @@ class OperatorCatalogTest {
         if (probeKinds.stream().anyMatch(OperatorCatalogTest::isBlank)) {
             violations.add("every perKind branch probe must name its kind");
         }
-        Set<String> distinct = probeKinds.stream().filter(java.util.Objects::nonNull)
-                .collect(java.util.stream.Collectors.toSet());
+        Set<String> distinct = probeKinds.stream().filter(Objects::nonNull)
+                .collect(Collectors.toSet());
         if (distinct.size() != probeKinds.size()) {
             violations.add("each perKind branch must have exactly one probe");
         }
-        Set<String> missing = new java.util.TreeSet<>(branches);
+        Set<String> missing = new TreeSet<>(branches);
         missing.removeAll(distinct);
         if (!missing.isEmpty()) {
             violations.add("missing probe kinds " + missing);
         }
-        Set<String> unknown = new java.util.TreeSet<>(distinct);
+        Set<String> unknown = new TreeSet<>(distinct);
         unknown.removeAll(branches);
         if (!unknown.isEmpty()) {
             violations.add("unknown probe kinds " + unknown);
@@ -411,29 +416,29 @@ class OperatorCatalogTest {
     @Test
     void aggregateIdentitySplitsZeroVsNoValueByKind() {
         assertEquals(AggregateIdentity.ZERO, CATALOG.byId("Sum").orElseThrow().aggregateIdentityClaim().value());
-        for (String operator : java.util.List.of("MaxValue", "MinValue", "Max", "Min")) {
+        for (String operator : List.of("MaxValue", "MinValue", "Max", "Min")) {
             AggregateIdentityClaim claim = CATALOG.byId(operator).orElseThrow().aggregateIdentityClaim();
-            assertEquals(java.util.Optional.of(AggregateIdentity.ZERO), claim.identityFor("number"), operator);
-            for (String kind : java.util.List.of("date", "time", "date-time")) {
-                assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE), claim.identityFor(kind),
+            assertEquals(Optional.of(AggregateIdentity.ZERO), claim.identityFor("number"), operator);
+            for (String kind : List.of("date", "time", "date-time")) {
+                assertEquals(Optional.of(AggregateIdentity.NO_VALUE), claim.identityFor(kind),
                         operator + " " + kind);
             }
         }
         AggregateIdentityClaim first = CATALOG.byId("FirstFilledValue").orElseThrow().aggregateIdentityClaim();
-        assertEquals(java.util.Optional.of(AggregateIdentity.ZERO), first.identityFor("number"));
-        for (String kind : java.util.List.of(
+        assertEquals(Optional.of(AggregateIdentity.ZERO), first.identityFor("number"));
+        for (String kind : List.of(
                 "boolean", "custom", "string", "enum", "date", "date-fragment", "time", "date-time", "date-range")) {
-            assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE), first.identityFor(kind), kind);
+            assertEquals(Optional.of(AggregateIdentity.NO_VALUE), first.identityFor(kind), kind);
         }
         assertEquals(EmptyBehavior.NOT_EVALUATED, CATALOG.defaultEmptyBehavior(ValueKind.DATE_FRAGMENT).orElseThrow(),
                 "DATE_FRAGMENT keeps its own facet token but rides DATE's primitive empty default");
-        assertEquals(java.util.Optional.of(AggregateIdentity.ZERO),
+        assertEquals(Optional.of(AggregateIdentity.ZERO),
                 CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("number"));
-        assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE),
+        assertEquals(Optional.of(AggregateIdentity.NO_VALUE),
                 CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("date"));
-        assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE),
+        assertEquals(Optional.of(AggregateIdentity.NO_VALUE),
                 CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("time"));
-        assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE),
+        assertEquals(Optional.of(AggregateIdentity.NO_VALUE),
                 CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("date-time"));
     }
 
@@ -502,26 +507,26 @@ class OperatorCatalogTest {
     @Test
     void emptyOperandBehaviorResolvesClaimThenDefault() {
         // a deviation: Length's string operand reads 0, though the string DEFAULT is not-evaluated
-        assertEquals(java.util.Optional.of(EmptyBehavior.AS_ZERO),
-                CATALOG.emptyOperandBehavior("Length", 0, io.github.mbackschat.a12.dm.core.ValueKind.STRING));
+        assertEquals(Optional.of(EmptyBehavior.AS_ZERO),
+                CATALOG.emptyOperandBehavior("Length", 0, ValueKind.STRING));
         // no claim → the kind default (a comparison operand)
-        assertEquals(java.util.Optional.of(EmptyBehavior.AS_ZERO),
-                CATALOG.emptyOperandBehavior("LessThan", 0, io.github.mbackschat.a12.dm.core.ValueKind.NUMBER));
-        assertEquals(java.util.Optional.of(EmptyBehavior.NOT_EVALUATED),
-                CATALOG.emptyOperandBehavior("LessThan", 0, io.github.mbackschat.a12.dm.core.ValueKind.STRING));
+        assertEquals(Optional.of(EmptyBehavior.AS_ZERO),
+                CATALOG.emptyOperandBehavior("LessThan", 0, ValueKind.NUMBER));
+        assertEquals(Optional.of(EmptyBehavior.NOT_EVALUATED),
+                CATALOG.emptyOperandBehavior("LessThan", 0, ValueKind.STRING));
         // a per-kind split: the operand-list Min substitutes an empty number but skips every date-like kind
-        assertEquals(java.util.Optional.of(EmptyBehavior.AS_ZERO),
-                CATALOG.emptyOperandBehavior("Min", 0, io.github.mbackschat.a12.dm.core.ValueKind.NUMBER));
-        assertEquals(java.util.Optional.of(EmptyBehavior.SKIPPED),
-                CATALOG.emptyOperandBehavior("Min", 1, io.github.mbackschat.a12.dm.core.ValueKind.DATE));
-        assertEquals(java.util.Optional.of(EmptyBehavior.SKIPPED),
-                CATALOG.emptyOperandBehavior("Min", 1, io.github.mbackschat.a12.dm.core.ValueKind.TIME));
-        assertEquals(java.util.Optional.of(EmptyBehavior.SKIPPED),
-                CATALOG.emptyOperandBehavior("Min", 1, io.github.mbackschat.a12.dm.core.ValueKind.DATE_TIME));
+        assertEquals(Optional.of(EmptyBehavior.AS_ZERO),
+                CATALOG.emptyOperandBehavior("Min", 0, ValueKind.NUMBER));
+        assertEquals(Optional.of(EmptyBehavior.SKIPPED),
+                CATALOG.emptyOperandBehavior("Min", 1, ValueKind.DATE));
+        assertEquals(Optional.of(EmptyBehavior.SKIPPED),
+                CATALOG.emptyOperandBehavior("Min", 1, ValueKind.TIME));
+        assertEquals(Optional.of(EmptyBehavior.SKIPPED),
+                CATALOG.emptyOperandBehavior("Min", 1, ValueKind.DATE_TIME));
         // the membership subject deviates from the number default (3VL — not substituted 0)
-        assertEquals(java.util.Optional.of(EmptyBehavior.NOT_EVALUATED),
+        assertEquals(Optional.of(EmptyBehavior.NOT_EVALUATED),
                 CATALOG.emptyOperandBehavior("FieldValueIncludedInValueList", 0,
-                        io.github.mbackschat.a12.dm.core.ValueKind.NUMBER));
+                        ValueKind.NUMBER));
     }
 
     @Test

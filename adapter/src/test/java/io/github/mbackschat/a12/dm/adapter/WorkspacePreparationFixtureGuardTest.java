@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
@@ -138,7 +139,7 @@ class WorkspacePreparationFixtureGuardTest {
     }
 
     private static Map<String, JsonNode> effectiveFieldTypes(JsonNode expanded) {
-        var fields = new java.util.TreeMap<String, JsonNode>();
+        var fields = new TreeMap<String, JsonNode>();
         collectEffectiveFieldTypes(expanded, fields);
         return fields;
     }
@@ -156,7 +157,7 @@ class WorkspacePreparationFixtureGuardTest {
 
     private static Map<String, JsonNode> preparedStructure(
             PreparationParityHarness.PreparedSurface surface) {
-        var elements = new java.util.TreeMap<String, JsonNode>();
+        var elements = new TreeMap<String, JsonNode>();
         surface.elements().forEach((path, facts) -> {
             var structure = JSON.createObjectNode();
             structure.put("elementType", facts.group() ? "Group" : "Field");
@@ -176,7 +177,7 @@ class WorkspacePreparationFixtureGuardTest {
     }
 
     private static Map<String, JsonNode> preparedElements(JsonNode expanded) {
-        var elements = new java.util.TreeMap<String, JsonNode>();
+        var elements = new TreeMap<String, JsonNode>();
         collectPreparedElements(expanded, elements);
         return elements;
     }

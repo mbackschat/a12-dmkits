@@ -3,7 +3,10 @@ package io.github.mbackschat.a12.dm.rulekit.context;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 import org.junit.jupiter.api.Test;
 
@@ -50,12 +53,12 @@ class ModelContextTest {
 
         // FieldInfo exposes the declared config (the gap this fix closed)
         io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo code = m.fieldAt("/Permit/Code").orElseThrow();
-        assertEquals(java.util.OptionalInt.of(3), code.minLength());
-        assertEquals(java.util.OptionalInt.of(12), code.maxLength());
-        assertEquals(java.util.Optional.of("[A-Z][A-Z0-9]+"), code.pattern());
+        assertEquals(OptionalInt.of(3), code.minLength());
+        assertEquals(OptionalInt.of(12), code.maxLength());
+        assertEquals(Optional.of("[A-Z][A-Z0-9]+"), code.pattern());
         io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo fee = m.fieldAt("/Permit/Fee").orElseThrow();
-        assertEquals(0, fee.numberMin().orElseThrow().compareTo(new java.math.BigDecimal("0")));
-        assertEquals(0, fee.numberMax().orElseThrow().compareTo(new java.math.BigDecimal("10000")));
+        assertEquals(0, fee.numberMin().orElseThrow().compareTo(new BigDecimal("0")));
+        assertEquals(0, fee.numberMax().orElseThrow().compareTo(new BigDecimal("10000")));
 
         // and the describe card JSON carries them
         String json = new ModelContext(m).describe().toJson();
@@ -105,7 +108,7 @@ class ModelContextTest {
                 () -> "references: " + ex.references());
         // MonthlyFee lives in the repeatable Addons group → the condition iterates
         assertTrue(ex.iterates());
-        assertEquals(java.util.Optional.of("/Subscription/Addons"), ex.iterationGroup());
+        assertEquals(Optional.of("/Subscription/Addons"), ex.iterationGroup());
         assertTrue(ex.toJson().contains("\"references\""), ex.toJson());
     }
 

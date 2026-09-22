@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.footprint
 
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
@@ -118,14 +119,14 @@ class FootprintProtocolTest {
         supported: Boolean = true,
         semanticOutcome: String? = null,
     ): String {
-        val gc = linkedMapOf<String, kotlinx.serialization.json.JsonElement>()
+        val gc = linkedMapOf<String, JsonElement>()
         if (includeExplicitGc) gc["explicit"] = JsonPrimitive(true)
         gc["viable"] = JsonPrimitive(true)
         gc["method"] = JsonPrimitive(if (host == FootprintHost.JVM) "system-gc-settled" else "global-gc-settled")
 
         val samples = SCENARIOS.flatMap { scenario ->
             SCALES.filterNot { it == omittedScale }.map { scale ->
-                val cacheEntries = linkedMapOf<String, kotlinx.serialization.json.JsonElement>(
+                val cacheEntries = linkedMapOf<String, JsonElement>(
                     "document" to JsonPrimitive(12),
                     "parsedModel" to JsonPrimitive(3),
                     "overlayPeak" to JsonPrimitive(if (scenario == FootprintScenario.COMPUTE_OVERLAY) 4 else 0),

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.stream.StreamSupport;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -62,7 +63,7 @@ class PartialValidationCliTest {
                 "--instance", doc.toString(), "--no-computations",
                 "--relevant", "[\"/Order/Lines[2]/Quantity\"]"));
         assertEquals(1, messages(rowTwo, "QUANTITY_MISSING"));
-        assertTrue(java.util.stream.StreamSupport.stream(rowTwo.path("messages").spliterator(), false)
+        assertTrue(StreamSupport.stream(rowTwo.path("messages").spliterator(), false)
                 .filter(message -> "QUANTITY_MISSING".equals(message.path("code").asText()))
                 .allMatch(message -> message.path("field").asText().contains("Lines[2]")));
 
@@ -167,7 +168,7 @@ class PartialValidationCliTest {
     }
 
     private static Set<String> fired(JsonNode data) {
-        return java.util.stream.StreamSupport.stream(data.path("fired").spliterator(), false)
+        return StreamSupport.stream(data.path("fired").spliterator(), false)
                 .map(JsonNode::asText).collect(java.util.stream.Collectors.toSet());
     }
 

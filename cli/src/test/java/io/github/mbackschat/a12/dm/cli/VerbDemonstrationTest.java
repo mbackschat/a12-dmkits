@@ -10,8 +10,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -120,7 +122,7 @@ class VerbDemonstrationTest {
         JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
         JsonNode corpus = corpus();
         List<String> violations = new ArrayList<>();
-        java.util.Set<String> checked = new java.util.LinkedHashSet<>();
+        Set<String> checked = new LinkedHashSet<>();
 
         for (String name : SchemaCommand.DOC_INPUT.keySet()) {
             JsonNode verb = null;
@@ -183,10 +185,10 @@ class VerbDemonstrationTest {
     }
 
     /** The published envelope frame, read from the schema that defines it rather than restated here. */
-    private static java.util.Set<String> envelopeKeys() throws Exception {
+    private static Set<String> envelopeKeys() throws Exception {
         try (InputStream in = VerbDemonstrationTest.class.getResourceAsStream("/schema/result.schema.json")) {
             JsonNode props = M.readTree(in).path("properties");
-            java.util.Set<String> keys = new java.util.LinkedHashSet<>();
+            Set<String> keys = new LinkedHashSet<>();
             props.fieldNames().forEachRemaining(keys::add);
             return keys;
         }
@@ -407,8 +409,8 @@ class VerbDemonstrationTest {
     }
 
     /** The verbs whose product IS a consistency verdict — the only ones that may publish {@code valid}. */
-    private static final java.util.Set<String> VERDICT_VERBS =
-            java.util.Set.of("model check", "rule check", "workspace check", "patterns scaffold");
+    private static final Set<String> VERDICT_VERBS =
+            Set.of("model check", "rule check", "workspace check", "patterns scaffold");
 
     /**
      * <b>Receipt totality</b> (CLI-SPEC §3b "The result envelope"): a mutation that ran the consistency oracle must say

@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * Which component set a declared temporal format carries — the question A12 actually asks about a temporal
@@ -50,8 +52,8 @@ final class TemporalFormats {
      * literal — so the {@code 'T'} of the ISO datetime names nothing. Case-sensitive, because {@code M} is the
      * month and {@code m} the minute.
      */
-    static java.util.Set<Component> componentsOf(String format) {
-        java.util.EnumSet<Component> components = java.util.EnumSet.noneOf(Component.class);
+    static Set<Component> componentsOf(String format) {
+        EnumSet<Component> components = EnumSet.noneOf(Component.class);
         for (int i = 0; i < format.length(); i++) {
             char c = format.charAt(i);
             if (c == '\'') {                                  // skip a quoted literal section
@@ -106,7 +108,7 @@ final class TemporalFormats {
      * than as two named components, because that is what was measured.
      */
     static boolean carriesBothHalves(String format) {
-        java.util.Set<Component> carried = componentsOf(format);
+        Set<Component> carried = componentsOf(format);
         boolean date = carried.contains(Component.YEAR) || carried.contains(Component.MONTH)
                 || carried.contains(Component.DAY);
         boolean time = carried.contains(Component.HOUR) || carried.contains(Component.MINUTE)

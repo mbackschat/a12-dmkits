@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.interp;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -423,7 +424,7 @@ public final class InterpreterEngine {
         ObjectNode data = MAPPER.createObjectNode();
         data.put("rule", result.getRulePath());
         data.put("fired", result.getVerdict() == Verdict.FIRED);
-        data.put("verdict", result.getVerdict().name().toLowerCase(java.util.Locale.ROOT));
+        data.put("verdict", result.getVerdict().name().toLowerCase(Locale.ROOT));
         // A firing publishes the SAME message channels `model eval` does — `type` above all, which is a semantic
         // observable rather than presentation: for a uniqueness predicate it is the only difference between a
         // filtered and an unfiltered firing on identical data. Projecting only the rendered text made measuring
@@ -467,7 +468,7 @@ public final class InterpreterEngine {
                 case ELEMENT -> u.getRulePath();
             };
             n.put("name", name);
-            n.put("subject", u.getSubject().name().toLowerCase(java.util.Locale.ROOT));
+            n.put("subject", u.getSubject().name().toLowerCase(Locale.ROOT));
             n.put("reason", u.getReason());
         }
     }

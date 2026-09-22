@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.junit.jupiter.api.Test;
 
 /**
  * The ledger's residue figure is DERIVED from its own rows, not remembered.
@@ -89,7 +90,7 @@ class LedgerResidueFigureGuardTest {
             "of the (\\d+) rows, (\\d+) name a code the checker does not state, "
                     + "(\\d+) are excluded by their disposition CELL and (\\d+) by row PROSE");
 
-    @org.junit.jupiter.api.Test
+    @Test
     void theLedgersResidueFigureMatchesWhatItsRowsAndTheCheckerNowSay() {
         Residue derived = derive();
         String ledger = read(LEDGER);
@@ -103,7 +104,7 @@ class LedgerResidueFigureGuardTest {
     }
 
     /** A positive control on the reader: a residue nobody has closed is not zero, and the ledger is whole. */
-    @org.junit.jupiter.api.Test
+    @Test
     void theDerivationReachesTheWholeLedgerAndLeavesWorkInIt() {
         Residue derived = derive();
         assertTrue(derived.total >= 300,

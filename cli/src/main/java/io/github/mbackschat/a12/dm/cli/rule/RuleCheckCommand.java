@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.EntityPaths;
@@ -95,8 +96,8 @@ final class RuleCheckCommand extends BaseCommand {
     @Mixin
     EngineOption engine = new EngineOption();
 
-    private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER =
-            new com.fasterxml.jackson.databind.ObjectMapper();
+    private static final ObjectMapper MAPPER =
+            new ObjectMapper();
 
     @Override
     public Integer call() {

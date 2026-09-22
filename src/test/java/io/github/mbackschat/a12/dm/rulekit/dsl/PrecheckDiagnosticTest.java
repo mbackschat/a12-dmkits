@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.Severity;
@@ -43,7 +44,7 @@ class PrecheckDiagnosticTest {
         Diagnostic d = deferred.get(0);
         assertEquals(DiagnosticSource.PRECHECK, d.source());
         assertEquals(Severity.WARNING, d.severity(), "deferred kernel-semantic prechecks are advisory, not ERROR");
-        assertEquals(java.util.Optional.of("MVK_ERROR_FIELD_NOT_REFERENCED"), d.code());
+        assertEquals(Optional.of("MVK_ERROR_FIELD_NOT_REFERENCED"), d.code());
         assertEquals("/Subscription/Addons/BadRule", d.where().rule());
         assertTrue(d.fix().isPresent(), "a deferred PRECHECK diagnostic should carry an actionable fix");
         assertTrue(d.summary().contains("error field"), d.summary());
@@ -54,7 +55,7 @@ class PrecheckDiagnosticTest {
         var builder = m.rule(m.group("/Subscription/Addons")).name("NoFieldRule");
 
         PrecheckException ex = assertThrows(PrecheckException.class, builder::build);
-        assertEquals(java.util.Optional.of("RK_INCOMPLETE_RULE"), ex.diagnostic().code());
+        assertEquals(Optional.of("RK_INCOMPLETE_RULE"), ex.diagnostic().code());
         assertEquals(DiagnosticSource.PRECHECK, ex.diagnostic().source());
     }
 }

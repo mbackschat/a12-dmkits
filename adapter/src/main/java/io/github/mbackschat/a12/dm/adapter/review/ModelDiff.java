@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.Verification;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
@@ -150,7 +151,7 @@ public final class ModelDiff {
      * four-argument overload when the two states come from different dependency snapshots. {@code null} = none.
      */
     public static ModelDiff between(String baseJson, String headJson,
-            io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
+            ModelResolver resolver) {
         return between(baseJson, headJson, resolver, resolver);
     }
 
@@ -159,8 +160,8 @@ public final class ModelDiff {
      * worktrees, revisions, or service snapshots where the same referenced id can resolve differently per side.
      */
     public static ModelDiff between(String baseJson, String headJson,
-            io.github.mbackschat.a12.dm.core.ModelResolver baseResolver,
-            io.github.mbackschat.a12.dm.core.ModelResolver headResolver) {
+            ModelResolver baseResolver,
+            ModelResolver headResolver) {
         return between(ModelDiffState.load(baseJson, baseResolver), ModelDiffState.load(headJson, headResolver));
     }
 

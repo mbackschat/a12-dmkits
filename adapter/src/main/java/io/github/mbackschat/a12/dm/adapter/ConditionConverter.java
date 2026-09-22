@@ -68,6 +68,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoolExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
+import io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Now;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
@@ -594,8 +595,8 @@ final class ConditionConverter {
      * (KERNEL-FINDINGS {@code kf187}). {@code DateRangesOverlap} is deliberately absent: it refuses a group
      * operand outright, so a mixed list of its is not a shape any stored model can contain.
      */
-    private static java.util.Optional<Quantifier> entityListQuantifier(EntityListConditionName name) {
-        return java.util.Optional.ofNullable(switch (name) {
+    private static Optional<Quantifier> entityListQuantifier(EntityListConditionName name) {
+        return Optional.ofNullable(switch (name) {
             case AllFieldsFilled -> Quantifier.ALL_FIELDS_FILLED;
             case NoFieldFilled -> Quantifier.NO_FIELD_FILLED;
             case AtLeastOneFieldFilled -> Quantifier.AT_LEAST_ONE_FIELD_FILLED;
@@ -2019,8 +2020,8 @@ final class ConditionConverter {
                 && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
             Calculation other = convertFirstFilledValue(aggregate);
             return switch (op) {
-                case EQ -> new ComparisonCondition(left.field().value(), io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp.EQ, other);
-                case NE -> new ComparisonCondition(left.field().value(), io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp.NE, other);
+                case EQ -> new ComparisonCondition(left.field().value(), CompareOp.EQ, other);
+                case NE -> new ComparisonCondition(left.field().value(), CompareOp.NE, other);
                 default -> throw unsupported("boolean aggregate comparison operator " + op, origin);
             };
         }
@@ -2049,8 +2050,8 @@ final class ConditionConverter {
                         .map(info -> info.kind() == ValueKind.BOOLEAN).orElse(false)) {
             Calculation other = new FieldValue(model.field(field.getField().getFullName()), field.getField().isOuter());
             return switch (op) {
-                case EQ -> new ComparisonCondition(left.expression(), io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp.EQ, other);
-                case NE -> new ComparisonCondition(left.expression(), io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp.NE, other);
+                case EQ -> new ComparisonCondition(left.expression(), CompareOp.EQ, other);
+                case NE -> new ComparisonCondition(left.expression(), CompareOp.NE, other);
                 default -> throw unsupported("boolean aggregate comparison operator " + op, origin);
             };
         }

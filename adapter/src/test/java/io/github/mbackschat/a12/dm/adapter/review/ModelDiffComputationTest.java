@@ -5,6 +5,7 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
@@ -144,7 +145,7 @@ class ModelDiffComputationTest {
         assertEquals("Old explanation.", delta(changed, "message.en_US").before());
         assertEquals("New explanation.", delta(changed, "message.en_US").after());
         assertEquals(ModelDiff.Risk.LOW, changed.risk());
-        assertEquals(java.util.List.of("MESSAGE_CHANGED"), changed.reasons());
+        assertEquals(List.of("MESSAGE_CHANGED"), changed.reasons());
     }
 
     @Test
@@ -153,7 +154,7 @@ class ModelDiffComputationTest {
                 bilingualComputation("Old English.", "Altes Deutsch."),
                 bilingualComputation("New English.", "Neues Deutsch.")));
 
-        assertEquals(java.util.List.of("MESSAGE_CHANGED"), changed.reasons());
+        assertEquals(List.of("MESSAGE_CHANGED"), changed.reasons());
     }
 
     private static String bilingualComputation(String english, String german) {
@@ -188,7 +189,7 @@ class ModelDiffComputationTest {
     void opaqueComputationsUseTheirVerbatimTextAsTheFingerprint() {
         var first = ComputationDiffProjector.aspects(
                 new ReadComputation.Opaque("[Price] * [Quantity]", "x"),
-                java.util.List.of("MVK_INVALID_COMPARE_DEC_PLACES"));
+                List.of("MVK_INVALID_COMPARE_DEC_PLACES"));
         var second = ComputationDiffProjector.aspects(new ReadComputation.Opaque("[Price] + [Quantity]", "y"));
 
         assertEquals("[Price] * [Quantity]", first.get("opaque"));
@@ -213,7 +214,7 @@ class ModelDiffComputationTest {
 
         ModelDiff diff = ModelDiff.between(base, renamed.toJson());
         assertEquals(1, diff.refactors().size(), () -> "refactors: " + diff.refactors());
-        assertEquals(java.util.List.of(COMPUTATION), diff.refactors().get(0).referrers());
+        assertEquals(List.of(COMPUTATION), diff.refactors().get(0).referrers());
     }
 
     @Test

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.ValueKind;
 import java.util.Optional;
 
 /**
@@ -27,8 +28,8 @@ public record EnumCategoryAccess(FieldRef field, String category, boolean outer)
     }
 
     @Override
-    public io.github.mbackschat.a12.dm.core.ValueKind kind() {
-        return io.github.mbackschat.a12.dm.core.ValueKind.ENUMERATION;
+    public ValueKind kind() {
+        return ValueKind.ENUMERATION;
     }
 
     /** The projection form {@code field -> Cat} — for diagnostics/F9; the renderer emits the bare quantifier form. */

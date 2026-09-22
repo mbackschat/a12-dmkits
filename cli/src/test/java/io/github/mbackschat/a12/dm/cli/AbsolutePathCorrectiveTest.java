@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -237,7 +238,7 @@ class AbsolutePathCorrectiveTest {
     void anAmbiguousRelativeValueGetsNoGuessAndNoPlaceholder(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
 
-        for (String ambiguous : java.util.List.of(
+        for (String ambiguous : List.of(
                 "CustomerName", "./CustomerName", "Order/CustomerName", "Items*/Amount",
                 "examples/models/order-ruled.dm.json")) {
             var res = CliTestSupport.run("-m", model.toString(), "rule", "check",
@@ -272,7 +273,7 @@ class AbsolutePathCorrectiveTest {
                         + fixOf(noGroup));
 
         // `/` and the empty string name the root LEVEL, which holds groups — no base for a field path.
-        for (String rootish : java.util.List.of("/", "")) {
+        for (String rootish : List.of("/", "")) {
             var res = CliTestSupport.run("-m", model.toString(), "rule", "check",
                     "--group", rootish, "--field", "../CustomerName", "--code", "C1",
                     "--condition", "FieldFilled(CustomerName)");

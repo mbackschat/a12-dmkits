@@ -11,8 +11,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -78,7 +80,7 @@ class CatalogReadBackParityTest {
      * rather than silently skipped: an example that drops out of the denominator is coverage lost with nothing
      * to show for it, which is the failure mode a floor assertion cannot see.
      */
-    private static final java.util.Set<String> UNPLACED = new TreeSet<>();
+    private static final Set<String> UNPLACED = new TreeSet<>();
 
     // Built ONCE: :adapter:test carries timing-sensitive growth floors, so this class costs four model
     // parses in total (two fixtures × two providers) rather than one per catalog entry.
@@ -130,12 +132,12 @@ class CatalogReadBackParityTest {
      */
     @Test
     void theKernelProviderConvertsTheWholeCatalogAndBothProvidersSeeEveryRule() {
-        assertEquals(java.util.Set.copyOf(allExamples().stream().map(Example::ruleName).toList()),
-                java.util.Set.copyOf(KERNEL_READS.keySet()),
+        assertEquals(Set.copyOf(allExamples().stream().map(Example::ruleName).toList()),
+                Set.copyOf(KERNEL_READS.keySet()),
                 "the kernel provider must enumerate exactly the spliced catalog rules");
         assertEquals(KERNEL_READS.keySet(), BRIDGE_READS.keySet(),
                 "both providers must enumerate the same rules from the same model");
-        assertEquals(java.util.Set.of(), opaqueIds(KERNEL_READS),
+        assertEquals(Set.of(), opaqueIds(KERNEL_READS),
                 "the kernel provider is the oracle here and must convert every catalog example");
         // The EXACT denominator, not a floor: a floor cannot see examples silently dropping out of the net,
         // which is precisely how a catalog-driven corpus would rot back into a hand-maintained one.
@@ -200,7 +202,7 @@ class CatalogReadBackParityTest {
     }
 
     /** Model paths as fixture-relative names, longest first so a longer path wins over its own suffix. */
-    private static java.util.stream.Stream<String> relativePaths(java.util.stream.Stream<String> paths) {
+    private static Stream<String> relativePaths(Stream<String> paths) {
         return paths.filter(path -> path.startsWith("/Order/"))
                 .map(path -> path.substring("/Order/".length()))
                 .sorted((a, b) -> b.length() - a.length());
@@ -237,8 +239,8 @@ class CatalogReadBackParityTest {
     }
 
     /** The catalog ids whose spliced rule did not convert, as a stable sorted set. */
-    private static java.util.Set<String> opaqueIds(Map<String, ReadResult> reads) {
-        java.util.Set<String> opaque = new TreeSet<>();
+    private static Set<String> opaqueIds(Map<String, ReadResult> reads) {
+        Set<String> opaque = new TreeSet<>();
         for (Example e : allExamples()) {
             if (!(reads.get(e.ruleName()) instanceof ReadResult.Converted)) {
                 opaque.add(e.id());
@@ -259,8 +261,8 @@ class CatalogReadBackParityTest {
     }
 
     /** Measured, then pinned — see {@link #theSetOfCatalogExamplesTheBridgeCannotConvertIsPinned}. */
-    private static final java.util.Set<String> OPAQUE_TO_THE_BRIDGE = new TreeSet<>(List.of());
+    private static final Set<String> OPAQUE_TO_THE_BRIDGE = new TreeSet<>(List.of());
 
     /** Measured, then pinned — see {@link #UNPLACED}. */
-    private static final java.util.Set<String> EXPECTED_UNPLACED = new TreeSet<>(List.of());
+    private static final Set<String> EXPECTED_UNPLACED = new TreeSet<>(List.of());
 }

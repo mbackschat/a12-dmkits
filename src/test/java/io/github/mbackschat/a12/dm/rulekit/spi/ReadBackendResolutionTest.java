@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -149,7 +150,7 @@ class ReadBackendResolutionTest {
     void currentStaysTotalWhileAnotherThreadResets() throws InterruptedException {
         int iterations = 200_000;
         var failures = new java.util.concurrent.atomic.AtomicReference<String>();
-        var start = new java.util.concurrent.CountDownLatch(1);
+        var start = new CountDownLatch(1);
         Thread writer = new Thread(() -> {
             await(start);
             for (int i = 0; i < iterations; i++) {
@@ -177,7 +178,7 @@ class ReadBackendResolutionTest {
         assertNull(failures.get(), failures.get());
     }
 
-    private static void await(java.util.concurrent.CountDownLatch latch) {
+    private static void await(CountDownLatch latch) {
         try {
             latch.await();
         } catch (InterruptedException e) {

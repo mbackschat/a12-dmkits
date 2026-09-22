@@ -12,6 +12,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 
 /**
@@ -159,7 +160,7 @@ class IterationGuardLintLevelTest {
      */
     @Test
     void aFieldKeyedIndexedNegativeWarns() {
-        assertTrue(warns(Dsl.fieldNotFilled(new io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue(
+        assertTrue(warns(Dsl.fieldNotFilled(new SemanticIndexFieldValue(
                 M.field("/Order/Items/Sku"), M.field("/Order/Notes/Text")))));
     }
 
@@ -171,7 +172,7 @@ class IterationGuardLintLevelTest {
     @Test
     void aFieldKeyedIndexedNegativeGuardedAtTheKeysLevelDoesNotWarn() {
         assertEquals(false, warns(Dsl.fieldFilled(M.field("/Order/Notes/Text"))
-                .and(Dsl.fieldNotFilled(new io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue(
+                .and(Dsl.fieldNotFilled(new SemanticIndexFieldValue(
                         M.field("/Order/Items/Sku"), M.field("/Order/Notes/Text"))))));
     }
 

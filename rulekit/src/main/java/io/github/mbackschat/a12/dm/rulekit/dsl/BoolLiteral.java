@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.ValueKind;
+
 /**
  * The boolean constants {@code True} / {@code False}. Unlike number/string literals these are
  * <em>localized keywords</em> ({@code Wahr}/{@code Falsch} in DE), so the node carries a catalog
@@ -13,7 +15,7 @@ public record BoolLiteral(boolean value) implements Calculation {
     }
 
     @Override
-    public io.github.mbackschat.a12.dm.core.ValueKind kind() {
-        return io.github.mbackschat.a12.dm.core.ValueKind.BOOLEAN;
+    public ValueKind kind() {
+        return ValueKind.BOOLEAN;
     }
 }

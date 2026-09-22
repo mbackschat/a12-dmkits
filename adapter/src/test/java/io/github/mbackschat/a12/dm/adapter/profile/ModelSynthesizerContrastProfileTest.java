@@ -218,12 +218,12 @@ class ModelSynthesizerContrastProfileTest {
      *  PARENT for every one of them, so a UNIQUENESS slot's {@link ModelSynthesizer} lookup always finds
      *  a repeatable child to key into. */
     private static SynthesisProfile.Repeatability flatAndWideRepeatability() {
-        List<Integer> uniformSizes = java.util.Collections.nCopies(40, 60);
+        List<Integer> uniformSizes = Collections.nCopies(40, 60);
         return SynthesisProfile.Repeatability.builder()
                 .repeatableGroupCount(40)
                 .maxRepeatableNestingDepth(1)
                 .maxRepetitions(Distribution.of(uniformSizes))
-                .nestingDepth(Distribution.of(java.util.Collections.nCopies(40, 1)))
+                .nestingDepth(Distribution.of(Collections.nCopies(40, 1)))
                 .chainProduct(Distribution.of(uniformSizes))
                 .fieldChainProduct(Distribution.of(uniformSizes))
                 .chainProductByDepth(Map.of("1", Distribution.of(uniformSizes)))

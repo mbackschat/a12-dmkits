@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -91,7 +92,7 @@ class WritePathTest {
         assertFalse(without.toJson().contains("FeePositiveRule"), "the rule is gone");
         assertTrue(withRule.toJson().contains("FeePositiveRule"), "prior binding untouched (F0)");
         // removing a non-existent rule fails loudly with the coded diagnostic (DG3)
-        org.junit.jupiter.api.Assertions.assertThrows(
+        Assertions.assertThrows(
                 io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException.class,
                 () -> bind().removeRule("/Subscription/Addons/NoSuchRule"));
     }
@@ -142,7 +143,7 @@ class WritePathTest {
                 .when(m.group("/Subscription/Addons").notFilled())   // GroupNotFilled in an iterating rule
                 .code("BAD").severity(Severity.ERROR)
                 .message(Dsl.en("x"), Dsl.de("y")).build();
-        org.junit.jupiter.api.Assertions.assertThrows(
+        Assertions.assertThrows(
                 io.github.mbackschat.a12.dm.core.ModelConsistencyException.class, () -> m.add(bad));
     }
 }

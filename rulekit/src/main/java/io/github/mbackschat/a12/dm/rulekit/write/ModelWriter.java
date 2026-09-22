@@ -116,8 +116,8 @@ public final class ModelWriter {
      */
     public static String replaceSeverity(String modelJson, String ruleFullName, String severity) {
         try {
-            com.fasterxml.jackson.databind.node.ObjectNode root =
-                    (com.fasterxml.jackson.databind.node.ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode root =
+                    (ObjectNode) MAPPER.readTree(modelJson);
             ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
             if (rule == null) {
                 throw PrecheckException.notFound(RkCode.NO_SUCH_RULE, ruleFullName);
@@ -135,8 +135,8 @@ public final class ModelWriter {
      */
     public static String replaceMessages(String modelJson, String ruleFullName, List<LocalizedText> messages) {
         try {
-            com.fasterxml.jackson.databind.node.ObjectNode root =
-                    (com.fasterxml.jackson.databind.node.ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode root =
+                    (ObjectNode) MAPPER.readTree(modelJson);
             ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
             if (rule == null) {
                 throw PrecheckException.notFound(RkCode.NO_SUCH_RULE, ruleFullName);

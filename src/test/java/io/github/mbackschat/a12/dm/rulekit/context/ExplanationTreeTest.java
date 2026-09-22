@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.context;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
@@ -62,8 +63,8 @@ class ExplanationTreeTest {
         assertTrue(json.contains("\"tree\"") && json.contains("\"operator\" : \"Sum\""), json);
     }
 
-    private static java.util.stream.Stream<String> allOperators(RuleExplanation.Node n) {
-        return java.util.stream.Stream.concat(java.util.stream.Stream.of(n.operator()),
+    private static Stream<String> allOperators(RuleExplanation.Node n) {
+        return Stream.concat(Stream.of(n.operator()),
                 n.children().stream().flatMap(ExplanationTreeTest::allOperators));
     }
 }

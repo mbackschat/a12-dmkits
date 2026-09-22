@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -141,14 +142,14 @@ public final class ModelIndex {
     }
 
     /** The declared {@code maxLength} of the number field, or empty when not a number / unset. */
-    public java.util.OptionalInt numberMaxLength(String fieldPath) {
+    public OptionalInt numberMaxLength(String fieldPath) {
         JsonNode number = numberTypeOf(fieldPath);
         if (number == null) {
-            return java.util.OptionalInt.empty();
+            return OptionalInt.empty();
         }
         JsonNode value = number.path("maxLength");
         return value.isMissingNode() || value.isNull()
-                ? java.util.OptionalInt.empty() : java.util.OptionalInt.of(value.asInt());
+                ? OptionalInt.empty() : OptionalInt.of(value.asInt());
     }
 
     /** The declared {@code minLength} of the string field, or empty when not a string / unset. */
@@ -295,22 +296,22 @@ public final class ModelIndex {
     // --- navigation (Level 1, study finding 9): streams of facts in model order -----------------
 
     /** Paths of all fields, in model order. */
-    public java.util.stream.Stream<String> fieldPaths() {
+    public Stream<String> fieldPaths() {
         return reader.paths().stream().filter(this::isField);
     }
 
     /** Paths of all groups and fields in their mixed document order. */
-    public java.util.stream.Stream<String> elementPaths() {
+    public Stream<String> elementPaths() {
         return reader.paths().stream();
     }
 
     /** Paths of all groups (root groups included), in model order. */
-    public java.util.stream.Stream<String> groupPaths() {
+    public Stream<String> groupPaths() {
         return reader.paths().stream().filter(this::isGroup);
     }
 
     /** Paths of the fields directly contained in the group at {@code groupPath}, in model order. */
-    public java.util.stream.Stream<String> fieldPaths(String groupPath) {
+    public Stream<String> fieldPaths(String groupPath) {
         List<String> paths = new ArrayList<>();
         for (JsonNode child : groupNode(groupPath).path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
             if (ElementType.FIELD.matches(child)) {

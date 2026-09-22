@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -42,12 +43,12 @@ class ModelIndexNamePathTest {
     @Test
     void enumeratesNamePathsNotIds() {
         ModelIndex index = index("models/idmismatch.dm.json");
-        java.util.List<String> fields = index.fieldPaths().toList();
+        List<String> fields = index.fieldPaths().toList();
         assertTrue(fields.contains("/Catalog/Sku"), () -> "field paths should be name-paths, got: " + fields);
         assertTrue(fields.contains("/Catalog/ListPrice"), () -> "field paths should be name-paths, got: " + fields);
-        assertEquals(java.util.List.of("/Catalog"), index.groupPaths().toList());
+        assertEquals(List.of("/Catalog"), index.groupPaths().toList());
         // and the per-group children are name-paths too
-        assertEquals(java.util.List.of("/Catalog/Sku", "/Catalog/ListPrice"),
+        assertEquals(List.of("/Catalog/Sku", "/Catalog/ListPrice"),
                 index.fieldPaths("/Catalog").toList());
     }
 

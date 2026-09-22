@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
+import java.util.Optional;
+
 /**
  * A DATE_RANGE's {@code interpretationOfYear} (the kernel's {@code Jahresinterpretation}) — which endpoint of
  * a <b>wrapping yearless</b> range keeps the base year. It matters for exactly one shape: a range whose two
@@ -34,8 +36,8 @@ public enum RangeYearInterpretation {
     TO;
 
     /** The DM-JSON {@code interpretationOfYear} token, or empty for {@link #STANDARD} (the key is omitted). */
-    public java.util.Optional<String> json() {
-        return this == STANDARD ? java.util.Optional.empty() : java.util.Optional.of(name());
+    public Optional<String> json() {
+        return this == STANDARD ? Optional.empty() : Optional.of(name());
     }
 
     /**

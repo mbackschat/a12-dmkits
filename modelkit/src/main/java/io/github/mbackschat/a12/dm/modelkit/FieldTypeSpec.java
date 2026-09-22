@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
 import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -147,12 +149,12 @@ public sealed interface FieldTypeSpec {
             // a LinkedHashMap copy keeps the per-locale hint-list emit deterministic (idempotent toJson)
             suggestions = suggestions == null
                     ? Map.of()
-                    : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(suggestions));
+                    : Collections.unmodifiableMap(new LinkedHashMap<>(suggestions));
             // per-locale override for the pattern error text (G23, the string sibling of the enum's
             // invalidValueMessages) — empty means the single patternMessage covers every declared locale.
             patternMessages = patternMessages == null
                     ? Map.of()
-                    : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(patternMessages));
+                    : Collections.unmodifiableMap(new LinkedHashMap<>(patternMessages));
         }
 
         /** No per-locale override: the single {@code patternMessage} is applied to every declared locale. */

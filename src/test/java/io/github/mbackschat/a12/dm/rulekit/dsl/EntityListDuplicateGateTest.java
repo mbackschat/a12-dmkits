@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
@@ -39,7 +40,7 @@ class EntityListDuplicateGateTest {
         // A MIXED group-scope-plus-field list has no Dsl factory, so the record's own constructor — which is
         // where the gate lives — is the locus under test.
         String message = refusal(() -> new EntityListPredicate(Quantifier.ALL_FIELDS_FILLED,
-                java.util.List.of(ORDER.flattenGroup("/Order/ShippingAddress"),
+                List.of(ORDER.flattenGroup("/Order/ShippingAddress"),
                         ORDER.field("/Order/ShippingAddress/City"))));
         assertTrue(message.contains("MVK_DUPLICATE_PARAM2"), () -> "overlap is the other code: " + message);
     }
@@ -98,17 +99,17 @@ class EntityListDuplicateGateTest {
      */
     @Test
     void anIndexSelectedFieldInsideAnIndexSelectedGroupIsContainedOnlyUnderTheSameKey() {
-        var group = new GroupListRef(ORDER.group("/Order/Items"), java.util.List.of());
+        var group = new GroupListRef(ORDER.group("/Order/Items"), List.of());
         var field = ORDER.field("/Order/Items/Count");
 
         String refused = refusal(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
-                java.util.List.of(new SemanticIndexValue(field, "a"),
+                List.of(new SemanticIndexValue(field, "a"),
                         new GroupSemanticIndexValue(group, "a"))));
         assertTrue(refused.contains("MVK_DUPLICATE_PARAM2"),
                 () -> "the same key makes this a containment: " + refused);
 
         assertDoesNotThrow(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
-                java.util.List.of(new SemanticIndexValue(field, "a"),
+                List.of(new SemanticIndexValue(field, "a"),
                         new GroupSemanticIndexValue(group, "b"))),
                 "different keys address different repetitions, so there is no containment");
     }
@@ -124,25 +125,25 @@ class EntityListDuplicateGateTest {
      */
     @Test
     void anIndexedEntityIsADuplicateOfItselfOnlyUnderTheSameKey() {
-        var group = new GroupListRef(ORDER.group("/Order/Items"), java.util.List.of());
+        var group = new GroupListRef(ORDER.group("/Order/Items"), List.of());
         var field = ORDER.field("/Order/Items/Count");
 
         String repeatedField = refusal(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
-                java.util.List.of(new SemanticIndexValue(field, "a"), new SemanticIndexValue(field, "a"))));
+                List.of(new SemanticIndexValue(field, "a"), new SemanticIndexValue(field, "a"))));
         assertTrue(repeatedField.contains("MVK_DUPLICATE_PARAM1"),
                 () -> "one field under one key twice is an exact duplicate: " + repeatedField);
 
         String repeatedGroup = refusal(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
-                java.util.List.of(new GroupSemanticIndexValue(group, "a"),
+                List.of(new GroupSemanticIndexValue(group, "a"),
                         new GroupSemanticIndexValue(group, "a"))));
         assertTrue(repeatedGroup.contains("MVK_DUPLICATE_PARAM1"),
                 () -> "one group under one key twice is an exact duplicate: " + repeatedGroup);
 
         assertDoesNotThrow(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
-                java.util.List.of(new SemanticIndexValue(field, "a"), new SemanticIndexValue(field, "b"))),
+                List.of(new SemanticIndexValue(field, "a"), new SemanticIndexValue(field, "b"))),
                 "two keys address two repetitions, so the pair is not a duplicate");
         assertDoesNotThrow(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
-                java.util.List.of(new GroupSemanticIndexValue(group, "a"),
+                List.of(new GroupSemanticIndexValue(group, "a"),
                         new GroupSemanticIndexValue(group, "b"))),
                 "the same, one level up");
     }

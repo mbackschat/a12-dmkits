@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate;
 
+import java.util.Optional;
+
 /**
  * A build-time pre-check failure that carries its {@link Diagnostic} (the PRECHECK origin of the
  * F4a three-origin model). It stays an {@link IllegalStateException} so the typed builders keep
@@ -23,11 +25,11 @@ public class PrecheckException extends IllegalStateException {
      */
     public static PrecheckException notFound(RkCode code, String path) {
         return new PrecheckException(Diagnostic.precheck(
-                java.util.Optional.of(code.code()),
+                Optional.of(code.code()),
                 code.meaning() + " (" + path + ")",
                 Diagnostic.Where.path(path),
-                java.util.Optional.of(code.fix()),
-                java.util.Optional.empty()));
+                Optional.of(code.fix()),
+                Optional.empty()));
     }
 
     /** The structured PRECHECK diagnostic for this failure. */

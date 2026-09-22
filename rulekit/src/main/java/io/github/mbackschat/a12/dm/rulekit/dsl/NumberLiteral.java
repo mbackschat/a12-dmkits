@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.ValueKind;
 import java.math.BigDecimal;
 
 /** A typed numeric literal. Held as {@link BigDecimal} so the rendered scale is explicit and exact. */
@@ -14,7 +15,7 @@ public record NumberLiteral(BigDecimal value) implements Calculation {
     }
 
     @Override
-    public io.github.mbackschat.a12.dm.core.ValueKind kind() {
-        return io.github.mbackschat.a12.dm.core.ValueKind.NUMBER;
+    public ValueKind kind() {
+        return ValueKind.NUMBER;
     }
 }

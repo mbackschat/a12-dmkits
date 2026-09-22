@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -89,7 +91,7 @@ class PerfAnchorCoverageGuardTest {
      */
     @Test
     void noRoutineTierClassBypassesTheRecordingSeam() throws IOException {
-        var bypassing = new java.util.TreeSet<String>();
+        var bypassing = new TreeSet<String>();
         for (Path source : routineTierSources()) {
             String text = Files.readString(source);
             if (text.contains("PerfHarness.assertGrowthBelowCatastropheFloor(")) {
@@ -97,7 +99,7 @@ class PerfAnchorCoverageGuardTest {
             }
         }
 
-        assertEquals(java.util.Set.of(), bypassing,
+        assertEquals(Set.of(), bypassing,
                 "a @Tag(\"perf\") class called the raw growth-floor primitive, which asserts a ratio and records "
                         + "NOTHING. Use PerfHarness.assertSubQuadraticLane (growth floor + record + anchor) so the "
                         + "lane is visible to every trend instrument. Found: " + bypassing);
@@ -130,9 +132,9 @@ class PerfAnchorCoverageGuardTest {
         JsonNode environments = root.path("environments");
         assertTrue(environments.isObject(), "the anchor file must carry an environments map");
 
-        var perEnvironment = new java.util.LinkedHashMap<String, java.util.Set<String>>();
+        var perEnvironment = new java.util.LinkedHashMap<String, Set<String>>();
         environments.fields().forEachRemaining(environment -> {
-            var keys = new java.util.TreeSet<String>();
+            var keys = new TreeSet<String>();
             environment.getValue().path("observations").fieldNames()
                     .forEachRemaining(key -> {
                         if (key.contains("|interpreter|")) {

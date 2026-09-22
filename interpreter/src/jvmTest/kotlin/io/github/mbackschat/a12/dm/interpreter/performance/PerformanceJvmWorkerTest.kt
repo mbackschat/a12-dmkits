@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.performance
 
+import java.lang.management.ManagementFactory
 import java.nio.charset.StandardCharsets
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
@@ -45,7 +46,7 @@ internal class JvmPerformancePlatform : PerformancePlatform {
      * fixes.
      */
     override fun cpuNanoTime(): Long {
-        val threads = java.lang.management.ManagementFactory.getThreadMXBean()
+        val threads = ManagementFactory.getThreadMXBean()
         require(threads.isCurrentThreadCpuTimeSupported) {
             "this JVM does not support thread CPU time, so a sample's occupancy cannot be measured"
         }
@@ -64,7 +65,7 @@ internal class JvmPerformancePlatform : PerformancePlatform {
      * it cannot hide GC, only overstate it.
      */
     override fun cumulativeGcMillis(): Double =
-        java.lang.management.ManagementFactory.getGarbageCollectorMXBeans()
+        ManagementFactory.getGarbageCollectorMXBeans()
             .sumOf { bean -> bean.collectionTime.takeIf { it >= 0L } ?: 0L }
             .toDouble()
 

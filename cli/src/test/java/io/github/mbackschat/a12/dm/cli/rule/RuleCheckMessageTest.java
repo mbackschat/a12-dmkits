@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
+import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -108,8 +109,8 @@ class RuleCheckMessageTest {
                 "--message", message);
     }
 
-    private static java.util.List<String> codes(JsonNode envelope) {
-        java.util.List<String> codes = new java.util.ArrayList<>();
+    private static List<String> codes(JsonNode envelope) {
+        List<String> codes = new java.util.ArrayList<>();
         envelope.path("diagnostics").forEach(d -> codes.add(d.path("code").asText("")));
         return codes;
     }

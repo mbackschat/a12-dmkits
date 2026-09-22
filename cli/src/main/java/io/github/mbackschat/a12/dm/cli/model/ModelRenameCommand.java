@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -136,13 +137,13 @@ final class ModelRenameCommand extends BaseCommand {
             ObjectNode data = MAPPER.createObjectNode();
             ArrayNode models = data.putObject("referencedBy").putArray("models");
             includers.forEach(models::add);
-            Diagnostic diagnostic = Diagnostic.precheck(java.util.Optional.of(RkCode.REFERENCED.code()),
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of(RkCode.REFERENCED.code()),
                     "model id '" + oldId + "' is referenced by " + includers.size()
                             + " other model(s); renaming it would dangle their include/import",
                     Diagnostic.Where.path(oldId),
-                    java.util.Optional.of("repoint those models' include/import to the new id first "
+                    Optional.of("repoint those models' include/import to the new id first "
                             + "(the cross-model rename cascade is out of scope), then rename"),
-                    java.util.Optional.empty());
+                    Optional.empty());
             return new Refusal("model id '" + oldId + "' is referenced — refusing to rename", data, diagnostic);
         }
         return null;

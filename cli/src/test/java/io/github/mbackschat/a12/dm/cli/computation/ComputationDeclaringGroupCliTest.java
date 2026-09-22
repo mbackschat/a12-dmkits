@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -246,7 +247,7 @@ class ComputationDeclaringGroupCliTest {
                 new Row("the same root ancestor, re-spelled", "/Warehouse",
                         "Yard/Primary*/Candidate, Yard/Secondary*/Fallback"));
 
-        var actual = new java.util.LinkedHashMap<String, String>();
+        var actual = new LinkedHashMap<String, String>();
         for (Row row : rows) {
             Path file = write(dir, "rebase-" + rows.indexOf(row) + ".json",
                     spec.formatted(row.group(), row.operand()));
@@ -258,7 +259,7 @@ class ComputationDeclaringGroupCliTest {
                     : envelope.path("outcome").asText());
         }
 
-        var expected = new java.util.LinkedHashMap<String, String>();
+        var expected = new LinkedHashMap<String, String>();
         expected.put("the base the operand was written for", "preview");
         expected.put("a NON-root ancestor, spelling unchanged", "MVK_INVALID_ENTITY");
         expected.put("the ROOT ancestor, spelling unchanged", "MVK_TOO_MANY_PARENT_GROUPS");

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -90,8 +91,8 @@ class CountAggregateGroupDuplicateGateTest {
     void aFieldBesideItsContainingGroupAcrossTheTwoListsIsRefused() {
         var refusal = assertThrows(IllegalArgumentException.class,
                 () -> new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
-                        java.util.List.of(DEPOT.field("/Depot/Alpha/Label")),
-                        java.util.List.of(DEPOT.group("/Depot/Alpha"))));
+                        List.of(DEPOT.field("/Depot/Alpha/Label")),
+                        List.of(DEPOT.group("/Depot/Alpha"))));
         assertTrue(refusal.getMessage().contains("MVK_DUPLICATE_PARAM2"),
                 () -> "the two lists are one list to the kernel: " + refusal.getMessage());
     }

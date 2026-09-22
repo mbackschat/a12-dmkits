@@ -5,9 +5,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.core.Verification;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
@@ -96,8 +99,8 @@ public final class ModelReport {
      * {@link KernelAdapter#of} rather than {@link KernelAdapter#checkAndOpen}. The CLI publishes the envelope's
      * {@code verification} from this and from nothing else.
      */
-    public java.util.Optional<Verification> consistencyGate() {
-        return java.util.Optional.ofNullable(consistencyGate);
+    public Optional<Verification> consistencyGate() {
+        return Optional.ofNullable(consistencyGate);
     }
 
     /** The fixed polarity fact — an A12 rule condition is TRUE on the violation, not the requirement. */
@@ -357,7 +360,7 @@ public final class ModelReport {
 
     /** Assemble the comprehension view of {@code modelJson} (a self-contained, kernel-loadable model). */
     public static ModelReport of(String modelJson) {
-        return of(modelJson, io.github.mbackschat.a12.dm.core.ReferenceResolvers.selfContained());
+        return of(modelJson, ReferenceResolvers.selfContained());
     }
 
     /**
@@ -365,9 +368,9 @@ public final class ModelReport {
      * {@link io.github.mbackschat.a12.dm.core.ModelResolver} — the abstraction the rest of the dmkits surface
      * uses (a {@code id → DM-JSON} SAM), so a consumer need not import {@code com.mgmtp.*}. {@code null} = none.
      */
-    public static ModelReport of(String modelJson, io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
-        io.github.mbackschat.a12.dm.core.ModelResolver effective = resolver == null
-                ? io.github.mbackschat.a12.dm.core.ReferenceResolvers.selfContained()
+    public static ModelReport of(String modelJson, ModelResolver resolver) {
+        ModelResolver effective = resolver == null
+                ? ReferenceResolvers.selfContained()
                 : resolver;
         BoundModel model = BoundModel.ofJsonLenient(modelJson, effective);
         return assemble(modelJson, model, KernelAdapter.checkAndOpen(model));

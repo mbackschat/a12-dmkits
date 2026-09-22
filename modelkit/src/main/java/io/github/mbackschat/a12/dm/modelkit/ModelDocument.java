@@ -5,6 +5,7 @@ import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -239,8 +240,8 @@ public final class ModelDocument {
             }
         }
         references.replaceAll((purpose, entries) ->
-                java.util.Collections.unmodifiableMap(new LinkedHashMap<>(entries)));
-        return java.util.Collections.unmodifiableMap(references);
+                Collections.unmodifiableMap(new LinkedHashMap<>(entries)));
+        return Collections.unmodifiableMap(references);
     }
 
     // --- content / config -----------------------------------------------------------------------
@@ -317,7 +318,7 @@ public final class ModelDocument {
                     FieldTypeSpecReader.read(definition.path(DmKeys.FIELD_TYPE)),
                     AuthoredStateReader.descriptive(definition)));
         }
-        return java.util.Collections.unmodifiableMap(definitions);
+        return Collections.unmodifiableMap(definitions);
     }
 
     /** The field-type discriminator of the type definition {@code id} (e.g. {@code NumberType}), if declared. */
@@ -377,9 +378,9 @@ public final class ModelDocument {
             Map<String, GroupState> groups, Map<String, RuleState> rules) {
         public AuthoredState {
             elements = List.copyOf(elements);
-            fields = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(fields));
-            groups = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(groups));
-            rules = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(rules));
+            fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
+            groups = Collections.unmodifiableMap(new LinkedHashMap<>(groups));
+            rules = Collections.unmodifiableMap(new LinkedHashMap<>(rules));
         }
     }
 
@@ -864,7 +865,7 @@ public final class ModelDocument {
 
     /** The model-level header <b>annotations</b> as a name→value map (the read peer of {@link #setModelAnnotation}). */
     public Map<String, String> modelAnnotations() {
-        Map<String, String> out = new java.util.LinkedHashMap<>();
+        Map<String, String> out = new LinkedHashMap<>();
         for (JsonNode a : root.path(DmKeys.HEADER).path(DmKeys.ANNOTATIONS)) {
             out.put(a.path(DmKeys.NAME).asText(), a.path(DmKeys.VALUE).asText());
         }
@@ -873,7 +874,7 @@ public final class ModelDocument {
 
     /** The model-level header <b>labels</b> as a locale→text map (the read peer of {@link #setModelLabel}). */
     public Map<String, String> modelLabels() {
-        Map<String, String> out = new java.util.LinkedHashMap<>();
+        Map<String, String> out = new LinkedHashMap<>();
         for (JsonNode l : root.path(DmKeys.HEADER).path(DmKeys.LABELS)) {
             out.put(l.path(DmKeys.LOCALE).asText(), l.path(DmKeys.TEXT).asText());
         }
@@ -1068,7 +1069,7 @@ public final class ModelDocument {
 
     /** Read an element's annotations as a name→value map. */
     public Map<String, String> annotations(String pathOrTypeDefId) {
-        Map<String, String> out = new java.util.LinkedHashMap<>();
+        Map<String, String> out = new LinkedHashMap<>();
         for (JsonNode a : metaElement(pathOrTypeDefId).path(DmKeys.ANNOTATIONS)) {
             out.put(a.path(DmKeys.NAME).asText(), a.path(DmKeys.VALUE).asText());
         }
@@ -1076,7 +1077,7 @@ public final class ModelDocument {
     }
 
     private static Map<String, String> localizedOf(ObjectNode element, String key) {
-        Map<String, String> out = new java.util.LinkedHashMap<>();
+        Map<String, String> out = new LinkedHashMap<>();
         for (JsonNode e : element.path(key)) {
             out.put(e.path(DmKeys.LOCALE).asText(), e.path(DmKeys.TEXT).asText());
         }

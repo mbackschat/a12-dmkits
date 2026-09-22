@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.interp;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -71,7 +72,7 @@ public final class RelevantSelection {
         }
         String[] rawSegments = pointer.substring(1).split("/", -1);
         StringBuilder path = new StringBuilder();
-        java.util.ArrayList<Integer> indices = new java.util.ArrayList<>(rawSegments.length);
+        ArrayList<Integer> indices = new ArrayList<>(rawSegments.length);
         for (String raw : rawSegments) {
             Matcher match = SEGMENT.matcher(raw);
             if (!match.matches()) {

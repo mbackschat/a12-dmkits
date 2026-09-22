@@ -2,7 +2,9 @@ package io.github.mbackschat.a12.dm.rulekit.context;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -171,8 +173,8 @@ public final class ModelContext {
      * Each path is classified field-vs-group via the model index before the same scope filter is applied.
      */
     public List<String> errorFieldCandidates(Set<String> referencedPaths) {
-        Set<String> fields = new java.util.LinkedHashSet<>();
-        Set<String> groups = new java.util.LinkedHashSet<>();
+        Set<String> fields = new LinkedHashSet<>();
+        Set<String> groups = new LinkedHashSet<>();
         for (String p : referencedPaths) {
             (model.fieldAt(p).isPresent() ? fields : groups).add(p);
         }
@@ -203,7 +205,7 @@ public final class ModelContext {
         if (refs.groupPaths().isEmpty()) {
             return refs.fieldPaths();
         }
-        Set<String> reachable = new java.util.LinkedHashSet<>(refs.fieldPaths());
+        Set<String> reachable = new LinkedHashSet<>(refs.fieldPaths());
         model.fields().map(FieldInfo::path)
                 .filter(path -> refs.groupPaths().stream().anyMatch(g -> EntityPaths.isStrictlyInside(path, g)))
                 .forEach(reachable::add);
@@ -286,9 +288,9 @@ public final class ModelContext {
         if (field.name().equalsIgnoreCase(q)) {
             return FieldMatch.How.EXACT_NAME;
         }
-        String lower = q.toLowerCase(java.util.Locale.ROOT);
-        if (field.name().toLowerCase(java.util.Locale.ROOT).contains(lower)
-                || field.path().toLowerCase(java.util.Locale.ROOT).contains(lower)) {
+        String lower = q.toLowerCase(Locale.ROOT);
+        if (field.name().toLowerCase(Locale.ROOT).contains(lower)
+                || field.path().toLowerCase(Locale.ROOT).contains(lower)) {
             return FieldMatch.How.SUBSTRING;
         }
         return null;

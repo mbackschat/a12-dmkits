@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -73,8 +74,8 @@ public final class ValidationResult {
     }
 
     /** The gate's receipt — empty when the oracle was never consulted. See the class javadoc. */
-    public java.util.Optional<Verification> consistencyGate() {
-        return java.util.Optional.ofNullable(consistencyGateMode);
+    public Optional<Verification> consistencyGate() {
+        return Optional.ofNullable(consistencyGateMode);
     }
 
     /**

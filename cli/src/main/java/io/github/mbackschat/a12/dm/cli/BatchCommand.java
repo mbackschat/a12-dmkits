@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -147,10 +148,10 @@ final class BatchCommand extends BaseCommand {
                 // path is the caller's. The family and exit code are deliberately unchanged: every child ran
                 // and wrote, so this is a partial success, not the "nothing happened" shape a refusal carries.
                 Diagnostic diagnostic = Diagnostic.environmentFailure(
-                        java.util.Optional.of(RkCode.OUTPUT_UNWRITABLE.code()),
+                        Optional.of(RkCode.OUTPUT_UNWRITABLE.code()),
                         "cannot write the observations artifact: " + e.getMessage(),
-                        new Diagnostic.Where((String) null, java.util.Optional.empty()),
-                        java.util.Optional.of(RkCode.OUTPUT_UNWRITABLE.fix()));
+                        new Diagnostic.Where((String) null, Optional.empty()),
+                        Optional.of(RkCode.OUTPUT_UNWRITABLE.fix()));
                 ResultEnvelope envelope = ResultEnvelope.dispatchArtifactWriteFailed(
                         ResultIdentity.BATCH_RUN, "dispatched " + results.size() + " op"
                                 + (results.size() == 1 ? "" : "s")
@@ -174,9 +175,9 @@ final class BatchCommand extends BaseCommand {
 
     private int rejectObservationInput(BatchObservationCapture.Rejection rejection) {
         String path = rejection.index() < 0 ? "/" : "/" + rejection.index();
-        Diagnostic diagnostic = Diagnostic.precheck(java.util.Optional.of(RkCode.INVALID_VALUE.code()),
-                rejection.message(), Diagnostic.Where.path(path), java.util.Optional.of(rejection.fix()),
-                java.util.Optional.empty());
+        Diagnostic diagnostic = Diagnostic.precheck(Optional.of(RkCode.INVALID_VALUE.code()),
+                rejection.message(), Diagnostic.Where.path(path), Optional.of(rejection.fix()),
+                Optional.empty());
         ResultEnvelope envelope = ResultEnvelope.rejected(ResultIdentity.BATCH_RUN,
                 "the observation request is invalid", List.of(diagnostic), RejectionBasis.preflight());
         out().print(envelope.toJsonString());

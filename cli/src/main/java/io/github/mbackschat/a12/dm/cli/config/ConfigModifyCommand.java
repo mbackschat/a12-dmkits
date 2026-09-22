@@ -9,7 +9,9 @@ import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -71,7 +73,7 @@ final class ConfigModifyCommand extends BaseCommand {
             description = "add an access-control role to the model's `roles` header annotation (repeatable). "
                     + "MERGES with the existing roles (a one-role edit keeps the rest); the `workspace roles` "
                     + "lint binds these to auth/roles.yaml")
-    java.util.List<String> roles = new java.util.ArrayList<>();
+    List<String> roles = new ArrayList<>();
 
     @Option(names = "--clear-roles", description = "remove the model's `roles` header annotation entirely")
     boolean clearRoles;
@@ -79,7 +81,7 @@ final class ConfigModifyCommand extends BaseCommand {
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--supported-character", paramLabel = "<singleton-range-or-grapheme>",
             description = SupportedCharactersContract.CLI_OPTION_DESCRIPTION)
-    java.util.List<String> supportedCharacters = new java.util.ArrayList<>();
+    List<String> supportedCharacters = new ArrayList<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--comment", paramLabel = "<text>",
@@ -114,7 +116,7 @@ final class ConfigModifyCommand extends BaseCommand {
     @Option(names = "--remove-annotation", paramLabel = "<name>",
             description = "remove a model-level header annotation by name (repeatable; the inverse of --annotation). "
                     + "The general form of --clear-roles.")
-    java.util.List<String> removeAnnotations = new java.util.ArrayList<>();
+    List<String> removeAnnotations = new ArrayList<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--add-locale", paramLabel = "<code>",
@@ -122,13 +124,13 @@ final class ConfigModifyCommand extends BaseCommand {
                     + "appends to the header.locales registry. The kernel then requires every rule/computation "
                     + "to carry a message for it, so provision those first (or anywhere in the same `apply` — op "
                     + "order within the sequence doesn't matter; consistency is gated only at the terminal commit)")
-    java.util.List<String> addLocales = new java.util.ArrayList<>();
+    List<String> addLocales = new ArrayList<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--remove-locale", paramLabel = "<code>",
             description = "remove a display locale from the model (repeatable; the inverse of --add-locale). "
                     + "Refuses removing the last locale; the re-validate confirms the model stays kernel-valid")
-    java.util.List<String> removeLocales = new java.util.ArrayList<>();
+    List<String> removeLocales = new ArrayList<>();
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")

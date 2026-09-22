@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.adapter;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -155,8 +158,8 @@ public final class KernelAdapter {
      * {@link BoundModel#consistencyGate()}: two factories of the same type run different gates, so the receipt
      * (never the factory name, and never a per-verb table) is what a consumer publishes evidence from.
      */
-    public java.util.Optional<Verification> consistencyGate() {
-        return java.util.Optional.ofNullable(consistencyGate);
+    public Optional<Verification> consistencyGate() {
+        return Optional.ofNullable(consistencyGate);
     }
 
     /** Open an adapter over a model given as DM-JSON: deserialize + expand, then bootstrap the MVK service. */
@@ -237,8 +240,8 @@ public final class KernelAdapter {
      * {@link #whereUsedInComputations} instead, so the two element kinds stay attributed correctly
      * (a computation is also a rule in the kernel's {@code getAllRules()}, but a different thing).
      */
-    public java.util.Set<String> whereUsed(String entityFullName) {
-        java.util.LinkedHashSet<String> rules = new java.util.LinkedHashSet<>();
+    public Set<String> whereUsed(String entityFullName) {
+        LinkedHashSet<String> rules = new LinkedHashSet<>();
         for (String ruleName : ruleFullNames()) {            // ruleFullNames() already excludes computations
             if (referencedFields(ruleName).contains(entityFullName)) {
                 rules.add(ruleName);
@@ -254,8 +257,8 @@ public final class KernelAdapter {
      * over the computation rule captures all of these, operands included). A field read only inside a
      * computation's operation — invisible to {@link #whereUsed} — shows up here. Insertion-ordered.
      */
-    public java.util.Set<String> whereUsedInComputations(String entityFullName) {
-        java.util.LinkedHashSet<String> comps = new java.util.LinkedHashSet<>();
+    public Set<String> whereUsedInComputations(String entityFullName) {
+        LinkedHashSet<String> comps = new LinkedHashSet<>();
         for (ICalculationRule cr : elements.getAllCalculations()) {
             if (referencedEntities(cr.getRule()).contains(entityFullName)) {
                 comps.add(cr.getRule().getFullName());
@@ -281,17 +284,17 @@ public final class KernelAdapter {
      * (computation order) — matching a per-field {@code whereUsed()}+{@code whereUsedInComputations()} union,
      * so a consumer that re-sorts (the {@code TreeSet} callers) sees byte-identical output.
      */
-    public Map<String, java.util.Set<String>> referrersByEntity() {
-        Map<String, java.util.Set<String>> byEntity = new java.util.LinkedHashMap<>();
+    public Map<String, Set<String>> referrersByEntity() {
+        Map<String, Set<String>> byEntity = new LinkedHashMap<>();
         for (String ruleName : ruleFullNames()) {            // validation rules only (computations excluded)
             for (String entity : referencedFields(ruleName)) {
-                byEntity.computeIfAbsent(entity, k -> new java.util.LinkedHashSet<>()).add(ruleName);
+                byEntity.computeIfAbsent(entity, k -> new LinkedHashSet<>()).add(ruleName);
             }
         }
         for (ICalculationRule cr : elements.getAllCalculations()) {
             String computation = cr.getRule().getFullName();
             for (String entity : referencedEntities(cr.getRule())) {
-                byEntity.computeIfAbsent(entity, k -> new java.util.LinkedHashSet<>()).add(computation);
+                byEntity.computeIfAbsent(entity, k -> new LinkedHashSet<>()).add(computation);
             }
         }
         return byEntity;
@@ -332,16 +335,16 @@ public final class KernelAdapter {
      * @param byEntity one {@link #referrersByEntity} map, passed in so a model-wide sweep builds it ONCE — the
      *                 {@code O(R+C)} contract this method must not silently turn back into {@code O(F·(R+C))}
      */
-    public static java.util.Set<String> referrersReaching(Map<String, java.util.Set<String>> byEntity,
+    public static Set<String> referrersReaching(Map<String, Set<String>> byEntity,
             String entityPath) {
-        java.util.Set<String> reaching =
-                new java.util.LinkedHashSet<>(byEntity.getOrDefault(entityPath, java.util.Set.of()));
+        Set<String> reaching =
+                new LinkedHashSet<>(byEntity.getOrDefault(entityPath, Set.of()));
         // EVERY ancestor level contributes — this unions, it does not select the nearest. A field can be read by
         // one rule naming its parent group and another naming its grandparent, and both are readers.
         // The walk cuts at each '/', which is segment-correct by construction, and `cut > 0` stops before the
         // empty prefix. That also means a "/" key is never consulted; no producer makes one today.
         for (int cut = entityPath.lastIndexOf('/'); cut > 0; cut = entityPath.lastIndexOf('/', cut - 1)) {
-            reaching.addAll(byEntity.getOrDefault(entityPath.substring(0, cut), java.util.Set.of()));
+            reaching.addAll(byEntity.getOrDefault(entityPath.substring(0, cut), Set.of()));
         }
         return reaching;
     }
@@ -352,12 +355,12 @@ public final class KernelAdapter {
      * The dead-field sweep asks this once per field, so building F sets to discard all but their emptiness is
      * the kind of cost the {@code O(R+C)} contract above exists to keep out.
      */
-    public static boolean isReadByAnything(Map<String, java.util.Set<String>> byEntity, String entityPath) {
-        if (!byEntity.getOrDefault(entityPath, java.util.Set.of()).isEmpty()) {
+    public static boolean isReadByAnything(Map<String, Set<String>> byEntity, String entityPath) {
+        if (!byEntity.getOrDefault(entityPath, Set.of()).isEmpty()) {
             return true;
         }
         for (int cut = entityPath.lastIndexOf('/'); cut > 0; cut = entityPath.lastIndexOf('/', cut - 1)) {
-            if (!byEntity.getOrDefault(entityPath.substring(0, cut), java.util.Set.of()).isEmpty()) {
+            if (!byEntity.getOrDefault(entityPath.substring(0, cut), Set.of()).isEmpty()) {
                 return true;
             }
         }
@@ -576,9 +579,9 @@ public final class KernelAdapter {
      * field — a computation, not a hand-authored rule. Computations read via
      * {@link #readAllComputations}; {@link #readModel} unifies both into one disjoint view.
      */
-    public java.util.Map<String, ReadResult> readAll() {
-        java.util.Set<String> computations = computationFullNames();
-        java.util.Map<String, ReadResult> out = new java.util.LinkedHashMap<>();
+    public Map<String, ReadResult> readAll() {
+        Set<String> computations = computationFullNames();
+        Map<String, ReadResult> out = new LinkedHashMap<>();
         for (IRule r : elements.getAllRules()) {
             if (!computations.contains(r.getFullName())) {   // skip computation rules — see readAllComputations
                 out.put(r.getFullName(), read(r.getFullName()));
@@ -592,9 +595,9 @@ public final class KernelAdapter {
      * a {@code --rule} argument. Computations are excluded (see {@link #computationFullNames}); a
      * {@code --rule} that names a computation should be rejected so it isn't read as a rule.
      */
-    public java.util.Set<String> ruleFullNames() {
-        java.util.Set<String> computations = computationFullNames();
-        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+    public Set<String> ruleFullNames() {
+        Set<String> computations = computationFullNames();
+        LinkedHashSet<String> names = new LinkedHashSet<>();
         for (IRule r : elements.getAllRules()) {
             if (!computations.contains(r.getFullName())) {
                 names.add(r.getFullName());
@@ -650,18 +653,18 @@ public final class KernelAdapter {
      * <p>Problems the derivation reports are dropped: its precondition is that every rule's condition text is
      * valid, which the consistency gate has already established for any model opened through {@link #checkAndOpen}.
      */
-    public java.util.Map<MandatorySet, java.util.Set<String>> mandatoryInformation() {
+    public Map<MandatorySet, Set<String>> mandatoryInformation() {
         var info = new ServiceFactory().getRuleCollectionMetaInformation(mvk)
                 .getMandatoryInformationFromRules(elements.getAllRules(), SILENT);
-        var out = new java.util.EnumMap<MandatorySet, java.util.Set<String>>(MandatorySet.class);
+        var out = new java.util.EnumMap<MandatorySet, Set<String>>(MandatorySet.class);
         out.put(MandatorySet.MANDATORY, sorted(info.getMandatory()));
         out.put(MandatorySet.MANDATORY_FOR_ROOT_GROUP, sorted(info.getMandatoryForRootGroup()));
         out.put(MandatorySet.MANDATORY_ROOT_GROUPS, sorted(info.getMandatoryRootGroups()));
-        return java.util.Collections.unmodifiableMap(out);
+        return Collections.unmodifiableMap(out);
     }
 
-    private static java.util.Set<String> sorted(java.util.Set<String> names) {
-        return java.util.Collections.unmodifiableSet(new java.util.TreeSet<>(names));
+    private static Set<String> sorted(Set<String> names) {
+        return Collections.unmodifiableSet(new java.util.TreeSet<>(names));
     }
 
     /**
@@ -689,7 +692,7 @@ public final class KernelAdapter {
      */
     public DynamicEnumerations dynamicEnumerations() {
         List<Diagnostic> diagnostics = new ArrayList<>();
-        java.util.Map<String, List<String>> values =
+        Map<String, List<String>> values =
                 new ServiceFactory().getRuleCollectionMetaInformation(mvk)
                         .getDynamicEnumerationStringValues(new ArrayList<>(elements.getAllRules()),
                                 // null lets Diagnostic.fromKernel attribute from the kernel's OWN message,
@@ -697,9 +700,9 @@ public final class KernelAdapter {
                                 // path would overwrite that with something less specific.
                                 problem -> diagnostics.add(KernelDiagnostics.enriched(
                                         KernelNotifications.toCore(problem), null)));
-        java.util.Map<String, List<String>> sortedValues = new java.util.TreeMap<>();
+        Map<String, List<String>> sortedValues = new java.util.TreeMap<>();
         values.forEach((field, allowed) -> sortedValues.put(field, List.copyOf(allowed)));
-        return new DynamicEnumerations(java.util.Collections.unmodifiableMap(sortedValues),
+        return new DynamicEnumerations(Collections.unmodifiableMap(sortedValues),
                 List.copyOf(diagnostics));
     }
 
@@ -763,7 +766,7 @@ public final class KernelAdapter {
      * is not pinning a hash-bucket layout; {@code diagnostics} is every problem the derivation reported,
      * enriched through the same catalog-join {@code model check} uses.
      */
-    public record DynamicEnumerations(java.util.Map<String, List<String>> valuesByField,
+    public record DynamicEnumerations(Map<String, List<String>> valuesByField,
             List<Diagnostic> diagnostics) {
     }
 
@@ -818,8 +821,8 @@ public final class KernelAdapter {
      * self-validation of a calculated field — semantically a computation, read via
      * {@link #readComputation}, not {@link #read}.
      */
-    public java.util.Set<String> computationFullNames() {
-        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+    public Set<String> computationFullNames() {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
         for (ICalculationRule cr : elements.getAllCalculations()) {
             names.add(cr.getRule().getFullName());
         }
@@ -833,10 +836,10 @@ public final class KernelAdapter {
      * opaque {@link ReadComputation} remains present with its authoritative target.
      */
     public Map<String, String> computationTargetFields() {
-        Map<String, String> targets = new java.util.LinkedHashMap<>();
+        Map<String, String> targets = new LinkedHashMap<>();
         calcIndex().forEach((name, computation) ->
                 targets.put(name, computation.getCalculatedField().getFullName()));
-        return java.util.Collections.unmodifiableMap(targets);
+        return Collections.unmodifiableMap(targets);
     }
 
     /** The kernel's calculation service, built lazily from the MVK service (which is also its config). */
@@ -877,7 +880,7 @@ public final class KernelAdapter {
      *  {@link #ruleIndex} peer. First occurrence wins, matching the old linear scan. */
     private Map<String, ICalculationRule> calcIndex() {
         if (calcIndex == null) {
-            Map<String, ICalculationRule> index = new java.util.LinkedHashMap<>();
+            Map<String, ICalculationRule> index = new LinkedHashMap<>();
             for (ICalculationRule cr : elements.getAllCalculations()) {
                 index.putIfAbsent(cr.getRule().getFullName(), cr);
             }
@@ -890,8 +893,8 @@ public final class KernelAdapter {
      * ReadResult every computation in the model, keyed by full name (insertion-ordered) — the computation
      * peer of {@link #readAll()}; never throws on an unmodeled computation (those become Opaque).
      */
-    public java.util.Map<String, ReadComputation> readAllComputations() {
-        java.util.Map<String, ReadComputation> out = new java.util.LinkedHashMap<>();
+    public Map<String, ReadComputation> readAllComputations() {
+        Map<String, ReadComputation> out = new LinkedHashMap<>();
         for (ICalculationRule cr : elements.getAllCalculations()) {
             out.put(cr.getRule().getFullName(), readOne(cr));
         }
@@ -913,7 +916,7 @@ public final class KernelAdapter {
         String verbatim = verbatimComputationText(cr);
         try {
             List<String> errorCodesToSuppress = errorCodesToSuppress(cr);
-            java.util.Optional<ICalculationInfo> info = calcService().extractCalculationInfo(cr, SILENT);
+            Optional<ICalculationInfo> info = calcService().extractCalculationInfo(cr, SILENT);
             if (info.isEmpty()) {
                 return new ReadComputation.Opaque(verbatim, "the kernel could not extract calculation info");
             }
@@ -1020,7 +1023,7 @@ public final class KernelAdapter {
                     + ruleFullName);
         }
         IRule rule = rule(ruleFullName);
-        java.util.List<String> lossiness = new java.util.ArrayList<>();
+        List<String> lossiness = new java.util.ArrayList<>();
         String raw = rule.getErrorConditionText();
         String before = render(current.condition());
         String after = render(modified);
@@ -1060,7 +1063,7 @@ public final class KernelAdapter {
                     + computationFullName);
         }
         return RenderedDiff.between(renderComputation(current.computation()), renderComputation(modified),
-                java.util.List.of());
+                List.of());
     }
 
     private static String render(Condition condition) {
@@ -1391,7 +1394,7 @@ public final class KernelAdapter {
      *  wins, matching the old {@code findFirst()} scan. */
     private Map<String, IRule> ruleIndex() {
         if (ruleIndex == null) {
-            Map<String, IRule> index = new java.util.LinkedHashMap<>();
+            Map<String, IRule> index = new LinkedHashMap<>();
             for (IRule r : elements.getAllRules()) {
                 index.putIfAbsent(r.getFullName(), r);
             }

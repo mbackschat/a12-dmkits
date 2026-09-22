@@ -10,10 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
@@ -43,7 +46,7 @@ class ReadRoundTripTest {
         NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
 
         // (rule full name → the condition it was authored from)
-        var cases = new java.util.LinkedHashMap<String, Condition>();
+        var cases = new LinkedHashMap<String, Condition>();
         BoundModel withRules = m
                 .add(rule(m, "/Subscription", "FilledRule", m.field("/Subscription/Tier"),
                         m.field("/Subscription/Tier").filled(), cases))
@@ -67,7 +70,7 @@ class ReadRoundTripTest {
     @Test
     void roundTripsQuantifiersGroupsAndPatterns() {
         BoundModel m = base();
-        var cases = new java.util.LinkedHashMap<String, Condition>();
+        var cases = new LinkedHashMap<String, Condition>();
         BoundModel withRules = m
                 .add(rule(m, "/Subscription/Billing", "AllFeesRule", m.field("/Subscription/Billing/BaseFee"),
                         m.allFieldsFilled("/Subscription/Billing/BaseFee", "/Subscription/Billing/EffectiveFee"), cases))
@@ -92,7 +95,7 @@ class ReadRoundTripTest {
         // comparisons and the `!=` direction for string/enum — all already in rulekit's DSL, just not
         // wired into the F10 converter. Real models lean on these heavily (confirm flags everywhere).
         BoundModel m = base();
-        var cases = new java.util.LinkedHashMap<String, Condition>();
+        var cases = new LinkedHashMap<String, Condition>();
         BoundModel withRules = m
                 .add(rule(m, "/Subscription", "AutoRenewOnRule", m.field("/Subscription/AutoRenew"),
                         m.bool("/Subscription/AutoRenew").isTrue(), cases))
@@ -120,7 +123,7 @@ class ReadRoundTripTest {
     @Test
     void roundTripsValueListMembership() {
         BoundModel m = base();
-        var cases = new java.util.LinkedHashMap<String, Condition>();
+        var cases = new LinkedHashMap<String, Condition>();
         BoundModel withRules = m
                 .add(rule(m, "/Subscription/Addons", "NameInRule", m.field("/Subscription/Addons/Name"),
                         m.str("/Subscription/Addons/Name").in("Gold", "Silver", "Bronze"), cases))
@@ -140,7 +143,7 @@ class ReadRoundTripTest {
     @Test
     void roundTripsIterationAndUniqueness() {
         BoundModel m = base();
-        var cases = new java.util.LinkedHashMap<String, Condition>();
+        var cases = new LinkedHashMap<String, Condition>();
         BoundModel withRules = m
                 .add(rule(m, "/Subscription/Addons", "RepRule", m.field("/Subscription/Addons/MonthlyFee"),
                         Dsl.currentRepetition(m.group("/Subscription/Addons")).gt(1)
@@ -161,7 +164,7 @@ class ReadRoundTripTest {
     void roundTripsAggregatesAndHaving() {
         // Aggregates validate in the order model (Items*/Count, Sku); its only declared locale is en_US.
         BoundModel base = BoundModel.ofJson(read("models/order.dm.json"));
-        var cases = new java.util.LinkedHashMap<String, Condition>();
+        var cases = new LinkedHashMap<String, Condition>();
         String cust = "/Order/CustomerName";
         Condition sumC = base.field(cust).filled().and(Dsl.sum(base.flatten("/Order/Items*/Count")).gt(100));
         Condition maxC = base.field(cust).filled().and(Dsl.maxValue(base.flatten("/Order/Items*/Count")).gt(50));
@@ -193,7 +196,7 @@ class ReadRoundTripTest {
     @Test
     void roundTripsDates() {
         BoundModel base = BoundModel.ofJson(read("models/order.dm.json"));
-        var cases = new java.util.LinkedHashMap<String, Condition>();
+        var cases = new LinkedHashMap<String, Condition>();
         String cust = "/Order/CustomerName";
         Condition todayC = base.field(cust).filled()
                 .and(base.date("/Order/OrderDate").onOrAfter(Dsl.today()));
@@ -214,7 +217,7 @@ class ReadRoundTripTest {
     }
 
     /** A rule in the order model (single declared locale en_US), error field = the referenced CustomerName. */
-    private static Rule orderRule(BoundModel m, String name, Condition cond, java.util.Map<String, Condition> sink) {
+    private static Rule orderRule(BoundModel m, String name, Condition cond, Map<String, Condition> sink) {
         Rule r = m.rule(m.group("/Order")).name(name).errorField(m.field("/Order/CustomerName")).when(cond)
                 .code("C").severity(Severity.ERROR).message(en("x")).build();
         sink.put("/Order/" + name, cond);
@@ -250,7 +253,7 @@ class ReadRoundTripTest {
 
     @Test
     void readAllReturnsTypedAndOpaqueOutcomesPerRule() {
-        java.util.Map<String, ReadResult> all = KernelAdapter.ofJson(timesheetWith(
+        Map<String, ReadResult> all = KernelAdapter.ofJson(timesheetWith(
                 timesheetRule("/Timesheet/OkRule", "OkRule", "FieldFilled(PeriodEnd)"),
                 timesheetRule("/Timesheet/OpaqueRule", "OpaqueRule", OPAQUE_CONDITION))).readAll();
         // a whole model reads without throwing: supported rules typed, the rest preserved opaque
@@ -265,8 +268,8 @@ class ReadRoundTripTest {
                         .dateField("PeriodEnd", d -> d.format("yyyy-MM-dd"))
                         .numberField("Total", n -> { })
                         .numberField("Budget", n -> { })
-                        .field("Approved", io.github.mbackschat.a12.dm.modelkit.FieldKind.BOOLEAN)
-                        .field("Reviewed", io.github.mbackschat.a12.dm.modelkit.FieldKind.BOOLEAN)
+                        .field("Approved", FieldKind.BOOLEAN)
+                        .field("Reviewed", FieldKind.BOOLEAN)
                         .dateTimeField("ClockIn", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
                         .dateTimeField("ClockOut", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss")))
                 .build().toJson();
@@ -296,7 +299,7 @@ class ReadRoundTripTest {
 
     private static Rule rule(BoundModel m, String group, String name,
             io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef errorField, Condition cond,
-            java.util.Map<String, Condition> sink) {
+            Map<String, Condition> sink) {
         Rule r = m.rule(m.group(group)).name(name).errorField(errorField).when(cond)
                 .code("C").severity(Severity.ERROR).message(en("x"), de("y")).build();
         sink.put(group + "/" + name, cond);

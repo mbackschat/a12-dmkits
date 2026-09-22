@@ -73,7 +73,7 @@ class BuildPerformancePolicyTest {
     }
 
     /** An unescaped {@code VAR=$(…java_home…)} capture on a non-comment line — a second place deciding the pin. */
-    private static final java.util.regex.Pattern RE_ENCODED_PIN = java.util.regex.Pattern.compile(
+    private static final Pattern RE_ENCODED_PIN = Pattern.compile(
             "(?m)^[^#\n]*\\b(?:export\\s+)?[A-Za-z_][A-Za-z0-9_]*=\"?\\$\\(/usr/libexec/java_home");
 
     /**

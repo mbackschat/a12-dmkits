@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -215,7 +216,7 @@ public final class ModelPaths {
             return true;   // the full /Group/Field path is written out verbatim
         }
         String shortName = fieldPath.substring(fieldPath.lastIndexOf('/') + 1);
-        return java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(shortName) + "\\b")
+        return Pattern.compile("\\b" + Pattern.quote(shortName) + "\\b")
                 .matcher(condition).find();
     }
 

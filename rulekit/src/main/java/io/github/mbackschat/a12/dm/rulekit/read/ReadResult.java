@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.read;
 
 import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import java.util.Optional;
 
 /**
  * The outcome of reading one rule's condition (F10) — converter gaps become <em>data</em>, not
@@ -71,11 +72,11 @@ public sealed interface ReadResult permits ReadResult.Converted, ReadResult.Opaq
      * which one they have — a projection that exists so adding {@link Refused} does not make every such
      * caller grow a second branch it has no opinion about.
      */
-    default java.util.Optional<String> preservedText() {
+    default Optional<String> preservedText() {
         return switch (this) {
-            case Converted ignored -> java.util.Optional.empty();
-            case Opaque opaque -> java.util.Optional.of(opaque.canonicalText());
-            case Refused refused -> java.util.Optional.of(refused.canonicalText());
+            case Converted ignored -> Optional.empty();
+            case Opaque opaque -> Optional.of(opaque.canonicalText());
+            case Refused refused -> Optional.of(refused.canonicalText());
         };
     }
 }

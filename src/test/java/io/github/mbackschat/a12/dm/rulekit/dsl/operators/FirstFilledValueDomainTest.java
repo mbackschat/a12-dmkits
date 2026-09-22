@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl.operators;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -66,7 +67,7 @@ class FirstFilledValueDomainTest {
                         model.enumOf("/Approval/Rows/Status").field()).eq("OK")));
         assertThrows(IllegalArgumentException.class,
                 () -> new FirstFilledValue(
-                        model.field("/Approval/Approved").firstFilledOperand(), java.util.List.of()));
+                        model.field("/Approval/Approved").firstFilledOperand(), List.of()));
     }
 
     @Test
@@ -143,10 +144,10 @@ class FirstFilledValueDomainTest {
         var indexed = model.num("/Selection/Rows/Primary").semanticIndex("A").index();
         assertThrows(IllegalArgumentException.class,
                 () -> new FirstFilledValue(indexed.firstFilledOperand(),
-                        java.util.List.of(indexed.firstFilledOperand())));
+                        List.of(indexed.firstFilledOperand())));
         assertThrows(IllegalArgumentException.class,
                 () -> new FirstFilledValue(model.firstFilledGroup("/Selection/Address"),
-                        java.util.List.of(model.field("/Selection/Address/Street").firstFilledOperand())));
+                        List.of(model.field("/Selection/Address/Street").firstFilledOperand())));
         assertThrows(IllegalArgumentException.class, () -> model.firstFilledGroup("/Selection"));
         assertThrows(IllegalArgumentException.class,
                 () -> model.firstFilledGroupFor("/Selection/IndexedNumbers*", "1"));

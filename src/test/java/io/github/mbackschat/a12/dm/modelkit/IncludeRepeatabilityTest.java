@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.edit.EditSession;
 
 /**
  * Include <b>repeatability</b> (FEATURE-GAPS): a mount can carry a repeatability > 1,
@@ -58,8 +59,8 @@ class IncludeRepeatabilityTest {
         String base = DocumentModelDraft.named("order").locale("en_US")
                 .rootGroup("Order", o -> o.field("OrderRef", FieldKind.STRING))
                 .build().toJson();
-        io.github.mbackschat.a12.dm.edit.EditSession session =
-                io.github.mbackschat.a12.dm.edit.EditSession.read(base, resolver());
+        EditSession session =
+                EditSession.read(base, resolver());
         session.addInclude("address", "address", "/Order", "BillTo");   // declare + single mount
         session.include("address").mount("/Order", "ShipTo", 3);        // repeatable mount of the same include
         session.validate();

@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -236,8 +237,8 @@ class GapLedgerTemplateGuardTest {
     }
 
     /** A marker that announces the item itself as complete. */
-    private static final java.util.regex.Pattern SHIPPED =
-            java.util.regex.Pattern.compile("\\b(FIXED|SHIPPED|DONE|RESOLVED|COMPLETED)\\b");
+    private static final Pattern SHIPPED =
+            Pattern.compile("\\b(FIXED|SHIPPED|DONE|RESOLVED|COMPLETED)\\b");
 
     /** Does-fire proof for the id check, on the exact shapes the estate uses. */
     @Test
@@ -308,12 +309,12 @@ class GapLedgerTemplateGuardTest {
     }
 
     /** The id itself, captured, in the same three positions {@link #ID} accepts. */
-    private static final java.util.regex.Pattern DUPLICATE_ID =
-            java.util.regex.Pattern.compile("(?:^### |^- \\*\\*|^\\| ?)\\*?\\*?([A-Z]{1,4}\\d+)\\b");
+    private static final Pattern DUPLICATE_ID =
+            Pattern.compile("(?:^### |^- \\*\\*|^\\| ?)\\*?\\*?([A-Z]{1,4}\\d+)\\b");
 
     /** An id in any accepted position: a heading/bullet lead, or a table's first cell. */
-    private static final java.util.regex.Pattern ID =
-            java.util.regex.Pattern.compile("(^### |^- \\*\\*|^\\| ?)\\*?\\*?[A-Z]{1,4}\\d+\\b");
+    private static final Pattern ID =
+            Pattern.compile("(^### |^- \\*\\*|^\\| ?)\\*?\\*?[A-Z]{1,4}\\d+\\b");
 
     /**
      * Does-fire proof against fabricated ledgers, exercising {@link #audit(String, String)} — the same

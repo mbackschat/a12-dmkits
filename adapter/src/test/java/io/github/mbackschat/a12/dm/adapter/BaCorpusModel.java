@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
 /**
  * The unified own-domain model for the BA-derived DSL corpus ({@link BaCorpusTest}). A logistics
@@ -29,11 +30,11 @@ final class BaCorpusModel {
                         .numberField("ParcelCount", n -> { })
                         .numberField("BackorderCount", n -> { })
                         .numberField("RoundedWeight", n -> { })
-                        .field("IsExpress", io.github.mbackschat.a12.dm.modelkit.FieldKind.BOOLEAN)
-                        .field("TermsAccepted", io.github.mbackschat.a12.dm.modelkit.FieldKind.CONFIRM)
-                        .field("OptInA", io.github.mbackschat.a12.dm.modelkit.FieldKind.CONFIRM)
-                        .field("OptInB", io.github.mbackschat.a12.dm.modelkit.FieldKind.CONFIRM)
-                        .field("OptInC", io.github.mbackschat.a12.dm.modelkit.FieldKind.CONFIRM)
+                        .field("IsExpress", FieldKind.BOOLEAN)
+                        .field("TermsAccepted", FieldKind.CONFIRM)
+                        .field("OptInA", FieldKind.CONFIRM)
+                        .field("OptInB", FieldKind.CONFIRM)
+                        .field("OptInC", FieldKind.CONFIRM)
                         .dateField("DispatchDate", d -> d.format("yyyy-MM-dd"))
                         .dateField("ArrivalDate", d -> d.format("yyyy-MM-dd"))
                         .dateField("DispatchDateLocal", d -> d.format("dd.MM.yyyy"))

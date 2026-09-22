@@ -174,12 +174,12 @@ public record ConfigModification(
         }
         RkCode code = RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED;
         return List.of(Diagnostic.precheckWarning(
-                java.util.Optional.of(code.code()),
+                Optional.of(code.code()),
                 "modelConfig.timeZone '" + timeZone
                         + "' is kernel-valid but unsupported by the interpreter-backed evaluator",
                 Diagnostic.Where.arg(null, "--time-zone"),
-                java.util.Optional.of(code.fix()),
-                java.util.Optional.of(code.meaning())));
+                Optional.of(code.fix()),
+                Optional.of(code.meaning())));
     }
 
     /** Add/remove display locales idempotently — only actually-changed codes are applied and reported (as arrays). */

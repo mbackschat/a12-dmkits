@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
@@ -155,7 +157,7 @@ class ConditionReadBackParityTest {
         Map<String, ReadResult> kernel = read(new KernelConditionReadBack(), json);
         Map<String, ReadResult> bridge = read(new InterpreterConditionReadBack(), json);
 
-        java.util.Set<String> expected = new java.util.LinkedHashSet<>();
+        Set<String> expected = new LinkedHashSet<>();
         CORPUS.forEach(c -> expected.add(c.name()));
         assertEquals(expected, ruleNames(kernel),
                 "the kernel provider must find exactly the corpus rules");
@@ -231,8 +233,8 @@ class ConditionReadBackParityTest {
     }
 
     /** Both providers key by rule path; the corpus is keyed by bare name, so compare on the last segment. */
-    private static java.util.Set<String> ruleNames(Map<String, ReadResult> results) {
-        java.util.Set<String> names = new java.util.LinkedHashSet<>();
+    private static Set<String> ruleNames(Map<String, ReadResult> results) {
+        Set<String> names = new LinkedHashSet<>();
         results.keySet().forEach(k -> names.add(k.substring(k.lastIndexOf('/') + 1)));
         return names;
     }

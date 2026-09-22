@@ -1,11 +1,13 @@
 package io.github.mbackschat.a12.dm.adapter.profile;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ValueKind;
@@ -61,7 +63,7 @@ final class RuleModelSynthesizer {
         }
 
         Set<String> repeatable = model.groups().filter(GroupInfo::repeating)
-                .map(GroupInfo::path).collect(java.util.stream.Collectors.toSet());
+                .map(GroupInfo::path).collect(Collectors.toSet());
         Map<String, List<FieldInfo>> byGroup = new LinkedHashMap<>();
         for (FieldInfo field : fields) {
             byGroup.computeIfAbsent(field.groupPath(), ignored -> new ArrayList<>()).add(field);
@@ -72,7 +74,7 @@ final class RuleModelSynthesizer {
         for (FieldInfo field : fields) {
             byClass.get(scopeClass(field.groupPath(), repeatable)).add(field);
         }
-        java.util.Comparator<FieldInfo> capableFirst = java.util.Comparator.comparingInt(
+        Comparator<FieldInfo> capableFirst = Comparator.comparingInt(
                 (FieldInfo field) -> structuralCapabilityScore(field.groupPath(), byGroup, childrenOf, repeatable))
                 .reversed();
         byClass.get(0).sort(capableFirst);
@@ -80,7 +82,7 @@ final class RuleModelSynthesizer {
 
         int[] want = allocate(count, target.scope());
         Map<String, Integer> maxRepsByPath = model.groups().filter(GroupInfo::repeating)
-                .collect(java.util.stream.Collectors.toMap(GroupInfo::path, GroupInfo::maxRepetitions));
+                .collect(Collectors.toMap(GroupInfo::path, GroupInfo::maxRepetitions));
         Distribution ruleScopeCapacity = target.iteration() == null ? null : target.iteration().scopeCapacity();
         int parallelTarget = target.iteration() == null ? 0 : target.iteration().parallelIteration();
 

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,8 +51,8 @@ class RuleEvalMessageProjectionTest {
     }
 
     /** One address channel as an order-independent set — see the kernel-parity test for why order is not matched. */
-    private static java.util.Set<String> addresses(JsonNode array) {
-        java.util.Set<String> out = new java.util.TreeSet<>();
+    private static Set<String> addresses(JsonNode array) {
+        Set<String> out = new java.util.TreeSet<>();
         array.forEach(node -> out.add(node.asText()));
         return out;
     }

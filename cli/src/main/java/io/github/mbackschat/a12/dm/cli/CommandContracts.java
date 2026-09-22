@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -201,7 +202,7 @@ final class CommandContracts {
             omitted = List.copyOf(omitted);
             anySet = List.copyOf(anySet);
             noneSet = List.copyOf(noneSet);
-            values = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(values));
+            values = Collections.unmodifiableMap(new LinkedHashMap<>(values));
         }
 
         static Builder builder() {
@@ -447,7 +448,7 @@ final class CommandContracts {
     /** The live parser's resolved command and parameter values, without executing the invocation. */
     record ParsedParameters(String verb, Map<String, Object> values) {
         ParsedParameters {
-            values = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(values));
+            values = Collections.unmodifiableMap(new LinkedHashMap<>(values));
         }
 
         String value(String parameter) {
@@ -587,7 +588,7 @@ final class CommandContracts {
             cursor = cursor.subcommand();
         }
         return new ParsedInvocation(verbName(leaf), leaf, new Invocation(Set.copyOf(supplied),
-                java.util.Collections.unmodifiableMap(new LinkedHashMap<>(values))));
+                Collections.unmodifiableMap(new LinkedHashMap<>(values))));
     }
 
     private static String verbName(CommandSpec leaf) {

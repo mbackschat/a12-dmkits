@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.footprint
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -324,7 +325,7 @@ internal object FootprintProtocol {
         }
     }
 
-    private fun parseSample(index: Int, element: kotlinx.serialization.json.JsonElement): FootprintSample {
+    private fun parseSample(index: Int, element: JsonElement): FootprintSample {
         val path = "samples[$index]"
         val sample = try {
             element.jsonObject
@@ -371,7 +372,7 @@ private fun JsonObject.requiredObject(name: String, path: String): JsonObject =
         throw IllegalArgumentException("$path must be an object", failure)
     }
 
-private fun JsonObject.requiredArray(name: String, path: String): List<kotlinx.serialization.json.JsonElement> =
+private fun JsonObject.requiredArray(name: String, path: String): List<JsonElement> =
     try {
         get(name)?.jsonArray ?: invalid(path, "is required")
     } catch (failure: IllegalArgumentException) {

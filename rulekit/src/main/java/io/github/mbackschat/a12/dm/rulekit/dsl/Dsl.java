@@ -4,7 +4,11 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
@@ -107,11 +111,11 @@ public final class Dsl {
      */
     public static NumberExpr numberOfFilledFields(AggregateOperand first, AggregateOperand second,
             AggregateOperand... rest) {
-        var fields = new java.util.ArrayList<AggregateOperand>();
+        var fields = new ArrayList<AggregateOperand>();
         fields.add(first);
         fields.add(second);
-        fields.addAll(java.util.List.of(rest));
-        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, fields, java.util.List.of()));
+        fields.addAll(List.of(rest));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, fields, List.of()));
     }
 
     /**
@@ -133,7 +137,7 @@ public final class Dsl {
                             + " — a single repetition list or group scope has its own overload");
         }
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
-                java.util.List.copyOf(fields), java.util.List.of()));
+                List.copyOf(fields), List.of()));
     }
 
     /**
@@ -144,7 +148,7 @@ public final class Dsl {
      */
     public static NumberExpr numberOfFilledFields(FieldListRef scope) {
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
-                java.util.List.of(scope), java.util.List.of()));
+                List.of(scope), List.of()));
     }
 
     /**
@@ -158,15 +162,15 @@ public final class Dsl {
      */
     public static NumberExpr numberOfFilledFields(GroupListRef scope) {
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
-                java.util.List.of(scope), java.util.List.of()));
+                List.of(scope), List.of()));
     }
 
     /** {@code NumberOfFilledFields(group, …)} — counts the filled fields inside the group(s). */
     public static NumberExpr numberOfFilledFields(GroupRef first, GroupRef... rest) {
-        var groups = new java.util.ArrayList<GroupRef>();
+        var groups = new ArrayList<GroupRef>();
         groups.add(first);
-        groups.addAll(java.util.List.of(rest));
-        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, java.util.List.of(), groups));
+        groups.addAll(List.of(rest));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, List.of(), groups));
     }
 
     /** {@code Sum(…)} over number fields/repetition lists — unspecified fields count as 0 (§9). catalog:Sum */
@@ -246,9 +250,9 @@ public final class Dsl {
      */
     static void requireFullDatePrecision(String operatorId, BoundModel model,
             AggregateOperand first, AggregateOperand... rest) {
-        var operands = new java.util.ArrayList<AggregateOperand>();
+        var operands = new ArrayList<AggregateOperand>();
         operands.add(first);
-        operands.addAll(java.util.List.of(rest));
+        operands.addAll(List.of(rest));
         for (AggregateOperand operand : operands) {
             String path = declaredFieldPath(operand);
             if (path == null) {
@@ -259,7 +263,7 @@ public final class Dsl {
                 continue;
             }
             if (!DatePrecisions.guaranteedComponents(precision).containsAll(
-                    java.util.EnumSet.of(TemporalFormats.Component.YEAR, TemporalFormats.Component.MONTH,
+                    EnumSet.of(TemporalFormats.Component.YEAR, TemporalFormats.Component.MONTH,
                             TemporalFormats.Component.DAY))) {
                 throw Refusals.of(KernelCode.MVK_PARTIAL_DATE_NOT_ALLOWED,
                         operatorId + " does not admit a partly-known date; '"
@@ -284,13 +288,13 @@ public final class Dsl {
      */
     static void requireComparableComponentSets(String operatorId, BoundModel model,
             AggregateOperand first, AggregateOperand... rest) {
-        var operands = new java.util.ArrayList<AggregateOperand>();
+        var operands = new ArrayList<AggregateOperand>();
         operands.add(first);
-        operands.addAll(java.util.List.of(rest));
+        operands.addAll(List.of(rest));
 
         boolean supplemented = model.hasBaseYear();
         String witnessPath = null;
-        java.util.Set<TemporalFormats.Component> witness = null;
+        Set<TemporalFormats.Component> witness = null;
         for (AggregateOperand operand : operands) {
             String path = declaredFieldPath(operand);
             if (path == null || !TemporalFormats.readsComponents(model.field(path).kind())) {
@@ -300,8 +304,8 @@ public final class Dsl {
             if (declared == null) {
                 continue;
             }
-            java.util.Set<TemporalFormats.Component> components =
-                    java.util.EnumSet.copyOf(TemporalFormats.componentsOf(declared));
+            Set<TemporalFormats.Component> components =
+                    EnumSet.copyOf(TemporalFormats.componentsOf(declared));
             if (supplemented) {
                 components.add(TemporalFormats.Component.YEAR);
             }
@@ -372,15 +376,15 @@ public final class Dsl {
 
     private static DateListAggregate dateExtremum(DateListAggregate.Mode mode, ValueKind kind,
             AggregateOperand first, AggregateOperand... rest) {
-        var operands = new java.util.ArrayList<AggregateOperand>();
+        var operands = new ArrayList<AggregateOperand>();
         operands.add(first);
-        operands.addAll(java.util.List.of(rest));
+        operands.addAll(List.of(rest));
         return new DateListAggregate(mode, operands, kind);
     }
 
     /** {@code FirstFilledValue(…)} over a number repetition list — the first specified value, as a number. catalog:FirstFilledValue */
     public static NumberExpr firstFilledNumber(FieldListRef numberScope) {
-        requireKind(numberScope, io.github.mbackschat.a12.dm.core.ValueKind.NUMBER, "firstFilledNumber");
+        requireKind(numberScope, ValueKind.NUMBER, "firstFilledNumber");
         return new NumberExpr(new FirstFilledValue(numberScope));
     }
 
@@ -407,7 +411,7 @@ public final class Dsl {
 
     /** {@code FirstFilledValue(…)} over a date repetition list — the first specified value, as a date. catalog:FirstFilledValue */
     public static DateExpr firstFilledDate(FieldListRef dateScope) {
-        requireKind(dateScope, io.github.mbackschat.a12.dm.core.ValueKind.DATE, "firstFilledDate");
+        requireKind(dateScope, ValueKind.DATE, "firstFilledDate");
         return new DateExpr(new FirstFilledValue(dateScope));
     }
 
@@ -562,7 +566,7 @@ public final class Dsl {
 
     /** {@code FirstFilledValue(…)} over a string repetition list — the first specified value, as a string. catalog:FirstFilledValue */
     public static StringExpr firstFilledString(FieldListRef stringScope) {
-        requireKind(stringScope, io.github.mbackschat.a12.dm.core.ValueKind.STRING, "firstFilledString");
+        requireKind(stringScope, ValueKind.STRING, "firstFilledString");
         return new StringExpr(new FirstFilledValue(stringScope));
     }
 
@@ -653,7 +657,7 @@ public final class Dsl {
 
     /** {@code FirstFilledValue(…)} over an enum repetition list — the first specified value, as an enum. catalog:FirstFilledValue */
     public static EnumExpr firstFilledEnum(FieldListRef enumScope) {
-        requireKind(enumScope, io.github.mbackschat.a12.dm.core.ValueKind.ENUMERATION, "firstFilledEnum");
+        requireKind(enumScope, ValueKind.ENUMERATION, "firstFilledEnum");
         return new EnumExpr(new FirstFilledValue(enumScope));
     }
 
@@ -682,7 +686,7 @@ public final class Dsl {
                 firstFilledValue(first, ValueKind.ENUMERATION, "firstFilledEnum", second, rest)));
     }
 
-    private static void requireKind(FieldListRef scope, io.github.mbackschat.a12.dm.core.ValueKind expected,
+    private static void requireKind(FieldListRef scope, ValueKind expected,
             String method) {
         if (scope.kind() != expected) {
             throw new IllegalArgumentException(method + " needs a " + expected + " field list; "
@@ -747,9 +751,9 @@ public final class Dsl {
 
     private static NumberExpr listAggregate(ListAggregate.AggOp op, AggregateOperand first,
             AggregateOperand... rest) {
-        var operands = new java.util.ArrayList<AggregateOperand>();
+        var operands = new ArrayList<AggregateOperand>();
         operands.add(first);
-        operands.addAll(java.util.List.of(rest));
+        operands.addAll(List.of(rest));
         return new NumberExpr(new ListAggregate(op, operands));
     }
 
@@ -1047,7 +1051,7 @@ public final class Dsl {
     /** {@code Date(day, month, century, decade)} — a date whose year is split into century + 2-digit decade. */
     public static DateExpr date(NumberExpr day, NumberExpr month, NumberExpr century, NumberExpr decade) {
         return new DateExpr(new DateConstruction(day.expression(), month.expression(),
-                century.expression(), java.util.Optional.of(decade.expression())));
+                century.expression(), Optional.of(decade.expression())));
     }
 
     /**
@@ -1073,7 +1077,7 @@ public final class Dsl {
     public static DateExpr date(TemporalComponent day, TemporalComponent month,
             TemporalComponent century, TemporalComponent shortYear) {
         return new DateExpr(new DateConstruction(day.expression(), month.expression(),
-                century.expression(), java.util.Optional.of(shortYear.expression())));
+                century.expression(), Optional.of(shortYear.expression())));
     }
 
     /** {@code Time()} — midnight: every omitted trailing component defaults to zero. catalog:Time */
@@ -1280,7 +1284,7 @@ public final class Dsl {
         String declared = declaredFormatOf(model, source);
         if (declared != null && !TemporalFormats.componentsOf(declared).contains(wanted)) {
             throw wrongFormat(unit.operatorId(), model, source, declared,
-                    "the " + wanted.name().toLowerCase(java.util.Locale.ROOT));
+                    "the " + wanted.name().toLowerCase(Locale.ROOT));
         }
         String precision = declaredPrecisionOf(model, source);
         if (precision != null && DatePrecisions.speaksAbout(wanted)
@@ -1312,9 +1316,9 @@ public final class Dsl {
             default -> "the operand";
         };
         return Refusals.of(KernelCode.MVK_INVALID_DATE_TYPE, operatorId + " needs a source that guarantees "
-                + "the " + wanted.name().toLowerCase(java.util.Locale.ROOT) + "; '" + path
+                + "the " + wanted.name().toLowerCase(Locale.ROOT) + "; '" + path
                 + "' is declared " + precision + ", which admits an unknown "
-                + wanted.name().toLowerCase(java.util.Locale.ROOT));
+                + wanted.name().toLowerCase(Locale.ROOT));
     }
 
     /**
@@ -1647,10 +1651,10 @@ public final class Dsl {
 
     /** {@code NumberOfDifferentValues(…)} — distinct-value count over type-homogeneous operands. catalog:NumberOfDifferentValues */
     public static NumberExpr numberOfDifferentValues(AggregateOperand first, AggregateOperand... rest) {
-        var fields = new java.util.ArrayList<AggregateOperand>();
+        var fields = new ArrayList<AggregateOperand>();
         fields.add(first);
-        fields.addAll(java.util.List.of(rest));
-        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.DIFFERENT_VALUES, fields, java.util.List.of()));
+        fields.addAll(List.of(rest));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.DIFFERENT_VALUES, fields, List.of()));
     }
 
     /**
@@ -1663,16 +1667,16 @@ public final class Dsl {
                     + " group (its wildcard scope): " + repeatableGroup.path());
         }
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS,
-                java.util.List.of(), java.util.List.of(repeatableGroup)));
+                List.of(), List.of(repeatableGroup)));
     }
 
     /** {@code NumberOfFilledGroups(g1, g2, …)} — ≥2 groups by signature. */
     public static NumberExpr numberOfFilledGroups(GroupRef first, GroupRef second, GroupRef... rest) {
-        var groups = new java.util.ArrayList<GroupRef>();
+        var groups = new ArrayList<GroupRef>();
         groups.add(first);
         groups.add(second);
-        groups.addAll(java.util.List.of(rest));
-        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, java.util.List.of(), groups));
+        groups.addAll(List.of(rest));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, List.of(), groups));
     }
 
     // --- field-list × value-list quantifiers — Name(f1, f2 In v1, v2) --------------------------
@@ -1682,19 +1686,19 @@ public final class Dsl {
 
     /** {@code AtLeastOneFieldValueIncludedInValueList(f1, f2 In "v1", "v2")} — at least one listed field's value is in the value list. catalog:AtLeastOneFieldValueIncludedInValueList */
     public static Condition atLeastOneFieldValueIncludedInValueList(
-            java.util.List<String> values, StringRef first, StringRef... rest) {
+            List<String> values, StringRef first, StringRef... rest) {
         return stringListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, first, rest);
     }
 
     /** {@code NoFieldValueIncludedInValueList(f1, f2 In "v1", "v2")} — none of the listed fields' values is in the value list. catalog:NoFieldValueIncludedInValueList */
     public static Condition noFieldValueIncludedInValueList(
-            java.util.List<String> values, StringRef first, StringRef... rest) {
+            List<String> values, StringRef first, StringRef... rest) {
         return stringListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, first, rest);
     }
 
     /** {@code NotAllFieldValuesIncludedInValueList(f1, f2 In "v1", "v2")} — at least one listed field's value is NOT in the value list. catalog:NotAllFieldValuesIncludedInValueList */
     public static Condition notAllFieldValuesIncludedInValueList(
-            java.util.List<String> values, StringRef first, StringRef... rest) {
+            List<String> values, StringRef first, StringRef... rest) {
         return stringListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
     }
 
@@ -1707,26 +1711,26 @@ public final class Dsl {
 
     /** {@code AtLeastOneFieldValueIncludedInValueList(G* In "v1", "v2")} — over a group's expanded fields. catalog:AtLeastOneFieldValueIncludedInValueList */
     public static Condition atLeastOneFieldValueIncludedInValueList(
-            java.util.List<String> values, GroupListRef group) {
+            List<String> values, GroupListRef group) {
         return groupScopeValueListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, group);
     }
 
     /** {@code NoFieldValueIncludedInValueList(G* In "v1", "v2")} — over a group's expanded fields. catalog:NoFieldValueIncludedInValueList */
     public static Condition noFieldValueIncludedInValueList(
-            java.util.List<String> values, GroupListRef group) {
+            List<String> values, GroupListRef group) {
         return groupScopeValueListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, group);
     }
 
     /** {@code NotAllFieldValuesIncludedInValueList(G* In "v1", "v2")} — over a group's expanded fields. catalog:NotAllFieldValuesIncludedInValueList */
     public static Condition notAllFieldValuesIncludedInValueList(
-            java.util.List<String> values, GroupListRef group) {
+            List<String> values, GroupListRef group) {
         return groupScopeValueListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, group);
     }
 
     private static Condition groupScopeValueListQuantifier(
-            ValueListQuantifier q, java.util.List<String> values, GroupListRef group) {
+            ValueListQuantifier q, List<String> values, GroupListRef group) {
         var literals = values.stream().<Calculation>map(StringLiteral::new).toList();
-        return new FieldListValueListCondition(q, java.util.List.of(group), literals);
+        return new FieldListValueListCondition(q, List.of(group), literals);
     }
 
     // Enum field-list value-list quantifiers. Each literal is admitted against the UNION of the selected
@@ -1737,55 +1741,55 @@ public final class Dsl {
     // overloads add the mixed direct/category authoring surface.
 
     public static Condition atLeastOneFieldValueIncludedInValueList(
-            java.util.List<String> values, EnumRef first, EnumRef... rest) {
+            List<String> values, EnumRef first, EnumRef... rest) {
         return enumListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, enumListRefs(first, rest));
     }
 
     public static Condition noFieldValueIncludedInValueList(
-            java.util.List<String> values, EnumRef first, EnumRef... rest) {
+            List<String> values, EnumRef first, EnumRef... rest) {
         return enumListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, enumListRefs(first, rest));
     }
 
     public static Condition notAllFieldValuesIncludedInValueList(
-            java.util.List<String> values, EnumRef first, EnumRef... rest) {
+            List<String> values, EnumRef first, EnumRef... rest) {
         return enumListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, enumListRefs(first, rest));
     }
 
     public static Condition atLeastOneFieldValueIncludedInValueList(
-            java.util.List<String> values, EnumListRef first, EnumListRef... rest) {
+            List<String> values, EnumListRef first, EnumListRef... rest) {
         return enumListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, enumListRefs(first, rest));
     }
 
     public static Condition noFieldValueIncludedInValueList(
-            java.util.List<String> values, EnumListRef first, EnumListRef... rest) {
+            List<String> values, EnumListRef first, EnumListRef... rest) {
         return enumListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, enumListRefs(first, rest));
     }
 
     public static Condition notAllFieldValuesIncludedInValueList(
-            java.util.List<String> values, EnumListRef first, EnumListRef... rest) {
+            List<String> values, EnumListRef first, EnumListRef... rest) {
         return enumListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, enumListRefs(first, rest));
     }
 
     /** {@code DateRangesOverlap(r1, r2, …)} — true iff the date ranges of the listed fields overlap. catalog:DateRangesOverlap */
     public static Condition dateRangesOverlap(FieldOperand first, FieldOperand... rest) {
-        var fields = new java.util.ArrayList<FieldOperand>();
+        var fields = new ArrayList<FieldOperand>();
         fields.add(first);
-        fields.addAll(java.util.List.of(rest));
+        fields.addAll(List.of(rest));
         return new EntityListPredicate(Quantifier.DATE_RANGES_OVERLAP, List.copyOf(fields));
     }
 
     /** {@code AtLeastOneDateRangeOverlaps(range IN r1, r2, …)} — {@code range} overlaps at least one listed range. catalog:AtLeastOneDateRangeOverlaps */
     public static Condition atLeastOneDateRangeOverlaps(FieldOperand range, FieldOperand first, FieldOperand... rest) {
-        var values = new java.util.ArrayList<ValueListOperand>();
+        var values = new ArrayList<ValueListOperand>();
         values.add(first);
-        values.addAll(java.util.List.of(rest));
+        values.addAll(List.of(rest));
         return new FieldListEntityListCondition(ValueListQuantifier.AT_LEAST_ONE_DATE_RANGE_OVERLAPS,
-                java.util.List.<ValueListOperand>of(range), values);
+                List.<ValueListOperand>of(range), values);
     }
 
     private static Condition stringListQuantifier(
-            ValueListQuantifier q, java.util.List<String> values, StringRef first, StringRef... rest) {
-        var fields = new java.util.ArrayList<ValueListOperand>();
+            ValueListQuantifier q, List<String> values, StringRef first, StringRef... rest) {
+        var fields = new ArrayList<ValueListOperand>();
         fields.add(first.field());
         for (StringRef r : rest) {
             fields.add(r.field());
@@ -1794,22 +1798,22 @@ public final class Dsl {
         return new FieldListValueListCondition(q, fields, literals);
     }
 
-    private static java.util.List<EnumListRef> enumListRefs(EnumListRef first, EnumListRef... rest) {
-        var refs = new java.util.ArrayList<EnumListRef>();
+    private static List<EnumListRef> enumListRefs(EnumListRef first, EnumListRef... rest) {
+        var refs = new ArrayList<EnumListRef>();
         refs.add(first);
-        refs.addAll(java.util.List.of(rest));
+        refs.addAll(List.of(rest));
         return refs;
     }
 
     private static Condition enumListQuantifier(
-            ValueListQuantifier q, java.util.List<String> values, java.util.List<EnumListRef> refs) {
-        var operands = new java.util.ArrayList<ValueListOperand>();
+            ValueListQuantifier q, List<String> values, List<EnumListRef> refs) {
+        var operands = new ArrayList<ValueListOperand>();
         var union = new java.util.LinkedHashSet<String>();
         for (EnumListRef ref : refs) {
             operands.add(ref.listOperand());
             union.addAll(ref.admissibleValues());   // direct → stored values; category → category values
         }
-        var literals = new java.util.ArrayList<Calculation>();
+        var literals = new ArrayList<Calculation>();
         for (String v : values) {
             if (!union.contains(v)) {
                 throw Refusals.of(KernelCode.MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY,
@@ -1825,28 +1829,28 @@ public final class Dsl {
     // enum-kind starred lists are deferred until FieldListRef carries the enum domain.
 
     public static Condition atLeastOneFieldValueIncludedInValueList(
-            java.util.List<String> values, FieldListRef first, FieldListRef... rest) {
+            List<String> values, FieldListRef first, FieldListRef... rest) {
         return flattenedListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, first, rest);
     }
 
     public static Condition noFieldValueIncludedInValueList(
-            java.util.List<String> values, FieldListRef first, FieldListRef... rest) {
+            List<String> values, FieldListRef first, FieldListRef... rest) {
         return flattenedListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, first, rest);
     }
 
     public static Condition notAllFieldValuesIncludedInValueList(
-            java.util.List<String> values, FieldListRef first, FieldListRef... rest) {
+            List<String> values, FieldListRef first, FieldListRef... rest) {
         return flattenedListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
     }
 
     private static Condition flattenedListQuantifier(
-            ValueListQuantifier q, java.util.List<String> values, FieldListRef first, FieldListRef... rest) {
+            ValueListQuantifier q, List<String> values, FieldListRef first, FieldListRef... rest) {
         // Starred (flattened) lists are wildcard scopes, and the kernel's DIRECT gate
         // (CheckEntityListenUtils.checkDuplicatesInDirectRefs) skips a wildcarded ref, so an identical one may
         // occupy two slots and there is no dedup here. That is one gate, not an exemption from duplicate
         // checking: the indirect-overlap arm (MVK_DUPLICATE_PARAM2) is unaffected by the star and stays
         // kernel-arbitrated, as it is for every operand list.
-        var fields = new java.util.ArrayList<ValueListOperand>();
+        var fields = new ArrayList<ValueListOperand>();
         fields.add(checkedStringList(first));
         for (FieldListRef r : rest) {
             fields.add(checkedStringList(r));
@@ -1856,7 +1860,7 @@ public final class Dsl {
     }
 
     private static FieldListRef checkedStringList(FieldListRef ref) {
-        if (ref.kind() != io.github.mbackschat.a12.dm.core.ValueKind.STRING) {
+        if (ref.kind() != ValueKind.STRING) {
             throw Refusals.of(KernelCode.MVK_INVALID_TYPES_FOR_COMPARISON,
                     "value-list quantifiers over repetition lists take string fields here; "
                             + ref.renderedPath() + " is " + ref.kind() + " — enum-kind lists are deferred");
@@ -1872,41 +1876,41 @@ public final class Dsl {
     // the category-projection surface.
 
     public static Condition atLeastOneFieldValueIncludedInValueList(
-            java.util.List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
+            List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
         return entityListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, valueFields, first, rest);
     }
 
     public static Condition noFieldValueIncludedInValueList(
-            java.util.List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
+            List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
         return entityListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, valueFields, first, rest);
     }
 
     public static Condition notAllFieldValuesIncludedInValueList(
-            java.util.List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
+            List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
         return entityListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, valueFields, first, rest);
     }
 
     public static Condition atLeastOneFieldValueIncludedInValueList(
-            java.util.List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
+            List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
         return entityListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, valueFields, first, rest);
     }
 
     public static Condition noFieldValueIncludedInValueList(
-            java.util.List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
+            List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
         return entityListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, valueFields, first, rest);
     }
 
     public static Condition notAllFieldValuesIncludedInValueList(
-            java.util.List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
+            List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
         return entityListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, valueFields, first, rest);
     }
 
     private static Condition entityListQuantifier(ValueListQuantifier q,
-            java.util.List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
-        var fields = new java.util.ArrayList<ValueListOperand>();
+            List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
+        var fields = new ArrayList<ValueListOperand>();
         fields.add(first);
-        fields.addAll(java.util.List.of(rest));
-        var values = java.util.List.<ValueListOperand>copyOf(valueFields);
+        fields.addAll(List.of(rest));
+        var values = List.<ValueListOperand>copyOf(valueFields);
         checkEntityValuedKinds(q.operatorId(), fields, values);
         return new FieldListEntityListCondition(q, fields, values);
     }
@@ -1919,7 +1923,7 @@ public final class Dsl {
      * declare {@code kind()}, because its {@link GroupListRef} arm cannot answer it (the kind belongs to the
      * expansion); callers must therefore decide what to do about a group before asking, which is the point.
      */
-    private static io.github.mbackschat.a12.dm.core.ValueKind kindOf(ValueListOperand op) {
+    private static ValueKind kindOf(ValueListOperand op) {
         return switch (op) {
             case FieldOperand field -> field.kind();
             case EnumCategoryAccess category -> category.kind();
@@ -1930,7 +1934,7 @@ public final class Dsl {
     }
 
     /** Map a {@link io.github.mbackschat.a12.dm.core.ValueKind} to its value-list base kind, or {@code null} if disallowed. */
-    private static ValueListBaseKind baseKind(io.github.mbackschat.a12.dm.core.ValueKind kind) {
+    private static ValueListBaseKind baseKind(ValueKind kind) {
         return switch (kind) {
             // the kernel treats predefined/custom types as strings for base-type matching
             case STRING, CUSTOM -> ValueListBaseKind.STRING;
@@ -1948,8 +1952,8 @@ public final class Dsl {
      * constructor, because they are intrinsic and one factory reaches that record without passing here.
      */
     private static void checkEntityValuedKinds(String opName,
-            java.util.List<ValueListOperand> fields, java.util.List<ValueListOperand> values) {
-        var combined = new java.util.ArrayList<ValueListOperand>(fields);
+            List<ValueListOperand> fields, List<ValueListOperand> values) {
+        var combined = new ArrayList<ValueListOperand>(fields);
         combined.addAll(values);
         ValueListBaseKind base = null;
         for (ValueListOperand op : combined) {
@@ -2029,7 +2033,7 @@ public final class Dsl {
         List<FieldRef> keys = new ArrayList<>();
         keys.add(first);
         keys.addAll(List.of(rest));
-        return new RepetitionNotUniqueCondition(keys, java.util.Optional.empty());
+        return new RepetitionNotUniqueCondition(keys, Optional.empty());
     }
 
     /** {@code AllFieldsFilled(f1, …)} over a built list — the list peer of the varargs form, for bulk
@@ -2154,9 +2158,9 @@ public final class Dsl {
     }
 
     private static Condition groupScopedFieldFill(Quantifier q, GroupListRef first, GroupListRef... rest) {
-        var scopes = new java.util.ArrayList<AggregateOperand>();
+        var scopes = new ArrayList<AggregateOperand>();
         scopes.add(first);
-        scopes.addAll(java.util.List.of(rest));
+        scopes.addAll(List.of(rest));
         return new EntityListPredicate(q, scopes);
     }
 

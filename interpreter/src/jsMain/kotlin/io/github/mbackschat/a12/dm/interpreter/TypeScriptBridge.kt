@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.interpreter.CustomFieldValidationResult as Co
 import io.github.mbackschat.a12.dm.interpreter.CustomFieldValidator as CoreCustomFieldValidator
 import io.github.mbackschat.a12.dm.interpreter.DocumentCoordinateError as CoreDocumentCoordinateError
 import io.github.mbackschat.a12.dm.interpreter.DocumentCoordinateReason as CoreDocumentCoordinateReason
+import io.github.mbackschat.a12.dm.interpreter.DocumentDecodeLimits as CoreDocumentDecodeLimits
 import io.github.mbackschat.a12.dm.interpreter.DocumentEncodeError as CoreDocumentEncodeError
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputDiagnostic as CoreDocumentInputDiagnostic
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError as CoreDocumentInputError
@@ -54,6 +55,7 @@ import io.github.mbackschat.a12.dm.interpreter.promiseFromSuspend
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.int
@@ -796,10 +798,10 @@ private fun preparationLimits(json: String?): CoreModelPreparationLimits {
     return builder.build()
 }
 
-private fun documentLimits(json: String?): io.github.mbackschat.a12.dm.interpreter.DocumentDecodeLimits {
-    if (json.isNullOrEmpty()) return io.github.mbackschat.a12.dm.interpreter.DocumentDecodeLimits.defaults()
+private fun documentLimits(json: String?): CoreDocumentDecodeLimits {
+    if (json.isNullOrEmpty()) return CoreDocumentDecodeLimits.defaults()
     val values = Json.parseToJsonElement(json).jsonObject
-    val builder = io.github.mbackschat.a12.dm.interpreter.DocumentDecodeLimits.builder()
+    val builder = CoreDocumentDecodeLimits.builder()
     values.intOrNull("maxDocumentCodeUnits")?.let(builder::maxDocumentCodeUnits)
     values.intOrNull("maxGroupPlacements")?.let(builder::maxGroupPlacements)
     values.intOrNull("maxFieldPlacements")?.let(builder::maxFieldPlacements)
@@ -1060,18 +1062,18 @@ private fun CoreComputationOutcome.wireName(): String = when (this) {
     CoreComputationOutcome.ERRORED -> "errored"
 }
 
-private fun kotlinx.serialization.json.JsonObjectBuilder.putOptional(name: String, value: String?) {
+private fun JsonObjectBuilder.putOptional(name: String, value: String?) {
     if (value != null) put(name, value)
 }
 
-private fun kotlinx.serialization.json.JsonObjectBuilder.putOptional(name: String, value: Int?) {
+private fun JsonObjectBuilder.putOptional(name: String, value: Int?) {
     if (value != null) put(name, value)
 }
 
-private fun kotlinx.serialization.json.JsonObjectBuilder.putOptional(name: String, value: Long?) {
+private fun JsonObjectBuilder.putOptional(name: String, value: Long?) {
     if (value != null) put(name, value)
 }
 
-private fun kotlinx.serialization.json.JsonObjectBuilder.putOptional(name: String, value: Boolean?) {
+private fun JsonObjectBuilder.putOptional(name: String, value: Boolean?) {
     if (value != null) put(name, value)
 }

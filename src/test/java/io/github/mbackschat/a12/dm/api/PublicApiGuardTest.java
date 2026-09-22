@@ -16,6 +16,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -377,7 +378,7 @@ class PublicApiGuardTest {
     private static ClassLoader classLoader(Kit k) {
         List<Path> classes = mainClasses(k);
         try {
-            java.net.URL[] urls = new java.net.URL[classes.size()];
+            URL[] urls = new URL[classes.size()];
             for (int i = 0; i < classes.size(); i++) {
                 urls[i] = classes.get(i).toUri().toURL();
             }

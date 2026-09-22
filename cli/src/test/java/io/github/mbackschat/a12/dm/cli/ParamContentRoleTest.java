@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
@@ -153,9 +154,9 @@ class ParamContentRoleTest {
      */
     @Test
     void noParamDescribedAsWrittenIsClassifiedAsInboundContent() throws Exception {
-        java.util.regex.Pattern writes = java.util.regex.Pattern.compile(
+        Pattern writes = Pattern.compile(
                 "\\b(overwrite|written as|written to|write (?:the|all|it|them)|writes)\\b",
-                java.util.regex.Pattern.CASE_INSENSITIVE);
+                Pattern.CASE_INSENSITIVE);
         List<String> wrong = publishedParams(manifest()).entrySet().stream()
                 .filter(e -> e.getValue().hasNonNull("contentRole"))
                 .filter(e -> !"OUTBOUND_DESTINATION".equals(e.getValue().path("contentRole").asText()))

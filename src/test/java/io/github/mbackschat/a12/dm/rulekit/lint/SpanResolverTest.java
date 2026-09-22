@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.core.Severity;
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource;
 
@@ -101,9 +102,9 @@ class SpanResolverTest {
         // typed-buildable (the builder prevents it), so construct the read-shaped AST directly —
         // exactly what a converted foreign rule would carry.
         Condition c = new io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition(
-                new io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue(m.field("/Subscription/Addons/Name")),
+                new FieldValue(m.field("/Subscription/Addons/Name")),
                 io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp.LT,
-                new io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue(m.field("/Subscription/Billing/InvoiceEmail")));
+                new FieldValue(m.field("/Subscription/Billing/InvoiceEmail")));
 
         Diagnostic refined = resolver.resolve(List.of(kernel("MVK_INVALID_TYPE_FOR_COMPARISON")), c).get(0);
 

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.conformance.KernelComputeProjection
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
 import io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind
@@ -15,6 +16,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
+import java.io.File
 import java.lang.management.ManagementFactory
 import java.util.Locale
 
@@ -555,8 +557,8 @@ object PerfHarness {
      * lands in the test report). Watch a run with `tail -f adapter/build/perf-progress.log`. The file is
      * truncated once per JVM (first call), so each run starts clean.
      */
-    private val progressFile: java.io.File by lazy {
-        java.io.File("build/perf-progress.log").apply { parentFile?.mkdirs(); writeText("") }
+    private val progressFile: File by lazy {
+        File("build/perf-progress.log").apply { parentFile?.mkdirs(); writeText("") }
     }
 
     fun progress(msg: String) {
@@ -674,7 +676,7 @@ object PerfHarness {
     ): PerfOutcome {
         val outcome = try {
             engine.instance(n, variant).outcome()
-        } catch (e: io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException) {
+        } catch (e: UnsupportedConstructException) {
             throw IllegalStateException(
                 "${scenario.name} (N=$n, variant=$variant): refusing to time — ${e.message}", e)
         }
@@ -709,7 +711,7 @@ object PerfHarness {
         for (variant in 0 until variants) {
             val outcome = try {
                 engine.instance(n, variant).outcome()
-            } catch (e: io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException) {
+            } catch (e: UnsupportedConstructException) {
                 throw IllegalStateException(
                     "${scenario.name} (N=$n, variant=$variant): refusing to time — ${e.message}", e)
             }
@@ -1558,7 +1560,7 @@ object PerfHarness {
         // profiling instance without projecting away `unsupported`.
         val outcome = try {
             inst.outcome()
-        } catch (e: io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException) {
+        } catch (e: UnsupportedConstructException) {
             throw IllegalStateException(
                 "${scenario.name} (N=$n, variant=0): refusing to time — ${e.message}", e)
         }

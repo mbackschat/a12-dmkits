@@ -9,7 +9,11 @@ import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
  * {@link ModelSynthesizer} — the round-trip acceptance criterion (MODEL-PROFILE-SPEC "the profile-driven
@@ -72,14 +76,14 @@ class ModelSynthesizerTest {
     @Test
     void reproducesConstructMixAndShapesArity_stayingValid() {
         // a construct-bearing target: a model-level value-list rule of arity 2 (an AND of two clauses)
-        io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel base =
-                io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(readResource("models/subscription.dm.json"));
+        BoundModel base =
+                BoundModel.ofJson(readResource("models/subscription.dm.json"));
         var vl = base.rule(base.group("/Subscription")).name("Vl").errorField(base.enumOf("/Subscription/Tier"))
                 .when(base.enumOf("/Subscription/Tier").in("PRO", "ENTERPRISE")
                         .and(base.field("/Subscription/AutoRenew").filled()))
-                .code("VL").severity(io.github.mbackschat.a12.dm.rulekit.dsl.Severity.ERROR)
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("vl"),
-                        io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.de("vl")).build();
+                .code("VL").severity(Severity.ERROR)
+                .message(Dsl.en("vl"),
+                        Dsl.de("vl")).build();
         SynthesisProfile target = SynthesisProfile.of(base.add(vl).toJson());
 
         String json = ModelSynthesizer.synthesize(target, 5L);
@@ -99,19 +103,19 @@ class ModelSynthesizerTest {
     @Test
     void reproducesComputationCountAndCascade() {
         // a controlled target: three NUMBER fields wired into a computed-on-computed cascade (A ← B ← C)
-        String structure = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("Casc").locale("en_US")
+        String structure = DocumentModelDraft.named("Casc").locale("en_US")
                 .rootGroup("R", g -> {
-                    g.field("A", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    g.field("B", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    g.field("C", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    g.field("D", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);  // a spare operand so
+                    g.field("A", FieldKind.NUMBER);
+                    g.field("B", FieldKind.NUMBER);
+                    g.field("C", FieldKind.NUMBER);
+                    g.field("D", FieldKind.NUMBER);  // a spare operand so
                     // the synth can keep one number NON-computed (its acyclic operand sink) and still make 3
                 }).build().toJson();
         BoundModel base = BoundModel.ofJson(structure);
         base = base.add(base.computation(base.num("/R/A")).name("KA")
-                .calc(new io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral(java.math.BigDecimal.ZERO)).message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("ka")).build());
-        base = base.add(base.computation(base.num("/R/B")).name("KB").calc(base.num("/R/A").value()).message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("kb")).build());
-        base = base.add(base.computation(base.num("/R/C")).name("KC").calc(base.num("/R/B").value()).message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("kc")).build());
+                .calc(new io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral(java.math.BigDecimal.ZERO)).message(Dsl.en("ka")).build());
+        base = base.add(base.computation(base.num("/R/B")).name("KB").calc(base.num("/R/A").value()).message(Dsl.en("kb")).build());
+        base = base.add(base.computation(base.num("/R/C")).name("KC").calc(base.num("/R/B").value()).message(Dsl.en("kc")).build());
         SynthesisProfile target = SynthesisProfile.of(base.toJson());
         // sanity: the target itself is a 3-deep cascade
         assertEquals(3, target.computations().count());
@@ -132,32 +136,32 @@ class ModelSynthesizerTest {
         // a target whose computations are RICH: a filtered aggregate, a preconditioned alternative keyed on an
         // enum, and a feeding cascade (Total ← Net ← Gross) — the shape the enriched synthesizer must reproduce
         // (the "all one alternative, all evaluate to 0" trap this guards against).
-        String structure = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("Rich").locale("en_US")
+        String structure = DocumentModelDraft.named("Rich").locale("en_US")
                 .rootGroup("R", g -> {
-                    g.field("Gross", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    g.field("Net", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    g.field("Total", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    g.field("Base", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                    g.field("Gross", FieldKind.NUMBER);
+                    g.field("Net", FieldKind.NUMBER);
+                    g.field("Total", FieldKind.NUMBER);
+                    g.field("Base", FieldKind.NUMBER);
                     g.enumField("Kind", e -> { e.value("A"); e.value("B"); });
                     g.group("Lines", l -> {
                         l.repeatable(50);
-                        l.field("Amt", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                        l.field("Amt", FieldKind.NUMBER);
                     });
                 }).build().toJson();
         BoundModel base = BoundModel.ofJson(structure);
         // Gross = Sum(Lines*/Amt Having Amt>0)  — aggregate + filter
         base = base.add(base.computation(base.num("/R/Gross"))
-                .name("KG").calc(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.sum(
+                .name("KG").calc(Dsl.sum(
                         base.flatten("/R/Lines*/Amt").having(base.num("/R/Lines/Amt").gt(0))).expression())
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("kg")).build());
+                .message(Dsl.en("kg")).build());
         // Net reads Gross (feeding); Total reads Net (feeding cascade)
         base = base.add(base.computation(base.num("/R/Net")).name("KN")
                 .when(base.enumOf("/R/Kind").is("A")).calc(base.num("/R/Gross").asNumber().plus(base.num("/R/Base").asNumber()).expression())
                 .when(base.enumOf("/R/Kind").is("B")).calc(base.num("/R/Gross").asNumber().expression())
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("kn")).build());
+                .message(Dsl.en("kn")).build());
         base = base.add(base.computation(base.num("/R/Total")).name("KT")
                 .calc(base.num("/R/Net").asNumber().expression())
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("kt")).build());
+                .message(Dsl.en("kt")).build());
         SynthesisProfile target = SynthesisProfile.of(base.toJson());
         assertTrue(target.computations().feedingOthers() >= 2, "target feeds ≥2 computed fields");
 
@@ -190,25 +194,25 @@ class ModelSynthesizerTest {
         // a target whose computed fields are a MIX of kinds (a number, a string, a date) — the axis the profiler
         // was blind to, and the assumption ("all computed fields are numbers") that made the operand pool look
         // exhausted. The synth must reproduce the mix, not force everything to NUMBER.
-        String structure = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("Mix").locale("en_US")
+        String structure = DocumentModelDraft.named("Mix").locale("en_US")
                 .rootGroup("R", g -> {
-                    g.field("N1", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    g.field("N2", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    g.field("S1", io.github.mbackschat.a12.dm.modelkit.FieldKind.STRING);
-                    g.field("S2", io.github.mbackschat.a12.dm.modelkit.FieldKind.STRING);
-                    g.field("D1", io.github.mbackschat.a12.dm.modelkit.FieldKind.DATE);
-                    g.field("D2", io.github.mbackschat.a12.dm.modelkit.FieldKind.DATE);
+                    g.field("N1", FieldKind.NUMBER);
+                    g.field("N2", FieldKind.NUMBER);
+                    g.field("S1", FieldKind.STRING);
+                    g.field("S2", FieldKind.STRING);
+                    g.field("D1", FieldKind.DATE);
+                    g.field("D2", FieldKind.DATE);
                 }).build().toJson();
         BoundModel base = BoundModel.ofJson(structure);
         base = base.add(base.computation(base.num("/R/N1")).name("KN")
                 .calc(base.num("/R/N2").asNumber().plus(1).expression())
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("kn")).build());
+                .message(Dsl.en("kn")).build());
         base = base.add(base.computation(base.str("/R/S1")).name("KS")
                 .calc(base.str("/R/S2").asString().expression())   // a string computed by copying another string
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("ks")).build());
+                .message(Dsl.en("ks")).build());
         base = base.add(base.computation(base.field("/R/D1")).name("KD")
-                .calc(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.addYears(base.date("/R/D2"), 1).expression())
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("kd")).build());
+                .calc(Dsl.addYears(base.date("/R/D2"), 1).expression())
+                .message(Dsl.en("kd")).build());
         SynthesisProfile target = SynthesisProfile.of(base.toJson());
         assertEquals(3, target.computations().computedFieldKinds().values().stream().mapToInt(Integer::intValue).sum(),
                 "target has 3 computed fields across kinds: " + target.computations().computedFieldKinds());
@@ -228,8 +232,8 @@ class ModelSynthesizerTest {
     void reproducesConstraintAndClusterAxes() {
         // a target carrying the declared-constraint axes (a scaled number, a length-bounded and a patterned
         // string) and rule CLUSTERING (several rules sharing one error field) — the axes added in this pass
-        var K = io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER;
-        String structure = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("Con").locale("en_US")
+        var K = FieldKind.NUMBER;
+        String structure = DocumentModelDraft.named("Con").locale("en_US")
                 .rootGroup("R", g -> {
                     g.numberField("Amount", n -> n.fractionDigits(2, 2));   // scale 2
                     g.field("Qty", K);                                      // scale 0
@@ -242,8 +246,8 @@ class ModelSynthesizerTest {
         for (int i = 1; i <= 3; i++) {
             base = base.add(base.rule(base.group("/R")).name("Rc" + i).errorField(base.enumOf("/R/Status"))
                     .when(base.enumOf("/R/Status").is("V1").and(base.num("/R/Qty").gt(0)))
-                    .code("RC" + i).severity(io.github.mbackschat.a12.dm.rulekit.dsl.Severity.ERROR)
-                    .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("rc" + i)).build());
+                    .code("RC" + i).severity(Severity.ERROR)
+                    .message(Dsl.en("rc" + i)).build());
         }
         SynthesisProfile target = SynthesisProfile.of(base.toJson());
         assertEquals(1, target.structure().constraints().stringsWithLength());
@@ -270,25 +274,25 @@ class ModelSynthesizerTest {
     @Test
     void doesNotOvershootRepeatableNestingDepthOnADeepTree() {
         // a deep tree (5 levels) but repeatable nesting capped at 2 (G1←G2 nested; H1 independent)
-        String json = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("Deep").locale("en_US")
+        String json = DocumentModelDraft.named("Deep").locale("en_US")
                 .rootGroup("R", r -> {
-                    r.field("f0", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                    r.field("f0", FieldKind.NUMBER);
                     r.group("G1", g1 -> {
                         g1.repeatable(5);
-                        g1.field("f1", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                        g1.field("f1", FieldKind.NUMBER);
                         g1.group("G2", g2 -> {
                             g2.repeatable(5);
-                            g2.field("f2", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                            g2.field("f2", FieldKind.NUMBER);
                             g2.group("G3", g3 -> {
-                                g3.field("f3", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                                g3.field("f3", FieldKind.NUMBER);
                                 g3.group("G4", g4 ->
-                                        g4.field("f4", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER));
+                                        g4.field("f4", FieldKind.NUMBER));
                             });
                         });
                     });
                     r.group("H1", h1 -> {
                         h1.repeatable(3);
-                        h1.field("h", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                        h1.field("h", FieldKind.NUMBER);
                     });
                 }).build().toJson();
         SynthesisProfile target = SynthesisProfile.of(json);
@@ -310,33 +314,33 @@ class ModelSynthesizerTest {
         // A twin hub (Hub -> BranchA, BranchB) with a
         // computation reaching BOTH sibling branches gives the target a genuine parallelIteration signal —
         // the synth must reproduce at least one such computation too, not rely on the old flat 30% guess.
-        String structure = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("Twin").locale("en_US")
+        String structure = DocumentModelDraft.named("Twin").locale("en_US")
                 .rootGroup("R", r -> {
                     // a shallower root NUMBER so it — not TotalCross — becomes reserveComputedFields' cycle-free
                     // non-computed sink (the shallowest number field kept non-computed); otherwise TotalCross
                     // itself would be protected and never actually get reserved as computed.
-                    r.field("RootNum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                    r.field("RootNum", FieldKind.NUMBER);
                     r.group("Hub", hub -> {
-                        hub.field("TotalCross", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                        hub.field("TotalCross", FieldKind.NUMBER);
                         // a scope-local KEY sibling — buildComputation's parallel-iteration path needs one to key
                         // its two preconditioned (sibling-branch) alternatives on (canSplit).
-                        hub.field("HubKey", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                        hub.field("HubKey", FieldKind.NUMBER);
                         hub.group("BranchA", a -> {
                             a.repeatable(6);
-                            a.field("ANum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                            a.field("ANum", FieldKind.NUMBER);
                         });
                         hub.group("BranchB", b -> {
                             b.repeatable(6);
-                            b.field("BNum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                            b.field("BNum", FieldKind.NUMBER);
                         });
                     });
                 }).build().toJson();
         BoundModel base = BoundModel.ofJson(structure);
         var cross = base.computation(base.num("/R/Hub/TotalCross")).name("CrossCalc")
-                .calc(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.sum(base.flatten("/R/Hub/BranchA*/ANum"))
-                        .plus(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.sum(base.flatten("/R/Hub/BranchB*/BNum")))
+                .calc(Dsl.sum(base.flatten("/R/Hub/BranchA*/ANum"))
+                        .plus(Dsl.sum(base.flatten("/R/Hub/BranchB*/BNum")))
                         .expression())
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("cross")).build();
+                .message(Dsl.en("cross")).build();
         SynthesisProfile target = SynthesisProfile.of(base.add(cross).toJson());
         assertTrue(target.computations().iteration().parallelIteration() >= 1,
                 "the twin-branch computation gives the target a genuine parallelIteration signal");
@@ -356,27 +360,27 @@ class ModelSynthesizerTest {
         // On a breadth-shaped target, rules had NO twin-hub mechanism at all, unlike computations'
         // siblingAggregatePair-based one. Same twin-hub shape as twinHubReservationLiftsComputationParallelIteration
         // above, but the cross-branch reference sits in a RULE's condition instead of a computation's operation.
-        String structure = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("RuleTwin").locale("en_US")
+        String structure = DocumentModelDraft.named("RuleTwin").locale("en_US")
                 .rootGroup("R", r -> {
                     r.group("Hub", hub -> {
-                        hub.field("HubKey", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                        hub.field("HubKey", FieldKind.NUMBER);
                         hub.group("BranchA", a -> {
                             a.repeatable(6);
-                            a.field("ANum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                            a.field("ANum", FieldKind.NUMBER);
                         });
                         hub.group("BranchB", b -> {
                             b.repeatable(6);
-                            b.field("BNum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                            b.field("BNum", FieldKind.NUMBER);
                         });
                     });
                 }).build().toJson();
         BoundModel base = BoundModel.ofJson(structure);
         var cross = base.rule(base.group("/R/Hub")).name("CrossRule").errorField(base.field("/R/Hub/HubKey"))
                 .when(base.num("/R/Hub/HubKey").filled()
-                        .and(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.sum(base.flatten("/R/Hub/BranchA*/ANum")).gt(0)
-                                .and(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.sum(base.flatten("/R/Hub/BranchB*/BNum")).gt(0))))
-                .code("CROSS").severity(io.github.mbackschat.a12.dm.rulekit.dsl.Severity.ERROR)
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("cross")).build();
+                        .and(Dsl.sum(base.flatten("/R/Hub/BranchA*/ANum")).gt(0)
+                                .and(Dsl.sum(base.flatten("/R/Hub/BranchB*/BNum")).gt(0))))
+                .code("CROSS").severity(Severity.ERROR)
+                .message(Dsl.en("cross")).build();
         SynthesisProfile target = SynthesisProfile.of(base.add(cross).toJson());
         assertTrue(target.rules().iteration().parallelIteration() >= 1,
                 "the twin-branch rule gives the target a genuine rule parallelIteration signal");
@@ -396,29 +400,29 @@ class ModelSynthesizerTest {
         // levels) gives aggregateStars a single sample at value 2 — a 100% nested fraction, removing the
         // recipe's coin-flip from this test. Before the multi-star recipe existed, aggregateOperand only ever
         // flattened ONE level, so aggregateStars.max() was always 1 regardless of the target.
-        String structure = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("Nested").locale("en_US")
+        String structure = DocumentModelDraft.named("Nested").locale("en_US")
                 .rootGroup("R", r -> {
-                    r.field("RootNum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    r.field("TotalDeep", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    r.field("RootKey", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                    r.field("RootNum", FieldKind.NUMBER);
+                    r.field("TotalDeep", FieldKind.NUMBER);
+                    r.field("RootKey", FieldKind.NUMBER);
                     // a Filler level so maxNestingDepth (4) gives buildTree's chain-length computation room for
                     // BOTH nested levels (Outer -> Inner) — a depth-3 structure leaves chain capped at 1 (a
                     // small-scale budget edge case, not a real bug; see twinHubReservationLiftsComputationParallelIteration
                     // for the sibling lesson on tiny fixtures and buildTree's group-budget arithmetic).
                     r.group("Filler", filler -> filler.group("Outer", outer -> {
                         outer.repeatable(5);
-                        outer.field("OuterNum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                        outer.field("OuterNum", FieldKind.NUMBER);
                         outer.group("Inner", inner -> {
                             inner.repeatable(5);
-                            inner.field("InnerNum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                            inner.field("InnerNum", FieldKind.NUMBER);
                         });
                     }));
                 }).build().toJson();
         BoundModel base = BoundModel.ofJson(structure);
         var deep = base.computation(base.num("/R/TotalDeep")).name("TotalDeepCalc")
-                .calc(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.sum(base.flatten("/R/Filler/Outer*/Inner*/InnerNum"))
+                .calc(Dsl.sum(base.flatten("/R/Filler/Outer*/Inner*/InnerNum"))
                         .expression())
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("deep")).build();
+                .message(Dsl.en("deep")).build();
         SynthesisProfile target = SynthesisProfile.of(base.add(deep).toJson());
         assertEquals(2, target.computations().aggregateStars().max(), "the target's one aggregate is nested two-star");
 
@@ -445,15 +449,15 @@ class ModelSynthesizerTest {
         // synth FILTER landing ~= the aggregate count instead of near zero. A target whose aggregates are
         // ALL plain Sums (FILTER 0) gives filteredSumFraction() an exact 0.0 — deterministic regardless of
         // seed, since rnd.nextDouble() < 0.0 never succeeds.
-        String structure = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("Plain").locale("en_US")
+        String structure = DocumentModelDraft.named("Plain").locale("en_US")
                 .rootGroup("R", r -> {
-                    r.field("RootNum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                    r.field("RootNum", FieldKind.NUMBER);
                     for (int i = 1; i <= 5; i++) {
-                        r.field("Total" + i, io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                        r.field("Total" + i, FieldKind.NUMBER);
                     }
                     r.group("Reps", reps -> {
                         reps.repeatable(6);
-                        reps.field("Cell", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                        reps.field("Cell", FieldKind.NUMBER);
                     });
                 }).build().toJson();
         BoundModel base = BoundModel.ofJson(structure);
@@ -461,9 +465,9 @@ class ModelSynthesizerTest {
         for (int i = 1; i <= 5; i++) {
             BoundModel current = BoundModel.ofJson(json);
             var calc = current.computation(current.num("/R/Total" + i)).name("Total" + i + "Calc")
-                    .calc(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.sum(current.flatten("/R/Reps*/Cell"))
+                    .calc(Dsl.sum(current.flatten("/R/Reps*/Cell"))
                             .expression())
-                    .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("plain sum " + i)).build();
+                    .message(Dsl.en("plain sum " + i)).build();
             json = current.add(calc).toJson();
         }
         SynthesisProfile target = SynthesisProfile.of(json);
@@ -483,11 +487,11 @@ class ModelSynthesizerTest {
         // a target with a computation preconditioned on GroupFilled(<sibling group>) — the real target's
         // rarest computation construct (a handful of instances), for which precondition() previously had NO
         // recipe at all (it only ever built field-level quantifier/value-list/comparison clauses).
-        String structure = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("Gf").locale("en_US")
+        String structure = DocumentModelDraft.named("Gf").locale("en_US")
                 .rootGroup("R", r -> {
-                    r.field("RootNum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    r.field("TotalCalc", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
-                    r.group("Aux", aux -> aux.field("AuxNum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER));
+                    r.field("RootNum", FieldKind.NUMBER);
+                    r.field("TotalCalc", FieldKind.NUMBER);
+                    r.group("Aux", aux -> aux.field("AuxNum", FieldKind.NUMBER));
                     // an UNRELATED repeatable — buildTree only attaches filler (non-repeatable) children to
                     // the root or a HUB, never to an arbitrary leaf; giving the target one repeatable group
                     // makes the synth grow a hub, so a reserved field has a real chance of landing somewhere
@@ -495,14 +499,14 @@ class ModelSynthesizerTest {
                     // hit the same buildTree group-budget lesson on a too-tiny fixture).
                     r.group("Rep", rep -> {
                         rep.repeatable(5);
-                        rep.field("RepNum", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER);
+                        rep.field("RepNum", FieldKind.NUMBER);
                     });
                 }).build().toJson();
         BoundModel base = BoundModel.ofJson(structure);
         var calc = base.computation(base.num("/R/TotalCalc")).name("TotalCalcCalc")
                 .commonPrecondition(base.group("/R/Aux").filled())
                 .calc(base.num("/R/RootNum").asNumber().expression())
-                .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("gf")).build();
+                .message(Dsl.en("gf")).build();
         SynthesisProfile target = SynthesisProfile.of(base.add(calc).toJson());
         assertEquals(1, target.computations().constructs().getOrDefault("GROUP_FILL", 0),
                 "the target's one computation is GROUP_FILL-preconditioned");

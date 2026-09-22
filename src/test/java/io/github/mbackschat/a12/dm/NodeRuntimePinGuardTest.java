@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,9 +47,9 @@ class NodeRuntimePinGuardTest {
         }
 
         Set<String> consumers = setups.stream().map(Setup::consumer)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         List<Setup> unpinned = setups.stream().filter(setup -> !EXACT_PATCH.matcher(setup.version()).matches()).toList();
-        Set<String> versions = setups.stream().map(Setup::version).collect(java.util.stream.Collectors.toSet());
+        Set<String> versions = setups.stream().map(Setup::version).collect(Collectors.toSet());
         assertAll(
                 () -> assertEquals(EXPECTED_CONSUMERS, consumers,
                         "Node is load-bearing in the main TypeScript/demo lane, interpreter mirror build, and Linux "

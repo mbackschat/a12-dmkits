@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.profile;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -689,7 +690,7 @@ record SynthesisProfile(Structure structure, Rules rules, Computations computati
      * lists → 10 000 — the O(N²) case). 1 when no referenced field sits in a repeatable group. Capped at
      * {@link Integer#MAX_VALUE} (huge nested-unbounded lists land in the top log-bucket rather than overflow).
      */
-    private static int listScanCapacity(java.util.Collection<String> collectionPaths, Set<String> repeatablePaths,
+    private static int listScanCapacity(Collection<String> collectionPaths, Set<String> repeatablePaths,
             Map<String, Integer> maxRepsByPath) {
         long max = 1;
         for (String path : collectionPaths) {
@@ -767,7 +768,7 @@ record SynthesisProfile(Structure structure, Rules rules, Computations computati
      * {@code repeatableLevelsCrossed}). True when two referenced fields' nearest repeatable ancestors are neither
      * equal nor ancestor/descendant of each other.
      */
-    private static boolean isParallelIteration(java.util.Collection<String> fieldPaths, Set<String> repeatablePaths) {
+    private static boolean isParallelIteration(Collection<String> fieldPaths, Set<String> repeatablePaths) {
         Set<String> nearestReps = new HashSet<>();
         for (String field : fieldPaths) {
             String rep = nearestRepeatable(parentOf(field), repeatablePaths);

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,8 +37,8 @@ class KernelCodeLiteralRatchetTest {
     private static final Checkout CHECKOUT = Checkout.locate();
 
     /** Where a kernel code may be authored: the kits a caller reaches before any kernel is on the classpath. */
-    private static final java.util.List<String> KIT_SOURCE_ROOTS =
-            java.util.List.of("core/src/main", "modelkit/src/main", "rulekit/src/main", "edit/src/main");
+    private static final List<String> KIT_SOURCE_ROOTS =
+            List.of("core/src/main", "modelkit/src/main", "rulekit/src/main", "edit/src/main");
 
     /** A {@code MVK_} code, wherever it appears — applied only to STRING-LITERAL content. */
     private static final Pattern CODE = Pattern.compile("\\bMVK_[A-Z0-9_]+");

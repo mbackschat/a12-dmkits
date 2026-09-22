@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -82,9 +83,9 @@ class ReviewGateReceiptTest {
     void neitherArtefactCanBeConstructedByHand() {
         assertEquals(0, ModelReport.class.getConstructors().length,
                 () -> "a hand-built ModelReport would mint a gate receipt with no gate: "
-                        + java.util.Arrays.toString(ModelReport.class.getConstructors()));
+                        + Arrays.toString(ModelReport.class.getConstructors()));
         assertEquals(0, ModelDiff.class.getConstructors().length,
-                () -> "same for ModelDiff: " + java.util.Arrays.toString(ModelDiff.class.getConstructors()));
+                () -> "same for ModelDiff: " + Arrays.toString(ModelDiff.class.getConstructors()));
         assertTrue(ModelReport.class.getDeclaredConstructors().length > 0
                         && ModelDiff.class.getDeclaredConstructors().length > 0,
                 "sanity: the constructors exist, they are just not reachable from outside");

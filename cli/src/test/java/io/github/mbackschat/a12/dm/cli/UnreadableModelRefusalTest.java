@@ -4,11 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -111,20 +113,20 @@ class UnreadableModelRefusalTest {
          * {@code <rule-spec.json>} — naming an argument that was fine, and a path the caller never gave for it.
          * A refusal that does not say which argument failed is not a corrective one.
          */
-        java.util.Optional<String> modelRefusalCode() {
+        Optional<String> modelRefusalCode() {
             if (out.isBlank()) {
-                return java.util.Optional.empty();
+                return Optional.empty();
             }
             try {
                 for (JsonNode diagnostic : MAPPER.readTree(out).path("diagnostics")) {
                     if (MODEL_LABEL.equals(diagnostic.path("where").path("path").asText(""))) {
-                        return java.util.Optional.of(diagnostic.path("code").asText(""));
+                        return Optional.of(diagnostic.path("code").asText(""));
                     }
                 }
             } catch (Exception notAnEnvelope) {
-                return java.util.Optional.empty();
+                return Optional.empty();
             }
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
 
         /** The bare-stderr signature this law forbids: a read failure reported as plain text, stdout empty. */
@@ -336,7 +338,7 @@ class UnreadableModelRefusalTest {
      */
     @Test
     void aMessageMerelyStartingWithTheSourceWordIsNotTreatedAsAPathEcho() {
-        java.io.IOException notAPathEcho = new java.io.IOException(
+        IOException notAPathEcho = new IOException(
                 "stdin is already being read as <ops.json>, so <spec.json> cannot also be '-'");
         assertTrue(notAPathEcho.getMessage().startsWith("stdin"),
                 "control: the message really does begin with the source word");

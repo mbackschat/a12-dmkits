@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -126,7 +127,7 @@ class SchemaVerbTest {
     void directionalExemptionsStillServeTheirOperationalContract() throws Exception {
         for (String verb : SchemaCommand.CONTRACT_EXEMPT.keySet()) {
             CliTestSupport.Result result = CliTestSupport.run(
-                    java.util.stream.Stream.concat(java.util.stream.Stream.of("schema"),
+                    Stream.concat(Stream.of("schema"),
                             java.util.Arrays.stream(verb.split(" "))).toArray(String[]::new));
             assertEquals(0, result.code(), () -> verb + ": " + result.err());
             JsonNode contract = MAPPER.readTree(result.out());

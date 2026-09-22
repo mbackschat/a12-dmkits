@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import java.util.Optional;
+
 /**
  * A rich, read-only descriptor of one group — the navigation surface's group currency (study
  * finding 9). Narrow to the typed authoring handle via {@link #ref()}.
@@ -36,7 +38,7 @@ public final class GroupInfo {
     }
 
     /** This group's template marker, such as {@code attachment} or {@code multi-select}, when declared. */
-    public java.util.Optional<String> usageType() {
+    public Optional<String> usageType() {
         return model.usageTypeOfGroup(path);
     }
 
@@ -52,7 +54,7 @@ public final class GroupInfo {
     }
 
     /** The annotation named {@code name}, if present. */
-    public java.util.Optional<Annotation> annotation(String name) {
+    public Optional<Annotation> annotation(String name) {
         return annotations().stream().filter(a -> a.name().equals(name)).findFirst();
     }
 

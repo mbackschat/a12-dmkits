@@ -834,7 +834,7 @@ public final class WorkspacePreparationFixtures {
                 .build()
                 .toJson();
         structure = withConditionLanguage(structure, language);
-        var model = io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(structure);
+        var model = BoundModel.ofJson(structure);
         var benefits = model.group("/Benefits");
         var threshold = model.num("/Benefits/Threshold");
         var note = model.str("/Benefits/Note");
@@ -948,7 +948,7 @@ public final class WorkspacePreparationFixtures {
         }
         // The raw-slot styling above is intentional concrete-syntax coverage. Re-bind before replacing ids so the
         // real authoring gate proves the case variants and unique short-name references remain legal.
-        styled = io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(styled).toJson();
+        styled = BoundModel.ofJson(styled).toJson();
         var root = objectModel(styled);
         rewriteOpaqueElementIds(root);
         return writeModel(root);
@@ -996,7 +996,7 @@ public final class WorkspacePreparationFixtures {
                 .build()
                 .toJson();
         structure = withConditionLanguage(structure, language);
-        var model = io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(structure);
+        var model = BoundModel.ofJson(structure);
         var benefits = model.group("/Benefits");
         var note = model.str("/Benefits/Note");
         var rule = model.rule(benefits)

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -118,9 +119,9 @@ class IncludeResolverVerbTest {
             assertEquals(0, res.code(), () -> "the unreadable sibling dir must be skipped, not fatal: " + res.err() + res.out());
             assertTrue(MAPPER.readTree(res.out()).get("valid").asBoolean(), () -> "valid: " + res.out());
         } finally {
-            Files.setPosixFilePermissions(locked, Set.of(java.nio.file.attribute.PosixFilePermission.OWNER_READ,
-                    java.nio.file.attribute.PosixFilePermission.OWNER_WRITE,
-                    java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE));   // restore so @TempDir can clean up
+            Files.setPosixFilePermissions(locked, Set.of(PosixFilePermission.OWNER_READ,
+                    PosixFilePermission.OWNER_WRITE,
+                    PosixFilePermission.OWNER_EXECUTE));   // restore so @TempDir can clean up
         }
     }
 

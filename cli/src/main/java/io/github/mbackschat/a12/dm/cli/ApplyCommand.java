@@ -12,7 +12,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -365,7 +367,7 @@ final class ApplyCommand extends BaseCommand {
                 String path = parsed.group() + "/" + parsed.field().name();
                 session.addField(parsed.group(), parsed.field());
                 // G23: the custom required-field message attaches to the (now-created) requirednessConfig
-                java.util.Map<String, String> requiredMessages = FieldSpec.requiredMessages(op);
+                Map<String, String> requiredMessages = FieldSpec.requiredMessages(op);
                 if (!requiredMessages.isEmpty()) {
                     session.modifyField(path, FieldModification.builder().requiredMessages(requiredMessages).build());
                 }
@@ -911,7 +913,7 @@ final class ApplyCommand extends BaseCommand {
     }
 
     /** Ops whose spec has nested objects worth schema-validating beyond the flat top-level key-set above. */
-    private static final java.util.Map<Op, String> NESTED_SCHEMA = java.util.Map.of(
+    private static final Map<Op, String> NESTED_SCHEMA = Map.of(
             Op.FIELD_ADD, "field-add", Op.FIELD_MODIFY, "field-modify",
             Op.RULE_ADD, "rule-add", Op.RULE_MODIFY, "rule-add",
             Op.COMPUTATION_ADD, "computation-add", Op.COMPUTATION_MODIFY, "computation-add",
@@ -1085,7 +1087,7 @@ final class ApplyCommand extends BaseCommand {
      * MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING in the very op that supplies the message).
      */
     private static List<LocalizedText> mergeRuleMessages(EditSession session, String rule, List<LocalizedText> provided) {
-        java.util.LinkedHashMap<String, String> merged = new java.util.LinkedHashMap<>();
+        LinkedHashMap<String, String> merged = new LinkedHashMap<>();
         for (LocalizedText existing : ModelWriter.readMessages(session.toJson(), rule)) {
             merged.put(existing.locale(), existing.text());
         }

@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -135,7 +136,7 @@ final class PatternsCommand extends BaseCommand {
         for (PatternEntry p : CATALOG.entries()) {
             ObjectNode n = arr.addObject();
             n.put("id", p.id());
-            n.put("kind", p.kind().name().toLowerCase(java.util.Locale.ROOT));
+            n.put("kind", p.kind().name().toLowerCase(Locale.ROOT));
             n.put("summary", p.summary());
             ArrayNode params = n.putArray("paramNames");
             p.params().forEach(param -> params.add(param.name()));
@@ -148,7 +149,7 @@ final class PatternsCommand extends BaseCommand {
     private ObjectNode detail(PatternEntry p) {
         ObjectNode n = MAPPER.createObjectNode();
         n.put("id", p.id());
-        n.put("kind", p.kind().name().toLowerCase(java.util.Locale.ROOT));
+        n.put("kind", p.kind().name().toLowerCase(Locale.ROOT));
         n.put("summary", p.summary());
         n.put("polarityNote", p.polarityNote());
         n.put("skeleton", p.skeleton());
@@ -156,7 +157,7 @@ final class PatternsCommand extends BaseCommand {
         p.params().forEach(param -> {
             ObjectNode pn = params.addObject();
             pn.put("name", param.name());
-            pn.put("kind", param.kind().name().toLowerCase(java.util.Locale.ROOT));
+            pn.put("kind", param.kind().name().toLowerCase(Locale.ROOT));
             pn.put("doc", param.doc());
         });
         ObjectNode example = n.putObject("example");
@@ -289,7 +290,7 @@ final class PatternsCommand extends BaseCommand {
         fieldSpec.put("group", inst.group());
         fieldSpec.put("name", inst.name());
         fieldSpec.put("kind", inst.kind());
-        fieldSpec.set(inst.kind().toLowerCase(java.util.Locale.ROOT), MAPPER.valueToTree(inst.config()));
+        fieldSpec.set(inst.kind().toLowerCase(Locale.ROOT), MAPPER.valueToTree(inst.config()));
         String target = inst.group() + "/" + inst.name();
 
         ModelDocument doc = ModelDocument.read(modelJson);

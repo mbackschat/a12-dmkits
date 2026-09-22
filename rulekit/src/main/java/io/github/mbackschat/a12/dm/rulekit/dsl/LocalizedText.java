@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import java.util.List;
+
 /**
  * One localized error-message text, keyed by the DM-JSON locale code (e.g. {@code en_US}). A model
  * may declare <em>any</em> locales — build via {@link Dsl#text(String, String)}, with
@@ -17,8 +19,8 @@ public record LocalizedText(String locale, String text) {
      * silently (one text wins; {@code MVK_LANGUAGE_DUPLICATE} fires only in the model-as-document
      * tier — {@code validate.laws.RuleSlotLawsTest}).
      */
-    static void checkDeclared(java.util.List<String> declaredLocales,
-            java.util.List<LocalizedText> messages, String what) {
+    static void checkDeclared(List<String> declaredLocales,
+            List<LocalizedText> messages, String what) {
         java.util.Set<String> used = new java.util.LinkedHashSet<>();
         for (LocalizedText message : messages) {
             if (!used.add(message.locale())) {

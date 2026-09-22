@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -116,7 +118,7 @@ class GateTierWiringTest {
     void pushCiNamesEveryCheckOnlyGuardHoldingTheKernelFreeClaim() throws IOException {
         String invocation = pushCiInvocation(Files.readString(locate(".github/workflows/ci.yml")));
 
-        var unreached = new java.util.ArrayList<String>();
+        var unreached = new ArrayList<String>();
         int derived = 0;
         for (var module : CHECK_WIRED_BUILD_FILES.entrySet()) {
             String build = Files.readString(locate(module.getValue()));
@@ -160,7 +162,7 @@ class GateTierWiringTest {
     }
 
     /** Every build script that wires something onto `check`, keyed by the task prefix CI would have to name. */
-    private static final java.util.Map<String, String> CHECK_WIRED_BUILD_FILES = java.util.Map.of(
+    private static final Map<String, String> CHECK_WIRED_BUILD_FILES = Map.of(
             ":", "build.gradle",
             ":adapter:", "adapter/build.gradle",
             ":cli:", "cli/build.gradle",
@@ -174,24 +176,24 @@ class GateTierWiringTest {
      * Gates deliberately outside push CI, each with the reason. A gate belongs here only when running it on
      * every push would buy nothing — never merely because it is slow, which is an argument for a cheaper gate.
      */
-    private static final java.util.Map<String, String> NOT_A_PUSH_CI_GATE = java.util.Map.ofEntries(
-            java.util.Map.entry("focusedSelectionGuardTest", "also hangs off root `test`, which CI runs"),
-            java.util.Map.entry("kernelRuntimeClosureReport", "declares itself INFORMATIVE ONLY and promotes no threshold"),
-            java.util.Map.entry("interpreterRuntimeClosure", "produces the measurement interpreterRuntimeClosurePolicyTest asserts on"),
-            java.util.Map.entry("interpreterJsRuntimeClosure", "the JS half of the same producer"),
-            java.util.Map.entry("verifyInterpreterMavenPublication", "release rehearsal: needs a staged Maven repository"),
-            java.util.Map.entry("verifyInterpreterNpmPublication", "release rehearsal: needs a packed npm tarball"),
-            java.util.Map.entry("verifyInterpreterReleaseArtifacts", "release rehearsal: asserts on assembled release assets"),
-            java.util.Map.entry("verifyInterpreterBrowserSizeDocumentation", "release rehearsal: needs the production browser bundle"),
-            java.util.Map.entry("assembleInterpreterPublicMirror", "release step, not a gate"));
+    private static final Map<String, String> NOT_A_PUSH_CI_GATE = Map.ofEntries(
+            Map.entry("focusedSelectionGuardTest", "also hangs off root `test`, which CI runs"),
+            Map.entry("kernelRuntimeClosureReport", "declares itself INFORMATIVE ONLY and promotes no threshold"),
+            Map.entry("interpreterRuntimeClosure", "produces the measurement interpreterRuntimeClosurePolicyTest asserts on"),
+            Map.entry("interpreterJsRuntimeClosure", "the JS half of the same producer"),
+            Map.entry("verifyInterpreterMavenPublication", "release rehearsal: needs a staged Maven repository"),
+            Map.entry("verifyInterpreterNpmPublication", "release rehearsal: needs a packed npm tarball"),
+            Map.entry("verifyInterpreterReleaseArtifacts", "release rehearsal: asserts on assembled release assets"),
+            Map.entry("verifyInterpreterBrowserSizeDocumentation", "release rehearsal: needs the production browser bundle"),
+            Map.entry("assembleInterpreterPublicMirror", "release step, not a gate"));
 
     /** Every identifier wired into a {@code tasks.named('check')} block, single-line and braced forms alike. */
     private static List<String> checkDependencies(String build) {
-        var gates = new java.util.ArrayList<String>();
-        var block = java.util.regex.Pattern.compile("tasks\\.named\\('check'\\)\\s*\\{(.*?)\\n?\\}", java.util.regex.Pattern.DOTALL);
+        var gates = new ArrayList<String>();
+        var block = Pattern.compile("tasks\\.named\\('check'\\)\\s*\\{(.*?)\\n?\\}", Pattern.DOTALL);
         var matcher = block.matcher(build);
         while (matcher.find()) {
-            var names = java.util.regex.Pattern.compile("dependsOn\\s+([A-Za-z0-9_', ]+)").matcher(matcher.group(1));
+            var names = Pattern.compile("dependsOn\\s+([A-Za-z0-9_', ]+)").matcher(matcher.group(1));
             while (names.find()) {
                 for (String name : names.group(1).split(",")) {
                     String clean = name.strip().replace("'", "");
@@ -393,8 +395,8 @@ class GateTierWiringTest {
      */
     @Test
     void noAlwaysRunTaskRidesTheUnconditionalTier() throws IOException {
-        var alwaysRunFound = new java.util.ArrayList<String>();
-        var violations = new java.util.ArrayList<String>();
+        var alwaysRunFound = new ArrayList<String>();
+        var violations = new ArrayList<String>();
 
         for (String buildFile : List.of("build.gradle", "adapter/build.gradle", "cli/build.gradle")) {
             String build = Files.readString(locate(buildFile));
@@ -402,7 +404,7 @@ class GateTierWiringTest {
             int fastAt = testTask.indexOf("if (!project.hasProperty('fast'))");
             String unconditional = fastAt > 0 ? testTask.substring(0, fastAt) : testTask;
 
-            var registered = java.util.regex.Pattern.compile("tasks\\.register\\('([A-Za-z0-9]+)'")
+            var registered = Pattern.compile("tasks\\.register\\('([A-Za-z0-9]+)'")
                     .matcher(build);
             while (registered.find()) {
                 String task = registered.group(1);

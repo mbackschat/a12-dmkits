@@ -9,6 +9,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -364,11 +366,11 @@ class PerformanceRecordShapeGuardTest {
     void theFoldedStatusVocabularyMatchesTheScriptThatConsumesIt() throws IOException {
         String script = Files.readString(CHECKOUT.resolve("scripts/perf-anchor.sh"));
         var folded = new java.util.LinkedHashSet<String>();
-        java.util.regex.Matcher filter = java.util.regex.Pattern
+        Matcher filter = Pattern
                 .compile("status\", \"accepted\"\\) not in \\(([^)]*)\\)").matcher(script);
         assertTrue(filter.find(), "perf-anchor.sh must still decide which statuses may set a bar; if that filter "
                 + "moved, this guard is comparing against nothing");
-        java.util.regex.Matcher literal = java.util.regex.Pattern.compile("\"([a-z]+)\"").matcher(filter.group(1));
+        Matcher literal = Pattern.compile("\"([a-z]+)\"").matcher(filter.group(1));
         while (literal.find()) {
             folded.add(literal.group(1));
         }

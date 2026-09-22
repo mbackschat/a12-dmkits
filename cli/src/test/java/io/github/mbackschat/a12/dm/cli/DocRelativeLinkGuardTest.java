@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -147,14 +148,14 @@ class DocRelativeLinkGuardTest {
         try (Stream<Path> files = Files.walk(root)) {
             for (Path file : files.filter(Files::isRegularFile).sorted().toList()) {
                 String relative = root.relativize(file).toString();
-                if (!relative.endsWith(".md") || relative.startsWith("docs" + java.io.File.separator)) {
+                if (!relative.endsWith(".md") || relative.startsWith("docs" + File.separator)) {
                     continue;
                 }
-                if (NOT_OURS.stream().anyMatch(skip -> relative.contains(skip + java.io.File.separator))) {
+                if (NOT_OURS.stream().anyMatch(skip -> relative.contains(skip + File.separator))) {
                     continue;
                 }
-                if (MIRROR_SOURCES_CHECKED_BY_THE_ASSEMBLER.contains(relative.replace(java.io.File.separator, "/"))) {
-                    mirrorSourcesSeen.add(relative.replace(java.io.File.separator, "/"));
+                if (MIRROR_SOURCES_CHECKED_BY_THE_ASSEMBLER.contains(relative.replace(File.separator, "/"))) {
+                    mirrorSourcesSeen.add(relative.replace(File.separator, "/"));
                     continue;
                 }
                 scanned.add(file);

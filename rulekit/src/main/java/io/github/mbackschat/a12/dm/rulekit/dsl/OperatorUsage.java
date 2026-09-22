@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -20,14 +21,14 @@ public final class OperatorUsage {
     public static Set<String> of(Condition condition) {
         Set<String> ops = new LinkedHashSet<>();
         collect(condition, ops);
-        return java.util.Collections.unmodifiableSet(ops);
+        return Collections.unmodifiableSet(ops);
     }
 
     /** The distinct operator-ids used by a value expression (e.g. a computation's operation). */
     public static Set<String> of(Calculation calculation) {
         Set<String> ops = new LinkedHashSet<>();
         collect(calculation, ops);
-        return java.util.Collections.unmodifiableSet(ops);
+        return Collections.unmodifiableSet(ops);
     }
 
     private static void collect(Condition condition, Set<String> ops) {

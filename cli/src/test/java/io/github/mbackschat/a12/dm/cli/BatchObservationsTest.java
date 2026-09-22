@@ -8,8 +8,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.stream.StreamSupport;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -197,9 +199,9 @@ class BatchObservationsTest {
                     "--observations", destination.toString());
             assertEquals(1, result.code(), () -> destination + ": " + result.out());
             assertEquals("rejected", MAPPER.readTree(result.out()).path("outcome").asText(), result::out);
-            assertTrue(java.util.Arrays.equals(modelBefore, Files.readAllBytes(model)), "model changed via " + destination);
-            assertTrue(java.util.Arrays.equals(opsBefore, Files.readAllBytes(ops)), "ops changed via " + destination);
-            assertTrue(java.util.Arrays.equals(specBefore, Files.readAllBytes(spec)), "spec changed via " + destination);
+            assertTrue(Arrays.equals(modelBefore, Files.readAllBytes(model)), "model changed via " + destination);
+            assertTrue(Arrays.equals(opsBefore, Files.readAllBytes(ops)), "ops changed via " + destination);
+            assertTrue(Arrays.equals(specBefore, Files.readAllBytes(spec)), "spec changed via " + destination);
         }
     }
 
@@ -278,18 +280,18 @@ class BatchObservationsTest {
     }
 
     private static List<String> fieldNames(JsonNode node) {
-        return java.util.stream.StreamSupport.stream(
+        return StreamSupport.stream(
                 ((Iterable<String>) () -> node.fieldNames()).spliterator(), false).toList();
     }
 
     private static List<String> codes(JsonNode envelope) {
-        return java.util.stream.StreamSupport.stream(envelope.path("diagnostics").spliterator(), false)
+        return StreamSupport.stream(envelope.path("diagnostics").spliterator(), false)
                 .map(diagnostic -> diagnostic.path("code").asText())
                 .toList();
     }
 
     private static List<String> textValues(JsonNode array) {
-        return java.util.stream.StreamSupport.stream(array.spliterator(), false)
+        return StreamSupport.stream(array.spliterator(), false)
                 .map(JsonNode::asText)
                 .toList();
     }

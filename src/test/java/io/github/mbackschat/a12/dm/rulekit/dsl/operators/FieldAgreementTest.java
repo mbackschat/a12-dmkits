@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
@@ -49,7 +50,7 @@ class FieldAgreementTest {
     @Test
     void enumAgreementUsesEnumEquality() {
         // a small 2-enum model — subscription has only one enum field
-        String json = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("policy").locale("en_US")
+        String json = DocumentModelDraft.named("policy").locale("en_US")
                 .rootGroup("Policy", p -> p
                         .enumField("Tier", e -> e.value("BASIC").value("PREMIUM"))
                         .enumField("DeclaredTier", e -> e.value("BASIC").value("PREMIUM")))
@@ -66,7 +67,7 @@ class FieldAgreementTest {
     void temporalAgreementUsesTemporalEquality() {
         // D8: agreesWith existed on string/number/enum but not the temporal refs. It uses each ref's
         // own (date/time/date-time) equality underneath, so the null-safe idiom composes there too.
-        String json = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("schedule").locale("en_US")
+        String json = DocumentModelDraft.named("schedule").locale("en_US")
                 .rootGroup("Schedule", s -> s
                         .dateField("Start", d -> { }).dateField("Confirmed", d -> { })
                         .timeField("Open", t -> { }).timeField("Requested", t -> { })

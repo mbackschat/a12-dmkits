@@ -3,6 +3,11 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
 import io.github.mbackschat.a12.dm.rulekit.validate.Span;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Renders a {@link Condition} AST to canonical A12 DSL text (PROJECT-DESIGN §8, component 4). Every
@@ -23,7 +28,7 @@ public final class DslRenderer {
     private final OperatorCatalog catalog;
     private final ConditionLanguage language;
     private final String baseGroup;
-    private static final java.util.Set<String> NON_OPERATOR_RESERVED_NAMES = java.util.Set.of(
+    private static final Set<String> NON_OPERATOR_RESERVED_NAMES = Set.of(
             "AND", "and", "OR", "or", "UND", "und", "ODER", "oder",
             "IN", "In", "in", "TO", "To", "to", "ZU", "Zu", "zu",
             "RuleGroup", "RegelKontext", "SuppressWarning", "UnterdrueckeWarnung",
@@ -33,7 +38,7 @@ public final class DslRenderer {
             "MaximalAngegebenerZeilenindex", "UsbNichtFortlaufend", "VordruckNichtFortlaufend",
             "ZeileNichtEindeutig", "ZeilenLueckenlos", "ZeilenNichtAufsteigend");
 
-    private final java.util.Set<String> reservedNames;
+    private final Set<String> reservedNames;
 
     public DslRenderer() {
         this(ConditionLanguage.EN);
@@ -56,12 +61,12 @@ public final class DslRenderer {
         this.catalog = catalog;
         this.language = language;
         this.baseGroup = baseGroup;
-        this.reservedNames = java.util.stream.Stream.concat(
+        this.reservedNames = Stream.concat(
                 catalog.entries().stream()
-                        .flatMap(e -> java.util.stream.Stream.of(e.keywords().en(), e.keywords().de())),
+                        .flatMap(e -> Stream.of(e.keywords().en(), e.keywords().de())),
                 NON_OPERATOR_RESERVED_NAMES.stream())
                 .filter(k -> k != null && !k.isBlank())
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     /**
@@ -140,20 +145,20 @@ public final class DslRenderer {
      */
     public Rendered renderWithSpans(Condition condition) {
         StringBuilder out = new StringBuilder();
-        java.util.Map<Condition, Span> spans = new java.util.IdentityHashMap<>();
+        Map<Condition, Span> spans = new IdentityHashMap<>();
         emit(condition, out, spans);
         return new Rendered(out.toString(), spans);
     }
 
     /** A rendered condition plus the per-node spans into its text (identity-keyed). */
-    public record Rendered(String text, java.util.Map<Condition, Span> spans) {
+    public record Rendered(String text, Map<Condition, Span> spans) {
     }
 
-    private void emit(Condition condition, StringBuilder out, java.util.Map<Condition, Span> spans) {
+    private void emit(Condition condition, StringBuilder out, Map<Condition, Span> spans) {
         emit(condition, out, spans, null);
     }
 
-    private void emit(Condition condition, StringBuilder out, java.util.Map<Condition, Span> spans,
+    private void emit(Condition condition, StringBuilder out, Map<Condition, Span> spans,
             Comments comments) {
         if (comments != null) {
             comments.beforeOf(condition).ifPresent(text -> out.append(";; ").append(text).append("\n"));
@@ -174,7 +179,7 @@ public final class DslRenderer {
     }
 
     private void emitChild(LogicCondition parent, Condition child, StringBuilder out,
-            java.util.Map<Condition, Span> spans, Comments comments) {
+            Map<Condition, Span> spans, Comments comments) {
         boolean parenthesize = child instanceof LogicCondition nested && nested.op() != parent.op();
         if (parenthesize) {
             out.append("(");
@@ -191,7 +196,7 @@ public final class DslRenderer {
             return render(condition);
         }
         StringBuilder out = new StringBuilder();
-        emit(condition, out, new java.util.IdentityHashMap<>(), comments);
+        emit(condition, out, new IdentityHashMap<>(), comments);
         return out.toString();
     }
 
@@ -201,7 +206,7 @@ public final class DslRenderer {
                     keyword(f.operatorId()) + "(" + (f.field().correlated() ? "$" : "") + path(f.field().path().value()) + ")";
             case EntityListPredicate p -> keyword(p.operatorId()) + "("
                     + p.operands().stream().map(this::aggregateOperand)
-                            .collect(java.util.stream.Collectors.joining(", "))
+                            .collect(Collectors.joining(", "))
                     + ")";
             case ComparisonCondition c ->
                     render(c.left()) + " " + keyword(c.operatorId()) + " " + render(c.right());
@@ -213,32 +218,32 @@ public final class DslRenderer {
             case IndexedPresenceCondition p -> keyword(p.operatorId()) + "(" + indexBody(p.index()) + ")";
             case GroupListPredicate p -> keyword(p.operatorId()) + "("
                     + p.operands().stream().map(this::entityOperand)
-                            .collect(java.util.stream.Collectors.joining(", "))
+                            .collect(Collectors.joining(", "))
                     + ")";
             case PatternCondition p ->
                     "[" + path(p.field().path().value()) + "] " + keyword(p.operatorId()) + " " + quote(p.regex());
             case ValueListCondition v -> keyword(v.operatorId()) + "(" + path(v.field().path().value()) + ", "
-                    + v.values().stream().map(this::render).collect(java.util.stream.Collectors.joining(", "))
+                    + v.values().stream().map(this::render).collect(Collectors.joining(", "))
                     + ")";
             case CustomConditionRef c -> keyword(c.operatorId()) + " " + quoteSegment(c.name());
             case RepetitionNotUniqueCondition r -> keyword(r.operatorId()) + "("
-                    + r.keys().stream().map(k -> path(k.path().value())).collect(java.util.stream.Collectors.joining(", "))
+                    + r.keys().stream().map(k -> path(k.path().value())).collect(Collectors.joining(", "))
                     + r.scope().map(s -> " " + keyword("FromScope") + " " + path(s.path().value())).orElse("")
                     + ")";
             case FieldListValueListCondition v -> keyword(v.operatorId()) + "("
                     + v.fields().stream().map(this::operand)
-                            .collect(java.util.stream.Collectors.joining(", "))
+                            .collect(Collectors.joining(", "))
                     // 'In' is a language-independent grammar literal (inOp), like the comparison symbols
                     + " In "
-                    + v.values().stream().map(this::render).collect(java.util.stream.Collectors.joining(", "))
+                    + v.values().stream().map(this::render).collect(Collectors.joining(", "))
                     + ")";
             case FieldListEntityListCondition v -> keyword(v.operatorId()) + "("
                     + v.fields().stream().map(this::operand)
-                            .collect(java.util.stream.Collectors.joining(", "))
+                            .collect(Collectors.joining(", "))
                     + " In "
                     // entity-valued: the value list is bare field/repetition-list paths, not quoted values
                     + v.valueFields().stream().map(this::operand)
-                            .collect(java.util.stream.Collectors.joining(", "))
+                            .collect(Collectors.joining(", "))
                     + ")";
             case DateValidity v -> keyword(v.operatorId()) + "(" + renderArg(v.dateConstruct()) + ")";
             case CustomTypeValidity v ->
@@ -257,10 +262,10 @@ public final class DslRenderer {
      * not of the operator ({@code rulekit.validate.laws.AggregateGroupOperandLawsTest}).
      */
     private String countOperands(CountAggregate a) {
-        return java.util.stream.Stream.concat(
+        return Stream.concat(
                         a.fields().stream().map(this::aggregateOperand),
                         a.groups().stream().map(g -> path(g.path().value()) + (g.repeating() ? "*" : "")))
-                .collect(java.util.stream.Collectors.joining(", "));
+                .collect(Collectors.joining(", "));
     }
 
     /** A field-list operand: its path, plus a {@code Having <filter>} clause for a filtered list. */
@@ -423,7 +428,7 @@ public final class DslRenderer {
                             + " " + c.category() + "]";
             case ListAggregate a -> keyword(a.operatorId()) + "("
                     + a.operands().stream().map(this::aggregateOperand)
-                            .collect(java.util.stream.Collectors.joining(", "))
+                            .collect(Collectors.joining(", "))
                     + ")";
             case CountAggregate a -> keyword(a.operatorId()) + "(" + countOperands(a) + ")";
             case CurrentRepetition r ->
@@ -442,14 +447,14 @@ public final class DslRenderer {
             case Rounding r -> keyword(r.operatorId()) + "(" + render(r.operand())
                     + r.decimalPlaces().map(places -> ", " + places).orElse("") + ")";
             case Concatenation c -> c.parts().stream().map(this::render)
-                    .collect(java.util.stream.Collectors.joining(" + "));
+                    .collect(Collectors.joining(" + "));
             case DateListAggregate a -> keyword(a.operatorId()) + "("
                     + a.operands().stream().map(this::aggregateOperand)
-                            .collect(java.util.stream.Collectors.joining(", "))
+                            .collect(Collectors.joining(", "))
                     + ")";
             case FirstFilledValue a -> keyword(a.operatorId()) + "("
                     + a.operands().stream().map(this::firstFilledOperand)
-                            .collect(java.util.stream.Collectors.joining(", "))
+                            .collect(Collectors.joining(", "))
                     + ")";
             case FieldValueAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path().value()) + ")";
             case IndexedFieldValueAsString c -> keyword(c.operatorId()) + "(" + indexBody(c.index()) + ")";
@@ -459,10 +464,10 @@ public final class DslRenderer {
             case RangeAsNumber c -> keyword(c.operatorId()) + "(" + path(c.field().path().value())
                     + ", " + c.start() + ", " + c.end() + ")";
             case OpListMath m -> keyword(m.operatorId()) + "("
-                    + m.operands().stream().map(this::render).collect(java.util.stream.Collectors.joining(", ")) + ")";
+                    + m.operands().stream().map(this::render).collect(Collectors.joining(", ")) + ")";
             case NumberOfValueInFields n -> keyword(n.operatorId()) + "(" + render(n.value()) + " In "
                     + n.fields().stream().map(this::aggregateOperand)
-                            .collect(java.util.stream.Collectors.joining(", ")) + ")";
+                            .collect(Collectors.joining(", ")) + ")";
             case ValueAsDate v -> keyword(v.operatorId()) + "(" + path(v.field().path().value()) + ", "
                     + keyword(v.dayKeywordId()) + ")";
             case DateExtraction e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
@@ -472,7 +477,7 @@ public final class DslRenderer {
                     + renderDateParam(dc.month()) + ", " + renderDateParam(dc.year1())
                     + dc.year2().map(y -> ", " + renderDateParam(y)).orElse("") + ")";
             case TimeConstruction tc -> keyword(tc.operatorId()) + "(" + tc.components().stream()
-                    .map(this::renderDateParam).collect(java.util.stream.Collectors.joining(", ")) + ")";
+                    .map(this::renderDateParam).collect(Collectors.joining(", ")) + ")";
             case DateTimeConstruction dtc -> keyword(dtc.operatorId()) + "(" + renderArg(dtc.date()) + ", "
                     + renderArg(dtc.time()) + ")";
             case DateRangeConstruction dr -> keyword(dr.operatorId()) + "(" + renderArg(dr.start()) + ", "

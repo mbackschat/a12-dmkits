@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -63,7 +64,7 @@ final class WorkspaceGraphCommand extends BaseCommand {
         if (!Files.isDirectory(root)) {
             return fail("not a directory: " + dir);
         }
-        if (!List.of("json", "tree", "dot").contains(format.toLowerCase(java.util.Locale.ROOT))) {
+        if (!List.of("json", "tree", "dot").contains(format.toLowerCase(Locale.ROOT))) {
             return fail("unknown --format '" + format + "' (json|tree|dot)");
         }
         List<Workspace.Model> models;
@@ -74,7 +75,7 @@ final class WorkspaceGraphCommand extends BaseCommand {
         }
         List<Workspace.Edge> edges = Workspace.inheritanceEdges(models);
 
-        switch (format.toLowerCase(java.util.Locale.ROOT)) {
+        switch (format.toLowerCase(Locale.ROOT)) {
             case "tree" -> {
                 out().print(tree(models, edges));
                 return 0;

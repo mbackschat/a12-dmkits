@@ -1,6 +1,10 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 /**
  * A rich, read-only descriptor of one field — the navigation surface's currency (study finding 9,
@@ -86,27 +90,27 @@ public final class FieldInfo {
     // probed without a kind check — the read peer of the modelkit builder's min/max/minLength/maxLength/pattern.
 
     /** Declared inclusive lower bound ({@code minimum}); empty when not a number or unset. */
-    public java.util.Optional<java.math.BigDecimal> numberMin() {
+    public Optional<BigDecimal> numberMin() {
         return model.index().numberMin(path);
     }
 
     /** Declared inclusive upper bound ({@code maximum}); empty when not a number or unset. */
-    public java.util.Optional<java.math.BigDecimal> numberMax() {
+    public Optional<BigDecimal> numberMax() {
         return model.index().numberMax(path);
     }
 
     /** Declared minimum string length; empty when not a string or unset. */
-    public java.util.OptionalInt minLength() {
+    public OptionalInt minLength() {
         return model.index().stringMinLength(path);
     }
 
     /** Declared maximum string length; empty when not a string or unset. */
-    public java.util.OptionalInt maxLength() {
+    public OptionalInt maxLength() {
         return model.index().stringMaxLength(path);
     }
 
     /** Declared regex pattern; empty when not a string or no pattern. */
-    public java.util.Optional<String> pattern() {
+    public Optional<String> pattern() {
         return model.index().stringPattern(path);
     }
 
@@ -116,7 +120,7 @@ public final class FieldInfo {
      * cell's values and which operands accept it (KERNEL-FINDINGS KF211) — which is why the typed date/time
      * handles below are obtained by it and not only by kind.
      */
-    public java.util.Optional<String> format() {
+    public Optional<String> format() {
         return model.index().temporalFormat(path);
     }
 
@@ -126,19 +130,19 @@ public final class FieldInfo {
      *
      * @throws IllegalArgumentException if this is not an enumeration field
      */
-    public java.util.List<String> allowedValues() {
+    public List<String> allowedValues() {
         return model.index().enumValues(path);
     }
 
     // --- annotations: the read peer of EditSession.setAnnotation (study finding 9, annotation reads) --
 
     /** This field's element-level annotations, in document order; empty (never {@code null}) when none. */
-    public java.util.List<Annotation> annotations() {
+    public List<Annotation> annotations() {
         return model.annotationsOf(path);
     }
 
     /** The annotation named {@code name}, if present — the matcher the "find fields by annotation" use case needs. */
-    public java.util.Optional<Annotation> annotation(String name) {
+    public Optional<Annotation> annotation(String name) {
         return annotations().stream().filter(a -> a.name().equals(name)).findFirst();
     }
 

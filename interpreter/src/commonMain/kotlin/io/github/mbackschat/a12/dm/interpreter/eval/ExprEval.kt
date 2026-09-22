@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 
 // The value-expression resolution collaborator — [Interpreter.evalExpr] and everything an [Expr] resolves
 // through: the value-function catalog (evalFunc + its helpers), arithmetic/concatenation, the constants,
@@ -1255,12 +1256,12 @@ private data class TemporalValue(
      *  time coordinate, not a resolved instant (SPEC-2026-07-21-07). */
     val isTimeOnly: Boolean get() = TIME.matchEntire(text) != null
 
-    fun instantMillis(timeZone: io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone): Long =
+    fun instantMillis(timeZone: ModelTimeZone): Long =
         exactInstantMillis ?: checkNotNull(calendarOperandInstant(text, timeZone, basis)) {
             "real temporal value has no model-zone instant: $text ($basis, $timeZone)"
         } * 1_000L
 
-    fun instantSeconds(timeZone: io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone): Long =
+    fun instantSeconds(timeZone: ModelTimeZone): Long =
         instantMillis(timeZone).floorDiv(1_000L)
 }
 

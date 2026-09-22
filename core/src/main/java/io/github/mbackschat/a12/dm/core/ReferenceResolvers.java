@@ -3,10 +3,12 @@ package io.github.mbackschat.a12.dm.core;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -75,8 +77,8 @@ public final class ReferenceResolvers {
      * {@code IDocumentModel}), this hands back the authored text — what {@code include inline} needs to fold a
      * sub-model's content back into the base. Empty if no document model with that id is found.
      */
-    public static java.util.Optional<String> documentModelJson(String id, Path... roots) {
-        return java.util.Optional.ofNullable(indexDocumentModels(roots).get(id));
+    public static Optional<String> documentModelJson(String id, Path... roots) {
+        return Optional.ofNullable(indexDocumentModels(roots).get(id));
     }
 
     /**
@@ -101,16 +103,16 @@ public final class ReferenceResolvers {
             try {
                 Files.walkFileTree(root, new java.nio.file.SimpleFileVisitor<Path>() {
                     @Override
-                    public java.nio.file.FileVisitResult visitFile(Path p, java.nio.file.attribute.BasicFileAttributes attrs) {
+                    public FileVisitResult visitFile(Path p, java.nio.file.attribute.BasicFileAttributes attrs) {
                         if (p.toString().endsWith(".json")) {
                             indexIfDocumentModel(mapper, byId, p);
                         }
-                        return java.nio.file.FileVisitResult.CONTINUE;
+                        return FileVisitResult.CONTINUE;
                     }
 
                     @Override
-                    public java.nio.file.FileVisitResult visitFileFailed(Path p, IOException exc) {
-                        return java.nio.file.FileVisitResult.CONTINUE;   // skip an unreadable file/dir, don't abort
+                    public FileVisitResult visitFileFailed(Path p, IOException exc) {
+                        return FileVisitResult.CONTINUE;   // skip an unreadable file/dir, don't abort
                     }
                 });
             } catch (IOException e) {

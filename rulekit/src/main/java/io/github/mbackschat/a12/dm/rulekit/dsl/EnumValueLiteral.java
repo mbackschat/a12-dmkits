@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.ValueKind;
+
 /**
  * An enumeration value literal — the <em>stored value</em> of an enum (not its display text, §5b).
  * Renders double-quoted, like {@code [Tier] == "PRO"}. A distinct node from {@link StringLiteral} so
@@ -8,7 +10,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 public record EnumValueLiteral(String value) implements Calculation {
 
     @Override
-    public io.github.mbackschat.a12.dm.core.ValueKind kind() {
-        return io.github.mbackschat.a12.dm.core.ValueKind.ENUMERATION;
+    public ValueKind kind() {
+        return ValueKind.ENUMERATION;
     }
 }

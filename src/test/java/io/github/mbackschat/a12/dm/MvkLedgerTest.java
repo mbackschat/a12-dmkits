@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
@@ -252,7 +253,7 @@ class MvkLedgerTest {
 
         var nowCarried = UNMEASURED_ON_THE_METAMODEL_AXIS.stream().filter(carried::contains).sorted().toList();
         assertEquals(
-                java.util.List.of(),
+                List.of(),
                 nowCarried,
                 nowCarried.size() + " code(s) dispositioned as unmeasured on the metamodel axis now HAVE a "
                         + "carrier rule in the corpus. The re-open trigger has fired: re-disposition each row "
@@ -302,7 +303,7 @@ class MvkLedgerTest {
             declarationOf.put(code, Pattern.compile("^\\s*" + Pattern.quote(code) + "\\s*,"));
         }
 
-        java.util.List<Path> sources;
+        List<Path> sources;
         try (var walk = Files.walk(root)) {
             sources = walk.filter(Files::isRegularFile)
                     .filter(p -> p.getFileName().toString().endsWith(".java"))
@@ -336,7 +337,7 @@ class MvkLedgerTest {
                         + ", so this sweep cannot see a Java raiser at all and the absences below would be an "
                         + "artefact of the read rather than a measurement");
         assertEquals(
-                java.util.List.of(),
+                List.of(),
                 declarations.entrySet().stream().filter(e -> e.getValue() != 1).map(Map.Entry::toString).sorted()
                         .toList(),
                 "every code must be declared exactly once; a different count means the kernel renamed or "
@@ -345,7 +346,7 @@ class MvkLedgerTest {
         var raised = NO_JAVA_RAISER.stream().filter(c -> !uses.get(c).isEmpty()).sorted()
                 .map(c -> c + " -> " + uses.get(c)).toList();
         assertEquals(
-                java.util.List.of(),
+                List.of(),
                 raised,
                 raised.size() + " code(s) dispositioned as having no JAVA raiser now have a use site. Correct "
                         + "the row in docs/MVK-LEDGER.md and KF415 in docs/KERNEL-FINDINGS.md, and re-check "

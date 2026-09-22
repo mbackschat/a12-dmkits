@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl.operators;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
@@ -55,7 +56,7 @@ class ValueListConditionTest {
 
     @Test
     void rendersFieldListValueListQuantifiers() {
-        Condition c = Dsl.noFieldValueIncludedInValueList(java.util.List.of("test", "demo"),
+        Condition c = Dsl.noFieldValueIncludedInValueList(List.of("test", "demo"),
                 m.str(NAME), m.str("/Subscription/Billing/InvoiceEmail"));
         assertEquals("NoFieldValueIncludedInValueList(/Subscription/Addons/Name,"
                 + " /Subscription/Billing/InvoiceEmail In \"test\", \"demo\")",
@@ -64,7 +65,7 @@ class ValueListConditionTest {
                 + " /Subscription/Billing/InvoiceEmail In \"test\", \"demo\")",
                 new DslRenderer(ConditionLanguage.DE).render(c));
 
-        Condition one = Dsl.atLeastOneFieldValueIncludedInValueList(java.util.List.of("PRO"),
+        Condition one = Dsl.atLeastOneFieldValueIncludedInValueList(List.of("PRO"),
                 m.enumOf("/Subscription/Tier"));
         assertEquals("AtLeastOneFieldValueIncludedInValueList(/Subscription/Tier In \"PRO\")",
                 new DslRenderer().render(one));

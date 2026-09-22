@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.ValueKind;
+
 /**
  * A binary arithmetic expression on numeric operands — {@code a + b}, {@code a - b}, {@code a * b},
  * {@code a / b}, {@code a ^ b} (KERNEL-SEMANTICS §computations; the kernel's {@code ICompositeOperation}
@@ -10,8 +12,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 public record Arithmetic(Op op, Calculation left, Calculation right) implements Calculation {
 
     @Override
-    public io.github.mbackschat.a12.dm.core.ValueKind kind() {
-        return io.github.mbackschat.a12.dm.core.ValueKind.NUMBER;
+    public ValueKind kind() {
+        return ValueKind.NUMBER;
     }
 
     /** The arithmetic operators (kernel {@code CalcOp}) with their DSL symbols. */

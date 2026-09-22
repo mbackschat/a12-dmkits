@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.profile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
@@ -41,8 +42,8 @@ class ModelSynthesizerCrossJvmDeterminismTest {
     /** Spawns a fresh {@code java} process running {@link ModelSynthesizerDeterminismMain} with {@code seed},
      *  reusing this test JVM's own classpath — the only way to actually exercise a NEW JVM launch. */
     private static String runInFreshJvm(long seed) throws IOException, InterruptedException {
-        String javaBin = System.getProperty("java.home") + java.io.File.separator + "bin"
-                + java.io.File.separator + "java";
+        String javaBin = System.getProperty("java.home") + File.separator + "bin"
+                + File.separator + "java";
         ProcessBuilder pb = new ProcessBuilder(javaBin, "-cp", System.getProperty("java.class.path"),
                 ModelSynthesizerDeterminismMain.class.getName(), Long.toString(seed));
         pb.redirectErrorStream(false);

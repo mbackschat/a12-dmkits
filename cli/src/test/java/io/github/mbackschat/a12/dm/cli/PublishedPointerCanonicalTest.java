@@ -14,6 +14,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -222,11 +223,11 @@ class PublishedPointerCanonicalTest {
     }
 
     /** An explicitly spelled first repetition — legal input, never canonical output. */
-    private static final java.util.regex.Pattern EXPLICIT_FIRST_REPETITION = java.util.regex.Pattern.compile("\\[1]");
+    private static final Pattern EXPLICIT_FIRST_REPETITION = Pattern.compile("\\[1]");
 
     /** The house form: a leading slash, then {@code /Name} segments each optionally carrying {@code [<index>]}. */
-    private static final java.util.regex.Pattern HOUSE_FORM =
-            java.util.regex.Pattern.compile("(/[\\w_-]+(\\[-?\\d+])?)+");
+    private static final Pattern HOUSE_FORM =
+            Pattern.compile("(/[\\w_-]+(\\[-?\\d+])?)+");
 
     private static void walk(Scenario scenario, JsonNode node, Map<String, Integer> seen) {
         if (node.isArray()) {

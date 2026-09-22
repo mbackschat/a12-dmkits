@@ -45,7 +45,7 @@ class ConfigVerbTest {
     @Test
     void readSurfacesDeclaredLocales(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("subscription.dm.json");
-        java.nio.file.Files.writeString(model, CliTestSupport.subscriptionJson());
+        Files.writeString(model, CliTestSupport.subscriptionJson());
         var res = CliTestSupport.run("-m", model.toString(), "config", "read");
         assertEquals(0, res.code(), res.err());
         JsonNode locales = M.readTree(res.out()).path("data").path("locales");
@@ -64,7 +64,7 @@ class ConfigVerbTest {
         JsonNode j = M.readTree(res.out());
         assertEquals("applied", j.get("outcome").asText());
         assertEquals("Customer Order", j.path("changed").path("label.en_US").asText());
-        String written = java.nio.file.Files.readString(model);
+        String written = Files.readString(model);
         assertTrue(written.contains("Customer Order"), "the model label is written to the header");
         assertTrue(written.contains("orders-team"), "the model annotation is written to the header");
     }

@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Model.CommandSpec;
@@ -46,13 +47,13 @@ class McpHttpConcurrencyTest {
     private static String call(String tool, String op, String model) throws IOException {
         return MAPPER.writeValueAsString(MAPPER.createObjectNode()
                 .put("jsonrpc", "2.0").put("id", 1).put("method", "tools/call")
-                .<com.fasterxml.jackson.databind.node.ObjectNode>set("params", MAPPER.createObjectNode()
+                .<ObjectNode>set("params", MAPPER.createObjectNode()
                         .put("name", tool)
-                        .<com.fasterxml.jackson.databind.node.ObjectNode>set("arguments",
+                        .<ObjectNode>set("arguments",
                                 MAPPER.createObjectNode().put("op", op).put("model", model))
-                        .<com.fasterxml.jackson.databind.node.ObjectNode>set("_meta", MAPPER.createObjectNode()
+                        .<ObjectNode>set("_meta", MAPPER.createObjectNode()
                                 .put(McpProtocol.META_PROTOCOL_VERSION, McpProtocol.REVISION)
-                                .<com.fasterxml.jackson.databind.node.ObjectNode>set(
+                                .<ObjectNode>set(
                                         McpProtocol.META_CLIENT_CAPABILITIES, MAPPER.createObjectNode()))));
     }
 
@@ -60,15 +61,15 @@ class McpHttpConcurrencyTest {
     private static String evalCall(String model, String instance) throws IOException {
         return MAPPER.writeValueAsString(MAPPER.createObjectNode()
                 .put("jsonrpc", "2.0").put("id", 1).put("method", "tools/call")
-                .<com.fasterxml.jackson.databind.node.ObjectNode>set("params", MAPPER.createObjectNode()
+                .<ObjectNode>set("params", MAPPER.createObjectNode()
                         .put("name", "dm.model.read")
-                        .<com.fasterxml.jackson.databind.node.ObjectNode>set("arguments",
+                        .<ObjectNode>set("arguments",
                                 MAPPER.createObjectNode().put("op", "eval").put("model", model)
-                                        .<com.fasterxml.jackson.databind.node.ObjectNode>set("files",
+                                        .<ObjectNode>set("files",
                                                 MAPPER.createObjectNode().put("instance", instance)))
-                        .<com.fasterxml.jackson.databind.node.ObjectNode>set("_meta", MAPPER.createObjectNode()
+                        .<ObjectNode>set("_meta", MAPPER.createObjectNode()
                                 .put(McpProtocol.META_PROTOCOL_VERSION, McpProtocol.REVISION)
-                                .<com.fasterxml.jackson.databind.node.ObjectNode>set(
+                                .<ObjectNode>set(
                                         McpProtocol.META_CLIENT_CAPABILITIES, MAPPER.createObjectNode()))));
     }
 
@@ -206,10 +207,10 @@ class McpHttpConcurrencyTest {
         McpHttpConfig config = McpHttpConfig.builder().port(0).build();
         String listing = MAPPER.writeValueAsString(MAPPER.createObjectNode()
                 .put("jsonrpc", "2.0").put("id", 1).put("method", "tools/list")
-                .<com.fasterxml.jackson.databind.node.ObjectNode>set("params", MAPPER.createObjectNode()
-                        .<com.fasterxml.jackson.databind.node.ObjectNode>set("_meta", MAPPER.createObjectNode()
+                .<ObjectNode>set("params", MAPPER.createObjectNode()
+                        .<ObjectNode>set("_meta", MAPPER.createObjectNode()
                                 .put(McpProtocol.META_PROTOCOL_VERSION, McpProtocol.REVISION)
-                                .<com.fasterxml.jackson.databind.node.ObjectNode>set(
+                                .<ObjectNode>set(
                                         McpProtocol.META_CLIENT_CAPABILITIES, MAPPER.createObjectNode()))));
 
         try (McpHttpBinding server = McpHttpBinding.start(config, new McpDispatcher(liveRoot()))) {

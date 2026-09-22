@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -251,7 +252,7 @@ public final class Cli {
      */
     /** Common wrong guesses for the runtime verbs' {@code --instance} flag — agents reach for these after
      *  reading "the document INSTANCE". */
-    private static final java.util.Set<String> INSTANCE_FLAG_SYNONYMS = java.util.Set.of("--doc", "--document", "--data");
+    private static final Set<String> INSTANCE_FLAG_SYNONYMS = Set.of("--doc", "--document", "--data");
 
     /**
      * The instance-flag corrective: the runtime verbs ({@code model eval}/{@code compute}, {@code rule eval})

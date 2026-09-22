@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -177,7 +178,7 @@ public final class FieldSpec {
     public static String emptyModificationCorrective(JsonNode spec) {
         String block = configBlockWithoutKind(spec);
         if (block != null) {
-            String kind = block.toUpperCase(java.util.Locale.ROOT);
+            String kind = block.toUpperCase(Locale.ROOT);
             return "a \"" + block + "\" config block alone can't re-type a field — add \"kind\": \"" + kind
                     + "\" so the block takes effect. NOTE: modify REPLACES the field's type, so include the FULL \""
                     + block + "\" block (every key to keep), not only the changed one.";
@@ -205,7 +206,7 @@ public final class FieldSpec {
         if (kindText == null) {
             throw new IllegalArgumentException("field '" + name + "' needs a \"kind\" (or a \"typedef\")");
         }
-        return switch (kindText.toUpperCase(java.util.Locale.ROOT)) {
+        return switch (kindText.toUpperCase(Locale.ROOT)) {
             case "STRING" -> string(spec.path("string"));
             case "NUMBER" -> number(spec.path("number"));
             case "ENUM", "ENUMERATION" -> enumeration(spec.path("enum"));
@@ -249,7 +250,7 @@ public final class FieldSpec {
 
     private static FieldTypeSpec number(JsonNode n) {
         NumberTrait trait = n.hasNonNull("unit")
-                ? NumberTrait.valueOf(n.get("unit").asText().toUpperCase(java.util.Locale.ROOT)) : null;
+                ? NumberTrait.valueOf(n.get("unit").asText().toUpperCase(Locale.ROOT)) : null;
         return FieldTypeSpec.NumberSpec.builder()
                 .minFractionalDigits(intOrNull(n, "minFractionalDigits"))
                 .maxFractionalDigits(intOrNull(n, "maxFractionalDigits"))
@@ -313,7 +314,7 @@ public final class FieldSpec {
         // list and falsely reporting `annotations` applied — the schema declares an object { name: value }.
         if (!node.isObject()) {
             throw new IllegalArgumentException("\"annotations\" must be an object { \"<name>\": \"<value>\" } (got "
-                    + node.getNodeType().toString().toLowerCase(java.util.Locale.ROOT) + ")");
+                    + node.getNodeType().toString().toLowerCase(Locale.ROOT) + ")");
         }
         List<ElementDraft.Annotation> out = new ArrayList<>();
         node.fieldNames().forEachRemaining(name -> out.add(new ElementDraft.Annotation(name, node.get(name).asText())));
@@ -328,7 +329,7 @@ public final class FieldSpec {
         // reporting the localized-text aspect (label/helperText/…/description) applied — it is { locale: text }.
         if (!node.isObject()) {
             throw new IllegalArgumentException("a localized-text field must be an object { \"<locale>\": \"<text>\" } (got "
-                    + node.getNodeType().toString().toLowerCase(java.util.Locale.ROOT) + ")");
+                    + node.getNodeType().toString().toLowerCase(Locale.ROOT) + ")");
         }
         Map<String, String> out = new LinkedHashMap<>();
         node.fieldNames().forEachRemaining(key -> out.put(key, node.get(key).asText()));

@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.modelkit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -53,8 +54,8 @@ class StringLengthSentinelReadTest {
     /** The sentinel is PRESERVED, not normalized: the kit reports what the model declares. */
     @Test
     void theSentinelSurvivesTheRead() {
-        var spec = new FieldTypeSpec.StringSpec(-1, 3, null, null, false, false, java.util.Map.of(), false,
-                java.util.Map.of());
+        var spec = new FieldTypeSpec.StringSpec(-1, 3, null, null, false, false, Map.of(), false,
+                Map.of());
         assertEquals(-1, spec.minLength());
     }
 
@@ -70,7 +71,7 @@ class StringLengthSentinelReadTest {
     void anInvertedRangeOfTwoRealBoundsIsStillRefused() {
         assertEquals("minLength 5 > maxLength 3",
                 org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
-                        () -> new FieldTypeSpec.StringSpec(5, 3, null, null, false, false, java.util.Map.of(),
-                                false, java.util.Map.of())).getMessage());
+                        () -> new FieldTypeSpec.StringSpec(5, 3, null, null, false, false, Map.of(),
+                                false, Map.of())).getMessage());
     }
 }

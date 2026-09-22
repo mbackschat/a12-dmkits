@@ -8,6 +8,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.TreeSet;
@@ -64,8 +65,8 @@ class ConditionRemapperVocabularyTest {
      * without the sigil for the same reason the interpreter does — it matches the {@code '@'} separately —
      * so the two spellings denote one terminal.
      */
-    private static final java.util.Map<String, String> SIGIL_CARRIED_BY_THE_SCANNER =
-            java.util.Map.of("From", "@From", "Von", "@Von");
+    private static final Map<String, String> SIGIL_CARRIED_BY_THE_SCANNER =
+            Map.of("From", "@From", "Von", "@Von");
 
     @Test
     void everyKeywordTheRemapperKnowsIsARealTerminalOfThatLanguage() {

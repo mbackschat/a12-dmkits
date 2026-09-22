@@ -2,8 +2,17 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import io.github.mbackschat.a12.dm.core.EntityPath;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
@@ -19,6 +28,7 @@ import io.github.mbackschat.a12.dm.core.Verification;
  */
 import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.core.Refusals;
+import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 public final class BoundModel {
 
@@ -74,11 +84,11 @@ public final class BoundModel {
 
     /** Bind from a DM-JSON file on disk — sugar for {@code ofJson(Files.readString(path))}. The source is
      *  retained for the write path (F6), exactly as {@link #ofJson(String)}. */
-    public static BoundModel load(java.nio.file.Path path) {
+    public static BoundModel load(Path path) {
         try {
-            return ofJson(java.nio.file.Files.readString(path));
-        } catch (java.io.IOException e) {
-            throw new java.io.UncheckedIOException("failed to read model from " + path, e);
+            return ofJson(Files.readString(path));
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to read model from " + path, e);
         }
     }
 
@@ -104,7 +114,7 @@ public final class BoundModel {
      */
     public BoundModel add(Rule rule) {
         // re-bind with the SAME resolver, so a model with includes re-expands correctly
-        return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.addRule(requireWritable(), rule), resolver);
+        return ofJson(ModelWriter.addRule(requireWritable(), rule), resolver);
     }
 
     /**
@@ -113,7 +123,7 @@ public final class BoundModel {
      * breaks the model fails loudly here), the computation twin of {@link #add(Rule)}.
      */
     public BoundModel add(Computation computation) {
-        return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.addComputation(requireWritable(),
+        return ofJson(ModelWriter.addComputation(requireWritable(),
                 computation), resolver);
     }
 
@@ -127,7 +137,7 @@ public final class BoundModel {
      */
     public BoundModel addAll(List<Rule> rules, List<Computation> computations) {
         return ofJson(
-                io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.addAll(
+                ModelWriter.addAll(
                         requireWritable(), rules, computations),
                 resolver);
     }
@@ -137,7 +147,7 @@ public final class BoundModel {
      * Re-validated on re-bind. Throws if no rule exists at that path.
      */
     public BoundModel removeRule(String ruleFullName) {
-        return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.removeRule(requireWritable(),
+        return ofJson(ModelWriter.removeRule(requireWritable(),
                 ruleFullName), resolver);
     }
 
@@ -146,7 +156,7 @@ public final class BoundModel {
      * is unchanged). Re-validated on re-bind. The computation twin of {@link #removeRule(String)}.
      */
     public BoundModel removeComputation(String computationFullName) {
-        return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.removeComputation(requireWritable(),
+        return ofJson(ModelWriter.removeComputation(requireWritable(),
                 computationFullName), resolver);
     }
 
@@ -157,7 +167,7 @@ public final class BoundModel {
      * computation fails loudly here. The computation twin of {@link #replaceCondition(String, Condition)}.
      */
     public BoundModel replaceComputation(String computationFullName, Computation computation) {
-        return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.replaceComputation(
+        return ofJson(ModelWriter.replaceComputation(
                 requireWritable(), computationFullName, computation), resolver);
     }
 
@@ -169,7 +179,7 @@ public final class BoundModel {
      * breaks the rule fails loudly here.
      */
     public BoundModel replaceCondition(String ruleFullName, Condition newCondition) {
-        return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.replaceCondition(
+        return ofJson(ModelWriter.replaceCondition(
                 requireWritable(), ruleFullName, newCondition), resolver);
     }
 
@@ -179,11 +189,11 @@ public final class BoundModel {
     }
 
     /** Persists the model's DM-JSON to {@code path} (the portable artifact). */
-    public void writeTo(java.nio.file.Path path) {
+    public void writeTo(Path path) {
         try {
-            java.nio.file.Files.writeString(path, requireWritable());
-        } catch (java.io.IOException e) {
-            throw new java.io.UncheckedIOException("failed to write model to " + path, e);
+            Files.writeString(path, requireWritable());
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to write model to " + path, e);
         }
     }
 
@@ -218,8 +228,8 @@ public final class BoundModel {
      * "gate ran, unbacked" and "gate never ran", which let a consumer publish verification provenance for an
      * invocation that was never gated. Only ever attach evidence you were handed here.
      */
-    public java.util.Optional<Verification> consistencyGate() {
-        return java.util.Optional.ofNullable(consistencyGate);
+    public Optional<Verification> consistencyGate() {
+        return Optional.ofNullable(consistencyGate);
     }
 
     /** A generic handle to the field at {@code path} (any kind). Throws if the path is not a field. */
@@ -434,16 +444,16 @@ public final class BoundModel {
     }
 
     /** The nearest (deepest) repeatable group on the path to {@code fieldPath}, if any. */
-    public java.util.Optional<String> nearestRepeatableAncestor(String fieldPath) {
+    public Optional<String> nearestRepeatableAncestor(String fieldPath) {
         String path = fieldPath;
         int slash;
         while ((slash = path.lastIndexOf('/')) > 0) {
             path = path.substring(0, slash);
             if (index.isRepeating(path)) {
-                return java.util.Optional.of(path);
+                return Optional.of(path);
             }
         }
-        return java.util.Optional.empty();
+        return Optional.empty();
     }
 
     /**
@@ -458,7 +468,7 @@ public final class BoundModel {
                     + " — a plain field reference is field(path)/num(path)/…");
         }
         requireAbsolute(starPath, "flatten");
-        var flattened = new java.util.ArrayList<GroupRef>();
+        var flattened = new ArrayList<GroupRef>();
         StringBuilder base = new StringBuilder();
         for (String segment : starPath.substring(1).split("/")) {
             boolean starred = segment.endsWith("*");
@@ -486,7 +496,7 @@ public final class BoundModel {
      */
     public GroupListRef flattenGroup(String starGroupPath) {
         requireAbsolute(starGroupPath, "flattenGroup");
-        var flattened = new java.util.ArrayList<GroupRef>();
+        var flattened = new ArrayList<GroupRef>();
         StringBuilder base = new StringBuilder();
         for (String segment : starGroupPath.substring(1).split("/")) {
             boolean starred = segment.endsWith("*");
@@ -574,23 +584,23 @@ public final class BoundModel {
     // --- navigation (Level 1, study finding 9): streams of info handles; filter is the matcher --
 
     /** Every field, in model order, as rich {@link FieldInfo} descriptors. */
-    public java.util.stream.Stream<FieldInfo> fields() {
+    public Stream<FieldInfo> fields() {
         return index.fieldPaths().map(this::fieldInfo);
     }
 
     /** The fields directly contained in {@code group}, in model order. */
-    public java.util.stream.Stream<FieldInfo> fields(GroupRef group) {
+    public Stream<FieldInfo> fields(GroupRef group) {
         return index.fieldPaths(group.path().value()).map(this::fieldInfo);
     }
 
     /** Every group (root groups included), in model order. */
-    public java.util.stream.Stream<GroupInfo> groups() {
+    public Stream<GroupInfo> groups() {
         return index.groupPaths().map(this::groupInfo);
     }
 
     /** The declared message-locale codes (header {@code locales}), in document order — every rule and
      *  computation must carry a message for each (MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING). */
-    public java.util.List<String> locales() {
+    public List<String> locales() {
         return index.locales();
     }
 
@@ -605,14 +615,14 @@ public final class BoundModel {
     }
 
     /** The non-throwing peek — exploring is lenient; narrowing (on {@link FieldInfo}) is strict. */
-    public java.util.Optional<FieldInfo> fieldAt(String path) {
-        return index.isField(path) ? java.util.Optional.of(fieldInfo(path)) : java.util.Optional.empty();
+    public Optional<FieldInfo> fieldAt(String path) {
+        return index.isField(path) ? Optional.of(fieldInfo(path)) : Optional.empty();
     }
 
     /** The non-throwing group peek — the group peer of {@link #fieldAt}; relative navigation hangs off
      *  {@link GroupInfo} (so a combinator can be written against a root group and applied to any subtree). */
-    public java.util.Optional<GroupInfo> groupAt(String path) {
-        return index.isGroup(path) ? java.util.Optional.of(groupInfo(path)) : java.util.Optional.empty();
+    public Optional<GroupInfo> groupAt(String path) {
+        return index.isGroup(path) ? Optional.of(groupInfo(path)) : Optional.empty();
     }
 
     private FieldInfo fieldInfo(String path) {
@@ -625,20 +635,20 @@ public final class BoundModel {
 
     /** A field's element-level annotations, read back kernel-free through the {@link ModelIndex} (the slot the
      *  silent-ignore deserializer would otherwise hide). Backs {@link FieldInfo#annotations()}. */
-    java.util.List<Annotation> annotationsOf(String fieldPath) {
+    List<Annotation> annotationsOf(String fieldPath) {
         return map(index.annotationsOf(fieldPath));
     }
 
     /** A group's element-level annotations (kernel-free, via {@link ModelIndex}). Backs {@link GroupInfo#annotations()}. */
-    java.util.List<Annotation> annotationsOfGroup(String groupPath) {
+    List<Annotation> annotationsOfGroup(String groupPath) {
         return map(index.annotationsOfGroup(groupPath));
     }
 
-    java.util.Optional<String> usageTypeOfGroup(String groupPath) {
+    Optional<String> usageTypeOfGroup(String groupPath) {
         return index.usageTypeOfGroup(groupPath);
     }
 
-    private static java.util.List<Annotation> map(java.util.List<io.github.mbackschat.a12.dm.core.Annotation> as) {
+    private static List<Annotation> map(List<io.github.mbackschat.a12.dm.core.Annotation> as) {
         return as.stream().map(a -> new Annotation(a.name(), a.value())).toList();
     }
 
@@ -849,14 +859,14 @@ public final class BoundModel {
     /** The four-component form. Its century and decade slots carry no measured bound rule, so they delegate. */
     public DateConstruction dateOf(Calculation day, Calculation month, Calculation century, Calculation decade) {
         DateConstruction construction =
-                new DateConstruction(day, month, century, java.util.Optional.of(decade));
+                new DateConstruction(day, month, century, Optional.of(decade));
         requireSlotCompatibleNumberBounds(day, DAY_SLOT_MAX, "day");
         requireSlotCompatibleNumberBounds(month, MONTH_SLOT_MAX, "month");
         return construction;
     }
 
-    private static final java.math.BigDecimal DAY_SLOT_MAX = java.math.BigDecimal.valueOf(31);
-    private static final java.math.BigDecimal MONTH_SLOT_MAX = java.math.BigDecimal.valueOf(12);
+    private static final BigDecimal DAY_SLOT_MAX = BigDecimal.valueOf(31);
+    private static final BigDecimal MONTH_SLOT_MAX = BigDecimal.valueOf(12);
     /** Both gated slots are two digits wide, which is the length form of their ceiling. */
     private static final int SLOT_MAX_LENGTH = 2;
 
@@ -880,7 +890,7 @@ public final class BoundModel {
      * measures it.
      */
     private void requireSlotCompatibleNumberBounds(Calculation component,
-            java.math.BigDecimal slotMax, String slot) {
+            BigDecimal slotMax, String slot) {
         String path = declaredNumberFieldPath(component);
         if (path == null) {
             return;
@@ -929,8 +939,8 @@ public final class BoundModel {
      * <p>An endpoint whose declaration cannot be resolved is DELEGATED rather than refused.
      */
     private void requireAgreeingEndpointComponents(DateRangeConstruction construction) {
-        java.util.Set<TemporalFormats.Component> start = endpointComponents(construction.start());
-        java.util.Set<TemporalFormats.Component> end = endpointComponents(construction.end());
+        Set<TemporalFormats.Component> start = endpointComponents(construction.start());
+        Set<TemporalFormats.Component> end = endpointComponents(construction.end());
         if (start == null || end == null || start.equals(end)) {
             return;
         }
@@ -949,8 +959,8 @@ public final class BoundModel {
      * comparable. The two rules look alike and differ on exactly that, so they do not share a helper.
      */
     private void requireComparableRangeComponents(DateRangeOperand left, DateRangeOperand right) {
-        java.util.Set<TemporalFormats.Component> a = rangeComponents(left);
-        java.util.Set<TemporalFormats.Component> b = rangeComponents(right);
+        Set<TemporalFormats.Component> a = rangeComponents(left);
+        Set<TemporalFormats.Component> b = rangeComponents(right);
         if (a == null || b == null || a.equals(b)) {
             return;
         }
@@ -960,7 +970,7 @@ public final class BoundModel {
     }
 
     /** The operand's declared component set, or {@code null} when there is nothing to read. */
-    private java.util.Set<TemporalFormats.Component> rangeComponents(DateRangeOperand operand) {
+    private Set<TemporalFormats.Component> rangeComponents(DateRangeOperand operand) {
         return switch (operand) {
             case DateRangeRef ref -> componentsOfField(ref.field().path().value());
             case DateRangeConstruction construction -> {
@@ -979,12 +989,12 @@ public final class BoundModel {
         };
     }
 
-    private java.util.Set<TemporalFormats.Component> componentsOfField(String path) {
+    private Set<TemporalFormats.Component> componentsOfField(String path) {
         String declared = temporalFormat(path);
         return declared == null ? null : TemporalFormats.componentsOf(declared);
     }
 
-    private java.util.Set<TemporalFormats.Component> endpointComponents(Calculation endpoint) {
+    private Set<TemporalFormats.Component> endpointComponents(Calculation endpoint) {
         return switch (endpoint) {
             case FieldValue value -> componentsOfField(value.field().path().value());
             case IndexedFieldValue indexed -> componentsOfField(indexed.field().path().value());

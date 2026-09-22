@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.modelkit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ModelIndex;
@@ -43,7 +44,7 @@ class TypeDefModelImportTest {
         ModelLoader.loadSelfContained(provider);   // kernel-valid with no root groups
         ModelDocument doc = ModelDocument.read(provider);
         assertTrue(doc.groupPaths().isEmpty(), "a type-def-only model has no groups");
-        assertEquals(java.util.List.of("Sku", "Money"), doc.typeDefinitionIds(),
+        assertEquals(List.of("Sku", "Money"), doc.typeDefinitionIds(),
                 "it carries only the declared type definitions");
     }
 
@@ -60,7 +61,7 @@ class TypeDefModelImportTest {
         // the kernel resolves the imported types at expand and the consumer is valid
         ModelLoader.loadAndCheck(consumer, resolver);
         ModelDocument doc = ModelDocument.read(consumer);
-        assertEquals(java.util.List.of("catalogtypes"), doc.typeDefImports(),
+        assertEquals(List.of("catalogtypes"), doc.typeDefImports(),
                 "the import is declared as purpose=typeDefinitions, not an include");
         assertTrue(doc.includes().isEmpty(), "an import is not an include");
     }

@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Comments carried as a <b>side-channel</b> beside the immutable AST (the "carrier (c)" design): a map of
@@ -34,20 +36,20 @@ public final class Comments {
         return new Comments(new IdentityHashMap<>(), new IdentityHashMap<>());
     }
 
-    private static final java.util.regex.Pattern LEADING_COMMENT =
-            java.util.regex.Pattern.compile("^\\s*;;[ \\t]?([^\\r\\n]*)");
+    private static final Pattern LEADING_COMMENT =
+            Pattern.compile("^\\s*;;[ \\t]?([^\\r\\n]*)");
 
     // the leading run of consecutive ;; comment lines (each terminated by a newline, so a condition
     // body can follow on the next line) — captured verbatim for faithful preservation.
-    private static final java.util.regex.Pattern LEADING_BLOCK =
-            java.util.regex.Pattern.compile("(?:[ \\t]*;;[^\\r\\n]*\\r?\\n)+");
+    private static final Pattern LEADING_BLOCK =
+            Pattern.compile("(?:[ \\t]*;;[^\\r\\n]*\\r?\\n)+");
 
     /**
      * The leading {@code ;;} comment text of a raw condition, if it begins with one — concrete-syntax
      * sourcing for the read→modify→write-back preservation path (the loss the AST otherwise drops).
      */
     public static Optional<String> leadingCommentOf(String conditionText) {
-        java.util.regex.Matcher m = LEADING_COMMENT.matcher(conditionText);
+        Matcher m = LEADING_COMMENT.matcher(conditionText);
         return m.find() ? Optional.of(m.group(1).strip()) : Optional.empty();
     }
 
@@ -57,7 +59,7 @@ public final class Comments {
      * preserved across a read→modify→write-back (its formatting kept as-is, unlike the re-rendered body).
      */
     public static String leadingCommentBlock(String conditionText) {
-        java.util.regex.Matcher m = LEADING_BLOCK.matcher(conditionText);
+        Matcher m = LEADING_BLOCK.matcher(conditionText);
         return m.lookingAt() ? m.group() : "";
     }
 

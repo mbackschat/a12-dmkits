@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 
 /**
  * <b>What counts as evidence that a given operator raised a kernel code</b> — the fourth and (by construction) last
@@ -77,7 +79,7 @@ class EnricherOwnershipEvidenceTest {
         Diagnostic d = coded(result, "MVK_NO_CONST");
         assertTrue(d.summary().contains("'Abs'"), () -> "precondition: the kernel names Abs in quotes: " + d);
         assertEquals(
-                io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog.load().byId("Abs").orElseThrow().meaning(),
+                OperatorCatalog.load().byId("Abs").orElseThrow().meaning(),
                 d.explain().orElse(""),
                 () -> "a quoted operator IS established, so its meaning may be attached: " + d);
     }
@@ -151,10 +153,10 @@ class EnricherOwnershipEvidenceTest {
 
     /** The enricher over a verbatim kernel message — the real input shape, with nothing else varying. */
     private static Diagnostic enrichKernel(String code, String summary) {
-        return new DiagnosticEnricher(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog.load())
-                .enrich(Diagnostic.precheck(java.util.Optional.of(code), summary,
-                        new Diagnostic.Where((String) null, java.util.Optional.empty()),
-                        java.util.Optional.empty(), java.util.Optional.empty()));
+        return new DiagnosticEnricher(OperatorCatalog.load())
+                .enrich(Diagnostic.precheck(Optional.of(code), summary,
+                        new Diagnostic.Where((String) null, Optional.empty()),
+                        Optional.empty(), Optional.empty()));
     }
 
     /**
@@ -187,7 +189,7 @@ class EnricherOwnershipEvidenceTest {
                 () -> "precondition: the kernel delimits a PATH here, never the operator — so the message-based "
                         + "source cannot establish this owner: " + d);
         assertEquals(
-                io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog.load().byId("SemanticIndex")
+                OperatorCatalog.load().byId("SemanticIndex")
                         .orElseThrow().meaning(),
                 d.explain().orElse(""),
                 () -> "the code has one raise site, so the construct is established and its meaning may ride: " + d);

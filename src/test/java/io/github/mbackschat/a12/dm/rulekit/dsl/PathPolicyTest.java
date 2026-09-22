@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
@@ -105,7 +106,7 @@ class PathPolicyTest {
         // A field named like a DSL keyword is a parse error unquoted (MVK_UNEXPECTED_TOKEN, probe-verified);
         // 'Length' is the grammar's escape. Detection uses the catalog keywords ('Length' is one).
         Condition c = new FieldPresenceCondition(
-                new FieldRef("/Order/Length", io.github.mbackschat.a12.dm.core.ValueKind.NUMBER), true);
+                new FieldRef("/Order/Length", ValueKind.NUMBER), true);
 
         assertEquals("FieldFilled(/Order/'Length')", new DslRenderer().render(c));
         assertEquals("FieldFilled('Length')", new DslRenderer(ConditionLanguage.EN, "/Order").render(c));
@@ -114,7 +115,7 @@ class PathPolicyTest {
     @Test
     void singleQuotesReservedNonOperatorPathSegments() {
         Condition c = new FieldPresenceCondition(
-                new FieldRef("/Order/RuleGroup", io.github.mbackschat.a12.dm.core.ValueKind.STRING), true);
+                new FieldRef("/Order/RuleGroup", ValueKind.STRING), true);
 
         assertEquals("FieldFilled(/Order/'RuleGroup')", new DslRenderer().render(c));
         assertEquals("FieldFilled('RuleGroup')", new DslRenderer(ConditionLanguage.EN, "/Order").render(c));

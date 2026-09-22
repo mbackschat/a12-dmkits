@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A typed handle to a number field. Only number fields get the comparison builders, so a
@@ -242,8 +244,8 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
         return new ValueListCondition(field, false, fieldValues(first, rest));
     }
 
-    private static java.util.List<Calculation> integerValues(long first, long... rest) {
-        var values = new java.util.ArrayList<Calculation>();
+    private static List<Calculation> integerValues(long first, long... rest) {
+        var values = new ArrayList<Calculation>();
         values.add(NumberLiteral.of(first));
         for (long v : rest) {
             values.add(NumberLiteral.of(v));
@@ -251,8 +253,8 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
         return values;
     }
 
-    private static java.util.List<Calculation> fieldValues(NumberRef first, NumberRef... rest) {
-        var values = new java.util.ArrayList<Calculation>();
+    private static List<Calculation> fieldValues(NumberRef first, NumberRef... rest) {
+        var values = new ArrayList<Calculation>();
         values.add(first.value());
         for (NumberRef r : rest) {
             values.add(r.value());

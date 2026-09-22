@@ -214,7 +214,7 @@ public final class Linter {
     private void negativeUnderIteration(Condition condition, String errorFieldPath, String ruleGroupPath,
             BoundModel model, String rulePath, List<Diagnostic> out) {
         List<String[]> negatives = new ArrayList<>();
-        reportUnguarded(condition, java.util.Set.of(), model, ruleGroupPath, negatives);
+        reportUnguarded(condition, Set.of(), model, ruleGroupPath, negatives);
         if (negatives.isEmpty()) {
             return;
         }
@@ -246,12 +246,12 @@ public final class Linter {
      * legal shape, because an admitted one still needs a same-level positive reached conjunctively, which is
      * untouched.
      */
-    private void reportUnguarded(Condition condition, java.util.Set<String> available, BoundModel model,
+    private void reportUnguarded(Condition condition, Set<String> available, BoundModel model,
             String ruleGroupPath, List<String[]> out) {
         if (condition instanceof LogicCondition logic) {
-            java.util.Set<String> inner = available;
+            Set<String> inner = available;
             if (logic.op() == LogicCondition.Op.AND) {
-                inner = new java.util.HashSet<>(available);
+                inner = new HashSet<>(available);
                 inner.addAll(positiveLevels(logic.left(), model));
                 inner.addAll(positiveLevels(logic.right(), model));
             }
@@ -306,13 +306,13 @@ public final class Linter {
     }
 
     /** The repeatable levels this subtree offers a positive presence for; {@link #ANY_LEVEL} when unknown. */
-    private java.util.Set<String> positiveLevels(Condition condition, BoundModel model) {
-        java.util.Set<String> levels = new java.util.HashSet<>();
+    private Set<String> positiveLevels(Condition condition, BoundModel model) {
+        Set<String> levels = new HashSet<>();
         collectPositiveLevels(condition, model, levels);
         return levels;
     }
 
-    private void collectPositiveLevels(Condition condition, BoundModel model, java.util.Set<String> out) {
+    private void collectPositiveLevels(Condition condition, BoundModel model, Set<String> out) {
         switch (condition) {
             // An OR lends nothing: neither arm holds on its own, so a positive inside one is not available to
             // a negative conjoined with the whole disjunction. Measured — the kernel refuses
@@ -402,7 +402,7 @@ public final class Linter {
     }
 
     /** The level a comparison operand references, when it is a plain field read. */
-    private void comparisonLevel(Calculation operand, BoundModel model, java.util.Set<String> out) {
+    private void comparisonLevel(Calculation operand, BoundModel model, Set<String> out) {
         if (operand instanceof FieldValue value) {
             out.add(levelOf(value.field().path().value(), model));
         }

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -95,7 +96,7 @@ class ClientRefusalKernelBasisCensusTest {
      * ({@code Annotation.java}, {@code Severity.java}), so a name-keyed exclusion would silently spread to a
      * same-named file in another module — and an exclusion is exactly where a hidden refusal would live.
      */
-    private static final java.util.Set<String> INTERPRET_ONLY = java.util.Set.of(
+    private static final Set<String> INTERPRET_ONLY = Set.of(
             "core/src/main/java/io/github/mbackschat/a12/dm/core/KernelCode.java",
             "core/src/main/java/io/github/mbackschat/a12/dm/core/Refusals.java",
             "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/StructuralKernelFix.java",
@@ -131,7 +132,7 @@ class ClientRefusalKernelBasisCensusTest {
 
     @Test
     void everyCitedRefusalCodeWasMeasuredAtTheKernel() throws IOException {
-        Map<String, java.util.Set<String>> cited = citedByRefusals();
+        Map<String, Set<String>> cited = citedByRefusals();
         Set<String> measured = measuredAtTheKernel();
 
         List<String> unbacked = cited.keySet().stream()
@@ -260,7 +261,7 @@ class ClientRefusalKernelBasisCensusTest {
 
     /** The codes one snippet's refusal statements cite — the scan itself, exercised on a literal. */
     private static List<String> codesIn(String snippet) {
-        List<String> codes = new java.util.ArrayList<>();
+        List<String> codes = new ArrayList<>();
         for (int[] span : refusalStatements(snippet)) {
             Matcher found = KERNEL_CODE.matcher(snippet.substring(span[0], span[1]));
             while (found.find()) {
@@ -280,7 +281,7 @@ class ClientRefusalKernelBasisCensusTest {
      * throw. A regex can express neither, since the terminator depends on lexical state.
      */
     private static List<int[]> refusalStatements(String text) {
-        List<int[]> spans = new java.util.ArrayList<>();
+        List<int[]> spans = new ArrayList<>();
         Matcher start = REFUSAL_START.matcher(text);
         while (start.find()) {
             boolean inString = false;
@@ -307,8 +308,8 @@ class ClientRefusalKernelBasisCensusTest {
     }
 
     /** Each kernel code cited in a refusal, with EVERY site that cites it — a guard has to name the locus. */
-    private static Map<String, java.util.Set<String>> citedByRefusals() throws IOException {
-        Map<String, java.util.Set<String>> cited = new LinkedHashMap<>();
+    private static Map<String, Set<String>> citedByRefusals() throws IOException {
+        Map<String, Set<String>> cited = new LinkedHashMap<>();
         for (String root : REFUSING_SOURCE_ROOTS) {
             for (Path source : CHECKOUT.tracked(root)) {
                 String fileName = source.getFileName().toString();
@@ -322,13 +323,13 @@ class ClientRefusalKernelBasisCensusTest {
                 String text = SourceText.uncommented(source);
                 Matcher typed = TYPED_CITATION.matcher(text);
                 while (typed.find()) {
-                    cited.computeIfAbsent(typed.group(1), code -> new java.util.LinkedHashSet<>())
+                    cited.computeIfAbsent(typed.group(1), code -> new LinkedHashSet<>())
                             .add(path + ":" + (text.substring(0, typed.start()).split("\n", -1).length));
                 }
                 for (int[] span : refusalStatements(text)) {
                     Matcher codes = KERNEL_CODE.matcher(text.substring(span[0], span[1]));
                     while (codes.find()) {
-                        cited.computeIfAbsent(codes.group(), code -> new java.util.LinkedHashSet<>())
+                        cited.computeIfAbsent(codes.group(), code -> new LinkedHashSet<>())
                                 .add(path + ":" + (text.substring(0, span[0]).split("\n", -1).length));
                     }
                 }

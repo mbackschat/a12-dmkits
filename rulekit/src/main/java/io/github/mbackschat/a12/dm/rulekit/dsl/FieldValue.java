@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import java.util.Optional;
+
 /**
  * The field-value operator {@code [path]} — reads a field's value for use inside an expression.
  * {@code outer} marks the {@code $} outer-iteration correlation ({@code [$path]}): a reference that
@@ -30,8 +32,8 @@ public record FieldValue(FieldRef field, boolean outer) implements Calculation, 
      * subject field and the value list as ONE union.
      */
     @Override
-    public java.util.Optional<String> exactIdentity() {
-        return java.util.Optional.of((outer ? "$" : "") + field.path().value());
+    public Optional<String> exactIdentity() {
+        return Optional.of((outer ? "$" : "") + field.path().value());
     }
 
     @Override

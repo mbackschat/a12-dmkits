@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Pattern;
 
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -34,8 +35,8 @@ public final class CliTestSupport {
      * inventory: the point is the SHAPE a reader recognizes as the kernel's, so a code retired upstream or one
      * invented by a future pre-check is caught the same way.
      */
-    private static final java.util.regex.Pattern KERNEL_VOCABULARY =
-            java.util.regex.Pattern.compile("\\bMVK_[A-Z0-9_]+");
+    private static final Pattern KERNEL_VOCABULARY =
+            Pattern.compile("\\bMVK_[A-Z0-9_]+");
 
     public static Result run(String... args) {
         StringBuilder out = new StringBuilder();
@@ -219,12 +220,12 @@ public final class CliTestSupport {
     public static Path groupOperandRuled(Path dir) throws IOException {
         String base = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("policy").locale("en_US")
                 .rootGroup("Policy", p -> p
-                        .field("Reference", io.github.mbackschat.a12.dm.modelkit.FieldKind.STRING)
+                        .field("Reference", FieldKind.STRING)
                         .group("Assessment", a -> a.field("Observed",
-                                io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER)))
+                                FieldKind.NUMBER)))
                 .build().toJson();
-        io.github.mbackschat.a12.dm.edit.EditSession session =
-                io.github.mbackschat.a12.dm.edit.EditSession.read(base);
+        EditSession session =
+                EditSession.read(base);
         session.addRule(m -> m.rule(m.group("/Policy")).name("AssessmentComplete")
                 .errorField(m.str("/Policy/Reference"))
                 .when(m.str("/Policy/Reference").filled().and(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl

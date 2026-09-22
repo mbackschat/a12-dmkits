@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -116,7 +117,7 @@ final class ModelDiffCommand extends BaseCommand {
                     inputs.baseResolver(), inputs.headResolver());
             ObjectNode data = MAPPER.createObjectNode();
             ArrayNode changes = data.putArray("changes");
-            java.util.Map<String, Integer> refactorOf = refactorIndexByChangeId(diff.refactors());
+            Map<String, Integer> refactorOf = refactorIndexByChangeId(diff.refactors());
             int added = 0;
             int removed = 0;
             int modified = 0;
@@ -237,8 +238,8 @@ final class ModelDiffCommand extends BaseCommand {
 
     /** Maps a change id (a refactor's rename anchor {@code from}, or one of its {@code referrers}) to that
      *  refactor's index — each folded change then carries a {@code partOfRefactor} back-pointer (first wins). */
-    private static java.util.Map<String, Integer> refactorIndexByChangeId(List<ModelDiff.Refactor> refactors) {
-        java.util.Map<String, Integer> index = new java.util.LinkedHashMap<>();
+    private static Map<String, Integer> refactorIndexByChangeId(List<ModelDiff.Refactor> refactors) {
+        Map<String, Integer> index = new java.util.LinkedHashMap<>();
         for (int i = 0; i < refactors.size(); i++) {
             ModelDiff.Refactor r = refactors.get(i);
             index.putIfAbsent(r.from(), i);

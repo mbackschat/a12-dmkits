@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -129,14 +130,14 @@ final class WorkspaceCheckCommand extends BaseCommand {
             env = ResultEnvelope.queryResult(resultIdentity(), summary, data, ConsistencyEvidence.none());
         } else {
             env = ResultEnvelope.rejected(resultIdentity(), "no model could be checked — " + summary, data,
-                    List.of(Diagnostic.precheck(java.util.Optional.of(RkCode.MODEL_PREPARATION_FAILED.code()),
+                    List.of(Diagnostic.precheck(Optional.of(RkCode.MODEL_PREPARATION_FAILED.code()),
                             "not one of the " + models.size() + " model(s) reached the consistency gate, so this "
                                     + "workspace cannot be reported as passing",
                             Diagnostic.Where.path(dir),
-                            java.util.Optional.of("read the per-model `problem` entries in `data.models` — a "
+                            Optional.of("read the per-model `problem` entries in `data.models` — a "
                                     + "typical cause is an include or type-def reference that names an id absent "
                                     + "from the scanned tree"),
-                            java.util.Optional.empty())),
+                            Optional.empty())),
                     RejectionBasis.preflight());
         }
         out().print(env.toJsonString());
@@ -180,9 +181,9 @@ final class WorkspaceCheckCommand extends BaseCommand {
     }
 
     private static Diagnostic precheck(String message) {
-        return Diagnostic.precheck(java.util.Optional.empty(), message,
-                new Diagnostic.Where((String) null, java.util.Optional.empty()),
-                java.util.Optional.empty(), java.util.Optional.empty());
+        return Diagnostic.precheck(Optional.empty(), message,
+                new Diagnostic.Where((String) null, Optional.empty()),
+                Optional.empty(), Optional.empty());
     }
 
     private JsonNode diagnosticsJson(List<Diagnostic> diagnostics) {

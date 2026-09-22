@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -29,8 +32,8 @@ class NativePerformanceRunnerTest {
         assertEquals(3, report.get("sampleCount"));
         assertEquals("native-48-rules-500-rows-first-answer", report.get("scenario"));
         assertEquals("native-48-rules-500-rows-first-answer@1", report.get("identityLabel"));
-        assertEquals(3, ((java.util.List<?>) report.get("samplesMillis")).size());
-        assertEquals(3, ((java.util.List<?>) report.get("unattributedCpuUtilisation")).size(),
+        assertEquals(3, ((List<?>) report.get("samplesMillis")).size());
+        assertEquals(3, ((List<?>) report.get("unattributedCpuUtilisation")).size(),
                 "every sample carries a demand slot, present or null, so a reader can tell which ones reported");
     }
 
@@ -43,12 +46,12 @@ class NativePerformanceRunnerTest {
      */
     @Test
     void contentionIsCalledOnAMajorityOfTheSamplesThatREPORTED() {
-        var quiet = NativePerformanceRunner.contentionSummary(java.util.Arrays.asList(0.412, null, 0.184, null));
+        var quiet = NativePerformanceRunner.contentionSummary(Arrays.asList(0.412, null, 0.184, null));
         assertEquals(2, quiet.get("demandReadings"));
         assertEquals(0L, quiet.get("contendedSamples"));
         assertEquals(false, quiet.get("contended"), "the worst measured QUIET reading must not read as contention");
 
-        var busy = NativePerformanceRunner.contentionSummary(java.util.Arrays.asList(0.883, 0.928, null));
+        var busy = NativePerformanceRunner.contentionSummary(Arrays.asList(0.883, 0.928, null));
         assertEquals(2, busy.get("demandReadings"));
         assertEquals(2L, busy.get("contendedSamples"));
         assertEquals(true, busy.get("contended"), "the best measured CONTAMINATED reading must read as contention");
@@ -63,7 +66,7 @@ class NativePerformanceRunnerTest {
      */
     @Test
     void oneContendedReadingAmongQuietOnesDoesNotCondemnTheRun() {
-        var mixed = NativePerformanceRunner.contentionSummary(java.util.Arrays.asList(0.95, 0.20, 0.25));
+        var mixed = NativePerformanceRunner.contentionSummary(Arrays.asList(0.95, 0.20, 0.25));
 
         assertEquals(3, mixed.get("demandReadings"));
         assertEquals(1L, mixed.get("contendedSamples"));
@@ -79,7 +82,7 @@ class NativePerformanceRunnerTest {
      */
     @Test
     void noReadingsAtAllIsNotEvidenceOfAQuietMachine() {
-        var blind = NativePerformanceRunner.contentionSummary(java.util.Arrays.asList(null, null));
+        var blind = NativePerformanceRunner.contentionSummary(Arrays.asList(null, null));
 
         assertEquals(0, blind.get("demandReadings"));
         assertEquals(0L, blind.get("contendedSamples"));
@@ -94,10 +97,10 @@ class NativePerformanceRunnerTest {
      */
     @Test
     void theNativeFloorSitsStrictlyInsideTheMeasuredGap() {
-        org.junit.jupiter.api.Assertions.assertTrue(
+        Assertions.assertTrue(
                 NativePerformanceRunner.MAX_UNATTRIBUTED_CPU_UTILISATION > 0.412,
                 "a floor at or below the worst measured quiet reading would flag an honest native run");
-        org.junit.jupiter.api.Assertions.assertTrue(
+        Assertions.assertTrue(
                 NativePerformanceRunner.MAX_UNATTRIBUTED_CPU_UTILISATION < 0.883,
                 "a floor at or above the best measured contaminated reading would never fire");
     }

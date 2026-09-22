@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -443,7 +444,7 @@ class CatalogProseReviewGuardTest {
                             + " does not belong to " + locator.operator());
                 } else if (evidence.expected() == null
                         || !descriptor.verdict().name().equals(evidence.expected().verdict().name())
-                        || !java.util.Objects.equals(descriptor.code(), evidence.expected().code())) {
+                        || !Objects.equals(descriptor.code(), evidence.expected().code())) {
                     violations.add(locator + " outcome does not match claim-probe evidence " + evidence.id());
                 }
             }
@@ -746,7 +747,7 @@ class CatalogProseReviewGuardTest {
                             + " does not belong to " + claim.operator());
                 } else if (!descriptor.oracle().name().equals(claim.kind().name())
                         || !descriptor.verdict().name().equals(claim.expected().verdict().name())
-                        || !java.util.Objects.equals(descriptor.code(), claim.expected().code())) {
+                        || !Objects.equals(descriptor.code(), claim.expected().code())) {
                     violations.add(claim.operator() + " claim " + claim.id()
                             + " verdict/code do not match claim probe " + evidence.id());
                 }

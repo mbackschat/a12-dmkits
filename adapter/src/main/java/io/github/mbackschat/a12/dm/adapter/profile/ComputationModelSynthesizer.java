@@ -1,11 +1,14 @@
 package io.github.mbackschat.a12.dm.adapter.profile;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ValueKind;
@@ -61,7 +64,7 @@ final class ComputationModelSynthesizer {
             return new Reservation(List.of(), Map.of());
         }
         Set<String> repeatable = m.groups().filter(GroupInfo::repeating)
-                .map(GroupInfo::path).collect(java.util.stream.Collectors.toSet());
+                .map(GroupInfo::path).collect(Collectors.toSet());
         Map<String, List<GroupInfo>> childrenOf = childrenOf(m);
         Map<String, List<FieldInfo>> numbersAll = new LinkedHashMap<>();
         for (FieldInfo f : m.fields().toList()) {
@@ -85,7 +88,7 @@ final class ComputationModelSynthesizer {
                     (a, b) -> depthOf(a.path()) <= depthOf(b.path()) ? a : b);
         }
         Set<String> keepNonComputed = shallowestPerBranch.values().stream()
-                .map(FieldInfo::path).collect(java.util.stream.Collectors.toSet());
+                .map(FieldInfo::path).collect(Collectors.toSet());
 
         // how many computed fields of each kind (older profile → all NUMBER); non-computable kinds fold to NUMBER
         Map<String, Integer> wantKinds = target.computedFieldKinds() == null || target.computedFieldKinds().isEmpty()
@@ -111,7 +114,7 @@ final class ComputationModelSynthesizer {
         List<String> repsNestedFirst = new ArrayList<>(repeatable);
         repsNestedFirst.sort((a, b) -> Boolean.compare(
                 !repeatable.contains(parentOf(a)), !repeatable.contains(parentOf(b))));  // nested (parent rep) first
-        Set<String> protectedNums = new java.util.HashSet<>();
+        Set<String> protectedNums = new HashSet<>();
         for (String repPath : repsNestedFirst) {
             if (protectedNums.size() >= protectBudget) {
                 break;
@@ -142,7 +145,7 @@ final class ComputationModelSynthesizer {
         // blocks with one named function; the priority order and every claim's own logic are UNCHANGED
         // (a pure extraction, verified behavior-preserving against the 8-seed gate on both real targets).
         Map<String, Integer> maxRepsByPath = m.groups().filter(GroupInfo::repeating)
-                .collect(java.util.stream.Collectors.toMap(GroupInfo::path, GroupInfo::maxRepetitions));
+                .collect(Collectors.toMap(GroupInfo::path, GroupInfo::maxRepetitions));
         NumberAllocation numberAllocation = allocateNumberComputedFields(numCapable, numRest,
                 want.getOrDefault(ValueKind.NUMBER, 0), target, childrenOf, repeatable, numbersAll,
                 maxRepsByPath, rnd);
@@ -150,7 +153,7 @@ final class ComputationModelSynthesizer {
         Map<String, String> operandPlan = numberAllocation.operandPlan();
 
         List<FieldInfo> out = new ArrayList<>();
-        Set<String> taken = new java.util.HashSet<>();
+        Set<String> taken = new HashSet<>();
         for (var e : want.entrySet()) {
             List<FieldInfo> pool = byKind.getOrDefault(e.getKey(), List.of());
             int n = Math.min(e.getValue(), pool.size());
@@ -258,7 +261,7 @@ final class ComputationModelSynthesizer {
                     new int[] {0}, new int[] {0}, new int[] {0});
         }
         Set<String> computedPaths = computed.stream().map(FieldInfo::path)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
         Map<String, List<FieldInfo>> numbersByGroup = new LinkedHashMap<>();
         Map<String, List<FieldInfo>> fieldsByGroup = new LinkedHashMap<>();
         Map<String, List<FieldInfo>> numbersAllByGroup = new LinkedHashMap<>();
@@ -275,7 +278,7 @@ final class ComputationModelSynthesizer {
             }
         }
         Set<String> repeatable = m.groups().filter(GroupInfo::repeating)
-                .map(GroupInfo::path).collect(java.util.stream.Collectors.toSet());
+                .map(GroupInfo::path).collect(Collectors.toSet());
         Map<String, List<GroupInfo>> childrenOf = childrenOf(m);
 
         List<FieldInfo> numberComputed = computed.stream().filter(f -> f.kind() == ValueKind.NUMBER).toList();
@@ -333,7 +336,7 @@ final class ComputationModelSynthesizer {
 
         if (budgetEligible && c.kind() == ValueKind.NUMBER && canSplit && constBudget[0] > 0) {
             constBudget[0]--;
-            Calculation lit = new NumberLiteral(java.math.BigDecimal.ZERO.setScale(cScale));
+            Calculation lit = new NumberLiteral(BigDecimal.ZERO.setScale(cScale));
             Computation built = b.commonPrecondition(precondition(m, localFields, 0, rnd, scope, childrenOf,
                     repeatable, groupFillBudget, preconditionStyle)).calc(lit).build();
             return new BudgetClaimResult(built, null);
@@ -605,7 +608,7 @@ final class ComputationModelSynthesizer {
         List<List<FieldInfo>> runs = byGroup.values().stream()
                 .filter(g -> g.size() >= 2)
                 .sorted((a, b) -> b.size() - a.size())
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
         Map<String, String> edges = new LinkedHashMap<>();
         int cascade = Math.max(1, cascadeTarget);
         int feeders = 0;
@@ -672,7 +675,7 @@ final class ComputationModelSynthesizer {
             leaves.add(new NumberExpr(m.num(p).value()));
         }
         if (leaves.isEmpty()) {
-            leaves.add(new NumberExpr(new NumberLiteral(java.math.BigDecimal.ONE)));
+            leaves.add(new NumberExpr(new NumberLiteral(BigDecimal.ONE)));
         }
         NumberExpr expr = leaves.get(0);
         // at least (leaves-1) operations so EVERY leaf is incorporated (the computed operand + aggregate must not

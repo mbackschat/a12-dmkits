@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -33,8 +34,8 @@ class ModelInputFailureTest {
         for (String[] command : new String[][] {
                 {"model", "check"}, {"model", "read"},
                 {"group", "modify", "/Subscription", "--repeatable", "2"}}) {
-            var arguments = new java.util.ArrayList<>(java.util.List.of("-m", file.toString()));
-            arguments.addAll(java.util.List.of(command));
+            var arguments = new java.util.ArrayList<>(List.of("-m", file.toString()));
+            arguments.addAll(List.of(command));
             var result = CliTestSupport.run(arguments.toArray(String[]::new));
             var envelope = MAPPER.readTree(result.out());
             assertEquals(2, result.code(), result::out);

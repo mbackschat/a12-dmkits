@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl.operators;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
@@ -73,7 +74,7 @@ class GroupAndQuantifierConditionTest {
         DslRenderer r = new DslRenderer();
         FieldRef a = m.field(NAME);
         FieldRef b = m.field(MONTHLY_FEE);
-        java.util.List<FieldRef> fields = java.util.List.of(a, b);
+        List<FieldRef> fields = List.of(a, b);
         assertEquals(r.render(Dsl.notAllFieldsFilled(a, b)), r.render(Dsl.notAllFieldsFilled(fields)));
         assertEquals(r.render(Dsl.fieldsNotCollectivelyFilled(a, b)), r.render(Dsl.fieldsNotCollectivelyFilled(fields)));
         assertEquals(r.render(Dsl.notExactlyOneFieldFilled(a, b)), r.render(Dsl.notExactlyOneFieldFilled(fields)));
@@ -82,7 +83,7 @@ class GroupAndQuantifierConditionTest {
 
         GroupRef g1 = m.group("/Subscription/Addons");
         GroupRef g2 = m.group("/Subscription/Billing");
-        java.util.List<GroupRef> groups = java.util.List.of(g1, g2);
+        List<GroupRef> groups = List.of(g1, g2);
         assertEquals(r.render(Dsl.allGroupsFilled(g1, g2)), r.render(Dsl.allGroupsFilled(groups)));
         assertEquals(r.render(Dsl.noGroupFilled(g1, g2)), r.render(Dsl.noGroupFilled(groups)));
         assertEquals(r.render(Dsl.atLeastOneGroupFilled(g1, g2)), r.render(Dsl.atLeastOneGroupFilled(groups)));
@@ -90,7 +91,7 @@ class GroupAndQuantifierConditionTest {
         assertEquals(r.render(Dsl.groupsNotCollectivelyFilled(g1, g2)), r.render(Dsl.groupsNotCollectivelyFilled(groups)));
 
         // an empty list is an error, matching the allFieldsFilled(List)/allOf(List) contract
-        assertThrows(IllegalArgumentException.class, () -> Dsl.moreThanOneFieldFilled(java.util.List.<FieldRef>of()));
-        assertThrows(IllegalArgumentException.class, () -> Dsl.allGroupsFilled(java.util.List.<GroupRef>of()));
+        assertThrows(IllegalArgumentException.class, () -> Dsl.moreThanOneFieldFilled(List.<FieldRef>of()));
+        assertThrows(IllegalArgumentException.class, () -> Dsl.allGroupsFilled(List.<GroupRef>of()));
     }
 }
