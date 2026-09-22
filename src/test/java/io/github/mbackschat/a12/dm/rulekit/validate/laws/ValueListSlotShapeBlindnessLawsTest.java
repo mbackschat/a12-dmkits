@@ -30,6 +30,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
  * the sole field are the same question asked with the expansion already written out, which is why all three
  * belong in one table rather than in three.
  *
+ * <p><b>The admitted set has FOUR members, one more than the diagnostic names.</b> STRING, ENUMERATION and
+ * NUMBER are in the code's own name; a CUSTOM declaration is admitted too, because it shares the string's base
+ * type. So the refused denominator below is the complement of four kinds, not of three, and
+ * {@code ValueKind}'s eleven authorable members are what makes that a closed statement rather than a list.
+ *
  * <p><b>NUMBER is the separator, not an eighth refusal.</b> Every refused row here pairs a slot against a
  * STRING literal list, so "the slot disagrees with the literals" predicts the whole refused half equally
  * well. The Number rows discriminate: they clear this gate against those same String literals and are
@@ -87,7 +92,10 @@ class ValueListSlotShapeBlindnessLawsTest {
                             .booleanField("Reopened", f -> { }))
                     .group("Confirmations", g -> g
                             .confirmField("TermsAccepted", f -> { })
-                            .confirmField("PrivacyAccepted", f -> { })))
+                            .confirmField("PrivacyAccepted", f -> { }))
+                    .group("Serials", g -> g
+                            .customField("Primary", f -> f.type("PolicySerial"))
+                            .customField("Secondary", f -> f.type("PolicySerial"))))
             .build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(CLAIM);
@@ -199,6 +207,17 @@ class ValueListSlotShapeBlindnessLawsTest {
         actual.put("an enumeration, its own member — a sole field of that kind",
                 verdict(Dsl.atLeastOneFieldValueIncludedInValueList(List.of("BASIC"),
                         C.enumOf("Tiers/Band"))));
+        // The FOURTH admitted kind, and the one the gate's own NAME omits. Raw on the field arm for the same
+        // reason NUMBER is: the kind-typed literal overloads take a String or an Enum slot and a CUSTOM
+        // declaration is neither, so the kit erases a shape the kernel admits — over-strict, unlike the seven
+        // refused kinds where the erasure and the kernel agree.
+        actual.put("a CUSTOM-typed field — a homogeneous group",
+                verdict(Dsl.atLeastOneFieldValueIncludedInValueList(XY, C.flattenGroup("Serials"))));
+        actual.put("a CUSTOM-typed field — the same two fields listed out",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Serials/Primary, Serials/Secondary"
+                        + " In \"x\", \"y\")"));
+        actual.put("a CUSTOM-typed field — a sole field of that kind",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Serials/Primary In \"x\", \"y\")"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expectThree(expected, "NUMBER against String literals", TYPES_FOR_COMPARISON);
@@ -208,6 +227,11 @@ class ValueListSlotShapeBlindnessLawsTest {
         // The third member of the admitted set, on the same three shapes, so the set is witnessed and not
         // merely named.
         expectThree(expected, "an enumeration, its own member", KernelLaws.ADMITTED);
+        // …and the FOURTH, which `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` does not name: a CUSTOM declaration
+        // shares the string's base type, so `isLikeString` admits it. The code's name is a three-kind list and
+        // the admitted set has four members — a reader who takes the name for the set gets this wrong, which
+        // is why it is measured here rather than inferred from the scalar carrier.
+        expectThree(expected, "a CUSTOM-typed field", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "NUMBER is in the set, and the class it draws is the later one");
     }
 
