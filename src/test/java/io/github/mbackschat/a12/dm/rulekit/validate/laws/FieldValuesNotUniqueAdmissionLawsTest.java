@@ -119,6 +119,18 @@ class FieldValuesNotUniqueAdmissionLawsTest {
                         .timeField("ShiftEnd", t -> { })
                         .dateTimeField("SealedAt", dt -> { })
                         .dateTimeField("OpenedAt", dt -> { })
+                        // A TIME and a DATE_TIME carrying the IDENTICAL format string, which is what lets one
+                        // pair vary kind alone. Declaring a stamp as `HH:mm:ss` is deliberate and unusual: the
+                        // format vocabulary is kind-independent across DATE, TIME and DATE_TIME, so this is
+                        // the pairing that reaches the comparability gate instead of being pre-empted by the
+                        // format one. Domain reading: a gate log that records only the time of day.
+                        .timeField("GateOpenedTime", t -> t.format("HH:mm:ss"))
+                        .dateTimeField("GateSealedStamp", dt -> dt.format("HH:mm:ss"))
+                        // A DATE on that same format string, which is what SPANS the four temporal kinds: it
+                        // pairs with the TIME and the DATE_TIME above, and `StocktakeYear` already pairs with
+                        // `ReportingYear`, so every kind is one edge from a measured partner. Without it the
+                        // rows only establish two PAIRS and leave "are those pairs one category?" unasked.
+                        .dateField("GateAuditDate", d -> d.format("HH:mm:ss"))
                         .dateRangeField("CountWindow", r -> r.format("dd.MM.yyyy").separator("-"))
                         .dateRangeField("AuditWindow", r -> r.format("dd.MM.yyyy").separator("-"))
                         .field("Recount", FieldKind.BOOLEAN)
@@ -295,6 +307,26 @@ class FieldValuesNotUniqueAdmissionLawsTest {
         // the same-kind/differing-format rejection above, this is what shows the gate reads the format and not the
         // kind, and it is the case that corrected SPEC-2026-08-05-02's "DATE alone" reading.
         admits("BinCode", "FieldValuesNotUnique(StocktakeYear, ReportingYear)");
+    }
+
+    @Test
+    void aTimeAndADateTimeSharingOneFormatAreAdmittedAcrossKinds() {
+        // THE OTHER HALF OF THE DISCRIMINATOR, and the half that was resting on an inference. The date/time
+        // row above is refused by the FORMAT gate, which runs first and therefore says nothing about whether
+        // the two kinds share a comparability category — a pre-empted gate is not a silent one. TIME and
+        // DATE_TIME membership had no same-format witness until this row; the DATE/DATEFRAGMENT pair above
+        // had one, so only these two kinds were open.
+        admits("BinCode", "FieldValuesNotUnique(GateOpenedTime, GateSealedStamp)");
+    }
+
+    @Test
+    void theFourTemporalKindsAreONEComparabilityCategoryAndNotTwoPairs() {
+        // The rows above witness DATE with DATEFRAGMENT and TIME with DATE_TIME. Two admitted PAIRS are also
+        // what two separate categories would produce, so the pairs alone cannot tell one category from two —
+        // the question is only asked by an edge that crosses them. `GateAuditDate` supplies it: a DATE on the
+        // clock kinds' format string, leaving every one of the four kinds one measured edge from the rest.
+        admits("BinCode", "FieldValuesNotUnique(GateAuditDate, GateOpenedTime)");
+        admits("BinCode", "FieldValuesNotUnique(GateAuditDate, GateSealedStamp)");
     }
 
     @Test

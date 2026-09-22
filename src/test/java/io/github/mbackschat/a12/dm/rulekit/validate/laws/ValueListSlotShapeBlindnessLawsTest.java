@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -95,7 +96,20 @@ class ValueListSlotShapeBlindnessLawsTest {
                             .confirmField("PrivacyAccepted", f -> { }))
                     .group("Serials", g -> g
                             .customField("Primary", f -> f.type("PolicySerial"))
-                            .customField("Secondary", f -> f.type("PolicySerial"))))
+                            .customField("Secondary", f -> f.type("PolicySerial")))
+                    // The one REPEATABLE group, and the only respect in which it differs from `Dates`. Every
+                    // other group above is non-repeatable, which was an unnamed constant across the whole
+                    // grid until a cold review named it; `theScopeGateOutranksTheKindGate` is what keeps the
+                    // grid's denominator honest about the scope it was measured at.
+                    .group("Visits", g -> g.repeatable(50)
+                            .dateField("Seen", f -> f.format("yyyy-MM-dd"))
+                            .dateField("Reviewed", f -> f.format("yyyy-MM-dd")))
+                    // The repeatable twin of `Texts`, i.e. of the ADMITTED kind. It is what shows the scope
+                    // gate refusing a slot the kind gate would have passed; the `Visits` rows alone move from
+                    // one refusal to another, which two independent gates could also produce.
+                    .group("Notes", g -> g.repeatable(50)
+                            .stringField("Body", f -> { })
+                            .stringField("Addendum", f -> { })))
             .build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(CLAIM);
@@ -120,18 +134,34 @@ class ValueListSlotShapeBlindnessLawsTest {
     }
 
     /**
-     * One refused kind in all three shapes: the group row typed through the delegating arm, the two field
-     * rows raw because the kind-typed arm erases them.
+     * The three slot spellings for one kind, as the kernel receives them — the SINGLE source of the grid's
+     * shape axis, so the rows and the witness below cannot drift apart.
+     *
+     * <p>The group row is authored typed and rendered through the harness; the two field rows are raw because
+     * the kind-typed arm erases them. All three come back as text so one assertion can prove they are three.
+     */
+    private static List<String> theThreeSlotSpellings(String group, String first, String second) {
+        return List.of(
+                KernelLaws.render(GROUP, Dsl.atLeastOneFieldValueIncludedInValueList(XY, C.flattenGroup(group))),
+                "AtLeastOneFieldValueIncludedInValueList(" + group + "/" + first + ", "
+                        + group + "/" + second + " In \"x\", \"y\")",
+                "AtLeastOneFieldValueIncludedInValueList(" + group + "/" + first + " In \"x\", \"y\")");
+    }
+
+    /**
+     * One refused kind in all three shapes, evaluated from {@link #theThreeSlotSpellings}.
+     *
+     * <p><b>It reads them from there rather than rebuilding them, and that is the point.</b> A cold review
+     * planted a mutant collapsing the two-fields row onto the sole-field one, and the grid passed: three
+     * labels, three identical conditions, nothing able to notice. With one source, the same mutant now makes
+     * the distinctness witness fail, so the shape axis is no longer as strong as trust in its row labels.
      */
     private static void refusedKindShapes(Map<String, String> into, String kind, String group, String first,
             String second) {
-        into.put(kind + " — a homogeneous group",
-                verdict(Dsl.atLeastOneFieldValueIncludedInValueList(XY, C.flattenGroup(group))));
-        into.put(kind + " — the same two fields listed out",
-                verdict("AtLeastOneFieldValueIncludedInValueList(" + group + "/" + first + ", "
-                        + group + "/" + second + " In \"x\", \"y\")"));
-        into.put(kind + " — a sole field of that kind",
-                verdict("AtLeastOneFieldValueIncludedInValueList(" + group + "/" + first + " In \"x\", \"y\")"));
+        List<String> spellings = theThreeSlotSpellings(group, first, second);
+        into.put(kind + " — a homogeneous group", verdict(spellings.get(0)));
+        into.put(kind + " — the same two fields listed out", verdict(spellings.get(1)));
+        into.put(kind + " — a sole field of that kind", verdict(spellings.get(2)));
     }
 
     private static void expectThree(Map<String, String> into, String kind, String code) {
@@ -146,6 +176,12 @@ class ValueListSlotShapeBlindnessLawsTest {
      */
     @Test
     void sevenKindsDrawOneClassAndTheSlotShapeDoesNotChangeIt() {
+        // THE SHAPE AXIS'S OWN WITNESS, before any verdict is read. Three labels are not three shapes, and a
+        // grid whose rows happened to carry one condition under three names would agree with itself perfectly.
+        List<String> spellings = theThreeSlotSpellings("Dates", "Reported", "Closed");
+        assertEquals(3, Set.copyOf(spellings).size(),
+                () -> "the three slot shapes must be three distinct conditions, got " + spellings);
+
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("a text kind — the control — a homogeneous group",
                 verdict(Dsl.atLeastOneFieldValueIncludedInValueList(XY, C.flattenGroup("Texts"))));
@@ -265,5 +301,69 @@ class ValueListSlotShapeBlindnessLawsTest {
         expected.put("the same numbers quoted", TYPES_FOR_COMPARISON);
         expected.put("the scalar twin, same field, same literals", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the number literal is a scalar-carrier spelling only");
+    }
+
+    /**
+     * <b>The SCOPE gate outranks the kind gate, so every row above is a claim about a NON-REPEATABLE carrier
+     * and says nothing about a repeatable one.</b>
+     *
+     * <p>{@code Visits} and {@code Dates} are the same shape — two DATE fields spelled alike — and differ in
+     * exactly one builder call, {@code repeatable(50)}. That is the whole experiment: if the kind gate were
+     * the first to answer, both would draw {@code MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED}.
+     *
+     * <p>This row exists because the grid above shares one property its published denominator never named —
+     * no group in it is repeatable — and the omission had already been carried into a peer's specification,
+     * where a checker implementing the unqualified row would report the kind gate's code where the kernel
+     * reports the scope gate's. Starring the level is what restores the kind gate's reach.
+     */
+    @Test
+    void theScopeGateOutranksTheKindGate() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a repeatable group, unstarred", verdict(
+                Dsl.atLeastOneFieldValueIncludedInValueList(XY, C.flattenGroup("Visits"))));
+        actual.put("its two fields listed out, unstarred",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Visits/Seen, Visits/Reviewed In \"x\", \"y\")"));
+        actual.put("a sole field of it, unstarred",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Visits/Seen In \"x\", \"y\")"));
+        actual.put("the same group, STARRED",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Visits* In \"x\", \"y\")"));
+        actual.put("the non-repeatable twin — the control", verdict(
+                Dsl.atLeastOneFieldValueIncludedInValueList(XY, C.flattenGroup("Dates"))));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a repeatable group, unstarred", "MVK_NO_WILDCARD");
+        expected.put("its two fields listed out, unstarred", "MVK_NO_WILDCARD");
+        expected.put("a sole field of it, unstarred", "MVK_NO_WILDCARD");
+        // Starred, the level is bound and the scope gate has nothing to say, so the kind gate answers and
+        // draws the grid's class — which is what makes this a gate ORDER and not a second kind rule.
+        expected.put("the same group, STARRED", ONLY_THREE_KINDS);
+        expected.put("the non-repeatable twin — the control", ONLY_THREE_KINDS);
+        assertEquals(expected, actual, "the scope gate answers before the kind gate");
+    }
+
+    /**
+     * <b>The scope gate refuses a slot the kind gate would have ADMITTED</b> — which is what makes it an
+     * outranking rather than two gates that happen to refuse the same rows.
+     *
+     * <p>{@code Notes} is a repeatable group of the admitted kind. Unstarred it draws the scope gate's class
+     * although nothing about it is wrong for the value list; starred, it is admitted outright. The DATE rows
+     * above move from one refusal to another, and two unrelated gates could produce that; only a row that
+     * ends ADMITTED shows the earlier gate was the one speaking.
+     */
+    @Test
+    void theScopeGateRefusesAnOtherwiseLegalSlot() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a repeatable STRING group, unstarred", verdict(
+                Dsl.atLeastOneFieldValueIncludedInValueList(XY, C.flattenGroup("Notes"))));
+        actual.put("the same group, STARRED",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Notes* In \"x\", \"y\")"));
+        actual.put("its non-repeatable twin — the control", verdict(
+                Dsl.atLeastOneFieldValueIncludedInValueList(XY, C.flattenGroup("Texts"))));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a repeatable STRING group, unstarred", "MVK_NO_WILDCARD");
+        expected.put("the same group, STARRED", KernelLaws.ADMITTED);
+        expected.put("its non-repeatable twin — the control", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "the scope gate refuses an otherwise legal slot");
     }
 }

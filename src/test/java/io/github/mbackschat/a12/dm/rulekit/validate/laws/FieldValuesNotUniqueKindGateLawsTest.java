@@ -83,9 +83,17 @@ class FieldValuesNotUniqueKindGateLawsTest {
     /**
      * Among the temporal kinds, the declared format STRINGS must agree — not their component sets.
      *
-     * <p>The second row decides how wide the format comparison is: a DATE beside a DATE-TIME are two kinds
-     * whose formats necessarily differ, and the kind gate runs before the base-type one, so this class is
-     * what answers rather than {@code MVK_VARYING_TYPES_NOT_ALLOWED}.
+     * <p>The second row decides how wide the format comparison is: this fixture's DATE and DATE-TIME carry
+     * different format strings, and the kind gate runs before the base-type one, so this class is what
+     * answers rather than {@code MVK_VARYING_TYPES_NOT_ALLOWED}.
+     *
+     * <p><b>Corrected 2026-09-22:</b> that row used to be explained as two kinds "whose formats necessarily
+     * differ". Nothing forces that — the temporal format vocabulary is kind-independent, so a DATE-TIME may
+     * be declared {@code yyyy-MM-dd} and a DATE {@code HH:mm:ss}. The row therefore moved kind AND spelling
+     * together while crediting the refusal to kind, and it is the spelling that answers: with the format
+     * strings held equal, a cross-kind temporal pair is ADMITTED
+     * ({@link FieldValuesNotUniqueAdmissionLawsTest#theFourTemporalKindsAreONEComparabilityCategoryAndNotTwoPairs},
+     * which measures every one of the four temporal kinds against a partner of another kind).
      */
     @Test
     void twoTemporalFieldsSpelledDifferentlyAreRefusedByThisGateAndNotTheNext() {

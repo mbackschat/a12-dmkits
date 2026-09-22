@@ -355,8 +355,19 @@ final class KernelLaws {
      * Say which one, at the row or at the helper that builds it.
      */
     static String verdictModel(String json, String group, String errorField, Condition condition) {
-        return verdictModel(json, group, errorField,
-                new DslRenderer(ConditionLanguage.EN, group).render(condition));
+        return verdictModel(json, group, errorField, render(group, condition));
+    }
+
+    /**
+     * The condition TEXT a typed condition reaches the kernel as, relative to {@code group}.
+     *
+     * <p>Published so a law that needs to see the text — one whose subject is the rendered spelling, or one
+     * proving its own rows carry distinct conditions — does not have to build a renderer to get it. That is
+     * the same affordance argument as the {@code Condition} overloads themselves: the guard forbids a private
+     * renderer, so every legitimate reason to want one belongs here.
+     */
+    static String render(String group, Condition condition) {
+        return new DslRenderer(ConditionLanguage.EN, group).render(condition);
     }
 
     /**

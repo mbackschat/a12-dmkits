@@ -25,9 +25,18 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
  * <p><b>The PARTNER is a second variable, and holding it still is what makes the yearless rows readable.</b>
  * "{@code DifferenceInMonths} over a yearless operand is admitted either way" is true of a homogeneous
  * yearless pair and false of a yearless-against-dated one, which draws
- * {@code MVK_DATE_WITH_AND_WITHOUT_YEAR} — the year-MIXTURE gate, answering before the unit's own operand
- * gate. Both pairs are measured, because a grid carrying only the mixed pair reports the mixture's class as
- * the unit's.
+ * {@code MVK_DATE_WITH_AND_WITHOUT_YEAR} — the year-MIXTURE gate. Both pairs are measured, because a grid
+ * carrying only the mixed pair reports the mixture's class as the unit's.
+ *
+ * <p><b>Corrected 2026-09-22: the mixture gate does NOT answer first, and the rows here say so.</b> The
+ * earlier reading had it answering before each unit's own operand gate, which the grid refutes: the same
+ * mixed pair {@code (Yearless, Dated)} draws {@code MVK_WRONG_DATE_FORMAT_FOR_OP} under
+ * {@code DifferenceInYears} and {@code MVK_DATE_WITH_AND_WITHOUT_YEAR} under {@code DifferenceInMonths}, and
+ * {@link KernelLaws#verdictModel} joins every distinct code, so one code means one gate reported. A gate that
+ * ran first would report on both. What the rows support instead: {@code DifferenceInMonths} ADMITS a yearless
+ * operand at its own gate, which leaves the mixture gate as the one able to refuse the mixed pair, while
+ * {@code DifferenceInYears} refuses a yearless operand at its own gate and PRE-EMPTS the mixture gate. The
+ * order is the same in both; what differs is whether the unit's gate has anything to say.
  *
  * <p>Sibling: {@link BaseYearRequirementLawsTest}, which owns where the {@code BaseYear} CONSTANT needs the
  * declaration; this file is about a yearless FIELD reaching an operand slot.
@@ -114,7 +123,9 @@ class BaseYearDifferenceOperandClassLawsTest {
         both(expected, "years over a dated operand — the control", KernelLaws.ADMITTED, KernelLaws.ADMITTED);
         // The Base Year supplies the missing year position, so the same operand crosses the gate with it.
         both(expected, "years over a yearless operand", KernelLaws.ADMITTED, "MVK_WRONG_DATE_FORMAT_FOR_OP");
-        // The MIXTURE gate answers before the unit's own, so this row is not about the unit at all.
+        // Months ADMITS a yearless operand at its own gate, so the mixture gate is the one left to refuse the
+        // mixed pair. Read against the years row above, which draws the UNIT's class on the same pair: that is
+        // what shows the unit's gate is not being skipped here, only satisfied.
         both(expected, "months over a yearless operand", KernelLaws.ADMITTED, "MVK_DATE_WITH_AND_WITHOUT_YEAR");
         both(expected, "years over TWO yearless operands",
                 KernelLaws.ADMITTED, "MVK_WRONG_DATE_FORMAT_FOR_OP");

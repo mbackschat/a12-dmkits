@@ -2719,7 +2719,18 @@ Canonical in §9 "Other repetition rules". [KF100](#kf100) recorded this operato
 
 **One comparability CATEGORY — and this gate is STRICTER than token comparability.** Mixing categories draws **`MVK_VARYING_TYPES_NOT_ALLOWED`**. The measured categories are **{String, Custom}**, **{Enumeration}**, **{Number}**, and the temporal family **{Date, Time, DateTime, DateFragment}**: Number beside String, String beside Enumeration, Enumeration beside String, Date beside String and Date beside Number are all rejected (both orders measured for the Enumeration pair, because a gate reading only the first operand would pass one of them), while Custom beside String is **admitted** and two Custom fields of *different* registered type names are admitted — the type name is not part of the gate. Differing Number **scales** stay admitted, which is what makes KF100's cross-scale equality claim (a scale-0 `5` equals a scale-2 `5.00`) reachable at all.
 
-**Inside the temporal category, one identical declared FORMAT string** — else `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` again. Two Dates at `dd.MM.yyyy` are admitted; the same pair differing only in declared format is refused; two DateFragments at `MM` are admitted and `MM` beside `yyyy` is refused. A Date beside a Time is refused on this gate and **not** on the category gate (measured as a pre-emption, both codes checked), which is what places Time and DateTime inside the temporal category rather than outside it.
+**Inside the temporal category, one identical declared FORMAT string** — else `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` again. Two Dates at `dd.MM.yyyy` are admitted; the same pair differing only in declared format is refused; two DateFragments at `MM` are admitted and `MM` beside `yyyy` is refused. A Date beside a Time is refused on this gate and **not** on the category gate (measured as a pre-emption, both codes checked).
+
+**Corrected 2026-09-22: that pre-emption did NOT establish Time and DateTime's membership, and the category is now measured across all four kinds.** The sentence above used to end "which is what places Time and DateTime inside the temporal category rather than outside it" — an inference from a gate that never ran. A pre-empted gate is not a silent one: the format gate answering first says nothing about what the category gate would have said, so membership rested on the absence of evidence. The format vocabulary is kind-independent, so the fix is to hold the declared format EQUAL and vary only the kind:
+
+| pair, identical declared format | verdict |
+|---|---|
+| DATE `yyyy` beside DATEFRAGMENT `yyyy` | admitted |
+| TIME `HH:mm:ss` beside DATETIME `HH:mm:ss` | admitted |
+| DATE `HH:mm:ss` beside TIME `HH:mm:ss` | admitted |
+| DATE `HH:mm:ss` beside DATETIME `HH:mm:ss` | admitted |
+
+**Two admitted PAIRS would not have been enough, which is the transferable half.** The first two rows witness `{DATE, DATEFRAGMENT}` and `{TIME, DATETIME}` — and two disjoint categories produce exactly that. The question is only asked by an edge that CROSSES them, so the last two rows exist to leave every kind one measured edge from the rest. A peer's specification had reached the same point from the other side, splitting the four members by the evidence each had; the pair rows alone would have read as discharging it.
 
 **Corrected 2026-08-05:** the `SPEC-2026-08-05-02` reading — "DATE is the only admitted temporal kind" and the same-format rule is Date-local — is **refuted at the observable**. Time, DateTime and DateFragment pairs are all admitted, and the format gate spans the whole temporal family. The heading's earlier "ONE declared kind" is likewise corrected to one *category*: Custom beside String is admitted, so declared-kind equality is not necessary.
 
@@ -9853,10 +9864,19 @@ An empty category name preempts nothing: entity resolution answers first, then c
 | `-1 > 0` | `MVK_INVALID_COMPARE_TO_CONST` |
 | `1 + 2 > 0` · `1 > 1 + 2` | admitted, both |
 | `BaseYear > 1` · `YearFromDate(BaseYear) > 1` | admitted, both |
+| `Today == Today` · `Now == Now` | `MVK_INVALID_COMPARE_TO_CONST`, both |
+| `"a" == "a"` · `True == True` | `MVK_INVALID_COMPARE_TO_CONST`, both |
+| `Today == [OrderedOn]` | admitted |
+| `CurrentRepetition(Lines) > 1`, rule on `/Order` | `MVK_NO_WILDCARD` |
 | `CurrentRepetition(/Order/Lines) > 1`, rule on `/Order` | `MVK_NO_WILDCARD` |
 | `CurrentRepetition(/Order/Lines) > 1`, rule on `/Order/Lines` | admitted |
+| `CurrentRepetition(Lines) > 1`, rule on `/Order/Lines` | `MVK_INVALID_ENTITY` |
 
-The gate fires exactly when both sides are immediate written-out literals. A sign belongs to the literal rather than making it an operation, and one non-immediate side suffices on either side. Three operands that read no cell clear it: `BaseYear`, a Base-Year date part, and `CurrentRepetition`.
+The gate fires exactly when both sides are immediate **constants in the grammar's sense**. A sign belongs to the literal rather than making it an operation, and one non-immediate side suffices on either side. Three operands that read no cell clear it: `BaseYear`, a Base-Year date part, and `CurrentRepetition`.
+
+**Corrected 2026-09-22 (cold review): the denominator is the grammar's `konstante`, not "written-out literals".** The entry first stated the biconditional as immediate written-out literals, which the clock rows above falsify — neither `Today` nor `Now` is written out and both fire. `CheckOpUtils.isConstant` asks whether the operand is a grammar `konstante`, and the parser's `commonKonstante` production is `Falsch | Wahr | Heute | Jetzt | StringLiteral | number`, so the boolean and clock constants sit in the same production as the literals and the number rows were measuring one member of a larger set. *(Basis: the grammar and `CheckOpUtils` for the predicate — parser layer, not runtime — and the rows above for the behaviour.)* The wrong half was already contradicted inside this document: [KF446](#kf446) records bare `Today == Today` drawing this class, and `ClockGroupingComparisonEntryLawsTest` locks it. Two live statements of one gate's condition, one of them false — the failure the amend-in-place rule exists to prevent.
+
+**The coordinate's SPELLING is scope-relative, and the table publishes what was run.** The renderer relativizes the operand to the rule's group, so one typed `CurrentRepetition` reaches the kernel as `CurrentRepetition(Lines)` from `/Order` and as `CurrentRepetition(/Order/Lines)` from inside it. The first cut of this entry published the absolute text for both scopes although the outside row was run with the relative one; the four rows above close that 2×2. The spelling is not cosmetic — inside the group, `Lines` resolves against the rule's own group and draws `MVK_INVALID_ENTITY`.
 
 **The last of those clears it only where it BINDS, which a12-kernel-lean's `SPEC-2026-09-22-01` does not say.** From outside its repeating group the coordinate draws `MVK_NO_WILDCARD` — a different gate, asked earlier — so "clears the constant gate" is a statement about the rule's scope as much as about the operand. Both scopes carry their own field-against-literal control, because a reading that took the outside row for this gate's answer would conclude the opposite of the truth.
 
@@ -9872,12 +9892,21 @@ The gate fires exactly when both sides are immediate written-out literals. A sig
 | `DifferenceInYears(Yearless, Dated)` | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
 | `DifferenceInMonths(Yearless, Dated)` | admitted | `MVK_DATE_WITH_AND_WITHOUT_YEAR` |
 | `DifferenceInYears(Yearless, Yearless)` | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `DifferenceInMonths(Yearless, Yearless)` | admitted | admitted |
 | `DifferenceInYears(Clock, Dated)` | `MVK_INVALID_TIME` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
 | `DifferenceInMonths(Clock, Dated)` | `MVK_WRONG_DATE_FORMAT_FOR_OP` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `DifferenceInYears(Stamp, Dated)` | `MVK_WRONG_DATE_FORMAT_FOR_OP` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `DifferenceInMonths(Stamp, Dated)` | `MVK_WRONG_DATE_FORMAT_FOR_OP` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `DifferenceInDays(Stamp, Stamp)` | admitted | admitted |
+| `DifferenceInDays(Clock, Dated)` | `MVK_WRONG_DATE_FORMAT_FOR_OP` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+
+All eleven rows the lock asserts are published, because the prose below leans on two of them. `DifferenceInDays` is the family's third unit and refuses the other's carrier in the opposite direction: it takes the stamp and refuses the pure clock.
 
 Two units of one family agree on every admitted operand and still answer different codes on a refused one: a pure clock at `DifferenceInYears` draws `MVK_INVALID_TIME` with a Base Year declared and `MVK_WRONG_DATE_FORMAT_FOR_OP` without, while `DifferenceInMonths` draws the latter in both models.
 
-**The PARTNER is a second variable, and holding it still is what makes the yearless rows readable.** "`DifferenceInMonths` over a yearless operand is admitted either way" is true of a homogeneous yearless pair and false of a yearless-against-dated one, which draws the year-MIXTURE gate — answering before the unit's own operand gate. Both pairs are measured, because a grid carrying only the mixed pair reports the mixture's class as the unit's. Confirms a12-kernel-lean's `SPEC-2026-09-21-03`.
+**The PARTNER is a second variable, and holding it still is what makes the yearless rows readable.** "`DifferenceInMonths` over a yearless operand is admitted either way" is true of a homogeneous yearless pair and false of a yearless-against-dated one, which draws the year-MIXTURE gate. Both pairs are measured, because a grid carrying only the mixed pair reports the mixture's class as the unit's. Confirms a12-kernel-lean's `SPEC-2026-09-21-03`.
+
+**Corrected 2026-09-22 (cold review): the mixture gate does NOT answer before the unit's own gate.** The entry first explained the row that way, and the table above refutes it — the same mixed pair `(Yearless, Dated)` draws `MVK_WRONG_DATE_FORMAT_FOR_OP` under `DifferenceInYears` and `MVK_DATE_WITH_AND_WITHOUT_YEAR` under `DifferenceInMonths`. The verdict helper joins every distinct code, so a single code means a single gate reported, and a gate that genuinely ran first would report on both rows. What the rows support: `DifferenceInMonths` ADMITS a yearless operand at its own gate, which leaves the mixture gate as the one able to refuse the mixed pair, while `DifferenceInYears` refuses that operand at its own gate and pre-empts the mixture gate. The gate order never changes; what changes is whether the unit's own gate has anything to say. This is the "mechanism carrying the confidence of the observation it explains" failure — every measurement in the table was and remains correct.
 
 **A second result, about our own erasure.** The kit types these slots (`differenceInYears(DateOperand, DateOperand)`), so the clock and stamp rows have no typed spelling at all — and the kernel refuses exactly those operands, row for row. That is the measured basis a client-side refusal is required to have, rather than an analogy about the date family.
 
@@ -9886,6 +9915,10 @@ Two units of one family agree on every admitted operand and still answer differe
 ## §8 supplement — the value-list quantifier's kind gate is one class over seven kinds, SHAPE-BLIND, with NUMBER inside the admitted set (measured 2026-09-22) <a id="kf453"></a>
 
 > Fold: pending — belongs in §8 beside the scalar value-list gates ([KF109](#kf109)).
+
+The carrier throughout is the quantifier `AtLeastOneFieldValueIncludedInValueList`; its scalar twin `FieldValueIncludedInValueList` appears only in the asymmetry row at the end.
+
+**The whole table below holds at a BOUND level only** — a non-repeatable group, or a repeatable one that is starred. See the scope-gate amendment at the end of this entry before implementing it; a checker that applies the table unqualified reports this gate's class where the kernel reports `MVK_NO_WILDCARD`.
 
 Each kind measured in **three slot shapes** — a homogeneous group, the same two fields listed out, and a sole field of that kind — against one String literal list:
 
@@ -9902,6 +9935,20 @@ Each kind measured in **three slot shapes** — a homogeneous group, the same tw
 The gate does not read the slot's shape: a group is expanded and its expansion judged, so all three spellings of one kind draw the identical class. **NUMBER is the separator, not an eighth refusal** — every refused row pairs a slot against String literals, so "the slot disagrees with the literals" predicts the whole refused half equally well; the Number rows clear this gate against those same literals and are refused one gate later, which no account keyed on disagreement can produce. The four temporal kinds and DATERANGE are each measured rather than transferred from DATE: the gate reads three POSITIVE predicates, so its refused half is a complement. Confirms a12-kernel-lean's `SPEC-2026-09-22-03`.
 
 **A carrier asymmetry found while building the positive control.** The QUANTIFIER's value list admits no number literal at all — after `In`, a bare `1` is read as a PATH (`MVK_INVALID_ENTITY`) and `1.00` does not survive the parser (`MVK_UNEXPECTED_TOKEN`) — while the SCALAR twin takes `FieldValueIncludedInValueList(Assessed, 1, 2)` in the same model. Invisible from either carrier alone, and the reason the admitted Number control has to be field-valued.
+
+**Amended 2026-09-22 (cold review of this entry's own slice): a SCOPE gate outranks the kind gate, so the table above is a claim about a BOUND level and says nothing about an unbound one.** `Visits` and `Dates` are the same shape — two DATE fields spelled `yyyy-MM-dd` — and differ in exactly one builder call:
+
+| slot | verdict |
+|---|---|
+| `AtLeastOneFieldValueIncludedInValueList(Visits In "x","y")` — repeatable, unstarred | `MVK_NO_WILDCARD` |
+| the same two fields listed out, unstarred | `MVK_NO_WILDCARD` |
+| a sole field of it, unstarred | `MVK_NO_WILDCARD` |
+| `AtLeastOneFieldValueIncludedInValueList(Visits* In "x","y")` — starred | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
+| `AtLeastOneFieldValueIncludedInValueList(Dates In "x","y")` — non-repeatable, the control | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
+
+Shape-blindness survives — all three spellings agree at each scope — but it is now measured at BOTH scopes rather than one. Starring binds the level, the scope gate falls silent, and the kind gate answers; unstarred, the kind gate is never reached and no kind is refused for its kind.
+
+**Why the first cut could not see it, which is the transferable part.** All twelve groups in the fixture were non-repeatable and the entry never named that, so `repeatable` was a constant across every row — the account fitted all of them and was false outside the set. This is [KF242](#kf242)'s shape a second time, and the remedy both entries point at is the same: a within-model 2×2 that varies one builder call, which cannot borrow a constant the way two separate carriers can. The unqualified row had already been carried into a12-kernel-lean's `spec/06 §B.3` and was corrected there on the same day. Sharpest detail for anyone reading this as a retrieval problem rather than a knowledge one: `ConstantGateImmediacyLawsTest`, written in the same session, already identifies `MVK_NO_WILDCARD` as a gate asked earlier.
 
 *(Locked: `rulekit.validate.laws.ValueListSlotShapeBlindnessLawsTest`; the scalar carrier's own field-slot denominator stays with `ScalarValueListGateLawsTest`.)*
 
