@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IParseTreeEntity;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICondition;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.IEC;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.IEntity;
@@ -55,6 +56,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
 import com.mgmtp.a12.kernel.md.document.api.IDocument;
@@ -461,11 +463,13 @@ public final class KernelAdapter {
             int outerRefs = converter.countOuterRefs(parsed);   // $ correlations the source carries (N8)
             int categoryRefs = converter.countCategoryRefs(parsed);   // [field -> Cat] projections it carries
             int semanticIndexRefs = converter.countSemanticIndexRefs(parsed);   // [field For key] reads
+            int wildcardLevels = converter.countWildcardLevels(parsed);   // repetition stars it carries
             Condition converted = converter.convert(parsed);
             converter.verifyOuterPreserved(converted, outerRefs);   // backstop: a dropped $ → Opaque, never silent
             String rendered = new DslRenderer().render(converted);
             converter.verifyCategoryPreserved(rendered, categoryRefs);
             converter.verifySemanticIndexPreserved(rendered, semanticIndexRefs);
+            converter.verifyWildcardPreserved(rendered, wildcardLevels);
             String stored = verbatimConditionText(ruleFullName);
             if (dropsALoadBearingGroup(ruleFullName, stored, rendered)) {
                 return new ReadResult.Opaque(stored, "F10 converter would silently drop a `{ … }` group the "
@@ -921,12 +925,14 @@ public final class KernelAdapter {
                 return new ReadComputation.Opaque(verbatim, "the kernel could not extract calculation info");
             }
             ConditionConverter converter = new ConditionConverter(model);
-            int categoryRefs = countCategoryRefs(converter, info.get());
+            int categoryRefs = sumOverSlots(info.get(), converter::countCategoryRefs);
+            int wildcardLevels = sumOverSlots(info.get(), converter::countWildcardLevels);
             Computation computation =
                     converter.convertComputation(info.get(), recoverMessages(cr.getRule()), errorCodesToSuppress);
-            // backstop: a dropped [field -> Cat] projection → Opaque, never a silently different operation
+            // backstops: a dropped [field -> Cat] projection or star → Opaque, never a silently different operation
             String rendered = renderedSlots(computation);
             converter.verifyCategoryPreserved(rendered, categoryRefs);
+            converter.verifyWildcardPreserved(rendered, wildcardLevels);
             // …and the grouping backstop {@link #dropsALoadBearingGroup} states, at the sibling site the sweep
             // for it found: a computation's precondition is an ordinary condition, so the kernel drops its
             // group on a simple operand exactly as it does for a rule, and `computation read` published the
@@ -955,17 +961,17 @@ public final class KernelAdapter {
         }
     }
 
-    /** The category projections a computation's source AST carries — its common precondition plus every
+    /** {@code count} summed over a computation's source AST — its common precondition plus every
      *  alternative's precondition and value expression. */
-    private static int countCategoryRefs(ConditionConverter converter, ICalculationInfo info) {
-        int count = info.getCommonPrecondition().map(converter::countCategoryRefs).orElse(0);
+    private static int sumOverSlots(ICalculationInfo info, ToIntFunction<IParseTreeEntity> count) {
+        int sum = info.getCommonPrecondition().map(count::applyAsInt).orElse(0);
         for (var partial : info.getPartialCalculations()) {
             if (partial.getLeft() != null) {
-                count += converter.countCategoryRefs(partial.getLeft());
+                sum += count.applyAsInt(partial.getLeft());
             }
-            count += converter.countCategoryRefs(partial.getRight());
+            sum += count.applyAsInt(partial.getRight());
         }
-        return count;
+        return sum;
     }
 
     /** Every rendered slot of a converted computation, concatenated — the text the category backstop counts. */

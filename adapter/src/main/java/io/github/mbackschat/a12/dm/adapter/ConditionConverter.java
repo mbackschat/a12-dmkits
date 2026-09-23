@@ -7,6 +7,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiFunction;
+import java.util.function.ToIntFunction;
 
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IEntityId;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IParseTreeEntity;
@@ -204,12 +205,25 @@ final class ConditionConverter {
     }
 
     /**
-     * Every {@link IEntityId} the node reaches, {@code matches} applied to each. The kernel's {@code traverse()}
+     * Count the starred levels the source AST carries, one per {@code WILDCARD} segment of every entity, so a
+     * two-star path that loses one star is still caught. The input to {@link #verifyWildcardPreserved}.
+     */
+    int countWildcardLevels(IParseTreeEntity root) {
+        return sumOverEntities(root, id -> (int) Arrays.stream(id.getIndices())
+                .filter(index -> index == IParseTreeEntity.WILDCARD).count());
+    }
+
+    private static int countEntities(IParseTreeEntity root, java.util.function.Predicate<IEntityId> matches) {
+        return sumOverEntities(root, id -> matches.test(id) ? 1 : 0);
+    }
+
+    /**
+     * Every {@link IEntityId} the node reaches, {@code weight} summed over them. The kernel's {@code traverse()}
      * does not descend into {@code Having} filters, so those are walked explicitly (breadth-first, including
-     * filters nested inside filters) — the reason both counters share this walk rather than calling
+     * filters nested inside filters) — the reason every counter shares this walk rather than calling
      * {@code traverse} directly.
      */
-    private static int countEntities(IParseTreeEntity root, java.util.function.Predicate<IEntityId> matches) {
+    private static int sumOverEntities(IParseTreeEntity root, ToIntFunction<IEntityId> weight) {
         int[] count = {0};
         Deque<IParseTreeEntity> pending = new ArrayDeque<>();
         pending.add(root);
@@ -218,9 +232,7 @@ final class ConditionConverter {
             pending.poll().traverse(new ASTVisitor() {
                 @Override
                 public boolean visit(IEntityId id) {
-                    if (matches.test(id)) {
-                        count[0]++;
-                    }
+                    count[0] += weight.applyAsInt(id);
                     ICondition filter = id.getFilterCondition();
                     if (filter != null) {
                         nested.add(filter);
@@ -321,8 +333,33 @@ final class ConditionConverter {
     }
 
     /**
+     * The same backstop for repetition stars. A starred operand reads every repetition and its unstarred
+     * spelling reads one, so a conversion that loses a star produces another legal rule that still reports
+     * itself converted. That shipped: a field-fill quantifier with a {@code $}-marked member rebuilt every
+     * member from its plain path ({@code adapter.WildcardPreservedReadTest}).
+     *
+     * <p>A path star is the one glued to a segment name, or to the closing quote of a reserved one; the
+     * renderer spaces a multiplication, and string literals are removed first, so neither is counted.
+     *
+     * @param rendered the converted subject's rendered DSL
+     * @throws UnsupportedConstructException when a star was dropped — caught by the read entry points
+     */
+    void verifyWildcardPreserved(String rendered, int expectedStars) {
+        if (expectedStars == 0) {
+            return;
+        }
+        int renderedStars = countMatches(rendered.replaceAll("\"[^\"]*\"", ""), "(?<=[\\p{L}\\p{N}_'])\\*");
+        if (renderedStars < expectedStars) {
+            throw new UnsupportedConstructException("F10 converter would silently drop a repetition star: the "
+                    + "source carries " + expectedStars + " starred level(s) but conversion rendered only "
+                    + renderedStars + " — that operand position rebuilds the path without its star, so the "
+                    + "subject is preserved verbatim [kernel node: IEntityId.getIndices()]");
+        }
+    }
+
+    /**
      * The {@code { … }} groups a condition text carries, outside string literals and outside a leading
-     * {@code ;;} comment block. Unlike the three backstops above this one counts the stored TEXT rather than
+     * {@code ;;} comment block. Unlike the backstops above this one counts the stored TEXT rather than
      * the source parse tree, because the parse tree is precisely where the count is missing: A12 records a
      * group only on a composite ({@code ParseTreeCreator.exitBRACKET_OP} calls {@code setGeklammert()} under
      * an {@code instanceof ICompositeOperation} guard), so a group around a simple operand leaves no node to
@@ -483,11 +520,11 @@ final class ConditionConverter {
                 return fieldFillQuantifier(name, new FieldOperand[] {scope}, entityList);
             }
             // $-correlated presence predicate (e.g. NoFieldFilled($a, $b) inside a filter, D13): build
-            // outer-marked field operands so the $ survives — else the count-check refuses the conversion.
+            // outer-marked field operands so the $ survives — else the count-check refuses the conversion. Each
+            // member goes through the shared conversion, which also keeps a sibling's star and key: rebuilding
+            // members from their plain paths read `NoFieldFilled($a, B*/c)` back as `NoFieldFilled($a, B/c)`.
             if (entities.stream().anyMatch(IEntityId::isOuter)) {
-                FieldOperand[] ops = entities.stream()
-                        .map(e -> e.isOuter() ? model.field(e.getFullName()).outer() : model.field(e.getFullName()))
-                        .toArray(FieldOperand[]::new);
+                FieldOperand[] ops = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
                 return fieldFillQuantifier(name, ops, entityList);
             }
             // An unfiltered wildcard field-fill quantifier is still a list operation. Route every operand
