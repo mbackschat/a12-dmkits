@@ -122,6 +122,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier;
@@ -484,7 +485,9 @@ final class ConditionConverter {
             // $-correlated presence predicate (e.g. NoFieldFilled($a, $b) inside a filter, D13): build
             // outer-marked field operands so the $ survives — else the count-check refuses the conversion.
             if (entities.stream().anyMatch(IEntityId::isOuter)) {
-                FieldOperand[] ops = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
+                FieldOperand[] ops = entities.stream()
+                        .map(e -> e.isOuter() ? model.field(e.getFullName()).outer() : model.field(e.getFullName()))
+                        .toArray(FieldOperand[]::new);
                 return fieldFillQuantifier(name, ops, entityList);
             }
             // An unfiltered wildcard field-fill quantifier is still a list operation. Route every operand
@@ -888,6 +891,9 @@ final class ConditionConverter {
      *              it, and a dropped {@code $} has its own backstop in {@link #verifyOuterPreserved}
      */
     private Calculation fieldValueCalculation(IEntityId entity, boolean outer) {
+        if (hasSemanticIndex(entity)) {
+            return semanticIndex(entity, entity).index();
+        }
         String category = entity.getCategoryName();
         if (category == null || category.isEmpty()) {
             return new FieldValue(model.field(entity.getFullName()), outer);
@@ -1681,7 +1687,7 @@ final class ConditionConverter {
                 && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             String path = field.getField().getFullName();
             if (model.fieldAt(path).map(info -> info.kind() == ValueKind.NUMBER).orElse(false)) {
-                return model.num(path).asNumber();
+                return indexedCell(field, field).map(NumberExpr::new).orElseGet(() -> model.num(path).asNumber());
             }
         }
         return null;
@@ -1771,7 +1777,8 @@ final class ConditionConverter {
             if (right instanceof IConstantOperation c) {
                 return left.asNumber().differsWithTolerance(tol, Dsl.number(c.getValue()));
             }
-            if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
+            if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue
+                    && !hasSemanticIndex(rf.getField())) {
                 NumberRef other = model.num(rf.getField().getFullName());
                 return left.differsWithTolerance(tol, rf.getField().isOuter() ? other.outer() : other);
             }
@@ -1793,7 +1800,8 @@ final class ConditionConverter {
                 default -> throw unsupported("number comparison operator " + op, origin);
             };
         }
-        if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
+        if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue
+                && !hasSemanticIndex(rf.getField())) {
             NumberRef other = model.num(rf.getField().getFullName());
             if (rf.getField().isOuter()) {
                 other = other.outer();   // $ correlation on the right operand (D13)
@@ -1825,6 +1833,14 @@ final class ConditionConverter {
                 case WM -> left.matches(v);   // [field] WM "pattern"  → PatternMatched
                 case NM -> left.violates(v);  // [field] NM "pattern"  → PatternViolated
                 default -> throw unsupported("string comparison operator " + op, origin);
+            };
+        }
+        Optional<StringExpr> cell = indexedCell(right, origin).map(StringExpr::new);
+        if (cell.isPresent()) {
+            return switch (op) {
+                case EQ -> left.eq(cell.get());
+                case NE -> left.ne(cell.get());
+                default -> throw unsupported("string field comparison operator " + op, origin);
             };
         }
         if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
@@ -1887,7 +1903,8 @@ final class ConditionConverter {
             return Dsl.text(constant.getValue());
         }
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            return model.str(field.getField().getFullName()).asString();
+            return indexedCell(field, origin).map(StringExpr::new)
+                    .orElseGet(() -> model.str(field.getField().getFullName()).asString());
         }
         if (isStringCoercion(op)) {
             return stringCoercion((IFieldIdOperation) op);
@@ -1941,6 +1958,19 @@ final class ConditionConverter {
             }
             default -> throw unsupported("string coercion " + field.getOperatorName(), field);
         };
+    }
+
+    /**
+     * The keyed cell a {@code FieldValue} operand reads ({@code [Field For key]}), or empty for a plain field. A
+     * value-operand site asks this before it builds a field handle from the path, because that handle is where
+     * the key was lost: only a comparison's left side kept it, so every other position read {@code Opaque}
+     * through the index backstop (DEV-API-GAPS DG66).
+     */
+    private Optional<IndexedFieldValue> indexedCell(IOperation op, Object origin) {
+        return op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
+                && hasSemanticIndex(field.getField())
+                ? Optional.of(semanticIndex(field.getField(), origin).index())
+                : Optional.empty();
     }
 
     /** Whether this entity carries the kernel's {@code [Field For key]} semantic-index payload. */
@@ -2042,6 +2072,14 @@ final class ConditionConverter {
                 default -> throw unsupported("enum comparison operator " + op, origin);
             };
         }
+        Optional<EnumExpr> cell = indexedCell(right, origin).map(EnumExpr::new);
+        if (cell.isPresent()) {
+            return switch (op) {
+                case EQ -> left.is(cell.get());
+                case NE -> left.isNot(cell.get());
+                default -> throw unsupported("enum field comparison operator " + op, origin);
+            };
+        }
         if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
             EnumRef other = model.enumOf(rf.getField().getFullName());
             if (rf.getField().isOuter()) {
@@ -2073,6 +2111,14 @@ final class ConditionConverter {
                 case EQ -> left.is(constant.getValue());
                 case NE -> left.isNot(constant.getValue());
                 default -> throw unsupported("enum comparison operator " + op, origin);
+            };
+        }
+        Optional<EnumExpr> cell = indexedCell(right, origin).map(EnumExpr::new);
+        if (cell.isPresent()) {
+            return switch (op) {
+                case EQ -> left.is(cell.get());
+                case NE -> left.isNot(cell.get());
+                default -> throw unsupported("enum field comparison operator " + op, origin);
             };
         }
         if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
@@ -2227,6 +2273,10 @@ final class ConditionConverter {
 
     /** A date-time-valued operand: a date-time field, a {@code DateTime(date, time)} construction, or a sub-day shift. */
     private DateTimeOperand convertDateTimeOperand(IOperation op, Object origin) {
+        Optional<IndexedFieldValue> cell = indexedCell(op, origin);
+        if (cell.isPresent()) {
+            return new DateTimeExpr(cell.get());
+        }
         if (op instanceof IConstantOperation constant) {
             return new DateTimeExpr(new DateTimeLiteral(constant.getValue()));
         }
@@ -2338,6 +2388,10 @@ final class ConditionConverter {
 
     /** A date-valued operand: a date field ({@code FieldValue}), a date constant, or a point-in-time ({@code Today}). */
     private DateOperand convertDateOperand(IOperation op, Object origin) {
+        Optional<IndexedFieldValue> cell = indexedCell(op, origin);
+        if (cell.isPresent()) {
+            return new DateExpr(cell.get());
+        }
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             String path = field.getField().getFullName();
             boolean outer = field.getField().isOuter();   // $ correlation (D13)
@@ -2414,7 +2468,8 @@ final class ConditionConverter {
             return new StringLiteral(constant.getValue());
         }
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            return new FieldValue(model.field(field.getField().getFullName()));
+            Optional<IndexedFieldValue> cell = indexedCell(field, origin);
+            return cell.isPresent() ? cell.get() : new FieldValue(model.field(field.getField().getFullName()));
         }
         if (op instanceof IDateExtractionOperation ext) {
             return convertDateExtraction(ext).expression();
@@ -2424,6 +2479,10 @@ final class ConditionConverter {
 
     /** A time-valued operand: a time field ({@code FieldValue}), a time constant, or {@code TimeFromDateTime(dt)}. */
     private TimeOperand convertTimeOperand(IOperation op, Object origin) {
+        Optional<IndexedFieldValue> cell = indexedCell(op, origin);
+        if (cell.isPresent()) {
+            return new TimeExpr(cell.get());
+        }
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
                 && model.fieldAt(field.getField().getFullName())
                         .map(i -> i.temporalClass() == ValueKind.TIME).orElse(false)) {

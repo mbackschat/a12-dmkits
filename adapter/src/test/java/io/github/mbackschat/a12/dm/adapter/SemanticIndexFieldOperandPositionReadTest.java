@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,6 +15,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
+import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
  * An index-selected FIELD ({@code [Weight For "P1"]}) reads back with its key in every operand position A12
@@ -54,6 +54,41 @@ class SemanticIndexFieldOperandPositionReadTest {
                 "FieldValuesNotUnique(/Order/Packages/Carrier For \"P1\", /Order/Title)"));
     }
 
+    /** Every value-operand position: each site asks for the keyed cell before building a handle from the path. */
+    @Test
+    void anIndexedFieldReadsBackAsAValueOperand() {
+        assertReadsBack(List.of(
+                // number: a comparison's right side, arithmetic, operand-list math, an aggregate's comparand
+                "[/Order/Limit] > [/Order/Packages/Weight For \"P1\"]",
+                "[/Order/Limit] > [/Order/Packages/Weight For \"P1\"] + 2",
+                "[/Order/Packages/Weight For \"P1\"] + [/Order/Limit] > 0",
+                "Abs([/Order/Packages/Weight For \"P1\"] - [/Order/Limit]) < 1",
+                "Min([/Order/Packages/Weight For \"P1\"], [/Order/Limit]) > 0",
+                "RoundUp([/Order/Packages/Weight For \"P1\"], 1) > 1000",
+                "Sum(/Order/Packages*/Weight) > [/Order/Packages/Weight For \"P1\"]",
+                // string: a right side, a concatenation part, both sides keyed, a value-list entry
+                "[/Order/Title] == [/Order/Packages/Carrier For \"P1\"]",
+                "[/Order/Title] != [/Order/Packages/Carrier For \"P1\"] + \"-X\"",
+                "[/Order/Packages/Carrier For \"P1\"] == [/Order/Packages/Carrier For \"P2\"]",
+                "FieldValueIncludedInValueList(/Order/Title, [/Order/Packages/Carrier For \"P1\"])",
+                // enum, both comparison arms
+                "[/Order/Mode] == [/Order/Packages/Mode For \"P1\"]",
+                "[/Order/Packages/Mode For \"P1\"] == [/Order/Packages/Mode For \"P2\"]",
+                // date: a right side, a difference, a shift, an extractor, a constructor component
+                "[/Order/PlacedOn] < [/Order/Packages/Schedule/ShippedOn For \"P1\"]",
+                "MaxValue(/Order/Packages*/Schedule/ShippedOn) == [/Order/Packages/Schedule/ShippedOn For \"P2\"]",
+                "DifferenceInDays(/Order/PlacedOn, /Order/Packages/Schedule/ShippedOn For \"P1\") > 7",
+                "[/Order/PlacedOn] > AddDays(/Order/Packages/Schedule/ShippedOn For \"P1\", 7)",
+                "YearFromDate(/Order/Packages/Schedule/ShippedOn For \"P1\") < 2020",
+                "[/Order/PlacedOn] != Date(/Order/Packages/Day For \"P1\", \"01\", \"2024\")",
+                // time and date-time
+                "[/Order/OpensAt] < [/Order/Packages/CutOff For \"P1\"]",
+                "HoursFromTime(/Order/Packages/CutOff For \"P1\") < 9",
+                "[/Order/AuditedAt] < [/Order/Packages/ScannedAt For \"P1\"]",
+                "DateFromDateTime(/Order/Packages/ScannedAt For \"P1\") > Today",
+                "DifferenceInHours(/Order/AuditedAt, /Order/Packages/ScannedAt For \"P1\") > 2"));
+    }
+
     private static void assertReadsBack(List<String> conditions) {
         Map<String, String> expected = new LinkedHashMap<>();
         Map<String, String> actual = new LinkedHashMap<>();
@@ -65,10 +100,16 @@ class SemanticIndexFieldOperandPositionReadTest {
         assertEquals(expected, actual);
     }
 
-    /** The renderer's spelling of what the adapter read, or the {@code Opaque} result that stopped it. */
+    /**
+     * The renderer's spelling of what the adapter read, or the {@code Opaque} result that stopped it. A row the
+     * kernel refuses reads as its diagnostics, so one run shows every row that is not a legal model.
+     */
     private static String readBack(String stored) {
         DraftRule rule = new DraftRule("/Order", "IndexedFieldRule", "../Title", stored, "C", "ERROR");
-        assertTrue(VALIDATOR.check(model(), rule).ok(), () -> "the kernel must admit the row it reads: " + stored);
+        ValidationResult admitted = VALIDATOR.check(model(), rule);
+        if (!admitted.ok()) {
+            return "kernel refuses: " + admitted.diagnostics();
+        }
         ReadResult read = KernelAdapter.ofJson(VALIDATOR.inject(model(), rule)).read("/Order/IndexedFieldRule");
         return read instanceof ReadResult.Converted converted
                 ? new DslRenderer(ConditionLanguage.EN).render(converted.condition())
@@ -84,10 +125,13 @@ class SemanticIndexFieldOperandPositionReadTest {
                         .dateField("PlacedOn", f -> f.format("yyyy-MM-dd"))
                         .timeField("OpensAt", f -> f.format("HH:mm:ss"))
                         .dateTimeField("AuditedAt", f -> f.format("yyyy-MM-dd'T'HH:mm:ss"))
+                        .enumField("Mode", e -> e.value("ROAD").value("AIR"))
                         .group("Packages", g -> g.repeatable(5).indexField("PackageCode")
                                 .field("PackageCode", FieldKind.STRING)
                                 .field("Carrier", FieldKind.STRING)
                                 .field("Weight", FieldKind.NUMBER)
+                                .enumField("Mode", e -> e.value("ROAD").value("AIR"))
+                                .numberField("Day", n -> n.min("1").max("31"))
                                 .group("Schedule", s -> s.dateField("ShippedOn", f -> f.format("yyyy-MM-dd"))
                                         .dateField("DeliveredOn", f -> f.format("yyyy-MM-dd")))
                                 .timeField("CutOff", f -> f.format("HH:mm:ss"))
