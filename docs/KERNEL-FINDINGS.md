@@ -10136,3 +10136,21 @@ Only the last row would read the same under validation's gate, because an instan
 **Mechanism (source-verified; the rows above are its discriminators).** `CalculationCommand` builds its working data with `getDataWithoutEntitiesNotNeededForCalculations`. The set of calculated fields comes from the model's metadata, so this is whole-model. Their values are removed, and operand fields and the ancestor groups of both kinds are kept. `CalculationCache.isEntityFilled` answers from `calculatedValues` first, and `addBerechnetenFeldWert` records every non-empty value as filling its ancestors, which never un-fill. Two rows separate this from a rival reading in which stored values are only hidden from presence reads: the malformed-operand row shows that the stored value never reaches the operand check, and the own-group row shows that it never reaches the target's own precondition.
 
 **Lock:** `adapter.laws.CascadeGroupPresenceDiffTest` holds every row, each on dynamic Groovy, static Java and the interpreter's projected result. The interpreter's side is [IF332](INTERPRETER-FINDINGS.md#if332).
+
+## §9 supplement — a malformed FIELD-VALUED index key makes every keyed consumer unusable: validation is silent on each, and computation poisons each (differential, both strategies, 2026-09-23) <a id="kf460"></a>
+
+> Fold: pending — widens [KF103](#kf103)'s "a formally invalid key field → UNKNOWN" from a keyed field's presence to every consumer of a keyed lookup, and adds the computation half; folds into §10 beside it.
+
+**The claim.** The fixture is an order whose `WantedNo` NUMBER field supplies the key of `Packages For /Order/WantedNo`. Package 1 is filled throughout, and package 2 holds its key alone. `WantedNo` is stored as `"abc"`, as `1` (a key that selects a row) and as `3` (a key that selects none). Both strategies agree on every row:
+
+| consumer | validation, `"abc"` | computation, `"abc"` | controls, `1` / `3` |
+|---|---|---|---|
+| `NoGroupFilled` · `GroupNotFilled` · `NotAllGroupsFilled(… , /Order/Reference)` over the keyed group | silent | target cleared | fire, or compute, on `3` |
+| `AtLeastOneGroupFilled` · `GroupFilled` over the keyed group | silent | target cleared | fire, or compute, on `1` |
+| `FieldNotFilled` · `FieldFilled` of the keyed `Carrier` | silent | target cleared | fire on `3` / `1` |
+| `[Dims/Height For /Order/WantedNo] == 3`, and the same read as an operation | silent | target cleared | `1` fires, and assigns `3` |
+| `FirstFilledValue(Dims For /Order/WantedNo)`, compared or assigned | silent | target cleared | fires on `3`; assigns `3` on `1` |
+
+The computation rows carry a second alternative that a merely false precondition falls through to, so "target cleared" means the read poisoned the computation. An unselected precondition would have stored `2`. Two readings are ruled out: a malformed key that simply matches no row, which the negative consumers would answer by firing, and one that is only not true, which the computation rows would answer with `2`.
+
+**Lock:** `adapter.laws.MalformedIndexKeyDiffTest` (validation and computation, each consumer beside its well-formed controls). The interpreter's side is [IF333](INTERPRETER-FINDINGS.md#if333).

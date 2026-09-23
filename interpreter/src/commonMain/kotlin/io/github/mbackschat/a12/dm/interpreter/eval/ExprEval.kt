@@ -305,7 +305,11 @@ private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
     }
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
         "SemanticIndex needs an index field on the group of ${e.path}")
-    val key = resolveIndexKey(e) ?: return unmatchedSemanticIndexValue(e)
+    val key = when (val read = resolveIndexKey(e)) {
+        is KeyRead.Of -> read.value
+        KeyRead.None -> return unmatchedSemanticIndexValue(e)
+        KeyRead.Unusable -> return Val.Unknown
+    }
     val matchedKey = indexedCell(c, idx, idx, key)                  // the index-field self-lookup
     if (matchedKey != null) {
         // matched on a malformed (raw-equal) or DUPLICATED key cell → not-check-relevant
@@ -350,7 +354,11 @@ internal fun Interpreter.keyedGroupSelection(e: Expr.SemanticIndex): KeyedGroupS
     val unmatched = {
         if (unmatchedSemanticIndexValue(e) == null) KeyedGroupSelection.Absent else KeyedGroupSelection.Unavailable
     }
-    val key = resolveIndexKey(e) ?: return unmatched()
+    val key = when (val read = resolveIndexKey(e)) {
+        is KeyRead.Of -> read.value
+        KeyRead.None -> return unmatched()
+        KeyRead.Unusable -> return KeyedGroupSelection.Unavailable
+    }
     val matchedKey = indexedCell(c, idx, idx, key)
     if (computeMode && indexColumnInvalid(e)) throw PoisonedReadException(e.path)
     return when {
@@ -374,18 +382,22 @@ private fun Interpreter.indexColumnInvalid(e: Expr.SemanticIndex): Boolean {
 }
 
 /** The matched CELL of `[F For key]`, or null when nothing matches — an empty/absent key field, no row
- *  carrying the key, or a matched row whose cell is empty. A matched-but-malformed cell is [Val.Unknown]. */
+ *  carrying the key, or a matched row whose cell is empty. A matched-but-malformed cell, and a lookup whose key
+ *  field is not check-relevant, are [Val.Unknown]. */
 internal fun Interpreter.semanticIndexCell(e: Expr.SemanticIndex): Val? {
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException("SemanticIndex needs an index field on the group of ${e.path}")
-    val key = resolveIndexKey(e) ?: return null
-    return indexedCell(ctxOf(e), e.path, idx, key)
+    return when (val read = resolveIndexKey(e)) {
+        is KeyRead.Of -> indexedCell(ctxOf(e), e.path, idx, read.value)
+        KeyRead.None -> null
+        KeyRead.Unusable -> Val.Unknown
+    }
 }
 
 /** The concrete admitted row selected by [e], for the kernel's semantic error-context re-anchor. */
 internal fun Interpreter.semanticIndexRepetitions(e: Expr.SemanticIndex): List<Int>? {
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
         "SemanticIndex needs an index field on the group of ${e.path}")
-    val key = resolveIndexKey(e) ?: return null
+    val key = (resolveIndexKey(e) as? KeyRead.Of)?.value ?: return null
     return ctxOf(e).indexedCellRepetitions(e.path, idx, key, indexIdentityAdmitted())
 }
 
@@ -398,19 +410,45 @@ internal fun Interpreter.semanticIndexRepetitions(e: Expr.SemanticIndex): List<I
  * `SemanticIndexPresenceDiffTest` / `NumericIndexKeyDiffTest`.
  */
 internal fun Interpreter.semanticIndexPresence(e: Expr.SemanticIndex): Tri {
-    e.indexFieldPath?.let { if (indexKeyCtx(e).cellState(it) == CellState.INVALID) return Tri.UNKNOWN }
-    // Presence and value reads share the admitted-key lookup. In particular, a malformed stored key contributes
+    // Presence and value reads share the admitted-key lookup, the key field's own gate included ([resolveIndexKey]). In particular, a malformed stored key contributes
     // no identity, yet keeps the column invalid: no admitted equal key means UNKNOWN, while a later admitted equal
     // key remains selectable regardless of the malformed row elsewhere in the column (IF115/IF272).
     val cell = computeGuardedIndexCell(e) ?: return Tri.FALSE
     return if (cell is Val.Unknown) Tri.UNKNOWN else Tri.TRUE
 }
 
-/** The lookup key of a [Expr.SemanticIndex]: the string literal, or the CURRENT value of the key field
- *  ([Expr.SemanticIndex.indexFieldPath]) for the field-keyed `[F For keyField]` form — null when that key
- *  field is empty/absent (→ no row matches → the empty value, same as a non-matching literal). */
-private fun Interpreter.resolveIndexKey(e: Expr.SemanticIndex): String? =
-    e.indexValue ?: e.indexFieldPath?.let { indexKeyCtx(e).displayValue(it)?.takeIf { v -> v.isNotEmpty() } }
+/** What the key of a [Expr.SemanticIndex] reads as, before any row is looked up. */
+private sealed interface KeyRead {
+    data class Of(val value: String) : KeyRead
+
+    /** An empty or absent key field: nothing matches, exactly as for a literal no row carries. */
+    data object None : KeyRead
+
+    /** A key field that is not check-relevant, such as a malformed value: validation cannot use the lookup. */
+    data object Unusable : KeyRead
+}
+
+/**
+ * The lookup key of a [Expr.SemanticIndex]: the string literal, or the CURRENT value of the key field
+ * ([Expr.SemanticIndex.indexFieldPath]) for the field-keyed `[F For keyField]` form.
+ *
+ * The key field is an operand like any other, so it is read through the same two gates as a plain field value
+ * ([evalExprNode]'s field arm): computation poisons on an invalid cell, and validation answers [KeyRead.Unusable]
+ * for one that is not check-relevant. This is the only place a key field is read, so every keyed consumer — a
+ * keyed field's value and presence, a keyed group's selection, `FirstFilledValue` — inherits the same answer.
+ * Measured on both kernel strategies: over a malformed key, validation is silent on every consumer and
+ * computation poisons every one (`adapter.laws.MalformedIndexKeyDiffTest`, 2026-09-23).
+ */
+private fun Interpreter.resolveIndexKey(e: Expr.SemanticIndex): KeyRead {
+    e.indexValue?.let { return KeyRead.Of(it) }
+    val keyField = e.indexFieldPath ?: return KeyRead.None
+    val c = indexKeyCtx(e)
+    return when {
+        computeMode && c.cellState(keyField) == CellState.INVALID -> throw PoisonedReadException(keyField)
+        invalid(c, keyField) -> KeyRead.Unusable
+        else -> c.displayValue(keyField)?.takeIf { it.isNotEmpty() }?.let(KeyRead::Of) ?: KeyRead.None
+    }
+}
 
 /** The index field of [fieldPath]'s nearest indexed ancestor group, or null if none. The target may sit below
  * nonrepeatable or repeatable descendants; semantic selection binds the indexed ancestor and preserves lower
