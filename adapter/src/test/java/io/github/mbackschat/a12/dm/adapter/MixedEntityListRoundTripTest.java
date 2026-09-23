@@ -10,6 +10,8 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 
 /**
  * {@code CG15} / {@code DG36} — a MIXED entity list (fields beside group scopes) round-trips to the text the
@@ -104,12 +106,7 @@ class MixedEntityListRoundTripTest {
     }
 
     private static String inject(String modelJson, String rawCondition) {
-        String escaped = rawCondition.replace("\\", "\\\\").replace("\"", "\\\"");
-        String rule = "{ \"type\": \"Rule\", \"id\": \"/Survey/MixedRule\", \"name\": \"MixedRule\","
-                + " \"Rule\": { \"errorEntityRelPath\": \"../Note\", \"errorCode\": \"M\","
-                + " \"errorCondition\": \"" + escaped + "\", \"severity\": \"ERROR\","
-                + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" } ] } }";
-        int br = modelJson.indexOf('[', modelJson.indexOf("\"elements\""));
-        return modelJson.substring(0, br + 1) + "\n" + rule + ",\n" + modelJson.substring(br + 1);
+        return new RuleValidator().inject(modelJson,
+                new DraftRule("/Survey", "MixedRule", "../Note", rawCondition, "M", "ERROR"));
     }
 }

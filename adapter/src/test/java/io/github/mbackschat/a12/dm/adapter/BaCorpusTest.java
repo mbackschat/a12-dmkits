@@ -143,17 +143,12 @@ class BaCorpusTest {
 
     /** Inject the corpus rules as raw Rule elements into the /Shipment group. */
     private static String inject(String modelJson, List<R> rules) {
-        StringBuilder block = new StringBuilder();
+        RuleValidator validator = new RuleValidator();
+        String injected = modelJson;
         for (R r : rules) {
-            String escaped = r.cond().replace("\\", "\\\\").replace("\"", "\\\"");
-            block.append("{ \"type\": \"Rule\", \"id\": \"/Shipment/").append(r.name())
-                    .append("\", \"name\": \"").append(r.name()).append("\", \"Rule\": {")
-                    .append(" \"errorEntityRelPath\": \"../").append(r.errorField()).append("\",")
-                    .append(" \"errorCode\": \"C_").append(r.name()).append("\",")
-                    .append(" \"errorCondition\": \"").append(escaped).append("\", \"severity\": \"ERROR\",")
-                    .append(" \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" } ] } },\n");
+            injected = validator.inject(injected,
+                    new DraftRule("/Shipment", r.name(), "../" + r.errorField(), r.cond(), "C_" + r.name(), "ERROR"));
         }
-        int br = modelJson.indexOf('[', modelJson.indexOf("\"elements\""));
-        return modelJson.substring(0, br + 1) + "\n" + block + modelJson.substring(br + 1);
+        return injected;
     }
 }

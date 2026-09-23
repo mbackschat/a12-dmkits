@@ -10,6 +10,8 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 
 /**
  * {@code CG15} — the {@code NumberOfFilledGroups(Group*)} arm, executing the ledger's own completion gate:
@@ -83,12 +85,7 @@ class NumberOfFilledGroupsRoundTripTest {
     }
 
     private static String inject(String modelJson, String rawCondition) {
-        String escaped = rawCondition.replace("\\", "\\\\").replace("\"", "\\\"");
-        String rule = "{ \"type\": \"Rule\", \"id\": \"/Clinic/CountRule\", \"name\": \"CountRule\","
-                + " \"Rule\": { \"errorEntityRelPath\": \"../PatientRef\", \"errorCode\": \"C\","
-                + " \"errorCondition\": \"" + escaped + "\", \"severity\": \"ERROR\","
-                + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" } ] } }";
-        int br = modelJson.indexOf('[', modelJson.indexOf("\"elements\""));
-        return modelJson.substring(0, br + 1) + "\n" + rule + ",\n" + modelJson.substring(br + 1);
+        return new RuleValidator().inject(modelJson,
+                new DraftRule("/Clinic", "CountRule", "../PatientRef", rawCondition, "C", "ERROR"));
     }
 }

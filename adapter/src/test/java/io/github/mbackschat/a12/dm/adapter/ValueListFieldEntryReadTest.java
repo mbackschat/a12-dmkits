@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 
 /**
  * F10 read tail — a value list whose entry is a <em>field</em>, not a constant:
@@ -40,12 +42,7 @@ class ValueListFieldEntryReadTest {
 
     /** Inject a raw-text rule into the /Pick group (a field-valued value list can't be built via the typed DSL). */
     private static String inject(String modelJson, String rawCondition) {
-        String escaped = rawCondition.replace("\\", "\\\\").replace("\"", "\\\"");
-        String rule = "{ \"type\": \"Rule\", \"id\": \"/Pick/PickRule\", \"name\": \"PickRule\","
-                + " \"Rule\": { \"errorEntityRelPath\": \"../Choice\", \"errorCode\": \"C\","
-                + " \"errorCondition\": \"" + escaped + "\", \"severity\": \"ERROR\","
-                + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" } ] } }";
-        int br = modelJson.indexOf('[', modelJson.indexOf("\"elements\""));
-        return modelJson.substring(0, br + 1) + "\n" + rule + ",\n" + modelJson.substring(br + 1);
+        return new RuleValidator().inject(modelJson,
+                new DraftRule("/Pick", "PickRule", "../Choice", rawCondition, "C", "ERROR"));
     }
 }

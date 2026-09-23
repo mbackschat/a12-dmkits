@@ -18,6 +18,8 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 
 /**
  * Renderer-vs-kernel parity (task #9): every SUPPORTED catalog {@code validExample} is read, our
@@ -70,7 +72,7 @@ class CatalogRenderCanonicalParityTest {
             String ourRender = null;
             try {
                 // K1: the kernel's canonical form of the curated example
-                KernelAdapter a1 = KernelAdapter.ofJson(inject(fixture, "Ex", dsl, "en_US"));
+                KernelAdapter a1 = KernelAdapter.ofJson(inject(fixture, "Ex", dsl));
                 String k1 = norm(a1.canonicalConditionText(fixture.rulePath("Ex")));
                 ReadResult ing = a1.read(fixture.rulePath("Ex"));
                 if (!(ing instanceof ReadResult.Converted converted)) {
@@ -79,7 +81,7 @@ class CatalogRenderCanonicalParityTest {
                 }
                 // K2: the kernel's canonical form of OUR re-render of the same condition
                 ourRender = renderer.render(converted.condition());
-                KernelAdapter a2 = KernelAdapter.ofJson(inject(fixture, "Re", ourRender, "en_US"));
+                KernelAdapter a2 = KernelAdapter.ofJson(inject(fixture, "Re", ourRender));
                 String k2 = norm(a2.canonicalConditionText(fixture.rulePath("Re")));
                 checked++;
                 if (!k1.equals(k2)) {
@@ -91,7 +93,7 @@ class CatalogRenderCanonicalParityTest {
                 // bad/unparseable German keyword or structure that the EN check can't see.
                 Fixture deFixture = fixture(e, dsl, "de_DE");
                 String deRender = new DslRenderer(ConditionLanguage.DE, deFixture.renderBase()).render(converted.condition());
-                KernelAdapter aDe = KernelAdapter.ofJson(inject(deFixture, "De", deRender, "de_DE"));
+                KernelAdapter aDe = KernelAdapter.ofJson(inject(deFixture, "De", deRender));
                 ReadResult deIng = aDe.read(deFixture.rulePath("De"));
                 String reEn = deIng instanceof ReadResult.Converted c2 ? renderer.render(c2.condition()) : "(opaque)";
                 if (!reEn.equals(ourRender)) {
@@ -136,15 +138,10 @@ class CatalogRenderCanonicalParityTest {
         return locale.equals("en_US") ? modelJson : modelJson.replace("en_US", locale);
     }
 
-    private static String inject(Fixture fixture, String name, String cond, String locale) {
-        String escaped = cond.replace("\\", "\\\\").replace("\"", "\\\"");
-        String block = "{ \"type\": \"Rule\", \"id\": \"" + fixture.rulePath(name) + "\", \"name\": \"" + name
-                + "\", \"Rule\": { \"errorEntityRelPath\": \"../" + fixture.errorField() + "\", \"errorCode\": \"C\","
-                + " \"errorCondition\": \"" + escaped + "\", \"severity\": \"ERROR\","
-                + " \"errorMessage\": [ { \"locale\": \"" + locale + "\", \"text\": \"x\" } ] } },\n";
-        String modelJson = fixture.modelJson();
-        int br = modelJson.indexOf('[', modelJson.indexOf("\"elements\""));
-        return modelJson.substring(0, br + 1) + "\n" + block + modelJson.substring(br + 1);
+    /** The fixture's model already carries the locale under test, so the validator's placeholder message is in it. */
+    private static String inject(Fixture fixture, String name, String cond) {
+        return new RuleValidator().inject(fixture.modelJson(),
+                new DraftRule(fixture.group(), name, "../" + fixture.errorField(), cond, "C", "ERROR"));
     }
 
     private record Fixture(String modelJson, String group, String errorField, String renderBase) {

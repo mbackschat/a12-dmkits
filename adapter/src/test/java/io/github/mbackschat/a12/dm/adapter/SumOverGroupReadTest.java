@@ -86,12 +86,7 @@ class SumOverGroupReadTest {
 
     /** Inject a raw-text rule into the /Sheet group (the group-scoped form can't be built via the typed DSL). */
     private static String inject(String modelJson, String rawCondition) {
-        String escaped = rawCondition.replace("\\", "\\\\").replace("\"", "\\\"");
-        String rule = "{ \"type\": \"Rule\", \"id\": \"/Sheet/SumRule\", \"name\": \"SumRule\","
-                + " \"Rule\": { \"errorEntityRelPath\": \"../Total\", \"errorCode\": \"C\","
-                + " \"errorCondition\": \"" + escaped + "\", \"severity\": \"ERROR\","
-                + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" } ] } }";
-        int br = modelJson.indexOf('[', modelJson.indexOf("\"elements\""));
-        return modelJson.substring(0, br + 1) + "\n" + rule + ",\n" + modelJson.substring(br + 1);
+        return new RuleValidator().inject(modelJson,
+                new DraftRule("/Sheet", "SumRule", "../Total", rawCondition, "C", "ERROR"));
     }
 }
