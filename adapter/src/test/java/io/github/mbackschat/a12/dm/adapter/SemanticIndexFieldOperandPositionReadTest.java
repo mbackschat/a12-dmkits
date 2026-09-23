@@ -60,6 +60,7 @@ class SemanticIndexFieldOperandPositionReadTest {
         assertReadsBack(List.of(
                 // number: a comparison's right side, arithmetic, operand-list math, an aggregate's comparand
                 "[/Order/Limit] > [/Order/Packages/Weight For \"P1\"]",
+                "[/Order/Limit] DiffersWithToleranceRange5 [/Order/Packages/Weight For \"P1\"]",
                 "[/Order/Limit] > [/Order/Packages/Weight For \"P1\"] + 2",
                 "[/Order/Packages/Weight For \"P1\"] + [/Order/Limit] > 0",
                 "Abs([/Order/Packages/Weight For \"P1\"] - [/Order/Limit]) < 1",
