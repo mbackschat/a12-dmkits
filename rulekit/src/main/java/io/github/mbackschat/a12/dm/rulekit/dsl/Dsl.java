@@ -242,89 +242,80 @@ public final class Dsl {
 
 
     /**
-     * The entity-list aggregates' OTHER refusal, and it precedes the component-set one.
+     * The walk A12 runs over an entity list its leading field sends down the date-like route, in A12's order,
+     * for the model-bound factories that can see what it reads.
      *
-     * <p>The kernel reaches both from one check, {@code CheckEntityListenUtils.checkOpTypesAreComparableDatetimeType},
-     * and a partly-known DATE operand reports {@code MVK_PARTIAL_DATE_NOT_ALLOWED} even when the pair's
-     * component sets also disagree — measured, not assumed ([KF427], {@code PartialDateAggregateLawsTest}),
-     * which is why this runs first.
+     * <p>{@code CheckEntityListenUtils.checkOpTypesAreComparableDatetimeType} asks each operand in turn three
+     * questions and stops at the first that fails: is it date-like ({@code MVK_DATE_AND_NONDATE}), is its date
+     * fully known ({@code MVK_PARTIAL_DATE_NOT_ALLOWED}), and does its declared component set equal the
+     * leader's ({@code MVK_DATEFORMATS_NOT_COMPATIBLE}). The walk is interleaved rather than phased, so two
+     * defects answer by operand POSITION ([KF389], {@code validate.laws.DateAggregateBaseTypeGateLawsTest},
+     * {@code validate.laws.EntityListLeaderRouteLawsTest}); two separate passes answered the precision class
+     * for a list whose earlier operand already broke the component set. Duplicates and the param law are
+     * asked before any of it, as A12 asks them.
      *
-     * <p>Deliberately NOT folded into {@link #requireComparableComponentSets}: that one supplements every set
-     * with YEAR when the model declares a base year, and this rule has nothing to do with base year. They
-     * share a call site and nothing else.
+     * <p>Component SETS are compared rather than format strings, after YEAR is added to every set when the
+     * model declares a base year ([KF193], {@code validate.laws.TemporalAggregateComponentSetLawsTest}), so
+     * {@code yyyy-MM-dd} and {@code dd.MM.yyyy} agree. Only a DATE declares a precision, so a TIME, DATETIME or
+     * DATE_FRAGMENT operand passes that question ([KF427]).
      *
-     * <p>It is DATE-only by construction rather than by an operator list: only a {@code DateType} can declare
-     * a precision, so a TIME, DATETIME or DATE_FRAGMENT operand reads empty and delegates — which is what the
-     * fragment row of the measurement requires.
+     * <p><b>The walk stops, and leaves the rest to the kernel, at the first operand it cannot read</b>: a group,
+     * whose expansion A12 walks here first and this walk does not ({@code AggregateOperand}); a comparison
+     * with a field that declares no format, whose default this walk does not compare; and a dangling type. Stopping
+     * under-reports; walking on would cite a later operand's class where the unread one may answer first. A
+     * leader that is not date-like, or not visible, is not this route at all, so the record's own gate answers.
      */
-    static void requireFullDatePrecision(String operatorId, BoundModel model,
+    static void requireComparableTemporalList(String operatorId, BoundModel model,
             AggregateOperand first, AggregateOperand... rest) {
         var operands = new ArrayList<AggregateOperand>();
         operands.add(first);
         operands.addAll(List.of(rest));
-        for (AggregateOperand operand : operands) {
-            String path = declaredFieldPath(operand);
+        EntityListRoute.requireShape(operatorId, operands);
+        String leaderPath = declaredFieldPath(first);
+        if (leaderPath == null || !EntityListRoute.isDateLike(model.field(leaderPath).kind())) {
+            return;
+        }
+        boolean supplemented = model.hasBaseYear();
+        Set<TemporalFormats.Component> witness = null;
+        for (int position = 0; position < operands.size(); position++) {
+            String path = declaredFieldPath(operands.get(position));
             if (path == null) {
-                continue;
+                return;
+            }
+            ValueKind kind = model.field(path).kind();
+            if (kind == ValueKind.UNKNOWN) {
+                return;
+            }
+            if (!EntityListRoute.isDateLike(kind)) {
+                throw Refusals.of(KernelCode.MVK_DATE_AND_NONDATE, operatorId + " is led by the date-like '"
+                        + leaderPath + "', so every operand must be date-like; '" + path + "' is " + kind);
             }
             String precision = model.datePrecision(path);
-            if (precision == null) {
-                continue;
-            }
-            if (!DatePrecisions.guaranteedComponents(precision).containsAll(
+            if (precision != null && !DatePrecisions.guaranteedComponents(precision).containsAll(
                     EnumSet.of(TemporalFormats.Component.YEAR, TemporalFormats.Component.MONTH,
                             TemporalFormats.Component.DAY))) {
                 throw Refusals.of(KernelCode.MVK_PARTIAL_DATE_NOT_ALLOWED,
                         operatorId + " does not admit a partly-known date; '"
                                 + path + "' is declared " + precision);
             }
-        }
-    }
-
-    /**
-     * The temporal admission the entity-list aggregates apply: every operand's DECLARED COMPONENT SET must be
-     * equal, after YEAR is added to all of them when the model declares a base year (KERNEL-FINDINGS KF193,
-     * locked by {@code validate.laws.TemporalAggregateComponentSetLawsTest}). Comparing SETS rather than
-     * format strings is the whole point — {@code yyyy-MM-dd} and {@code dd.MM.yyyy} are the same set and the
-     * kernel admits the pair, which is why this stayed kernel-delegated until a component classifier existed.
-     *
-     * <p>A GROUP SCOPE is DELEGATED rather than checked, under existing policy: it
-     * carries no format of its own, the rule applies to its EXPANSION, and
-     * {@link #checkEntityValuedKindsAndDuplicates} already declines to re-derive that extent because an
-     * over-strict copy would refuse a legal model. An index-selected operand IS checked: the declaration it
-     * reads is the selected field's ({@code validate.laws.IndexedTemporalOperandFormatLawsTest}).
-     * Under-reporting is safe either way; the kernel still arbitrates.
-     */
-    static void requireComparableComponentSets(String operatorId, BoundModel model,
-            AggregateOperand first, AggregateOperand... rest) {
-        var operands = new ArrayList<AggregateOperand>();
-        operands.add(first);
-        operands.addAll(List.of(rest));
-
-        boolean supplemented = model.hasBaseYear();
-        String witnessPath = null;
-        Set<TemporalFormats.Component> witness = null;
-        for (AggregateOperand operand : operands) {
-            String path = declaredFieldPath(operand);
-            if (path == null || !TemporalFormats.readsComponents(model.field(path).kind())) {
-                continue;
-            }
             String declared = model.temporalFormat(path);
-            if (declared == null) {
-                continue;
+            Set<TemporalFormats.Component> components = null;
+            if (declared != null) {
+                components = EnumSet.copyOf(TemporalFormats.componentsOf(declared));
+                if (supplemented) {
+                    components.add(TemporalFormats.Component.YEAR);
+                }
             }
-            Set<TemporalFormats.Component> components =
-                    EnumSet.copyOf(TemporalFormats.componentsOf(declared));
-            if (supplemented) {
-                components.add(TemporalFormats.Component.YEAR);
-            }
-            if (witness == null) {
+            if (position == 0) {
+                // The leader's set is only the witness; the next operand is still asked its first two
+                // questions when the leader declares none, since A12 asks both ahead of the comparison.
                 witness = components;
-                witnessPath = path;
+            } else if (witness == null || components == null) {
+                return;
             } else if (!witness.equals(components)) {
                 throw Refusals.of(KernelCode.MVK_DATEFORMATS_NOT_COMPATIBLE,
                         operatorId + " needs every temporal operand to declare the"
-                                + " same date components; '" + witnessPath + "' declares " + witness + " and '" + path
+                                + " same date components; '" + leaderPath + "' declares " + witness + " and '" + path
                                 + "' declares " + components
                                 + (supplemented ? " (both supplemented by the model's base year)" : ""));
             }

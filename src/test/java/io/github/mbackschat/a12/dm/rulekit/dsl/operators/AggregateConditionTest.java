@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl.operators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -83,8 +84,9 @@ class AggregateConditionTest {
      * Temporal operands are legal for {@code NumberOfDifferentValues} — the kernel's own code name says so
      * ({@code MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED}) and it accepts DATE, TIME and DATETIME pairs
      * (`validate.laws.AggregateSlotLawsTest`). Unlike Max/Min there is no date-family alternative factory, so
-     * refusing them left the form unauthorable. The two remaining temporal laws stay F4-arbitrated: mixing a date
-     * with a non-date is {@code MVK_DATE_AND_NONDATE}, and incompatible formats {@code MVK_DATEFORMATS_NOT_COMPATIBLE}.
+     * refusing them left the form unauthorable. The two remaining temporal laws are the model-bound walk's: mixing
+     * a date with a non-date is {@code MVK_DATE_AND_NONDATE}, and incompatible formats
+     * {@code MVK_DATEFORMATS_NOT_COMPATIBLE} (`validate.laws.EntityListLeaderRouteLawsTest`).
      */
     @Test
     void numberOfDifferentValuesAcceptsTemporalOperands() {
@@ -95,10 +97,14 @@ class AggregateConditionTest {
         assertEquals("NumberOfDifferentValues(/Order/ScheduledAt, /Order/CompletedAt) > 0",
                 new DslRenderer().render(Dsl.numberOfDifferentValues(
                         o.field("/Order/ScheduledAt"), o.field("/Order/CompletedAt")).gt(0)));
-        // the homogeneity partition now reports the kernel's own temporal code
-        assertTrue(assertThrows(IllegalArgumentException.class, () -> Dsl.numberOfDifferentValues(
+        // The kernel's temporal code comes from the model-bound walk, which can see the leader's precision and
+        // component set; model-free, a kind shows neither, so the refusal stands with its class withheld.
+        assertTrue(assertThrows(IllegalArgumentException.class, () -> o.numberOfDifferentValues(
                 o.field("/Order/OrderDate"), o.field("/Order/Quantity"))).getMessage()
                 .contains("MVK_DATE_AND_NONDATE"));
+        assertFalse(assertThrows(IllegalArgumentException.class, () -> Dsl.numberOfDifferentValues(
+                o.field("/Order/OrderDate"), o.field("/Order/Quantity"))).getMessage()
+                .contains("MVK_"));
     }
 
     @Test

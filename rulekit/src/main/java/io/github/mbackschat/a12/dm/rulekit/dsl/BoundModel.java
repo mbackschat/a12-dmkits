@@ -800,50 +800,43 @@ public final class BoundModel {
 
     /** {@code MaxValue(…)} over DATE operands, checked against this model. catalog:MaxValue */
     public DateExpr latestOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireFullDatePrecision("MaxValue", this, first, rest);
-        Dsl.requireComparableComponentSets("MaxValue", this, first, rest);
+        Dsl.requireComparableTemporalList("MaxValue", this, first, rest);
         return Dsl.latestOf(first, rest);
     }
 
     /** {@code MinValue(…)} over DATE operands, checked against this model. catalog:MinValue */
     public DateExpr earliestOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireFullDatePrecision("MinValue", this, first, rest);
-        Dsl.requireComparableComponentSets("MinValue", this, first, rest);
+        Dsl.requireComparableTemporalList("MinValue", this, first, rest);
         return Dsl.earliestOf(first, rest);
     }
 
     /** {@code MaxValue(…)} over TIME operands, checked against this model. catalog:MaxValue */
     public TimeExpr latestTimeOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireFullDatePrecision("MaxValue", this, first, rest);
-        Dsl.requireComparableComponentSets("MaxValue", this, first, rest);
+        Dsl.requireComparableTemporalList("MaxValue", this, first, rest);
         return Dsl.latestTimeOf(first, rest);
     }
 
     /** {@code MinValue(…)} over TIME operands, checked against this model. catalog:MinValue */
     public TimeExpr earliestTimeOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireFullDatePrecision("MinValue", this, first, rest);
-        Dsl.requireComparableComponentSets("MinValue", this, first, rest);
+        Dsl.requireComparableTemporalList("MinValue", this, first, rest);
         return Dsl.earliestTimeOf(first, rest);
     }
 
     /** {@code MaxValue(…)} over DATETIME operands, checked against this model. catalog:MaxValue */
     public DateTimeExpr latestDateTimeOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireFullDatePrecision("MaxValue", this, first, rest);
-        Dsl.requireComparableComponentSets("MaxValue", this, first, rest);
+        Dsl.requireComparableTemporalList("MaxValue", this, first, rest);
         return Dsl.latestDateTimeOf(first, rest);
     }
 
     /** {@code MinValue(…)} over DATETIME operands, checked against this model. catalog:MinValue */
     public DateTimeExpr earliestDateTimeOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireFullDatePrecision("MinValue", this, first, rest);
-        Dsl.requireComparableComponentSets("MinValue", this, first, rest);
+        Dsl.requireComparableTemporalList("MinValue", this, first, rest);
         return Dsl.earliestDateTimeOf(first, rest);
     }
 
     /** {@code NumberOfDifferentValues(…)}, checked against this model. catalog:NumberOfDifferentValues */
     public NumberExpr numberOfDifferentValues(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireFullDatePrecision("NumberOfDifferentValues", this, first, rest);
-        Dsl.requireComparableComponentSets("NumberOfDifferentValues", this, first, rest);
+        Dsl.requireComparableTemporalList("NumberOfDifferentValues", this, first, rest);
         return Dsl.numberOfDifferentValues(first, rest);
     }
 

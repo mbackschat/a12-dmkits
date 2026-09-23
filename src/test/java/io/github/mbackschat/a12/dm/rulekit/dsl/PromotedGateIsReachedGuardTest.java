@@ -83,9 +83,13 @@ class PromotedGateIsReachedGuardTest {
      * {@code FirstFilledValue} record, which asks it after the duplicate gate, as A12 does; and the
      * wildcard-and-index refusal stopped citing a code, since A12's class depends on where the star sits
      * relative to the index group and a key gate can answer ahead of it.
+     *
+     * <p>Raised again the same day, Dsl.java 11 → 12, with no new public gate: the precision and component-set
+     * passes behind the temporal-extremum and NumberOfDifferentValues gates became one walk in A12's order,
+     * which also asks the base-type question, so two refusal sites became three behind the same seven gates.
      */
     private static final Map<String, Integer> REFUSAL_SITES =
-            Map.of("BoundModel.java", 7, "Dsl.java", 11, "DuplicateGate.java", 2);
+            Map.of("BoundModel.java", 7, "Dsl.java", 12, "DuplicateGate.java", 2);
 
     private static final Pattern REFUSAL = Pattern.compile("Refusals\\.of\\(");
 

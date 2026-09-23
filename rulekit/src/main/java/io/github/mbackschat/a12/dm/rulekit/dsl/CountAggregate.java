@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.List;
+import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
@@ -116,11 +117,13 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
      * model produces, and the kernel compares them here. {@code OpListMath.resultKind} folds DATE_FRAGMENT
      * into DATE for the Min/Max sibling on the same grounds.
      *
-     * <p>Two temporal laws are deliberately NOT pre-checked and stay F4-arbitrated, as the MVK ledger
-     * classifies them: mixing a date with a non-date is {@code MVK_DATE_AND_NONDATE} (caught by the
-     * homogeneity partition below, which reports that code), and two date-like operands whose FORMATS are
-     * incompatible is {@code MVK_DATEFORMATS_NOT_COMPATIBLE} — format compatibility is model data the kernel
-     * arbitrates, so pre-checking it here would risk refusing a legal pair.
+     * <p><b>The LEADING field picks the gate, and so the class</b> ({@link EntityListRoute}): a leader of no
+     * comparable class draws {@code MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED}, and behind a comparable
+     * leader every other operand, a Boolean included, is refused under the leader's own class
+     * ({@code validate.laws.NumberOfDifferentValuesOperandClassLawsTest}). Behind a date-like leader A12 walks
+     * the list asking each operand for its date precision and component set too, model data this record does
+     * not see, so there the refusal stands and its class is withheld; {@link BoundModel#numberOfDifferentValues}
+     * runs that walk first and cites it. Behind a group leader the leading class itself is hidden.
      */
     private static void checkValueComparable(List<AggregateOperand> operands) {
         // Group scopes carry no kind of their own — the rule applies to the fields the kernel expands them
@@ -131,19 +134,29 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
         if (fields.isEmpty()) {
             return;
         }
-        for (FieldOperand f : fields) {
-            switch (f.kind()) {
-                case STRING, ENUMERATION, CUSTOM, NUMBER, DATE, DATE_FRAGMENT, TIME, DATE_TIME -> { }
-                default -> throw Refusals.of(KernelCode.MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED,
-                        "NumberOfDifferentValues cannot compare " + f.renderedPath() + " (" + f.kind() + ")");
+        Optional<ValueKind> leader = EntityListRoute.visibleLeaderKind(operands);
+        if (leader.isEmpty()) {
+            // A kind no class admits, or two classes among the fields, is refused whatever class the hidden
+            // leader selects; which class A12 names for it is the leader's.
+            boolean certain = fields.stream().anyMatch(f -> ValueClass.of(f.kind()).isEmpty())
+                    || fields.stream().map(f -> ValueClass.of(f.kind())).distinct().count() > 1;
+            if (certain) {
+                throw new IllegalArgumentException("NumberOfDifferentValues operands must be type-homogeneous;"
+                        + " the leading operand " + operands.getFirst().renderedPath()
+                        + " decides the class, and its kind is not visible here");
             }
+            return;
         }
-        ValueClass first = ValueClass.of(fields.getFirst().kind());
+        ValueClass leading = ValueClass.of(leader.get()).orElseThrow(() -> Refusals.of(
+                KernelCode.MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED, "NumberOfDifferentValues cannot compare "
+                        + operands.getFirst().renderedPath() + " (" + leader.get() + ")"));
         for (FieldOperand f : fields) {
-            ValueClass actual = ValueClass.of(f.kind());
-            if (actual != first) {
-                throw Refusals.of(first.mismatchCode(), "NumberOfDifferentValues operands must be"
-                        + " type-homogeneous; " + f.renderedPath() + " breaks it");
+            if (ValueClass.of(f.kind()).orElse(null) != leading) {
+                String problem = "NumberOfDifferentValues operands must be type-homogeneous; " + f.renderedPath()
+                        + " (" + f.kind() + ") breaks the class its leading operand sets";
+                throw leading == ValueClass.TEMPORAL || f.kind() == ValueKind.UNKNOWN
+                        ? new IllegalArgumentException(problem)
+                        : Refusals.of(leading.mismatchCode(), problem);
             }
         }
     }
@@ -164,11 +177,13 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
             return mismatchCode;
         }
 
-        static ValueClass of(ValueKind kind) {
+        /** The class a kind belongs to, or empty for a kind the operator cannot compare at all. */
+        static Optional<ValueClass> of(ValueKind kind) {
             return switch (kind) {
-                case NUMBER -> NUMERIC;
-                case DATE, DATE_FRAGMENT, TIME, DATE_TIME -> TEMPORAL;
-                default -> TEXTUAL;
+                case NUMBER -> Optional.of(NUMERIC);
+                case DATE, DATE_FRAGMENT, TIME, DATE_TIME -> Optional.of(TEMPORAL);
+                case STRING, ENUMERATION, CUSTOM -> Optional.of(TEXTUAL);
+                case BOOLEAN, CONFIRM, DATE_RANGE, UNKNOWN -> Optional.empty();
             };
         }
     }

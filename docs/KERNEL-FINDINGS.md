@@ -8030,6 +8030,22 @@ Reported by the portable checker (`CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_K
 
 Reported by the portable checker (`CheckFamily.TEMPORAL_AGGREGATE_OPERANDS`), which refuses only on a declared type it is CERTAIN is non-temporal: a `DateTimeType` declaring no format takes its default and is still a date, so absence of a format is never read as absence of a date.
 
+**Extended 2026-09-23 — what the walk is asked AFTER, and what a non-date leader never asks.** Measured on one fixture, each row the complete code list:
+
+| list | class |
+|---|---|
+| `MaxValue(ApproxDay, Released, Released)` — a partial leader, then a duplicate | `MVK_DUPLICATE_PARAM1` |
+| `MaxValue(ApproxDay)` — a partial date alone | `MVK_PARAMSIZE_INVALIDN` |
+| `MaxValue(ApproxDay, Title)` | `MVK_PARTIAL_DATE_NOT_ALLOWED` |
+| `MaxValue(Released, CoverFrom, ApproxDay)` — a component mismatch, then a partial | `MVK_DATEFORMATS_NOT_COMPATIBLE` |
+| `MaxValue(Released, ApproxDay, CoverFrom)` — the same two, swapped | `MVK_PARTIAL_DATE_NOT_ALLOWED` |
+| `MaxValue(Title, ApproxDay)` — a text leader, then a partial | `MVK_NOT_SORTABLE` |
+| `NumberOfDifferentValues(Label, ApproxDay)` | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` |
+| `MaxValue(DatedBatches*, Weight)` — a group of dates leading | `MVK_DATE_AND_NONDATE` |
+| `NumberOfDifferentValues(Batches*, Label, Released)` — a group of numbers leading | `MVK_NUMBER_AND_NON_NUMBER` |
+
+So duplicates and the param law come first, the precision question is part of the per-operand walk rather than a pass ahead of it, and a list whose leader is not date-like is never asked about precision at all. A group leader types the list by its expansion's first field. A client that sees only kinds therefore cannot cite this walk's classes, because an earlier operand's precision or component set may answer first. What it can cite is the non-date route's class, since that route's one class answers for whichever operand fails. *Locked, with rulekit's model-free and model-bound citations held to each row:* `rulekit.validate.laws.EntityListLeaderRouteLawsTest`.
+
 *Locked by:* `rulekit.validate.laws.DateAggregateBaseTypeGateLawsTest`, mirrored by `consistency.TemporalAggregateOperandsTest`.
 
 ## §9 supplement — an entity list's DUPLICATE and ROOT-GROUP gates are the CALLER's, not the list's (source-verified + measured, 2026-09-14) <a id="kf388"></a>

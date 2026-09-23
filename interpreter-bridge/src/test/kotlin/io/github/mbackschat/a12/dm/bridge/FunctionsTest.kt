@@ -182,13 +182,13 @@ class FunctionsTest {
         assertEquals(ValueKind.DATE_TIME, latest.kind())
     }
 
-    /**
-     * The time arm of the same routing. The model carries one TIME field, so the arm is reached through its
-     * refusal of a number beside it rather than through a second time operand.
-     */
     @Test
     fun aTimeMaxValueRoutesToTheTimeExtremum() {
-        assertRejectedWith("MaxValue was built for TIME") { translate("MaxValue(PickupTime, Quantity) > 1") }
+        val latest = assertInstanceOf(
+            DateListAggregate::class.java,
+            left("MaxValue(PickupTime, DropoffTime) == [PickupTime]"),
+        )
+        assertEquals(ValueKind.TIME, latest.kind())
     }
 
     /** MVK_NOT_SORTABLE — strings have no maximum. */
@@ -197,10 +197,11 @@ class FunctionsTest {
         assertRejectedWith("MVK_NOT_SORTABLE") { translate("MaxValue(CustomerName, ProductCode) > 1") }
     }
 
-    /** A date beside a number: the date routes the call, and the temporal aggregate refuses the number. */
+    /** MVK_DATE_AND_NONDATE — a date routes the call, and A12's date walk refuses the number beside it. */
     @Test
     fun aDateBesideANumberIsRejected() {
-        assertRejectedWith("is NUMBER") { translate("MaxValue(OrderDate, Quantity) == [OrderDate]") }
+        assertRejectedWith("MVK_DATE_AND_NONDATE") { translate("MaxValue(OrderDate, Quantity) == [OrderDate]") }
+        assertRejectedWith("MVK_DATE_AND_NONDATE") { translate("MaxValue(PickupTime, Quantity) > 1") }
     }
 
     /** MVK_DUPLICATE_PARAM1 — shared with the other entity-list aggregates. */
@@ -238,7 +239,11 @@ class FunctionsTest {
 
     @Test
     fun aTimeMinValueRoutesToTheTimeExtremum() {
-        assertRejectedWith("MinValue was built for TIME") { translate("MinValue(PickupTime, Quantity) > 1") }
+        val earliest = assertInstanceOf(
+            DateListAggregate::class.java,
+            left("MinValue(PickupTime, DropoffTime) == [PickupTime]"),
+        )
+        assertEquals(ValueKind.TIME, earliest.kind())
     }
 
     /** MVK_NOT_SORTABLE — the twin of MaxValue's, and a different factory reaches it. */

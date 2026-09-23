@@ -9,7 +9,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * list, typically a flattened repetition list (KERNEL-SEMANTICS §9: {@code Sum} substitutes 0 for
  * unspecified fields; {@code MaxValue}/{@code MinValue} ignore them). Kernel slot rules (verified
  * 2026-06-04, KERNEL-FINDINGS §9): number operands only ({@code MVK_NO_NUMBER} for Sum,
- * {@code MVK_NOT_SORTABLE} for Max/Min — their date variant rides the date family, item 9), more
+ * {@code MVK_NOT_SORTABLE} for Max/Min behind a leader that is not date-like — see {@code requireNumber}), more
  * than one field or a repetition list ({@code MVK_PARAMSIZE_INVALIDN}), no repeated DIRECT field
  * ({@code MVK_DUPLICATE_PARAM1}) — an <em>identical</em> wildcarded operand may repeat, mirroring the kernel
  * skipping wildcarded refs in {@code checkDuplicatesInDirectRefs} — all pre-checked here. What the star
@@ -48,17 +48,13 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
 
     public ListAggregate {
         operands = List.copyOf(operands);
-        if (operands.size() < 2 && operands.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
-            throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, op.operatorId() + " needs more than one field, a"
-                    + " repetition list, or a group scope");
-        }
         // Ahead of the kind loop, because the kernel's own routine checks duplicates first: it answers
         // MVK_DUPLICATE_PARAM2 for a group scope beside a field inside it even when that field is the wrong
         // kind, and reporting the kind error there would disagree with it on input both refuse.
-        DuplicateGate.rejectDuplicates(op.operatorId(), operands);
+        EntityListRoute.requireShape(op.operatorId(), operands);
         for (AggregateOperand o : operands) {
             switch (o) {
-                case FieldOperand f -> requireNumber(op, f);
+                case FieldOperand f -> requireNumber(op, operands, f);
                 // A group carries no kind of its own: the rule applies to the fields the kernel EXPANDS it
                 // to, whose extent recurses into nested subgroups. Delegated rather than re-implemented —
                 // see AggregateOperand. An index-selected group is the same shape (still no kind of its
@@ -69,12 +65,30 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
         }
     }
 
-    private static void requireNumber(AggOp op, FieldOperand operand) {
-        if (operand.kind() != ValueKind.NUMBER) {
-            KernelCode code = op == AggOp.SUM ? KernelCode.MVK_NO_NUMBER : KernelCode.MVK_NOT_SORTABLE;
-            throw Refusals.of(code, op.operatorId() + " takes number fields; " + operand.renderedPath()
-                    + " is " + operand.kind() + "; the date variant of Max/Min lands with the date family");
+    /**
+     * {@code Sum} asks every operand the one number question and cites {@code MVK_NO_NUMBER} wherever it
+     * fails. {@code MaxValue}/{@code MinValue} ask it only on the route a non-date leader selects
+     * ({@link EntityListRoute}): behind a date-like leader A12 walks the list as dates instead
+     * ({@code MVK_DATE_AND_NONDATE}, or admits it as a date extremum), and behind a group leader the route is
+     * hidden, so there the refusal stands and its class is withheld.
+     */
+    private static void requireNumber(AggOp op, List<AggregateOperand> operands, FieldOperand operand) {
+        if (operand.kind() == ValueKind.NUMBER) {
+            return;
         }
+        String problem = op.operatorId() + " takes number fields; " + operand.renderedPath() + " is "
+                + operand.kind();
+        if (op == AggOp.SUM) {
+            throw Refusals.of(KernelCode.MVK_NO_NUMBER, problem);
+        }
+        if (EntityListRoute.visiblyNonDateRoute(operands) && operand.kind() != ValueKind.UNKNOWN) {
+            throw Refusals.of(KernelCode.MVK_NOT_SORTABLE, problem);
+        }
+        boolean dateLed = EntityListRoute.visibleLeaderKind(operands).filter(EntityListRoute::isDateLike)
+                .isPresent();
+        throw new IllegalArgumentException(problem + (dateLed
+                ? "; a list led by a date-like field is a date extremum, built with Dsl.latestOf/earliestOf"
+                : ""));
     }
 
     /**

@@ -50,13 +50,13 @@ test("DuplicateGate's own calls are not sites — it IS the gate", () => {
 });
 
 test("a NEW site is reported against the pin — the check that failed twice by hand", () => {
-  // One call site where the pin expects eleven: the report must say so rather than pass quietly.
+  // One call site where the pin expects ten: the report must say so rather than pass quietly.
   const root = fixture({
     "Carrier.java": "class Carrier { Carrier { DuplicateGate.rejectDuplicates(\"X\", ops); } }",
   });
   const { unknown } = report(collectSites(root));
   assert.ok(
-    unknown.some((u: string) => u.includes("call sites: found 1, pinned 11")),
+    unknown.some((u: string) => u.includes("call sites: found 1, pinned 10")),
     `the pin must report a moved denominator, got: ${JSON.stringify(unknown)}`,
   );
 });

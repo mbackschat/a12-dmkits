@@ -48,6 +48,7 @@ internal object BridgeModels {
                     .dateField("OrderDate") { it.format("yyyy-MM-dd") }
                     .dateField("DeliveryDate") { it.format("yyyy-MM-dd") }
                     .timeField("PickupTime") { it.format("HH:mm:ss") }
+                    .timeField("DropoffTime") { it.format("HH:mm:ss") }
                     .dateTimeField("ScheduledAt") { it.format("yyyy-MM-dd'T'HH:mm:ss") }
                     .dateTimeField("CompletedAt") { it.format("yyyy-MM-dd'T'HH:mm:ss") }
                     .enumField("RushLevel") { it.value("1").value("2").value("3") }

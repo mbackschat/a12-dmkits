@@ -32,7 +32,7 @@ type Site = {
  * named, so a list maintained by hand could not report them missing. A count cannot say WHICH site appeared —
  * only that one did, and that the table below needs a human look. Over-triggering costs one reading.
  */
-const PINNED: Readonly<Record<string, number>> = { call: 11, identity: 8, modifier: 4 };
+const PINNED: Readonly<Record<string, number>> = { call: 10, identity: 8, modifier: 4 };
 
 /**
  * What each site's mutation is expected to do, and why when it is not "killed".
@@ -84,6 +84,8 @@ function testSources(root: string): { name: string; text: string }[] {
 const CONTROLS: Readonly<Record<string, readonly string[]>> = {
   // `StringRef.in(StringRef…)` / `NumberRef.in(…)` build the record; the test authors through `name.in(name)`.
   ValueListCondition: ["ScalarValueListDuplicateGateTest", "ValueListDuplicateGateTest"],
+  // The shape gate `ListAggregate` and `DateListAggregate` share; the tests author through `Dsl.maxValue`/`latestOf`.
+  EntityListRoute: ["TemporalAggregateOverlapGateTest", "AggregateDuplicateWildcardTest"],
 };
 
 /**

@@ -60,13 +60,9 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
                     mode.operatorId() + " over date-like values needs a DATE, TIME,"
                             + " or DATETIME operand kind; got " + kind);
         }
-        if (operands.size() < 2 && operands.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
-            throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, mode.operatorId() + " needs more than one field, a"
-                    + " repetition list, or a group scope");
-        }
         // Ahead of the kind loop, matching the kernel: its routine checks duplicates before the type
         // gates, so an overlap is answered even when the descendant is also the wrong temporal class.
-        DuplicateGate.rejectDuplicates(mode.operatorId(), operands);
+        EntityListRoute.requireShape(mode.operatorId(), operands);
         for (AggregateOperand operand : operands) {
             switch (operand) {
                 // The FIELD arm asks only whether the operand is date-like AT ALL — the routing question, whose
@@ -78,9 +74,8 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
                 // (`validate.laws.TemporalAggregateComponentSetLawsTest`, 2026-09-07). Both the exact class
                 // agreement and the component-set agreement are model data the kernel arbitrates.
                 case FieldOperand f -> {
-                    if (!isDateLike(f.kind())) {
-                        throw new IllegalArgumentException(mode.operatorId() + " was built for " + kind
-                                + " but " + f.renderedPath() + " is " + f.kind());
+                    if (!EntityListRoute.isDateLike(f.kind())) {
+                        throw notDateLike(mode, kind, operands, f);
                     }
                 }
                 // A GROUP carries no kind of its own — a group's kind lives in its EXPANSION, which
@@ -94,10 +89,27 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
         }
     }
 
-    /** Whether a kind can carry a date-like value at all — the routing question, and all a kind can answer. */
-    private static boolean isDateLike(ValueKind kind) {
-        return kind == ValueKind.DATE || kind == ValueKind.DATE_FRAGMENT
-                || kind == ValueKind.TIME || kind == ValueKind.DATE_TIME;
+    /**
+     * The refusal for an operand that is not date-like, citing A12's class only where the operands show it.
+     *
+     * <p>A12 routes the list by its leading field ({@link EntityListRoute}). Behind a leader that is not
+     * date-like it runs the number check, whose one class, {@code MVK_NOT_SORTABLE}, answers for whichever
+     * operand is not a number — so the class is certain once any field operand is neither a number nor a
+     * dangling type. A list of numbers alone is A12's NUMERIC extremum and admitted, so there the refusal is
+     * this factory's own. Behind a date-like leader the walk asks every earlier operand for its date precision
+     * and component set before it reaches this one, which a kind cannot show; the {@link BoundModel}
+     * factories run that walk first and cite its class. Behind a group leader the route itself is hidden.
+     */
+    private static IllegalArgumentException notDateLike(
+            Mode mode, ValueKind kind, List<AggregateOperand> operands, FieldOperand offender) {
+        String problem = mode.operatorId() + " was built for " + kind + " but " + offender.renderedPath()
+                + " is " + offender.kind();
+        boolean someFieldIsNotANumber = operands.stream()
+                .anyMatch(o -> o instanceof FieldOperand f
+                        && f.kind() != ValueKind.NUMBER && f.kind() != ValueKind.UNKNOWN);
+        return EntityListRoute.visiblyNonDateRoute(operands) && someFieldIsNotANumber
+                ? Refusals.of(KernelCode.MVK_NOT_SORTABLE, problem)
+                : new IllegalArgumentException(problem);
     }
 
     /**
@@ -109,7 +121,7 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
      * kernel's gate reads is selected by the DECLARED FORMAT ([KF271]) — a TIME field declared
      * {@code yyyy-MM-dd} sits in the DATE class — which no function of a kind can see. The READ path composes
      * this with {@link FieldInfo#temporalClass()}, which resolves the declaration first; this class's own
-     * authoring gate asks only {@link #isDateLike}. Public for that composition (2026-08-24), narrowed to it
+     * authoring gate asks only {@link EntityListRoute#isDateLike}. Public for that composition (2026-08-24), narrowed to it
      * after a class comparison keyed on kind alone was measured refusing kernel-admitted lists (2026-09-07).
      */
     public static ValueKind temporalClassOf(ValueKind kind) {
