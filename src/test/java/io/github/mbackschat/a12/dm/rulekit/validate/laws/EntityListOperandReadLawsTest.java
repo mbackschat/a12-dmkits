@@ -161,6 +161,8 @@ class EntityListOperandReadLawsTest {
         rows.add(new Row("Sum", "Weight, Specs", "MVK_NO_NUMBER", ADMITTED, ADMITTED));
         rows.add(new Row("NumberOfDifferentValues", "Weight, Specs", "MVK_NUMBER_AND_NON_NUMBER", ADMITTED,
                 ADMITTED));
+        // the control for the two rows above: a group whose expansion is all NUMBER passes the numeric class
+        rows.add(new Row("NumberOfDifferentValues", "Weight, Grading", ADMITTED, ADMITTED, ADMITTED));
 
         // the FIRST unreadable operand in list order answers
         rows.add(new Row("Sum", "Hollow, /Other", "MVK_GROUP_IS_EMPTY", UNCODED, "MVK_GROUP_IS_EMPTY"));
