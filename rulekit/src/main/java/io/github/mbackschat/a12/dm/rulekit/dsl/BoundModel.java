@@ -598,8 +598,7 @@ public final class BoundModel {
     private void requireNoStarAtOrAboveIndexGroup(GroupListRef scope) {
         Optional<String> indexGroup = indexGroupOf(scope.path());
         for (GroupRef starred : scope.flattened()) {
-            String level = starred.path().value();
-            if (indexGroup.filter(group -> group.equals(level) || group.startsWith(level + "/")).isPresent()) {
+            if (indexGroup.filter(group -> EntityPath.of(group).isInside(starred.path())).isPresent()) {
                 throw new IllegalArgumentException("a semantic index may not sit beside a wildcard on or above its"
                         + " index group " + indexGroup.get() + ": " + scope.renderedPath());
             }
@@ -633,8 +632,7 @@ public final class BoundModel {
      * operand of a list aggregate, which it judges as a flat list of these fields (KERNEL-FINDINGS KF193).
      */
     public Stream<FieldInfo> descendantFields(GroupRef group) {
-        String prefix = group.path().value() + "/";
-        return fields().filter(field -> field.path().startsWith(prefix));
+        return fields().filter(field -> EntityPath.of(field.path()).isStrictlyInside(group.path()));
     }
 
     /** Every group (root groups included), in model order. */
