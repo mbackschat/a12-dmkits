@@ -36,9 +36,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
  * answers for every operand. So the class names the ROUTE, not the offender, and the walk answers by POSITION.
  *
  * <p><b>The oracle is the kernel column; the rulekit columns are held to it by one law.</b> Every code rulekit
- * cites must be the kernel's own for that list, and a withheld ({@code uncoded}) refusal is the only other
- * answer allowed where the kernel refuses. {@link #everyCitationIsTheKernelsOwnClass} checks that mechanically,
- * so a column cannot drift into citing a class it has no basis for. Model-free, a factory sees only kinds: it
+ * cites must be the kernel's own for that list. {@link #everyCitationIsTheKernelsOwnClass} checks that
+ * mechanically, so a column cannot drift into citing a class it has no basis for. An {@code uncoded} refusal
+ * answers two ways: withheld, where the kernel refuses for something the factory cannot see, and the factory's
+ * own routing refusal, where the kernel admits the list as the OTHER extremum type. The law cannot tell those
+ * apart, so the column assertions pin each one. Model-free, a factory sees only kinds: it
  * cites the non-date route's class and withholds the walk's, whose earlier operands' precision and component
  * set it cannot read. Model-bound, the {@link BoundModel} factories walk the list in A12's order.
  *
@@ -58,6 +60,8 @@ class EntityListLeaderRouteLawsTest {
                 g.dateField("CoverFrom", f -> f.format("yyyy-MM"));
                 g.dateField("ApproxDay", f -> f.format("dd.MM.yyyy").datePrecision(DatePrecision.DAY_OPTIONAL));
                 g.field("Discontinued", FieldKind.BOOLEAN);
+                g.field("Sealed", FieldKind.CONFIRM);
+                g.dateRangeField("Window", f -> f.format("yyyy-MM-dd").separator("/"));
                 g.timeField("OpensAt", f -> { });
                 g.timeField("ClosesAt", f -> { });
                 g.group("Batches", b -> b.repeatable(5)
@@ -66,7 +70,10 @@ class EntityListLeaderRouteLawsTest {
                 g.group("DatedBatches", b -> b.repeatable(5)
                         .dateField("PackedOn", f -> f.format("dd.MM.yyyy"))
                         .dateField("BestBefore", f -> f.format("dd.MM.yyyy")));
-            }).build().toJson();
+            })
+            // A second root, so a list can name a root group that is not the rule's own.
+            .rootGroup("Extra", x -> x.stringField("Code", f -> { }))
+            .build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(MODEL);
 
@@ -89,6 +96,7 @@ class EntityListLeaderRouteLawsTest {
     private static final String PARTIAL = "MVK_PARTIAL_DATE_NOT_ALLOWED";
     private static final String FORMATS = "MVK_DATEFORMATS_NOT_COMPATIBLE";
     private static final String DUPLICATE = "MVK_DUPLICATE_PARAM1";
+    private static final String ROOT = "MVK_ROOT_GROUP_REFERENCED";
     private static final String ARITY = "MVK_PARAMSIZE_INVALIDN";
     private static final String STRING_ENUM = "MVK_STRING_ENUM_AND_NON_STRING_ENUM";
     private static final String NUMBER_AND_NON = "MVK_NUMBER_AND_NON_NUMBER";
@@ -108,7 +116,16 @@ class EntityListLeaderRouteLawsTest {
             new Row("DatedBatches*, Weight", DATE_AND_NONDATE, ADMITTED, null),
             new Row("Batches*, Title", NOT_SORTABLE, UNCODED, null),
             new Row("Weight, Excess", ADMITTED, ADMITTED, null),
-            new Row("Weight, Batches*", ADMITTED, ADMITTED, null));
+            new Row("Weight, Batches*", ADMITTED, ADMITTED, null),
+            // The root-group gate sits after duplicates and before every kind gate, beside any operand.
+            new Row("Title, /Extra", ROOT, ROOT, null),
+            new Row("Weight, /Extra", ROOT, ROOT, null),
+            new Row("Weight, Weight, /Extra", DUPLICATE, DUPLICATE, null));
+
+    /** {@code Sum}, which asks one number question in no route: its class does not move with the leader. */
+    private static final List<Row> SUM = List.of(
+            new Row("Released, Weight", "MVK_NO_NUMBER", "MVK_NO_NUMBER", null),
+            new Row("Weight, /Extra", ROOT, ROOT, null));
 
     /** {@code MaxValue} through the DATE factory, model-free and model-bound. */
     private static final List<Row> DATE_MAX = List.of(
@@ -130,11 +147,14 @@ class EntityListLeaderRouteLawsTest {
             new Row("Released, DatedBatches*, Title", DATE_AND_NONDATE, UNCODED, UNCODED),
             new Row("DatedBatches*, Weight", DATE_AND_NONDATE, UNCODED, UNCODED),
             // Delegated for the same reason — DEV-API-GAPS DG73: walking the group would cite it.
-            new Row("DatedBatches*, ApproxDay", PARTIAL, ADMITTED, ADMITTED));
+            new Row("DatedBatches*, ApproxDay", PARTIAL, ADMITTED, ADMITTED),
+            new Row("Title, /Extra", ROOT, ROOT, ROOT),
+            new Row("Released, Title, /Extra", ROOT, ROOT, ROOT));
 
     /** {@code MinValue} and the TIME factory — the same walk on the other extremum and the other class. */
     private static final List<Row> OTHER_EXTREMA = List.of(
             new Row("MinValue: Released, Weight", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
+            new Row("MinValue: Released, /Extra", ROOT, ROOT, ROOT),
             new Row("MaxValue time: OpensAt, Weight", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
             new Row("MaxValue time: OpensAt, ClosesAt", ADMITTED, ADMITTED, ADMITTED));
 
@@ -146,7 +166,9 @@ class EntityListLeaderRouteLawsTest {
             new Row("OpensAt, Weight", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
             new Row("OpensAt, ClosesAt", ADMITTED, ADMITTED, ADMITTED),
             // With no witness set the walk cannot ask Released's component set, which A12 asks first.
-            new Row("OpensAt, Released, Weight", FORMATS, UNCODED, UNCODED));
+            new Row("OpensAt, Released, Weight", FORMATS, UNCODED, UNCODED),
+            // The other side: a declared leader, then an operand declaring no format, is left to the kernel.
+            new Row("ClosesAt, OpensAt", ADMITTED, ADMITTED, ADMITTED));
 
     /** {@code NumberOfDifferentValues}, whose non-date leaders each select a class of their own. */
     private static final List<Row> DISTINCT = List.of(
@@ -160,7 +182,15 @@ class EntityListLeaderRouteLawsTest {
             new Row("Released, CoverFrom, Label", FORMATS, UNCODED, FORMATS),
             new Row("Released, Label, CoverFrom", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
             new Row("ApproxDay, Released, Released", DUPLICATE, DUPLICATE, DUPLICATE),
-            new Row("ApproxDay", ARITY, ARITY, ARITY));
+            new Row("ApproxDay", ARITY, ARITY, ARITY),
+            new Row("Weight, Sealed", NUMBER_AND_NON, NUMBER_AND_NON, NUMBER_AND_NON),
+            new Row("Label, Window", STRING_ENUM, STRING_ENUM, STRING_ENUM),
+            new Row("Window, Label", NOT_COMPARABLE, NOT_COMPARABLE, NOT_COMPARABLE),
+            // A hidden group leader with one class among the fields: admitted, the positive control of the
+            // hidden-leader branch.
+            new Row("Batches*, Weight", ADMITTED, ADMITTED, ADMITTED),
+            new Row("Label, Discontinued, /Extra", ROOT, ROOT, ROOT),
+            new Row("Weight, Label, /Extra", ROOT, ROOT, ROOT));
 
     /** The comparands every row borrows, admitted on their own — the liveness control for the kernel column. */
     @Test
@@ -174,6 +204,7 @@ class EntityListLeaderRouteLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         Map<String, String> actual = new LinkedHashMap<>();
         NUMERIC_MAX.forEach(row -> record(expected, actual, "MaxValue", row));
+        SUM.forEach(row -> record(expected, actual, "Sum", row));
         DATE_MAX.forEach(row -> record(expected, actual, "MaxValue", row));
         OTHER_EXTREMA.forEach(row -> record(expected, actual, null, row));
         DISTINCT.forEach(row -> record(expected, actual, "NumberOfDifferentValues", row));
@@ -184,6 +215,11 @@ class EntityListLeaderRouteLawsTest {
     void theNumberFactoryCitesOnlyTheNonDateRoutesClass() {
         assertEquals(column(NUMERIC_MAX, Row::modelFree), answers(NUMERIC_MAX, ops -> () -> Dsl.maxValue(
                 ops.getFirst(), rest(ops))));
+    }
+
+    @Test
+    void sumCitesItsOneClassWhateverLeads() {
+        assertEquals(column(SUM, Row::modelFree), answers(SUM, ops -> () -> Dsl.sum(ops.getFirst(), rest(ops))));
     }
 
     @Test
@@ -248,6 +284,7 @@ class EntityListLeaderRouteLawsTest {
     void everyCitationIsTheKernelsOwnClass() {
         List<Row> all = new ArrayList<>();
         all.addAll(NUMERIC_MAX);
+        all.addAll(SUM);
         all.addAll(DATE_MAX);
         all.addAll(OTHER_EXTREMA);
         all.addAll(FORMATLESS_LEADER);
@@ -276,7 +313,8 @@ class EntityListLeaderRouteLawsTest {
 
     /** The comparison each row's result takes, matched to the leader's class. */
     private static String comparand(String operator, String list) {
-        if (operator.equals("NumberOfDifferentValues")) {
+        // Both yield a number whatever leads, so their comparand is numeric on every row.
+        if (operator.equals("NumberOfDifferentValues") || operator.equals("Sum")) {
             return " > 0";
         }
         String leader = list.split(", ")[0];
@@ -310,7 +348,9 @@ class EntityListLeaderRouteLawsTest {
 
     private static List<AggregateOperand> operands(BoundModel model, String list) {
         return java.util.Arrays.stream(list.split(", "))
-                .map(name -> name.endsWith("*")
+                .map(name -> name.startsWith("/")
+                        ? (AggregateOperand) model.flattenGroup(name)
+                        : name.endsWith("*")
                         ? (AggregateOperand) model.flattenGroup("/Item/" + name)
                         : (AggregateOperand) model.field("/Item/" + name))
                 .toList();

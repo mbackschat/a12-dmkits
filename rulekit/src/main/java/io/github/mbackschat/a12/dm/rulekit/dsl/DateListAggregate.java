@@ -80,9 +80,10 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
                 }
                 // A GROUP carries no kind of its own — a group's kind lives in its EXPANSION, which
                 // `AggregateOperand` delegates to the kernel rather than re-implementing the extent — so its
-                // arm takes the factory's declared kind and lets the kernel's own gate judge the expansion
-                // (`MVK_NOT_SORTABLE`), exactly as the numeric aggregates already do. An index-selected
-                // group is the same shape — the index picks WHICH repetition, not what it expands to.
+                // arm takes the factory's declared kind and lets the kernel's own gates judge the expansion
+                // (the date walk's classes, or `MVK_NOT_SORTABLE` behind a non-date leader), exactly as the
+                // numeric aggregates already do. An index-selected group is the same shape — the index picks
+                // WHICH repetition, not what it expands to.
                 case GroupListRef ignored -> { }
                 case IndexedGroupValue ignored -> { }
             }
@@ -92,10 +93,10 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
     /**
      * The refusal for an operand that is not date-like, citing A12's class only where the operands show it.
      *
-     * <p>A12 routes the list by its leading field ({@link EntityListRoute}). Behind a leader that is not
-     * date-like it runs the number check, whose one class, {@code MVK_NOT_SORTABLE}, answers for whichever
-     * operand is not a number — so the class is certain once any field operand is neither a number nor a
-     * dangling type. A list of numbers alone is A12's NUMERIC extremum and admitted, so there the refusal is
+     * <p>A12 routes the list by its leading field ({@link EntityListRoute}), once duplicates, the root-group
+     * gate and the param law have passed. Behind a leader that is not date-like it runs the number check, whose
+     * one class, {@code MVK_NOT_SORTABLE}, answers for whichever operand is not a number — so the class is
+     * certain once any field operand is neither a number nor a dangling type. A list of numbers alone is A12's NUMERIC extremum and admitted, so there the refusal is
      * this factory's own. Behind a date-like leader the walk asks every earlier operand for its date precision
      * and component set before it reaches this one, which a kind cannot show; the {@link BoundModel}
      * factories run that walk first and cite its class. Behind a group leader the route itself is hidden.

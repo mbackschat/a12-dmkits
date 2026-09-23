@@ -12,7 +12,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * the carriers whose kind gate depends on it: {@code MaxValue}, {@code MinValue} and
  * {@code NumberOfDifferentValues}.
  *
- * <p>A12 asks duplicates and the param law first, then types the whole list by its FIRST EXPANDED field
+ * <p>A12 asks duplicates, the root-group gate and the param law first, then types the whole list by its FIRST EXPANDED field
  * ({@code CheckEntityListenUtils.firstType}). A date-like leader sends the list through one walk that asks
  * each operand in turn for a date-like base type, a fully known date and the leader's component set
  * ([KF389]); any other leader sends it through a kind check whose one class answers for every operand. So the
@@ -32,15 +32,31 @@ final class EntityListRoute {
     }
 
     /**
-     * Duplicates, then the param law — the two gates A12 asks of an entity list before it types it, in its
-     * order ({@code getRefList} raises the duplicate classes while it builds the list). A carrier calling this
-     * ahead of a model-bound gate gets A12's answer for a list that breaks both.
+     * Duplicates, the root-group gate, then the param law — the gates A12 asks of an entity list before it
+     * types it, in its order ({@code getRefList} raises the duplicate classes while it builds the list, then
+     * {@code checkNotRootGroupReferenced}, then the arity check; [KF388]). A carrier calling this ahead of a
+     * model-bound gate gets A12's answer for a list that breaks several.
      */
     static void requireShape(String operatorId, List<? extends AggregateOperand> operands) {
         DuplicateGate.rejectDuplicates(operatorId, operands);
+        rejectRootGroups(operatorId, operands);
         if (operands.size() < 2 && operands.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
             throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, operatorId + " needs more than one field, a"
                     + " repetition list, or a group scope");
+        }
+    }
+
+    /**
+     * A root group is refused on these carriers wherever it stands, beside other operands too, and ahead of the
+     * param law and every kind gate ([KF388], {@code validate.laws.EntityListLeaderRouteLawsTest}). Only a
+     * plain group scope is asked here; an index-selected root is left to the kernel (DEV-API-GAPS DG72).
+     */
+    static void rejectRootGroups(String operatorId, List<? extends AggregateOperand> operands) {
+        for (AggregateOperand operand : operands) {
+            if (operand instanceof GroupListRef list && list.group().path().value().indexOf('/', 1) < 0) {
+                throw Refusals.of(KernelCode.MVK_ROOT_GROUP_REFERENCED,
+                        operatorId + " does not accept a root group: " + list.renderedPath());
+            }
         }
     }
 

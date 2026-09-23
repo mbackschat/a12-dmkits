@@ -44,6 +44,10 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
         // answers a duplicate before the param-size, fields-allowed and comparability bars, so our
         // order reported those instead on input both sides refuse.
         DuplicateGate.rejectDuplicates(op.operatorId(), allOperands(fields, groups));
+        if (op == CountOp.DIFFERENT_VALUES) {
+            // A12 asks the root-group gate after duplicates and before the param law on this operator.
+            EntityListRoute.rejectRootGroups(op.operatorId(), fields);
+        }
         switch (op) {
             case FILLED_FIELDS, DIFFERENT_VALUES -> {
                 // a single flattened repetition list or group scope also satisfies the param law (verified)

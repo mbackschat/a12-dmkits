@@ -78,10 +78,14 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
         }
         String problem = op.operatorId() + " takes number fields; " + operand.renderedPath() + " is "
                 + operand.kind();
+        if (operand.kind() == ValueKind.UNKNOWN) {
+            // A dangling type reference: no legal model carries it, so no class has been measured for it.
+            throw new IllegalArgumentException(problem);
+        }
         if (op == AggOp.SUM) {
             throw Refusals.of(KernelCode.MVK_NO_NUMBER, problem);
         }
-        if (EntityListRoute.visiblyNonDateRoute(operands) && operand.kind() != ValueKind.UNKNOWN) {
+        if (EntityListRoute.visiblyNonDateRoute(operands)) {
             throw Refusals.of(KernelCode.MVK_NOT_SORTABLE, problem);
         }
         boolean dateLed = EntityListRoute.visibleLeaderKind(operands).filter(EntityListRoute::isDateLike)
