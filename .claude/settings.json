@@ -23,7 +23,14 @@
       "Bash(./scripts/perf-history.sh)",
       "Bash(./scripts/perf-history.sh *)",
       "Bash(./scripts/check-release-gaps.sh)",
-      "Bash(./scripts/doctor.sh)"
+      "Bash(./scripts/doctor.sh)",
+      "Bash(./scripts/test-evidence.sh *)",
+      "Bash(scripts/test-evidence.sh *)",
+      "Bash(/usr/bin/grep *)",
+      "Bash(/usr/bin/head *)",
+      "Bash(/usr/bin/tail *)",
+      "Bash(/usr/bin/cut *)",
+      "Bash(shasum *)"
     ]
   }
 }
