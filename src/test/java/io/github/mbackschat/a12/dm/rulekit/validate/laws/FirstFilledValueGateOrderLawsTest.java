@@ -121,6 +121,57 @@ class FirstFilledValueGateOrderLawsTest {
     }
 
     /**
+     * Three positions the grid above leaves open, each compared with {@code [Title]}: a Confirm field LEADING a
+     * mixed list, a one-field list whose field is also a Confirm, and a group containing a Confirm field beside
+     * that field. The comparand cannot be the leading Confirm, because {@code [InStock] == [InStock]} alone draws
+     * {@code MVK_INVALID_COMPARE_TO_YES}, and a row compared with it could not be read as the list's.
+     */
+    private static final Map<String, String> CONFIRM_AND_ARITY = confirmAndArity();
+
+    private static Map<String, String> confirmAndArity() {
+        Map<String, String> lists = new LinkedHashMap<>();
+        // the Confirm class answers in first position too
+        lists.put("InStock, Title", BOOLY);
+        lists.put("InStock, Weight", BOOLY);
+        lists.put("InStock, Title, Weight", BOOLY);
+        // arity is asked before it
+        lists.put("InStock", "MVK_PARAMSIZE_INVALIDN");
+        lists.put("Title", "MVK_PARAMSIZE_INVALIDN");
+        // and a contained duplicate before it, in either order
+        lists.put("Flags, Flags/Fragile", CONTAINED);
+        lists.put("Flags/Fragile, Flags", CONTAINED);
+        return lists;
+    }
+
+    @Test
+    void theKernelAsksArityAndDuplicatesBeforeConfirm_whereverTheConfirmStands() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        CONFIRM_AND_ARITY.keySet().forEach(list -> actual.put(list,
+                verdict(MODEL, "FirstFilledValue(" + list + ") == [Title]")));
+        assertEquals(CONFIRM_AND_ARITY, actual);
+
+        // the control that fixes the comparand: a Confirm compared with itself is refused on its own
+        assertEquals("MVK_INVALID_COMPARE_TO_YES", verdict(MODEL, "[InStock] == [InStock]"));
+    }
+
+    @Test
+    void rulekitRefusesTheConfirmAndArityListsWithTheKernelsClass() {
+        BoundModel m = BoundModel.ofJson(MODEL);
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (String list : CONFIRM_AND_ARITY.keySet()) {
+            actual.put(list, clientVerdict(() -> {
+                List<FirstFilledOperand> operands = new ArrayList<>();
+                for (String name : list.split(", ")) {
+                    operands.add(GROUPS.contains(name) ? m.firstFilledGroup("/Item/" + name)
+                            : FirstFilledOperand.of(m.field("/Item/" + name)));
+                }
+                return new FirstFilledValue(operands.getFirst(), operands.subList(1, operands.size()));
+            }));
+        }
+        assertEquals(CONFIRM_AND_ARITY, actual);
+    }
+
+    /**
      * A root group, beside a second root that is populated and a third that is empty. Every other operand of the
      * rule's own root lies under it, so a duplicate answers first there; an operand from another root does not,
      * and neither does a category projection. The root's own shape classes answer ahead of both.
