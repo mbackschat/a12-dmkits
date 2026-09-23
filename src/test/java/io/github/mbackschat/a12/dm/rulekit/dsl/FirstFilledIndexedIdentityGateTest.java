@@ -1,12 +1,14 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 
 /**
  * {@code FirstFilledValue}'s INDEXED owner entities, controlled in the module that owns their identity.
@@ -18,8 +20,8 @@ import io.github.mbackschat.a12.dm.Fixtures;
  * same structural gap a cold review had already found once for the sealed unions' indexed arms.
  *
  * <p>Kernel rows ({@code validate.laws.DuplicateOverlapCarrierSweepLawsTest}): one owner under one literal key
- * twice is {@code MVK_DUPLICATE_PARAM1}; under two keys it is admitted, because the two operands address
- * different repetitions.
+ * twice is {@code MVK_DUPLICATE_PARAM1} when the key resolves; under two keys it is admitted, because the two
+ * operands address different repetitions.
  */
 class FirstFilledIndexedIdentityGateTest {
 
@@ -33,8 +35,10 @@ class FirstFilledIndexedIdentityGateTest {
     void oneOwnerUnderOneKeyTwiceIsAnExactDuplicate() {
         var refusal = assertThrows(IllegalArgumentException.class,
                 () -> Dsl.firstFilledNumber(keyed("a"), keyed("a")));
-        assertTrue(refusal.getMessage().contains("MVK_DUPLICATE_PARAM1"),
-                () -> "expected the kernel's own code in: " + refusal.getMessage());
+        // The duplicate gate answers, and its class is withheld: an index that does not resolve answers first in
+        // A12, which the handle cannot see ([AF160], validate.laws.FirstFilledValueGateOrderLawsTest).
+        assertTrue(refusal.getMessage().contains("is listed more than once"), refusal::getMessage);
+        assertFalse(refusal instanceof KernelCodeRefusal, refusal::getMessage);
     }
 
     /** One variable apart: two keys address two repetitions, so refusing the pair would over-reject. */
