@@ -484,15 +484,15 @@ final class ConditionConverter {
             // $-correlated presence predicate (e.g. NoFieldFilled($a, $b) inside a filter, D13): build
             // outer-marked field operands so the $ survives — else the count-check refuses the conversion.
             if (entities.stream().anyMatch(IEntityId::isOuter)) {
-                FieldOperand[] ops = entities.stream()
-                        .map(e -> e.isOuter() ? model.field(e.getFullName()).outer() : model.field(e.getFullName()))
-                        .toArray(FieldOperand[]::new);
+                FieldOperand[] ops = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
                 return fieldFillQuantifier(name, ops, entityList);
             }
             // An unfiltered wildcard field-fill quantifier is still a list operation. Route every operand
             // through the wildcard-aware converter so a single starred operand and mixed starred/plain lists
-            // retain their per-repetition meaning instead of falling into the plain-path canonicalization.
-            if (isFieldFillQuantifier(name) && entities.stream().anyMatch(ConditionConverter::isWildcard)) {
+            // retain their per-repetition meaning instead of falling into the plain-path canonicalization. An
+            // indexed member takes the same route, because the plain-path form below keeps only its path.
+            if (isFieldFillQuantifier(name) && entities.stream()
+                    .anyMatch(e -> isWildcard(e) || hasSemanticIndex(e))) {
                 FieldOperand[] operands = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
                 return fieldFillQuantifier(name, operands, entityList);
             }
@@ -832,8 +832,25 @@ final class ConditionConverter {
      * {@link #groupScope} is loud about. The single-operand aggregate arm and one {@code FirstFilledValue} arm
      * had each worked around it locally by calling {@code flattenScope} themselves; the fix is here, at the
      * shared root, so no caller has to remember (DG38).
+     *
+     * <p>A field carrying a semantic index is the indexed cell, for the same reason: every entity-list slot A12
+     * admits it in (the aggregates, the fill and uniqueness quantifiers, the value-list quantifiers) reached this
+     * helper and lost the key, so the F10 index backstop kept each such rule {@code Opaque} (DEV-API-GAPS DG66).
+     * {@code IndexedFieldValue} holds one field, not a repetition list, so an index beside a star stays
+     * unsupported rather than losing the star.
      */
     private FieldOperand toFieldOperand(IEntityId entity) {
+        if (hasSemanticIndex(entity)) {
+            if (isWildcard(entity)) {
+                throw unsupported("semantic index on a starred field operand", entity);
+            }
+            return semanticIndex(entity, entity).index();
+        }
+        return unindexedFieldOperand(entity);
+    }
+
+    /** {@link #toFieldOperand} without the index, for {@code FirstFilledValue}, which keys its own operand. */
+    private FieldOperand unindexedFieldOperand(IEntityId entity) {
         FieldOperand op = isWildcard(entity)
                 ? flattenScope(entity) : model.field(entity.getFullName());
         if (entity.isOuter()) {   // $ correlation (D13): e.g. the value side of an entity-valued value-list
@@ -1399,7 +1416,7 @@ final class ConditionConverter {
     private FirstFilledOperand toFirstFilledOperand(IEntityId entity, IEntityListOperation origin) {
         FirstFilledOperand operand;
         if (entity.isField()) {
-            FieldOperand field = toFieldOperand(entity);   // wildcard → flattenScope, filter kept
+            FieldOperand field = unindexedFieldOperand(entity);   // wildcard → flattenScope, filter kept
             operand = field.firstFilledOperand();
         } else {
             if (entity.getFilterCondition() != null) {
