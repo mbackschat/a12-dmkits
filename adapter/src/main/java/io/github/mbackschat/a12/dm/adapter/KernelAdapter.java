@@ -464,12 +464,14 @@ public final class KernelAdapter {
             int categoryRefs = converter.countCategoryRefs(parsed);   // [field -> Cat] projections it carries
             int semanticIndexRefs = converter.countSemanticIndexRefs(parsed);   // [field For key] reads
             int wildcardLevels = converter.countWildcardLevels(parsed);   // repetition stars it carries
+            int filters = converter.countFilters(parsed);   // Having filters it carries
             Condition converted = converter.convert(parsed);
             converter.verifyOuterPreserved(converted, outerRefs);   // backstop: a dropped $ → Opaque, never silent
             String rendered = new DslRenderer().render(converted);
             converter.verifyCategoryPreserved(rendered, categoryRefs);
             converter.verifySemanticIndexPreserved(rendered, semanticIndexRefs);
             converter.verifyWildcardPreserved(rendered, wildcardLevels);
+            converter.verifyFilterPreserved(rendered, filters);
             String stored = verbatimConditionText(ruleFullName);
             if (dropsALoadBearingGroup(ruleFullName, stored, rendered)) {
                 return new ReadResult.Opaque(stored, "F10 converter would silently drop a `{ … }` group the "
@@ -927,12 +929,14 @@ public final class KernelAdapter {
             ConditionConverter converter = new ConditionConverter(model);
             int categoryRefs = sumOverSlots(info.get(), converter::countCategoryRefs);
             int wildcardLevels = sumOverSlots(info.get(), converter::countWildcardLevels);
+            int filters = sumOverSlots(info.get(), converter::countFilters);
             Computation computation =
                     converter.convertComputation(info.get(), recoverMessages(cr.getRule()), errorCodesToSuppress);
-            // backstops: a dropped [field -> Cat] projection or star → Opaque, never a silently different operation
+            // backstops: a dropped [field -> Cat] projection, star or filter → Opaque, never a different operation
             String rendered = renderedSlots(computation);
             converter.verifyCategoryPreserved(rendered, categoryRefs);
             converter.verifyWildcardPreserved(rendered, wildcardLevels);
+            converter.verifyFilterPreserved(rendered, filters);
             // …and the grouping backstop {@link #dropsALoadBearingGroup} states, at the sibling site the sweep
             // for it found: a computation's precondition is an ordinary condition, so the kernel drops its
             // group on a simple operand exactly as it does for a rule, and `computation read` published the

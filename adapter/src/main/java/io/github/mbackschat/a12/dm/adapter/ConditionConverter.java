@@ -213,6 +213,12 @@ final class ConditionConverter {
                 .filter(index -> index == IParseTreeEntity.WILDCARD).count());
     }
 
+    /** Count the {@code Having} filters the source AST carries, nested ones included; the input to
+     *  {@link #verifyFilterPreserved}. */
+    int countFilters(IParseTreeEntity root) {
+        return countEntities(root, id -> id.getFilterCondition() != null);
+    }
+
     private static int countEntities(IParseTreeEntity root, java.util.function.Predicate<IEntityId> matches) {
         return sumOverEntities(root, id -> matches.test(id) ? 1 : 0);
     }
@@ -354,6 +360,32 @@ final class ConditionConverter {
                     + "source carries " + expectedStars + " starred level(s) but conversion rendered only "
                     + renderedStars + " — that operand position rebuilds the path without its star, so the "
                     + "subject is preserved verbatim [kernel node: IEntityId.getIndices()]");
+        }
+    }
+
+    /**
+     * The same backstop for {@code Having} filters. A filtered list reads the repetitions the filter keeps and
+     * the unfiltered one reads them all, so a conversion that loses a filter broadens the rule and still
+     * reports itself converted. That shipped twice: every multi-operand aggregate and value-list read, fixed
+     * in {@link #toFieldOperand}, and later the literal value-list quantifiers
+     * ({@code adapter.HavingFilterPreservedReadTest}).
+     *
+     * <p>It counts the keyword the default EN render uses, as a whole word outside string literals, which is
+     * the language {@code KernelAdapter.read} renders in.
+     *
+     * @param rendered the converted subject's rendered DSL
+     * @throws UnsupportedConstructException when a filter was dropped — caught by the read entry points
+     */
+    void verifyFilterPreserved(String rendered, int expectedFilters) {
+        if (expectedFilters == 0) {
+            return;
+        }
+        int renderedFilters = countMatches(rendered.replaceAll("\"[^\"]*\"", ""), "\\bHaving\\b");
+        if (renderedFilters < expectedFilters) {
+            throw new UnsupportedConstructException("F10 converter would silently drop a Having filter: the "
+                    + "source carries " + expectedFilters + " filter(s) but conversion rendered only "
+                    + renderedFilters + " — that operand position rebuilds the list without its filter, so the "
+                    + "subject is preserved verbatim [kernel node: IEntityId.getFilterCondition()]");
         }
     }
 
@@ -515,7 +547,7 @@ final class ConditionConverter {
             // build the filtered FieldListRef (flattenScope converts the filter — threading any $) and apply
             // the quantifier over it. The plain path form below drops the wildcard + filter, so it must not
             // be taken here.
-            if (single && entities.get(0).getFilterCondition() != null) {
+            if (single && entities.get(0).getFilterCondition() != null && isFieldFillQuantifier(name)) {
                 FieldListRef scope = flattenScope(entities.get(0));
                 return fieldFillQuantifier(name, new FieldOperand[] {scope}, entityList);
             }
@@ -800,8 +832,8 @@ final class ConditionConverter {
             };
         }
         if (entities.stream().allMatch(ConditionConverter::isWildcard)) {
-            FieldListRef[] r = entities.stream()
-                    .map(e -> model.flatten(reconstructStarPath(e))).toArray(FieldListRef[]::new);
+            // flattenScope, not a bare flatten: the list keeps its Having filter, which this arm used to drop
+            FieldListRef[] r = entities.stream().map(this::flattenScope).toArray(FieldListRef[]::new);
             FieldListRef[] rest = Arrays.copyOfRange(r, 1, r.length);
             return switch (name) {
                 case AtLeastOneFieldValueIncludedInValueList ->
