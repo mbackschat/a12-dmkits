@@ -113,7 +113,7 @@ class ConditionBridgeTest {
         assertFalse(refused is OperandResolutionException) {
             "a rulekit refusal was classified as a resolution failure: ${refused.message}"
         }
-        assertTrue(refused.message!!.contains("a root group may not be referenced")) {
+        assertTrue(refused.message!!.contains("does not accept a root group")) {
             "unexpected message: ${refused.message}"
         }
     }

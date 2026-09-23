@@ -12,7 +12,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * at least one group ({@code MVK_PARAMSIZE_INVALIDN}); {@code NumberOfFilledGroups} needs more than
  * one group <em>or</em> a single repeatable group as a wildcard scope ({@code Group*}, counting that
  * group's filled repetitions), groups only ({@code MVK_PARAMSIZE_INVALIDGN}, {@code
- * MVK_NO_FIELDS_ALLOWED}); root groups are banned in both ({@code MVK_ROOT_GROUP_REFERENCED}). The
+ * MVK_NO_FIELDS_ALLOWED}); a root group is banned in {@code NumberOfFilledFields} ({@code
+ * MVK_ROOT_GROUP_REFERENCED}) and admitted by {@code NumberOfFilledGroups} only alone ({@code
+ * MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS}). The
  * {@link Dsl} entry points enforce all of that by signature + pre-check; field kinds may be mixed.
  */
 import io.github.mbackschat.a12.dm.core.KernelCode;
@@ -64,6 +66,10 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
         }
         switch (op) {
             case FILLED_FIELDS, DIFFERENT_VALUES -> {
+                if (op == CountOp.FILLED_FIELDS) {
+                    // DIFFERENT_VALUES asked this above, where A12 asks it on that operator.
+                    EntityListRoute.rejectRootGroups(op.operatorId(), allOperands(fields, groups));
+                }
                 // a single flattened repetition list or group scope also satisfies the param law (verified)
                 if (fields.size() < 2 && groups.isEmpty()
                         && fields.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
@@ -72,6 +78,17 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
                 }
             }
             case FILLED_GROUPS -> {
+                // A root is legal here only ALONE, and A12 asks that ahead of the fields-allowed and arity bars
+                // under a class of its own (CheckFeldListenAnzahlOpImpl, KERNEL-FINDINGS KF388,
+                // validate.laws.GroupListDiagnosticIdentityLawsTest).
+                if (fields.size() + groups.size() > 1) {
+                    for (GroupRef g : groups) {
+                        if (isRoot(g)) {
+                            throw Refusals.of(KernelCode.MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS,
+                                    "NumberOfFilledGroups takes a root group only as its sole operand: " + g.path());
+                        }
+                    }
+                }
                 if (!fields.isEmpty()) {
                     throw Refusals.of(KernelCode.MVK_NO_FIELDS_ALLOWED,
                             "NumberOfFilledGroups takes groups only, no fields");
@@ -84,17 +101,20 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
                             "NumberOfFilledGroups needs more than one group, or a"
                                     + " single repeatable group as a wildcard scope");
                 }
+                if (singleWildcard && isRoot(groups.get(0))) {
+                    // A12 admits this text; it is the root-group count, a record of its own.
+                    throw new IllegalArgumentException("NumberOfFilledGroups over the repeatable root group "
+                            + groups.get(0).path() + " counts its repetitions: build it with Dsl.numberOfFilledRootGroups");
+                }
             }
         }
         if (op == CountOp.DIFFERENT_VALUES) {
             checkValueComparable(fields);
         }
-        for (GroupRef g : groups) {
-            if (g.path().value().indexOf('/', 1) < 0) {
-                throw Refusals.of(KernelCode.MVK_ROOT_GROUP_REFERENCED, "a root group may not be referenced in "
-                        + op.operatorId() + ": " + g.path());
-            }
-        }
+    }
+
+    private static boolean isRoot(GroupRef group) {
+        return group.path().value().indexOf('/', 1) < 0;
     }
 
     /**

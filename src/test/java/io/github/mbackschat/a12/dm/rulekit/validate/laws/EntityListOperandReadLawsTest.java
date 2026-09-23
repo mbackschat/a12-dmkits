@@ -60,6 +60,7 @@ class EntityListOperandReadLawsTest {
                     .group("Keyed", g -> g.repeatable(5).indexField("Key").field("Key", FieldKind.STRING)
                             .field("Amount", FieldKind.NUMBER).dateField("PackedOn", d -> d.format("dd.MM.yyyy"))))
             .rootGroup("Other", o -> o.group("Inner", inner -> { }))
+            .rootGroup("Extra", x -> x.field("Code", FieldKind.STRING))
             .build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(MODEL);
@@ -93,7 +94,9 @@ class EntityListOperandReadLawsTest {
             "MaxValue", Set.of(),
             "MinValue", Set.of(),
             "NumberOfDifferentValues", Set.of("Grading For \"k\"", "Hollow"),
-            "NumberOfFilledFields", Set.copyOf(UNREADABLE.keySet()));
+            // a root is refused on this carrier whether or not it holds a field, so only /Other is refused here
+            "NumberOfFilledFields", Set.of("Grading For \"k\"", "Grading/Grade For \"k\"", "Keyed/Amount For \"\"",
+                    "Keyed/Amount For Weight", "Hollow"));
 
     private record Row(String carrier, String list, String kernel, String dsl, String bound) {
         Row(String carrier, String list, String kernel, String dsl) {
@@ -212,6 +215,16 @@ class EntityListOperandReadLawsTest {
                 "MVK_PARAMSIZE_INVALIDGN"));
         rows.add(new Row("NumberOfFilledGroups", "/Other", "MVK_ROOT_GROUP_IS_EMPTY", UNCODED,
                 "MVK_ROOT_GROUP_IS_EMPTY"));
+        // a root that holds a field, beside a group it does not contain: the group count has a class of its own
+        // for that, and the field count the plain one
+        rows.add(new Row("NumberOfFilledGroups", "Grading, /Extra", "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS", UNCODED,
+                "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS"));
+        rows.add(new Row("NumberOfFilledGroups", "/Extra, Grading", "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS", UNCODED,
+                "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS"));
+        rows.add(new Row("NumberOfFilledFields@groups", "Grading, /Extra", "MVK_ROOT_GROUP_REFERENCED", UNCODED,
+                "MVK_ROOT_GROUP_REFERENCED"));
+        rows.add(new Row("NumberOfFilledFields", "/Extra, Weight", "MVK_ROOT_GROUP_REFERENCED", UNCODED,
+                "MVK_ROOT_GROUP_REFERENCED"));
         return rows;
     }
 
