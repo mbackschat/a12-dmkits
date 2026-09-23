@@ -1321,10 +1321,15 @@ final class ConditionConverter {
             GroupRef[] g = entities.stream().map(e -> model.group(e.getFullName())).toArray(GroupRef[]::new);
             return Dsl.numberOfFilledGroups(g[0], g[1], Arrays.copyOfRange(g, 2, g.length));
         }
-        // Multi-field explicit scope, e.g. Sum(a, b) — each operand a plain field or a wildcard list.
-        if (entities.size() > 1 && entities.stream().allMatch(IEntityId::isField)) {
-            FieldOperand[] ops = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
-            FieldOperand[] rest = Arrays.copyOfRange(ops, 1, ops.length);
+        // Multi-operand explicit scope, e.g. Sum(a, b) or NumberOfFilledFields(Group*, a) — each operand a plain
+        // field, a wildcard list, or a group scope, index-selected or not. The group member is kept as the group
+        // the author wrote, as the single-group arm below does; this arm used to take fields only, so every
+        // such list read Opaque although A12 admits it (DEV-API-GAPS DG64).
+        if (entities.size() > 1) {
+            AggregateOperand[] ops = entities.stream()
+                    .map(e -> e.isField() ? (AggregateOperand) toFieldOperand(e) : groupScope(e, aggregate))
+                    .toArray(AggregateOperand[]::new);
+            AggregateOperand[] rest = Arrays.copyOfRange(ops, 1, ops.length);
             return switch (name) {
                 case Sum -> Dsl.sum(ops[0], rest);
                 case MaxValue -> Dsl.maxValue(ops[0], rest);
@@ -1332,17 +1337,19 @@ final class ConditionConverter {
                 case NumberOfDifferentValues -> Dsl.numberOfDifferentValues(ops[0], rest);
                 case NumberOfFilledFields ->
                         Dsl.numberOfFilledFields(ops[0], ops[1], Arrays.copyOfRange(ops, 2, ops.length));
+                // A12 refuses a group under SumOfProducts, so a group member is unreachable from a stored model
                 case SumOfProducts -> {
-                    if (ops.length != 2) {
-                        throw unsupported("SumOfProducts over " + ops.length + " operands (expects 2)", aggregate);
+                    if (ops.length != 2 || !(ops[0] instanceof FieldOperand left)
+                            || !(ops[1] instanceof FieldOperand right)) {
+                        throw unsupported("SumOfProducts over anything but two field operands", aggregate);
                     }
-                    yield Dsl.sumOfProducts(ops[0], ops[1]);
+                    yield Dsl.sumOfProducts(left, right);
                 }
-                default -> throw unsupported("aggregate operator " + name + " over a multi-field scope", aggregate);
+                default -> throw unsupported("aggregate operator " + name + " over a multi-operand scope", aggregate);
             };
         }
         if (entities.size() != 1) {
-            throw unsupported("aggregate " + name + " over a non-single-field scope", aggregate);
+            throw unsupported("aggregate " + name + " over an empty scope", aggregate);
         }
         // A single GROUP scope (Sum(Group*), MaxValue(Group), …) stays a GROUP operand: `GroupListRef` is an
         // `AggregateOperand`, so the expansion to contained fields remains the kernel's (KERNEL-FINDINGS §9,

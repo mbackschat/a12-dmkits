@@ -37,8 +37,8 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
  * re-render must equal the authored condition. Dropping the marker on both sides would pass the third alone.
  * The unmarked control proves the flag tracks the source rather than being set unconditionally.
  *
- * <p>The group COUNT carrier is measured as a PAIR instead, and the reason is in its own javadoc: it is
- * opaque for a converter limit that has nothing to do with correlation, and only the unmarked row shows that.
+ * <p>The group COUNT carrier gets the same assertions, and keeps its unmarked row as the control that once
+ * showed its read-back limit had nothing to do with correlation (DEV-API-GAPS DG64).
  *
  * <p>Own domain: a policy renewal whose line items are filtered while two settlement groups' presence is read
  * from the captured outer environment.
@@ -63,38 +63,27 @@ class CorrelatedGroupListReadTest {
     }
 
     /**
-     * <b>The group COUNT carrier is opaque for a reason that is not the marker, and the control is what says
-     * so.</b> {@code NumberOfFilledFields($A, $B)} comes back verbatim — and so does the identical rule with
-     * the markers removed, on the same converter limit: {@code "does not yet handle aggregate
-     * NumberOfFilledFields over a non-single-field scope"}. Both rules are kernel-ADMITTED, so this is a
-     * genuine read-back residual; it is simply an older and wider one than {@code DG49}, which is about the
-     * marker alone. Asserted as a PAIR rather than skipped, because without the unmarked row the marked row
-     * would read as the marker's fault and send the next reader back into {@code groupScopeOf}.
+     * The group COUNT carrier, with the same three assertions. It read verbatim with and without the markers
+     * until the multi-operand aggregate arm took group members (DEV-API-GAPS DG64); the unmarked row is what
+     * showed that the limit was the scope shape and not the correlation, and it stays as the control.
      */
     @Test
-    void theGroupCountCarrierIsOpaqueWithOrWithoutTheMarker() {
+    void aMarkedGroupCOUNTListReadsBackWithBothMarkers() {
         BoundModel model = renewalModel();
         Condition marked = filtered(model,
                 Dsl.numberOfFilledFields(marked(model, BILLING), marked(model, SHIPPING)).gt(0));
         Condition plain = filtered(model, Dsl.numberOfFilledFields(
                 model.flattenGroup(BILLING), model.flattenGroup(SHIPPING)).gt(0));
 
-        String markedReason = opaqueReason(model, "MarkedCount", marked);
-        String plainReason = opaqueReason(model, "PlainCount", plain);
+        Condition readMarked = readCondition(model, "MarkedCount", marked);
+        Condition readPlain = readCondition(model, "PlainCount", plain);
 
-        assertEquals(plainReason, markedReason,
-                "the marked and unmarked spellings must fail on the SAME limit, or the marker is the cause");
-        assertTrue(markedReason.contains("non-single-field scope"),
-                "the limit is the aggregate's scope shape, not the correlation: " + markedReason);
-    }
-
-    private static String opaqueReason(BoundModel model, String name, Condition authored) {
-        Rule rule = model.rule(model.group("/Renewal")).name(name)
-                .errorField(model.field("/Renewal/Reference")).when(authored)
-                .code("RNW").severity(Severity.ERROR).message(en("renewal incomplete")).build();
-        ReadResult result = KernelAdapter.of(model.add(rule)).read("/Renewal/" + name);
-        return assertInstanceOf(ReadResult.Opaque.class, result,
-                () -> "expected the pre-existing aggregate-scope limit, not a conversion: " + result).reason();
+        assertTrue(markersOf(readMarked).stream().allMatch(Boolean::booleanValue),
+                "both $ markers must survive read-back: " + RuntimeLaws.render(readMarked));
+        assertTrue(markersOf(readPlain).stream().noneMatch(Boolean::booleanValue),
+                "an unmarked source must stay unmarked: " + RuntimeLaws.render(readPlain));
+        assertEquals(RuntimeLaws.render(marked), RuntimeLaws.render(readMarked));
+        assertEquals(RuntimeLaws.render(plain), RuntimeLaws.render(readPlain));
     }
 
     /** The control: an unmarked source must not acquire a marker on the way back. */

@@ -56,7 +56,14 @@ class SemanticIndexGroupOperandReadTest {
                 "NumberOfValueInFields(\"x\" In /Order/Packages/Parcels* For \"P1\") > 0",
                 "Sum(/Order/Packages/Dimensions For \"P1\") > 0",
                 "MaxValue(/Order/Packages/Dimensions For \"P1\") > 0",
-                "MinValue(/Order/Packages/Dimensions For \"P1\") > 0");
+                "MinValue(/Order/Packages/Dimensions For \"P1\") > 0",
+                // aggregates over several operands, an indexed group among them
+                "NumberOfFilledFields(/Order/Packages For \"P1\", /Order/Title) > 0",
+                "NumberOfFilledFields(/Order/Packages For \"P1\", /Order/Packages For \"P2\") > 0",
+                "NumberOfDifferentValues(/Order/Packages/Parcels* For \"P1\", /Order/Title) > 0",
+                "Sum(/Order/Packages/Dimensions For \"P1\", /Order/Packages/Dimensions For \"P2\") > 0",
+                "MaxValue(/Order/Packages/Dimensions For \"P1\", /Order/Packages/Dimensions For \"P2\") > 0",
+                "MinValue(/Order/Packages/Dimensions For \"P1\", /Order/Packages/Dimensions For \"P2\") > 0");
 
         Map<String, String> expected = new LinkedHashMap<>();
         Map<String, String> actual = new LinkedHashMap<>();
@@ -66,6 +73,20 @@ class SemanticIndexGroupOperandReadTest {
             actual.put(condition, readBack(stored));
         }
         assertEquals(expected, actual);
+    }
+
+    /**
+     * The control that separates the two mechanisms: the multi-operand aggregate arm took fields only, so an
+     * UNINDEXED group member read {@code Opaque} as well — the index was not what stopped it (DEV-API-GAPS DG64).
+     */
+    @Test
+    void aMultiOperandAggregateReadsAGroupMemberWithoutAnIndexToo() {
+        for (String condition : List.of(
+                "NumberOfFilledFields(/Order/Packages*, /Order/Title) > 0",
+                "NumberOfDifferentValues(/Order/Packages*/Parcels*, /Order/Title) > 0")) {
+            String stored = "FieldFilled(/Order/Title) And " + condition;
+            assertEquals(stored, readBack(stored));
+        }
     }
 
     /**
