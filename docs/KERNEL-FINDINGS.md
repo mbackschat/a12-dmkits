@@ -10155,3 +10155,25 @@ Only the last row would read the same under validation's gate, because an instan
 The computation rows carry a second alternative that a merely false precondition falls through to, so "target cleared" means the read poisoned the computation. An unselected precondition would have stored `2`. Two readings are ruled out: a malformed key that simply matches no row, which the negative consumers would answer by firing, and one that is only not true, which the computation rows would answer with `2`.
 
 **Lock:** `adapter.laws.MalformedIndexKeyDiffTest` (validation and computation, each consumer beside its well-formed controls). The interpreter's side is [IF333](INTERPRETER-FINDINGS.md#if333).
+
+## §12 supplement — partial validation judges a keyed read at the coordinate its key resolves to, a no-match at an unbound row only a wildcard covers, and `FirstFilledValue` asks the coverage of every cell it visits (differential, both strategies, 2026-09-23) <a id="kf461"></a>
+
+> Fold: pending — carries [KF57](#kf57)'s partial-validation 3VL to keyed reads, to every `FirstFilledValue` arm and to a category read; folds into §12 beside it.
+
+**The claim.** The fixture is an order with repeatable `Packages` (index `No`) holding `Carrier` and a non-repeatable `Dims/Height`. Package 1 is filled throughout, and package 2 holds its key alone. `Extra` holds an empty `A` and `B = 4`, and `Service` holds an empty `S1` and `S2 = EXPRESS`, both with a `Speed` category. The model has one rule per consumer, all with the error field `Reference`, which every coverage includes. Full validation fires every rule. Both strategies agree on every row:
+
+| consumer | fires under | silent under |
+|---|---|---|
+| a key no row carries (`For "3"`): `NoGroupFilled` of `Packages` and of its `Dims`, `FieldNotFilled(Carrier)`, `[Height] == 0`, `FirstFilledValue(Dims) == 0` | `Packages` wildcarded · every `Packages` field wildcarded | the key column alone · the key column plus `Packages[1]` and `Packages[2]` listed concretely · the two rows alone |
+| a selected row (`For "1"`, `For "2"`): the keyed `Carrier`'s presence, `[Height] == 3`, `FirstFilledValue(Dims) == 3` | every coverage reaching the target at that row, the two concrete rows included | the key column alone |
+| `GroupFilled(Packages For "1")` | the key column alone too, since the row is filled through its key | `Reference` alone |
+| a key read from a field, over a hit and a miss | `Packages` plus the key fields | `Packages` without them |
+| `FirstFilledValue(/Order/Extra)` · `FirstFilledValue(A, B)`, `A` empty | `A` and `B` covered | `B` alone covered |
+| `FirstFilledValue(B, A)` | `B` alone covered | — |
+| `FirstFilledValue(S1 -> Speed, S2 -> Speed)` · `[S2 -> Speed] == "FAST"` | `S1` and `S2` · `S2` | `S2` alone · neither |
+
+**What the discriminating rows rule out.** The concrete-rows coverage reaches both existing rows and every field in them, and a no-match stays silent under it. So a no-match is not decided by covering the rows that exist. `FirstFilledValue(A, B)` stays silent when only the filled `B` is covered, so the walk does not skip an empty cell before asking the coverage. `FirstFilledValue(B, A)` under that same coverage fires, so a cell after the first filled one is never asked.
+
+**Mechanism, and the row that discriminates it.** `ValidationCache.actuallyResolveSemanticIndex` replaces the key with the repetition `IndexFieldCache.lookup` answers. That repetition is `IIdentifier.UNKNOWN` (`-5`) for a no-match (source-read), and the resolved identifier is then judged like any other, so the wildcard `0` is the only relevant index that covers it. The rival account, that a no-match is decided once the existing rows are covered, predicts firing under the concrete-rows coverage and is refuted there.
+
+**Lock:** `adapter.laws.PartialKeyedSelectionRelevanceDiffTest`. The interpreter's side is [IF334](INTERPRETER-FINDINGS.md#if334).

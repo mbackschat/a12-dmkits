@@ -175,15 +175,21 @@ class Interpreter(
 
     /** Formal-aware group state for validation; low-level/compute consumers retain structural Boolean presence. */
     internal fun groupPresence(c: EvalContext, path: String): GroupPresenceState =
-        config.groupPresence?.invoke(c, path) ?: GroupPresenceState(c.groupFilled(path), erroneous = false)
+        config.groupPresence?.invoke(path, c.repsOf(path)) ?: GroupPresenceState(c.groupFilled(path), erroneous = false)
+
+    /** The presence of a keyed group no row carries, asked at its unbound coordinate [repetitions]: empty, and
+     *  decidably empty only where the validation coverage reaches that coordinate. Outside partial validation
+     *  every coordinate is fully relevant, so this is the plain empty group. */
+    internal fun absentGroupPresence(path: String, repetitions: List<Int>): GroupPresenceState =
+        config.groupPresence?.invoke(path, repetitions) ?: GroupPresenceState(filled = false, erroneous = false)
 
     /** The presence of a GROUP operand, bare or keyed. A keyed group reads the row its key selects, a key no row
-     *  carries reads as an empty group, and an undecidable key is null, which every consumer reads as UNKNOWN
-     *  (IF331). A keyed FIELD is not a group operand and still meets [pathOf]'s refusal. */
+     *  carries reads as an empty group at the unbound row, and an undecidable key is null, which every consumer
+     *  reads as UNKNOWN (IF331). A keyed FIELD is not a group operand and still meets [pathOf]'s refusal. */
     private fun groupOperandPresence(arg: Expr): GroupPresenceState? =
         if (arg is Expr.SemanticIndex && ctxOf(arg).declaredKind(arg.path) == null) when (val selection = keyedGroupSelection(arg)) {
             is KeyedGroupSelection.Row -> groupPresence(selection.ctx, arg.path)
-            KeyedGroupSelection.Absent -> GroupPresenceState(filled = false, erroneous = false)
+            is KeyedGroupSelection.Absent -> absentGroupPresence(arg.path, selection.repetitions)
             KeyedGroupSelection.Unavailable -> null
         } else groupPresence(ctxOf(arg), pathOf(arg))
 

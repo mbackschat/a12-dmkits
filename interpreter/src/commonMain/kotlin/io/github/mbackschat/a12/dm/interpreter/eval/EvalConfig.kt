@@ -83,9 +83,11 @@ class EvalConfig(
      *  caller's relevant entities + the auto-added global fields, wildcards preserved. So a relevance-aware
      *  custom condition can return false when its fields are not relevant (IF38). */
     val customRelevant: Set<CustomConditionFieldPointer>? = null,
-    /** Call-local formal-aware group presence. Null for low-level/compute consumers, which retain the document's
-     *  structural Boolean. Full validation supplies the admitted-content + erroneous-group index. */
-    val groupPresence: ((EvalContext, String) -> GroupPresenceState)? = null,
+    /** Call-local formal-aware group presence at a group path and coordinate. Null for low-level/compute
+     *  consumers, which retain the document's structural Boolean. Validation supplies the admitted-content +
+     *  erroneous-group index. A coordinate rather than a context, because a keyed group no row carries is asked
+     *  at a coordinate no context stands on (the unbound row, [UNKNOWN_REP]). */
+    val groupPresence: ((String, List<Int>) -> GroupPresenceState)? = null,
     /** Compute-only refinement for an identity-preserving [ScanCell]. The general document supplies the raw
      *  presence/format state; the computation call supplies its complete call-local formal oracle here so
      *  charset, custom-type, declared-constraint, and over-limit failures poison group/star scans exactly like

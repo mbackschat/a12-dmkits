@@ -703,7 +703,7 @@ class DmInterpreter private constructor(
                     starExtentKnown,
                     starFullyEnumerated,
                     indexIdentityAdmitted,
-                ) { ctx, path -> groupPresence.state(ctx, path) },
+                ) { path, reps -> groupPresence.state(path, reps) },
                 formalResults, { formallyIncorrect })
             for (rule in model.rules) {
                 try {
@@ -873,7 +873,7 @@ class DmInterpreter private constructor(
                 null,
                 null,
                 formalResults::admitsIdentityAt,
-            ) { ctx, path -> groupPresence.state(ctx, path) },
+            ) { path, reps -> groupPresence.state(path, reps) },
             formalResults,
             { formallyIncorrect },
         )
@@ -915,7 +915,7 @@ class DmInterpreter private constructor(
             starExtentKnown: ((String, Int, List<Int>) -> Boolean)?,
             starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)?,
             indexIdentityAdmitted: (String, List<Int>, String) -> Boolean,
-            groupPresence: (EvalContext, String) -> io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState): EvalConfig =
+            groupPresence: (String, List<Int>) -> io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState): EvalConfig =
         EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
             patternMatches = patterns::matches,

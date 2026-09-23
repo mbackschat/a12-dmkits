@@ -90,12 +90,10 @@ internal class GroupPresenceIndex(
         }
     }
 
-    fun state(ctx: EvalContext, groupPath: String): GroupPresenceState {
-        val reps = ctx.repsOf(groupPath)
-        return GroupPresenceState(
+    fun state(groupPath: String, reps: List<Int>): GroupPresenceState =
+        GroupPresenceState(
             filled = content.isFilled(groupPath, reps),
             erroneous = reps in (erroneousByPath[groupPath] ?: emptySet()),
             relevance = groupRelevance(groupPath, reps),
         )
-    }
 }

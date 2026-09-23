@@ -245,7 +245,11 @@ private fun Interpreter.evalExprNode(e: Expr): Val = when (e) {
     is Expr.Arith -> evalArith(e)
     is Expr.Const -> evalConst(e.name)
     is Expr.SemanticIndex -> evalSemanticIndex(e)
-    is Expr.EnumCategory -> if (outerUnknown(e)) Val.Unknown else ctxOf(e).enumCategory(e.path, e.category)
+    is Expr.EnumCategory -> when {
+        outerUnknown(e) -> Val.Unknown
+        outsideCoverage(e.path, ctxOf(e).repsOf(e.path)) -> Val.Unknown
+        else -> ctxOf(e).enumCategory(e.path, e.category)
+    }
     is Expr.EntitySpec -> evalEntitySpec(e)
 }
 
@@ -287,7 +291,9 @@ private fun Interpreter.evalSemanticIndex(e: Expr.SemanticIndex): Val {
  *     direct-field read rule IF85) — without it a concat swallowed the invalid cell as `""`.
  *
  * A clean column's no-match and a matched-but-EMPTY cell return null (the caller's empty-as-0 / not-given
- * read), exactly like the validation read. VALIDATION mode differs from the compute whole-column marking
+ * read), exactly like the validation read. Partial validation first asks the coverage at the coordinate the key
+ * resolves to — the selected row, or the unbound row for a no-match ([unmatchedCoordinate]) — and a cell
+ * outside it is [Val.Unknown] (KF461). VALIDATION mode differs from the compute whole-column marking
  * (IF115, kernel-pinned): a match on a CLEAN key cell resolves the read no matter what the OTHER cells
  * carry (the matched target's own malformed-ness stays [Val.Unknown] = not-check-relevant); a match on a
  * DUPLICATED or malformed key cell, and a NO-match over a column carrying ANY not-check-relevant cell —
@@ -307,17 +313,43 @@ private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
         "SemanticIndex needs an index field on the group of ${e.path}")
     val key = when (val read = resolveIndexKey(e)) {
         is KeyRead.Of -> read.value
-        KeyRead.None -> return unmatchedSemanticIndexValue(e)
+        KeyRead.None -> return unmatchedKeyedCell(e)
         KeyRead.Unusable -> return Val.Unknown
     }
     val matchedKey = indexedCell(c, idx, idx, key)                  // the index-field self-lookup
     if (matchedKey != null) {
         // matched on a malformed (raw-equal) or DUPLICATED key cell → not-check-relevant
         if (matchedKey is Val.Unknown || matchedKey in indexColumnOf(c, idx).duplicated) return Val.Unknown
+        val selected = c.indexedCellRepetitions(e.path, idx, key, indexIdentityAdmitted())
+        if (selected != null && outsideCoverage(e.path, selected)) return Val.Unknown
         return indexedCell(c, e.path, idx, key)
     }
-    return unmatchedSemanticIndexValue(e)
+    return unmatchedKeyedCell(e)
 }
+
+/** A keyed cell whose key selects no row: the column's classification first, then, over a clean column, the
+ *  coverage at the unbound row — an empty cell the coverage does not reach is undecided, not empty. */
+private fun Interpreter.unmatchedKeyedCell(e: Expr.SemanticIndex): Val? =
+    unmatchedSemanticIndexValue(e) ?: Val.Unknown.takeIf { outsideCoverage(e.path, unmatchedCoordinate(e)) }
+
+/**
+ * The coordinate a key no row carries resolves to: the reading context's coordinate for [Expr.SemanticIndex.path]
+ * with the keyed level set to [UNKNOWN_REP]. The kernel's lookup answers `IIdentifier.UNKNOWN` for a no-match
+ * (`IndexFieldCache.lookup`, source-read) and then asks that identifier like any other, so a relevant entity
+ * reaches it only by wildcarding the keyed level: listing every existing row concretely does not
+ * (`adapter.laws.PartialKeyedSelectionRelevanceDiffTest`, both strategies, 2026-09-23).
+ */
+private fun Interpreter.unmatchedCoordinate(e: Expr.SemanticIndex): List<Int> {
+    val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
+        "SemanticIndex needs an index field on the group of ${e.path}")
+    val keyedLevel = idx.trim('/').split('/').size - 2
+    return ctxOf(e).repsOf(e.path).toMutableList().also { it[keyedLevel] = UNKNOWN_REP }
+}
+
+/** Partial validation only: whether the cell at [path]/[repetitions] lies outside the caller's coverage, which
+ *  makes any read of it undecided. Always false in full validation and computation, which carry no coverage. */
+private fun Interpreter.outsideCoverage(path: String, repetitions: List<Int>): Boolean =
+    cellRelevant?.invoke(path, repetitions) == false
 
 /** One classification for every unmatched semantic consumer: a clean column gives the fillable no-value result,
  * while any compromised index cell makes the lookup unavailable. Computation treats that unavailability as poison. */
@@ -332,8 +364,9 @@ internal sealed interface KeyedGroupSelection {
     /** The one admitted row, as a context rooted at the selected group instance. */
     class Row(val ctx: EvalContext) : KeyedGroupSelection
 
-    /** A clean no-match: an empty key, or a key no row carries over a clean column. The group reads absent. */
-    data object Absent : KeyedGroupSelection
+    /** A clean no-match: an empty key, or a key no row carries over a clean column. The group reads absent, at
+     *  the unbound coordinate [repetitions] ([unmatchedCoordinate]) the coverage is asked about. */
+    class Absent(val repetitions: List<Int>) : KeyedGroupSelection
 
     /** A match on a duplicated or malformed key cell, or a no-match over a compromised column. */
     data object Unavailable : KeyedGroupSelection
@@ -352,7 +385,8 @@ internal fun Interpreter.keyedGroupSelection(e: Expr.SemanticIndex): KeyedGroupS
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
         "SemanticIndex needs an index field on the group of ${e.path}")
     val unmatched = {
-        if (unmatchedSemanticIndexValue(e) == null) KeyedGroupSelection.Absent else KeyedGroupSelection.Unavailable
+        if (unmatchedSemanticIndexValue(e) == null) KeyedGroupSelection.Absent(unmatchedCoordinate(e))
+        else KeyedGroupSelection.Unavailable
     }
     val key = when (val read = resolveIndexKey(e)) {
         is KeyRead.Of -> read.value
@@ -406,7 +440,9 @@ internal fun Interpreter.semanticIndexRepetitions(e: Expr.SemanticIndex): List<I
  * the ONE matched cell: matched + check-relevant filled → TRUE; an ABSENT row, an empty matched cell, or a
  * clean-column empty/no-match key → FALSE (an absent row is judged like an empty cell, NOT skipped — kernel
  * `ValidationCache.resolveSemanticIndex` → `isEntityFilled`); a malformed matched cell, or a formally
- * invalid KEY field, or an empty query over a compromised column → UNKNOWN (not check-relevant).
+ * invalid KEY field, or an empty query over a compromised column → UNKNOWN (not check-relevant). Under partial
+ * validation a target the coverage does not reach — at the selected row, or at the unbound row of a no-match —
+ * is UNKNOWN too ([computeGuardedIndexCell]).
  * `SemanticIndexPresenceDiffTest` / `NumericIndexKeyDiffTest`.
  */
 internal fun Interpreter.semanticIndexPresence(e: Expr.SemanticIndex): Tri {
@@ -1759,13 +1795,18 @@ internal fun Interpreter.firstFilledScan(f: Expr.Func): FirstFilledScan {
 
 /** Scan one A12 `entitySpec`. Groups expand to descendant fields without changing their authored slot;
  * semantic indexes and category projections distinguish an absent value (continue) from an unavailable value
- * (terminal Unknown). This is an original owner-behaviour reconstruction, differential-locked by
- * `FirstFilledValueEntitySpecDiffTest`. */
+ * (terminal Unknown). Under partial validation every cell the walk visits is asked of the coverage first, empty
+ * or not, so a cell outside it before the first filled one leaves the result undecided, on every arm as on the
+ * starred one (KF57's order-aware gate). This is an original owner-behaviour
+ * reconstruction, differential-locked by `FirstFilledValueEntitySpecDiffTest` and
+ * `PartialKeyedSelectionRelevanceDiffTest`. */
 private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk): FirstFilledStep = when (operand) {
     is Expr.Field -> {
         val c = ctxOf(operand)
         if (c.declaredKind(operand.path) == null) {
             firstFilledContainedCells(c.containedFieldCells(operand.path, declaredRange = false), walk)
+        } else if (outsideCoverage(operand.path, c.repsOf(operand.path))) {
+            FirstFilledStep.Stop(Val.Unknown)
         } else if (!c.filled(operand.path)) {
             walk.fillable = true
             FirstFilledStep.Continue
@@ -1785,7 +1826,9 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
     }
     is Expr.EnumCategory -> {
         val c = ctxOf(operand)
-        if (!c.filled(operand.path)) {
+        if (outsideCoverage(operand.path, c.repsOf(operand.path))) {
+            FirstFilledStep.Stop(Val.Unknown)
+        } else if (!c.filled(operand.path)) {
             walk.fillable = true
             FirstFilledStep.Continue
         } else {
@@ -1800,10 +1843,15 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
                     selection.ctx.containedFieldCells(operand.path, declaredRange = false),
                     walk,
                 )
-                KeyedGroupSelection.Absent -> {
-                    walk.fillable = true
-                    FirstFilledStep.Continue
-                }
+                // every cell of a row no key selects is empty, so the walk passes it only if the coverage
+                // reaches all of them
+                is KeyedGroupSelection.Absent ->
+                    if (absentGroupPresence(operand.path, selection.repetitions).relevance != GroupRelevance.FULL) {
+                        FirstFilledStep.Stop(Val.Unknown)
+                    } else {
+                        walk.fillable = true
+                        FirstFilledStep.Continue
+                    }
                 KeyedGroupSelection.Unavailable -> FirstFilledStep.Stop(Val.Unknown)
             }
         } else {
@@ -1854,6 +1902,7 @@ private fun Interpreter.firstFilledContainedCells(
     var visited = false
     for (cell in cells) {
         visited = true
+        if (outsideCoverage(cell.path, cell.reps)) return FirstFilledStep.Stop(Val.Unknown)
         if (computeMode) {
             if (!filledOrPoison(cell)) {
                 walk.fillable = true
