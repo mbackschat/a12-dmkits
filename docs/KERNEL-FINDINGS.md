@@ -8068,7 +8068,7 @@ Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the ca
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
 
-`CheckVergleichsBedingungImpl.checkPatternOp` returns before every type-agreement arm and asks four questions of its own. Locked: `rulekit.validate.laws.PatternComparisonOperandLawsTest` (15 rows), mirrored by `consistency.PatternComparisonOperandsTest`.
+`CheckVergleichsBedingungImpl.checkPatternOp` returns before every type-agreement arm and asks four questions of its own. Locked: `rulekit.validate.laws.PatternComparisonOperandLawsTest` (19 rows), mirrored by `consistency.PatternComparisonOperandsTest`.
 
 | the question | class |
 |---|---|
@@ -8086,6 +8086,8 @@ Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the ca
 **The whole arm yields to the constant gate**: two written-out values are `MVK_INVALID_COMPARE_TO_CONST` ([KF382](#kf382)), asked ahead of it.
 
 **The pattern gate here is the same admission gate a DECLARED pattern meets, under a different code** — `MVK_INVALID_PATTERN` on a condition, `MVK_PATTERN_INVALID` on a declaration, the same two words swapped ([KF165](#kf165)). Both refuse `a++` and the escaped `a\*+`, the gate reading SOURCE TEXT rather than the expression it spells.
+
+**Extended 2026-09-23: a keyed read passes the SHAPE question.** `[Parcels/Label For "P1"] PatternMatched "a+"` is admitted in both polarities, so an index-selected field read is a plain field read to this gate, not a call. The type question still follows: a keyed NUMBER cell draws `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON`, and `FieldValueAsString([… For "P1"])` on the left is refused for its shape, as any call is. `Length(Parcels/Label For "P1")` is admitted beside it, while `Length` over a call or a concatenation fails to parse (`MVK_UNEXPECTED_TOKEN`), so both operators take a field or its keyed cell and nothing wider. *(Locked: `PatternComparisonOperandLawsTest.aKeyedFieldReadIsAPlainFieldReadToTheShapeQuestion`, `rulekit.validate.laws.LengthOperandShapeLawsTest`.)*
 
 ## §1 supplement — the DATE arm compares three format QUESTIONS, not formats, and claims every partner of another kind (source-verified + measured, 2026-09-14) <a id="kf386"></a>
 

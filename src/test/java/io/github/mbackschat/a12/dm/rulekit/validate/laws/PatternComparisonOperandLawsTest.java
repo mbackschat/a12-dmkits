@@ -96,6 +96,42 @@ class PatternComparisonOperandLawsTest {
     }
 
     /** The gate that answers ahead of the whole arm. */
+    /**
+     * The first question is about SHAPE, and a keyed read passes it: {@code [Field For key]} is a plain field
+     * read to this gate, not a call. The type question still follows, so a keyed NUMBER cell draws the kind class.
+     * Written as text, because the typed surface cannot author a pattern over a keyed cell (DEV-API-GAPS DG71).
+     */
+    @Test
+    void aKeyedFieldReadIsAPlainFieldReadToTheShapeQuestion() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a keyed text cell", keyedVerdict("[/Order/Parcels/Label For \"P1\"] PatternMatched \"a+\""));
+        actual.put("the negated operator", keyedVerdict("[/Order/Parcels/Label For \"P1\"] PatternViolated \"a+\""));
+        actual.put("a keyed number cell", keyedVerdict("[/Order/Parcels/Weight For \"P1\"] PatternMatched \"a+\""));
+        actual.put("a call over the keyed cell",
+                keyedVerdict("FieldValueAsString(/Order/Parcels/Weight For \"P1\") PatternMatched \"a+\""));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a keyed text cell", KernelLaws.ADMITTED);
+        expected.put("the negated operator", KernelLaws.ADMITTED);
+        expected.put("a keyed number cell", KIND);
+        expected.put("a call over the keyed cell", SHAPE);
+        assertEquals(expected, actual, "a keyed read is a field read; the kind question still applies");
+    }
+
+    /** Parcels is an index group, so its fields can be read under a key. */
+    private static final String PARCELS_JSON = DocumentModelDraft.named("order").locale("en_US")
+            .rootGroup("Order", g -> {
+                g.stringField("Reference", f -> { });
+                g.group("Parcels", p -> p.repeatable(5).indexField("Code")
+                        .stringField("Code", f -> { })
+                        .stringField("Label", f -> { })
+                        .numberField("Weight", n -> n.fractionDigits(0)));
+            }).build().toJson();
+
+    private static String keyedVerdict(String comparison) {
+        return KernelLaws.verdictModel(PARCELS_JSON, GROUP, "../Reference", "FieldFilled(Reference) And " + comparison);
+    }
+
     @Test
     void theArmYieldsToTheConstantGate() {
         Map<String, String> actual = new LinkedHashMap<>();
