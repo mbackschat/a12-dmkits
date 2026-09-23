@@ -9,7 +9,10 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Val
  * value (the cascade overlay) — keyed by `(path, reps)`, no document mutation. Direct `[A]` /
  * `FieldFilled(A)` reads are overlaid, AND a STARRED read (`Sum(Group* then A)`) applies the overlay per row
  * (via [EvalContext.starCells]) — so an aggregate over a computed field sums the COMPUTED values, not the
- * stored ones (KERNEL-FINDINGS §11). All other methods delegate. Used only by
+ * stored ones (KERNEL-FINDINGS §11). Every other read of cell CONTENT goes through the cascade too — group
+ * presence, the group-scoped fill tally, an enumeration's category — because a content read left to the wrapped
+ * context answers from the document as if nothing had been computed. The members still delegated are structural
+ * (model metadata, repetition coordinates) or unreachable on the compute path. Used only by
  * `DmInterpreter.computeInstances`, so the polarity/omission reads (irrelevant to a computed value) are left
  * to the real context.
  */
@@ -84,14 +87,40 @@ internal class OverlayContext(
         // Resolved ONCE for the column, not per row: the flat form built and hashed three keys for every row of
         // every star read, which is the same cost as [entryAt]'s multiplied by the row count.
         val rows = cascade.rowsAt(path) ?: return d.starCells(path, bindDepth)
-        return d.starCells(path, bindDepth).map { (reps, v) ->
-            reps to when (val entry = rows[reps]) {
-                null -> v
-                CascadeOverlay.Entry.Poisoned -> Val.Unknown
-                CascadeOverlay.Entry.Cleared -> null
-                is CascadeOverlay.Entry.Overlaid -> entry.value
-            }
+        return d.starCells(path, bindDepth).map { (reps, v) -> reps to overlaidValue(rows[reps], v) }
+    }
+
+    /** One cell's value as the tallying readers see it: a POISONED cell reads [Val.Unknown], which every one of
+     *  them treats as a poisoning read, and a CLEARED one reads empty. */
+    private fun overlaidValue(entry: CascadeOverlay.Entry?, stored: Val?): Val? = when (entry) {
+        null -> stored
+        CascadeOverlay.Entry.Poisoned -> Val.Unknown
+        CascadeOverlay.Entry.Cleared -> null
+        is CascadeOverlay.Entry.Overlaid -> entry.value
+    }
+
+    // The group-scoped fill tally, read through the cascade by the wrapped context's own scope rule, so a group
+    // count over a computed field counts what was computed (the kernel's `isEntityFilled` answers from its
+    // calculated values first).
+    override fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int): FillScope =
+        d.fillScope(scopePath, isGroup, bindDepth) { path, reps, stored -> overlaidValue(cascade.rowsAt(path)?.get(reps), stored) }
+
+    override fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int, cellValue: CellValueSource): FillScope =
+        d.fillScope(scopePath, isGroup, bindDepth) { path, reps, stored ->
+            cellValue.valueOf(path, reps, overlaidValue(cascade.rowsAt(path)?.get(reps), stored))
         }
+
+    // A group's presence also reads the cascade: a value computed so far fills the non-repeatable groups above it.
+    // The document half holds no computed field's stored value (ComputationEngine strips them before the cascade),
+    // so a cleared or poisoned cell fills nothing and a group read never poisons (CascadeGroupPresenceDiffTest).
+    override fun groupFilled(groupPath: String): Boolean =
+        d.groupFilled(groupPath) || cascade.fillsGroup(groupPath) { path -> d.repsOf(path).take(d.boundLevelsOf(path)) }
+
+    override fun enumCategory(path: String, category: String): Val = when (val entry = entryAt(path)) {
+        null -> d.enumCategory(path, category)
+        CascadeOverlay.Entry.Poisoned -> throw PoisonedReadException(path)
+        CascadeOverlay.Entry.Cleared -> Val.Unknown   // an empty field has no category (EvalContext.enumCategory)
+        is CascadeOverlay.Entry.Overlaid -> d.enumCategoryValue(path, category, entry.value)
     }
     override fun star(path: String, bindDepth: Int): List<Val> = starCells(path, bindDepth).mapNotNull { it.second }
     override fun starAll(path: String, bindDepth: Int): List<Val> = starCells(path, bindDepth).map { (_, v) -> v ?: emptyOf(path) }
@@ -201,6 +230,9 @@ internal class OverlayContext(
     override fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> =
         d.groupListEnvironments(groupPath, bindDepth)
             .map { OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget) }
+
+    // Not covered by `by d`, which forwards EvalContext alone: without this the provider's null default answers.
+    override fun declaredGroupRepetitions(groupPath: String): Int? = d.declaredGroupRepetitions(groupPath)
 
     // The `$`-join buckets must read joined values through the overlay — rebuilt from the wrapped rows (the
     // Document-side cache is scope-keyed on RAW reads; a cascade overlay is per-compute-pass). But within a step

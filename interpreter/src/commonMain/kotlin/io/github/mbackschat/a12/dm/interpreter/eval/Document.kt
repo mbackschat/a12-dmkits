@@ -1211,7 +1211,15 @@ class Document(internal val config: DocumentConfig) {
 
         // A group-scoped / starred-field fill quantifier — "the fields inside the group" (recursively, the kernel
         // ExpandService → getAllContainedFields), across the two kernel ranges (IF49). See [EvalContext.fillScope].
-        override fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int): FillScope {
+        override fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int): FillScope =
+            fillScope(scopePath, isGroup, bindDepth) { _, _, stored -> stored }
+
+        override fun fillScope(
+            scopePath: String,
+            isGroup: Boolean,
+            bindDepth: Int,
+            cellValue: CellValueSource,
+        ): FillScope {
             val descendants = if (isGroup) kinds.keys.filter { it.startsWith("$scopePath/") }.sorted()
                 else listOf(scopePath)
             var t = 0; var f = 0; var n = 0; var unknown = false
@@ -1240,7 +1248,7 @@ class Document(internal val config: DocumentConfig) {
             for (field in descendants) {
                 val parts = partsOf(field)
                 val common = minOf(commonPrefixLen(parts, partsOf(group)), scopeDepth)
-                for (v in instCells(field, parts, common)) {           // INSTANTIATED tally
+                for (v in instCells(field, parts, common, cellValue)) {   // INSTANTIATED tally
                     n++
                     when {
                         v == null -> f++
@@ -1248,7 +1256,7 @@ class Document(internal val config: DocumentConfig) {
                         else -> t++
                     }
                 }
-                val (af, ae) = declaredFlags(field, parts, common)     // DECLARED-range flags
+                val (af, ae) = declaredFlags(field, parts, common, cellValue)   // DECLARED-range flags
                 allFilled = allFilled && af
                 anyEmpty = anyEmpty || ae
             }
@@ -1318,22 +1326,30 @@ class Document(internal val config: DocumentConfig) {
 
         /** The INSTANTIATED cells of a descendant [field]: one cell (its scope reps) when no repeatable level lies
          *  below the scope, else one per instantiated rep-tuple. Each entry is the resolved value, or null (empty). */
-        private fun instCells(field: String, parts: List<String>, common: Int): List<Val?> {
+        private fun instCells(field: String, parts: List<String>, common: Int, cellValue: CellValueSource): List<Val?> {
             val multi = (common until parts.size - 1).any { "/" + parts.take(it + 1).joinToString("/") in declaredReps }
             val cellReps = if (multi) starRows(field) else listOf(reps(field))
-            return cellReps.map { r -> valueAt(field, r)?.value?.let { resolveValue(field, it) } }
+            return cellReps.map { r -> cellValue.valueOf(field, r, storedValue(field, r)) }
         }
+
+        private fun storedValue(field: String, reps: List<Int>): Val? =
+            valueAt(field, reps)?.value?.let { resolveValue(field, it) }
 
         /** Over the FULL DECLARED repetition range of [field] in this row's scope: `(allFilledValid, anyEmpty)`. An
          *  un-instantiated declared rep reads empty. Iterates 1..declaredMax at each repeatable level below the
          *  scope (shared-prefix levels fixed to this row); short-circuits once an empty cell is found. */
-        private fun declaredFlags(field: String, parts: List<String>, common: Int): Pair<Boolean, Boolean> {
+        private fun declaredFlags(
+            field: String,
+            parts: List<String>,
+            common: Int,
+            cellValue: CellValueSource,
+        ): Pair<Boolean, Boolean> {
             var allFilled = true
             var anyEmpty = false
             fun rec(level: Int, repsSoFar: List<Int>) {
                 if (anyEmpty) return                                   // settled (anyEmpty ⟹ !allFilled)
                 if (level == parts.size) {
-                    when (valueAt(field, repsSoFar)?.value?.let { resolveValue(field, it) }) {
+                    when (cellValue.valueOf(field, repsSoFar, storedValue(field, repsSoFar))) {
                         null -> { anyEmpty = true; allFilled = false }
                         Val.Unknown -> allFilled = false               // present-but-malformed: not filled, not empty
                         else -> {}

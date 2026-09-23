@@ -25,8 +25,14 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Val
  * also marked `decided`, which the cascade skips, but that is an invariant in another file and this way the
  * guarantee holds locally. Cause-blindness is unchanged (SPEC-2026-07-26-04): [Entry.Poisoned] carries identity
  * only, never the failed payload, subtype, message, or producer cause.
+ *
+ * **A value also fills the groups above it, for the rest of the call.** The kernel records every non-empty computed
+ * value as filling its ancestor groups and never un-fills one (`CalculationCache.addBerechnetenFeldWert` →
+ * `setFieldFilled`), so a later computation's `NoGroupFilled(G)` sees it. [repeatableGroups] names the groups whose
+ * presence is their row's existence instead: a computation writes only into rows that exist, so a value adds
+ * nothing to theirs.
  */
-internal class CascadeOverlay {
+internal class CascadeOverlay(private val repeatableGroups: Set<String>) {
 
     /** What the cascade says about one cell. A closed set, so every reader dispatches exhaustively. */
     internal sealed interface Entry {
@@ -42,6 +48,12 @@ internal class CascadeOverlay {
 
     private val byPath = HashMap<String, HashMap<List<Int>, Entry>>()
 
+    /**
+     * Per path, the repetition prefix at every depth of each cell the cascade gave a value, so a group-presence read
+     * is one lookup per computed path rather than a scan of its rows. Grow-only, as the kernel's fill propagation is.
+     */
+    private val valuedPrefixes = HashMap<String, HashMap<Int, HashSet<List<Int>>>>()
+
     /** No cell has been touched, so a caller can skip wrapping its context at all. */
     val isEmpty: Boolean get() = byPath.isEmpty()
 
@@ -52,7 +64,28 @@ internal class CascadeOverlay {
      */
     fun rowsAt(path: String): Map<List<Int>, Entry>? = byPath[path]
 
-    fun overlay(path: String, reps: List<Int>, value: Val) = put(path, reps, Entry.Overlaid(value))
+    fun overlay(path: String, reps: List<Int>, value: Val) {
+        put(path, reps, Entry.Overlaid(value))
+        // Read back rather than assumed: an overlay onto a poisoned cell is restored to the poison, which fills nothing.
+        if (value is Val.Unknown || byPath[path]?.get(reps) !is Entry.Overlaid) return
+        val byDepth = valuedPrefixes.getOrPut(path) { HashMap() }
+        for (depth in 0..reps.size) byDepth.getOrPut(depth) { HashSet() }.add(reps.take(depth))
+    }
+
+    /**
+     * Whether a value this cascade computed fills the non-repeatable group [groupPath] at the instance a reading
+     * context selects. [scope] answers, for a computed path, the repetition prefix that context binds for it.
+     */
+    fun fillsGroup(groupPath: String, scope: (String) -> List<Int>): Boolean {
+        if (valuedPrefixes.isEmpty() || groupPath in repeatableGroups) return false
+        val below = "$groupPath/"
+        for ((path, byDepth) in valuedPrefixes) {
+            if (!path.startsWith(below)) continue
+            val bound = scope(path)
+            if (byDepth[bound.size]?.contains(bound) == true) return true
+        }
+        return false
+    }
 
     fun clear(path: String, reps: List<Int>) = put(path, reps, Entry.Cleared)
 

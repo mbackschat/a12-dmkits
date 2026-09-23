@@ -119,7 +119,7 @@ class BareGroupComputeExactnessTest {
         )
         val ctx = model.newDocument().field(FLAG, "9", 1, 1).computeContexts(ROOT).single()
         val counting = CountingRepsContext(ctx)
-        val cascade = CascadeOverlay().apply {
+        val cascade = CascadeOverlay(repeatableGroups = emptySet()).apply {
             overlay(SOURCE, listOf(1, 1, 1), Val.Num(dec(5)))
         }
         val overlay = OverlayContext(
@@ -159,7 +159,7 @@ class BareGroupComputeExactnessTest {
             consumerCondition = "AtLeastOneFieldFilled(Details)",
         )
         val ctx = model.newDocument().field(FLAG, "9", 1, 1).computeContexts(ROOT).single()
-        val cascade = CascadeOverlay().apply {
+        val cascade = CascadeOverlay(repeatableGroups = emptySet()).apply {
             overlay(SOURCE, listOf(1, 1, 1), Val.Num(dec(5)))
         }
         val overlay = OverlayContext(

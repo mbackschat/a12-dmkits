@@ -61,6 +61,8 @@ internal class ComputationEngine(
 
     private val scopes: IterationScopes = plans.scopes
 
+    private val computedTargets: Set<String> = model.computations.mapTo(HashSet()) { it.targetPath }
+
     /**
      * Every computed-field outcome for the WHOLE model WITH its target cell's repetition indices
      * ([Computed.indices]) — the runtime twin of the kernel's whole-document `compute()`, and the core behind
@@ -112,8 +114,16 @@ internal class ComputationEngine(
         // so a consuming computation computes a VALUE instead of clearing on the missing operand. The
         // staging is call-local — the caller's document is never mutated, and the staged index cell is not
         // a computed target, so it never reaches an outcome or an applied document.
+        //
+        // Every computed field's STORED value leaves the document first, because the kernel's cascade never sees
+        // one: `CalculationCommand` hands its cache the data without calculated fields ("calculations always
+        // produce a new value anyways"), whole-model and not only for the computations this call runs. Without
+        // this a stored value filled its group for a `NoGroupFilled`, was counted by `NumberOfFilledFields`, or
+        // answered a category read, wherever its own computation cleared or had not run yet
+        // (CascadeGroupPresenceDiffTest). Rows stay: a stripped cell keeps its placement, empty.
         val indexDefaults = checks.eligibleIndexDefaults(rawDoc)
-        val doc = if (indexDefaults.isEmpty()) rawDoc else rawDoc.withComputed(indexDefaults)
+        val staged = storedComputedCells(rawDoc) + indexDefaults
+        val doc = if (staged.isEmpty()) rawDoc else rawDoc.withComputed(staged)
         // A field may be targeted by MULTIPLE computations (a composed base + subtype override — IF87): codegen
         // FLATTENS them, in document order, into one per-field first-match table, so the first SELECTED alternative
         // ends the scan for that cell even when it stores nothing; only an UNSELECTED computation (common
@@ -125,17 +135,18 @@ internal class ComputationEngine(
         val decided = HashSet<Pair<String, List<Int>>>()
         // The cascade's own state: one entry per cell, carrying overlaid / cleared / poisoned (IF286).
         //
-        // `Cleared` is load-bearing and not merely the absence of a value. A computed field a PRIOR computation
-        // CLEARED must be read as EMPTY (empty-as-0 / skip), NOT as the stale STORED (seeded) value the raw
-        // document still holds. Without it a dependent's `FieldFilled(dep)` reads the stale seed as filled and
-        // computes where the kernel (seeing dep empty) clears — a large slice of the IF76/IF77 CVV class, AND the
-        // root of the IF76 gate's over-suppression (a cleared dependency read stale-and-invalid would wrongly trip
-        // the gate). KERNEL-FINDINGS §11 (cascade clearing).
+        // `Cleared` records that a computation decided a cell EMPTY. A computed field a PRIOR computation CLEARED
+        // must be read as EMPTY (empty-as-0 / skip), never as the stale STORED (seeded) value the caller's
+        // document holds — reading the seed was a large slice of the IF76/IF77 CVV class, AND the root of the IF76
+        // gate's over-suppression (a cleared dependency read stale-and-invalid wrongly tripped the gate).
+        // KERNEL-FINDINGS §11 (cascade clearing). Since the evaluation document is stripped of every stored
+        // computed value (above), a cleared cell and a not-yet-computed one read alike; the entry keeps the
+        // decision explicit for the readers that consult the cascade before the document.
         //
         // `Poisoned` is cause-blind by contract (SPEC-2026-07-26-04): once invalid, a computed cell contributes
         // only its identity to dependent reads. Never retain the failed payload, exception subtype, message, or
         // producer cause; every such producer class must collapse to the same poisoned observation.
-        val cascade = CascadeOverlay()
+        val cascade = CascadeOverlay(model.repeatable)
         val emptyOf: (String) -> Val = { p -> emptyValue(model.kinds[p] ?: Kind.STRING) }
         // A computed NUMBER is STORED padded to its field's minFractionalDigits (IF82) — so a downstream read of
         // a cascade-overlaid value must see that SAME stored form. Without this an integer-valued computed
@@ -586,8 +597,17 @@ internal class ComputationEngine(
      * to its contained fields; and index fields join the inventory when target iteration, semantic lookup, or
      * cross-group parallel iteration requires them. Merely reading a sibling field does not select its index.
      */
+    /** Each computed target's stored cell, mapped to the clear that stages it out of the cascade's document. */
+    private fun storedComputedCells(doc: Document): Map<Pair<String, List<Int>>, String?> {
+        if (computedTargets.isEmpty()) return emptyMap()
+        val cells = HashMap<Pair<String, List<Int>>, String?>()
+        for (cell in doc.placementsSnapshot()) {
+            if (!cell.isGroup && cell.path in computedTargets && !cell.raw.isNullOrEmpty()) cells[cell.path to cell.reps] = null
+        }
+        return cells
+    }
+
     private fun operandSelection(comps: List<ComputationDef>): OperandSelection {
-        val computedTargets = model.computations.mapTo(HashSet()) { it.targetPath }
         val fields = LinkedHashSet<String>()
         val indexes = LinkedHashSet<String>()
 

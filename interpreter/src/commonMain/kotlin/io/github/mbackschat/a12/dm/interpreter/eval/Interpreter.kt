@@ -314,8 +314,14 @@ class Interpreter(
      * conditions (NoFieldFilled, NotAllFieldsFilled, FieldNotFilled, …) fire on a blank instance, while a
      * comparison's empty-as-0 stays suppressed (the kernel's structural "can fire empty" gate, not a data check).
      * In [partial] validation the gate is bypassed — the upstream relevance gate has already decided (see [partial]).
+     *
+     * A computation has no such gate: both kernel strategies decide a precondition on every instance they compute,
+     * so `[Quantity] < 5` computes over an empty non-repeatable group, an absent one, and one whose only content was
+     * a computed field's stored value (`adapter.laws.CascadeGroupPresenceDiffTest`, 2026-09-23). A repeatable row
+     * never needed the bypass, because an instantiated row is content in itself; which instances exist at all is
+     * decided before any condition is read ([Document.computeContexts]).
      */
-    private fun gated(cond: Cond): Boolean = partial || ctx.evaluated || canFireEmpty(cond)
+    private fun gated(cond: Cond): Boolean = partial || computeMode || ctx.evaluated || canFireEmpty(cond)
 
     /** Structural: would [cond] fire on an all-empty row? A comparison/pattern can't (empty-as-0 is
      *  suppressed; an empty string/pattern leaf is false); a presence predicate fires iff it is TRUE at a

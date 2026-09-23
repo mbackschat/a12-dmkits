@@ -779,6 +779,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.ConsumerTypeScriptCoverageGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.AdmissionClaimIsAssertedGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TypedConditionAuthoringRatchetTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.OverlayContextContentReadGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
     }

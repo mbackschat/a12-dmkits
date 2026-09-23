@@ -10108,3 +10108,31 @@ The controls are the same lists with an index that resolves (`Keyed/Amount For "
 **For rulekit.** An index handle never sees the model and a group scope does not carry its expansion, so the entity-list records withhold every list gate's class on a list holding either ([AF160](API-FINDINGS.md#af160)). A list of fields reads nothing that can fail and keeps its class. `BoundModel`'s entity-list factories (the temporal extrema, `NumberOfDifferentValues`, `Sum`, the numeric `MaxValue`/`MinValue` and the `NumberOfFilled*` counts) read each group's expansion, cite the two empty classes, and withhold only behind an index. The index classes are not enumerated beyond these three, so behind an index nothing is cited.
 
 **Lock:** `rulekit.validate.laws.EntityListOperandReadLawsTest` pins the kernel grid, and pins the record and model-bound columns to it under one law: every code rulekit cites is the kernel's own for that list.
+
+## §11 supplement — inside a computation cascade a computed field's STORED value is invisible to every content read, a computed value fills the groups above it, and no row-content gate applies (differential, both strategies, 2026-09-23) <a id="kf459"></a>
+
+> Fold: pending — extends §11's "an un-computed calculated field reads empty" from a field read to group presence, group counts and categories, and sets compute apart from §2's row gate ([KF17](#kf17)); folds into §11 beside [KF240](#kf240).
+
+**The claim.** In one `compute` call, both strategies agree on every row below. Each document is canonical A12 Document JSON on one parcel-order model (`Order { Reference, Quantity, Flag, Service → Speed, Extra { Surcharge, Note }, Packages* keyed No { Carrier, Dims { Length, Width } } }`). `Flag`, `Surcharge`, `Service`, `Width` and `Length` are the computed fields, with a different set on each row.
+
+| input | A12 | what it rules out |
+|---|---|---|
+| `Surcharge = 7`, then `Flag` guarded `NoGroupFilled(/Order/Extra)`, no `Extra` stored | `Flag` CLEARED | presence read from the document alone |
+| the same guard, `Surcharge` stored `3` and its own computation clearing | `Flag` computes | a stored computed value filling its group |
+| `Surcharge` guarded `GroupFilled(/Order/Extra)`, stored `3` · control: `Note` stored beside it | CLEARED · computes | the target's own stored value answering its own precondition |
+| `Width = 5` in each package row; `Flag` guarded `AtLeastOneGroupFilled(Dims For "2")`, row 2 without `Dims` | `Flag` computes | the keyed row's group read from the document |
+| `Carrier` guarded `NoGroupFilled(/Order/Packages/Dims)` per row, `Width` computed into each | CLEARED in both rows | the fill landing only in rows that stored a `Dims` |
+| `Flag = NumberOfFilledFields(/Order/Extra)`: stored `Surcharge` cleared · `Surcharge` computed | `0` · `1` | a group count reading stored values, or missing computed ones |
+| `Speed` of `Service` computed `EXPRESS` · stored `STANDARD` whose computation clears | `FAST` · no category | a category read of the stored value |
+| `Surcharge = [Quantity]` over `"abc"` (poisoned), `Flag` guarded `NoGroupFilled(/Order/Extra)` | `Flag` computes | a poisoned value filling, or a group read poisoning |
+| stored `Surcharge` `"abc"`, a later `Flag = [Surcharge] + 1` | no operand error; `Flag` `8` | the stored value being formal-checked as an operand |
+| `Flag` guarded `[Quantity] < 5` on `{"Order":{}}`, `{}` and `{"Order":{"Flag":9}}` | `Flag` computes | validation's row-content gate on a precondition |
+| `Length` guarded `[Width] < 5` in `Dims` below a package row: `Dims` empty · absent · holding only `Length` | computes | the same gate on a group below a row |
+| the chained cascade (`Surcharge = 7`, `Flag` guarded on `Surcharge`) on `{}` and on a seed-only document | both compute | a stripped instance losing the cascade's own values |
+| an unindexed repeatable row, empty or holding only its seed: `Mark` guarded `[Qty] < 5`, `Total = Sum(Lines* / Mark Having ([Lines/Qty] < 5))` | `Mark` `1`, `Total` `1` | the filter's row gate excluding the row |
+
+Only the last row would read the same under validation's gate, because an instantiated repeatable row is content in itself ([KF17](#kf17)).
+
+**Mechanism (source-verified; the rows above are its discriminators).** `CalculationCommand` builds its working data with `getDataWithoutEntitiesNotNeededForCalculations`. The set of calculated fields comes from the model's metadata, so this is whole-model. Their values are removed, and operand fields and the ancestor groups of both kinds are kept. `CalculationCache.isEntityFilled` answers from `calculatedValues` first, and `addBerechnetenFeldWert` records every non-empty value as filling its ancestors, which never un-fill. Two rows separate this from a rival reading in which stored values are only hidden from presence reads: the malformed-operand row shows that the stored value never reaches the operand check, and the own-group row shows that it never reaches the target's own precondition.
+
+**Lock:** `adapter.laws.CascadeGroupPresenceDiffTest` holds every row, each on dynamic Groovy, static Java and the interpreter's projected result. The interpreter's side is [IF332](INTERPRETER-FINDINGS.md#if332).

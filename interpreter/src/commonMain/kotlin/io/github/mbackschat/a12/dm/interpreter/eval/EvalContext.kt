@@ -214,6 +214,14 @@ interface EvalContext {
     fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int = -1): FillScope =
         throw UnsupportedConstructException("group-scoped field-fill needs the general Document context, not $this")
 
+    /**
+     * [fillScope] with every cell read through [cellValue] — the same scope, tallied over values a decorator owns.
+     * The computation cascade's overlay holds the values computed so far, and the scope rule stays with the context
+     * that defines it rather than being restated beside the overlay.
+     */
+    fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int, cellValue: CellValueSource): FillScope =
+        throw UnsupportedConstructException("group-scoped field-fill needs the general Document context, not $this")
+
     /** The document-wide data view for a `CustomCondition` — the kernel's `IData` surface (read field values by
      *  path+indices, enumerate present fields). The row is carried separately by the error-field pointer; flat
      *  spike contexts do not model this document view. */
@@ -335,6 +343,11 @@ data class ScanCell(
     /** The field-format-aware evaluation value for this exact cell; null only for an empty cell. */
     val value: Val?,
 )
+
+/** What one cell reads as, given [stored] — its value in the context that owns the scope; null is an empty cell. */
+fun interface CellValueSource {
+    fun valueOf(path: String, reps: List<Int>, stored: Val?): Val?
+}
 
 /**
  * The resolved state of an INDEX column ([EvalContext.indexColumn]): the [EvalContext.starCells]-aligned

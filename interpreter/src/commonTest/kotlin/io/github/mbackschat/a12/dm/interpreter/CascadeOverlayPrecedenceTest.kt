@@ -21,7 +21,7 @@ class CascadeOverlayPrecedenceTest {
 
     @Test
     fun anOverlayWriteCannotUnpoisonACell() {
-        val cascade = CascadeOverlay()
+        val cascade = CascadeOverlay(repeatableGroups = emptySet())
         cascade.poison(path, reps)
 
         cascade.overlay(path, reps, Val.Txt("late"))
@@ -34,7 +34,7 @@ class CascadeOverlayPrecedenceTest {
 
     @Test
     fun poisonStillWinsWhenItArrivesLast() {
-        val cascade = CascadeOverlay()
+        val cascade = CascadeOverlay(repeatableGroups = emptySet())
         cascade.overlay(path, reps, Val.Txt("early"))
 
         cascade.poison(path, reps)
@@ -44,7 +44,7 @@ class CascadeOverlayPrecedenceTest {
 
     @Test
     fun clearingAndOverlayingReplaceEachOtherInWriteOrder() {
-        val cascade = CascadeOverlay()
+        val cascade = CascadeOverlay(repeatableGroups = emptySet())
 
         cascade.clear(path, reps)
         assertEquals(CascadeOverlay.Entry.Cleared, cascade.rowsAt(path)?.get(reps))
@@ -59,7 +59,7 @@ class CascadeOverlayPrecedenceTest {
 
     @Test
     fun cellsAreIndependentAcrossRowsAndPaths() {
-        val cascade = CascadeOverlay()
+        val cascade = CascadeOverlay(repeatableGroups = emptySet())
         val other = listOf(1, 2)
 
         cascade.poison(path, reps)
@@ -74,7 +74,7 @@ class CascadeOverlayPrecedenceTest {
     /** The fast exit the whole change rests on: an untouched path must not even reach a repetition-list hash. */
     @Test
     fun anUntouchedPathHasNoRowsAtAll() {
-        val cascade = CascadeOverlay()
+        val cascade = CascadeOverlay(repeatableGroups = emptySet())
 
         assertNull(cascade.rowsAt(path), "an empty cascade must answer without a reps lookup")
 
