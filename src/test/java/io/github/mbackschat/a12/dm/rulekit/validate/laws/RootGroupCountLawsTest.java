@@ -2,14 +2,17 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
 import io.github.mbackschat.a12.dm.ModelDrafts;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -51,6 +54,21 @@ class RootGroupCountLawsTest {
     void numberOfFilledGroupsAcceptsASoleStarredRootGroup() {
         KernelLaws.acceptsModel(MULTIFORM, "/Header", "../Title",
                 "FieldFilled(Title) And NumberOfFilledGroups(/Persons*) > 0");
+    }
+
+    /**
+     * The text above is its own record, so the nested-group count routes a sole repeatable root to it rather
+     * than claiming a code: A12 admits the text, and a class cited here would be one A12 never gives.
+     */
+    @Test
+    void theNestedGroupCountRoutesASoleRepeatableRootToTheRootGroupCount() {
+        BoundModel multiform = BoundModel.ofJson(MULTIFORM);
+        IllegalArgumentException routed = assertThrows(IllegalArgumentException.class,
+                () -> Dsl.numberOfFilledGroups(multiform.group("/Persons")));
+        assertFalse(routed instanceof KernelCodeRefusal, routed.getMessage());
+        assertTrue(routed.getMessage().contains("numberOfFilledRootGroups"), routed.getMessage());
+        assertEquals("NumberOfFilledGroups(/Persons*)",
+                new DslRenderer().render(Dsl.numberOfFilledRootGroups(multiform.group("/Persons")).expression()));
     }
 
     @Test
