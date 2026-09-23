@@ -10122,6 +10122,7 @@ The controls are the same lists with an index that resolves (`Keyed/Amount For "
 | `Surcharge` guarded `GroupFilled(/Order/Extra)`, stored `3` · control: `Note` stored beside it | CLEARED · computes | the target's own stored value answering its own precondition |
 | `Width = 5` in each package row; `Flag` guarded `AtLeastOneGroupFilled(Dims For "2")`, row 2 without `Dims` | `Flag` computes | the keyed row's group read from the document |
 | `Carrier` guarded `NoGroupFilled(/Order/Packages/Dims)` per row, `Width` computed into each | CLEARED in both rows | the fill landing only in rows that stored a `Dims` |
+| a second model with `Code` inside `Extra/Detail`: `Code = 5`, then `Flag` guarded `NoGroupFilled(/Order/Extra)` · control: stored `Code` `3` whose computation clears | `Flag` CLEARED · `Flag` computes | the fill reaching only the group that holds the value, not its ancestors |
 | `Flag = NumberOfFilledFields(/Order/Extra)`: stored `Surcharge` cleared · `Surcharge` computed | `0` · `1` | a group count reading stored values, or missing computed ones |
 | `Speed` of `Service` computed `EXPRESS` · stored `STANDARD` whose computation clears | `FAST` · no category | a category read of the stored value |
 | `Surcharge = [Quantity]` over `"abc"` (poisoned), `Flag` guarded `NoGroupFilled(/Order/Extra)` | `Flag` computes | a poisoned value filling, or a group read poisoning |

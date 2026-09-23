@@ -119,6 +119,31 @@ class CascadeGroupPresenceDiffTest {
             outcomes(model, """{"Order":{"Reference":"R","Flag":9}}"""))
     }
 
+    /** The fill reaches every ancestor, not only the group holding the value: `Extra` holds `Code` two levels down. */
+    @Test
+    fun aValueComputedTwoLevelsDownFillsTheGrandparentGroup() {
+        val nested = DocumentModelDraft.named("parcel-nested").locale("en_US")
+            .rootGroup("Order") { order ->
+                order.stringField("Reference") { }
+                    .numberField("Quantity") { it.fractionDigits(0, 0) }
+                    .numberField("Flag") { it.fractionDigits(0, 0) }
+                    .group("Extra") { extra ->
+                        extra.group("Detail") { detail -> detail.numberField("Code") { it.fractionDigits(0, 0) } }
+                    }
+            }.build().toJson()
+        val code = { precondition: String? ->
+            RuntimeLaws.withTieredComputation(nested, "/Order/Extra/Detail", "CodeComp", "../Code", precondition,
+                listOf(RuntimeLaws.CompAlt(null, "5")))
+        }
+        val guard = "NoGroupFilled(/Order/Extra)"
+        assertEquals(listOf("/Order[1]/Extra[1]/Detail[1]/Code|VALUE|5", "/Order[1]/Flag|CLEARED"),
+            outcomes(admitted(flagWhen(code(null), guard)), """{"Order":{"Reference":"R","Flag":9}}"""))
+        // the control: the same stored Code, its computation clearing, fills neither Detail nor Extra
+        assertEquals(listOf("/Order[1]/Extra[1]/Detail[1]/Code|CLEARED", "/Order[1]/Flag|VALUE|1"),
+            outcomes(admitted(flagWhen(code("FieldFilled(/Order/Quantity)"), guard)),
+                """{"Order":{"Reference":"R","Flag":9,"Extra":{"Detail":{"Code":3}}}}"""))
+    }
+
     @Test
     fun aStoredValueWhoseComputationClearsFillsNothing() {
         val model = admitted(flagWhen(surcharge(base, "FieldFilled(/Order/Quantity)", "7"), "NoGroupFilled(/Order/Extra)"))
