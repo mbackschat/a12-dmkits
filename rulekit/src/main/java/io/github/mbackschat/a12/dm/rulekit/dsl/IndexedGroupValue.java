@@ -7,9 +7,9 @@ import java.util.Optional;
  * {@link IndexedFieldValue}: the literal-keyed {@link GroupSemanticIndexValue} or the field-keyed
  * {@link GroupSemanticIndexFieldValue}. Unlike an indexed field, an indexed group carries no VALUE of
  * its own (a group is never a {@link Calculation}) — it exists purely as an
- * entity-list / group-list-quantifier member ({@link AggregateOperand}, {@link GroupListOperand}),
- * behaving like a single group entity there exactly as an indexed field behaves like a single field
- * entity: it never satisfies arity alone the way a starred {@link GroupListRef} does, and it
+ * entity-list / group-list-quantifier member ({@link AggregateOperand}, {@link GroupListOperand}). Its arity
+ * is an unindexed group's: alone it satisfies an entity list's param law, and alone it is refused by
+ * {@code AllGroupsFilled}'s (KF351, {@code validate.laws.SemanticIndexGroupOperandCarrierLawsTest}). It
  * participates in exact-duplicate detection keyed on group path AND index, never on path alone.
  *
  * <p>A group can never itself carry the {@code $} outer-iteration correlation ({@link GroupRef} has no
