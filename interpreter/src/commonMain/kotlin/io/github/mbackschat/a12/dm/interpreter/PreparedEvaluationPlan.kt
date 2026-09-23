@@ -153,7 +153,12 @@ internal class PreparedEvaluationPlan(
             is Cond.Pred -> {
                 val op = PredicateOp.byName(cond.name)
                     ?: throw UnsupportedConstructException("unsupported predicate ${cond.name}")
-                cond.args.forEach { auditExpr(it, outerAllowed, starAllowed = true) }
+                // a keyed group is a group operand wherever a group's presence is asked (IF331)
+                val groupPresenceOperator = op.countsGroups ||
+                    op == PredicateOp.GROUP_FILLED || op == PredicateOp.GROUP_NOT_FILLED
+                cond.args.forEach {
+                    auditExpr(it, outerAllowed, starAllowed = true, groupSemanticIndexAllowed = groupPresenceOperator)
+                }
                 if ((op == PredicateOp.VALID || op == PredicateOp.INVALID) && cond.args.size == 2) {
                     val typeName = (cond.args[1] as? Expr.StrLit)?.v
                         ?: throw UnsupportedConstructException(
@@ -262,7 +267,7 @@ internal class PreparedEvaluationPlan(
                 val isField = expr.path in model.kinds
                 if (!isField && !groupSemanticIndexAllowed) {
                     throw UnsupportedConstructException(
-                        "a group semantic index is only a value entity inside FirstFilledValue")
+                        "a group semantic index is only an entity of FirstFilledValue or a group-presence condition")
                 }
                 if (nearestIndexFieldOf(model.indexFields, expr.path) == null) {
                     throw UnsupportedConstructException(

@@ -122,13 +122,13 @@ internal class OverlayContext(
 
     override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
         d.containedFieldCells(groupPath, declaredRange).map(::overlaidScanCell)
-    override fun indexedContainedFieldCells(
+    override fun indexedGroupRow(
         groupPath: String,
         indexField: String,
         indexValue: String,
         indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
-    ): Sequence<ScanCell> =
-        d.indexedContainedFieldCells(groupPath, indexField, indexValue, indexIdentityAdmitted).map(::overlaidScanCell)
+    ): EvalContext? = d.indexedGroupRow(groupPath, indexField, indexValue, indexIdentityAdmitted)
+        ?.let { OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget) }
 
     override fun indexedCell(
         targetPath: String,

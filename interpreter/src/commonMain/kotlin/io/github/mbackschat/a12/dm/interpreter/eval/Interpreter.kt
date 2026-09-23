@@ -177,6 +177,16 @@ class Interpreter(
     internal fun groupPresence(c: EvalContext, path: String): GroupPresenceState =
         config.groupPresence?.invoke(c, path) ?: GroupPresenceState(c.groupFilled(path), erroneous = false)
 
+    /** The presence of a GROUP operand, bare or keyed. A keyed group reads the row its key selects, a key no row
+     *  carries reads as an empty group, and an undecidable key is null, which every consumer reads as UNKNOWN
+     *  (IF331). A keyed FIELD is not a group operand and still meets [pathOf]'s refusal. */
+    private fun groupOperandPresence(arg: Expr): GroupPresenceState? =
+        if (arg is Expr.SemanticIndex && ctxOf(arg).declaredKind(arg.path) == null) when (val selection = keyedGroupSelection(arg)) {
+            is KeyedGroupSelection.Row -> groupPresence(selection.ctx, arg.path)
+            KeyedGroupSelection.Absent -> GroupPresenceState(filled = false, erroneous = false)
+            KeyedGroupSelection.Unavailable -> null
+        } else groupPresence(ctxOf(arg), pathOf(arg))
+
     /** The context a node resolves against: the complete enclosing environment for `$`, else [ctx].
      *  Path-specific resolution within that context selects the marked node's named coordinate. */
     internal fun ctxOf(node: Expr): EvalContext = when {
@@ -433,11 +443,10 @@ class Interpreter(
         return when (op) {
             PredicateOp.FIELD_FILLED -> presenceTri(p.args.single())
             PredicateOp.FIELD_NOT_FILLED -> Kleene.not(presenceTri(p.args.single()))
-            PredicateOp.GROUP_FILLED -> groupPresence(ctxOf(p.args.single()), pathOf(p.args.single())).let {
+            PredicateOp.GROUP_FILLED -> groupOperandPresence(p.args.single())?.let {
                 if (it.relevance == GroupRelevance.NONE) Tri.UNKNOWN else Tri.of(it.filled)
-            }
-            PredicateOp.GROUP_NOT_FILLED ->
-                groupPresence(ctxOf(p.args.single()), pathOf(p.args.single())).negativeLeaf
+            } ?: Tri.UNKNOWN
+            PredicateOp.GROUP_NOT_FILLED -> groupOperandPresence(p.args.single())?.negativeLeaf ?: Tri.UNKNOWN
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
             PredicateOp.FIELD_VALUE_NOT_IN_LIST -> Kleene.not(valueInList(p.args))
             PredicateOp.DATE_RANGES_OVERLAP -> overlapAny(p.args).truth
@@ -772,6 +781,8 @@ class Interpreter(
      *    `*`) yields one state per selected environment: a repeatable terminal row is FILLED structurally
      *    (IF46/IF68), while a non-repeatable terminal below starred ancestors retains its ordinary group-product
      *    state (SPEC-2026-07-26-02);
+     *  - a KEYED GROUP (`Group For key`) contributes the product of the row its key selects; no row reads
+     *    FALSE, like an absent group, and an undecidable key — a duplicated one, say — reads UNKNOWN;
      * Yielded lazily so a compute-mode consumer that decides early never reads (and never poisons on) a later
      * operand — the kernel's ordered `…EntityAngegeben` read.
      */
@@ -783,8 +794,9 @@ class Interpreter(
                     yield(groupPresence(rc, arg.path).fillProduct)
                 }
             }
-            ctxOf(arg).declaredKind(pathOf(arg)) != null -> yield(presenceTri(arg))
-            else -> yield(groupPresence(ctxOf(arg), pathOf(arg)).fillProduct)
+            // a keyed GROUP has no single path to test for a declared kind, so it answers before that test does
+            arg !is Expr.SemanticIndex && ctxOf(arg).declaredKind(pathOf(arg)) != null -> yield(presenceTri(arg))
+            else -> yield(groupOperandPresence(arg)?.fillProduct ?: Tri.UNKNOWN)
         }
     }
 

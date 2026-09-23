@@ -280,16 +280,17 @@ interface EvalContext {
     fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
         throw UnsupportedConstructException("bare-group compute scan needs the general Document context, not $this")
 
-    /** The contained-field scan rooted at the one [groupPath] row selected by [indexField]=[indexValue].
-     *  A clean no-match is an empty sequence. The caller owns the index-column validity gate so it can retain
-     *  validation-vs-computation poison semantics. */
-    fun indexedContainedFieldCells(
+    /** The context rooted at the one [groupPath] instance selected by [indexField]=[indexValue], or null on a
+     *  clean no-match. Every keyed-GROUP consumer reads through it — a contained-field scan and a presence
+     *  product alike — so the selected row has one owner. The caller owns the index-column validity gate so it
+     *  can retain validation-vs-computation poison semantics. */
+    fun indexedGroupRow(
         groupPath: String,
         indexField: String,
         indexValue: String,
         indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
-    ): Sequence<ScanCell> =
-        throw UnsupportedConstructException("indexed-group scan needs the general Document context, not $this")
+    ): EvalContext? =
+        throw UnsupportedConstructException("indexed-group selection needs the general Document context, not $this")
 }
 
 /**

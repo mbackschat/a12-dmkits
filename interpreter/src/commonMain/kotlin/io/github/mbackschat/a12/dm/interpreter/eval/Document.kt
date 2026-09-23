@@ -1139,21 +1139,13 @@ class Document(internal val config: DocumentConfig) {
             return selected.take(indexDepth) + currentTarget.drop(indexDepth)
         }
 
-        override fun indexedContainedFieldCells(
+        override fun indexedGroupRow(
             groupPath: String,
             indexField: String,
             indexValue: String,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
-        ): Sequence<ScanCell> {
-            val selectedGroupReps = indexedCellReps(
-                groupPath,
-                indexField,
-                indexValue,
-                indexIdentityAdmitted,
-            ) ?: return emptySequence()
-            return RowContext(groupPath, selectedGroupReps, evaluated = true)
-                .containedFieldCells(groupPath, declaredRange = false)
-        }
+        ): EvalContext? = indexedCellReps(groupPath, indexField, indexValue, indexIdentityAdmitted)
+            ?.let { RowContext(groupPath, it, evaluated = true) }
 
         /** The memoized [IndexColumn] — built ONCE per (column, star-scope prefix) at the DOCUMENT level and
          *  shared across every row context of the scope (the [Index.indexColumnByScope] twin of
@@ -1553,12 +1545,12 @@ class Document(internal val config: DocumentConfig) {
             unsupportedInParallel()
         override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
             unsupportedInParallel()
-        override fun indexedContainedFieldCells(
+        override fun indexedGroupRow(
             groupPath: String,
             indexField: String,
             indexValue: String,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
-        ): Sequence<ScanCell> = unsupportedInParallel()
+        ): EvalContext? = unsupportedInParallel()
         private fun unsupportedInParallel(): Nothing =
             throw UnsupportedConstructException("an aggregate/filter inside a parallel iteration is not modeled")
     }

@@ -323,6 +323,46 @@ private fun Interpreter.unmatchedSemanticIndexValue(e: Expr.SemanticIndex): Val?
     return Val.Unknown
 }
 
+/** What a keyed GROUP operand (`Group For key`) selects: one row, no row, or no decidable row. */
+internal sealed interface KeyedGroupSelection {
+    /** The one admitted row, as a context rooted at the selected group instance. */
+    class Row(val ctx: EvalContext) : KeyedGroupSelection
+
+    /** A clean no-match: an empty key, or a key no row carries over a clean column. The group reads absent. */
+    data object Absent : KeyedGroupSelection
+
+    /** A match on a duplicated or malformed key cell, or a no-match over a compromised column. */
+    data object Unavailable : KeyedGroupSelection
+}
+
+/**
+ * The row a keyed GROUP operand selects — the single owner every group-valued consumer reads through, so the
+ * value scan of `FirstFilledValue` and the presence product of the group-list quantifiers cannot disagree on
+ * which row a key names. The classification follows [computeGuardedIndexCell]'s for a keyed cell: validation
+ * resolves a clean-key match whatever the rest of the column holds and reads a compromised no-match as
+ * [KeyedGroupSelection.Unavailable]; computation poisons on any invalid key cell (IF107/IF115). Locked by
+ * `adapter.laws.FirstFilledValueEntitySpecDiffTest` and `adapter.laws.IndexedGroupOperandDiffTest`.
+ */
+internal fun Interpreter.keyedGroupSelection(e: Expr.SemanticIndex): KeyedGroupSelection {
+    val c = ctxOf(e)
+    val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
+        "SemanticIndex needs an index field on the group of ${e.path}")
+    val unmatched = {
+        if (unmatchedSemanticIndexValue(e) == null) KeyedGroupSelection.Absent else KeyedGroupSelection.Unavailable
+    }
+    val key = resolveIndexKey(e) ?: return unmatched()
+    val matchedKey = indexedCell(c, idx, idx, key)
+    if (computeMode && indexColumnInvalid(e)) throw PoisonedReadException(e.path)
+    return when {
+        matchedKey is Val.Unknown || matchedKey in indexColumnOf(c, idx).duplicated ->
+            if (computeMode) throw PoisonedReadException(e.path) else KeyedGroupSelection.Unavailable
+        matchedKey == null -> unmatched()
+        else -> KeyedGroupSelection.Row(checkNotNull(c.indexedGroupRow(e.path, idx, key, indexIdentityAdmitted())) {
+            "the key ${e.path} For \"$key\" matched an index cell but selected no row"
+        })
+    }
+}
+
 /** Whether the index COLUMN of `[F For key]` carries ANY invalid cell — malformed, duplicated, or empty
  *  (the IndexFieldCache marking, IF107). Computation poisons every read; validation still resolves a clean
  *  match and uses this only to classify an unmatched lookup as not-check-relevant (IF115). O(1) per lookup
@@ -1717,26 +1757,16 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
     is Expr.SemanticIndex -> {
         val c = ctxOf(operand)
         if (c.declaredKind(operand.path) == null) {
-            val idx = indexFieldOf(operand.path) ?: throw UnsupportedConstructException(
-                "SemanticIndex needs an index field on the group of ${operand.path}")
-            val key = resolveIndexKey(operand)
-            if (key == null) {
-                firstFilledSemanticNoMatch(operand, walk)
-            } else {
-                val matchedKey = indexedCell(c, idx, idx, key)
-                if (computeMode && indexColumnInvalid(operand)) {
-                    throw PoisonedReadException(operand.path)
+            when (val selection = keyedGroupSelection(operand)) {
+                is KeyedGroupSelection.Row -> firstFilledContainedCells(
+                    selection.ctx.containedFieldCells(operand.path, declaredRange = false),
+                    walk,
+                )
+                KeyedGroupSelection.Absent -> {
+                    walk.fillable = true
+                    FirstFilledStep.Continue
                 }
-                when {
-                    matchedKey is Val.Unknown || matchedKey in indexColumnOf(c, idx).duplicated ->
-                        if (computeMode) throw PoisonedReadException(operand.path)
-                        else FirstFilledStep.Stop(Val.Unknown)
-                    matchedKey == null -> firstFilledSemanticNoMatch(operand, walk)
-                    else -> firstFilledContainedCells(
-                        c.indexedContainedFieldCells(operand.path, idx, key, indexIdentityAdmitted()),
-                        walk,
-                    )
-                }
+                KeyedGroupSelection.Unavailable -> FirstFilledStep.Stop(Val.Unknown)
             }
         } else {
             val cell = computeGuardedIndexCell(operand)
@@ -1750,14 +1780,6 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
     }
     is Expr.EntitySpec -> firstFilledEntitySpec(operand, walk)
     else -> FirstFilledStep.Stop(evalExpr(operand))
-}
-
-private fun Interpreter.firstFilledSemanticNoMatch(
-    operand: Expr.SemanticIndex,
-    walk: FirstFilledWalk,
-): FirstFilledStep = unmatchedSemanticIndexValue(operand)?.let(FirstFilledStep::Stop) ?: run {
-    walk.fillable = true
-    FirstFilledStep.Continue
 }
 
 private fun Interpreter.firstFilledEntitySpec(
