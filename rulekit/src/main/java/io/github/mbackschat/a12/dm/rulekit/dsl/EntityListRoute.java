@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.Refusals;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
@@ -12,7 +13,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * the carriers whose kind gate depends on it: {@code MaxValue}, {@code MinValue} and
  * {@code NumberOfDifferentValues}.
  *
- * <p>A12 asks duplicates, the root-group gate and the param law first, then types the whole list by its FIRST EXPANDED field
+ * <p>A12 reads each operand first ({@link #cited}), asks duplicates, the root-group gate and the param law next, then types the whole list by its FIRST EXPANDED field
  * ({@code CheckEntityListenUtils.firstType}). A date-like leader sends the list through one walk that asks
  * each operand in turn for a date-like base type, a fully known date and the leader's component set
  * ([KF389]); any other leader sends it through a kind check whose one class answers for every operand. So the
@@ -58,6 +59,32 @@ final class EntityListRoute {
                         operatorId + " does not accept a root group: " + list.renderedPath());
             }
         }
+    }
+
+    /**
+     * A list gate's refusal as these records may cite it: withheld when an operand's READ may answer first.
+     *
+     * <p>A12 checks each operand as it reads it, ahead of every list gate: a semantic index that does not
+     * resolve (no index field, an empty or ill-typed key) and a group holding no field, an empty root included.
+     * The first such operand in list order answers, on every entity-list aggregate
+     * ({@code validate.laws.EntityListOperandReadLawsTest}). An index handle never sees the model and a group
+     * scope does not carry its expansion, so on a list holding either the class is not the record's to claim;
+     * a list of plain fields reads nothing that can fail. {@link BoundModel}'s walk reads the expansion and
+     * answers for groups itself ({@link Dsl#requireComparableTemporalList}).
+     */
+    static IllegalArgumentException cited(KernelCodeRefusal refusal, List<? extends AggregateOperand> operands) {
+        return operands.stream().anyMatch(EntityListRoute::readMayRefuse) ? refusal.withheld() : refusal;
+    }
+
+    /** Whether A12 may refuse this operand while reading it — see {@link #cited}. */
+    static boolean readMayRefuse(AggregateOperand operand) {
+        return switch (operand) {
+            case IndexedFieldValue ignored -> true;
+            case FieldRef ignored -> false;
+            case FieldListRef ignored -> false;
+            case GroupListRef ignored -> true;
+            case IndexedGroupValue ignored -> true;
+        };
     }
 
     /**

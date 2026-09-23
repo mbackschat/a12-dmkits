@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -8,6 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 
 /**
  * The two carriers over {@code List<AggregateOperand>} that had no duplicate gate: the field-list quantifier
@@ -79,13 +81,16 @@ class EntityListDuplicateGateTest {
     /**
      * A group scope beside a field inside it, on {@code Sum}. The kernel's verdict is held by
      * {@code validate.laws.AggregateGroupOperandLawsTest}, which now authors that row as a string precisely
-     * because this refusal exists.
+     * because this refusal exists. The class is withheld: A12 reads the group's emptiness first, which the scope
+     * does not show ({@code validate.laws.EntityListOperandReadLawsTest}).
      */
     @Test
     void anAggregateRefusesAGroupScopeBesideAFieldInsideIt() {
-        String message = refusal(() -> Dsl.sum(
+        var refusal = assertThrows(IllegalArgumentException.class, () -> Dsl.sum(
                 ORDER.flattenGroup("/Order/ShippingAddress"), ORDER.field("/Order/ShippingAddress/City")));
-        assertTrue(message.contains("MVK_DUPLICATE_PARAM2"), () -> "overlap is the other code: " + message);
+        assertTrue(refusal.getMessage().contains("is already included through"),
+                () -> "overlap is the other arm: " + refusal.getMessage());
+        assertFalse(refusal instanceof KernelCodeRefusal, refusal::getMessage);
     }
 
     /**

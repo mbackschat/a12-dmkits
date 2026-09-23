@@ -1,11 +1,13 @@
 package io.github.mbackschat.a12.dm.bridge
 
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal
 import io.github.mbackschat.a12.dm.core.ModelIndex
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
@@ -24,7 +26,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue
  * path AND index, never on path alone.
  *
  * The duplicate/non-duplicate pairs are the load-bearing half: keying on path alone would reject a
- * legal pair of differently-keyed cells as `MVK_DUPLICATE_PARAM1`, which the kernel accepts.
+ * legal pair of differently-keyed cells as `MVK_DUPLICATE_PARAM1`, which the kernel accepts. The refused
+ * pairs carry no code, because A12 checks an index before any list gate and a handle cannot see whether its
+ * key resolves.
  */
 class SemanticIndexEntityListTest {
 
@@ -39,6 +43,17 @@ class SemanticIndexEntityListTest {
     }
 
     private fun translate(condition: String): Any = bridge.translate(condition, BASE, ConditionLanguage.EN)
+
+    /**
+     * The refusal of [condition], shown to be [arm] of the duplicate gate and to carry no code: A12 checks an
+     * index while it reads the operand, ahead of every list gate, and a key's resolution is not the handle's
+     * to see (`rulekit.validate.laws.EntityListOperandReadLawsTest`).
+     */
+    private fun assertWithheldArm(condition: String, arm: String) {
+        val e = assertThrows(IllegalArgumentException::class.java) { translate(condition) }
+        assertTrue(e.message!!.contains(arm)) { "expected the '$arm' arm in: ${e.message}" }
+        assertFalse(e is KernelCodeRefusal) { "a class the handle cannot see was cited: ${e.message}" }
+    }
 
     /** The left-hand calculation of a mapped comparison — where the entity-list aggregates land. */
     private fun left(condition: String): Calculation =
@@ -57,10 +72,7 @@ class SemanticIndexEntityListTest {
     /** Same field, same index key, twice — an exact duplicate, rulekit's own MVK_DUPLICATE_PARAM1. */
     @Test
     fun twoIndexedOperandsWithTheSameKeyAreADuplicate() {
-        val e = assertThrows(IllegalArgumentException::class.java) {
-            translate("NumberOfFilledFields(Items/Count For \"S-1\", Items/Count For \"S-1\") > 0")
-        }
-        assertTrue(e.message!!.contains("MVK_DUPLICATE_PARAM1")) { "expected the kernel's own code in: ${e.message}" }
+        assertWithheldArm("NumberOfFilledFields(Items/Count For \"S-1\", Items/Count For \"S-1\") > 0", EXACT)
     }
 
     /** Same field, DIFFERENT index key — not a duplicate; identity is (path, key), not path alone. */
@@ -86,10 +98,7 @@ class SemanticIndexEntityListTest {
     /** The exact-duplicate gate still fires when BOTH sides carry the same correlation. */
     @Test
     fun twoCorrelatedIndexedOperandsWithTheSameKeyAreStillADuplicate() {
-        val e = assertThrows(IllegalArgumentException::class.java) {
-            translate("NumberOfFilledFields(\$Items/Count For \"S-1\", \$Items/Count For \"S-1\") > 0")
-        }
-        assertTrue(e.message!!.contains("MVK_DUPLICATE_PARAM1")) { "expected the kernel's own code in: ${e.message}" }
+        assertWithheldArm("NumberOfFilledFields(\$Items/Count For \"S-1\", \$Items/Count For \"S-1\") > 0", EXACT)
     }
 
     // --- field-operand-semidx (Operands.fieldOperand) ---------------------------------------------
@@ -143,10 +152,7 @@ class SemanticIndexEntityListTest {
      */
     @Test
     fun anIndexedFieldBesideItsOwnIndexedEnclosingGroupIsTheOverlapRefusal() {
-        val e = assertThrows(IllegalArgumentException::class.java) {
-            translate("NumberOfFilledFields(Items/Count For \"a\", Items For \"a\") > 1")
-        }
-        assertTrue(e.message!!.contains("MVK_DUPLICATE_PARAM2")) { "expected the overlap code in: ${e.message}" }
+        assertWithheldArm("NumberOfFilledFields(Items/Count For \"a\", Items For \"a\") > 1", OVERLAP)
     }
 
     /** The control: different keys address different repetitions, so there is no containment. */
@@ -160,10 +166,7 @@ class SemanticIndexEntityListTest {
     /** Same group, same key, twice — an exact duplicate, rulekit's own MVK_DUPLICATE_PARAM1. */
     @Test
     fun twoIndexedGroupOperandsWithTheSameKeyAreADuplicate() {
-        val e = assertThrows(IllegalArgumentException::class.java) {
-            translate("NumberOfFilledFields(Items For \"a\", Items For \"a\") > 1")
-        }
-        assertTrue(e.message!!.contains("MVK_DUPLICATE_PARAM1")) { "expected the kernel's own code in: ${e.message}" }
+        assertWithheldArm("NumberOfFilledFields(Items For \"a\", Items For \"a\") > 1", EXACT)
     }
 
     /** Same group, DIFFERENT index key — not a duplicate; identity is (path, key), not path alone. */
@@ -218,5 +221,7 @@ class SemanticIndexEntityListTest {
 
     private companion object {
         const val BASE = "/Order"
+        const val EXACT = "is listed more than once"
+        const val OVERLAP = "is already included through"
     }
 }

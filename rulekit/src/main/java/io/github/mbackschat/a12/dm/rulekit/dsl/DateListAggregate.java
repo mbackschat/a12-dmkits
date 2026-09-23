@@ -33,6 +33,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * admits.
  */
 import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.Refusals;
 
 public record DateListAggregate(Mode mode, List<AggregateOperand> operands, ValueKind kind) implements Calculation {
@@ -60,6 +61,14 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
                     mode.operatorId() + " over date-like values needs a DATE, TIME,"
                             + " or DATETIME operand kind; got " + kind);
         }
+        try {
+            requireDateLikeList(mode, kind, operands);
+        } catch (KernelCodeRefusal refusal) {
+            throw EntityListRoute.cited(refusal, operands);
+        }
+    }
+
+    private static void requireDateLikeList(Mode mode, ValueKind kind, List<AggregateOperand> operands) {
         // Ahead of the kind loop, matching the kernel: its routine checks duplicates before the type
         // gates, so an overlap is answered even when the descendant is also the wrong temporal class.
         EntityListRoute.requireShape(mode.operatorId(), operands);

@@ -16,6 +16,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * {@link Dsl} entry points enforce all of that by signature + pre-check; field kinds may be mixed.
  */
 import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.Refusals;
 
 public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<GroupRef> groups)
@@ -40,6 +41,14 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
     public CountAggregate {
         fields = List.copyOf(fields);
         groups = List.copyOf(groups);
+        try {
+            requireList(op, fields, groups);
+        } catch (KernelCodeRefusal refusal) {
+            throw EntityListRoute.cited(refusal, allOperands(fields, groups));
+        }
+    }
+
+    private static void requireList(CountOp op, List<AggregateOperand> fields, List<GroupRef> groups) {
         // Ahead of the arity and kind gates, matching the kernel: its routine for this operator
         // answers a duplicate before the param-size, fields-allowed and comparability bars, so our
         // order reported those instead on input both sides refuse.
@@ -89,8 +98,8 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
      * two lists separately would miss the pair. No factory populates both — each passes an empty list for
      * the other — but the canonical constructor is public and the read path uses it.
      */
-    private static List<DuplicateOperand> allOperands(List<AggregateOperand> fields, List<GroupRef> groups) {
-        var all = new java.util.ArrayList<DuplicateOperand>(fields);
+    private static List<AggregateOperand> allOperands(List<AggregateOperand> fields, List<GroupRef> groups) {
+        var all = new java.util.ArrayList<AggregateOperand>(fields);
         all.addAll(groupOperands(groups));
         return all;
     }

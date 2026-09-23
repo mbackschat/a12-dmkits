@@ -10085,3 +10085,26 @@ The component set is the axis, not the kind, exactly as KF263's 2×2 has it: a D
 **Three fixture traps, each presenting as kernel behaviour.** The project fixture's `Date` is a `StringType`, so "a date field" measured §10's keyword quoting (`MVK_UNEXPECTED_TOKEN`). A DATE_TIME format needs its quoted `'T'` — `dd.MM.yyyy HH:mm:ss` is refused at declaration and leaves two codeless field errors on every row, which then read as ADMITTED. And `dateField(…).format("yyyy-MM-dd'T'HH:mm:ss")` declares a `DateType`, so the first "DATE_TIME" control was a second DATE control; `dateTimeField` exists and was missed by a grep, `[a-z]+Field\(`, that cannot match its capital letter — an absence reported from a pattern that could never match. When a grid's fixture is broken its rows do not fail, they go quiet.
 
 **Lock:** `rulekit.validate.laws.OpListMathKindGateLawsTest` pins the kernel grid and the `Abs` row, and pins rulekit's refusal codes against them in both directions. The catalog's `Min`, `Max` and `Abs` entries carry the three codes as correctives, each CI-executed to its code with a kernel-accepted repair. It also pins where rulekit under-reports, which is safe and is written down because the opposite direction would not be: `OpListMath` compares declared KINDS where the kernel compares COMPONENT SETS, so the gate goes quiet on every cell where the two disagree. Two are measured — a `DateType` carrying a datetime format beside a plain DATE, and a `yyyy-MM` fragment beside a date, which `OpListMath.resultKind` folds to DATE — and the kernel refuses both `MVK_DATEFORMATS_NOT_COMPATIBLE`. The same fold is correct for a fragment with the date's own components, which both sides admit. The typed accessors narrow the first cell, since `BoundModel.dateTime(path)` checks the format shape, so it is the generic `field(path)` and the read path that reach it.
+
+## §9 supplement — an entity list's operands are READ before any list gate: an unresolvable index, an empty group or an empty root answers first, the first in list order (probe, 2026-09-23) <a id="kf458"></a>
+
+> Fold: pending — the aggregate twin of [KF71](#kf71)'s index-first order on `FirstFilledValue`; folds into §9's entity-list gate order beside [KF389](#kf389).
+
+**The claim.** On `Sum`, `MaxValue`, `MinValue` (the numeric and the date extrema), `NumberOfDifferentValues`, `NumberOfFilledFields` and `NumberOfFilledGroups`, A12 checks each operand as it reads it, and a failed read answers ahead of every list gate: duplicates, the root-group gate, the param law, the kind gates and the date walk. Five read classes were measured: `MVK_NO_INDEX_FIELD` (an index on a group declaring no index field, on a group or a field operand), `MVK_INDEX_VALUE_INVALID` (an empty key), `MVK_INDEX_TYPE_INCONSISTENT` (a key field of another type), `MVK_GROUP_IS_EMPTY` and `MVK_ROOT_GROUP_IS_EMPTY` (a group, or a root, holding no field). Each was placed before, after and beside a duplicate and a kind defect on all five value carriers, and answered in every position. The discriminating rows:
+
+| list | A12 | what it rules out |
+|---|---|---|
+| `Sum(Weight, Weight, Hollow)` | `MVK_GROUP_IS_EMPTY` | a duplicate found before a LATER operand is read |
+| `Sum(Title, Keyed/Amount For "")` | `MVK_INDEX_VALUE_INVALID` | an earlier operand's kind gate answering first |
+| `Sum(/Item, Hollow)` | `MVK_GROUP_IS_EMPTY` | the containment (`/Item` holds `Hollow`) answering first |
+| `Sum(Hollow, /Other)` · `Sum(/Other, Hollow)` | `MVK_GROUP_IS_EMPTY` · `MVK_ROOT_GROUP_IS_EMPTY` | a fixed precedence between the two empty classes: position decides |
+| `Sum(Keyed/Amount For "", Hollow)` · reversed | `MVK_INDEX_VALUE_INVALID` · `MVK_GROUP_IS_EMPTY` | index checks as a pass ahead of emptiness: position decides |
+| `MaxValue(Released, Weight, Lapses*) > [Released]` | `MVK_GROUP_IS_EMPTY` | the date walk, which would answer `MVK_DATE_AND_NONDATE` at `Weight` |
+| `NumberOfFilledGroups(Grading, /Other)` | `MVK_ROOT_GROUP_IS_EMPTY` | the root-group gate answering for an empty root |
+| `NumberOfFilledGroups(/Item)` · `(/Other)` | `MVK_PARAMSIZE_INVALIDGN` · `MVK_ROOT_GROUP_IS_EMPTY` | a lone group's class being fixed by its shape alone |
+
+The controls are the same lists with an index that resolves (`Keyed/Amount For "k"`) or a group holding fields (`Grading`): they draw the list gate's own class (`MVK_DUPLICATE_PARAM1`, `MVK_NO_NUMBER`, `MVK_NOT_SORTABLE`, `MVK_STRING_ENUM_AND_NON_STRING_ENUM`), so the read answers, not the operand's shape.
+
+**For rulekit.** An index handle never sees the model and a group scope does not carry its expansion, so the entity-list records withhold every list gate's class on a list holding either ([AF160](API-FINDINGS.md#af160)). A list of fields reads nothing that can fail and keeps its class. `BoundModel`'s temporal-extremum and `NumberOfDifferentValues` walk reads each group's expansion, cites the two empty classes, and withholds only behind an index. The index classes are not enumerated beyond these three, so behind an index nothing is cited.
+
+**Lock:** `rulekit.validate.laws.EntityListOperandReadLawsTest` pins the kernel grid, and pins the record and model-bound columns to it under one law: every code rulekit cites is the kernel's own for that list.

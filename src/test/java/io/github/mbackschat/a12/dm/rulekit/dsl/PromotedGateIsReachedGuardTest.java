@@ -87,9 +87,11 @@ class PromotedGateIsReachedGuardTest {
      * <p>Raised again the same day, Dsl.java 11 → 12, with no new public gate: the precision and component-set
      * passes behind the temporal-extremum and NumberOfDifferentValues gates became one walk in A12's order,
      * which also asks the base-type question, so two refusal sites became three behind the same seven gates.
+     * And 12 → 13, again with no new public gate: that walk now reads each group operand first and cites an
+     * empty one, as A12 does ahead of every list gate ({@code validate.laws.EntityListOperandReadLawsTest}).
      */
     private static final Map<String, Integer> REFUSAL_SITES =
-            Map.of("BoundModel.java", 7, "Dsl.java", 12, "DuplicateGate.java", 2);
+            Map.of("BoundModel.java", 7, "Dsl.java", 13, "DuplicateGate.java", 2);
 
     private static final Pattern REFUSAL = Pattern.compile("Refusals\\.of\\(");
 

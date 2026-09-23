@@ -12,7 +12,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * {@code MVK_NOT_SORTABLE} for Max/Min behind a leader that is not date-like — see {@code requireNumber}), more
  * than one field or a repetition list ({@code MVK_PARAMSIZE_INVALIDN}), no repeated DIRECT field
  * ({@code MVK_DUPLICATE_PARAM1}) — an <em>identical</em> wildcarded operand may repeat, mirroring the kernel
- * skipping wildcarded refs in {@code checkDuplicatesInDirectRefs} — all pre-checked here. What the star
+ * skipping wildcarded refs in {@code checkDuplicatesInDirectRefs} — all pre-checked here, and cited only where
+ * no operand's read may answer first ({@link EntityListRoute#cited}). What the star
  * exempts is that one gate and no more: a star does not make an operand exempt from duplicate checking as
  * such, and the indirect-overlap arm ({@code MVK_DUPLICATE_PARAM2}) still refuses two operands where one
  * strictly contains the other, whichever side carries it. That side-symmetry is measured in both argument
@@ -26,6 +27,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * than pre-checked, are on {@link AggregateOperand}.
  */
 import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.Refusals;
 
 public record ListAggregate(AggOp op, List<AggregateOperand> operands) implements Calculation {
@@ -51,17 +53,21 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
         // Ahead of the kind loop, because the kernel's own routine checks duplicates first: it answers
         // MVK_DUPLICATE_PARAM2 for a group scope beside a field inside it even when that field is the wrong
         // kind, and reporting the kind error there would disagree with it on input both refuse.
-        EntityListRoute.requireShape(op.operatorId(), operands);
-        for (AggregateOperand o : operands) {
-            switch (o) {
-                case FieldOperand f -> requireNumber(op, operands, f);
-                // A group carries no kind of its own: the rule applies to the fields the kernel EXPANDS it
-                // to, whose extent recurses into nested subgroups. Delegated rather than re-implemented —
-                // see AggregateOperand. An index-selected group is the same shape (still no kind of its
-                // own — the index only picks WHICH repetition, not what it expands to).
-                case GroupListRef ignored -> { }
-                case IndexedGroupValue ignored -> { }
+        try {
+            EntityListRoute.requireShape(op.operatorId(), operands);
+            for (AggregateOperand o : operands) {
+                switch (o) {
+                    case FieldOperand f -> requireNumber(op, operands, f);
+                    // A group carries no kind of its own: the rule applies to the fields the kernel EXPANDS it
+                    // to, whose extent recurses into nested subgroups. Delegated rather than re-implemented —
+                    // see AggregateOperand. An index-selected group is the same shape (still no kind of its
+                    // own — the index only picks WHICH repetition, not what it expands to).
+                    case GroupListRef ignored -> { }
+                    case IndexedGroupValue ignored -> { }
+                }
             }
+        } catch (KernelCodeRefusal refusal) {
+            throw EntityListRoute.cited(refusal, operands);
         }
     }
 

@@ -37,6 +37,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * </ol>
  */
 import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.Refusals;
 
 public final class Dsl {
@@ -270,6 +271,30 @@ public final class Dsl {
         var operands = new ArrayList<AggregateOperand>();
         operands.add(first);
         operands.addAll(List.of(rest));
+        // A12 reads every operand before any list gate, and the first it cannot read answers
+        // (validate.laws.EntityListOperandReadLawsTest). A group's emptiness is the model's to show; an index's
+        // resolution is not, so behind one the classes below are withheld, as the records withhold them.
+        boolean indexed = false;
+        for (AggregateOperand operand : operands) {
+            if (operand instanceof IndexedFieldValue || operand instanceof IndexedGroupValue) {
+                indexed = true;
+                break;
+            }
+            if (operand instanceof GroupListRef scope && model.descendantFields(scope.group()).findAny().isEmpty()) {
+                boolean root = scope.group().path().value().indexOf('/', 1) < 0;
+                throw Refusals.of(root ? KernelCode.MVK_ROOT_GROUP_IS_EMPTY : KernelCode.MVK_GROUP_IS_EMPTY,
+                        operatorId + " reads " + scope.renderedPath() + ", which holds no field");
+            }
+        }
+        try {
+            walkTemporalList(operatorId, model, operands);
+        } catch (KernelCodeRefusal refusal) {
+            throw indexed ? refusal.withheld() : refusal;
+        }
+    }
+
+    private static void walkTemporalList(String operatorId, BoundModel model, List<AggregateOperand> operands) {
+        AggregateOperand first = operands.getFirst();
         EntityListRoute.requireShape(operatorId, operands);
         String leaderPath = declaredFieldPath(first);
         if (leaderPath == null || !EntityListRoute.isDateLike(model.field(leaderPath).kind())) {

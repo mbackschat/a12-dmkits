@@ -117,15 +117,17 @@ class EntityListLeaderRouteLawsTest {
             new Row("Batches*, Title", NOT_SORTABLE, UNCODED, null),
             new Row("Weight, Excess", ADMITTED, ADMITTED, null),
             new Row("Weight, Batches*", ADMITTED, ADMITTED, null),
-            // The root-group gate sits after duplicates and before every kind gate, beside any operand.
-            new Row("Title, /Extra", ROOT, ROOT, null),
-            new Row("Weight, /Extra", ROOT, ROOT, null),
-            new Row("Weight, Weight, /Extra", DUPLICATE, DUPLICATE, null));
+            // The root-group gate sits after duplicates and before every kind gate, beside any operand. A root is
+            // a group, whose emptiness A12 reads first, so model-free the class is withheld
+            // (EntityListOperandReadLawsTest).
+            new Row("Title, /Extra", ROOT, UNCODED, null),
+            new Row("Weight, /Extra", ROOT, UNCODED, null),
+            new Row("Weight, Weight, /Extra", DUPLICATE, UNCODED, null));
 
     /** {@code Sum}, which asks one number question in no route: its class does not move with the leader. */
     private static final List<Row> SUM = List.of(
             new Row("Released, Weight", "MVK_NO_NUMBER", "MVK_NO_NUMBER", null),
-            new Row("Weight, /Extra", ROOT, ROOT, null));
+            new Row("Weight, /Extra", ROOT, UNCODED, null));
 
     /** {@code MaxValue} through the DATE factory, model-free and model-bound. */
     private static final List<Row> DATE_MAX = List.of(
@@ -148,13 +150,13 @@ class EntityListLeaderRouteLawsTest {
             new Row("DatedBatches*, Weight", DATE_AND_NONDATE, UNCODED, UNCODED),
             // Delegated for the same reason — DEV-API-GAPS DG73: walking the group would cite it.
             new Row("DatedBatches*, ApproxDay", PARTIAL, ADMITTED, ADMITTED),
-            new Row("Title, /Extra", ROOT, ROOT, ROOT),
-            new Row("Released, Title, /Extra", ROOT, ROOT, ROOT));
+            new Row("Title, /Extra", ROOT, UNCODED, ROOT),
+            new Row("Released, Title, /Extra", ROOT, UNCODED, ROOT));
 
     /** {@code MinValue} and the TIME factory — the same walk on the other extremum and the other class. */
     private static final List<Row> OTHER_EXTREMA = List.of(
             new Row("MinValue: Released, Weight", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
-            new Row("MinValue: Released, /Extra", ROOT, ROOT, ROOT),
+            new Row("MinValue: Released, /Extra", ROOT, UNCODED, ROOT),
             new Row("MaxValue time: OpensAt, Weight", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
             new Row("MaxValue time: OpensAt, ClosesAt", ADMITTED, ADMITTED, ADMITTED));
 
@@ -189,8 +191,8 @@ class EntityListLeaderRouteLawsTest {
             // A hidden group leader with one class among the fields: admitted, the positive control of the
             // hidden-leader branch.
             new Row("Batches*, Weight", ADMITTED, ADMITTED, ADMITTED),
-            new Row("Label, Discontinued, /Extra", ROOT, ROOT, ROOT),
-            new Row("Weight, Label, /Extra", ROOT, ROOT, ROOT));
+            new Row("Label, Discontinued, /Extra", ROOT, UNCODED, ROOT),
+            new Row("Weight, Label, /Extra", ROOT, UNCODED, ROOT));
 
     /** The comparands every row borrows, admitted on their own — the liveness control for the kernel column. */
     @Test
