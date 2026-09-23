@@ -608,6 +608,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction dateRangeOf(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef dateTime(java.lang.String)
   public boolean declaresIndexField(java.lang.String)
+  public java.util.stream.Stream<io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo> descendantFields(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr earliestDateTimeOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr earliestOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr earliestTimeOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])

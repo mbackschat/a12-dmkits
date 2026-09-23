@@ -2708,8 +2708,9 @@ final class ConditionConverter {
      * DATE fields is kernel-legal, and the operands need only share a component SET, not a format spelling
      * (KF193 / SPEC-2026-08-23-16). This used to require exactly one entity, which sent every multi-operand
      * temporal extremum down the numeric arm and made {@code rule read} report a legal rule Opaque with
-     * "MaxValue takes number fields" (DG38). A GROUP operand carries no kind of its own, so it cannot type the
-     * aggregate on its own; it rides along once a field operand has named the kind.
+     * "MaxValue takes number fields" (DG38). A GROUP operand is typed by its recursive expansion, which is
+     * what A12 judges it by (KF193); skipping groups made a group-only scope read as a numeric aggregate, so
+     * comparing it to a date field read Opaque (DEV-API-GAPS DG65).
      */
     private ValueKind temporalExtremumKind(IEntityListOperation aggregate) {
         EntityListOperationName name = aggregate.getOperatorName();
@@ -2718,27 +2719,32 @@ final class ConditionConverter {
         }
         ValueKind common = null;
         for (IEntityId entity : aggregate.getEntityList().getEntityIdList()) {
-            if (!entity.isField()) {
-                continue;   // a group scope is typed by its expansion — the kernel's verdict, not ours
+            List<FieldInfo> fields = entity.isField()
+                    ? model.fieldAt(entity.getFullName()).stream().toList()
+                    : model.descendantFields(model.group(entity.getFullName())).toList();
+            if (fields.isEmpty()) {
+                return null;   // an unresolved field, or a group with nothing to type it by
             }
-            // The COMPARABILITY CLASS, not the kind — and the class each operand's DECLARATION selects, which
-            // is what the kernel's own gate reads ([KF271]). Two corrections landed here, both from the same
-            // root: keying on kind EQUALITY made a kernel-admitted `MaxValue(<DATE yyyy>, <DATE_FRAGMENT yyyy>)`
-            // unreadable (cold review 2026-08-24), and keying the class on the KIND left the same defect for a
-            // TIME field declared `yyyy-MM-dd`, whose list the kernel admits (cold review 2026-09-07 —
-            // `CrossKindTemporalOperandReadTest`). Either way the rule fell to the NUMERIC arm and came back
-            // Opaque. `temporalClass()` resolves the declaration; `temporalClassOf` collapses DATE_FRAGMENT.
-            ValueKind declared = model.fieldAt(entity.getFullName())
-                    .map(FieldInfo::temporalClass).orElse(null);
-            ValueKind temporalClass = declared == null ? null : DateListAggregate.temporalClassOf(declared);
-            if (temporalClass != ValueKind.DATE && temporalClass != ValueKind.TIME
-                    && temporalClass != ValueKind.DATE_TIME) {
-                return null;
+            for (FieldInfo field : fields) {
+                // The COMPARABILITY CLASS, not the kind — and the class each operand's DECLARATION selects,
+                // which is what the kernel's own gate reads ([KF271]). Two corrections landed here, both from
+                // the same root: keying on kind EQUALITY made a kernel-admitted
+                // `MaxValue(<DATE yyyy>, <DATE_FRAGMENT yyyy>)` unreadable (cold review 2026-08-24), and keying
+                // the class on the KIND left the same defect for a TIME field declared `yyyy-MM-dd`, whose list
+                // the kernel admits (cold review 2026-09-07 — `CrossKindTemporalOperandReadTest`). Either way
+                // the rule fell to the NUMERIC arm and came back Opaque. `temporalClass()` resolves the
+                // declaration; `temporalClassOf` collapses DATE_FRAGMENT.
+                ValueKind declared = field.temporalClass();
+                ValueKind temporalClass = declared == null ? null : DateListAggregate.temporalClassOf(declared);
+                if (temporalClass != ValueKind.DATE && temporalClass != ValueKind.TIME
+                        && temporalClass != ValueKind.DATE_TIME) {
+                    return null;
+                }
+                if (common != null && common != temporalClass) {
+                    return null;   // the kernel refuses a list mixing CLASSES; leave it to the generic arm
+                }
+                common = temporalClass;
             }
-            if (common != null && common != temporalClass) {
-                return null;   // the kernel refuses a list mixing CLASSES; leave it to the generic arm
-            }
-            common = temporalClass;
         }
         return common;
     }

@@ -128,6 +128,7 @@ class StudySnippetsTest {
 
         m.fields(m.group("/Subscription/Addons"))        // scoped to a group
                 .forEach(f -> System.out.println(f.path() + " : " + f.kind()));
+        long subtree = m.descendantFields(m.group("/Subscription")).count(); // every depth: a group operand's expansion
 
         Optional<FieldInfo> peek = m.fieldAt("/Subscription/Tier");   // non-throwing — exploring is lenient,
         List<String> tierValues = peek.orElseThrow().allowedValues(); // strict enum-only, values without categories
@@ -145,6 +146,8 @@ class StudySnippetsTest {
                 .toList();
         // end::navigation[]
         assertFalse(money.isEmpty());
+        assertEquals(m.fields().count(), subtree);
+        assertTrue(subtree > m.fields(m.group("/Subscription")).count());
         assertNotNull(rules);
         assertNotNull(peek);
         assertEquals(List.of("BASIC", "PRO", "ENTERPRISE"), tierValues);

@@ -582,8 +582,7 @@ public final class BoundModel {
     }
 
     private List<FieldRef> firstFilledDescendants(GroupListRef scope) {
-        String prefix = scope.path() + "/";
-        return fields().filter(field -> field.path().startsWith(prefix)).map(FieldInfo::ref).toList();
+        return descendantFields(scope.group()).map(FieldInfo::ref).toList();
     }
 
     /**
@@ -627,6 +626,15 @@ public final class BoundModel {
     /** The fields directly contained in {@code group}, in model order. */
     public Stream<FieldInfo> fields(GroupRef group) {
         return index.fieldPaths(group.path().value()).map(this::fieldInfo);
+    }
+
+    /**
+     * Every field beneath {@code group} at any depth, in model order. It is the expansion A12 reads for a group
+     * operand of a list aggregate, which it judges as a flat list of these fields (KERNEL-FINDINGS KF193).
+     */
+    public Stream<FieldInfo> descendantFields(GroupRef group) {
+        String prefix = group.path().value() + "/";
+        return fields().filter(field -> field.path().startsWith(prefix));
     }
 
     /** Every group (root groups included), in model order. */
