@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -67,8 +66,8 @@ class RootGroupCountLawsTest {
                 () -> Dsl.numberOfFilledGroups(multiform.group("/Persons")));
         assertFalse(routed instanceof KernelCodeRefusal, routed.getMessage());
         assertTrue(routed.getMessage().contains("numberOfFilledRootGroups"), routed.getMessage());
-        assertEquals("NumberOfFilledGroups(/Persons*)",
-                new DslRenderer().render(Dsl.numberOfFilledRootGroups(multiform.group("/Persons")).expression()));
+        KernelLaws.acceptsModel(MULTIFORM, "/Header", "../Title", multiform.str("/Header/Title").filled()
+                .and(Dsl.numberOfFilledRootGroups(multiform.group("/Persons")).gt(0)));
     }
 
     @Test
