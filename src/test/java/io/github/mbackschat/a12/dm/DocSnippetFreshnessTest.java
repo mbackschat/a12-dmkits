@@ -130,6 +130,7 @@ class DocSnippetFreshnessTest {
             new Lock("starred-value-list", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("group-scope-value-list", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("mixed-entity-list", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("model-bound-entity-list", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("number-of-value-single-list", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("enum-value-list-union", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("group-count-quantifiers", "docs/API-GUIDE.md",

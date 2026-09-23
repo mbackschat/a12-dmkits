@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import io.github.mbackschat.a12.dm.core.KernelCodeRefusal
 import io.github.mbackschat.a12.dm.core.ModelIndex
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
@@ -55,15 +54,14 @@ class ConditionBridgeTest {
     }
 
     /**
-     * The count operators may not be handed a root group. The class is withheld: an empty root is
-     * MVK_ROOT_GROUP_IS_EMPTY instead, which a group operand does not show
+     * MVK_ROOT_GROUP_REFERENCED — the count operators may not be handed a root group. The bridge holds the
+     * model, which shows that the root holds a field; an empty root would be MVK_ROOT_GROUP_IS_EMPTY instead
      * (`rulekit.validate.laws.EntityListOperandReadLawsTest`).
      */
     @Test
     fun aRootGroupOperandIsRejected() {
         val e = assertThrows<IllegalArgumentException> { translate("NumberOfFilledFields(/Order) < 1") }
-        assertTrue(e.message!!.contains("a root group may not be referenced")) { "unexpected message: ${e.message}" }
-        assertFalse(e is KernelCodeRefusal) { "a class the operand cannot settle was cited: ${e.message}" }
+        assertTrue(e.message!!.contains("MVK_ROOT_GROUP_REFERENCED")) { "expected the kernel's own code in: ${e.message}" }
     }
 
     /** MVK_DUPLICATE_PARAM1 — the same field twice. */
@@ -74,8 +72,9 @@ class ConditionBridgeTest {
     }
 
     /**
-     * A repeated group operand is rulekit's to refuse, and it surfaces through the bridge with its class
-     * withheld, since an empty group answers ahead of the duplicate gate.
+     * A repeated group operand is rulekit's to refuse, and it surfaces through the bridge with the kernel's
+     * own code, because the bridge authors through the model, which reads that the group holds a field; an
+     * empty group would answer ahead of the duplicate gate.
      *
      * <p>The complement is the STARRED shape below: a repeatable group renders with a star on this carrier,
      * and the kernel's exact-duplicate arm skips a wildcarded ref, so that pair must survive translation.
@@ -84,12 +83,11 @@ class ConditionBridgeTest {
      * `rulekit.validate.laws.EntityListOperandReadLawsTest`.
      */
     @Test
-    fun aDuplicateGroupOperandIsRefused() {
+    fun aDuplicateGroupOperandIsRefusedWithTheKernelsCode() {
         val e = assertThrows<IllegalArgumentException> {
             translate("NumberOfFilledGroups(ShippingAddress, ShippingAddress) < 1")
         }
-        assertTrue(e.message!!.contains("is listed more than once")) { "expected the exact arm in: ${e.message}" }
-        assertFalse(e is KernelCodeRefusal) { "a class the operand cannot settle was cited: ${e.message}" }
+        assertTrue(e.message!!.contains("MVK_DUPLICATE_PARAM1")) { "expected the kernel's own code in: ${e.message}" }
     }
 
     /** The exemption, one variable apart: a repeatable group renders starred, and a starred ref may repeat. */

@@ -51,8 +51,10 @@ class EntityListOperandReadLawsTest {
             .rootGroup("Item", i -> i
                     .field("Title", FieldKind.STRING)
                     .field("Weight", FieldKind.NUMBER)
+                    .field("Sealed", FieldKind.BOOLEAN)
                     .dateField("Released", d -> d.format("dd.MM.yyyy"))
                     .group("Grading", g -> g.field("Grade", FieldKind.NUMBER).field("Score", FieldKind.NUMBER))
+                    .group("Specs", g -> g.field("Label", FieldKind.STRING).field("Depth", FieldKind.NUMBER))
                     .group("Hollow", g -> { })
                     .group("Lapses", g -> g.repeatable(3))
                     .group("Keyed", g -> g.repeatable(5).indexField("Key").field("Key", FieldKind.STRING)
@@ -64,6 +66,9 @@ class EntityListOperandReadLawsTest {
 
     /** An operand A12 refuses while reading it → the class it reports. */
     private static final Map<String, String> UNREADABLE = unreadable();
+
+    /** The unreadable operands whose failure the MODEL shows: a group's expansion, not an index's resolution. */
+    private static final Set<String> EMPTY_GROUPS = Set.of("Hollow", "/Other");
 
     private static Map<String, String> unreadable() {
         Map<String, String> operands = new LinkedHashMap<>();
@@ -96,7 +101,7 @@ class EntityListOperandReadLawsTest {
         }
 
         String condition() {
-            return carrier.replace("@date", "") + "(" + list + ")" + comparand();
+            return carrier.replace("@date", "").replace("@groups", "") + "(" + list + ")" + comparand();
         }
 
         private String comparand() {
@@ -114,46 +119,66 @@ class EntityListOperandReadLawsTest {
         List<Row> rows = new ArrayList<>();
         for (String carrier : NUMERIC_CARRIERS) {
             UNREADABLE.forEach((operand, read) -> {
-                rows.add(new Row(carrier, operand + ", Weight, Weight", read, UNCODED));
-                rows.add(new Row(carrier, "Weight, Weight, " + operand, read, UNCODED));
-                rows.add(new Row(carrier, "Title, " + operand, read,
-                        TITLE_LED_ADMITTED.get(carrier).contains(operand) ? ADMITTED : UNCODED));
+                // the model-bound factories read a group's expansion first and cite it; an index they cannot
+                // resolve, so behind one they answer as the records do
+                boolean shown = EMPTY_GROUPS.contains(operand);
+                String titleLed = TITLE_LED_ADMITTED.get(carrier).contains(operand) ? ADMITTED : UNCODED;
+                rows.add(new Row(carrier, operand + ", Weight, Weight", read, UNCODED, shown ? read : UNCODED));
+                rows.add(new Row(carrier, "Weight, Weight, " + operand, read, UNCODED, shown ? read : UNCODED));
+                rows.add(new Row(carrier, "Title, " + operand, read, titleLed, shown ? read : titleLed));
             });
-            // operands that read cleanly: the list gates answer, and rulekit, unable to tell, withholds
-            rows.add(new Row(carrier, "Keyed/Amount For \"k\", Weight, Weight", DUPLICATE, UNCODED));
-            rows.add(new Row(carrier, "Grading, Weight, Weight", DUPLICATE, UNCODED));
+            // operands that read cleanly: the list gates answer; a record, unable to tell, withholds, and the
+            // model-bound factory cites once it has read that every group holds a field
+            rows.add(new Row(carrier, "Keyed/Amount For \"k\", Weight, Weight", DUPLICATE, UNCODED, UNCODED));
+            rows.add(new Row(carrier, "Grading, Weight, Weight", DUPLICATE, UNCODED, DUPLICATE));
             // a list of fields reads nothing that can fail, and keeps its class
-            rows.add(new Row(carrier, "Weight, Weight, Title", DUPLICATE, DUPLICATE));
+            rows.add(new Row(carrier, "Weight, Weight, Title", DUPLICATE, DUPLICATE, DUPLICATE));
         }
-        rows.add(new Row("Sum", "Title, Weight", "MVK_NO_NUMBER", "MVK_NO_NUMBER"));
-        rows.add(new Row("MaxValue", "Title, Weight", "MVK_NOT_SORTABLE", "MVK_NOT_SORTABLE"));
+        rows.add(new Row("Sum", "Title, Weight", "MVK_NO_NUMBER", "MVK_NO_NUMBER", "MVK_NO_NUMBER"));
+        rows.add(new Row("MaxValue", "Title, Weight", "MVK_NOT_SORTABLE", "MVK_NOT_SORTABLE", "MVK_NOT_SORTABLE"));
         rows.add(new Row("NumberOfDifferentValues", "Title, Weight", "MVK_STRING_ENUM_AND_NON_STRING_ENUM",
-                "MVK_STRING_ENUM_AND_NON_STRING_ENUM"));
+                "MVK_STRING_ENUM_AND_NON_STRING_ENUM", "MVK_STRING_ENUM_AND_NON_STRING_ENUM"));
+
+        // beside a group that holds a field, the model-bound factories ask the records' list gates coded: the
+        // kind, root and param classes too, not only the duplicate one above
+        rows.add(new Row("Sum", "Grading, Title", "MVK_NO_NUMBER", UNCODED, "MVK_NO_NUMBER"));
+        rows.add(new Row("MaxValue", "Title, Grading", "MVK_NOT_SORTABLE", UNCODED, "MVK_NOT_SORTABLE"));
+        rows.add(new Row("Sum", "/Item", "MVK_ROOT_GROUP_REFERENCED", UNCODED, "MVK_ROOT_GROUP_REFERENCED"));
+        rows.add(new Row("NumberOfFilledFields@groups", "/Item", "MVK_ROOT_GROUP_REFERENCED", UNCODED,
+                "MVK_ROOT_GROUP_REFERENCED"));
+        rows.add(new Row("NumberOfDifferentValues", "Title, Grading, Weight", "MVK_STRING_ENUM_AND_NON_STRING_ENUM",
+                UNCODED, "MVK_STRING_ENUM_AND_NON_STRING_ENUM"));
+        rows.add(new Row("NumberOfDifferentValues", "Weight, Grading, Title", "MVK_NUMBER_AND_NON_NUMBER", UNCODED,
+                "MVK_NUMBER_AND_NON_NUMBER"));
+        rows.add(new Row("NumberOfDifferentValues", "Sealed, Grading", "MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED",
+                UNCODED, "MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED"));
+        // …and no further: a group LEADER hides the route, and a mismatch inside a group's expansion, which A12
+        // asks under the leader's class, is not asked here (DEV-API-GAPS DG73), so both stay with the kernel
+        rows.add(new Row("MaxValue", "Grading, Title", "MVK_NOT_SORTABLE", UNCODED, UNCODED));
+        rows.add(new Row("Sum", "Weight, Specs", "MVK_NO_NUMBER", ADMITTED, ADMITTED));
+        rows.add(new Row("NumberOfDifferentValues", "Weight, Specs", "MVK_NUMBER_AND_NON_NUMBER", ADMITTED,
+                ADMITTED));
 
         // the FIRST unreadable operand in list order answers
-        rows.add(new Row("Sum", "Hollow, /Other", "MVK_GROUP_IS_EMPTY", UNCODED));
-        rows.add(new Row("Sum", "/Other, Hollow", "MVK_ROOT_GROUP_IS_EMPTY", UNCODED));
-        rows.add(new Row("Sum", "Keyed/Amount For \"\", Hollow", "MVK_INDEX_VALUE_INVALID", ADMITTED));
-        rows.add(new Row("Sum", "Hollow, Keyed/Amount For \"\"", "MVK_GROUP_IS_EMPTY", ADMITTED));
-        rows.add(new Row("Sum", "/Item, Hollow", "MVK_GROUP_IS_EMPTY", UNCODED));
-
-        // the model-bound factories see a group's expansion: they cite its emptiness, and keep a list gate's
-        // class once every group is known to hold a field
-        rows.add(new Row("NumberOfDifferentValues", "Hollow, Weight, Weight", "MVK_GROUP_IS_EMPTY", UNCODED,
+        rows.add(new Row("Sum", "Hollow, /Other", "MVK_GROUP_IS_EMPTY", UNCODED, "MVK_GROUP_IS_EMPTY"));
+        rows.add(new Row("Sum", "/Other, Hollow", "MVK_ROOT_GROUP_IS_EMPTY", UNCODED, "MVK_ROOT_GROUP_IS_EMPTY"));
+        rows.add(new Row("Sum", "Keyed/Amount For \"\", Hollow", "MVK_INDEX_VALUE_INVALID", ADMITTED, ADMITTED));
+        rows.add(new Row("Sum", "Hollow, Keyed/Amount For \"\"", "MVK_GROUP_IS_EMPTY", ADMITTED,
                 "MVK_GROUP_IS_EMPTY"));
-        rows.add(new Row("NumberOfDifferentValues", "Weight, Weight, Hollow", "MVK_GROUP_IS_EMPTY", UNCODED,
-                "MVK_GROUP_IS_EMPTY"));
-        rows.add(new Row("NumberOfDifferentValues", "Title, /Other", "MVK_ROOT_GROUP_IS_EMPTY", UNCODED,
-                "MVK_ROOT_GROUP_IS_EMPTY"));
-        rows.add(new Row("NumberOfDifferentValues", "Grading, Weight, Weight", DUPLICATE, UNCODED, DUPLICATE));
+        rows.add(new Row("Sum", "/Item, Hollow", "MVK_GROUP_IS_EMPTY", UNCODED, "MVK_GROUP_IS_EMPTY"));
         rows.add(new Row("NumberOfDifferentValues", "Hollow, Keyed/Amount For \"\"", "MVK_GROUP_IS_EMPTY",
                 ADMITTED, "MVK_GROUP_IS_EMPTY"));
         rows.add(new Row("NumberOfDifferentValues", "Keyed/Amount For \"\", Hollow", "MVK_INDEX_VALUE_INVALID",
                 ADMITTED, ADMITTED));
-        rows.add(new Row("NumberOfDifferentValues", "Keyed/Amount For \"\", Weight, Weight",
-                "MVK_INDEX_VALUE_INVALID", UNCODED, UNCODED));
-        rows.add(new Row("NumberOfDifferentValues", "Keyed/Amount For \"k\", Weight, Weight", DUPLICATE, UNCODED,
-                UNCODED));
+
+        // NumberOfFilledFields over plain groups, the overload the condition-text bridge takes for them
+        rows.add(new Row("NumberOfFilledFields@groups", "Hollow, Grading", "MVK_GROUP_IS_EMPTY", ADMITTED,
+                "MVK_GROUP_IS_EMPTY"));
+        rows.add(new Row("NumberOfFilledFields@groups", "Grading, Grading", DUPLICATE, UNCODED, DUPLICATE));
+        rows.add(new Row("NumberOfFilledFields@groups", "Grading, /Other", "MVK_ROOT_GROUP_IS_EMPTY", UNCODED,
+                "MVK_ROOT_GROUP_IS_EMPTY"));
+
+        // the temporal extrema, through the date factories
         rows.add(new Row("MaxValue@date", "Released, Weight, Lapses*", "MVK_GROUP_IS_EMPTY", UNCODED,
                 "MVK_GROUP_IS_EMPTY"));
         rows.add(new Row("MaxValue@date", "Lapses*, Released, Released", "MVK_GROUP_IS_EMPTY", UNCODED,
@@ -167,18 +192,26 @@ class EntityListOperandReadLawsTest {
         rows.add(new Row("MaxValue@date", "Released, Released, Keyed*", DUPLICATE, UNCODED, DUPLICATE));
         rows.add(new Row("MaxValue@date", "Released, Released, Title", DUPLICATE, DUPLICATE, DUPLICATE));
 
-        // NumberOfFilledGroups: every operand is a group, so every class it reports is withheld
-        rows.add(new Row("NumberOfFilledGroups", "Hollow, Grading, Grading", "MVK_GROUP_IS_EMPTY", UNCODED));
-        rows.add(new Row("NumberOfFilledGroups", "Grading, Grading, Hollow", "MVK_GROUP_IS_EMPTY", UNCODED));
-        rows.add(new Row("NumberOfFilledGroups", "Hollow", "MVK_GROUP_IS_EMPTY", UNCODED));
-        rows.add(new Row("NumberOfFilledGroups", "Grading, /Other", "MVK_ROOT_GROUP_IS_EMPTY", UNCODED));
-        rows.add(new Row("NumberOfFilledGroups", "Grading, Grading", DUPLICATE, UNCODED));
-        rows.add(new Row("NumberOfFilledGroups", "Grading", "MVK_PARAMSIZE_INVALIDGN", UNCODED));
-        rows.add(new Row("NumberOfFilledGroups", "Grading, /Item", "MVK_DUPLICATE_PARAM2", UNCODED));
-        rows.add(new Row("NumberOfFilledGroups", "Grading, Keyed*", ADMITTED, ADMITTED));
-        // a lone root: whether it holds a field moves the class, so the single-group refusal stays uncoded
-        rows.add(new Row("NumberOfFilledGroups", "/Item", "MVK_PARAMSIZE_INVALIDGN", UNCODED));
-        rows.add(new Row("NumberOfFilledGroups", "/Other", "MVK_ROOT_GROUP_IS_EMPTY", UNCODED));
+        // NumberOfFilledGroups: every operand is a group, so a record withholds every class it reports, and the
+        // model-bound factory, which reads each one, cites them all
+        rows.add(new Row("NumberOfFilledGroups", "Hollow, Grading, Grading", "MVK_GROUP_IS_EMPTY", UNCODED,
+                "MVK_GROUP_IS_EMPTY"));
+        rows.add(new Row("NumberOfFilledGroups", "Grading, Grading, Hollow", "MVK_GROUP_IS_EMPTY", UNCODED,
+                "MVK_GROUP_IS_EMPTY"));
+        rows.add(new Row("NumberOfFilledGroups", "Hollow", "MVK_GROUP_IS_EMPTY", UNCODED, "MVK_GROUP_IS_EMPTY"));
+        rows.add(new Row("NumberOfFilledGroups", "Grading, /Other", "MVK_ROOT_GROUP_IS_EMPTY", UNCODED,
+                "MVK_ROOT_GROUP_IS_EMPTY"));
+        rows.add(new Row("NumberOfFilledGroups", "Grading, Grading", DUPLICATE, UNCODED, DUPLICATE));
+        rows.add(new Row("NumberOfFilledGroups", "Grading", "MVK_PARAMSIZE_INVALIDGN", UNCODED,
+                "MVK_PARAMSIZE_INVALIDGN"));
+        rows.add(new Row("NumberOfFilledGroups", "Grading, /Item", "MVK_DUPLICATE_PARAM2", UNCODED,
+                "MVK_DUPLICATE_PARAM2"));
+        rows.add(new Row("NumberOfFilledGroups", "Grading, Keyed*", ADMITTED, ADMITTED, ADMITTED));
+        // a lone root: whether it holds a field moves the class, which only the model shows
+        rows.add(new Row("NumberOfFilledGroups", "/Item", "MVK_PARAMSIZE_INVALIDGN", UNCODED,
+                "MVK_PARAMSIZE_INVALIDGN"));
+        rows.add(new Row("NumberOfFilledGroups", "/Other", "MVK_ROOT_GROUP_IS_EMPTY", UNCODED,
+                "MVK_ROOT_GROUP_IS_EMPTY"));
         return rows;
     }
 
@@ -238,11 +271,16 @@ class EntityListOperandReadLawsTest {
 
     private static io.github.mbackschat.a12.dm.rulekit.dsl.Condition dsl(Row row) {
         if (row.carrier().equals("NumberOfFilledGroups")) {
-            List<GroupRef> groups = Arrays.stream(row.list().split(", ")).map(EntityListOperandReadLawsTest::group)
-                    .toList();
-            return (groups.size() == 1 ? Dsl.numberOfFilledGroups(groups.getFirst())
-                    : Dsl.numberOfFilledGroups(groups.get(0), groups.get(1),
-                            groups.subList(2, groups.size()).toArray(GroupRef[]::new))).gt(0);
+            List<GroupRef> groups = groups(row.list());
+            GroupRef first = groups.getFirst();
+            if (groups.size() == 1) {
+                return (isRoot(first) ? Dsl.numberOfFilledRootGroups(first) : Dsl.numberOfFilledGroups(first)).gt(0);
+            }
+            return Dsl.numberOfFilledGroups(first, groups.get(1), restOf(groups, 2)).gt(0);
+        }
+        if (row.carrier().equals("NumberOfFilledFields@groups")) {
+            List<GroupRef> groups = groups(row.list());
+            return Dsl.numberOfFilledFields(groups.getFirst(), restOf(groups, 1)).gt(0);
         }
         List<AggregateOperand> ops = operands(row.list());
         AggregateOperand first = ops.getFirst();
@@ -260,10 +298,27 @@ class EntityListOperandReadLawsTest {
     }
 
     private static io.github.mbackschat.a12.dm.rulekit.dsl.Condition bound(Row row) {
+        if (row.carrier().equals("NumberOfFilledGroups")) {
+            List<GroupRef> groups = groups(row.list());
+            GroupRef first = groups.getFirst();
+            if (groups.size() == 1) {
+                return (isRoot(first) ? M.numberOfFilledRootGroups(first) : M.numberOfFilledGroups(first)).gt(0);
+            }
+            return M.numberOfFilledGroups(first, groups.get(1), restOf(groups, 2)).gt(0);
+        }
+        if (row.carrier().equals("NumberOfFilledFields@groups")) {
+            List<GroupRef> groups = groups(row.list());
+            return M.numberOfFilledFields(groups.getFirst(), restOf(groups, 1)).gt(0);
+        }
         List<AggregateOperand> ops = operands(row.list());
         AggregateOperand first = ops.getFirst();
         AggregateOperand[] rest = ops.subList(1, ops.size()).toArray(AggregateOperand[]::new);
         return switch (row.carrier()) {
+            case "Sum" -> M.sum(first, rest).gt(0);
+            case "MaxValue" -> M.maxValue(first, rest).gt(0);
+            case "MinValue" -> M.minValue(first, rest).gt(0);
+            case "NumberOfFilledFields" -> M.numberOfFilledFields(first, ops.get(1),
+                    ops.subList(2, ops.size()).toArray(AggregateOperand[]::new)).gt(0);
             case "NumberOfDifferentValues" -> M.numberOfDifferentValues(first, rest).gt(0);
             case "MaxValue@date" -> M.latestOf(first, rest).after(M.date("/Item/Released"));
             case "MinValue@date" -> M.earliestOf(first, rest).before(M.date("/Item/Released"));
@@ -292,8 +347,18 @@ class EntityListOperandReadLawsTest {
                 : new SemanticIndexFieldValue(M.field(path), M.field("/Item/" + key));
     }
 
-    private static GroupRef group(String token) {
-        return M.group((token.startsWith("/") ? token : "/Item/" + token).replace("*", ""));
+    private static List<GroupRef> groups(String list) {
+        return Arrays.stream(list.split(", "))
+                .map(token -> M.group((token.startsWith("/") ? token : "/Item/" + token).replace("*", "")))
+                .toList();
+    }
+
+    private static GroupRef[] restOf(List<GroupRef> groups, int from) {
+        return groups.subList(from, groups.size()).toArray(GroupRef[]::new);
+    }
+
+    private static boolean isRoot(GroupRef group) {
+        return group.path().value().lastIndexOf('/') == 0;
     }
 
     private static Map<String, String> column(Function<Row, String> column) {

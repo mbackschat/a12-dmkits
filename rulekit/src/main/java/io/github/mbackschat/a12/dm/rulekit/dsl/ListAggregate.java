@@ -54,20 +54,29 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
         // MVK_DUPLICATE_PARAM2 for a group scope beside a field inside it even when that field is the wrong
         // kind, and reporting the kind error there would disagree with it on input both refuse.
         try {
-            EntityListRoute.requireShape(op.operatorId(), operands);
-            for (AggregateOperand o : operands) {
-                switch (o) {
-                    case FieldOperand f -> requireNumber(op, operands, f);
-                    // A group carries no kind of its own: the rule applies to the fields the kernel EXPANDS it
-                    // to, whose extent recurses into nested subgroups. Delegated rather than re-implemented —
-                    // see AggregateOperand. An index-selected group is the same shape (still no kind of its
-                    // own — the index only picks WHICH repetition, not what it expands to).
-                    case GroupListRef ignored -> { }
-                    case IndexedGroupValue ignored -> { }
-                }
-            }
+            requireList(op, operands);
         } catch (KernelCodeRefusal refusal) {
             throw EntityListRoute.cited(refusal, operands);
+        }
+    }
+
+    /**
+     * The list gates, with their classes as A12 would report them once every operand has been read: the
+     * constructor withholds them where a read may answer first, and {@link BoundModel#sum} asks them after its
+     * own read.
+     */
+    static void requireList(AggOp op, List<AggregateOperand> operands) {
+        EntityListRoute.requireShape(op.operatorId(), operands);
+        for (AggregateOperand o : operands) {
+            switch (o) {
+                case FieldOperand f -> requireNumber(op, operands, f);
+                // A group carries no kind of its own: the rule applies to the fields the kernel EXPANDS it
+                // to, whose extent recurses into nested subgroups. Delegated rather than re-implemented —
+                // see AggregateOperand. An index-selected group is the same shape (still no kind of its
+                // own — the index only picks WHICH repetition, not what it expands to).
+                case GroupListRef ignored -> { }
+                case IndexedGroupValue ignored -> { }
+            }
         }
     }
 

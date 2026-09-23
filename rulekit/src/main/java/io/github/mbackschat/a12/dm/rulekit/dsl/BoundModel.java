@@ -788,10 +788,11 @@ public final class BoundModel {
     // --- The entity-list aggregates, checked ------------------------------------------------------------
     //
     // These live here rather than on `Dsl` because their admissibility is CONTEXTUAL: the kernel gates them
-    // on the operands' declared component sets and date precision, which the operands themselves do not
-    // carry. `Dsl` constructs from resolved operands and stays model-free, which is what the inbound
-    // converters need — reconstructing a kernel-accepted condition must never refuse. This is the authoring
-    // layer, so it is the one that checks. (PROJECT-DESIGN: rulekit is model-bound at its core.)
+    // on the operands' declared component sets and date precision, and reads each group operand's expansion
+    // ahead of every list gate (KERNEL-FINDINGS KF458), none of which the operands themselves carry. `Dsl`
+    // constructs from resolved operands and stays model-free, which is what the inbound converters need —
+    // reconstructing a kernel-accepted condition must never refuse. This is the authoring layer, so it is the
+    // one that checks. (PROJECT-DESIGN: rulekit is model-bound at its core.)
     //
     // Operand-taking rather than path-taking, unlike most of this class: an index-selected cell is a legal
     // operand and has no path spelling.
@@ -834,8 +835,95 @@ public final class BoundModel {
 
     /** {@code NumberOfDifferentValues(…)}, checked against this model. catalog:NumberOfDifferentValues */
     public NumberExpr numberOfDifferentValues(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireComparableTemporalList("NumberOfDifferentValues", this, first, rest);
+        Dsl.requireDifferentValuesList(this, first, rest);
         return Dsl.numberOfDifferentValues(first, rest);
+    }
+
+    /**
+     * {@code Sum(…)}, checked against this model. The {@link Dsl#sum} record withholds every class it would
+     * cite on a list holding a group, because A12 reads each group's expansion first and answers an empty one
+     * ahead of every list gate (KERNEL-FINDINGS KF458). This model reads that expansion, so it cites the
+     * empty-group classes, and the list gates' own once every group holds a field. Behind a semantic index it
+     * withholds as the record does: whether a key resolves is not read here. catalog:Sum
+     */
+    public NumberExpr sum(AggregateOperand first, AggregateOperand... rest) {
+        List<AggregateOperand> operands = listOf(first, rest);
+        Dsl.readOperandsThen("Sum", this, operands,
+                () -> ListAggregate.requireList(ListAggregate.AggOp.SUM, operands));
+        return Dsl.sum(first, rest);
+    }
+
+    /** {@code MaxValue(…)} over numbers, checked against this model as {@link #sum} is. catalog:MaxValue */
+    public NumberExpr maxValue(AggregateOperand first, AggregateOperand... rest) {
+        List<AggregateOperand> operands = listOf(first, rest);
+        Dsl.readOperandsThen("MaxValue", this, operands,
+                () -> ListAggregate.requireList(ListAggregate.AggOp.MAX_VALUE, operands));
+        return Dsl.maxValue(first, rest);
+    }
+
+    /** {@code MinValue(…)} over numbers, checked against this model as {@link #sum} is. catalog:MinValue */
+    public NumberExpr minValue(AggregateOperand first, AggregateOperand... rest) {
+        List<AggregateOperand> operands = listOf(first, rest);
+        Dsl.readOperandsThen("MinValue", this, operands,
+                () -> ListAggregate.requireList(ListAggregate.AggOp.MIN_VALUE, operands));
+        return Dsl.minValue(first, rest);
+    }
+
+    /** {@code NumberOfFilledFields(…)}, checked against this model as {@link #sum} is. catalog:NumberOfFilledFields */
+    public NumberExpr numberOfFilledFields(AggregateOperand first, AggregateOperand second, AggregateOperand... rest) {
+        List<AggregateOperand> operands = listOf(first, second, rest);
+        Dsl.readOperandsThen("NumberOfFilledFields", this, operands,
+                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_FIELDS, operands, List.of()));
+        return Dsl.numberOfFilledFields(first, second, rest);
+    }
+
+    /** {@code NumberOfFilledFields(group, …)}, checked against this model as {@link #sum} is. */
+    public NumberExpr numberOfFilledFields(GroupRef first, GroupRef... rest) {
+        List<GroupRef> groups = listOf(first, rest);
+        Dsl.readOperandsThen("NumberOfFilledFields", this, CountAggregate.allOperands(List.of(), groups),
+                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_FIELDS, List.of(), groups));
+        return Dsl.numberOfFilledFields(first, rest);
+    }
+
+    /** {@code NumberOfFilledGroups(g1, g2, …)}, checked against this model as {@link #sum} is. */
+    public NumberExpr numberOfFilledGroups(GroupRef first, GroupRef second, GroupRef... rest) {
+        List<GroupRef> groups = listOf(first, second, rest);
+        Dsl.readOperandsThen("NumberOfFilledGroups", this, CountAggregate.allOperands(List.of(), groups),
+                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, List.of(), groups));
+        return Dsl.numberOfFilledGroups(first, second, rest);
+    }
+
+    /**
+     * {@code NumberOfFilledGroups(group*)}, checked against this model. A lone group that does not repeat is
+     * {@code MVK_PARAMSIZE_INVALIDGN} when it holds a field and {@code MVK_GROUP_IS_EMPTY} when it does not,
+     * which is why only a model-bound factory can cite either (KERNEL-FINDINGS KF458). catalog:NumberOfFilledGroups
+     */
+    public NumberExpr numberOfFilledGroups(GroupRef repeatableGroup) {
+        List<GroupRef> groups = List.of(repeatableGroup);
+        Dsl.readOperandsThen("NumberOfFilledGroups", this, CountAggregate.allOperands(List.of(), groups),
+                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, List.of(), groups));
+        return Dsl.numberOfFilledGroups(repeatableGroup);
+    }
+
+    /** {@code NumberOfFilledGroups(/Root*)}, checked against this model as the lone-group form above is. */
+    public NumberExpr numberOfFilledRootGroups(GroupRef rootGroup) {
+        Dsl.readOperandsThen("NumberOfFilledGroups", this, CountAggregate.allOperands(List.of(), List.of(rootGroup)),
+                () -> RootGroupCount.requireRepeatable(rootGroup));
+        return Dsl.numberOfFilledRootGroups(rootGroup);
+    }
+
+    @SafeVarargs
+    private static <T> List<T> listOf(T first, T... rest) {
+        var all = new ArrayList<T>();
+        all.add(first);
+        all.addAll(List.of(rest));
+        return List.copyOf(all);
+    }
+
+    private static <T> List<T> listOf(T first, T second, T[] rest) {
+        var all = new ArrayList<T>(List.of(first, second));
+        all.addAll(List.of(rest));
+        return List.copyOf(all);
     }
 
     // --- Date-range comparability, checked --------------------------------------------------------------

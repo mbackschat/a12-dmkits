@@ -48,7 +48,12 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
         }
     }
 
-    private static void requireList(CountOp op, List<AggregateOperand> fields, List<GroupRef> groups) {
+    /**
+     * The list gates, with their classes as A12 would report them once every operand has been read: the
+     * constructor withholds them where a read may answer first, and {@link BoundModel}'s count factories ask
+     * them after their own read.
+     */
+    static void requireList(CountOp op, List<AggregateOperand> fields, List<GroupRef> groups) {
         // Ahead of the arity and kind gates, matching the kernel: its routine for this operator
         // answers a duplicate before the param-size, fields-allowed and comparability bars, so our
         // order reported those instead on input both sides refuse.
@@ -96,9 +101,10 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
      * Both lists as ONE list of operands, because the kernel's own {@code getRefList} sees one: a field in
      * this record's field list and its containing group in the group list are an overlap, and checking the
      * two lists separately would miss the pair. No factory populates both — each passes an empty list for
-     * the other — but the canonical constructor is public and the read path uses it.
+     * the other — but the canonical constructor is public and the read path uses it. It is also the order in
+     * which A12 reads them.
      */
-    private static List<AggregateOperand> allOperands(List<AggregateOperand> fields, List<GroupRef> groups) {
+    static List<AggregateOperand> allOperands(List<AggregateOperand> fields, List<GroupRef> groups) {
         var all = new java.util.ArrayList<AggregateOperand>(fields);
         all.addAll(groupOperands(groups));
         return all;

@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.docsnippets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -8,6 +10,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -334,6 +338,28 @@ class NewShapesSnippetsTest {
         assertEquals("FieldsNotCollectivelyFilled(/Order/ShippingAddress, /Order/Quantity)",
                 new DslRenderer().render(partiallyFilled));
         assertKernelAccepts(partiallyFilled, "../Quantity");
+    }
+
+    @Test
+    void modelBoundEntityListSnippet() {
+        // tag::model-bound-entity-list[]
+        // Through the MODEL, an entity-list aggregate reads each group operand's expansion first, as A12
+        // does, so a refusal can name A12's own class on a list that holds a group. Dsl's twin cannot see
+        // the expansion, so it refuses the same input with the class left unnamed.
+        NumberExpr filledParts = m.numberOfFilledFields(m.flattenGroup("/Order/ShippingAddress"),
+                m.field("/Order/Quantity"));
+        // One non-repeatable group is too few to count: MVK_PARAMSIZE_INVALIDGN, named because the model
+        // shows the group holds a field. An empty group would have answered MVK_GROUP_IS_EMPTY first.
+        KernelCodeRefusal tooFew = assertThrows(KernelCodeRefusal.class,
+                () -> m.numberOfFilledGroups(m.group("/Order/ShippingAddress")));
+        // end::model-bound-entity-list[]
+        assertEquals("NumberOfFilledFields(/Order/ShippingAddress, /Order/Quantity) > 1",
+                new DslRenderer().render(filledParts.gt(1)));
+        assertKernelAccepts(filledParts.gt(1), "../Quantity");
+        assertEquals(KernelCode.MVK_PARAMSIZE_INVALIDGN, tooFew.code());
+        assertFalse(assertThrows(IllegalArgumentException.class,
+                () -> Dsl.numberOfFilledGroups(m.group("/Order/ShippingAddress"))) instanceof KernelCodeRefusal,
+                "the Dsl twin must leave the class unnamed, or the snippet's contrast is false");
     }
 
     @Test

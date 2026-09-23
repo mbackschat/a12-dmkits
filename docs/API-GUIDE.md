@@ -414,6 +414,21 @@ Condition partiallyFilled = Dsl.entityListPredicate(Quantifier.FIELDS_NOT_COLLEC
 
 Reach for it when a list genuinely mixes; the two homogeneous families stay the ergonomic choice otherwise. It also matters on the way IN: `KernelAdapter.read` needs it to represent a mixed list the kernel handed back, and without it the adapter used to rewrite each group into the fields the kernel expands it to — a rewrite that twice lost a `*` and produced a condition the kernel then refused. (Finding 124; `MixedEntityListRoundTripTest`.)
 
+**Author an entity-list aggregate through the model when its list holds a group.** A12 reads every operand before it asks any list gate, and the first operand it cannot read answers: `MVK_GROUP_IS_EMPTY` or `MVK_ROOT_GROUP_IS_EMPTY` for a group that holds no field, an index class for a key that does not resolve ([KF458](KERNEL-FINDINGS.md#kf458)). A `Dsl` factory sees operands, not the model, so on a list holding a group or an index it still refuses what is refused but leaves the class unnamed: a plain `IllegalArgumentException` rather than a `KernelCodeRefusal`. The `BoundModel` twins — `m.sum`, `m.maxValue`, `m.minValue`, `m.numberOfFilledFields`, `m.numberOfFilledGroups` and `m.numberOfFilledRootGroups`, beside `m.latestOf` and its temporal peers and `m.numberOfDifferentValues` — read each group's expansion first and then name A12's class. Behind a semantic index they withhold as `Dsl` does, because whether a key resolves is not read here. On a list of plain fields both routes cite. (`EntityListOperandReadLawsTest`.)
+
+<!-- snippet: model-bound-entity-list -->
+```java
+// Through the MODEL, an entity-list aggregate reads each group operand's expansion first, as A12
+// does, so a refusal can name A12's own class on a list that holds a group. Dsl's twin cannot see
+// the expansion, so it refuses the same input with the class left unnamed.
+NumberExpr filledParts = m.numberOfFilledFields(m.flattenGroup("/Order/ShippingAddress"),
+        m.field("/Order/Quantity"));
+// One non-repeatable group is too few to count: MVK_PARAMSIZE_INVALIDGN, named because the model
+// shows the group holds a field. An empty group would have answered MVK_GROUP_IS_EMPTY first.
+KernelCodeRefusal tooFew = assertThrows(KernelCodeRefusal.class,
+        () -> m.numberOfFilledGroups(m.group("/Order/ShippingAddress")));
+```
+
 **The DATE extrema take a starred group too**, and the shape of that widening is worth a sentence because it differs from the others. `MaxValue`/`MinValue` over date-like values carry a KIND, and a `GroupListRef` has none — a group's kind lives in its expansion, which the kit delegates to the kernel rather than re-deriving the extent. So the aggregate now takes its kind explicitly, from the factory that already names it:
 
 <!-- teaser -->

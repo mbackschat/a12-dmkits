@@ -119,7 +119,7 @@ internal class Functions(private val mapping: Mapping) {
         // `GroupListRef`, which does. Same rendered text either way (DG49).
         if (args.isNotEmpty() && args.all { it is Expr.Field && mapping.isGroup(it.path) && !it.outer }) {
             val groups = args.map { mapping.groupRef(it) }
-            return Dsl.numberOfFilledFields(groups[0], *groups.drop(1).toTypedArray()).expression()
+            return mapping.model().numberOfFilledFields(groups[0], *groups.drop(1).toTypedArray()).expression()
         }
         val operands = aggregateOperands(args)
         // A one-operand call has no Dsl signature to land on, and inventing a second operand here would
@@ -128,7 +128,7 @@ internal class Functions(private val mapping: Mapping) {
         if (operands.size == 1) {
             return CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, operands, listOf())
         }
-        return Dsl.numberOfFilledFields(operands[0], operands[1], *operands.drop(2).toTypedArray())
+        return mapping.model().numberOfFilledFields(operands[0], operands[1], *operands.drop(2).toTypedArray())
             .expression()
     }
 
@@ -140,12 +140,12 @@ internal class Functions(private val mapping: Mapping) {
             // exactly this shape. Picking the node is the bridge's job; the ban is still rulekit's.
             val only = groups[0]
             return if (isRootGroup(only)) {
-                Dsl.numberOfFilledRootGroups(only).expression()
+                mapping.model().numberOfFilledRootGroups(only).expression()
             } else {
-                Dsl.numberOfFilledGroups(only).expression()
+                mapping.model().numberOfFilledGroups(only).expression()
             }
         }
-        return Dsl.numberOfFilledGroups(groups[0], groups[1], *groups.drop(2).toTypedArray()).expression()
+        return mapping.model().numberOfFilledGroups(groups[0], groups[1], *groups.drop(2).toTypedArray()).expression()
     }
 
     /**
@@ -171,7 +171,7 @@ internal class Functions(private val mapping: Mapping) {
             ValueKind.DATE, ValueKind.DATE_FRAGMENT -> mapping.model().latestOf(first, *rest).expression()
             ValueKind.TIME -> mapping.model().latestTimeOf(first, *rest).expression()
             ValueKind.DATE_TIME -> mapping.model().latestDateTimeOf(first, *rest).expression()
-            else -> Dsl.maxValue(first, *rest).expression()
+            else -> mapping.model().maxValue(first, *rest).expression()
         }
     }
 
@@ -184,14 +184,14 @@ internal class Functions(private val mapping: Mapping) {
             ValueKind.DATE, ValueKind.DATE_FRAGMENT -> mapping.model().earliestOf(first, *rest).expression()
             ValueKind.TIME -> mapping.model().earliestTimeOf(first, *rest).expression()
             ValueKind.DATE_TIME -> mapping.model().earliestDateTimeOf(first, *rest).expression()
-            else -> Dsl.minValue(first, *rest).expression()
+            else -> mapping.model().minValue(first, *rest).expression()
         }
     }
 
     /** `Sum(…)` — number operands only, and one factory covers the whole slot (`MVK_NO_NUMBER`). */
     private fun sum(args: List<Expr>): Calculation {
         val operands = aggregateOperands(args)
-        return Dsl.sum(operands[0], *rest(operands)).expression()
+        return mapping.model().sum(operands[0], *rest(operands)).expression()
     }
 
     /**

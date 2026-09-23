@@ -52,6 +52,8 @@ class PromotedGateIsReachedGuardTest {
             "flatten", "flattenGroup", "firstFilledGroup", "firstFilledGroupFor",
             "latestOf", "earliestOf", "latestTimeOf", "earliestTimeOf",
             "latestDateTimeOf", "earliestDateTimeOf", "numberOfDifferentValues",
+            "sum", "maxValue", "minValue", "numberOfFilledFields", "numberOfFilledGroups",
+            "numberOfFilledRootGroups",
             "rangesEqual", "rangesNotEqual", "dateRangeOf", "dateOf",
             "valueAsDateFirstDay", "valueAsDateLastDay");
 

@@ -271,9 +271,36 @@ public final class Dsl {
         var operands = new ArrayList<AggregateOperand>();
         operands.add(first);
         operands.addAll(List.of(rest));
-        // A12 reads every operand before any list gate, and the first it cannot read answers
-        // (validate.laws.EntityListOperandReadLawsTest). A group's emptiness is the model's to show; an index's
-        // resolution is not, so behind one the classes below are withheld, as the records withhold them.
+        readOperandsThen(operatorId, model, operands, () -> walkTemporalList(operatorId, model, operands));
+    }
+
+    /**
+     * The walk above for {@code NumberOfDifferentValues}, then the record's own kind gate, asked coded. Off the
+     * date-like route the walk asks nothing, and behind a visible textual or numeric leader every mismatch is
+     * the leader's class wherever it stands ({@code validate.laws.NumberOfDifferentValuesOperandClassLawsTest}),
+     * so once the groups are read the record's class is A12's. Behind a date-like leader the record never cites.
+     */
+    static void requireDifferentValuesList(BoundModel model, AggregateOperand first, AggregateOperand... rest) {
+        var operands = new ArrayList<AggregateOperand>();
+        operands.add(first);
+        operands.addAll(List.of(rest));
+        String operatorId = CountAggregate.CountOp.DIFFERENT_VALUES.operatorId();
+        readOperandsThen(operatorId, model, operands, () -> {
+            walkTemporalList(operatorId, model, operands);
+            CountAggregate.requireList(CountAggregate.CountOp.DIFFERENT_VALUES, operands, List.of());
+        });
+    }
+
+    /**
+     * Reads each entity-list operand as A12 does, then asks {@code gates} with their classes intact.
+     *
+     * <p>A12 reads every operand before any list gate, and the first it cannot read answers
+     * ({@code validate.laws.EntityListOperandReadLawsTest}). A group's emptiness is the model's to show, so an
+     * empty group is cited here, a root as its own class. An index's resolution is not, so from the first index
+     * on nothing further is read and every class {@code gates} raises is withheld, as the records withhold it.
+     */
+    static void readOperandsThen(String operatorId, BoundModel model, List<? extends AggregateOperand> operands,
+            Runnable gates) {
         boolean indexed = false;
         for (AggregateOperand operand : operands) {
             if (operand instanceof IndexedFieldValue || operand instanceof IndexedGroupValue) {
@@ -287,7 +314,7 @@ public final class Dsl {
             }
         }
         try {
-            walkTemporalList(operatorId, model, operands);
+            gates.run();
         } catch (KernelCodeRefusal refusal) {
             throw indexed ? refusal.withheld() : refusal;
         }
