@@ -8043,8 +8043,10 @@ Reported by the portable checker (`CheckFamily.TEMPORAL_AGGREGATE_OPERANDS`), wh
 | `NumberOfDifferentValues(Label, ApproxDay)` | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` |
 | `MaxValue(DatedBatches*, Weight)` — a group of dates leading | `MVK_DATE_AND_NONDATE` |
 | `NumberOfDifferentValues(Batches*, Label, Released)` — a group of numbers leading | `MVK_NUMBER_AND_NON_NUMBER` |
+| `MaxValue(OpensAt, ClosesAt)` — a TIME leader whose stored declaration has NO format, beside `HH:mm:ss` | admitted |
+| `MaxValue(OpensAt, Released, Weight)` — the same leader, then a DATE, then a number | `MVK_DATEFORMATS_NOT_COMPATIBLE` |
 
-So duplicates and the param law come first, the precision question is part of the per-operand walk rather than a pass ahead of it, and a list whose leader is not date-like is never asked about precision at all. A group leader types the list by its expansion's first field. A client that sees only kinds therefore cannot cite this walk's classes, because an earlier operand's precision or component set may answer first. What it can cite is the non-date route's class, since that route's one class answers for whichever operand fails. *Locked, with rulekit's model-free and model-bound citations held to each row:* `rulekit.validate.laws.EntityListLeaderRouteLawsTest`.
+So duplicates and the param law come first, the precision question is part of the per-operand walk rather than a pass ahead of it, and a list whose leader is not date-like is never asked about precision at all. A group leader types the list by its expansion's first field. A TIME field that declares no format is compared as its default `HH:mm:ss`, so a missing declaration is not a missing component set. That is measured for TIME only, and it is why rulekit's walk still stops at an undeclared format rather than assuming the default. A client that sees only kinds therefore cannot cite this walk's classes, because an earlier operand's precision or component set may answer first. What it can cite is the non-date route's class, since that route's one class answers for whichever operand fails. *Locked, with rulekit's model-free and model-bound citations held to each row:* `rulekit.validate.laws.EntityListLeaderRouteLawsTest`.
 
 *Locked by:* `rulekit.validate.laws.DateAggregateBaseTypeGateLawsTest`, mirrored by `consistency.TemporalAggregateOperandsTest`.
 

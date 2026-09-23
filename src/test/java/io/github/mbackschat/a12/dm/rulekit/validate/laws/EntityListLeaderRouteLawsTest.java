@@ -12,6 +12,12 @@ import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -52,7 +58,6 @@ class EntityListLeaderRouteLawsTest {
                 g.dateField("CoverFrom", f -> f.format("yyyy-MM"));
                 g.dateField("ApproxDay", f -> f.format("dd.MM.yyyy").datePrecision(DatePrecision.DAY_OPTIONAL));
                 g.field("Discontinued", FieldKind.BOOLEAN);
-                // No declared format, so the walk must reach the next operand's type without a witness set.
                 g.timeField("OpensAt", f -> { });
                 g.timeField("ClosesAt", f -> { });
                 g.group("Batches", b -> b.repeatable(5)
@@ -64,6 +69,18 @@ class EntityListLeaderRouteLawsTest {
             }).build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(MODEL);
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /**
+     * The same model with {@code OpensAt}'s format key removed. The draft writes a time field's default format
+     * when it declares none, so a stored model is the only way to reach a declaration without one, and A12 loads
+     * it ([KF426]).
+     */
+    private static final String FORMATLESS = withoutFormat(MODEL, "OpensAt");
+
+    private static final BoundModel M_FORMATLESS = BoundModel.ofJson(FORMATLESS);
+
 
     private static final String ADMITTED = "ADMITTED";
     private static final String UNCODED = "uncoded";
@@ -120,6 +137,16 @@ class EntityListLeaderRouteLawsTest {
             new Row("MinValue: Released, Weight", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
             new Row("MaxValue time: OpensAt, Weight", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
             new Row("MaxValue time: OpensAt, ClosesAt", ADMITTED, ADMITTED, ADMITTED));
+
+    /**
+     * A leader declaring no format: the walk has no witness set, yet A12 asks the next operand's type and
+     * precision before any comparison, so those two classes stay citable.
+     */
+    private static final List<Row> FORMATLESS_LEADER = List.of(
+            new Row("OpensAt, Weight", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
+            new Row("OpensAt, ClosesAt", ADMITTED, ADMITTED, ADMITTED),
+            // With no witness set the walk cannot ask Released's component set, which A12 asks first.
+            new Row("OpensAt, Released, Weight", FORMATS, UNCODED, UNCODED));
 
     /** {@code NumberOfDifferentValues}, whose non-date leaders each select a class of their own. */
     private static final List<Row> DISTINCT = List.of(
@@ -188,6 +215,23 @@ class EntityListLeaderRouteLawsTest {
     }
 
     @Test
+    void aLeaderDeclaringNoFormatStillHasItsNextOperandTyped() {
+        Map<String, String> kernel = new LinkedHashMap<>();
+        Map<String, String> modelFree = new LinkedHashMap<>();
+        Map<String, String> modelBound = new LinkedHashMap<>();
+        for (Row row : FORMATLESS_LEADER) {
+            List<AggregateOperand> ops = operands(M_FORMATLESS, row.list());
+            kernel.put(row.list(), KernelLaws.verdictModel(FORMATLESS, "/Item", "../Title",
+                    "FieldFilled(Title) And MaxValue(" + row.list() + ") == [OpensAt]"));
+            modelFree.put(row.list(), verdict(() -> Dsl.latestTimeOf(ops.getFirst(), rest(ops))));
+            modelBound.put(row.list(), verdict(() -> M_FORMATLESS.latestTimeOf(ops.getFirst(), rest(ops))));
+        }
+        assertEquals(column(FORMATLESS_LEADER, Row::kernel), kernel);
+        assertEquals(column(FORMATLESS_LEADER, Row::modelFree), modelFree);
+        assertEquals(column(FORMATLESS_LEADER, Row::modelBound), modelBound);
+    }
+
+    @Test
     void numberOfDifferentValuesCitesTheLeadersClass() {
         assertEquals(column(DISTINCT, Row::modelFree),
                 answers(DISTINCT, ops -> () -> Dsl.numberOfDifferentValues(ops.getFirst(), rest(ops))));
@@ -206,6 +250,7 @@ class EntityListLeaderRouteLawsTest {
         all.addAll(NUMERIC_MAX);
         all.addAll(DATE_MAX);
         all.addAll(OTHER_EXTREMA);
+        all.addAll(FORMATLESS_LEADER);
         all.addAll(DISTINCT);
         for (Row row : all) {
             for (String client : new String[] {row.modelFree(), row.modelBound()}) {
@@ -260,11 +305,37 @@ class EntityListLeaderRouteLawsTest {
     }
 
     private static List<AggregateOperand> operands(String list) {
+        return operands(M, list);
+    }
+
+    private static List<AggregateOperand> operands(BoundModel model, String list) {
         return java.util.Arrays.stream(list.split(", "))
                 .map(name -> name.endsWith("*")
-                        ? (AggregateOperand) M.flattenGroup("/Item/" + name)
-                        : (AggregateOperand) M.field("/Item/" + name))
+                        ? (AggregateOperand) model.flattenGroup("/Item/" + name)
+                        : (AggregateOperand) model.field("/Item/" + name))
                 .toList();
+    }
+
+    private static String withoutFormat(String json, String field) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(json);
+            ArrayNode elements = (ArrayNode) root.at("/content/modelRoot/rootGroups/0/Group/elements");
+            int removed = 0;
+            for (var element : elements) {
+                JsonNode fieldType = element.path("Field").path("fieldType");
+                if (field.equals(element.path("Field").path("name").asText())
+                        || field.equals(element.path("name").asText())) {
+                    ((ObjectNode) fieldType.path(fieldType.path("type").asText())).remove("format");
+                    removed++;
+                }
+            }
+            if (removed != 1) {
+                throw new IllegalStateException("expected one '" + field + "' element, found " + removed);
+            }
+            return MAPPER.writeValueAsString(root);
+        } catch (JsonProcessingException failed) {
+            throw new IllegalStateException(failed);
+        }
     }
 
     private static AggregateOperand[] rest(List<AggregateOperand> operands) {
