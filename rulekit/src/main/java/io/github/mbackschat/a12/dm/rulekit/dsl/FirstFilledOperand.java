@@ -179,14 +179,24 @@ public final class FirstFilledOperand implements DuplicateOperand {
     }
 
     /**
-     * Whether A12's class for the empty-group and group-category shapes is the shape's own. Two things move it,
-     * and the operand is built before the rule that decides either. A repeatable level left unstarred is bound
-     * when the rule iterates it and is a missing star ({@code MVK_NO_WILDCARD}) when it does not, and an index
-     * answers {@code MVK_NO_INDEX_FIELD} first when it resolves to no index field. Neither the {@code $} marker
-     * nor a position inside a filter moves it ({@code validate.laws.FirstFilledOperandShapeLawsTest}).
+     * Whether A12's class for the empty-group and group-category shapes is the shape's own. Three things move it,
+     * and the operand is built before the rule and the filter that decide them. A repeatable level left unstarred
+     * is bound when the rule iterates it and is a missing star ({@code MVK_NO_WILDCARD}) when it does not, an
+     * index answers {@code MVK_NO_INDEX_FIELD} first when it resolves to no index field, and the {@code $} marker
+     * is {@code MVK_INVALID_OUTER_ITERATION} outside a filter, though not inside one
+     * ({@code validate.laws.FirstFilledOperandShapeLawsTest}).
      */
     private boolean groupClassIsFixed() {
-        return !unstarredRepetition && semanticIndex == null;
+        return !unstarredRepetition && semanticIndex == null && !outer;
+    }
+
+    /**
+     * Whether A12's read of this operand may answer ahead of the list gates from what the operand cannot settle:
+     * an index's resolution, an unstarred repeatable level, which the rule binds or not, and the {@code $} marker,
+     * which only a filter admits. A plain field's unstarred level is not visible here (DEV-API-GAPS DG75).
+     */
+    boolean readMayAnswerFirst() {
+        return semanticIndex != null || unstarredRepetition || outer;
     }
 
     /** Whether the target is a root group, which the list's root gate refuses once no duplicate answers first. */

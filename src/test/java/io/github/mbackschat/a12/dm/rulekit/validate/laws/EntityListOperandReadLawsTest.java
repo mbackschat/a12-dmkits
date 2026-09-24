@@ -35,8 +35,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
  * <p><b>What rulekit may cite, and why the columns differ.</b> A record sees neither fact: an index handle never
  * sees the model, and a group scope does not carry its expansion. So on a list holding an index or a group,
  * every list gate's class is withheld and the refusal stands ([AF160]); that costs the code on lists whose
- * operands all read cleanly, which the control rows show. A list of fields reads nothing that can fail and
- * keeps its class. The {@link BoundModel} factories see each group's expansion, so they cite the empty
+ * operands all read cleanly, which the control rows show. A list of fields keeps its class; its read can fail
+ * only at the stages {@code EntityListReadStageLawsTest} measures, which no field of this grid reaches. The {@link BoundModel} factories see each group's expansion, so they cite the empty
  * classes themselves, and keep the list gates' classes once every group is known to hold a field; only
  * behind an index do they withhold. {@link #everyCitationIsTheKernelsOwnClass} holds both columns to the
  * kernel's.
@@ -60,6 +60,8 @@ class EntityListOperandReadLawsTest {
                             .field("Amount", FieldKind.NUMBER).dateField("PackedOn", d -> d.format("dd.MM.yyyy"))))
             .rootGroup("Other", o -> o.group("Inner", inner -> { }))
             .rootGroup("Extra", x -> x.field("Code", FieldKind.STRING))
+            .rootGroup("Batch", b -> b.repeatable(3))
+            .rootGroup("Lot", l -> l.repeatable(3).field("Serial", FieldKind.STRING))
             .build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(MODEL);
@@ -98,9 +100,6 @@ class EntityListOperandReadLawsTest {
                     "Keyed/Amount For Weight", "Hollow"));
 
     private record Row(String carrier, String list, String kernel, String dsl, String bound) {
-        Row(String carrier, String list, String kernel, String dsl) {
-            this(carrier, list, kernel, dsl, null);
-        }
 
         String condition() {
             return carrier.replace("@date", "").replace("@groups", "") + "(" + list + ")" + comparand();
@@ -133,11 +132,14 @@ class EntityListOperandReadLawsTest {
             // model-bound factory cites once it has read that every group holds a field
             rows.add(new Row(carrier, "Keyed/Amount For \"k\", Weight, Weight", DUPLICATE, UNCODED, UNCODED));
             rows.add(new Row(carrier, "Grading, Weight, Weight", DUPLICATE, UNCODED, DUPLICATE));
-            // a list of fields reads nothing that can fail, and keeps its class
+            // a list of uncorrelated fields at levels that do not repeat keeps its class
             rows.add(new Row(carrier, "Weight, Weight, Title", DUPLICATE, DUPLICATE, DUPLICATE));
         }
         rows.add(new Row("Sum", "Title, Weight", "MVK_NO_NUMBER", "MVK_NO_NUMBER", "MVK_NO_NUMBER"));
         rows.add(new Row("MaxValue", "Title, Weight", "MVK_NOT_SORTABLE", "MVK_NOT_SORTABLE", "MVK_NOT_SORTABLE"));
+        // the control for the index rows: one that resolves leaves the kind gate to answer, so an index does not
+        // pre-empt that gate by being an index, and withholding behind it costs a code
+        rows.add(new Row("Sum", "Title, Keyed/Amount For \"k\"", "MVK_NO_NUMBER", UNCODED, UNCODED));
         rows.add(new Row("NumberOfDifferentValues", "Title, Weight", "MVK_STRING_ENUM_AND_NON_STRING_ENUM",
                 "MVK_STRING_ENUM_AND_NON_STRING_ENUM", "MVK_STRING_ENUM_AND_NON_STRING_ENUM"));
 
@@ -211,11 +213,13 @@ class EntityListOperandReadLawsTest {
         rows.add(new Row("NumberOfFilledGroups", "Grading, /Item", "MVK_DUPLICATE_PARAM2", UNCODED,
                 "MVK_DUPLICATE_PARAM2"));
         rows.add(new Row("NumberOfFilledGroups", "Grading, Keyed*", ADMITTED, ADMITTED, ADMITTED));
-        // a lone root: whether it holds a field moves the class, which only the model shows
-        rows.add(new Row("NumberOfFilledGroups", "/Item", "MVK_PARAMSIZE_INVALIDGN", UNCODED,
-                "MVK_PARAMSIZE_INVALIDGN"));
-        rows.add(new Row("NumberOfFilledGroups", "/Other", "MVK_ROOT_GROUP_IS_EMPTY", UNCODED,
+        // a lone root renders starred, and a star on a root that does not repeat answers first, whether or not
+        // the root holds a field; a repeatable root that holds none is the empty class, which only the model shows
+        rows.add(new Row("NumberOfFilledGroups", "/Item*", WILDCARD, WILDCARD, WILDCARD));
+        rows.add(new Row("NumberOfFilledGroups", "/Other*", WILDCARD, WILDCARD, WILDCARD));
+        rows.add(new Row("NumberOfFilledGroups", "/Batch*", "MVK_ROOT_GROUP_IS_EMPTY", ADMITTED,
                 "MVK_ROOT_GROUP_IS_EMPTY"));
+        rows.add(new Row("NumberOfFilledGroups", "/Lot*", ADMITTED, ADMITTED, ADMITTED));
         // a root that holds a field, beside a group it does not contain: the group count has a class of its own
         // for that, and the field count the plain one
         rows.add(new Row("NumberOfFilledGroups", "Grading, /Extra", "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS", UNCODED,
@@ -235,6 +239,10 @@ class EntityListOperandReadLawsTest {
         // the comparands and the unreadable operands' neighbours are admitted alone
         assertEquals(ADMITTED, kernel("[Released] == [Released]"));
         assertEquals(ADMITTED, kernel("Sum(Grading, Weight) > 0"));
+        // a lone root written WITHOUT its star, which no typed factory renders: whether it holds a field moves
+        // the class
+        assertEquals("MVK_PARAMSIZE_INVALIDGN", kernel("NumberOfFilledGroups(/Item) > 0"));
+        assertEquals("MVK_ROOT_GROUP_IS_EMPTY", kernel("NumberOfFilledGroups(/Other) > 0"));
     }
 
     @Test
@@ -285,7 +293,7 @@ class EntityListOperandReadLawsTest {
 
     private static io.github.mbackschat.a12.dm.rulekit.dsl.Condition dsl(Row row) {
         if (row.carrier().equals("NumberOfFilledGroups")) {
-            List<GroupRef> groups = groups(row.list());
+            List<GroupRef> groups = groups(row);
             GroupRef first = groups.getFirst();
             if (groups.size() == 1) {
                 return (isRoot(first) ? Dsl.numberOfFilledRootGroups(first) : Dsl.numberOfFilledGroups(first)).gt(0);
@@ -293,7 +301,7 @@ class EntityListOperandReadLawsTest {
             return Dsl.numberOfFilledGroups(first, groups.get(1), restOf(groups, 2)).gt(0);
         }
         if (row.carrier().equals("NumberOfFilledFields@groups")) {
-            List<GroupRef> groups = groups(row.list());
+            List<GroupRef> groups = groups(row);
             return Dsl.numberOfFilledFields(groups.getFirst(), restOf(groups, 1)).gt(0);
         }
         List<AggregateOperand> ops = operands(row.list());
@@ -313,7 +321,7 @@ class EntityListOperandReadLawsTest {
 
     private static io.github.mbackschat.a12.dm.rulekit.dsl.Condition bound(Row row) {
         if (row.carrier().equals("NumberOfFilledGroups")) {
-            List<GroupRef> groups = groups(row.list());
+            List<GroupRef> groups = groups(row);
             GroupRef first = groups.getFirst();
             if (groups.size() == 1) {
                 return (isRoot(first) ? M.numberOfFilledRootGroups(first) : M.numberOfFilledGroups(first)).gt(0);
@@ -321,7 +329,7 @@ class EntityListOperandReadLawsTest {
             return M.numberOfFilledGroups(first, groups.get(1), restOf(groups, 2)).gt(0);
         }
         if (row.carrier().equals("NumberOfFilledFields@groups")) {
-            List<GroupRef> groups = groups(row.list());
+            List<GroupRef> groups = groups(row);
             return M.numberOfFilledFields(groups.getFirst(), restOf(groups, 1)).gt(0);
         }
         List<AggregateOperand> ops = operands(row.list());
@@ -361,10 +369,22 @@ class EntityListOperandReadLawsTest {
                 : new SemanticIndexFieldValue(M.field(path), M.field("/Item/" + key));
     }
 
-    private static List<GroupRef> groups(String list) {
-        return Arrays.stream(list.split(", "))
-                .map(token -> M.group((token.startsWith("/") ? token : "/Item/" + token).replace("*", "")))
-                .toList();
+    /**
+     * The groups of a group-only row. A {@code GroupRef} carries no star, so each token must be written with the
+     * star rulekit renders for it — on a repeatable group, and on the group count's lone root, which the root
+     * count always stars — or the row would measure a text its typed columns never produce.
+     */
+    private static List<GroupRef> groups(Row row) {
+        List<String> tokens = Arrays.asList(row.list().split(", "));
+        boolean rootCount = row.carrier().equals("NumberOfFilledGroups") && tokens.size() == 1;
+        return tokens.stream().map(token -> {
+            GroupRef group = M.group((token.startsWith("/") ? token : "/Item/" + token).replace("*", ""));
+            boolean rendersStarred = group.repeating() || rootCount && isRoot(group);
+            if (token.endsWith("*") != rendersStarred) {
+                throw new IllegalStateException(token + " is not written as rulekit renders it");
+            }
+            return group;
+        }).toList();
     }
 
     private static GroupRef[] restOf(List<GroupRef> groups, int from) {
@@ -405,4 +425,5 @@ class EntityListOperandReadLawsTest {
     private static final String ADMITTED = KernelLaws.ADMITTED;
     private static final String UNCODED = "uncoded";
     private static final String DUPLICATE = "MVK_DUPLICATE_PARAM1";
+    private static final String WILDCARD = "MVK_INVALID_WILDCARD";
 }

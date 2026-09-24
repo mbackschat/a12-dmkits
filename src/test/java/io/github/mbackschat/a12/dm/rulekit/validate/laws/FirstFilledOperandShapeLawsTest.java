@@ -33,7 +33,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * bound by the rule when the rule iterates it and is a missing star ({@code MVK_NO_WILDCARD}) when it does not,
  * so the same operand answers differently on two rules. A semantic index answers {@code MVK_NO_INDEX_FIELD}
  * first when it resolves to no index field, which the operand cannot see. A group with neither keeps its class
- * on every rule context, inside a filter, and under the {@code $} marker, and only there does rulekit cite it.
+ * on every rule context and inside a filter, with or without the {@code $} marker, and only there does rulekit
+ * cite it. Outside a filter the marker is refused first, ahead of every shape but a group's filter.
  * For a field filter the class also depends on whether the rule iterates the level (KF358, KF424).
  */
 class FirstFilledOperandShapeLawsTest {
@@ -179,7 +180,8 @@ class FirstFilledOperandShapeLawsTest {
         for (String group : List.of("/Item/Grading", "/Item/Reviews*", "/Item/Outer*/Graded")) {
             assertCited(NO_GROUPS, () -> m.firstFilledGroup(group).withCategory(gradeBand));
         }
-        assertCited(NO_GROUPS, () -> m.firstFilledGroup("/Item/Grading").outer().withCategory(gradeBand));
+        // the marker keeps a group filter's class, but not a category's (theMarkerOutsideAFilterAnswersAheadOfEveryShapeButAGroupFilter)
+        assertUncoded(() -> m.firstFilledGroup("/Item/Grading").outer().withCategory(gradeBand));
         for (String group : List.of("/Item/Empty", "/Item/Blank*", "/Item/Outer*/Hollow")) {
             assertCited(EMPTY, () -> m.firstFilledGroup(group));
         }
@@ -216,11 +218,30 @@ class FirstFilledOperandShapeLawsTest {
         assertFalse(refusal instanceof KernelCodeRefusal, refusal.getMessage());
     }
 
+    /**
+     * The {@code $} marker OUTSIDE a filter, where A12 refuses it while reading the operand: ahead of the empty
+     * group, the category and the field filter, whose classes it keeps inside one (the rows above), but not ahead
+     * of a group's {@code Having} filter, which keeps its class here too.
+     */
+    @Test
+    void theMarkerOutsideAFilterAnswersAheadOfEveryShapeButAGroupFilter() {
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("FirstFilledValue($Grading -> Band) == \"LOW\"", OUTER);
+        expected.put("FirstFilledValue($Reviews* -> Band) == \"LOW\"", OUTER);
+        expected.put("FirstFilledValue($Empty) == \"x\"", OUTER);
+        expected.put("FirstFilledValue($Title Having [Weight] > 0, Subtitle) == \"x\"", OUTER);
+        expected.put("FirstFilledValue($Grading Having [Weight] > 0, Title) == \"x\"", NO_GROUPS);
+        Map<String, String> actual = new LinkedHashMap<>();
+        expected.keySet().forEach(condition -> actual.put(condition, verdict("Title", condition)));
+        assertEquals(expected, actual);
+    }
+
     private static final String ADMITTED = "admitted";
     private static final String NO_GROUPS = "MVK_NO_GROUPS_ALLOWED";
     private static final String NO_WILDCARD = "MVK_NO_WILDCARD";
     private static final String WILDCARDS = "MVK_WILDCARDS_REQUIRED";
     private static final String EMPTY = "MVK_GROUP_IS_EMPTY";
+    private static final String OUTER = "MVK_INVALID_OUTER_ITERATION";
     private static final String NO_INDEX_FIELD = "MVK_NO_INDEX_FIELD";
 
     /**

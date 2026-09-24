@@ -544,11 +544,26 @@ public final class BoundModel {
     }
 
     /** Whether some level of {@code scope}, the group itself included, repeats but carries no star. */
-    private boolean crossesUnstarredRepetition(GroupListRef scope) {
-        var starred = scope.flattened().stream().map(level -> level.path().value()).toList();
+    boolean crossesUnstarredRepetition(GroupListRef scope) {
+        return crossesUnstarredRepetition(scope.path(), scope.flattened(), true);
+    }
+
+    /** Whether some group above {@code field} repeats; a plain reference stars none of them. */
+    boolean crossesUnstarredRepetition(FieldRef field) {
+        return crossesUnstarredRepetition(field.path().value(), List.of(), false);
+    }
+
+    /** Whether some group above the list's field repeats but carries no star. */
+    boolean crossesUnstarredRepetition(FieldListRef list) {
+        return crossesUnstarredRepetition(list.field().path().value(), list.flattened(), false);
+    }
+
+    private boolean crossesUnstarredRepetition(String path, List<GroupRef> flattened, boolean includeLast) {
+        var starred = flattened.stream().map(level -> level.path().value()).toList();
+        String[] segments = path.substring(1).split("/");
         StringBuilder level = new StringBuilder();
-        for (String segment : scope.path().substring(1).split("/")) {
-            level.append('/').append(segment);
+        for (int i = 0; i < (includeLast ? segments.length : segments.length - 1); i++) {
+            level.append('/').append(segments[i]);
             if (index.isRepeating(level.toString()) && !starred.contains(level.toString())) {
                 return true;
             }
@@ -905,10 +920,15 @@ public final class BoundModel {
         return Dsl.numberOfFilledGroups(repeatableGroup);
     }
 
-    /** {@code NumberOfFilledGroups(/Root*)}, checked against this model as the lone-group form above is. */
+    /**
+     * {@code NumberOfFilledGroups(/Root*)}, checked against this model. The star on a root that does not repeat
+     * answers first, as the record asks it; an empty repeatable root is {@code MVK_ROOT_GROUP_IS_EMPTY}, which only
+     * the model shows (KERNEL-FINDINGS KF458).
+     */
     public NumberExpr numberOfFilledRootGroups(GroupRef rootGroup) {
+        RootGroupCount.requireRepeatable(rootGroup);
         Dsl.readOperandsThen("NumberOfFilledGroups", this, CountAggregate.allOperands(List.of(), List.of(rootGroup)),
-                () -> RootGroupCount.requireRepeatable(rootGroup));
+                () -> { });
         return Dsl.numberOfFilledRootGroups(rootGroup);
     }
 

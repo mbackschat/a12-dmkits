@@ -35,26 +35,29 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
     }
 
     public FirstFilledValue {
-        if (!firstOperand.expandsToList() && trailingOperands.isEmpty()) {
-            throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, "FirstFilledValue needs at least two scalar fields"
-                    + " or one repetition list");
-        }
         trailingOperands = List.copyOf(trailingOperands);
         List<FirstFilledOperand> all = operands(firstOperand, trailingOperands);
         // The kernel's order, so a list breaking two gates is refused for the one A12 reports: duplicates, then
-        // a root group, then the two gates over every field the operands expand to (CheckFeldListenOpImpl.check,
-        // measured in validate.laws.FirstFilledValueGateOrderLawsTest). Both duplicate arms go through the one
-        // shared gate: this carrier's operands are richer than the sealed unions' (an owner entity may be a
-        // field OR a group, keyed by a literal or by a field read), and FirstFilledOperand answers for that.
+        // a root group, then the param law, then the two gates over every field the operands expand to
+        // (CheckFeldListenOpImpl.check, measured in validate.laws.FirstFilledValueGateOrderLawsTest). Both
+        // duplicate arms go through the one shared gate: this carrier's operands are richer than the sealed
+        // unions' (an owner entity may be a field OR a group, keyed by a literal or by a field read), and
+        // FirstFilledOperand answers for that.
         try {
             DuplicateGate.rejectDuplicates("FirstFilledValue", all);
             all.forEach(FirstFilledValue::rejectRootGroup);
+            if (!firstOperand.expandsToList() && trailingOperands.isEmpty()) {
+                throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, "FirstFilledValue needs at least two scalar"
+                        + " fields or one repetition list");
+            }
             requireOneValueType(all.stream().flatMap(FirstFilledValue::expandedFields).toList());
         } catch (KernelCodeRefusal refusal) {
-            // A semantic index is checked while A12 reads its operand (CheckSemanticIndexImpl), ahead of every
-            // list gate: a missing index field, an empty or ill-typed key. None of that is the record's to see, so
-            // on a list holding an index the refusal stands and its class does not (FirstFilledValueGateOrderLawsTest).
-            throw all.stream().anyMatch(operand -> operand.semanticIndex().isPresent()) ? refusal.withheld() : refusal;
+            // A12 reads each operand ahead of every list gate, and three stages of that read are not the record's
+            // to see: a semantic index's resolution (CheckSemanticIndexImpl), a repeatable level left unstarred,
+            // which only the rule binds, and the $ marker, which only a filter admits
+            // (FirstFilledValueGateOrderLawsTest, EntityListReadStageLawsTest). So on a list holding such an
+            // operand the refusal stands and its class does not.
+            throw all.stream().anyMatch(FirstFilledOperand::readMayAnswerFirst) ? refusal.withheld() : refusal;
         }
     }
 

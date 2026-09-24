@@ -68,9 +68,12 @@ final class EntityListRoute {
      * resolve (no index field, an empty or ill-typed key) and a group holding no field, an empty root included.
      * The first such operand in list order answers, on every entity-list aggregate
      * ({@code validate.laws.EntityListOperandReadLawsTest}). An index handle never sees the model and a group
-     * scope does not carry its expansion, so on a list holding either the class is not the record's to claim;
-     * a list of plain fields reads nothing that can fail. {@link BoundModel}'s walk reads the expansion and
-     * answers for groups itself ({@link Dsl#requireComparableTemporalList}).
+     * scope does not carry its expansion, so on a list holding either the class is not the record's to claim. Nor
+     * on one holding a {@code $}-marked operand, which is {@code MVK_INVALID_OUTER_ITERATION} outside a filter
+     * ({@code validate.laws.EntityListReadStageLawsTest}). A plain field's read can still answer first where it
+     * crosses a repeatable level the rule does not iterate, which a {@link FieldRef} does not show (DEV-API-GAPS
+     * DG75). {@link BoundModel}'s walk reads the expansion and answers for groups itself
+     * ({@link Dsl#requireComparableTemporalList}).
      */
     static IllegalArgumentException cited(KernelCodeRefusal refusal, List<? extends AggregateOperand> operands) {
         return operands.stream().anyMatch(EntityListRoute::readMayRefuse) ? refusal.withheld() : refusal;
@@ -80,8 +83,8 @@ final class EntityListRoute {
     static boolean readMayRefuse(AggregateOperand operand) {
         return switch (operand) {
             case IndexedFieldValue ignored -> true;
-            case FieldRef ignored -> false;
-            case FieldListRef ignored -> false;
+            case FieldRef field -> field.correlated();
+            case FieldListRef list -> list.correlated();
             case GroupListRef ignored -> true;
             case IndexedGroupValue ignored -> true;
         };

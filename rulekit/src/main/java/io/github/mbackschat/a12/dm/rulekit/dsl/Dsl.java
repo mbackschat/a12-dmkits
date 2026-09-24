@@ -155,8 +155,8 @@ public final class Dsl {
     /**
      * {@code NumberOfFilledFields(scope)} over a single GROUP scope — counts the filled fields the kernel
      * expands that group to. The single-scope form is valid on its own for the same reason the repetition
-     * list is, and a repeatable group must carry its star, which {@link BoundModel#flattenGroup} derives
-     * from the model ({@code MVK_NO_WILDCARD} otherwise).
+     * list is, and a repeatable group must carry its star ({@code MVK_NO_WILDCARD} otherwise), which the author
+     * writes and {@link BoundModel#flattenGroup} checks against the model.
      *
      * <p>Declared separately from the two-or-more form rather than widening it, so a single BARE field stays
      * a compile error instead of becoming a runtime arity failure.
@@ -296,15 +296,18 @@ public final class Dsl {
      *
      * <p>A12 reads every operand before any list gate, and the first it cannot read answers
      * ({@code validate.laws.EntityListOperandReadLawsTest}). A group's emptiness is the model's to show, so an
-     * empty group is cited here, a root as its own class. An index's resolution is not, so from the first index
-     * on nothing further is read and every class {@code gates} raises is withheld, as the records withhold it.
+     * empty group is cited here, a root as its own class. Three earlier stages of the read are not: an index's
+     * resolution, and the rule and filter the condition sits in, which bind a repeatable level left unstarred and
+     * admit the {@code $} marker ({@code validate.laws.EntityListReadStageLawsTest}). So from the first operand
+     * one of those may answer for, nothing further is read and every class {@code gates} raises is withheld, as
+     * the records withhold it.
      */
     static void readOperandsThen(String operatorId, BoundModel model, List<? extends AggregateOperand> operands,
             Runnable gates) {
-        boolean indexed = false;
+        boolean unread = false;
         for (AggregateOperand operand : operands) {
-            if (operand instanceof IndexedFieldValue || operand instanceof IndexedGroupValue) {
-                indexed = true;
+            if (readNeedsMoreThanTheModel(model, operand)) {
+                unread = true;
                 break;
             }
             if (operand instanceof GroupListRef scope && model.descendantFields(scope.group()).findAny().isEmpty()) {
@@ -316,8 +319,19 @@ public final class Dsl {
         try {
             gates.run();
         } catch (KernelCodeRefusal refusal) {
-            throw indexed ? refusal.withheld() : refusal;
+            throw unread ? refusal.withheld() : refusal;
         }
+    }
+
+    /** Whether A12's read of this operand may answer from what the model does not hold — see {@link #readOperandsThen}. */
+    private static boolean readNeedsMoreThanTheModel(BoundModel model, AggregateOperand operand) {
+        return switch (operand) {
+            case IndexedFieldValue ignored -> true;
+            case IndexedGroupValue ignored -> true;
+            case FieldRef field -> field.correlated() || model.crossesUnstarredRepetition(field);
+            case FieldListRef list -> list.correlated() || model.crossesUnstarredRepetition(list);
+            case GroupListRef scope -> scope.correlated() || model.crossesUnstarredRepetition(scope);
+        };
     }
 
     private static void walkTemporalList(String operatorId, BoundModel model, List<AggregateOperand> operands) {

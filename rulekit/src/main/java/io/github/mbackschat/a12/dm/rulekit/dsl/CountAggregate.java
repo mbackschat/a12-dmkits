@@ -78,7 +78,7 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
                 }
             }
             case FILLED_GROUPS -> {
-                // A root is legal here only ALONE, and A12 asks that ahead of the fields-allowed and arity bars
+                // A root is legal here only ALONE, and A12 asks that after duplicates
                 // under a class of its own (CheckFeldListenAnzahlOpImpl, KERNEL-FINDINGS KF388,
                 // validate.laws.GroupListDiagnosticIdentityLawsTest).
                 if (fields.size() + groups.size() > 1) {

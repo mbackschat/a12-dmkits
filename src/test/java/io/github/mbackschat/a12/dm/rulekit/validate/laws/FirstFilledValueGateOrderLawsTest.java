@@ -273,12 +273,15 @@ class FirstFilledValueGateOrderLawsTest {
         lists.put("Keyed/Note For \"\", Weight", "MVK_INDEX_VALUE_INVALID");
         lists.put("Keyed/Note For \"\", Title, Title", "MVK_INDEX_VALUE_INVALID");
         lists.put("Keyed/Note For Weight, Weight", "MVK_INDEX_TYPE_INCONSISTENT");
+        // a lone keyed field: the index answers ahead of the param law too
+        lists.put("Grading/Grade For \"k\"", NO_INDEX_FIELD);
         // an index that resolves leaves the list gates to answer
         lists.put("Keyed/Note For \"k\", Weight", VARYING);
         lists.put("Keyed/Note For \"k\", InStock", BOOLY);
         lists.put("Keyed/Note For \"k\", Keyed/Note For \"k\"", DUPLICATE);
         lists.put("Keyed For \"k\", Keyed/Note For \"k\"", CONTAINED);
         lists.put("Keyed/Note For \"k\", Keyed/Note For \"j\"", ADMITTED);
+        lists.put("Keyed/Note For \"k\"", "MVK_PARAMSIZE_INVALIDN");
         return lists;
     }
 
