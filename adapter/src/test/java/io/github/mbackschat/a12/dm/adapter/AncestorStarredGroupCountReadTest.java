@@ -24,8 +24,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
  * <p>A12 admits a fixed group below a starred repeatable level as an operand, alone or beside others
  * (KERNEL-FINDINGS KF462). A {@code GroupRef} carries the group's own repeatability and nothing about its
  * ancestors, and the renderer stars a group exactly when it repeats, so a group read as a {@code GroupRef}
- * comes back without the ancestor's star — a different rule, which A12 refuses as {@code MVK_NO_WILDCARD}.
- * The oracle is the round trip: the kernel admits the stored text, and the read-back renders that same text.
+ * comes back without the ancestor's star — a different rule, which A12 refuses as {@code MVK_NO_WILDCARD}
+ * ({@link #theSpellingWithoutTheAncestorStarIsARuleA12Refuses}). The oracle is the round trip: the kernel admits
+ * the stored text, and the read-back renders that same text.
  */
 class AncestorStarredGroupCountReadTest {
 
@@ -49,6 +50,27 @@ class AncestorStarredGroupCountReadTest {
             actual.put(count, readBack(condition));
         }
         assertEquals(expected, actual);
+    }
+
+    /**
+     * The spelling a {@code GroupRef} would render, measured rather than claimed: without the ancestor's star
+     * the fixed group names one instance below a repeatable level, which A12 refuses.
+     */
+    @Test
+    void theSpellingWithoutTheAncestorStarIsARuleA12Refuses() {
+        Map<String, List<String>> actual = new LinkedHashMap<>();
+        for (String count : List.of(
+                "NumberOfFilledGroups(/Item/Batches/Seal) > 0",
+                "NumberOfFilledGroups(/Item/Batches/Seal, /Item/Grading) > 0")) {
+            DraftRule rule = new DraftRule("/Item", "CountRule", "../Title",
+                    "FieldFilled(/Item/Title) And " + count, "C", "ERROR");
+            actual.put(count, VALIDATOR.check(model(), rule).diagnostics().stream()
+                    .flatMap(diagnostic -> diagnostic.code().stream()).distinct().toList());
+        }
+        Map<String, List<String>> expected = new LinkedHashMap<>();
+        expected.put("NumberOfFilledGroups(/Item/Batches/Seal) > 0", List.of("MVK_NO_WILDCARD"));
+        expected.put("NumberOfFilledGroups(/Item/Batches/Seal, /Item/Grading) > 0", List.of("MVK_NO_WILDCARD"));
+        assertEquals(expected, actual, "what A12 says about each count once the ancestor's star is dropped");
     }
 
     /** The renderer's spelling of what the adapter read, or the result that stopped it. */
