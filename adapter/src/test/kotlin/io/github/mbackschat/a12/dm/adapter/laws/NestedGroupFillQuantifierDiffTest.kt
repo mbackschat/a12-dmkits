@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -75,16 +74,6 @@ class NestedGroupFillQuantifierDiffTest {
                 h.group("Inspections") { i -> i.repeatable(3).stringField("Finding") { } }
             }
         }.build().toJson()
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both {
-            kDoc.group(path, *reps); iDoc.group(path, *reps); return this
-        }
-
-        fun field(path: String, v: String, vararg reps: Int): Both {
-            kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this
-        }
-    }
 
     /**
      * Two filled cells, and the second one lives in nested row 2 — so a row-1-pinned expansion counts ONE. All

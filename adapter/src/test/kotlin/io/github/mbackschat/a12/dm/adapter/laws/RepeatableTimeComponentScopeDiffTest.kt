@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
@@ -83,11 +82,6 @@ class RepeatableTimeComponentScopeDiffTest {
 
     private val def by lazy { ModelLoader.load(model) }
     private val javaEngine by lazy { RuntimeLaws.kernelJavaEngine(model) }
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both { kDoc.group(path, *reps); iDoc.group(path, *reps); return this }
-        fun field(path: String, v: String, vararg reps: Int): Both { kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this }
-    }
 
     /** Compute outcomes for ONE target path, keyed by exact address, agreed across both strategies + interpreter. */
     private fun agree(target: String, msg: String, expect: Map<String, String>, build: (Both) -> Unit) {

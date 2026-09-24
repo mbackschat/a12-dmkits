@@ -69,11 +69,6 @@ class GroupStarValueAggregateDiffTest {
 
     private fun computeModel(aggregate: NumberExpr): String = computeModel(render(aggregate.expression()))
 
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both { kDoc.group(path, *reps); iDoc.group(path, *reps); return this }
-        fun field(path: String, v: String, vararg reps: Int): Both { kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this }
-    }
-
     private fun Both.lines(vararg amounts: String): Both {
         amounts.forEachIndexed { i, a -> group(LINES, 1, i + 1).field(AMOUNT, a, 1, i + 1, 1) }
         return this

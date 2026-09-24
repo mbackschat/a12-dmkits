@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -51,11 +50,6 @@ class ImplicitComputationValidationScopeDiffTest {
     private fun capacityModel(): String = RuntimeLaws.withTieredComputation(base, "/HrRules", "CapComp",
         "../../Depots/Depot/Capacity", null,
         listOf(RuntimeLaws.CompAlt("FieldNotFilled(/Employee/ContractedHours)", "-1")))
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both { kDoc.group(path, *reps); iDoc.group(path, *reps); return this }
-        fun field(path: String, v: String, vararg reps: Int): Both { kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this }
-    }
 
     private fun agree(kModel: String, code: String, expect: List<String>, msg: String, build: (Both) -> Unit) {
         val def = ModelLoader.load(kModel)

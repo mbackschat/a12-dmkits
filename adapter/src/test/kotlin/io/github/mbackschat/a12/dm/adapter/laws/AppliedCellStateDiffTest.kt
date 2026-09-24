@@ -49,12 +49,6 @@ class AppliedCellStateDiffTest {
         RuntimeLaws.withComputation(policy(minLength), "/Policy", "LabelComp", "../Label",
             "[HolderName] + [RiderCode]")
 
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both { kDoc.group(path, *reps); iDoc.group(path, *reps); return this }
-        fun field(path: String, v: String, vararg reps: Int): Both { kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this }
-        fun emptyField(path: String, vararg reps: Int): Both { kDoc.emptyField(path, *reps); iDoc.emptyField(path, *reps); return this }
-    }
-
     private fun wire(s: StoredCellState): String = when (s) {
         StoredCellState.Absent -> "absent"
         StoredCellState.PresentEmpty -> "presentEmpty"

@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -73,16 +72,6 @@ class IndexedGroupOperandDiffTest {
     private data class Row(val condition: String, val fires: Boolean, val packages: List<Pkg> = standard,
         val wanted: String? = "P3", val errorField: String = REFERENCE, val guarded: Boolean = true,
         val relevant: Map<String, List<Int>>? = null, val declined: Boolean = false)
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both {
-            kDoc.group(path, *reps); iDoc.group(path, *reps); return this
-        }
-
-        fun field(path: String, v: String, vararg reps: Int): Both {
-            kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this
-        }
-    }
 
     private fun build(b: Both, row: Row) {
         b.group("/Order", 1).field(REFERENCE, "ORD-1", 1, 1)

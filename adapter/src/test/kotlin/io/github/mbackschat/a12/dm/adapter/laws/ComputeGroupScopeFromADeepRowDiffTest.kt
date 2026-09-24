@@ -65,16 +65,6 @@ class ComputeGroupScopeFromADeepRowDiffTest {
             }
         }.build().toJson()
 
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both {
-            kDoc.group(path, *reps); iDoc.group(path, *reps); return this
-        }
-
-        fun field(path: String, v: String, vararg reps: Int): Both {
-            kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this
-        }
-    }
-
     /** The rule sits ON the nested repeatable level and reports at its own `Finding`, so the fire set is per-row. */
     private fun agreeFireRows(condition: String, expected: List<String>, msg: String, build: (Both) -> Unit) {
         val kModel = RuntimeLaws.withRule(base, INSPECTIONS, "R", "../Finding", CODE, condition)

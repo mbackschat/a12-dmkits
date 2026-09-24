@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -111,16 +110,6 @@ class GroupOperandValueListQuantifierDiffTest {
             "the group substitution did not apply — the row would compare the control to itself")
         assertTrue(!derived.contains(replaced)) {
             "the derived condition still names the replaced operand `$replaced`: $derived"
-        }
-    }
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both {
-            kDoc.group(path, *reps); iDoc.group(path, *reps); return this
-        }
-
-        fun field(path: String, v: String, vararg reps: Int): Both {
-            kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this
         }
     }
 

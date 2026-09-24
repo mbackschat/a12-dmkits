@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -109,19 +108,8 @@ class GroupOperandOverLimitExtentDiffTest {
     private val chargesStar = bound.flattenGroup("$AMOUNTS/Charges*")
     private val feeList = bound.flatten(FEES)
 
-    /** Mirrors one document build across the kernel doc and the interpreter document from one call site. */
-    private class Both(model: String) {
-        val kDoc = RuntimeLaws.doc().group(RETURN, 1)
-        val iDoc: Document = ModelLoader.load(model).newDocument().group(RETURN, 1)
-
-        fun field(path: String, v: String, vararg reps: Int) {
-            kDoc.field(path, v, *reps); iDoc.field(path, v, *reps)
-        }
-
-        fun group(path: String, vararg reps: Int) {
-            kDoc.group(path, *reps); iDoc.group(path, *reps)
-        }
-    }
+    /** Both documents, holding the root row every fixture writes beneath. */
+    private fun rooted(model: String) = Both(RuntimeLaws.doc(), ModelLoader.load(model).newDocument()).group(RETURN, 1)
 
     private fun modelWith(condition: String) =
         RuntimeLaws.withRule(base, RETURN, "OverLimitProbe", "../Reviewer", CODE,
@@ -156,10 +144,10 @@ class GroupOperandOverLimitExtentDiffTest {
         val model = modelWith(condition)
         requireAdmitted(model, condition)
         val def = ModelLoader.load(model)
-        val both = Both(model).also(build)
+        val both = rooted(model).also(build)
         val dynamic = RuntimeLaws.messages(model, both.kDoc).map { "${it.code()}@${it.field()}" }.sorted()
         val engine = RuntimeLaws.kernelJavaEngine(model)
-        val static = engine.messagesModern(Both(model).also(build).kDoc, null, Locale.US)
+        val static = engine.messagesModern(rooted(model).also(build).kDoc, null, Locale.US)
             .map { "${it.code()}@${it.field()}" }.sorted()
         val interp = DmInterpreter(def).validateFull(both.iDoc).map { "${it.code}@${it.errorPath}" }.sorted()
         assertEquals(dynamic, static, "$condition — static-Java vs dynamic-Groovy")
@@ -299,7 +287,9 @@ class GroupOperandOverLimitExtentDiffTest {
     }
 
     /** No repeatable row at all under the Number shell — the empty-domain case. */
-    private fun noChargeRow(b: Both) = b.field(REVIEWER, "yes", 1, 1)
+    private fun noChargeRow(b: Both) {
+        b.field(REVIEWER, "yes", 1, 1)
+    }
 
     // ---- the measurements ----
 

@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -71,11 +70,6 @@ class CrossSubtreeGroupStarDiffTest {
 
     /** The reversed polarity — pre-fix the interpreter OVER-fires this from Claims[2] (interp-extra). */
     private val noGroupCond = "NumberOfFilledGroups(Notes*) > 0 And NoGroupFilled(/Insurance/Settings/Regions*)"
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both { kDoc.group(path, *reps); iDoc.group(path, *reps); return this }
-        fun field(path: String, v: String, vararg reps: Int): Both { kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this }
-    }
 
     /** [regions] filled region codes; [notesPerClaim] one entry per Claims row = its filled Notes rows. */
     private fun build(b: Both, regions: Int, notesPerClaim: List<Int>) {

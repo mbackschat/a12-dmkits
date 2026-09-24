@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
@@ -68,18 +67,8 @@ class NestedOverLimitAbsorptionDiffTest {
                 })
         }).build().toJson()
 
-    private class Both(model: String) {
-        val kDoc = RuntimeLaws.doc().group(BILLING, 1)
-        val iDoc: Document = ModelLoader.load(model).newDocument().group(BILLING, 1)
-
-        fun field(path: String, v: String, vararg reps: Int) {
-            kDoc.field(path, v, *reps); iDoc.field(path, v, *reps)
-        }
-
-        fun group(path: String, vararg reps: Int) {
-            kDoc.group(path, *reps); iDoc.group(path, *reps)
-        }
-    }
+    /** Both documents, holding the root row every fixture writes beneath. */
+    private fun rooted(model: String) = Both(RuntimeLaws.doc(), ModelLoader.load(model).newDocument()).group(BILLING, 1)
 
     /**
      * The formatted `code@address` list across all three engines, asserted to agree and returned for the row's own
@@ -87,10 +76,10 @@ class NestedOverLimitAbsorptionDiffTest {
      */
     private fun agreedMessages(label: String, build: (Both) -> Unit): List<String> {
         val def = ModelLoader.load(base)
-        val both = Both(base).also(build)
+        val both = rooted(base).also(build)
         val dynamic = RuntimeLaws.messages(base, both.kDoc).map { "${it.code()}@${it.key()}" }.sorted()
         val static = RuntimeLaws.kernelJavaEngine(base)
-            .messagesModern(Both(base).also(build).kDoc, null, Locale.US)
+            .messagesModern(rooted(base).also(build).kDoc, null, Locale.US)
             .map { "${it.code()}@${it.key()}" }.sorted()
         val interp = DmInterpreter(def).validateFull(both.iDoc).map { "${it.code}@${it.errorKey}" }.sorted()
         assertEquals(dynamic, static, "$label — static-Java vs dynamic-Groovy")
@@ -110,10 +99,10 @@ class NestedOverLimitAbsorptionDiffTest {
     @Test
     fun theLosslessKeyDistinguishesTheThreeDescendantRowsAndAllThreeEnginesAgreeOnThem() {
         val def = ModelLoader.load(base)
-        val both = Both(base).also(::doublyOverLimit)
+        val both = rooted(base).also(::doublyOverLimit)
         val dynamic = RuntimeLaws.messages(base, both.kDoc).map { "${it.code()}@${it.key()}" }.sorted()
         val static = RuntimeLaws.kernelJavaEngine(base)
-            .messagesModern(Both(base).also(::doublyOverLimit).kDoc, null, Locale.US)
+            .messagesModern(rooted(base).also(::doublyOverLimit).kDoc, null, Locale.US)
             .map { "${it.code()}@${it.key()}" }.sorted()
         val interp = DmInterpreter(def).validateFull(both.iDoc).map { "${it.code}@${it.errorKey}" }.sorted()
 
@@ -270,9 +259,9 @@ class NestedOverLimitAbsorptionDiffTest {
      */
     @Test
     fun theKernelAddressesEachDescendantRowDistinctlyWhereOurFormattedAddressCollapsesThem() {
-        val dynamic = rawAddresses(RuntimeLaws.messages(base, Both(base).also(::doublyOverLimit).kDoc))
+        val dynamic = rawAddresses(RuntimeLaws.messages(base, rooted(base).also(::doublyOverLimit).kDoc))
         val static = rawAddresses(RuntimeLaws.kernelJavaEngine(base)
-            .messagesModern(Both(base).also(::doublyOverLimit).kDoc, null, Locale.US))
+            .messagesModern(rooted(base).also(::doublyOverLimit).kDoc, null, Locale.US))
 
         val expected = listOf(
             "/Billing/Invoices/Periods/Label|1, 3, 3, 1",

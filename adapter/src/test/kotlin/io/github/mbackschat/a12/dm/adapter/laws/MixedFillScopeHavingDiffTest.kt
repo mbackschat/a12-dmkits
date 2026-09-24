@@ -77,16 +77,6 @@ class MixedFillScopeHavingDiffTest {
 
     private fun guarded(body: String): String = "FieldFilled($REF) And $body"
 
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both {
-            kDoc.group(path, *reps); iDoc.group(path, *reps); return this
-        }
-
-        fun field(path: String, v: String, vararg reps: Int): Both {
-            kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this
-        }
-    }
-
     private fun assertAdmitted(codes: List<String>, msg: String) =
         assertTrue(codes.none { it.startsWith("MVK_") }) {
             "$msg — the kernel REJECTED the shape (${codes.filter { it.startsWith("MVK_") }}), which would make " +

@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -53,11 +52,6 @@ class StarOnlyIterationScopeDiffTest {
         }.build().toJson()
 
     init { BoundModel.ofJson(base) }   // model sanity (parses + indexes)
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both { kDoc.group(path, *reps); iDoc.group(path, *reps); return this }
-        fun field(path: String, v: String, vararg reps: Int): Both { kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this }
-    }
 
     /** [counts] one Count per Items row; [qtysPerItem] one entry per Items row = its Lines' Qty values;
      *  [fees] one Amount per Fees row; [reference] the root string field. */

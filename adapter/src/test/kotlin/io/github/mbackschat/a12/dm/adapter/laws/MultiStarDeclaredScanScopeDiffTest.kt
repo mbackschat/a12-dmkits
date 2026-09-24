@@ -60,16 +60,6 @@ class MultiStarDeclaredScanScopeDiffTest {
                 })
         }).build().toJson()
 
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both {
-            kDoc.group(path, *reps); iDoc.group(path, *reps); return this
-        }
-
-        fun field(path: String, v: String, vararg reps: Int): Both {
-            kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this
-        }
-    }
-
     private fun agree(precondition: String, msg: String, expect: Map<String, String>, build: (Both) -> Unit) {
         val kModel = RuntimeLaws.withTieredComputation(base, INNER, "RowComp", "../Tally", null,
             listOf(RuntimeLaws.CompAlt(precondition, "7")))

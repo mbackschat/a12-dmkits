@@ -161,16 +161,6 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
             }
         }.build().toJson()
 
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both {
-            kDoc.group(path, *reps); iDoc.group(path, *reps); return this
-        }
-
-        fun field(path: String, v: String, vararg reps: Int): Both {
-            kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this
-        }
-    }
-
     /** Tri-check whether [condition] fires over the instance [build] creates. */
     private fun agreeFires(
         condition: String,

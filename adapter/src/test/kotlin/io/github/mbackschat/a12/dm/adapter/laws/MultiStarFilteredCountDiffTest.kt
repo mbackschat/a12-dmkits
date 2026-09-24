@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
@@ -62,11 +61,6 @@ class MultiStarFilteredCountDiffTest {
     /** The corpus minimal's shape: per-Items `UsageCount = <dup count> − 1` guarded by `<dup count> > 1`. */
     private fun dupCountModel(): String = RuntimeLaws.withTieredComputation(base, ITEMS_GROUP, "UsageComp",
         "../UsageCount", null, listOf(RuntimeLaws.CompAlt("$DUP_COUNT > 1", "$DUP_COUNT - 1")))
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both { kDoc.group(path, *reps); iDoc.group(path, *reps); return this }
-        fun field(path: String, v: String, vararg reps: Int): Both { kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this }
-    }
 
     /** An Items row (section s, item i) with a code, a grade, and a stale UsageCount seed. */
     private fun Both.item(s: Int, i: Int, code: String, grade: String, qty: String? = null): Both {

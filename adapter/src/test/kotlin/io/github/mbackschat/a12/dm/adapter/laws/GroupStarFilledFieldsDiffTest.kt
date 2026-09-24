@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -58,16 +57,6 @@ class GroupStarFilledFieldsDiffTest {
     private fun condition(atLeast: Int): String = RuntimeLaws.render(
         m.field(REF).filled().and(Dsl.numberOfFilledFields(m.flattenGroup("$LINES*")).ge(atLeast.toLong())),
     )
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both {
-            kDoc.group(path, *reps); iDoc.group(path, *reps); return this
-        }
-
-        fun field(path: String, v: String, vararg reps: Int): Both {
-            kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this
-        }
-    }
 
     private fun agreeFires(atLeast: Int, expected: Boolean, msg: String, build: (Both) -> Unit) {
         val kModel = RuntimeLaws.withRule(base, "/Order", "R", "../Ref", CODE, condition(atLeast))

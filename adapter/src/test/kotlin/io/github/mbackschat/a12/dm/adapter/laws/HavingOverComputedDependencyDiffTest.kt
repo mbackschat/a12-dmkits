@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
@@ -57,11 +56,6 @@ class HavingOverComputedDependencyDiffTest {
             listOf(RuntimeLaws.CompAlt(activeCond, "True")))
         return RuntimeLaws.withComputation(withFlag, "/Shop", "TotalComp", "../TotalCommission",
             "Sum(/Shop/Affiliates*/Commission Having [/Shop/Affiliates/ActiveFlag] == True)")
-    }
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both { kDoc.group(path, *reps); iDoc.group(path, *reps); return this }
-        fun field(path: String, v: String, vararg reps: Int): Both { kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this }
     }
 
     /** One affiliate row: a commission, a STALE seeded flag, an optional end date, an optional weight. */

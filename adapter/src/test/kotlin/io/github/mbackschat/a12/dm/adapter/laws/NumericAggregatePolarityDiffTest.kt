@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -49,10 +48,10 @@ class NumericAggregatePolarityDiffTest {
             .field(ANCHOR, "Acme", 1, 1)
             .apply(build)
 
-        val groovy = RuntimeLaws.typeOf(kernelModel, CODE, documents.kernel).orElseThrow().name
+        val groovy = RuntimeLaws.typeOf(kernelModel, CODE, documents.kDoc).orElseThrow().name
         val javaEngine = RuntimeLaws.kernelJavaEngine(kernelModel)
-        val javaStatic = javaEngine.messages(javaEngine.instance(documents.kernel)).single { it.code() == CODE }.type().name
-        val interpreter = DmInterpreter(definition).validateFull(documents.interpreter).single { it.code == CODE }.type
+        val javaStatic = javaEngine.messages(javaEngine.instance(documents.kDoc)).single { it.code() == CODE }.type().name
+        val interpreter = DmInterpreter(definition).validateFull(documents.iDoc).single { it.code == CODE }.type
             .let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
 
         assertEquals(expected, groovy, "$label — expected kernel outcome")
@@ -60,23 +59,9 @@ class NumericAggregatePolarityDiffTest {
         assertEquals(groovy, interpreter, "$label — kernel vs interpreter")
     }
 
-    private class Both(val kernel: RuntimeLaws.Doc, val interpreter: Document) {
-        fun group(path: String, vararg reps: Int): Both {
-            kernel.group(path, *reps)
-            interpreter.group(path, *reps)
-            return this
-        }
-
-        fun field(path: String, value: String, vararg reps: Int): Both {
-            kernel.field(path, value, *reps)
-            interpreter.field(path, value, *reps)
-            return this
-        }
-
-        fun item(row: Int, stock: String): Both = group(ITEMS, 1, row)
-            .field(SKU, "S$row", 1, row, 1)
-            .field(STOCK_ITEM, stock, 1, row, 1)
-    }
+    private fun Both.item(row: Int, stock: String): Both = group(ITEMS, 1, row)
+        .field(SKU, "S$row", 1, row, 1)
+        .field(STOCK_ITEM, stock, 1, row, 1)
 
     private companion object {
         const val ROOT = "/Order"

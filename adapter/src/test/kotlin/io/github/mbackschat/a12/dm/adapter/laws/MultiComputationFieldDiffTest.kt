@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -42,11 +41,6 @@ class MultiComputationFieldDiffTest {
         RuntimeLaws.withComputation(m, group, name, "../../Price", op)
     private fun priceGuarded(m: String, group: String, name: String, guard: String, op: String) =
         RuntimeLaws.withTieredComputation(m, group, name, "../../Price", guard, listOf(RuntimeLaws.CompAlt(null, op)))
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both { kDoc.group(path, *reps); iDoc.group(path, *reps); return this }
-        fun field(path: String, v: String, vararg reps: Int): Both { kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this }
-    }
 
     /** groovy-dynamic == java-static == interpreter compute outcomes, as a `path → outcome` map (every target seeded). */
     private fun agree(kModel: String, msg: String, expect: Map<String, String>, build: (Both) -> Unit) {

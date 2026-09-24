@@ -63,16 +63,6 @@ class GroupScopeFromADeepRuleRowDiffTest {
             }
         }.build().toJson()
 
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both {
-            kDoc.group(path, *reps); iDoc.group(path, *reps); return this
-        }
-
-        fun field(path: String, v: String, vararg reps: Int): Both {
-            kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this
-        }
-    }
-
     /**
      * The rule is authored ON the nested repeatable level and reports at its own `Finding`, so the fire SET is
      * per-row and a scope difference shows up as a different set of rows rather than as a flipped boolean.

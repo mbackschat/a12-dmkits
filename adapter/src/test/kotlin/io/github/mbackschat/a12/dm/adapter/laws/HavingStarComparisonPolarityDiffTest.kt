@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -55,11 +54,6 @@ class HavingStarComparisonPolarityDiffTest {
             "RoundDown([UsageShare]/100 * FirstFilledValue(Leases*/WeeklyHours Having " +
                 "([/Fleet/Vehicles/Leases/StartDate] <= [/Fleet/AsOf] And (FieldNotFilled(/Fleet/Vehicles/Leases/EndDate) " +
                 "Or [/Fleet/Vehicles/Leases/EndDate] >= [/Fleet/AsOf]))), 0)")))
-
-    private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
-        fun group(path: String, vararg reps: Int): Both { kDoc.group(path, *reps); iDoc.group(path, *reps); return this }
-        fun field(path: String, v: String, vararg reps: Int): Both { kDoc.field(path, v, *reps); iDoc.field(path, v, *reps); return this }
-    }
 
     /** One vehicle row: a share, a STALE stored hours value, and an optional lease (start, end?, weekly). */
     private fun Both.vehicle(r: Int, share: String, staleHours: String,
