@@ -59,14 +59,22 @@ class DeclarationSlotTest {
         ),
     )
 
-    /** The codes reported for one shape, in report order, so a missing and an extra row both show. */
+    /**
+     * The codes reported for one shape, in report order, so a missing and an extra row both show.
+     *
+     * They are the slot classes AND the unprefixed no-text class, which [CheckFamily.ERROR_TEXT_PRESENCE]
+     * draws: the kernel grids these rows mirror are one verdict about the declaration, and A12 reports the two
+     * together.
+     */
     private fun codesFor(
         kind: String,
         name: String,
         messages: String?,
         locales: String = EN_AND_DE,
         slots: String = legalSlotsFor(kind),
-    ) = model(kind, name, messages, locales, slots).tracked().declarationSlotFindings().map { it.code }
+    ) = model(kind, name, messages, locales, slots).tracked().slotAndPresenceFindings().map { it.code }
+
+    private fun TrackedFactBase.slotAndPresenceFindings() = declarationSlotFindings() + errorTextPresenceFindings()
 
     @Test
     fun eachSlotShapeDrawsTheVerdictTheKernelGivesIt() {
@@ -347,7 +355,7 @@ class DeclarationSlotTest {
      */
     @Test
     fun everyFindingNamesItsDeclaration() {
-        val findings = model("Computation", "vk_vk_probe", "[]").tracked().declarationSlotFindings()
+        val findings = model("Computation", "vk_vk_probe", "[]").tracked().slotAndPresenceFindings()
 
         assertEquals(listOf("MVK_RULE_NAME_INVALID", "MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT),
             findings.map { it.code })

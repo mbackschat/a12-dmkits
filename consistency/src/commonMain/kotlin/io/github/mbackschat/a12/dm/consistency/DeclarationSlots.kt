@@ -157,7 +157,27 @@ private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
 private val SEVERITIES = setOf("ERROR", "WARNING", "INFO")
 
 /**
- * A12's second, UNPREFIXED class for a declaration with no usable message — and the one shape that omits it.
+ * A12's second, UNPREFIXED class for a declaration with no usable message, which rides beside
+ * `MVK_ERROR_MESSAGE_MISSING`.
+ *
+ * **It is a family of its own, [CheckFamily.ERROR_TEXT_PRESENCE], because A12's error-text checker draws
+ * it.** That checker judges a message only beside a sound condition or operation, while the prefixed class
+ * it rides with is judged regardless: beside a refused condition A12 reports `MVK_ERROR_MESSAGE_MISSING` and
+ * withholds this one (`rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`, [KF338]). Report
+ * assembly applies that, and it can only because the two are produced apart.
+ */
+internal fun TrackedFactBase.errorTextPresenceFindings(): List<Finding> =
+    declarations().filter { it.declaredKind in EXECUTABLE_KINDS }.flatMap { element ->
+        val authored = (element.authoredMessages() as? AuthoredMessages.Read)?.entries
+            ?: return@flatMap emptyList()
+        if (authored.coveredLocales(declaredLocales).isNotEmpty()) {
+            return@flatMap emptyList()
+        }
+        element.unprefixedErrorTextFinding(authored, declaredLocales)
+    }
+
+/**
+ * Which declarations with no covered locale draw the unprefixed class — and the one shape that omits it.
  *
  * `RULE_HAS_NO_ERRORTEXT` rides beside `MVK_ERROR_MESSAGE_MISSING` on every shape that leaves a declared
  * locale uncovered — no member at all, an empty array, an empty text, a text only for an undeclared locale,
@@ -284,7 +304,7 @@ private fun messageFindings(element: TrackedDeclaration, declaredLocales: List<S
                     "and a blank `text` counts as no message at all",
                 element.path,
             ),
-        ) + element.unprefixedErrorTextFinding(authored, declaredLocales)
+        )
     } else {
         declaredLocales.filterNot { it in covered }.map { uncovered ->
             Finding(

@@ -220,6 +220,7 @@ private fun perDeclarationWalk(
  */
 internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.DECLARATION_SLOTS) { it.declarationSlotFindings() },
+    perDeclarationWalk(CheckFamily.ERROR_TEXT_PRESENCE) { it.errorTextPresenceFindings() },
     perDeclarationWalk(CheckFamily.COMPUTATION_ALTERNATIVES) { it.computationAlternativeFindings() },
     perDeclarationWalk(CheckFamily.COMPUTATION_ROUNDING) { it.computationRoundingFindings() },
     perDeclarationWalk(CheckFamily.SUPPRESSED_WARNINGS) { it.suppressedWarningFindings() },
@@ -371,6 +372,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclarationWalk(CheckFamily.MESSAGE_PARAMETER_SYNTAX) { it.messageParameterSyntaxFindings() },
     produces(CheckFamily.MESSAGE_GROUP_PARAMETER) { it.messageGroupParameterFindings() },
     produces(CheckFamily.MESSAGE_VALUE_SUFFIX) { it.messageValueSuffixFindings() },
+    perDeclarationWalk(CheckFamily.MESSAGE_BASE_YEAR) { it.messageBaseYearFindings() },
     perDeclaration(CheckFamily.STRING_PATTERN_MESSAGE) { base, at ->
         base.stringTypeMessageFindings(at)
     },

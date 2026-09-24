@@ -112,8 +112,12 @@ class CheckerClassAgreementTest {
      * blanket and a row here is the way to say so, with the measurement that says A12 draws the second class
      * once the first is repaired.
      *
-     * **What this assertion catches today is narrower than it reads, and saying so is the point.** A12
-     * answers each mutant of this population with exactly ONE notification, so `ours ⊆ kernel.classes`
+     * **A pair A12 names ITSELF at the declaration needs no row**, since the run has just measured it; the
+     * assertion exempts it rather than enumerating it per model. That became reachable on 2026-09-24, when a
+     * mutation first emptied a rule's messages beside a refused condition and A12 answered with both.
+     *
+     * **What this assertion catches is narrower than it reads, and saying so is the point.** A12 answers
+     * each mutant of the rest of this population with exactly ONE notification, so `ours ⊆ kernel.classes`
      * already forces at most one distinct class and this check is implied by the disagreement assertion
      * above. It is landed anyway because the implication is a property of the POPULATION, not of the
      * contract: the moment A12 answers two notifications on some mutant, or [masked] gains a row, the subset
@@ -289,6 +293,10 @@ class CheckerClassAgreementTest {
                 positioned.groupBy { it.at }.filterValues { found ->
                     found.mapTo(mutableSetOf()) { it.code }.size > 1
                 }.forEach { (at, found) ->
+                    // A pair A12 draws ITSELF at that declaration is a true second defect, and this run is the
+                    // measurement: a message with no text is refused beside the condition's class, on its
+                    // prefixed presence class (`MessageParameterConditionDependencyLawsTest`, [KF338]).
+                    if (kernel.byDeclaration[at]?.containsAll(found.map { it.code }) == true) return@forEach
                     val row = where("${found.map { it.code }.sorted()} together at $at")
                     if (row !in coFiring) coFired += row
                 }
@@ -746,6 +754,22 @@ class CheckerClassAgreementTest {
                 val message = (rule["errorMessage"] as? ArrayNode)?.firstOrNull() as? ObjectNode
                     ?: return@Mutation false
                 message.put("text", message["text"].asText() + " ${'$'}Oops")
+                true
+            },
+            // …and the two error-text classes that were drawn from outside the message families until 2026-09-24,
+            // so the withholding above never reached them: a rule with no text draws `RULE_HAS_NO_ERRORTEXT`
+            // beside `MVK_ERROR_MESSAGE_MISSING`, and a Base Year terminal in a model declaring none draws
+            // `NO_BASE_YEAR`. A12 withholds both behind the star and keeps the prefixed presence class.
+            Mutation("move-a-star-and-empty-its-messages") { root, ordinal ->
+                val rule = moveAStar(root, ordinal) ?: return@Mutation false
+                rule.putArray("errorMessage")
+                true
+            },
+            Mutation("move-a-star-and-name-the-base-year") { root, ordinal ->
+                val rule = moveAStar(root, ordinal) ?: return@Mutation false
+                val message = (rule["errorMessage"] as? ArrayNode)?.firstOrNull() as? ObjectNode
+                    ?: return@Mutation false
+                message.put("text", message["text"].asText() + " ${'$'}BaseYear${'$'}")
                 true
             },
             // The three below aim at the error MESSAGE, which no declaration-shaped mutation reaches — the

@@ -89,17 +89,53 @@ class MessageBehindARefusedDslTest {
         assertEquals(expected, actual, "what a refused operation leaves of the message's verdict")
     }
 
+    /**
+     * Two error-text classes drawn from families that judge more than the message: the Base Year terminal,
+     * refused where the model declares no Base Year, and the no-text class that rides beside
+     * `MVK_ERROR_MESSAGE_MISSING`. Both are withheld like the rest, while the prefixed presence class stays.
+     */
+    @Test
+    fun theBaseYearAndNoTextClassesAreWithheldToo() {
+        val refused = "FieldFilled(Reference) And FieldFilled(Claims/Amount)"
+        val baseYear = "see \$BaseYear\$"
+        val actual = linkedMapOf(
+            "a sound condition, the Base Year — the control" to ruleCodes(message = baseYear),
+            "a refused condition, the Base Year" to ruleCodes(condition = refused, message = baseYear),
+            "the condition names the constant too" to
+                ruleCodes(condition = "FieldFilled(Reference) And YearFromDate(BaseYear) > 2020", message = baseYear),
+            "a reserved name, the Base Year" to ruleCodes(name = "vk_vkProbe", message = baseYear),
+            "a sound operation, the Base Year — the control" to computationCodes("1", baseYear),
+            "a refused operation, the Base Year" to computationCodes("Sum(Claims/Amount*)", baseYear),
+            "a sound condition, no message entry — the control" to ruleCodes(messages = "[]"),
+            "a refused condition, no message entry" to ruleCodes(condition = refused, messages = "[]"),
+        )
+
+        val expected = linkedMapOf(
+            "a sound condition, the Base Year — the control" to listOf("NO_BASE_YEAR"),
+            "a refused condition, the Base Year" to listOf("MVK_NO_WILDCARD"),
+            "the condition names the constant too" to listOf("MVK_NO_BASE_YEAR"),
+            "a reserved name, the Base Year" to listOf("MVK_RULE_NAME_INVALID", "NO_BASE_YEAR"),
+            "a sound operation, the Base Year — the control" to listOf("NO_BASE_YEAR"),
+            "a refused operation, the Base Year" to listOf("MVK_INVALID_WILDCARD"),
+            "a sound condition, no message entry — the control" to
+                listOf("MVK_ERROR_MESSAGE_MISSING", "RULE_HAS_NO_ERRORTEXT"),
+            "a refused condition, no message entry" to listOf("MVK_ERROR_MESSAGE_MISSING", "MVK_NO_WILDCARD"),
+        )
+        assertEquals(expected, actual, "the Base Year and no-text classes behind a refused DSL")
+    }
+
     /** Every A12 class the report names about the probe rule, sorted, so a co-firing class shows. */
     private fun ruleCodes(
         name: String = "Probe",
         errorCode: String = "C1",
         condition: String = "FieldFilled(Reference)",
-        message: String,
+        message: String = "see it",
+        messages: String = """[{"locale":"en_US","text":"$message"}]""",
     ): List<String> = a12Codes(
         model(
             """{"type":"Rule","id":"r0","name":"$name","Rule":{
               "errorCondition":"$condition","errorEntityRelPath":"../Reference",
-              "errorCode":"$errorCode","errorMessage":[{"locale":"en_US","text":"$message"}]}}""",
+              "errorCode":"$errorCode","errorMessage":$messages}}""",
         ),
         "/Policy/$name",
     )

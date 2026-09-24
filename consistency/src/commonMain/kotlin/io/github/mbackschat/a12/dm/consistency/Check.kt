@@ -27,6 +27,14 @@ enum class CheckFamily {
     DECLARATION_SLOTS,
 
     /**
+     * A12's unprefixed error-text class for a declaration that answers no declared locale. Its own constant
+     * rather than part of [DECLARATION_SLOTS] because A12's error-text checker draws it, and that checker
+     * judges a message only beside a sound condition or operation, while the prefixed slot classes it rides
+     * with are judged regardless ([KF338]).
+     */
+    ERROR_TEXT_PRESENCE,
+
+    /**
      * A computation's `computationAlternatives` — that it carries work at all, and that each of several
      * alternatives carries its own precondition.
      */
@@ -752,6 +760,13 @@ enum class CheckFamily {
     MESSAGE_VALUE_SUFFIX,
 
     /**
+     * That an error message names the Base Year terminal only in a model that declares a Base Year. Its own
+     * constant rather than part of [BASE_YEAR_REQUIREMENT] because the two sit in different members: the
+     * condition's class is a DSL class, and A12 judges this one only beside a sound DSL member ([KF338]).
+     */
+    MESSAGE_BASE_YEAR,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -1261,13 +1276,17 @@ private fun List<Finding>.withoutMessageVerdictsBehindARefusedDsl(
  * The families that judge a declaration's MESSAGE member, whose verdicts A12 gives only beside a sound DSL.
  *
  * Listed by family rather than by code because every one of them draws unprefixed `FehlertextErrorType`
- * classes and nothing else does, so the family is the fact and the code set would be its second copy.
+ * classes and nothing else does, so the family is the fact and the code set would be its second copy. **That
+ * holds only while no family judges the message beside another member**: the Base Year and no-text classes
+ * were drawn from inside the condition and slot families and co-fired beside a refused DSL until each arm
+ * became a family of its own (2026-09-24).
  */
 private val MESSAGE_MEMBER_FAMILIES = setOf(
     CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.ERROR_TEXT_SEMANTIC_INDEX,
     CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX, CheckFamily.ERROR_TEXT_INDEX_TERMINAL,
     CheckFamily.MESSAGE_TEXT_CHARACTERS, CheckFamily.MESSAGE_PARAMETER_SYNTAX,
     CheckFamily.MESSAGE_GROUP_PARAMETER, CheckFamily.MESSAGE_VALUE_SUFFIX,
+    CheckFamily.MESSAGE_BASE_YEAR, CheckFamily.ERROR_TEXT_PRESENCE,
 )
 
 /**

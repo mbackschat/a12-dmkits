@@ -92,6 +92,12 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r2","name":"BadEntity","Rule":{
               "errorCondition":"FieldFilled(NoSuchEntity)","errorEntityRelPath":"../Price",
               "errorCode":"C2","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r97","name":"CarriesNoMessage","Rule":{
+              "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
+              "errorCode":"C97","errorMessage":[]}},
+            {"type":"Rule","id":"r98","name":"NamesTheBaseYear","Rule":{
+              "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
+              "errorCode":"C98","errorMessage":[{"locale":"en_US","text":"since ${'$'}BaseYear${'$'}"}]}},
             {"type":"Rule","id":"r3","name":"NoCode","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
               "errorCode":"","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -448,6 +454,8 @@ class CheckFamilyWiringTest {
         CheckFamily.DECLARED_REFERENCES to ("MVK_ERROR_FIELD_MISSING" to "/Catalog/BadTarget"),
         CheckFamily.CONDITION_REFERENCES to ("MVK_INVALID_ENTITY" to "/Catalog/BadEntity"),
         CheckFamily.DECLARATION_SLOTS to ("MVK_ERROR_CODE_MISSING" to "/Catalog/NoCode"),
+        // A sound condition beside no message at all, so the error-text class is not withheld behind a DSL one.
+        CheckFamily.ERROR_TEXT_PRESENCE to ("RULE_HAS_NO_ERRORTEXT" to "/Catalog/CarriesNoMessage"),
         CheckFamily.COMPUTATION_ALTERNATIVES to ("MVK_CONDITION_MISSING" to "/Catalog/NoWork"),
         CheckFamily.RULE_CONDITION_AND_TARGET to (CK_MODEL_NOT_BUILDABLE to "/Catalog/NoCondition"),
         CheckFamily.ELEMENT_NAME_UNIQUENESS to (CK_MODEL_NOT_BUILDABLE to "/Catalog/Twin"),
@@ -690,6 +698,8 @@ class CheckFamilyWiringTest {
             ("INVALID_NO_VALUE_VALIDATION" to "/Catalog/SuffixesAValueFreeField"),
         CheckFamily.MESSAGE_PARAMETER_SYNTAX to
             ("WRONG_NUMBER_OF_DOLLARS" to "/Catalog/OpensAParameterItNeverCloses"),
+        // The catalog declares no Base Year, which the year-less date row above relies on too.
+        CheckFamily.MESSAGE_BASE_YEAR to ("NO_BASE_YEAR" to "/Catalog/NamesTheBaseYear"),
         CheckFamily.OUTER_MARKER_POSITION to
             ("MVK_INVALID_OUTER_ITERATION" to "/Catalog/MarksAnOuterIterationOutsideAFilter"),
         CheckFamily.FILTER_BODY_GATES to

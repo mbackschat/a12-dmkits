@@ -206,6 +206,107 @@ class MessageParameterConditionDependencyLawsTest {
         assertEquals(expected, actual, "whether a class about another rule member withholds the message");
     }
 
+    /**
+     * The Base Year terminal, a third message class beside the character and membership ones: the policy
+     * declares no Base Year, so {@code $BaseYear$} draws {@code NO_BASE_YEAR} wherever A12 examines the text.
+     * Measured on its own because the checker reports it from a family that also judges conditions, so the
+     * withholding the other two classes get cannot be assumed to reach it.
+     */
+    @Test
+    void whetherARefusedDslWithholdsTheBaseYearClass() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a sound condition — the control",
+                verdict("FieldFilled(Reference)", "../Reference", "see $BaseYear$"));
+        actual.put("a star on the field",
+                verdict("FieldFilled(Reference) And Sum(Claims/Amount*) > 0", "../Reference", "see $BaseYear$"));
+        actual.put("an unstarred repetition read",
+                verdict("FieldFilled(Reference) And FieldFilled(Claims/Amount)", "../Reference", "see $BaseYear$"));
+        actual.put("the error field unreferenced", verdict("FieldFilled(Premium)", "../Reference", "see $BaseYear$"));
+        actual.put("a condition naming nothing", verdict("FieldFilled(NoSuchField)", "../Reference", "see $BaseYear$"));
+        actual.put("the condition names the constant too",
+                verdict("FieldFilled(Reference) And YearFromDate(BaseYear) > 2020", "../Reference", "see $BaseYear$"));
+        actual.put("a reserved rule name beside it", rule("vk_vkProbe", "C1", "see $BaseYear$"));
+        actual.put("a sound operation — the control", computing("1", "see $BaseYear$"));
+        actual.put("a star on the operation's field", computing("Sum(Claims/Amount*)", "see $BaseYear$"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a sound condition — the control", "NO_BASE_YEAR");
+        expected.put("a star on the field", "MVK_INVALID_WILDCARD");
+        expected.put("an unstarred repetition read", "MVK_NO_WILDCARD");
+        expected.put("the error field unreferenced", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("a condition naming nothing", "MVK_INVALID_ENTITY");
+        // The constant refused in BOTH members is reported once, by the condition: its own class is a DSL class,
+        // so it withholds the message's like any other.
+        expected.put("the condition names the constant too", "MVK_NO_BASE_YEAR");
+        expected.put("a reserved rule name beside it", "MVK_RULE_NAME_INVALID,NO_BASE_YEAR");
+        expected.put("a sound operation — the control", "NO_BASE_YEAR");
+        expected.put("a star on the operation's field", "MVK_INVALID_WILDCARD");
+        assertEquals(expected, actual, "whether a refused DSL withholds the Base Year class");
+    }
+
+    /**
+     * The rest of the message member's classes, beside the same sound and refused condition: two more
+     * error-text ones, and the two that judge whether the member is PRESENT for each declared locale, which
+     * the checker reports from a family it treats as independent of the DSL. A duplicate locale is not among
+     * them: A12 admits it at this tier (`RuleSlotLawsTest`).
+     */
+    @Test
+    void whichOtherMessageClassesARefusedConditionWithholds() {
+        Map<String, String> conditions = new LinkedHashMap<>();
+        conditions.put("sound", "FieldFilled(Reference)");
+        conditions.put("refused", "FieldFilled(Reference) And FieldFilled(Claims/Amount)");
+        Map<String, String> actual = new LinkedHashMap<>();
+        conditions.forEach((label, condition) -> {
+            actual.put(label + " | an unterminated parameter", messages(condition, false, "en_US", "see $Premium"));
+            actual.put(label + " | a group parameter naming a descendant",
+                    messages(condition, false, "en_US", "row $#/Policy/Claims$ needs it"));
+            actual.put(label + " | no message entry", messages(condition, false));
+            actual.put(label + " | a declared locale unanswered", messages(condition, true, "en_US", "see it"));
+        });
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("sound | an unterminated parameter", "WRONG_NUMBER_OF_DOLLARS");
+        expected.put("sound | a group parameter naming a descendant", "INVALID_GROUP");
+        expected.put("sound | no message entry", "MVK_ERROR_MESSAGE_MISSING,RULE_HAS_NO_ERRORTEXT");
+        expected.put("sound | a declared locale unanswered",
+                "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING,RULE_HAS_NO_ERRORTEXT");
+        expected.put("refused | an unterminated parameter", "MVK_NO_WILDCARD");
+        expected.put("refused | a group parameter naming a descendant", "MVK_NO_WILDCARD");
+        // The member's PRESENCE is judged beside the refused condition, under its prefixed classes, while the
+        // unprefixed error-text class that rides with them is withheld: the split is A12's own vocabulary, the
+        // model-validation keys against `FehlertextErrorType`, and not which member the defect sits in.
+        expected.put("refused | no message entry", "MVK_ERROR_MESSAGE_MISSING,MVK_NO_WILDCARD");
+        expected.put("refused | a declared locale unanswered",
+                "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING,MVK_NO_WILDCARD");
+        assertEquals(expected, actual, "which other message classes a refused condition withholds");
+    }
+
+    /**
+     * The drafted policy with one rule reporting on {@code Reference}, carrying the (locale, text) pairs in
+     * [localeAndText] as its messages; [twoLocales] also declares {@code de_DE}, which none of them answers.
+     */
+    private static String messages(String condition, boolean twoLocales, String... localeAndText) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(POLICY);
+            if (twoLocales) {
+                ((ArrayNode) root.path("header").path("locales")).addObject().put("code", "de_DE");
+            }
+            ObjectNode node = (ObjectNode) ((ArrayNode) root.path("content").path("modelRoot")
+                    .path("rootGroups").get(0).path("Group").path("elements")).addObject();
+            node.put("type", "Rule").put("id", "rprobe").put("name", "Probe");
+            ObjectNode body = node.putObject("Rule");
+            body.put("errorCondition", condition).put("errorEntityRelPath", "../Reference")
+                    .put("errorCode", "C1").put("severity", "ERROR");
+            ArrayNode entries = body.putArray("errorMessage");
+            for (int i = 0; i < localeAndText.length; i += 2) {
+                entries.addObject().put("locale", localeAndText[i]).put("text", localeAndText[i + 1]);
+            }
+            return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture must parse", unreadable);
+        }
+    }
+
     /** The drafted policy with one rule injected, so the model is whole in every way but the condition. */
     private static String verdict(String condition, String errorField, String text) {
         return rule("Probe", "C1", condition, errorField, text);

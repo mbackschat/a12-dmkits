@@ -80,6 +80,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field ERROR_TARGET_ITERATION Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ERROR_TEXT_CATEGORY_SUFFIX Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ERROR_TEXT_INDEX_TERMINAL Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field ERROR_TEXT_PRESENCE Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ERROR_TEXT_SEMANTIC_INDEX Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field FIELD_LIST_OPERATION_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field FIELD_NAME_RESERVED_SEGMENT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
@@ -102,6 +103,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field HINT_LIST_VALUES Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field H_MODEL_FORM_CONSTRUCT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field H_MODEL_PATH_SUFFIX Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field MESSAGE_BASE_YEAR Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field MESSAGE_GROUP_PARAMETER Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field MESSAGE_PARAMETER_REFERENCE Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field MESSAGE_PARAMETER_SYNTAX Lio/github/mbackschat/a12/dm/consistency/CheckFamily;

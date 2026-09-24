@@ -39,15 +39,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * range-overlap operators ([dateRangeOperandListFindings]) while ENABLING these two shapes, so a family
  * treating it as one switch in one direction would get the other half backwards.
  *
- * **The error MESSAGE is a third place, and A12 answers it from a different vocabulary.** The same constant
- * written as a message parameter — `${'$'}BaseYear${'$'}`, or with the signed offset it admits unbounded — draws the
- * unprefixed `NO_BASE_YEAR` rather than `MVK_NO_BASE_YEAR`, measured on both language spellings
- * (`rulekit.validate.laws.RuleMessageParameterLanguageLawsTest`). The carrier really does decide the class
- * here, so the two arms cannot share a code however alike the question is.
- *
- * **A declaration whose CONDITION already names the constant is reported once, on the condition.** Which of
- * the two A12 answers first is not measured, and both are true of the model, so reporting the condition's is
- * an under-report rather than a wrong class.
+ * **The error MESSAGE is a third place, and it is [messageBaseYearFindings]'s**, because A12 judges it only
+ * beside a sound DSL member and this family's classes are DSL classes.
  *
  * **Silent on everything when the model declares a base year**, which is the whole family's precondition,
  * and on a `Date` construction this reader cannot parse into slots.
@@ -59,7 +52,6 @@ internal fun TrackedFactBase.baseYearRequirementFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val baseYear = keywords[BASE_YEAR_CONSTANT] ?: return emptyList()
     val dateConstruction = keywords[DATE_CONSTRUCTION] ?: return emptyList()
-    val unsound = declarationsWithUnsoundDsl()
     return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -69,19 +61,37 @@ internal fun TrackedFactBase.baseYearRequirementFindings(): List<Finding> {
             callShapes(text, conditionLanguage, syntaxEntryOf(member))
                 .filter { it.operator == dateConstruction }
                 .firstNotNullOfOrNull { shape -> yearlessFinding(shape, element, member) }
-        } ?: messageConstantFinding(element, body, unsound)
+        }
     }
 }
 
-/** The same constant in an error message, which A12 refuses from its own error-text vocabulary. */
+/**
+ * The Base Year terminal in an error MESSAGE, in a model that declares no Base Year.
+ *
+ * **A12 answers it from a different vocabulary.** The constant written as a message parameter —
+ * `${'$'}BaseYear${'$'}`, or with the signed offset it admits unbounded — draws the unprefixed `NO_BASE_YEAR`
+ * rather than `MVK_NO_BASE_YEAR`, measured on both language spellings
+ * (`rulekit.validate.laws.RuleMessageParameterLanguageLawsTest`). The carrier decides the class, so this and
+ * [baseYearRequirementFindings] cannot share a code however alike the question is.
+ *
+ * **And A12 judges it only beside a sound condition or operation**, on either carrier, which report assembly
+ * applies rather than this family. That includes a condition naming the constant too: its `MVK_NO_BASE_YEAR`
+ * is a DSL class, so the model is reported once, on the condition
+ * (`rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`, [KF338]).
+ */
+internal fun TrackedFactBase.messageBaseYearFindings(): List<Finding> {
+    if (hasBaseYear) {
+        return emptyList()
+    }
+    return declarations().mapNotNull { element ->
+        messageConstantFinding(element, element.body ?: return@mapNotNull null)
+    }
+}
+
 private fun TrackedFactBase.messageConstantFinding(
     element: TrackedDeclaration,
     body: kotlinx.serialization.json.JsonObject,
-    unsound: Set<String>,
 ): Finding? {
-    if (element.path in unsound) {
-        return null
-    }
     val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return null
     return messages.entries.firstNotNullOfOrNull { message ->
         if (message.text.carriesAnOffendingCharacter()) {

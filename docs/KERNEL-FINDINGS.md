@@ -7003,7 +7003,7 @@ Reported by the portable checker as `CheckFamily.MESSAGE_TEXT_CHARACTERS`.
 
 *Locked by:* `rulekit.validate.laws.MessageTextControlCharacterLawsTest`.
 
-## §13 supplement — any class drawn by the DSL member withholds the whole message verdict, a class about the name or code does not (measured, 2026-09-13, extended 2026-09-24) <a id="kf338"></a>
+## §13 supplement — any class drawn by the DSL member withholds every error-text class of the message, while a class about the name or code, and the message's prefixed presence classes, stand beside it (measured, 2026-09-13, extended 2026-09-24) <a id="kf338"></a>
 
 > Fold: not-foldable — the error-text checker's dependence on a sibling member, not an evaluation behaviour.
 
@@ -7043,7 +7043,21 @@ The second row against the third is the measurement: the verdict is identical wh
 
 The last two rows are the discriminator: a class about the name or the code is ACCOMPANIED by the message's verdict, so the trigger is the DSL member and not "the declaration drew something". The post-parse row says the gate is not "parsed and resolved" either.
 
-Reported by the portable checker as a WITHHOLDING at report assembly: every `MESSAGE_*`/`ERROR_TEXT_*` verdict is dropped at a declaration where a family judging its DSL draws a rejecting class (`Check.kt`, `withoutMessageVerdictsBehindARefusedDsl`, mirrored by `consistency.MessageBehindARefusedDslTest`). *Corrected 2026-09-24:* until then the only gate was the families' own unsound-DSL test, an unresolved name or an unbalanced delimiter, and this entry called what it missed "an under-report". It was a co-firing message class beside the condition's, on every row of the table above. The families' own test has since been retired, so that withholding is the only gate, and `consistency.UnsoundDslDrawsARejectionTest` locks that an unresolvable or unparseable member still draws the rejecting class it keys on.
+**Not every class about the message member is withheld (measured 2026-09-24).** The same refused condition, `FieldFilled(Claims/Amount)` from the root, beside more message defects:
+
+| the message | beside a sound condition | beside the refused one |
+|---|---|---|
+| `see $Premium` — unterminated | `WRONG_NUMBER_OF_DOLLARS` | `MVK_NO_WILDCARD` only |
+| `$#/Policy/Claims$` — a descendant group | `INVALID_GROUP` | `MVK_NO_WILDCARD` only |
+| no entry at all | `MVK_ERROR_MESSAGE_MISSING,RULE_HAS_NO_ERRORTEXT` | `MVK_ERROR_MESSAGE_MISSING,MVK_NO_WILDCARD` |
+| `de_DE` declared and not answered | `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING,RULE_HAS_NO_ERRORTEXT` | `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING,MVK_NO_WILDCARD` |
+| `see $BaseYear$`, no Base Year declared | `NO_BASE_YEAR` | `MVK_NO_WILDCARD` only; likewise behind `MVK_INVALID_WILDCARD`, and on a computation |
+| the same, with the condition naming `BaseYear` too | — | `MVK_NO_BASE_YEAR` only |
+| the same, beside a sound condition, the rule NAMED `vk_vkProbe` | `MVK_RULE_NAME_INVALID,NO_BASE_YEAR` | — |
+
+The presence rows split one defect across the line: the prefixed class stays and its unprefixed companion goes. Every class withheld in this entry is a `FehlertextErrorType` member, and every message class kept is an `MVK_` key. The row with the constant in both members settles a choice the checker had made by default, reporting the model once, on the condition: A12 does the same, since the condition's class is itself a DSL class.
+
+Reported by the portable checker as a WITHHOLDING at report assembly: every `MESSAGE_*`/`ERROR_TEXT_*` verdict is dropped at a declaration where a family judging its DSL draws a rejecting class (`Check.kt`, `withoutMessageVerdictsBehindARefusedDsl`, mirrored by `consistency.MessageBehindARefusedDslTest`). *Corrected 2026-09-24:* until then the only gate was the families' own unsound-DSL test, an unresolved name or an unbalanced delimiter, and this entry called what it missed "an under-report". It was a co-firing message class beside the condition's, on every row of the table above. The families' own test has since been retired, so that withholding is the only gate, and `consistency.UnsoundDslDrawsARejectionTest` locks that an unresolvable or unparseable member still draws the rejecting class it keys on. The withholding keys on the FAMILY, so `NO_BASE_YEAR` and `RULE_HAS_NO_ERRORTEXT`, drawn from inside the base-year and declaration-slot families, co-fired beside a refused DSL until each became a family of its own (`MESSAGE_BASE_YEAR`, `ERROR_TEXT_PRESENCE`, 2026-09-24). Two class-agreement mutation kinds in `adapter.laws.CheckerClassAgreementTest` now guard the pair.
 
 *Locked by:* `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`.
 
