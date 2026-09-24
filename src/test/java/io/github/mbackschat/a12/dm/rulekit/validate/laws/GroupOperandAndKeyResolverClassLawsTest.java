@@ -8,9 +8,6 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
-import io.github.mbackschat.a12.dm.modelkit.FieldKind;
-import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
@@ -25,23 +22,11 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * so a star on a segment that is not a repeatable group answers ahead of a later miss, and a key is resolved
  * before the key list's own wildcard gate reads it.
  *
- * <p>Own domain: an insurance policy with a fixed insured party and broker and repeatable claims. {@code Remark}
- * is declared in two groups so a bare {@code Remark} is ambiguous model-wide, and short-name references are on.
+ * <p>Own domain: {@link PolicyPathFixture}, with short-name references on.
  */
 class GroupOperandAndKeyResolverClassLawsTest {
 
-    private static final String POLICY = ModelDocument.read(DocumentModelDraft.named("policy").locale("en_US")
-                    .rootGroup("Policy", p -> p
-                            .field("Holder", FieldKind.STRING)
-                            .group("Insured", i -> i.field("Remark", FieldKind.STRING).field("Age", FieldKind.NUMBER))
-                            .group("Broker", b -> b.field("BrokerName", FieldKind.STRING))
-                            .group("Claims", c -> c.repeatable(20)
-                                    .field("ClaimRef", FieldKind.STRING)
-                                    .field("Remark", FieldKind.STRING)
-                                    .field("Amount", FieldKind.NUMBER)))
-                    .build().toJson())
-            .setFieldRefByShortNameAllowed(true)
-            .toJson();
+    private static final String POLICY = PolicyPathFixture.policy(true);
 
     /** The fixed operands, each beside its expected class, the admitted control first. */
     private static final Map<String, String> FIXED = orderedMap(
