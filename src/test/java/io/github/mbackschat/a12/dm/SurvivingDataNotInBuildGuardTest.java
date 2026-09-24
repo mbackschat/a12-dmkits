@@ -41,7 +41,8 @@ import org.junit.jupiter.api.Test;
  * output (install dists, native binaries, release staging, reports); requiring a declaration for each would turn
  * this list into a set of permissions nobody reviews, which is the failure mode the fully-used assertion exists to
  * prevent. (2) A single-literal path is only a candidate when a path-constructing call ({@link #PATH_APIS}) appears within
- * {@link #API_WINDOW} characters before it, so message text and regex patterns that merely mention {@code build/}
+ * {@link #API_WINDOW} characters before it, or when it initializes a name the file hands directly to such a call
+ * ({@link #boundToAPathArgument}), so message text and regex patterns that merely mention {@code build/}
  * are not declarations to maintain, and a literal containing whitespace is prose rather than a path. Comments are stripped before matching, so a doc comment may freely illustrate
  * the pattern — for instance {@code Path.of("build/whatever")} right here, which the earlier constructor-anchored
  * matcher would have flagged against this very file.
@@ -196,20 +197,8 @@ class SurvivingDataNotInBuildGuardTest {
             // REST OF THE FILE is treated as comment. Measured before the fix: 10 Java files ended in a
             // non-neutral state and 1,179 lines of real code were blanked, any write site among them invisible.
             String code = SourceText.uncommented(source);
-            Matcher found = BUILD_PATH_LITERAL.matcher(code);
-            while (found.find()) {
-                if (looksLikeAPath(found.group(1)) && constructedAsPath(code, found.start())) {
-                    classify(found.group(1), source, seen, undeclared);
-                }
-            }
-            Matcher segments = BUILD_PATH_SEGMENTS.matcher(code);
-            while (segments.find()) {
-                var joined = new StringBuilder("build");
-                Matcher segment = SEGMENT.matcher(segments.group(1));
-                while (segment.find()) {
-                    joined.append('/').append(segment.group(1));
-                }
-                classify(joined.toString(), source, seen, undeclared);
+            for (String path : buildPathsConstructedIn(code)) {
+                classify(path, source, seen, undeclared);
             }
         }
 
@@ -230,6 +219,50 @@ class SurvivingDataNotInBuildGuardTest {
                     + "constructs it any more — delete the entry so the list keeps meaning what it says");
         }
     }
+
+    /** Every path under {@code build/} that [code] hands to a path-constructing call, in all three spellings. */
+    private static List<String> buildPathsConstructedIn(String code) {
+        var paths = new ArrayList<String>();
+        Matcher found = BUILD_PATH_LITERAL.matcher(code);
+        while (found.find()) {
+            if (looksLikeAPath(found.group(1))
+                    && (constructedAsPath(code, found.start()) || boundToAPathArgument(code, found))) {
+                paths.add(found.group(1));
+            }
+        }
+        Matcher segments = BUILD_PATH_SEGMENTS.matcher(code);
+        while (segments.find()) {
+            var joined = new StringBuilder("build");
+            Matcher segment = SEGMENT.matcher(segments.group(1));
+            while (segment.find()) {
+                joined.append('/').append(segment.group(1));
+            }
+            paths.add(joined.toString());
+        }
+        return paths;
+    }
+
+    /**
+     * Whether the literal [found] is the initializer of a named value that the same file then passes, directly,
+     * to a path-constructing call — {@code static final String OUT = "build/x"} and, far below it,
+     * {@code Path.of(OUT)}. The API window cannot see that shape, because the call sits wherever the value is
+     * used rather than beside the literal.
+     */
+    private static boolean boundToAPathArgument(String code, Matcher found) {
+        Matcher binding = CONSTANT_BINDING.matcher(code.substring(0, found.start()));
+        if (!binding.find()) {
+            return false;
+        }
+        String name = Pattern.quote(binding.group(1));
+        return Pattern.compile(PATH_API_CALL + "(?:[^()]*,\\s*)?" + name + "\\s*[,)]").matcher(code).find();
+    }
+
+    /** The name a string initializer is bound to, when the literal is exactly what follows the {@code =}. */
+    private static final Pattern CONSTANT_BINDING = Pattern.compile("(\\w+)\\s*(?::\\s*String\\s*)?=\\s*$");
+
+    /** {@link #PATH_APIS} as one alternation, opening the call whose argument list the binding is looked for in. */
+    private static final String PATH_API_CALL = "(?:\\bFile|Path\\.of|Paths\\.get|FileWriter|FileOutputStream"
+            + "|RandomAccessFile|\\.resolve)\\(\\s*";
 
     /**
      * A path in this tree never contains whitespace; an assertion message that happens to mention {@code build/}
@@ -255,6 +288,24 @@ class SurvivingDataNotInBuildGuardTest {
         return PATH_APIS.stream().anyMatch(window::contains);
     }
 
+
+    /**
+     * A path held in a named value is still a path: the literal is judged by where the NAME goes. The control is
+     * the same binding handed to something that is not a path, which stays out of the scan.
+     */
+    @Test
+    void aBuildPathHeldInAConstantIsSeenWhereTheConstantBecomesAPath() {
+        String planted = "\"build" + "/planted.txt\"";
+        String declaration = "class X {\n    private static final String OUT = " + planted + ";\n";
+        String filler = "    // " + "-".repeat(API_WINDOW) + "\n";
+        String written = declaration + filler + "    void m() throws Exception { Files.writeString(Path.of(OUT), \"x\"); }\n}";
+        String passedOn = declaration + filler + "    void m() { run(List.of(\"node\", OUT)); }\n}";
+
+        assertEquals(List.of("build" + "/planted.txt"), buildPathsConstructedIn(written),
+                "a constant handed to Path.of is a path site, however far the call sits from the literal");
+        assertEquals(List.of(), buildPathsConstructedIn(passedOn),
+                "the same constant handed to a process argument list is not");
+    }
 
     /**
      * The discriminator for the language rule, because getting it wrong is silent in the dangerous direction.
