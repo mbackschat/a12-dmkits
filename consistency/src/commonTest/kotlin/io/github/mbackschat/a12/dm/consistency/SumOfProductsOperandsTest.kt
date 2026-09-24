@@ -59,6 +59,7 @@ class SumOfProductsOperandsTest {
         actual["an operand naming nothing declared"] = codes("Lines*/Nowhere, Lines*/Qty")
         actual["a star on the field, not its level, AND different owning groups"] =
             codes("Lines/Qty*, Vouchers*/Amount")
+        actual["a star on a fixed group, one operand repeatable"] = codes("Fees*/Handling, Vouchers*/Amount")
 
         val expected = mutableMapOf<String, List<String>>()
         // MVK_NO_WILDCARD, from the reference reader, ahead of every gate this family owns.
@@ -75,6 +76,7 @@ class SumOfProductsOperandsTest {
         expected["an operand naming nothing declared"] = emptyList()
         // MVK_INVALID_WILDCARD, the resolver's, ahead of the pair comparison.
         expected["a star on the field, not its level, AND different owning groups"] = emptyList()
+        expected["a star on a fixed group, one operand repeatable"] = emptyList()
         assertEquals(expected, actual, "the shapes another gate answers first")
     }
 

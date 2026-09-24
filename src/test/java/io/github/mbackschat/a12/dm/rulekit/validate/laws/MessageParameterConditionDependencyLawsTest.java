@@ -325,10 +325,17 @@ class MessageParameterConditionDependencyLawsTest {
         refused.put("a path above the root", "FieldFilled(Reference) And FieldFilled(../../../Reference)");
         refused.put("an up-step after a named segment", "FieldFilled(Reference) And FieldFilled(Claims/../Reference)");
         refused.put("an unknown root group", "FieldFilled(Reference) And FieldFilled(/Nope/Reference)");
-        // Two calls whose shape parses and whose operator refuses them — an argument too many, and a number
-        // where a date belongs. The portable checker leaves both to A12 (DEV-API-GAPS DG83).
+        // Two calls A12's grammar refuses by operator — an argument too many, and a number where a date belongs,
+        // each drawing the parser's MVK_UNEXPECTED_TOKEN. The portable checker leaves both to A12 (DEV-API-GAPS
+        // DG83).
         refused.put("an argument too many", "FieldFilled(Reference) And Abs([Premium], [Premium]) > 0");
         refused.put("a number where a date belongs", "FieldFilled(Reference) And AddDays([Premium], 1) > 0");
+        // Three classes the parse does not draw, each from a check of its own: a presence test given two fields,
+        // one field listed twice, and a number compared with a text (a12-kernel-lean SPEC-2026-09-25-01 asked for
+        // classes past the ones their review had measured).
+        refused.put("a presence test given two fields", "FieldFilled(Reference, Premium)");
+        refused.put("one field listed twice", "FieldFilled(Reference) And AtLeastOneFieldFilled(Premium, Premium)");
+        refused.put("a number compared with a text", "FieldFilled(Reference) And [Premium] == \"x\"");
         Map<String, String> actual = new LinkedHashMap<>();
         Map<String, String> expected = new LinkedHashMap<>();
         refused.forEach((shape, condition) -> {

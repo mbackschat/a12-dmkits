@@ -79,6 +79,9 @@ class DateArgumentSlotTest {
         actual["a group"] = slot("DifferenceInDays(Billing, ShippedOn) > 0")
         actual["a starred field"] = slot("DifferenceInDays(Lines*/LineDate, ShippedOn) > 0")
         actual["a star on the field, not on its level"] = slot("DifferenceInDays(Lines/LineDate*, ShippedOn) > 0")
+        actual["a star on a fixed group above the field"] =
+            slot("DifferenceInDays(Billing*/InvoicedOn, ShippedOn) > 0")
+        actual["the same without the star — the twin"] = slot("DifferenceInDays(Billing/InvoicedOn, ShippedOn) > 0")
         actual["a category access"] = slot("DifferenceInDays(Channel -> Band, ShippedOn) > 0")
         actual["a text field"] = slot("DifferenceInDays(Notes, ShippedOn) > 0")
         actual["a number field"] = slot("DifferenceInDays(Quantity, ShippedOn) > 0")
@@ -98,6 +101,8 @@ class DateArgumentSlotTest {
         expected["a group"] = noGroups
         expected["a starred field"] = noWildcards
         expected["a star on the field, not on its level"] = listOf("MVK_INVALID_WILDCARD")
+        expected["a star on a fixed group above the field"] = listOf("MVK_INVALID_WILDCARD")
+        expected["the same without the star — the twin"] = emptyList()
         // A12 answers `MVK_CATEGORY_NOT_ALLOWED`, from a gate ahead of every one here: the shared operand
         // reducer declines a categorized operand, so nothing in this checker ever sees the call.
         expected["a category access"] = emptyList()

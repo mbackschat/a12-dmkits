@@ -157,6 +157,10 @@ class MessageBehindARefusedDslTest {
             "FieldFilled(Reference) And FieldFilled(../../../Reference)",
             "FieldFilled(Reference) And FieldFilled(Claims/../Reference)",
             "FieldFilled(Reference) And FieldFilled(/Nope/Reference)",
+            "FieldFilled(Reference, Premium)",
+            "FieldFilled(Reference) And AtLeastOneFieldFilled(Premium, Premium)",
+            // JSON-escaped: the condition is written into the model text as it stands.
+            "FieldFilled(Reference) And [Premium] == \\\"x\\\"",
         ).forEach { condition ->
             val alone = ruleCodes(condition = condition)
             assertTrue(alone.isNotEmpty(), "$condition must itself be refused")

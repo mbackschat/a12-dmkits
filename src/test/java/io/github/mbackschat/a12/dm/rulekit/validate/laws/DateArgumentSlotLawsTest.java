@@ -65,6 +65,10 @@ class DateArgumentSlotLawsTest {
         actual.put("a group", verdict("DifferenceInDays(Billing, ShippedOn) > 0"));
         actual.put("a starred field", verdict("DifferenceInDays(Lines*/LineDate, ShippedOn) > 0"));
         actual.put("a star on the field, not on its level", verdict("DifferenceInDays(Lines/LineDate*, ShippedOn) > 0"));
+        actual.put("a star on a fixed group above the field",
+                verdict("DifferenceInDays(Billing*/InvoicedOn, ShippedOn) > 0"));
+        actual.put("the same without the star — the twin",
+                verdict("DifferenceInDays(Billing/InvoicedOn, ShippedOn) > 0"));
         actual.put("a category access", verdict("DifferenceInDays(Channel -> Band, ShippedOn) > 0"));
         actual.put("a text field", verdict("DifferenceInDays(Notes, ShippedOn) > 0"));
         actual.put("a number field", verdict("DifferenceInDays(Quantity, ShippedOn) > 0"));
@@ -85,6 +89,8 @@ class DateArgumentSlotLawsTest {
         expected.put("a starred field", "MVK_NO_WILDCARDS_ALLOWED");
         // The resolver's wildcard gate answers before the slot is asked anything.
         expected.put("a star on the field, not on its level", "MVK_INVALID_WILDCARD");
+        expected.put("a star on a fixed group above the field", "MVK_INVALID_WILDCARD");
+        expected.put("the same without the star — the twin", KernelLaws.ADMITTED);
         expected.put("a category access", "MVK_CATEGORY_NOT_ALLOWED");
         expected.put("a text field", NOT_A_DATE);
         expected.put("a number field", NOT_A_DATE);

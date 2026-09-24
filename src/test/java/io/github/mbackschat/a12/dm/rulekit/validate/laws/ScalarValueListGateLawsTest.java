@@ -64,6 +64,10 @@ class ScalarValueListGateLawsTest {
         actual.put("a starred field", verdict("FieldValueIncludedInValueList(Items*/ItemCode, \"x\")"));
         actual.put("a star on the field, not on its level",
                 verdict("FieldValueIncludedInValueList(Items/ItemCode*, \"x\")"));
+        actual.put("a star on a fixed group above the field",
+                verdict("FieldValueIncludedInValueList(Broker*/BrokerName, \"x\")"));
+        actual.put("the same without the star — the twin",
+                verdict("FieldValueIncludedInValueList(Broker/BrokerName, \"x\")"));
         actual.put("a boolean field", verdict("FieldValueIncludedInValueList(Renewed, \"x\")"));
         actual.put("a confirm field", verdict("FieldValueIncludedInValueList(Accepted, \"x\")"));
         actual.put("a date field", verdict("FieldValueIncludedInValueList(IssuedOn, \"x\")"));
@@ -83,6 +87,8 @@ class ScalarValueListGateLawsTest {
         expected.put("a starred field", "MVK_NO_WILDCARDS_ALLOWED");
         // The resolver's wildcard gate answers before the subject is judged at all.
         expected.put("a star on the field, not on its level", "MVK_INVALID_WILDCARD");
+        expected.put("a star on a fixed group above the field", "MVK_INVALID_WILDCARD");
+        expected.put("the same without the star — the twin", KernelLaws.ADMITTED);
         expected.put("a boolean field", ONLY_THREE_KINDS);
         expected.put("a confirm field", ONLY_THREE_KINDS);
         expected.put("a date field", ONLY_THREE_KINDS);

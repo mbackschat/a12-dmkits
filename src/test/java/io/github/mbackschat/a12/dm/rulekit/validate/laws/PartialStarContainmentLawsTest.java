@@ -278,6 +278,19 @@ class PartialStarContainmentLawsTest {
                 "NumberOfFilledGroups(../Shipments/Parcels/Seal*)"));
         actual.put("Ledger | a star on each level and on the field", PLAIN.textComputation(LEDGER,
                 "../../Summary/Result", "Sum(../Shipments*/Parcels*/Weight*)"));
+        // The fixed group's star at the positions the field's has (a12-kernel-lean SPEC-2026-09-25-01): inside
+        // the rule group, beside a star on every repeatable level, in a group list, and above a field in a
+        // scalar slot, where the twin without it draws the slot's own class.
+        actual.put("Summary | a star on the fixed group, contained", PLAIN.textComputation(SUMMARY, "../Result",
+                "NumberOfFilledGroups(../Shipments/Parcels/Seal*)"));
+        actual.put("Ledger | a star on each level and on the fixed group", PLAIN.textComputation(LEDGER,
+                "../../Summary/Result", "NumberOfFilledGroups(../Shipments*/Parcels*/Seal*)"));
+        actual.put("Summary | rule, a star on the fixed group in a group list",
+                PLAIN.textRule(SUMMARY, "AtLeastOneGroupFilled(/Fulfilment/Shipments*/Parcels*/Seal*)"));
+        actual.put("Summary | rule, a star on the fixed group above a field in a scalar slot",
+                PLAIN.textRule(SUMMARY, "FieldFilled(/Fulfilment/Shipments*/Parcels*/Seal*/SealCode)"));
+        actual.put("Summary | rule, the same without it — the twin",
+                PLAIN.textRule(SUMMARY, "FieldFilled(/Fulfilment/Shipments*/Parcels*/Seal/SealCode)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("Ledger | a star on the field",
@@ -288,6 +301,17 @@ class PartialStarContainmentLawsTest {
                 is("../../Summary/Result = NumberOfFilledGroups(../Shipments/Parcels/Seal*)", "MVK_INVALID_WILDCARD"));
         expected.put("Ledger | a star on each level and on the field",
                 is("../../Summary/Result = Sum(../Shipments*/Parcels*/Weight*)", "MVK_INVALID_WILDCARD"));
+        expected.put("Summary | a star on the fixed group, contained",
+                is("../Result = NumberOfFilledGroups(../Shipments/Parcels/Seal*)", "MVK_INVALID_WILDCARD"));
+        expected.put("Ledger | a star on each level and on the fixed group", is(
+                "../../Summary/Result = NumberOfFilledGroups(../Shipments*/Parcels*/Seal*)", "MVK_INVALID_WILDCARD"));
+        expected.put("Summary | rule, a star on the fixed group in a group list", is("FieldFilled(" + TARGET
+                + ") And AtLeastOneGroupFilled(/Fulfilment/Shipments*/Parcels*/Seal*)", "MVK_INVALID_WILDCARD"));
+        expected.put("Summary | rule, a star on the fixed group above a field in a scalar slot", is("FieldFilled("
+                + TARGET + ") And FieldFilled(/Fulfilment/Shipments*/Parcels*/Seal*/SealCode)",
+                "MVK_INVALID_WILDCARD"));
+        expected.put("Summary | rule, the same without it — the twin", is("FieldFilled(" + TARGET
+                + ") And FieldFilled(/Fulfilment/Shipments*/Parcels*/Seal/SealCode)", "MVK_NO_WILDCARDS_ALLOWED"));
         assertEquals(expected, actual, "a star on a level that does not repeat");
     }
 

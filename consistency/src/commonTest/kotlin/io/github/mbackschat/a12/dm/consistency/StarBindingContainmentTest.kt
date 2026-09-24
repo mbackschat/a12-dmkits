@@ -210,8 +210,20 @@ class StarBindingContainmentTest {
             codes(sheet, ledger, target, "NumberOfFilledGroups(../Shipments/Parcels/Seal*)")
         actual["Ledger | a star on each level and on the field"] =
             codes(sheet, ledger, target, "Sum(../Shipments*/Parcels*/Weight*)")
+        actual["Summary | a star on the fixed group, contained"] =
+            codes(sheet, summary, "../Result", "NumberOfFilledGroups(../Shipments/Parcels/Seal*)")
+        actual["Ledger | a star on each level and on the fixed group"] =
+            codes(sheet, ledger, target, "NumberOfFilledGroups(../Shipments*/Parcels*/Seal*)")
+        val guard = "FieldFilled(/Fulfilment/Summary/Result) And "
+        actual["Summary | rule, a star on the fixed group in a group list"] =
+            ruleCodes(sheet, summary, guard + "AtLeastOneGroupFilled(/Fulfilment/Shipments*/Parcels*/Seal*)")
+        actual["Summary | rule, a star on the fixed group above a field in a scalar slot"] =
+            ruleCodes(sheet, summary, guard + "FieldFilled(/Fulfilment/Shipments*/Parcels*/Seal*/SealCode)")
 
-        val expected = actual.keys.associateWith { listOf("MVK_INVALID_WILDCARD") }
+        val expected = actual.keys.associateWith { listOf("MVK_INVALID_WILDCARD") }.toMutableMap()
+        actual["Summary | rule, the same without it — the twin"] =
+            ruleCodes(sheet, summary, guard + "FieldFilled(/Fulfilment/Shipments*/Parcels*/Seal/SealCode)")
+        expected["Summary | rule, the same without it — the twin"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
         assertEquals(expected, actual, "a star on a level that does not repeat")
     }
 

@@ -161,6 +161,7 @@ class ErrorFieldReferenceTest {
         actual["the outer level starred, REFERENCED target"] =
             nestedCodes("FieldFilled(Carrier) And Sum(Parcels*/Items/Qty) > 0")
         actual["a star on the field, its level bare"] = nestedCodes("Sum(Parcels/Weight*) > 0")
+        actual["a star on a fixed group"] = codes("../Carrier", "FieldFilled(Customs*/Declaration)")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["the outer level starred, the inner bare"] = listOf(noWildcard)
@@ -168,6 +169,7 @@ class ErrorFieldReferenceTest {
         expected["both levels starred — the control"] = listOf(notReferenced)
         expected["the outer level starred, REFERENCED target"] = listOf(noWildcard)
         expected["a star on the field, its level bare"] = listOf("MVK_INVALID_WILDCARD")
+        expected["a star on a fixed group"] = listOf("MVK_INVALID_WILDCARD")
         assertEquals(expected, actual, "which star pre-empts the unreferenced-target class")
     }
 

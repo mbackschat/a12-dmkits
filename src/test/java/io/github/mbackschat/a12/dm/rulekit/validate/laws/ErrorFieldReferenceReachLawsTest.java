@@ -240,6 +240,8 @@ class ErrorFieldReferenceReachLawsTest {
         actual.put("the outer level starred, REFERENCED target",
                 verdict(NESTED, "../Carrier", "FieldFilled(Carrier) And Sum(Parcels*/Items/Qty) > 0"));
         actual.put("a star on the field, its level bare", verdict(NESTED, "../Carrier", "Sum(Parcels/Weight*) > 0"));
+        actual.put("a star on a fixed group", verdict("../Carrier", "FieldFilled(Customs*/Declaration)"));
+        actual.put("the same without it — the twin", verdict("../Carrier", "FieldFilled(Customs/Declaration)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("the outer level starred, the inner bare", "MVK_NO_WILDCARD");
@@ -247,6 +249,8 @@ class ErrorFieldReferenceReachLawsTest {
         expected.put("both levels starred — the control", NOT_REFERENCED);
         expected.put("the outer level starred, REFERENCED target", "MVK_NO_WILDCARD");
         expected.put("a star on the field, its level bare", "MVK_INVALID_WILDCARD");
+        expected.put("a star on a fixed group", "MVK_INVALID_WILDCARD");
+        expected.put("the same without it — the twin", NOT_REFERENCED);
         assertEquals(expected, actual, "which star pre-empts the unreferenced-target class");
     }
 }
