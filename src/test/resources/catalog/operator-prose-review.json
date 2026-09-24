@@ -3453,7 +3453,7 @@
       "operator": "NumberOfFilledGroups",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:37de7bfe24c3ecda532bc200998cdfc0532cfd94f2370ed28ddddec1b1e48aeb",
+      "digest": "sha256:b72ae232820d4839750f1c6d842a49ee0ad19a1079d29d09b35d729e7b336dcd",
       "classifications": [
         "REJECTION",
         "ADMISSION",
@@ -3478,6 +3478,11 @@
           "classification": "ADMISSION",
           "type": "KERNEL_LAW",
           "id": "GroupCountScopeOperandLawsTest#theKernelTakesAnyGroupEntityAsAnOperand"
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "GroupCountScopeOperandLawsTest#theComputationArmTakesTheBelowStarFormsAndRefusesAnUnstarredLevel"
         }
       ]
     },
@@ -3485,7 +3490,7 @@
       "operator": "NumberOfFilledGroups",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:9f174ff4fb0eda2da9400c851ba8c9a6bd8ddc8cc27f153eb1cb9262c6bf9e6e",
+      "digest": "sha256:a7ecea87a040dd25932f416cc37b6d7733d082d037c785f7494719c36c8ae927",
       "classifications": [
         "RUNTIME"
       ],
@@ -3494,6 +3499,21 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "GroupPresenceFormalInvalidDiffTest#groupQuantifiersAndCountShareTheFormalAwareTally"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "NestedGroupFillCountLawsTest#anAdmittedValueBesideTheErrorKeepsTheCountAvailable"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "NestedGroupFillCountLawsTest#theComputationArmStillCountsAnOperandGroupHoldingOnlyAMalformedValue"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "AncestorStarredGroupCountComputationDiffTest"
         }
       ]
     },
@@ -3501,7 +3521,7 @@
       "operator": "NumberOfFilledGroups",
       "lane": "GOTCHA",
       "ordinal": 2,
-      "digest": "sha256:950d0e56c17ab7f69964769cc1daee63ab5859f1ae16f81ef777d455c0467251",
+      "digest": "sha256:d92003d561f7bfac2f7f0f462bdfd52affc5a08af287cab39d64dfc43a2f3e57",
       "classifications": [
         "RUNTIME"
       ],
@@ -3510,6 +3530,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "NumberOfFilledGroupsStarDiffTest#emptyInstantiatedRowStillCounts"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "AncestorStarredGroupCountDiffTest"
         }
       ]
     },
