@@ -108,30 +108,6 @@ private fun countedGroup(state: GroupPresenceState): Int? = when (state.countPro
     Tri.UNKNOWN -> null
 }
 
-/**
- * `NumberOfFilledFields(...)`'s count across its operands — a plain field counts 1 when filled; a STARRED
- * repetition list (`Items* then Count`) counts its FILLED cells across all rows (IF51, the `pathOf(Star)`
- * crash); a GROUP operand counts the FILLED fields INSIDE it recursively (IF51, the kernel `ExpandService` →
- * `getAllContainedFields`, via [EvalContext.fillScope]). A present-but-**malformed** cell is a formal error
- * that makes the count **non-evaluable** → the whole function is [Val.Unknown] and the referencing rule is
- * suppressed (the kernel's formal-suppression, exactly as [combine] does for the value aggregates — the fuzz
- * surfaced that "count the valid ones" was WRONG: a malformed cell among valid ones suppresses, not skips;
- * IF51). Empties are simply not counted. Linear: O(rows) per star, O(instantiated cells) per group.
- */
-/**
- * A **starred GROUP** operand expands to its contained fields, each starred the same way.
- *
- * The un-starred group arm below already expands (via [EvalContext.fillScope] with `isGroup = true`); the starred
- * arm did not, and for a *repeatable* group the star is the only legal spelling — the un-starred form is rejected
- * `MVK_NO_WILDCARD` — so the branch that could not expand was the only one a real author can reach. Unexpanded,
- * `ctx.star` resolves through the group's PARENT rows and then reads a value at the group path, where no field is
- * declared: the count came back **0**, a well-formed answer that simply never fires. Measured against both kernel
- * strategies, `NumberOfFilledFields(/Order/Lines*) >= 3` over two fully-filled rows fired on the kernel and not
- * here (IF287's class, fifth instance).
- *
- * The `Having`, `outer` and `bindDepth` of the authored operand ride each expanded field, exactly as
- * [starOperandVals] preserves them — the filter belongs to the operand, not to one of its expanded cells.
- */
 /** Whether [arg] names a GROUP rather than a declared field — a group holds no value of its own, so an operand
  *  that names one has to be expanded to the fields below it before anything can read a cell. */
 internal fun Interpreter.namesAGroup(arg: Expr): Boolean =
@@ -176,6 +152,29 @@ internal fun Interpreter.expandGroupOperands(args: List<Expr>): List<Expr> {
     return args.flatMap { arg -> if (namesAGroup(arg)) expandOneGroupOperand(arg) else listOf(arg) }
 }
 
+/**
+ * `NumberOfFilledFields(...)`'s count across its operands — a plain field counts 1 when filled; a STARRED
+ * repetition list (`Items* then Count`) counts its FILLED cells across all rows (IF51, the `pathOf(Star)`
+ * crash); a GROUP operand counts the FILLED fields INSIDE it recursively (IF51, the kernel `ExpandService` →
+ * `getAllContainedFields`, via [EvalContext.fillScope]). A present-but-**malformed** cell is a formal error
+ * that makes the count **non-evaluable** → the whole function is [Val.Unknown] and the referencing rule is
+ * suppressed (the kernel's formal-suppression, exactly as [combine] does for the value aggregates — the fuzz
+ * surfaced that "count the valid ones" was WRONG: a malformed cell among valid ones suppresses, not skips;
+ * IF51). Empties are simply not counted. Linear: O(rows) per star, O(instantiated cells) per group.
+ *
+ * A **starred GROUP** operand expands to its contained fields, each starred the same way.
+ *
+ * The un-starred group arm below already expands (via [EvalContext.fillScope] with `isGroup = true`); the starred
+ * arm did not, and for a *repeatable* group the star is the only legal spelling — the un-starred form is rejected
+ * `MVK_NO_WILDCARD` — so the branch that could not expand was the only one a real author can reach. Unexpanded,
+ * `ctx.star` resolves through the group's PARENT rows and then reads a value at the group path, where no field is
+ * declared: the count came back **0**, a well-formed answer that simply never fires. Measured against both kernel
+ * strategies, `NumberOfFilledFields(/Order/Lines*) >= 3` over two fully-filled rows fired on the kernel and not
+ * here (IF287's class, fifth instance).
+ *
+ * The `Having`, `outer` and `bindDepth` of the authored operand ride each expanded field, exactly as
+ * [starOperandVals] preserves them — the filter belongs to the operand, not to one of its expanded cells.
+ */
 private fun Interpreter.filledFieldsValue(args: List<Expr>): Val {
     var count = 0
     for (arg in expandGroupStars(args)) when (arg) {
