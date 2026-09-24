@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.RangeYearInterpretation
 import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
 
-/**
+/*
  * Formal-error detection — whether a raw field value is *well-formed for its kind*. The kernel runs this
  * BEFORE rule evaluation; a rule that references a formally-invalid field is **not evaluated** (the operand
  * is "unknown"), so the rule neither fires nor passes — it is *suppressed*. On a full validation the kernel

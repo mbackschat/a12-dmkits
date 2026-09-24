@@ -191,8 +191,6 @@ class CommandReferencesResolveTest {
                         + String.join("\n", violations));
     }
 
-    /** Code-everywhere surfaces (.java/.json): every line is candidate text — full invocations + the
-     *  two-token backtick shorthand. */
     /** Does-fire proof for the markdown path: a stale fenced command must be caught, while a bare prose
      *  mention and an illustrative {@code <id>} placeholder must not — the three behaviours the guard rests on. */
     @Test
@@ -345,6 +343,8 @@ class CommandReferencesResolveTest {
         assertTrue(real.isEmpty(), () -> "a real option (`--workspace`) must not fire: " + real);
     }
 
+    /** Code-everywhere surfaces (.java/.json): every line is candidate text — full invocations + the
+     *  two-token backtick shorthand. */
     private static void scan(Path file, CommandLine root, Pattern invocation,
             List<String> violations, int[] invocationCount) {
         List<String> lines = readLines(file);

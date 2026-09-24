@@ -5,7 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.DocumentDecodeLimits
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import kotlin.jvm.JvmOverloads
 
-/**
+/*
  * The **model-level** half of the A12 Document JSON codec — the pair beside [newDocument], for an in-repo
  * consumer that works in [ModelDef] and [Document] rather than in the published `PreparedModel` façade.
  * `dmtool`'s runtime verbs and `model seed` are that consumer.

@@ -359,14 +359,6 @@ class DerivedFigureDatingGuardTest {
         return s.startsWith("*") || s.startsWith("//") || s.startsWith("/*");
     }
 
-    /**
-     * {@code .claude} carries this project's own review worktrees ({@code .claude/worktrees/<name>/}), which are
-     * FULL checkouts of this repository at other revisions. Descending into one makes the primary checkout go red
-     * on a sibling's content, and — worse — lets a worktree copy satisfy {@link #MIN_FIGURES} and the fully-used
-     * exemption assertion on its own, which is precisely the vacuity the floor exists to prevent.
-     * {@code DocRelativeLinkGuardTest} had already been bitten by worktrees; that lesson was not applied here
-     * until a cold review re-found it from a worktree it was itself running in.
-     */
     /** Files the walk could not resolve (dangling symlinks). Reported, never silently dropped. */
     private static final Set<String> unreadableSources = new TreeSet<>();
 

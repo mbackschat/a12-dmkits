@@ -277,8 +277,6 @@ class PrivateMarkerLeakGuardTest {
         return false;
     }
 
-    /** {@code git ls-files} is the published set. Failing loudly beats scanning nothing and passing. */
-
     /**
      * Null for a binary blob or a tracked path with no working-tree file (a submodule, a pending delete).
      *

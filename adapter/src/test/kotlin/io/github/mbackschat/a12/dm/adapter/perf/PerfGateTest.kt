@@ -415,7 +415,6 @@ class PerfGateTest {
     }
 
     private companion object {
-        /** The clock an anchored observation was taken on — part of its key, since the two are not comparable. */
         /**
          * Evaluations per timed block for the lanes whose single-run median lands in the noisy sub-10 ms band.
          * Measured over the committed record (2026-08-14): every key at or above ±20% run-to-run noise sits under
@@ -424,6 +423,7 @@ class PerfGateTest {
          */
         const val NOISE_BATCH = 3
 
+        /** The clock an anchored observation was taken on — part of its key, since the two are not comparable. */
         const val CPU_CLOCK = "cpu"
         const val WALL_CLOCK = "wall"
 

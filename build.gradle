@@ -354,8 +354,8 @@ tasks.register('leakGuardTest', Test) {
         // authored count of it was re-derived wrongly three times before this read it from source.
         includeTestsMatching 'io.github.mbackschat.a12.dm.CodegenTierCodeDenominatorGuardTest'
         // Same derived-denominator reason: the subject is every tracked JVM source, and the file a bulk import
-        // edit breaks next is not one anybody would list.
-        includeTestsMatching 'io.github.mbackschat.a12.dm.DetachedTypeDocGuardTest'
+        // edit or an inserted member detaches a comment in next is not one anybody would list.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.DetachedDocCommentGuardTest'
     }
 }
 

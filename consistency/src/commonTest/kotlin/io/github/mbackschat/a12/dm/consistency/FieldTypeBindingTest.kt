@@ -74,6 +74,12 @@ class FieldTypeBindingTest {
         assertEquals(expected, actual, "what the checker says about each type A12 declares")
     }
 
+    /** A12's own class for a custom type with no usable `name` — unprefixed, like several of its siblings. */
+    private val codenameMissing = "CUSTOM_FIELD_TYPE_CODENAME_MISSING"
+
+    /** …and for the type A12 can generate no code for, which it refuses per declaration on either carrier. */
+    private val noCodegen = "MVK_UNSPECIFIED_TYPE_NO_CODEGEN"
+
     /**
      * A constructing type is judged on the MEMBER it builds from, not on whether its body is empty.
      *
@@ -89,12 +95,6 @@ class FieldTypeBindingTest {
      * `TypeDefType` has no row here because its body is not judged by presence at all: it carries a
      * REFERENCE, resolved in its own test below against `content.typeDefinitions`.
      */
-    /** A12's own class for a custom type with no usable `name` — unprefixed, like several of its siblings. */
-    private val codenameMissing = "CUSTOM_FIELD_TYPE_CODENAME_MISSING"
-
-    /** …and for the type A12 can generate no code for, which it refuses per declaration on either carrier. */
-    private val noCodegen = "MVK_UNSPECIFIED_TYPE_NO_CODEGEN"
-
     @Test
     fun aConstructingTypeIsJudgedOnTheMemberItBuildsFrom() {
         val bodies = mapOf(

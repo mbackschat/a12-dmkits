@@ -192,7 +192,6 @@ public final class RuntimeLaws {
                         ConditionLanguage.EN, groupId).render(condition));
     }
 
-    /** As {@link #withRule}, but with explicit en_US / de_DE error-message texts (for localized-text laws). */
     /**
      * As {@link #withRuleMessages}, taking the condition the kit BUILT rather than its text — rendered
      * relative to {@code groupId}, exactly as {@link #withRule}'s typed overload does.
@@ -209,6 +208,7 @@ public final class RuntimeLaws {
                 enText, deText);
     }
 
+    /** As {@link #withRule}, but with explicit en_US / de_DE error-message texts (for localized-text laws). */
     static String withRuleMessages(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
             String errorCode, String condition, String enText, String deText) {
         String escaped = jsonEscape(condition);
@@ -1977,7 +1977,6 @@ public final class RuntimeLaws {
         };
     }
 
-    /** Compile {@code sources} ({@code zipPath -> code}) in-memory against this JVM's classpath; return a loader for them. */
     /**
      * A compiled generated-Java program: its loader, and the total size of the bytecode the loader retains.
      *
@@ -1995,6 +1994,7 @@ public final class RuntimeLaws {
                 IValidationCodeGeneratorConfig.ProgrammingLanguage.JAVA, idToPackage)).bytecodeBytes();
     }
 
+    /** Compile {@code sources} ({@code zipPath -> code}) in-memory against this JVM's classpath; return a loader for them with their bytecode size. */
     private static CompiledJava compileInMemory(Map<String, String> sources) {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {

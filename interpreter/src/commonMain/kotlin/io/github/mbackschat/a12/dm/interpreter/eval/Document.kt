@@ -31,30 +31,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
 internal const val UNKNOWN_REP = -5
 
 /**
- * A general document instance the interpreter walks — NO kernel types. Addressed exactly like the
- * kernel: every placement carries **one 1-based repetition index per path part** (group AND field), so
- * `/Order/Items/Count` row 2 is `field("/Order/Items/Count", "80", 1, 2, 1)`. This subsumes the flat
- * (single-row) and one-level-repetition shapes the spike's [SingleRowDoc]/[RepDoc] handle; it produces
- * one [EvalContext] per instantiated row of a rule's iteration scope via [contextsFor].
- *
- * Field reference resolution within a row context follows the **common-prefix rule**: a referenced
- * path P shares a prefix with the iteration group G, takes the row's index for each shared group part,
- * and index 1 below the divergence — so an outer field, a same-row field, and a nested non-repeatable
- * field all resolve correctly. A starred aggregate collects the field across every row of its deepest
- * repeatable group ancestor.
- *
- * Building any placement materializes the same group tree the kernel's V1-to-V2 conversion evaluates: ancestors
- * are present, and addressing repetition `n` creates empty predecessor rows `1..n-1` at that level. For nested
- * repetitions, a child gap is closed only below the addressed parent row, never below synthetic predecessors.
- *
- * **Performance (INTERPRETER-PERFORMANCE.md).** Placement lookups are **indexed**, not linear scans: an
- * immutable [Index] — built once on first query, invalidated on mutation — maps `(path, reps) → value` and
- * `groupPath → rows` so `valueAt`/`rowsOf`/`star` are O(1)/O(rows), not O(P). `contextsFor` computes each
- * row's `evaluated` flag in ONE amortized pass over the valued fields (not an O(P) scan per row), and group
- * auto-instantiation dedupes via a set (not an O(P²) build scan). Net: per-row evaluation is ~O(rows · refs),
- * not O(rows · placements).
- */
-/**
  * An empty [Document] configured from this [ModelDef] — every kind / reps / format / scale / enum / precision /
  * base-year / constraint / time-zone map the evaluator needs, gathered into ONE immutable [DocumentConfig] so a
  * consumer (corpus replay, a differential, a demo) never hand-lists config maps. Placements are then added via
@@ -82,6 +58,30 @@ fun ModelDef.newDocument(): Document = Document(DocumentConfig(
     effectiveGroupRepetitionMaximums = effectiveGroupRepetitionMaximums,
 ))
 
+/**
+ * A general document instance the interpreter walks — NO kernel types. Addressed exactly like the
+ * kernel: every placement carries **one 1-based repetition index per path part** (group AND field), so
+ * `/Order/Items/Count` row 2 is `field("/Order/Items/Count", "80", 1, 2, 1)`. This subsumes the flat
+ * (single-row) and one-level-repetition shapes the spike's [SingleRowDoc]/[RepDoc] handle; it produces
+ * one [EvalContext] per instantiated row of a rule's iteration scope via [contextsFor].
+ *
+ * Field reference resolution within a row context follows the **common-prefix rule**: a referenced
+ * path P shares a prefix with the iteration group G, takes the row's index for each shared group part,
+ * and index 1 below the divergence — so an outer field, a same-row field, and a nested non-repeatable
+ * field all resolve correctly. A starred aggregate collects the field across every row of its deepest
+ * repeatable group ancestor.
+ *
+ * Building any placement materializes the same group tree the kernel's V1-to-V2 conversion evaluates: ancestors
+ * are present, and addressing repetition `n` creates empty predecessor rows `1..n-1` at that level. For nested
+ * repetitions, a child gap is closed only below the addressed parent row, never below synthetic predecessors.
+ *
+ * **Performance (INTERPRETER-PERFORMANCE.md).** Placement lookups are **indexed**, not linear scans: an
+ * immutable [Index] — built once on first query, invalidated on mutation — maps `(path, reps) → value` and
+ * `groupPath → rows` so `valueAt`/`rowsOf`/`star` are O(1)/O(rows), not O(P). `contextsFor` computes each
+ * row's `evaluated` flag in ONE amortized pass over the valued fields (not an O(P) scan per row), and group
+ * auto-instantiation dedupes via a set (not an O(P²) build scan). Net: per-row evaluation is ~O(rows · refs),
+ * not O(rows · placements).
+ */
 class Document(internal val config: DocumentConfig) {
     /** Kinds-only convenience — a document with no configuration beyond field kinds (the common flat-model
      *  test / ad-hoc case). Any richer configuration uses [DocumentConfig] with named arguments (conspicuous) or
@@ -1167,15 +1167,19 @@ class Document(internal val config: DocumentConfig) {
         override fun declaredGroupListExtent(groupPath: String, bindDepth: Int): Int? =
             declaredReps[groupListEnvironment(groupPath, bindDepth)]
 
+        /**
+         * Reuse the first-star row topology over [groupListEnvironment]'s rows. Resolving [groupPath] from each
+         * of them keeps the complete ancestry, so [GroupPresenceState] remains the sole terminal product owner
+         * (SPEC-2026-07-26-02).
+         */
         override fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> {
             val environment = groupListEnvironment(groupPath, bindDepth)
             return rowContextsScoped(environment, groupScopePrefix(environment, bindDepth))
         }
 
         /**
-         * Reuse the first-star row topology, but choose its deepest repeatable ANCESTOR environment when the
-         * addressed terminal is non-repeatable. Resolving [groupPath] from that row keeps the complete ancestry,
-         * so [GroupPresenceState] remains the sole terminal product owner (SPEC-2026-07-26-02).
+         * The group whose rows a group-list operand ranges over: [groupPath] itself when it repeats, else its
+         * nearest repeatable ancestor within [bindDepth] — the environment of a non-repeatable terminal.
          */
         private fun groupListEnvironment(groupPath: String, bindDepth: Int): String {
             var environment = groupPath
@@ -1644,16 +1648,6 @@ class Document(internal val config: DocumentConfig) {
         return enumCategories[path]?.get(category)?.getOrNull(idx)?.let { Val.Txt(it) } ?: Val.Unknown
     }
 
-    /**
-     * A present raw value → typed [Val], format-aware. A [Kind.DATE_RANGE] value is parsed to a [Val.Range] of
-     * ISO dates via its field's `(format, separator)` ([rangeConfig]); a [Kind.DATE] value is canonicalized to
-     * ISO via its field's `format` ([dateFormats], ISO default) — so a non-ISO `dd.MM.yyyy` field's `15.06.2024`
-     * becomes `2024-06-15` and the extractors/comparisons read it like any date. A [Kind.DATE_TIME] value is
-     * likewise canonicalized to ISO `yyyy-MM-dd'T'HH:mm:ss` via its field's `format` ([dateTimeFormats]) so it
-     * compares chronologically against `Now`. All are locale-variant by
-     * construction (the format is read, not hardcoded); a malformed value → [Val.Unknown] (the referencing rule
-     * is suppressed, and the document-wide formal check reports it). Other kinds go through the plain [typedValue].
-     */
     /** Whether a PRESENT raw value at [path] is **formally invalid** (not check-relevant) — the [resolveValue]
      *  gate, and the COMPUTE-mode poison trigger ([EvalContext.cellState], IF85). Format + declared constraints,
      *  the full per-cell check. */
@@ -1685,6 +1679,16 @@ class Document(internal val config: DocumentConfig) {
     private fun yearInterpretationOf(path: String): RangeYearInterpretation =
         rangeYearInterpretations[path] ?: RangeYearInterpretation.STANDARD
 
+    /**
+     * A present raw value → typed [Val], format-aware. A [Kind.DATE_RANGE] value is parsed to a [Val.Range] of
+     * ISO dates via its field's `(format, separator)` ([rangeConfig]); a [Kind.DATE] value is canonicalized to
+     * ISO via its field's `format` ([dateFormats], ISO default) — so a non-ISO `dd.MM.yyyy` field's `15.06.2024`
+     * becomes `2024-06-15` and the extractors/comparisons read it like any date. A [Kind.DATE_TIME] value is
+     * likewise canonicalized to ISO `yyyy-MM-dd'T'HH:mm:ss` via its field's `format` ([dateTimeFormats]) so it
+     * compares chronologically against `Now`. All are locale-variant by
+     * construction (the format is read, not hardcoded); a malformed value → [Val.Unknown] (the referencing rule
+     * is suppressed, and the document-wide formal check reports it). Other kinds go through the plain [typedValue].
+     */
     private fun resolveValue(path: String, raw: String): Val {
         val kind = kindOf(path)
         // A formally-invalid value is "unknown" EVERYWHERE — a direct ref, an aggregate element, a computation

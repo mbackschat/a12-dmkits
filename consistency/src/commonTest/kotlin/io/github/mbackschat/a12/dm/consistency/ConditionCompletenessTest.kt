@@ -75,19 +75,6 @@ class ConditionCompletenessTest {
     }
 
     /**
-     * The boundary, reported from the checker side — and it is a DELIMITER boundary, not a kind boundary.
-     *
-     * These rows were originally justified by the operator catalog's `OPERATOR`/`PATH_OP` split. That account
-     * is retracted: `FieldFilled(Price For` — the same keyword with one bracket removed — is
-     * `MVK_INCOMPLETE_INPUT` in A12, and `FieldFilled(Price And` is `MVK_UNEXPECTED_TOKEN`, so the kind
-     * column predicts both backwards ([KERNEL-FINDINGS KF300],
-     * `rulekit.validate.laws.RuleConditionSyntaxLawsTest.whetherTheLastTokenAloneCanDecideTheCode`).
-     *
-     * The last two rows are the ones that matter: before the narrowing this family reported
-     * `MVK_INCOMPLETE_INPUT` for text A12 answers with `MVK_UNEXPECTED_TOKEN`, sending an author to the wrong
-     * fix. Silence there is correct; silence on the `For` rows under-reports and is the safe direction.
-     */
-    /**
      * A trailing connective is unfinished in every case the lexer resolves — and only those.
      *
      * A12 answers `… And`, `… AND` and `… and` with the same `MVK_INCOMPLETE_INPUT`, while a fourth case is
@@ -122,6 +109,20 @@ class ConditionCompletenessTest {
         assertEquals(expected, actual, "which cases of a trailing connective this family reports")
     }
 
+    /**
+     * The boundary, reported from the checker side — and it is a DELIMITER boundary, not a kind boundary.
+     *
+     * These rows were originally justified by the operator catalog's `OPERATOR`/`PATH_OP` split. That account
+     * is retracted: `FieldFilled(Price For` — the same keyword with one bracket removed — is
+     * `MVK_INCOMPLETE_INPUT` in A12, and `FieldFilled(Price And` is `MVK_UNEXPECTED_TOKEN`, so the kind
+     * column predicts both backwards ([KERNEL-FINDINGS KF300],
+     * `rulekit.validate.laws.RuleConditionSyntaxLawsTest.whetherTheLastTokenAloneCanDecideTheCode`).
+     *
+     * The two rows ending on an operator inside or after an unclosed delimiter are the ones that matter:
+     * before the narrowing this family reported `MVK_INCOMPLETE_INPUT` for text A12 answers with
+     * `MVK_UNEXPECTED_TOKEN`, sending an author to the wrong fix. Silence there is correct; silence on the
+     * `For` rows under-reports and is the safe direction.
+     */
     @Test
     fun textWithAnUnclosedDelimiterIsNotThisFamilysBusiness() {
         assertEquals(emptyList(), codesFor("FieldFilled([Price ->"), "the category arrow")

@@ -308,7 +308,6 @@ public record Rule(
                     finalComments);
         }
 
-        /** Fail fast with a structured PRECHECK diagnostic (still an {@code IllegalStateException}). */
         /** A refusal naming the KERNEL code it prevents. */
         private void check(boolean ok, KernelCode code, String summary, String fix) {
             check(ok, code.name(), Refusals.message(code, summary), fix);
@@ -319,6 +318,7 @@ public record Rule(
             check(ok, code.code(), summary, fix);
         }
 
+        /** Fail fast with a structured PRECHECK diagnostic (still an {@code IllegalStateException}). */
         private void check(boolean ok, String code, String summary, String fix) {
             if (ok) {
                 return;

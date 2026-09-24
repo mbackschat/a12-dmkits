@@ -255,11 +255,6 @@ class DateRangeConstructionOperandLawsTest {
     }
 
     /**
-     * The client mirror: what the typed surface refuses is a subset of what the rows above measured, and the
-     * shapes it admits are the accepted ones. A refusal here with no refusal above would be the defect the
-     * measured-basis rule exists to catch.
-     */
-    /**
      * The discriminator a cold review supplied, and it falsifies the reading the first version of this file
      * published. `MVK_NO_WILDCARD` on an unstarred repeating operand is a property of the RULE'S ITERATION
      * SCOPE, not of the construction: hold the condition fixed and move only the error field into the
@@ -274,6 +269,11 @@ class DateRangeConstructionOperandLawsTest {
                 "the SAME condition with the error field INSIDE the repeating group — one variable moved");
     }
 
+    /**
+     * The client mirror: what the typed surface refuses is a subset of what the rows above measured, and the
+     * shapes it admits are the accepted ones. A refusal here with no refusal above would be the defect the
+     * measured-basis rule exists to catch.
+     */
     @Test
     void theTypedSurfaceRefusesNothingTheKernelAccepts() {
         BoundModel model = BoundModel.ofJson(MODEL);

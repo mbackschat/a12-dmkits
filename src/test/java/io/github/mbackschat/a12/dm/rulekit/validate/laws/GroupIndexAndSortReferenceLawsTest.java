@@ -206,7 +206,6 @@ class GroupIndexAndSortReferenceLawsTest {
         assertEquals(expected, actual, "whether the carrier's repeatability gates a sort list");
     }
 
-    /** What A12 says about the order fixture with one member of [group]'s body replaced, or removed. */
     /**
      * Whether {@code MVK_INDEX_FIELD_INVALID} is reachable, and from where.
      *
@@ -343,6 +342,7 @@ class GroupIndexAndSortReferenceLawsTest {
         assertEquals(expected, actual, "a group's repetition count and the cardinality of its index");
     }
 
+    /** What A12 says about the order fixture with one member of [group]'s body replaced, or removed. */
     private static String verdict(String group, String member, String rawJson) {
         return verdict(group, member, rawJson, false);
     }

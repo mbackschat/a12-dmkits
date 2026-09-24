@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 
-/**
+/*
  * The operator vocabulary the interpreter HANDLES — the closed registry behind the evaluator's dispatch
  * (`Interpreter.evalPred` / `evalFunc`), so those switch on an enum, not a raw string. Each entry carries
  * the kernel construct name ([kernelName]) the parser emits into the AST (`Cond.Pred.name` / `Expr.Func.name`).

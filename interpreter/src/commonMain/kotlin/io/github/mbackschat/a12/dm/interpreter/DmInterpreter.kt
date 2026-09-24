@@ -43,6 +43,9 @@ import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmSynthetic
 import io.github.mbackschat.a12.dm.interpreter.workspace.ImmutableProjection
 
+/** A `Long` holds a wildcard mask for a path this deep; beyond it `reducedByPatternScan` takes over. */
+private const val MASKABLE_DEPTH = 63
+
 /**
  * The public entry point — evaluates a [ModelDef]'s rules over a [Document] instance, kernel-free, on
  * JVM and JS alike. The standalone-library façade (proposal goal 2) and the engine dmtool's native
@@ -53,9 +56,6 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.ImmutableProjection
  * ([testRule]/[evalCandidate]), and computations ([compute]) — the kernel's `validateFull`/`validatePart`/
  * `compute` twins, kernel-free.
  */
-/** A `Long` holds a wildcard mask for a path this deep; beyond it `reducedByPatternScan` takes over. */
-private const val MASKABLE_DEPTH = 63
-
 class DmInterpreter private constructor(
     private val model: ModelDef,
     private val clock: EvalClock?,

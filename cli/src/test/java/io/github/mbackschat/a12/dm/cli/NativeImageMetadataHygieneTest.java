@@ -184,10 +184,6 @@ class NativeImageMetadataHygieneTest {
     }
 
     /**
-     * Case-EXACT, unlike {@link Files#exists}: macOS resolves {@code schema/RESULT.schema.json} and the Linux
-     * native build does not, so a wrongly-cased glob would pass here and miss where the image is actually built.
-     */
-    /**
      * <b>The wildcard resolver must fire on a glob that matches nothing.</b> The arm above used to skip every
      * pattern, so an own-prefix glob naming no shipped resource was accepted purely for containing a star —
      * which is the dead weight this class exists to find. Run against the real resource roots so the control
@@ -245,6 +241,10 @@ class NativeImageMetadataHygieneTest {
         return Pattern.compile(regex.toString());
     }
 
+    /**
+     * Case-EXACT, unlike {@link Files#exists}: macOS resolves {@code schema/RESULT.schema.json} and the Linux
+     * native build does not, so a wrongly-cased glob would pass here and miss where the image is actually built.
+     */
     private static boolean provides(Path root, String glob) {
         Path candidate = root.resolve(glob);
         Path parent = candidate.getParent();

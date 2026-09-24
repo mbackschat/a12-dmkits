@@ -249,12 +249,6 @@ class KernelProbeMandatoryInformationTest {
         @TempDir
         lateinit var dir: Path
 
-        /**
-         * Four rules on one claim model. `PolicyRequired` and `AdjusterRequired` reach two different sets;
-         * `AdjusterNamed` reaches the third by pairing the group's presence with the field's absence, which is
-         * the kernel's own documented shape for "mandatory regarding its root group"; `AttachmentReferences`
-         * and `AmountCap` are the two negative controls.
-         */
         /** The rule-free claim model, shared by the five-rule fixture and the single-rule shape probes. */
         private val claimModel: String by lazy {
             DocumentModelDraft.named("probe-mandatory").locale("en_US")
@@ -272,6 +266,12 @@ class KernelProbeMandatoryInformationTest {
                 }.build().toJson()
         }
 
+        /**
+         * Five rules on one claim model. `PolicyRequired` and `AdjusterRequired` reach two different sets;
+         * `AdjusterNamed` reaches the third by pairing the group's presence with the field's absence, which is
+         * the kernel's own documented shape for "mandatory regarding its root group"; `AttachmentReferences`
+         * and `AmountCap` are the two negative controls.
+         */
         private val model: String by lazy {
             val base = BoundModel.ofJson(claimModel)
             val policyNumber = base.field("/Claim/PolicyNumber")

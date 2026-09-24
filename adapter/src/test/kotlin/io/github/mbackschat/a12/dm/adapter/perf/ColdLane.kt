@@ -85,12 +85,6 @@ internal object ColdLane {
     }
 
     /**
-     * The `key=value` lines a cold child prints, as a map.
-     *
-     * Splitting on the FIRST `=` only, because a value may contain one: a rejecting finding's address or a
-     * label is not guaranteed to be free of it, and a greedy split would silently drop the tail.
-     */
-    /**
      * The fields of ONE `<tag> key=value key=value …` line, as a map.
      *
      * The two protocols differ by where the newlines are: a child launched per observation prints one field per
@@ -102,6 +96,12 @@ internal object ColdLane {
         .mapNotNull { field -> field.split('=', limit = 2).takeIf { it.size == 2 } }
         .associate { (key, value) -> key to value }
 
+    /**
+     * The `key=value` lines a cold child prints, as a map.
+     *
+     * Splitting on the FIRST `=` only, because a value may contain one: a rejecting finding's address or a
+     * label is not guaranteed to be free of it, and a greedy split would silently drop the tail.
+     */
     fun printedFields(output: String): Map<String, String> = output.lineSequence()
         .mapNotNull { line -> line.split('=', limit = 2).takeIf { it.size == 2 } }
         .associate { (key, value) -> key to value }

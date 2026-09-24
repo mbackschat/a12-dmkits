@@ -99,13 +99,6 @@ data class ShapeFailure(val at: Int, val ranOutWithDelimiterOpen: Boolean, val f
 internal data class CallShape(val operator: String, val at: Int, val operands: List<List<Token>>)
 
 /**
- * Every call in [text], or none when the text does not parse.
- *
- * Nothing partial is returned: a text the grammar family is already reporting has no argument list worth
- * reading, and a half-read list would be a shorter list, which is exactly the shape that makes an operand
- * law look satisfied.
- */
-/**
  * One comparison: the token runs on either side of an infix comparison operator, and the operator itself.
  *
  * A comparison is A12's own `vergleichsBedingung`, and it is the one condition shape that is not a call —
@@ -138,6 +131,13 @@ internal fun comparisonShapes(
     return if (failure == null) comparisons else emptyList()
 }
 
+/**
+ * Every call in [text], or none when the text does not parse.
+ *
+ * Nothing partial is returned: a text the grammar family is already reporting has no argument list worth
+ * reading, and a half-read list would be a shorter list, which is exactly the shape that makes an operand
+ * law look satisfied.
+ */
 internal fun callShapes(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<CallShape> {
     val calls = mutableListOf<CallShape>()
     val parser = ShapeParser(

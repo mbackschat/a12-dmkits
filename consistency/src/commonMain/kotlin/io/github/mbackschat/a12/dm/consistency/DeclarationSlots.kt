@@ -157,27 +157,6 @@ private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
 private val SEVERITIES = setOf("ERROR", "WARNING", "INFO")
 
 /**
- * A RULE's `severity`, which is an ENUM binding and therefore behaves like none of its sibling slots.
- *
- * **An ABSENT `severity` is accepted** — A12 defaults it to `ERROR` — so nothing is reported for one, and in
- * particular never `MVK_SEVERITY_MISSING`, which `Rule.Builder` raises and the Kernel raises for no measured
- * shape at all. Reproducing that builder refusal would reject a model A12 accepts.
- *
- * **A PRESENT member outside the set makes the source UNREADABLE**, and that tier IS reported, as
- * `errorCode`'s explicit `null` is a few lines above: the model never loads, so a consumer handed silence
- * would read a clean report for a model that can never be used. This is the one place the two slots'
- * treatments could look inconsistent, and they are not — they report the same tier, reached by different
- * shapes.
- *
- * **None of the sibling slots' leniencies carry across**, which is why each was measured rather than assumed
- * (`RuleCodeAndSeverityLawsTest`): there is no coercion (`7` is not a severity, where `7` IS the error code
- * "7"), blank does not count as absent (the empty string and whitespace are refusals, not defaults), the
- * match is case-SENSITIVE (`"Error"` is refused), and a JSON container is refused too — the one member of
- * this checker's standing container gap that is decided.
- *
- * Nothing is reported for a computation, for [errorCodeFindings]'s reason: the member does not exist there.
- */
-/**
  * A12's second, UNPREFIXED class for a declaration with no usable message — and the one shape that omits it.
  *
  * `RULE_HAS_NO_ERRORTEXT` rides beside `MVK_ERROR_MESSAGE_MISSING` on every shape that leaves a declared
@@ -236,6 +215,27 @@ private fun TrackedDeclaration.unprefixedErrorTextFinding(
     )
 }
 
+/**
+ * A RULE's `severity`, which is an ENUM binding and therefore behaves like none of its sibling slots.
+ *
+ * **An ABSENT `severity` is accepted** — A12 defaults it to `ERROR` — so nothing is reported for one, and in
+ * particular never `MVK_SEVERITY_MISSING`, which `Rule.Builder` raises and the Kernel raises for no measured
+ * shape at all. Reproducing that builder refusal would reject a model A12 accepts.
+ *
+ * **A PRESENT member outside the set makes the source UNREADABLE**, and that tier IS reported, as
+ * `errorCode`'s explicit `null` is a few lines above: the model never loads, so a consumer handed silence
+ * would read a clean report for a model that can never be used. This is the one place the two slots'
+ * treatments could look inconsistent, and they are not — they report the same tier, reached by different
+ * shapes.
+ *
+ * **None of the sibling slots' leniencies carry across**, which is why each was measured rather than assumed
+ * (`RuleCodeAndSeverityLawsTest`): there is no coercion (`7` is not a severity, where `7` IS the error code
+ * "7"), blank does not count as absent (the empty string and whitespace are refusals, not defaults), the
+ * match is case-SENSITIVE (`"Error"` is refused), and a JSON container is refused too — the one member of
+ * this checker's standing container gap that is decided.
+ *
+ * Nothing is reported for a computation, for [errorCodeFindings]'s reason: the member does not exist there.
+ */
 private fun severityFindings(element: TrackedDeclaration): List<Finding> {
     if (element.kind != "Rule") {
         return emptyList()

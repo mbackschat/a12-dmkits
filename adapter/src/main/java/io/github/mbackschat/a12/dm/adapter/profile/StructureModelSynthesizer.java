@@ -651,17 +651,12 @@ final class StructureModelSynthesizer {
         return out;
     }
 
-    /**
-     * The measured fraction of aggregating computations (those with >=1 starred operand,
-     * {@code aggregateStars} n) that are NESTED (>=2 stars) rather than a single-level flatten — the real
-     * target's dominant shape (median 2). Falls back to 0 (single-star only, the original behavior) when
-     * the axis is absent (an older profile).
-     */
     /** The fraction of {@code d}'s mass OUTSIDE its {@code "1"} (trivial) bucket — the general form of the
-     *  "how often does this axis exceed its default value" signal {@link #nestedAggregateFraction} and
-     *  {@link #multiWayHubFraction} each compute for their own axis; used by {@link #matchByCaptureTarget}'s
-     *  reach budget to size against {@code workCapacity}'s own measured non-trivial (>1) share. Falls back
-     *  to {@code fallback} when the axis is absent (an older profile) or degenerate. */
+     *  "how often does this axis exceed its default value" signal
+     *  {@link ComputationModelSynthesizer#nestedAggregateFraction} and {@link #multiWayHubFraction} each compute
+     *  for their own axis; used by {@link ComputationModelSynthesizer#matchByCaptureTarget}'s reach budget to
+     *  size against {@code workCapacity}'s own measured non-trivial (>1) share. Falls back to {@code fallback}
+     *  when the axis is absent (an older profile) or degenerate. */
     private static double nonTrivialFraction(Distribution d, double fallback) {
         if (d == null || d.n() == 0 || d.buckets().isEmpty()) {
             return fallback;

@@ -352,11 +352,6 @@ class PerformanceRecordShapeGuardTest {
     }
 
     /**
-     * The record is committed, so it grows every time someone keeps a run. Only two kinds of run are worth
-     * keeping — an anchor-refresh input and a cited checkpoint measurement — and this bounds what happens when
-     * that rule is not followed, since the alternative to a stated cap is an unbounded tree nobody prunes.
-     */
-    /**
      * {@link #KNOWN_STATUSES} is a hand-written mirror of the vocabulary {@code scripts/perf-anchor.sh} folds on,
      * and a mirror with nothing binding it is a claim without a locus. Read the script's own literals instead of
      * trusting the copy: a status the script learns and this guard does not would be reported as unknown, and one
@@ -380,6 +375,11 @@ class PerformanceRecordShapeGuardTest {
                 + "observation silently stops reaching the anchor");
     }
 
+    /**
+     * The record is committed, so it grows every time someone keeps a run. Only two kinds of run are worth
+     * keeping — an anchor-refresh input and a cited checkpoint measurement — and this bounds what happens when
+     * that rule is not followed, since the alternative to a stated cap is an unbounded tree nobody prunes.
+     */
     @Test
     void noEnvironmentOutgrowsTheStatedRetentionBound() throws IOException {
         var perEnvironment = new java.util.TreeMap<String, Integer>();

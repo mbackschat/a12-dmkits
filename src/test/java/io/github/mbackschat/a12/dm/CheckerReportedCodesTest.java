@@ -17,12 +17,6 @@ import org.junit.jupiter.api.Test;
 class CheckerReportedCodesTest {
 
     /**
-     * A code with digits in the MIDDLE — the defect that hid twelve ledger codes from all three guards.
-     *
-     * <p>{@code MVK_[A-Z_]+[0-9]*} matches {@code MVK_NAME_STARTS_WITH_XML} and then needs the closing
-     * quote, so the {@code _A12_DV} carrier of the very same law read as absent.
-     */
-    /**
      * The vocabulary overload keeps a screaming-case literal that is not a code out of the denominator.
      *
      * <p>Without the membership test the same scan would take {@code "StringType"}'s neighbours and every
@@ -39,6 +33,12 @@ class CheckerReportedCodesTest {
         assertEquals(Set.of(), CheckerReportedCodes.codesIn(source));
     }
 
+    /**
+     * A code with digits in the MIDDLE — the defect that hid twelve ledger codes from all three guards.
+     *
+     * <p>{@code MVK_[A-Z_]+[0-9]*} matches {@code MVK_NAME_STARTS_WITH_XML} and then needs the closing
+     * quote, so the {@code _A12_DV} carrier of the very same law read as absent.
+     */
     @Test
     void aCodeWithInteriorDigitsIsSeen() {
         assertEquals(

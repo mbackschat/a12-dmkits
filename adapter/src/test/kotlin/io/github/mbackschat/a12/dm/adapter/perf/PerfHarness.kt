@@ -20,47 +20,6 @@ import java.io.File
 import java.lang.management.ManagementFactory
 import java.util.Locale
 
-/**
- * The reusable **against-kernel performance harness** (INTERPRETER-PERFORMANCE.md). It does double duty: it
- * **gates** O(N²)-class regressions in the group machinery *and* it's how we **find** the hotspots. The unit
- * is a whole-document evaluation — warmup + repeats + median + ratio is the right rigor for it.
- *
- * **Two layers, mirroring "prepare the model once; reuse across runs" (the spec's architecture direction):**
- * - [PerfEngine.build] builds the reusable engine for a scenario ONCE — the interpreter's [DmInterpreter], the
- *   kernel's codegen+rt service. This is the artifact a real consumer keeps while values change.
- * - [ReusableEngine.instance] materializes one document at scale `N` (and a `variant`, for the repeated case),
- *   OUTSIDE the timed region, returning a [RunInstance] whose [RunInstance.run] is the timed evaluation.
- *
- * The central reuse win: a [PerfScenario] describes its instance **once** (a `(PlacementSink, N, variant)`
- * generator), and each engine materializes it its own way — the kernel into a [RuntimeLaws.Doc] -> IDocument,
- * the interpreter into the general [Document]. No copy-pasted lockstep build loops.
- *
- * **Two measurement modes:**
- * - [runScenario] — single-document throughput: time one instance evaluated repeatedly (the O(N²) gate).
- * - [runRepeated] — **repeated eval over slightly-different documents** (form-input / batch): the engine built
- *   once, M variant instances run through it. This is what the kernel's codegen + per-run caches are tuned for,
- *   and the mode where the kernel's compiled rules most out-run the interpreter's per-call tree-WALK (parsing is
- *   one-and-done — cached in `ParsedModel` at construction; the #31 re-parse cost is retired).
- *
- * **Correctness first (a named non-negotiable):** before timing, comparison modes assert complete validation
- * signatures (`code|type|indexed-pointer`) or computation signatures (`indexed-pointer|outcome|value`) across
- * every eligible engine. Every repeated variant is checked, and every actual interpreter-only instance retains
- * its outcome-bearing eligibility check. A fast-but-wrong or silently partial path is no win.
- *
- * **⭐ Code generation is NEVER inside the timed region.** The kernel's real architecture is **generate code
- * ONCE, ahead of validation, then validate/compute many documents against it** (model-load time → codegen →
- * cached in its `IModelCodeCache`; the steady state is per-document validation, codegen amortized to zero).
- * Measuring codegen would be measuring a fiction the kernel never pays per-document. So the harness **primes it
- * out**: the kernel generates code on its FIRST `validateFull` (cached for the engine's whole life), and every
- * timed region is preceded by a correctness `run()` **plus** warmup — so the codegen call is always discarded.
- * The timed numbers are **steady-state validation against already-generated code**, the realistic production
- * cost. (This is also why the kernel's per-call time only JIT-warms downward over the first ~dozen calls — that
- * is the Groovy validator warming, NOT recodegen, which is one-and-done.)
- *
- * Lives in `:adapter` (the only module with the kernel); pure engine — NO dmtool / CLI / process / native, just
- * the `DmInterpreter` + `Document` API and `RuntimeLaws`.
- */
-
 /** Which operation a scenario times: full validation, or computation (`compute()` — the B7 path). */
 enum class PerfOp { VALIDATE, COMPUTE }
 
@@ -409,13 +368,6 @@ internal data class WarmUpBudget(
 }
 
 /**
- * The stop rule for a steady-state warm: keep going while the per-run cost is still improving, stop at the first
- * flat batch or at either cap.
- *
- * Separated from the clock so the rule is checked on scripted numbers ([SteadyStateWarmUpTest]), which is how
- * every other acceptance rule in this estate is verified.
- */
-/**
  * Why a warm ended. Only [FLATTENED] means the instance actually reached steady state; the two caps mean the
  * budget ran out first, which for the most expensive engine in the estate is the likeliest outcome and exactly
  * the case a comment claiming "every instance reaches steady state" would paper over.
@@ -426,6 +378,13 @@ internal enum class WarmStop(val label: String) {
     TIME_CAP("time-cap"),
 }
 
+/**
+ * The stop rule for a steady-state warm: keep going while the per-run cost is still improving, stop at the first
+ * flat batch or at either cap.
+ *
+ * Separated from the clock so the rule is checked on scripted numbers ([SteadyStateWarmUpTest]), which is how
+ * every other acceptance rule in this estate is verified.
+ */
 internal class SteadyStateWarmUp(private val budget: WarmUpBudget) {
 
     private var previousMs: Double? = null
@@ -534,6 +493,46 @@ data class RepeatedRow(
     val groovyTax: Double? get() = if (groovy != null && java != null) groovy.medianMs / java.medianMs else null
 }
 
+/**
+ * The reusable **against-kernel performance harness** (INTERPRETER-PERFORMANCE.md). It does double duty: it
+ * **gates** O(N²)-class regressions in the group machinery *and* it's how we **find** the hotspots. The unit
+ * is a whole-document evaluation — warmup + repeats + median + ratio is the right rigor for it.
+ *
+ * **Two layers, mirroring "prepare the model once; reuse across runs" (the spec's architecture direction):**
+ * - [PerfEngine.build] builds the reusable engine for a scenario ONCE — the interpreter's [DmInterpreter], the
+ *   kernel's codegen+rt service. This is the artifact a real consumer keeps while values change.
+ * - [ReusableEngine.instance] materializes one document at scale `N` (and a `variant`, for the repeated case),
+ *   OUTSIDE the timed region, returning a [RunInstance] whose [RunInstance.run] is the timed evaluation.
+ *
+ * The central reuse win: a [PerfScenario] describes its instance **once** (a `(PlacementSink, N, variant)`
+ * generator), and each engine materializes it its own way — the kernel into a [RuntimeLaws.Doc] -> IDocument,
+ * the interpreter into the general [Document]. No copy-pasted lockstep build loops.
+ *
+ * **Two measurement modes:**
+ * - [runScenario] — single-document throughput: time one instance evaluated repeatedly (the O(N²) gate).
+ * - [runRepeated] — **repeated eval over slightly-different documents** (form-input / batch): the engine built
+ *   once, M variant instances run through it. This is what the kernel's codegen + per-run caches are tuned for,
+ *   and the mode where the kernel's compiled rules most out-run the interpreter's per-call tree-WALK (parsing is
+ *   one-and-done — cached in `ParsedModel` at construction; the #31 re-parse cost is retired).
+ *
+ * **Correctness first (a named non-negotiable):** before timing, comparison modes assert complete validation
+ * signatures (`code|type|indexed-pointer`) or computation signatures (`indexed-pointer|outcome|value`) across
+ * every eligible engine. Every repeated variant is checked, and every actual interpreter-only instance retains
+ * its outcome-bearing eligibility check. A fast-but-wrong or silently partial path is no win.
+ *
+ * **⭐ Code generation is NEVER inside the timed region.** The kernel's real architecture is **generate code
+ * ONCE, ahead of validation, then validate/compute many documents against it** (model-load time → codegen →
+ * cached in its `IModelCodeCache`; the steady state is per-document validation, codegen amortized to zero).
+ * Measuring codegen would be measuring a fiction the kernel never pays per-document. So the harness **primes it
+ * out**: the kernel generates code on its FIRST `validateFull` (cached for the engine's whole life), and every
+ * timed region is preceded by a correctness `run()` **plus** warmup — so the codegen call is always discarded.
+ * The timed numbers are **steady-state validation against already-generated code**, the realistic production
+ * cost. (This is also why the kernel's per-call time only JIT-warms downward over the first ~dozen calls — that
+ * is the Groovy validator warming, NOT recodegen, which is one-and-done.)
+ *
+ * Lives in `:adapter` (the only module with the kernel); pure engine — NO dmtool / CLI / process / native, just
+ * the `DmInterpreter` + `Document` API and `RuntimeLaws`.
+ */
 object PerfHarness {
 
     private const val SIGNATURE_SAMPLE_LIMIT = 10
@@ -571,6 +570,15 @@ object PerfHarness {
         scenario.measurementLabel(n, variants)
 
     /**
+     * Re-fingerprint an existing `id@version fingerprint=<sha256>` label for a batched lane, preserving the key
+     * grammar `PerfAnchorResourceTest` pins while guaranteeing the key differs from the unbatched one.
+     */
+    private fun rebatchedLabel(label: String, batch: Int): String {
+        val id = label.substringBefore('@')
+        return fingerprintedLabel(id, "$label|batch=$batch")
+    }
+
+    /**
      * The same `id@version fingerprint=<sha256>` label for a lane that builds its **own** fixture rather than
      * running a [PerfScenario].
      *
@@ -585,15 +593,6 @@ object PerfHarness {
      * given prose identities (`"charset BMP grapheme rows n=8000"`), which read fine and carry no fingerprint at
      * all, so a fixture edit would have kept the anchor and compared different work against it.
      */
-    /**
-     * Re-fingerprint an existing `id@version fingerprint=<sha256>` label for a batched lane, preserving the key
-     * grammar `PerfAnchorResourceTest` pins while guaranteeing the key differs from the unbatched one.
-     */
-    private fun rebatchedLabel(label: String, batch: Int): String {
-        val id = label.substringBefore('@')
-        return fingerprintedLabel(id, "$label|batch=$batch")
-    }
-
     fun fingerprintedLabel(id: String, content: String): String {
         require(id.isNotBlank() && ' ' !in id && '|' !in id) { "a lane id must be a single unspaced token: '$id'" }
         val digest = java.security.MessageDigest.getInstance("SHA-256").digest(content.toByteArray())
@@ -1540,8 +1539,7 @@ object PerfHarness {
      * gates twice: `CharsetPerfTest` in 2026-08-03 (fixed by moving to this clock) and the multi-star gate on
      * hosted runners, where the SAME commit passed one night and failed the next two. Cross-engine throughput
      * and user-facing latency stay on [measure] — [timeInterpreter] — by the same rule.
-     */
-    /**
+     *
      * [batch] evaluations per timed block, so a lane whose single run lands in the noisy sub-10 ms band can lift
      * its median out of it. Declare the same value to [assertSubQuadraticLane], which folds it into the key —
      * a batch changes what one observation means.

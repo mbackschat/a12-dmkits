@@ -1180,6 +1180,13 @@ final class ComputationModelSynthesizer {
         String deepestGroup = parentOf(operand.replace("*", ""));   // the operand's dotted path, minus the field
         return new CapturePotential(chainProductOf(deepestGroup, repeatable, maxRepsByPath), operand);
     }
+
+    /**
+     * The measured fraction of aggregating computations (those with >=1 starred operand,
+     * {@code aggregateStars} n) that are NESTED (>=2 stars) rather than a single-level flatten — the real
+     * target's dominant shape (median 2). Falls back to 0 (single-star only, the original behavior) when
+     * the axis is absent (an older profile).
+     */
     private static double nestedAggregateFraction(Distribution aggregateStars) {
         if (aggregateStars == null || aggregateStars.n() == 0 || aggregateStars.buckets().isEmpty()) {
             return 0.0;

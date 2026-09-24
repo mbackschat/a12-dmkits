@@ -150,7 +150,6 @@ class EnumValueAndLabelLawsTest {
         assertEquals(expected, actual, "a declared enumeration's per-locale labels");
     }
 
-    /** The bilingual axis, which a one-locale header cannot show — the constant the grid above holds. */
     /**
      * The label TEXTS against each other, which is a law of its own and a law within ONE language.
      *
@@ -181,6 +180,7 @@ class EnumValueAndLabelLawsTest {
         assertEquals(expected, actual, "an enumeration's label texts against each other");
     }
 
+    /** The bilingual axis, which a one-locale header cannot show — the constant the grid above holds. */
     @Test
     void whichDeclaredLocalesTheLabelsMustCover() {
         Map<String, String> rows = new LinkedHashMap<>();

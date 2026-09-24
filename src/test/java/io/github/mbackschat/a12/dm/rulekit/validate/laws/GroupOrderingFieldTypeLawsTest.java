@@ -185,11 +185,11 @@ class GroupOrderingFieldTypeLawsTest {
         assertEquals(expected, actual, "a table-referencing enumeration as an ordering field");
     }
 
-    /** A no-value-validation string: both flags, because A12 refuses the first without the second. */
     /** Both laws the flag trips when it is set without `lineBreaksPermitted`, which every coerced row is. */
     private static final String GATE_AND_LINE_BREAK_LAW =
             "MVK_INDEX_FIELD_NO_VALUE_VALIDATION,MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK";
 
+    /** A no-value-validation string: both flags, because A12 refuses the first without the second. */
     private static final String NO_VALUE_VALIDATION =
             "{\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":true,\"lineBreaksPermitted\":true}}";
 

@@ -7,7 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
 
-/**
+/*
  * The structured model the interpreter evaluates — the interpreter owns its types (a clean data contract,
  * not a shared object model; proposal §6/§7). A consumer can build a [ModelDef] directly, or load one from
  * expanded DM-JSON with the kernel-free, multiplatform

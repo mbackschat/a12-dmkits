@@ -540,13 +540,6 @@ public final class KernelAdapter {
     }
 
     /**
-     * The faithful text to preserve for an {@link ReadResult.Opaque}: the rule's <b>raw stored</b> condition
-     * (verbatim), falling back to the kernel canonical form only if it's absent. Raw is required because
-     * the kernel's formatter can be lossy — it truncates a condition carrying a {@code $} correlation to
-     * its first conjunct (KERNEL-FINDINGS) — so preserving canonical would <em>lose</em> the rule on
-     * write-back, the opposite of "preserved verbatim".
-     */
-    /**
      * The grouping backstop, and the one the converter cannot run for itself. A12 records a {@code { … }}
      * group only on a composite — {@code ParseTreeCreator.exitBRACKET_OP} sets {@code geklammert} under an
      * {@code instanceof ICompositeOperation} guard — so a group around a <em>simple</em> operand never
@@ -569,6 +562,13 @@ public final class KernelAdapter {
         return diagnose(ruleFullName, stored).ok() && !diagnose(ruleFullName, rendered).ok();
     }
 
+    /**
+     * The faithful text to preserve for an {@link ReadResult.Opaque}: the rule's <b>raw stored</b> condition
+     * (verbatim), falling back to the kernel canonical form only if it's absent. Raw is required because
+     * the kernel's formatter can be lossy — it truncates a condition carrying a {@code $} correlation to
+     * its first conjunct (KERNEL-FINDINGS) — so preserving canonical would <em>lose</em> the rule on
+     * write-back, the opposite of "preserved verbatim".
+     */
     private String verbatimConditionText(String ruleFullName) {
         String raw = rule(ruleFullName).getErrorConditionText();
         return raw != null && !raw.isBlank() ? raw : canonicalConditionText(ruleFullName);

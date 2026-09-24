@@ -66,15 +66,6 @@ internal object PerfEnvironment {
 }
 
 /**
- * The machine an absolute number belongs to: an OS-level model string plus the core count.
- *
- * **Why the runner class is not enough.** `PerfEnvironment.key` names an os/arch family, which is what an artifact
- * and a committed block are addressed by — but absolute timings are a property of the machine. The block used to
- * record only [processors], which narrows the family without closing it: two machines with the same core count and
- * different generations still collided, and the rule that kept them apart ("one anchoring machine per runner class")
- * lived in prose that nothing could check. This is that rule, mechanized (IF280).
- */
-/**
  * The JVM a perf number was produced on: the VM **family** and the language **major**.
  *
  * <p>Not the full version string. `java.version` alone cannot separate the vendors — Oracle GraalVM 21 reports
@@ -158,6 +149,15 @@ internal data class JdkIdentity(val family: String, val major: String) {
     }
 }
 
+/**
+ * The machine an absolute number belongs to: an OS-level model string plus the core count.
+ *
+ * **Why the runner class is not enough.** `PerfEnvironment.key` names an os/arch family, which is what an artifact
+ * and a committed block are addressed by — but absolute timings are a property of the machine. The block used to
+ * record only [processors], which narrows the family without closing it: two machines with the same core count and
+ * different generations still collided, and the rule that kept them apart ("one anchoring machine per runner class")
+ * lived in prose that nothing could check. This is that rule, mechanized (IF280).
+ */
 internal data class MachineIdentity(val model: String, val processors: Int) {
 
     val text: String get() = "$model ×$processors"
@@ -439,6 +439,9 @@ internal object PerfObservations {
     private fun loadAverage(): Double =
         java.lang.management.ManagementFactory.getOperatingSystemMXBean().systemLoadAverage
 
+    /** Start the run's file empty, with the same loud failure an append gets. */
+    internal fun truncate(target: File) = write(target) { target.writeText("") }
+
     /**
      * A write that fails FAILS the run. It used to be swallowed by a discarded `runCatching`, which made the one
      * outcome this mechanism exists to prevent — measuring everything and recording nothing — indistinguishable
@@ -446,9 +449,6 @@ internal object PerfObservations {
      * useful recovery here, so the only honest options are to write the line or to say that it could not be
      * written; a measurement that never reached the record is not a measurement anyone can compare against.
      */
-    /** Start the run's file empty, with the same loud failure an append gets. */
-    internal fun truncate(target: File) = write(target) { target.writeText("") }
-
     internal fun appendRecordTo(target: File, record: Map<String, Any?>) =
         write(target) { target.appendText(MAPPER.writeValueAsString(record) + "\n") }
 
@@ -569,8 +569,7 @@ internal object PerfObservations {
      * parallel lane from corrupting a number nothing would flag. (The plain file append is unsynchronized for every
      * record kind, which is pre-existing and left alone: a torn *line* is malformed JSON the record guard rejects
      * loudly, whereas a torn *delta* is well-formed and wrong, which is why only this one needs the lock.)
-     */
-    /**
+     *
      * [demand] is the foreign-CPU reading for the window this measurement ran in, or `null` where the caller
      * has none — **passed in rather than sampled here, deliberately.** Both of its accessors measure from their own
      * previous call, so sampling at the write would give the enforcement decision and the record two different
@@ -842,25 +841,6 @@ internal object PerfAnchors {
     }
 
     /**
-     * The hosted flag, in TWO TIERS ([IG137](a)).
-     *
-     * **The measurement this rests on, and its limits.** On the `linux-amd64-ci` class the committed record holds
-     * two same-commit triplets. Across the sequential one (`15b3ed0`, 138 shared keys) the *absolute* medians of
-     * identical code span a median of 1.13x, a p90 of 1.85x and a worst of **2.29x** run-to-run; across the
-     * earlier concurrently-dispatched one (`1845f8af`, 34 keys — contended against each other, IF280, so it
-     * overstates) the worst is 1.98x. So identical code on this runner class has actually produced observations
-     * differing by 2.29x, which is why one 1.65x threshold cannot say whether a flag means anything.
-     *
-     * [HOSTED_SAME_COMMIT_SPREAD] is that worst measured figure. Below it a breach is inside what identical code
-     * has been seen to do here and is not attributable; at or above it the observation is outside anything the
-     * record contains for unchanged code, which makes it worth a targeted re-measure. Deliberately a REPORT
-     * boundary and not a bar: the estimate rests on two triplets, one of them contended, and a threshold that
-     * failed a build would need a far stronger basis than that.
-     *
-     * The comparison is conservative in the safe direction — a run-to-run max/min spread is at least as large as
-     * either run's deviation from the true level — so the band over-tolerates rather than crying wolf.
-     */
-    /**
      * The flag for a breach measured while ANOTHER PROCESS held this machine, or `null` when that is not why the
      * bar was downgraded — in which case the caller falls back to [hostedFlagFor].
      *
@@ -880,6 +860,25 @@ internal object PerfAnchors {
             "${failure.message}"
     }
 
+    /**
+     * The hosted flag, in TWO TIERS ([IG137](a)).
+     *
+     * **The measurement this rests on, and its limits.** On the `linux-amd64-ci` class the committed record holds
+     * two same-commit triplets. Across the sequential one (`15b3ed0`, 138 shared keys) the *absolute* medians of
+     * identical code span a median of 1.13x, a p90 of 1.85x and a worst of **2.29x** run-to-run; across the
+     * earlier concurrently-dispatched one (`1845f8af`, 34 keys — contended against each other, IF280, so it
+     * overstates) the worst is 1.98x. So identical code on this runner class has actually produced observations
+     * differing by 2.29x, which is why one 1.65x threshold cannot say whether a flag means anything.
+     *
+     * [HOSTED_SAME_COMMIT_SPREAD] is that worst measured figure. Below it a breach is inside what identical code
+     * has been seen to do here and is not attributable; at or above it the observation is outside anything the
+     * record contains for unchanged code, which makes it worth a targeted re-measure. Deliberately a REPORT
+     * boundary and not a bar: the estimate rests on two triplets, one of them contended, and a threshold that
+     * failed a build would need a far stronger basis than that.
+     *
+     * The comparison is conservative in the safe direction — a run-to-run max/min spread is at least as large as
+     * either run's deviation from the true level — so the band over-tolerates rather than crying wolf.
+     */
     internal fun hostedFlagFor(failure: Throwable): String {
         val head = "[perf][FLAG] anchor breach reported, not failed on shared hosted hardware — see TimingEnforcement"
         val breach = failure as? AnchorBreachException
@@ -906,11 +905,6 @@ internal object PerfAnchors {
     internal const val HOSTED_SAME_COMMIT_SPREAD = 2.29
 }
 
-/**
- * [PerfAnchors]' decision, separated from the resource file and the system property so the rule itself is checked
- * on scripted numbers ([PerfAnchorBudgetTest]) instead of only by a timed run — the sibling of
- * [PairedAcceptance] and `GrowthFloorRetryTest`.
- */
 /**
  * The anchor carries no number for this key while its runner class IS anchored — a lane was added, or a
  * scenario's fingerprint moved and took its anchor with it.
@@ -943,6 +937,11 @@ internal class AnchorBreachException(
     val multiple: Double get() = accepted / anchor
 }
 
+/**
+ * [PerfAnchors]' decision, separated from the resource file and the system property so the rule itself is checked
+ * on scripted numbers ([PerfAnchorBudgetTest]) instead of only by a timed run — the sibling of
+ * [PairedAcceptance] and `GrowthFloorRetryTest`.
+ */
 internal class AnchorBudget(
     /** `null` when this runner class has no committed block yet — reported, never failed (see the class doc). */
     private val anchored: Map<String, Double>?,

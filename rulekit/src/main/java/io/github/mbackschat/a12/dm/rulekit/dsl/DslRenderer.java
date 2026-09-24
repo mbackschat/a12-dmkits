@@ -306,7 +306,6 @@ public final class DslRenderer {
                 .collect(Collectors.joining(", "));
     }
 
-    /** A field-list operand: its path, plus a {@code Having <filter>} clause for a filtered list. */
     /**
      * Render an arithmetic operand, wrapping it in a {@code { … }} group when its operator binds LOOSER than
      * the parent's (so the parse round-trips). Precedence: {@code +}/{@code -} &lt; {@code *}/{@code /} &lt;
@@ -541,10 +540,6 @@ public final class DslRenderer {
     }
 
     /**
-     * Renders a value in <em>argument position</em>: a date/field reference is the bare entity path
-     * (as in {@code DifferenceInDays(A, B)}), not the bracketed value form used in comparisons.
-     */
-    /**
      * A {@code datumParam} position — a {@code Date(...)} / {@code Time(...)} component. The kernel grammar
      * admits only {@code entitySpec | datumExtractOp | StringLiteral} there, with NO bare-number alternative,
      * so a numeric constant component must render QUOTED. Rendering it bare produces
@@ -558,6 +553,10 @@ public final class DslRenderer {
         return renderArg(value);
     }
 
+    /**
+     * Renders a value in <em>argument position</em>: a date/field reference is the bare entity path
+     * (as in {@code DifferenceInDays(A, B)}), not the bracketed value form used in comparisons.
+     */
     private String renderArg(Calculation value) {
         if (value instanceof FieldValue v) {
             return (v.outer() ? "$" : "") + path(v.field());

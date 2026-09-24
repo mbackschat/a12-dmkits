@@ -205,11 +205,6 @@ public final class Cli {
     }
 
     /**
-     * Remove the {@link #JVM_ONLY_VERBS} from the live command tree. Since {@code manifest}, {@code schema},
-     * and {@code --help} are all derived from this tree (the no-drift contract), this single removal hides
-     * them from every self-describing surface — so a cold native agent can't even explore them.
-     */
-    /**
      * Throw the {@code UnmatchedArgumentException} picocli suppressed because a help option was also present, so an
      * unknown subcommand is a usage error regardless of {@code --help}.
      *
@@ -242,14 +237,6 @@ public final class Cli {
         return null;
     }
 
-    /**
-     * The locator corrective for a parse error: when a verb that takes its target as a POSITIONAL
-     * {@code <…PathInModel>}/{@code <…Id>} was handed a wrong locator FLAG (an unmatched {@code --option}),
-     * name the positional form instead of leaving a bare "Unknown option". Returns {@code null} when it
-     * doesn't apply — no unmatched {@code --flag}, or the verb has no locator positional (so a spec-input
-     * verb whose positional is {@code <spec.json>} never misfires). Probe 06-rr: an agent carries
-     * {@code rule check --field} over to {@code field read}/{@code rule read}, which locate by a positional.
-     */
     /** Common wrong guesses for the runtime verbs' {@code --instance} flag — agents reach for these after
      *  reading "the document INSTANCE". */
     private static final Set<String> INSTANCE_FLAG_SYNONYMS = Set.of("--doc", "--document", "--data");
@@ -292,6 +279,14 @@ public final class Cli {
                         .orElse(null);
     }
 
+    /**
+     * The locator corrective for a parse error: when a verb that takes its target as a POSITIONAL
+     * {@code <…PathInModel>}/{@code <…Id>} was handed a wrong locator FLAG (an unmatched {@code --option}),
+     * name the positional form instead of leaving a bare "Unknown option". Returns {@code null} when it
+     * doesn't apply — no unmatched {@code --flag}, or the verb has no locator positional (so a spec-input
+     * verb whose positional is {@code <spec.json>} never misfires). Probe 06-rr: an agent carries
+     * {@code rule check --field} over to {@code field read}/{@code rule read}, which locate by a positional.
+     */
     private static String locatorPositionalHint(CommandLine.ParameterException ex) {
         if (!(ex instanceof CommandLine.UnmatchedArgumentException uae)) {
             return null;
@@ -348,6 +343,11 @@ public final class Cli {
         return null;
     }
 
+    /**
+     * Remove the {@link #JVM_ONLY_VERBS} from the live command tree. Since {@code manifest}, {@code schema},
+     * and {@code --help} are all derived from this tree (the no-drift contract), this single removal hides
+     * them from every self-describing surface — so a cold native agent can't even explore them.
+     */
     static void hideJvmOnlyVerbs(CommandLine cli) {
         for (String[] verb : JVM_ONLY_VERBS) {
             CommandLine target = cli.getSubcommands().get(verb[0]);

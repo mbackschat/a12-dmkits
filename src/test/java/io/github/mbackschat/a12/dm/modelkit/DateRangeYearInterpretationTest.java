@@ -60,10 +60,6 @@ class DateRangeYearInterpretationTest {
     }
 
     /**
-     * The negative half, and the reason the positive one is not vacuous: a token outside the kernel's admitted
-     * set is REFUSED by the same route. Without this, the assertion above would pass on any emitted string.
-     */
-    /**
      * MEASURED 2026-08-22, and it is what licenses the reader to fail fast: an EMPTY token is <b>refused</b>,
      * at deserialization. The tempting mechanism said otherwise — Jackson coerces {@code ""} to null for enums
      * by default, so the kernel "plausibly" reads it as absent — and the measurement refutes it. Consequence:
@@ -76,6 +72,10 @@ class DateRangeYearInterpretationTest {
         assertThrows(RuntimeException.class, () -> BoundModel.ofJson(blank), () -> blank);
     }
 
+    /**
+     * The negative half, and the reason the positive one is not vacuous: a token outside the kernel's admitted
+     * set is REFUSED by the same route. Without this, the assertion above would pass on any emitted string.
+     */
     @Test
     void theKernelRefusesATokenOutsideItsAdmittedSet() {
         String bogus = policy(RangeYearInterpretation.TO).toJson().replace("\"TO\"", "\"SUBSEQUENT\"");

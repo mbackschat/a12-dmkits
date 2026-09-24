@@ -338,7 +338,6 @@ class GapLedgerTemplateGuardTest {
                 "an empty table has no live item and must not satisfy the open-section guard");
     }
 
-    /** One violation per open section that is neither populated nor explicitly empty. */
     /**
      * <b>No ledger line repeats a long span of itself</b> — the signature of a botched string replace.
      *
@@ -416,6 +415,7 @@ class GapLedgerTemplateGuardTest {
                 "and must stay quiet on ordinary prose");
     }
 
+    /** One violation per open section that is neither populated nor explicitly empty. */
     private static List<String> audit(String name, String markdown) {
         List<String> violations = new ArrayList<>();
         String[] lines = markdown.split("\\R", -1);

@@ -202,6 +202,9 @@ class KernelParityGateTest {
     }
 
     private companion object {
+        /** Single-sourced: the observations, the warm outcomes and the cost rows must share one lane label. */
+        const val LANE = "kernel parity"
+
         /**
          * Three pairs keep the median of the within-pair ratios robust to one contended slice. Three warmup and
          * three timed iterations are what a **warm** instance needs; they are emphatically not enough to warm a
@@ -212,9 +215,6 @@ class KernelParityGateTest {
          * decides whether the tier fits the routine gate. The Number-index lanes keep their own richer
          * `warmup=5, iters=5`: they were tuned for canonical decimal projection, not this sweep.
          */
-        /** Single-sourced: the observations, the warm outcomes and the cost rows must share one lane label. */
-        const val LANE = "kernel parity"
-
         const val PAIRS = 3
         const val WARMUP = 3
         const val ITERS = 3

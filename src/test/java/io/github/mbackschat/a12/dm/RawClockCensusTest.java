@@ -51,15 +51,6 @@ class RawClockCensusTest {
     private static final Pattern PROPERTY_GATED = Pattern.compile("^@EnabledIfSystemProperty", Pattern.MULTILINE);
 
     /**
-     * Files that legitimately read a clock without a lane tag, each with the reason it is not a defect. Keyed by
-     * file name because that is what the census reports; the list is short on purpose, and every entry that could
-     * be replaced by a derived rule already has been.
-     *
-     * <p>A Kotlin-Multiplatform test source can only appear here. {@code @Tag} and
-     * {@code @EnabledIfSystemProperty} are JUnit annotations, and those source sets run on {@code kotlin.test},
-     * so the two derived escape hatches below are unreachable for them and an entry is the sole disposition.
-     */
-    /**
      * A measurement lane in a Kotlin-Multiplatform test source set, derived from its package. Those source sets
      * run on {@code kotlin.test}, so neither annotation hatch below can exist there and an entry in
      * {@link #ALLOWED} would otherwise be the only disposition — one that grows with the estate and whose reason
@@ -68,6 +59,15 @@ class RawClockCensusTest {
     private static final Pattern MULTIPLATFORM_MEASUREMENT_PACKAGE =
             Pattern.compile("/src/(commonTest|jvmTest|jsTest)/kotlin/.*/(performance|footprint)/");
 
+    /**
+     * Files that legitimately read a clock without a lane tag, each with the reason it is not a defect. Keyed by
+     * file name because that is what the census reports; the list is short on purpose, and every entry that could
+     * be replaced by a derived rule already has been.
+     *
+     * <p>A Kotlin-Multiplatform test source can only appear here. {@code @Tag} and
+     * {@code @EnabledIfSystemProperty} are JUnit annotations, and those source sets run on {@code kotlin.test},
+     * so the two derived escape hatches below are unreachable for them and an entry is the sole disposition.
+     */
     private static final Map<String, String> ALLOWED = Map.ofEntries(
             Map.entry("PerfHarness.kt",
                     "the measurement harness itself"),

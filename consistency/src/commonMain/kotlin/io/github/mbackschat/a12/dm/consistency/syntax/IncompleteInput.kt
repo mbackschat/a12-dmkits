@@ -76,13 +76,6 @@ private fun Map<String, KeywordKind>.classifies(text: String, kind: KeywordKind)
 }
 
 /**
- * Whether every `(` and `[` in these tokens is closed by its own kind.
- *
- * The kinds are matched rather than counted because a counter calls `FieldFilled(Tier] And` balanced, and A12
- * answers the mismatch with `MVK_UNEXPECTED_TOKEN` — so counting would put a row A12 reports differently back
- * inside the region this function exists to draw.
- */
-/**
  * Whether [text] closes every delimiter it opens — a NECESSARY condition for the grammar to accept it.
  *
  * Not a syntax check: balanced text can still be refused for a dozen reasons. It earns its place as the
@@ -92,6 +85,13 @@ private fun Map<String, KeywordKind>.classifies(text: String, kind: KeywordKind)
 internal fun delimitersBalanced(text: String): Boolean =
     tokenize(text).filter { it.kind != TokenKind.COMMENT }.everyDelimiterClosed()
 
+/**
+ * Whether every `(` and `[` in these tokens is closed by its own kind.
+ *
+ * The kinds are matched rather than counted because a counter calls `FieldFilled(Tier] And` balanced, and A12
+ * answers the mismatch with `MVK_UNEXPECTED_TOKEN` — so counting would put a row A12 reports differently back
+ * inside the region this function exists to draw.
+ */
 private fun List<Token>.everyDelimiterClosed(): Boolean {
     val open = ArrayDeque<String>()
     for (token in this) {

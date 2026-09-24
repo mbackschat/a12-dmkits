@@ -155,10 +155,6 @@ public final class ModelPaths {
     }
 
     /**
-     * The refusal for a {@code --parent} that names no group, sharpened to name the root-level spelling —
-     * because the value an author most often gets wrong here is one that MEANT the root level.
-     */
-    /**
      * The {@code field add --parent} corrective, which differs from the group verbs' at exactly one value.
      *
      * <p>A field cannot be a root element, so `/` is genuinely refused for a field — but the sibling add-verbs
@@ -175,6 +171,10 @@ public final class ModelPaths {
         return missingParentHint("group");
     }
 
+    /**
+     * The refusal for a {@code --parent} that names no group, sharpened to name the root-level spelling —
+     * because the value an author most often gets wrong here is one that MEANT the root level.
+     */
     public static String missingParentHint(String kind) {
         return "pass an existing " + kind + "'s full name-path (see `model describe` or `" + kind + " read`), "
                 + "or `/` (equivalently the empty string) to add at the ROOT level";

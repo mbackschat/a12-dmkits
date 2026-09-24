@@ -42,13 +42,6 @@ internal fun TrackedFactBase.elementNameAlphabetFindings(element: TrackedDeclara
     }
 
 /**
- * The prefix A12 reserves on every element carrier, case-insensitively.
- *
- * Measured on all three: a field, a group below the root and the root group each refuse `xml`, `XML`, `Xml`
- * and the bare name `xml`, and each admits `xm` and a name merely containing `xml`. A name whose alphabet is
- * already broken is reported for the character instead, which under-reports a name that breaks both.
- */
-/**
  * The one WHOLE name A12 reserves, and it is the root group's law alone.
  *
  * A root group called `Id` in any case draws `MVK_ROOT_GROUP_NAME_INVALID`; the match is the whole name, so
@@ -71,6 +64,13 @@ private fun TrackedDeclaration.reservedRootNameFinding(): Finding? =
 /** The reserved name itself, matched case-insensitively and in full. */
 private const val RESERVED_ROOT_GROUP_NAME = "Id"
 
+/**
+ * The prefix A12 reserves on every element carrier, case-insensitively.
+ *
+ * Measured on all three: a field, a group below the root and the root group each refuse `xml`, `XML`, `Xml`
+ * and the bare name `xml`, and each admits `xm` and a name merely containing `xml`. A name whose alphabet is
+ * already broken is reported for the character instead, which under-reports a name that breaks both.
+ */
 private fun TrackedDeclaration.reservedPrefixFinding(code: String, carrier: String): Finding? =
     if (!name.lowercase().startsWith("xml")) {
         null

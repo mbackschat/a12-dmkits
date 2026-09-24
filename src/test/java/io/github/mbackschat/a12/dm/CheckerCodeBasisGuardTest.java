@@ -85,14 +85,6 @@ class CheckerCodeBasisGuardTest {
     }
 
     /**
-     * …and the LAWS half of the scan reaches its estate, so an empty result above means clean rather than
-     * broken.
-     *
-     * <p>The floor answers "did the scan happen", not "how big is the set", so it sits well below the live
-     * count (243 measured at 2026-09-15) on purpose. The reported half is {@link CheckerReportedCodesTest}'s
-     * floor, which is where that reader's own controls live.
-     */
-    /**
      * …and the same claim for the UNPREFIXED error-text vocabulary, which had no guard at all.
      *
      * <p>Its own test rather than a widened denominator above, because the two halves are recognised
@@ -122,6 +114,14 @@ class CheckerCodeBasisGuardTest {
                         + "because the word alone does not say it is a verdict.");
     }
 
+    /**
+     * …and the LAWS half of the scan reaches its estate, so an empty result above means clean rather than
+     * broken.
+     *
+     * <p>The floor answers "did the scan happen", not "how big is the set", so it sits well below the live
+     * count (243 measured at 2026-09-15) on purpose. The reported half is {@link CheckerReportedCodesTest}'s
+     * floor, which is where that reader's own controls live.
+     */
     @Test
     void theScanReachesTheLawsEstate() {
         assertTrue(measuredCodes().size() >= 120,

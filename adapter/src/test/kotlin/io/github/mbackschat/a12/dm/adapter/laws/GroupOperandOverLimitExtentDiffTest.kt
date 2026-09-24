@@ -198,11 +198,9 @@ class GroupOperandOverLimitExtentDiffTest {
         read(RuntimeLaws.render(expr.expression()), candidates, build)
 
     // ---- the documents ----
+    // Every level takes a coordinate, the fixed ones included — `/Return/Notes/Parcels/Tag` is four, not two.
+    // The kernel document builder rejects a short coordinate list outright, which is how this was caught.
 
-    /**
-     * Every level takes a coordinate, the fixed ones included — `/Return/Notes/Parcels/Tag` is four, not two.
-     * The kernel document builder rejects a short coordinate list outright, which is how this was caught.
-     */
     /** In-capacity rows instantiated and EMPTY; the only filled cell sits in the over-limit row. */
     private fun onlyOverLimitOuter(b: Both) {
         b.field(REVIEWER, "yes", 1, 1)

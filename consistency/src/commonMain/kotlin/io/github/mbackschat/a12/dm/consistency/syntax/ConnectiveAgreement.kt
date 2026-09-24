@@ -80,15 +80,13 @@ private class Frame(val filter: Boolean) {
 private enum class Connective { AND, OR }
 
 /**
- * The two logical connectives per language, which the generated keyword table cannot supply.
+ * Every spelling of each connective the lexer resolves, DERIVED from the generated keyword table.
  *
- * That table carries a [KeywordKind] and nothing finer, and `OPERATOR` covers `PatternMatched` and
- * `DiffersWithToleranceRange1` as well — so it says a name is an operator but not that it JOINS two
+ * Only the canonical spelling per language is named here, because WHICH names are connectives is the one fact
+ * the table cannot supply: it carries a [KeywordKind] and nothing finer, and `OPERATOR` covers `PatternMatched`
+ * and `DiffersWithToleranceRange1` as well — so it says a name is an operator but not that it JOINS two
  * conditions. `ConnectiveAgreementTest` pins each spelling against the table, so a regeneration that renamed
  * one fails rather than silently switching this family off.
- */
-/**
- * Every spelling of each connective the lexer resolves, DERIVED from the generated keyword table.
  *
  * A12 admits three cases per connective — `And`, `AND`, `and` — and a mix written in any of them draws the
  * same `MVK_BRACKET_MISSING`. Listing them here by hand would be a second live statement of a set

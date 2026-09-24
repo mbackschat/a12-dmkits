@@ -6,7 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.DEC_ZERO
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
-/**
+/*
  * The interpreter's condition/value AST, in commonMain so it compiles to BOTH JVM and JS.
  * PURE static code over plain data: imports ZERO kernel (`com.mgmtp.*`) and ZERO groovy types (enforced
  * by the `verifyInterpreterPurity` lint), and the only platform-specific primitive is [Dec]. Only the
@@ -111,8 +111,6 @@ enum class ArithOp { ADD, SUB, MUL, DIV, POW }
 
 /** Expression AST. */
 sealed interface Expr {
-    /** An owner `entitySpec` source. Both a scalar field and a wildcard field may carry the grammar's
-     * category projection; only a scalar source may also carry a semantic index. */
     /**
      * An operand that NAMES a model path — the two shapes an entity slot accepts, [Field] and [Star].
      *

@@ -406,12 +406,9 @@ class WorkspaceMountTest {
     }
 
     /**
-     * A non-Boolean exclusion flag is FALSE to the Kernel and the content survives (KF3's coercion matrix),
-     * so it must not suspend an include A12 expands in full — the read-path half of the over-strictness rule.
-     */
-    /**
      * Every non-Boolean exclusion value is FALSE to the Kernel and the content survives (KF3's coercion
-     * matrix, re-measured 2026-09-12 across these four), so none may drop a declaration A12 checks. The
+     * matrix, re-measured 2026-09-12 across these four), so none may drop a declaration A12 checks — the
+     * read-path half of the over-strictness rule. The
      * QUOTED `"true"` is the row that matters: it reads as the flag being set and is not, so a check on the
      * text rather than the type silences findings about a rule A12 judges.
      */

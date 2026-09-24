@@ -136,15 +136,6 @@ class MessageParameterReferenceTest {
     }
 
     /**
-     * The parameter forms this family deliberately does not read, and what the checker as a whole says.
-     *
-     * Each has its own gate in A12 with its own class, and none of them is the membership one — so a
-     * membership class here would be an over-rejection on a model A12 may well admit. The grid reads EVERY
-     * finding at the declaration, not just this family's, which is what makes it the tier's cross-family
-     * silence check: when a sibling family lands a form, the row stops being empty and says whose class it
-     * now carries.
-     */
-    /**
      * The name position's own TERMINALS, and the language that decides which words are terminals at all.
      *
      * Each language recognises only its own spelling; the other's falls through to an entity lookup. Both
@@ -210,6 +201,15 @@ class MessageParameterReferenceTest {
         assertEquals(expected, actual, "the form-line suffixes skip membership and still address a field")
     }
 
+    /**
+     * The parameter forms this family deliberately does not read, and what the checker as a whole says.
+     *
+     * Each has its own gate in A12 with its own class, and none of them is the membership one — so a
+     * membership class here would be an over-rejection on a model A12 may well admit. The grid reads EVERY
+     * finding at the declaration, not just this family's, which is what makes it the tier's cross-family
+     * silence check: when a sibling family lands a form, the row stops being empty and says whose class it
+     * now carries.
+     */
     @Test
     fun theFormsThisFamilyDoesNotRead() {
         val actual = mutableMapOf<String, List<String>>()

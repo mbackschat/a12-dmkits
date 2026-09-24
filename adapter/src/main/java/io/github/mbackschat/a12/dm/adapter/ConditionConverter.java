@@ -1579,6 +1579,12 @@ final class ConditionConverter {
         return groupAggregateOperand(groupEntity, reconstructStarPath(groupEntity), origin);
     }
 
+    /** Whether the group's stored path stars a level above the group itself, which a {@link GroupRef} cannot carry. */
+    private boolean starredAboveItself(IEntityId group) {
+        GroupListRef scope = model.flattenGroup(reconstructStarPath(group));
+        return scope.flattened().stream().anyMatch(level -> !level.path().equals(scope.group().path()));
+    }
+
     /**
      * A group scope with its {@code $} outer-iteration correlation threaded (D13) — the ONE place a group
      * entity becomes a {@link GroupListRef}, so a marker cannot be dropped at one of five call sites and
@@ -1590,12 +1596,6 @@ final class ConditionConverter {
      * UNREADABLE rather than merely unauthorable (DEV-API-GAPS {@code DG49};
      * {@code adapter.laws.CorrelatedGroupListReadTest}).
      */
-    /** Whether the group's stored path stars a level above the group itself, which a {@link GroupRef} cannot carry. */
-    private boolean starredAboveItself(IEntityId group) {
-        GroupListRef scope = model.flattenGroup(reconstructStarPath(group));
-        return scope.flattened().stream().anyMatch(level -> !level.path().equals(scope.group().path()));
-    }
-
     private GroupListRef groupScopeOf(IEntityId entity, String starPath) {
         GroupListRef scope = model.flattenGroup(starPath);
         return entity.isOuter() ? scope.outer() : scope;

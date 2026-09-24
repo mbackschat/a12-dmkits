@@ -89,8 +89,9 @@ sealed interface Admission {
      * [parsed] is retained rather than re-derived: B3's parse-once contract. The baseline interpreter path
      * serializes and reparses between phases, and a checker that inherited that would pay for the round trip
      * and risk losing what the read preserved.
+     *
+     * @param modelId the source's own `header.id`, extracted rather than asserted.
      */
-    /** @param modelId the source's own `header.id`, extracted rather than asserted. */
     data class Admitted(val source: ModelSource, val modelId: String, val parsed: JsonElement) : Admission
     data class Rejected(val diagnostic: Diagnostic) : Admission
 }

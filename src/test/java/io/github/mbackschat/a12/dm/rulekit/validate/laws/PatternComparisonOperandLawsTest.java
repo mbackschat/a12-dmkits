@@ -95,7 +95,6 @@ class PatternComparisonOperandLawsTest {
         assertEquals(expected, actual, "which written-out patterns the gate admits");
     }
 
-    /** The gate that answers ahead of the whole arm. */
     /**
      * The first question is about SHAPE, and a keyed read passes it: {@code [Field For key]} is a plain field
      * read to this gate, not a call. The type question still follows, so a keyed NUMBER cell draws the kind class.
@@ -132,6 +131,7 @@ class PatternComparisonOperandLawsTest {
         return KernelLaws.verdictModel(PARCELS_JSON, GROUP, "../Reference", "FieldFilled(Reference) And " + comparison);
     }
 
+    /** The gate that answers ahead of the whole arm. */
     @Test
     void theArmYieldsToTheConstantGate() {
         Map<String, String> actual = new LinkedHashMap<>();

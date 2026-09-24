@@ -445,14 +445,6 @@ internal class ComputationEngine(
     }
 
     /**
-     * Evaluate a parsed (tiered) computation in one row context, mirroring the kernel's
-     * `CodeGenCalculationAlternative` codegen (KERNEL-FINDINGS §2): a present [commonPrecondition] must hold,
-     * then the alternatives are tried IN ORDER and the FIRST whose precondition holds supplies the value (a
-     * null precondition is unconditional). If the common precondition fails, or no alternative's precondition
-     * holds, the field computes nothing ([Val.Unknown] → CLEARED). A precondition "holds" iff it evaluates to
-     * three-valued TRUE — an UNKNOWN/FALSE precondition (e.g. over an empty operand) does not select its branch.
-     */
-    /**
      * Whether an alternative was SELECTED, and the value it produced. The two are independent: a selected
      * alternative may still yield no storable value. Code generation flattens every computation targeting one
      * field into a single per-field first-match method, and a **selected** alternative ends that scan
@@ -465,6 +457,14 @@ internal class ComputationEngine(
         }
     }
 
+    /**
+     * Evaluate a parsed (tiered) computation in one row context, mirroring the kernel's
+     * `CodeGenCalculationAlternative` codegen (KERNEL-FINDINGS §2): a present [commonPrecondition] must hold,
+     * then the alternatives are tried IN ORDER and the FIRST whose precondition holds supplies the value (a
+     * null precondition is unconditional). If the common precondition fails, or no alternative's precondition
+     * holds, the field computes nothing ([Val.Unknown] → CLEARED). A precondition "holds" iff it evaluates to
+     * three-valued TRUE — an UNKNOWN/FALSE precondition (e.g. over an empty operand) does not select its branch.
+     */
     private fun evalComputation(parsed: ParsedComputation, interp: Interpreter, targetPath: String): Selection {
         if (parsed.commonPrecondition != null && interp.eval(parsed.commonPrecondition) != Tri.TRUE) return Selection.NONE
         for (alt in parsed.alternatives) {
@@ -591,12 +591,6 @@ internal class ComputationEngine(
         val indexFields: Set<String>,
     )
 
-    /**
-     * The eager formal-input inventory that precedes computation scheduling. It is intentionally wider than a
-     * runtime read trace: all statically referenced non-computed fields are selected; a group reference expands
-     * to its contained fields; and index fields join the inventory when target iteration, semantic lookup, or
-     * cross-group parallel iteration requires them. Merely reading a sibling field does not select its index.
-     */
     /** Each computed target's stored cell, mapped to the clear that stages it out of the cascade's document. */
     private fun storedComputedCells(doc: Document): Map<Pair<String, List<Int>>, String?> {
         if (computedTargets.isEmpty()) return emptyMap()
@@ -607,6 +601,12 @@ internal class ComputationEngine(
         return cells
     }
 
+    /**
+     * The eager formal-input inventory that precedes computation scheduling. It is intentionally wider than a
+     * runtime read trace: all statically referenced non-computed fields are selected; a group reference expands
+     * to its contained fields; and index fields join the inventory when target iteration, semantic lookup, or
+     * cross-group parallel iteration requires them. Merely reading a sibling field does not select its index.
+     */
     private fun operandSelection(comps: List<ComputationDef>): OperandSelection {
         val fields = LinkedHashSet<String>()
         val indexes = LinkedHashSet<String>()

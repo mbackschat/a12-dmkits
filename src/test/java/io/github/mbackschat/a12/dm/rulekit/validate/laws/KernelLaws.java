@@ -513,16 +513,6 @@ final class KernelLaws {
     }
 
     /**
-     * The kernel's verdict on ONE error-message TEXT — {@link #ADMITTED} or the comma-joined classes it
-     * reported — with the condition held fixed. The message axis needs its own entry point because
-     * {@link #check} varies the condition and always supplies a placeholder text.
-     *
-     * <p><b>The plain-message control is the point, not politeness.</b> A malformed condition is refused
-     * before the error-text checker ever runs, and that refusal is indistinguishable from a verdict on the
-     * message. Nine rows of the probe behind [KF198] were exactly that mistake, so this asserts the same
-     * condition is admitted with a plain text before it reads the row.
-     */
-    /**
      * The same, on a condition the kernel REFUSES — where the control [messageVerdict] asserts cannot hold.
      *
      * One law needs this and only this: A12 answers a rule whose condition does not parse with an extra
@@ -539,6 +529,16 @@ final class KernelLaws {
                         .collect(Collectors.joining(","));
     }
 
+    /**
+     * The kernel's verdict on ONE error-message TEXT — {@link #ADMITTED} or the comma-joined classes it
+     * reported — with the condition held fixed. The message axis needs its own entry point because
+     * {@link #check} varies the condition and always supplies a placeholder text.
+     *
+     * <p><b>The plain-message control is the point, not politeness.</b> A malformed condition is refused
+     * before the error-text checker ever runs, and that refusal is indistinguishable from a verdict on the
+     * message. Nine rows of the probe behind [KF198] were exactly that mistake, so this asserts the same
+     * condition is admitted with a plain text before it reads the row.
+     */
     static String messageVerdict(String json, String group, String errorField, String condition,
             String locale, String messageText) {
         ValidationResult control = VALIDATOR.check(json, message(group, errorField, condition, locale, "plain"));

@@ -149,14 +149,6 @@ internal class AutoChecks(
     }
 
     /**
-     * One `uniqueIndex` [Message] per repeatable row whose index-field value DUPLICATES another row's within
-     * the same parent scope — the runtime twin of the kernel's auto index-field uniqueness check
-     * (KERNEL-FINDINGS). The kernel flags **every** row sharing a duplicated value (not all-but-first); an
-     * empty index value is excluded (it is a requiredness concern → [mandatoryErrors]). Scoped per parent: a
-     * nested group's uniqueness is within one parent row (Parts within a Line), not across all rows globally —
-     * the scope key is the index field's reps minus its own + the group-row index ([List.dropLast] of 2).
-     */
-    /**
      * The `(indexFieldPath, reps)` cells whose value DUPLICATES another row's in the same parent scope — the
      * source for both the `uniqueIndex` messages ([uniquenessMessages]) AND the suppression: a duplicate index
      * is **"unknown"** for any rule referencing it ([formalErrorAt]), branch-scoped exactly like a formal error
@@ -245,7 +237,14 @@ internal class AutoChecks(
         return out
     }
 
-    /** One `uniqueIndex` [Message] per duplicate-index cell (the kernel flags every participant). */
+    /**
+     * One `uniqueIndex` [Message] per cell of [dup] — the runtime twin of the kernel's auto index-field uniqueness
+     * check (KERNEL-FINDINGS). The kernel flags **every** row sharing a duplicated value (not all-but-first); an
+     * empty index value is excluded (it is a requiredness concern → [mandatoryErrors]). [duplicateIndexCells]
+     * scopes the comparison per parent: a nested group's uniqueness is within one parent row (Parts within a
+     * Line), not across all rows globally — the scope key is the index field's reps minus its own + the
+     * group-row index ([List.dropLast] of 2).
+     */
     fun uniquenessMessages(doc: Document, dup: Set<Pair<String, List<Int>>>, locale: String,
             isRelevant: Relevance): List<Message> =
         dup.filter { (path, reps) -> isRelevant(path, reps) }.map { (path, reps) ->
@@ -372,17 +371,6 @@ internal class AutoChecks(
     }
 
     /**
-     * The over-limit cell's result, or `null` when the cell is inside its declared repeatability.
-     *
-     * An over-limit cell (a group coordinate exceeds its effective maximum) is "unknown" — it carries the
-     * over-repetition code, suppressing any rule that references it AND its own format/required/unique checks,
-     * exactly as the kernel skips an over-limit instance's ordinary checks (KERNEL-FINDINGS "over-repetition").
-     *
-     * Extracted so it can be applied OUTSIDE the value-admission memo: it is the one part of a filled cell's
-     * formal result that depends on the cell's COORDINATES rather than on its value, and keeping it out of the
-     * memoized computation is what lets that memo key on `(path, raw)` instead of carrying the repetition list.
-     */
-    /**
      * Whether the per-cell over-repetition gate has to run at all for [doc] — the once-per-call precondition that
      * lets it be skipped wholesale (IG127.1).
      *
@@ -435,6 +423,17 @@ internal class AutoChecks(
         return false
     }
 
+    /**
+     * The over-limit cell's result, or `null` when the cell is inside its declared repeatability.
+     *
+     * An over-limit cell (a group coordinate exceeds its effective maximum) is "unknown" — it carries the
+     * over-repetition code, suppressing any rule that references it AND its own format/required/unique checks,
+     * exactly as the kernel skips an over-limit instance's ordinary checks (KERNEL-FINDINGS "over-repetition").
+     *
+     * Extracted so it can be applied OUTSIDE the value-admission memo: it is the one part of a filled cell's
+     * formal result that depends on the cell's COORDINATES rather than on its value, and keeping it out of the
+     * memoized computation is what lets that memo key on `(path, raw)` instead of carrying the repetition list.
+     */
     fun overRepetitionResultAt(path: String, reps: List<Int>): FormalResult.Invalid? =
         paths.exceededBound(path, reps)?.let { exceeded ->
             FormalResult.Invalid(FormalFailure.Generated(overRepetitionType(exceeded).code))

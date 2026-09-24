@@ -1080,23 +1080,6 @@ private fun legacyCalendarYearLandingInstant(instant: Long, years: Int, tz: Mode
 }
 
 /**
- * A `Calendar.MONTH` / `Calendar.YEAR` landing — resolved at COMPUTE time from the nominal civil label alone
- * and INDEPENDENTLY of the sign of the mutation (SPEC-2026-07-29-01). Unlike the day arm
- * ([wallDayLandingInstant]) this carries no source instant: `GregorianCalendar` re-resolves the mutated
- * fields, so an **overlap** label takes the LATER instant and a **gap** label normalizes to the POST-gap
- * label (`02:30` → `03:30`, one hour past the transition).
- *
- * Both halves are now differentially separated. The GAP half:
- * `DifferenceInDays(2003-03-31T02:30, 2024-03-31T03:00)` is **7670** on both kernel strategies, because the
- * 21-year candidate's post-gap landing falls after the later endpoint and is rejected, where the previous
- * direction-selected pre-gap landing admitted it and produced 7671. The OVERLAP half: direct Date equality
- * over the one ambiguous midnight — `AddMonths(Date("1","9","1916"), 1) == Date("1","10","1916")` and the
- * `AddYears` twin are both **true** while the `AddDays` shape is **false**, so taking the LATER copy here is
- * observed rather than assumed (`ConstructedDateInstantDiffTest`). A `DifferenceInDays` construction cannot
- * show the overlap half — its day loop only ever adds, so a seed difference self-corrects — which is why the
- * observer has to be a comparison that introduces no second calendar mutation.
- */
-/**
  * The landing instant of a `Calendar.MONTH`/`Calendar.YEAR` mutation that produced the civil DATE label
  * [isoDate] — midnight of that label, resolved by [fieldMutationLandingInstant]. A Date-valued month/year
  * shift retains this so a consumer observes the instant the mutation selected rather than re-resolving the
@@ -1118,6 +1101,23 @@ internal fun freshDateInstant(isoDate: String, tz: ModelTimeZone, basis: DateCal
     return localToInstant(day * 86_400L, tz)
 }
 
+/**
+ * A `Calendar.MONTH` / `Calendar.YEAR` landing — resolved at COMPUTE time from the nominal civil label alone
+ * and INDEPENDENTLY of the sign of the mutation (SPEC-2026-07-29-01). Unlike the day arm
+ * ([wallDayLandingInstant]) this carries no source instant: `GregorianCalendar` re-resolves the mutated
+ * fields, so an **overlap** label takes the LATER instant and a **gap** label normalizes to the POST-gap
+ * label (`02:30` → `03:30`, one hour past the transition).
+ *
+ * Both halves are now differentially separated. The GAP half:
+ * `DifferenceInDays(2003-03-31T02:30, 2024-03-31T03:00)` is **7670** on both kernel strategies, because the
+ * 21-year candidate's post-gap landing falls after the later endpoint and is rejected, where the previous
+ * direction-selected pre-gap landing admitted it and produced 7671. The OVERLAP half: direct Date equality
+ * over the one ambiguous midnight — `AddMonths(Date("1","9","1916"), 1) == Date("1","10","1916")` and the
+ * `AddYears` twin are both **true** while the `AddDays` shape is **false**, so taking the LATER copy here is
+ * observed rather than assumed (`ConstructedDateInstantDiffTest`). A `DifferenceInDays` construction cannot
+ * show the overlap half — its day loop only ever adds, so a seed difference self-corrects — which is why the
+ * observer has to be a comparison that introduces no second calendar mutation.
+ */
 private fun fieldMutationLandingInstant(nominal: Long, tz: ModelTimeZone): Long {
     if (tz == ModelTimeZone.UTC) return nominal
 

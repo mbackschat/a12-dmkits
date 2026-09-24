@@ -189,6 +189,19 @@ class TemporalDeclaredFormatGateDiffTest {
      * cell for cell. Model consistency is asserted first, because a declaration the kernel refuses would make
      * every row below vacuous rather than false.
      */
+    @Test fun theCompleteFormatVocabularyIsClassifiedByItsDeclarationOnEveryKind() {
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(GRID_MODEL),
+            "all ${VOCABULARY.size * 3} declarations must be model-legal for the grid to measure anything")
+
+        for (v in VOCABULARY) {
+            val byDate = formalCodes("/Grid/${v.name}AsDate", GRID_MODEL, v.values)
+            assertEquals(byDate, formalCodes("/Grid/${v.name}AsTime", GRID_MODEL, v.values),
+                "${v.format}: DATE vs TIME — the kind must not move the classifier")
+            assertEquals(byDate, formalCodes("/Grid/${v.name}AsStamp", GRID_MODEL, v.values),
+                "${v.format}: DATE vs DATE_TIME — the kind must not move the classifier")
+        }
+    }
+
     /**
      * <b>The separator-free formats read month-first (`MMdd`) and day-first (`ddMM`) — settled by VALIDITY,
      * not by the spelling.</b> The grid test above asserts that the three engines *agree* on a classification;
@@ -216,19 +229,6 @@ class TemporalDeclaredFormatGateDiffTest {
                 "3002" to listOf("datumFormatFalsch"), "3104" to listOf("datumFormatFalsch")),
             formalCodes("/Grid/DayMonthCompactAsDate", GRID_MODEL, listOf("1506", "2902", "3002", "3104")),
             "ddMM reads the leading pair as the DAY")
-    }
-
-    @Test fun theCompleteFormatVocabularyIsClassifiedByItsDeclarationOnEveryKind() {
-        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(GRID_MODEL),
-            "all ${VOCABULARY.size * 3} declarations must be model-legal for the grid to measure anything")
-
-        for (v in VOCABULARY) {
-            val byDate = formalCodes("/Grid/${v.name}AsDate", GRID_MODEL, v.values)
-            assertEquals(byDate, formalCodes("/Grid/${v.name}AsTime", GRID_MODEL, v.values),
-                "${v.format}: DATE vs TIME — the kind must not move the classifier")
-            assertEquals(byDate, formalCodes("/Grid/${v.name}AsStamp", GRID_MODEL, v.values),
-                "${v.format}: DATE vs DATE_TIME — the kind must not move the classifier")
-        }
     }
 
     @Test fun aDateDeclaredCellReportsTheDateErrorWhateverItsKind() {

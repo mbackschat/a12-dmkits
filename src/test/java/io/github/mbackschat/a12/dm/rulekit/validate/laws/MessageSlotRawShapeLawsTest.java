@@ -270,7 +270,6 @@ class MessageSlotRawShapeLawsTest {
         assertEquals(expected, actual, "which entry for one locale A12 keeps, and what counts as its text");
     }
 
-    /** What A12 says about the probe model with the given raw `header.locales` and rule `errorMessage`. */
     /**
      * WHEN the unprefixed no-error-text class co-fires, on the carrier where a SECOND locale is answered.
      *
@@ -305,6 +304,7 @@ class MessageSlotRawShapeLawsTest {
         assertEquals(expected, actual, "when the unprefixed no-error-text class co-fires");
     }
 
+    /** What A12 says about the probe model with the given raw `header.locales` and rule `errorMessage`. */
     private static String verdict(String localesJson, String errorMessageJson) {
         return KernelLaws.verdictOf(probe(localesJson, errorMessageJson));
     }

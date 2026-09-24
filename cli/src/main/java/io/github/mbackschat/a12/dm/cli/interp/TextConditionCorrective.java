@@ -184,8 +184,6 @@ public final class TextConditionCorrective {
         return new Diagnostic(d.severity(), d.source(), d.code(), d.summary(), where, fix, explain);
     }
 
-    /** Every comparison node of the (tolerantly parsed) condition, grouped by its catalog operator-id. Empty
-     *  on a parse failure — the caller then keeps the union fix. */
     /**
      * The candidate's comparisons, keyed by operator id. <b>Throws</b> on a parse failure rather than answering
      * with an empty map: an empty map means "parsed, no comparison", and conflating that with "unreadable" is the
