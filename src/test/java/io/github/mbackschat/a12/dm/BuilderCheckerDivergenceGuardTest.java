@@ -524,6 +524,37 @@ class BuilderCheckerDivergenceGuardTest {
             // side's rule is false of the other's operators, so neither can be the other's source.
             Map.entry("MVK_ROOT_GROUP_REFERENCED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // Measured 2026-09-24, when the kits began citing them (2026-09-22/23). A referenced group must
+            // hold a field somewhere in its subtree (KF215). `BoundModel`'s entity-list read and the
+            // `FirstFilledOperand` constructor refuse a typed group operand whose `descendantFields` is empty,
+            // the recursive set A12 expands, and the checker's `EmptyGroupOperand` reports a stored operand by
+            // the same test. The kit refuses only an operand every rule refuses, and its CLASS is withheld where
+            // an earlier read stage can answer (KF458), so no class leaks either way.
+            Map.entry("MVK_GROUP_IS_EMPTY", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_ROOT_GROUP_IS_EMPTY", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // `CountAggregate` refuses a root beside other operands on `NumberOfFilledGroups` over typed
+            // groups; the checker's `GroupListOperands` reports the same beside-others shape in stored text.
+            // Both are the rows `EntityListOperandReadLawsTest` and `GroupListRootOperandLawsTest` measure, and
+            // neither refuses the sole root A12 admits.
+            Map.entry("MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // `RoundingPlaces` refuses a typed places count above 14, the checker's `RoundingOperands` a
+            // written digit run above it. One ceiling, measured on both constructs
+            // (`RoundingPlacesOverflowLawsTest`); a negative count is a different class on each side, the
+            // kit citing the token A12 cannot read and the checker leaving a non-digit run to that gate.
+            Map.entry("MVK_INVALID_DIGIT_FOR_ROUNDING", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // `Dsl.validType`/`invalidType` refuse a field whose kind is neither STRING nor ENUMERATION, and
+            // the checker's `ValidityConditionOperands` a declared type outside the code-bearing set. Same law
+            // (`ValidityConditionOperandLawsTest`). The kit also refuses an UNKNOWN kind, a dangling type
+            // reference, where the checker stays silent; a model carrying one is refused by A12 anyway.
+            Map.entry("MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // The kit only NAMES it: `IndexedGroupPresenceCondition` says why it never renders a one-operand
+            // `AllGroupsFilled`, which A12 refuses (KF351). The checker's `EntityListArity` enforces it.
+            Map.entry("MVK_PARAMSIZE_INVALID2", Disposition.PROSE_ONLY),
+
             // `SumOfProducts`' four operand laws, added 2026-09-14 with the family that reports them. The
             // record's constructor enforces all four over typed operands and QUOTES these codes in its
             // refusal messages; the checker enforces the same four over stored DM-JSON. Neither is broader
