@@ -3379,7 +3379,7 @@
       "operator": "NumberOfFilledGroups",
       "lane": "MEANING",
       "ordinal": 0,
-      "digest": "sha256:fb00acf15dbb4cef3a2e5d922e28cf583ef0efded496fbf80a371b8da2701f57",
+      "digest": "sha256:5963a839d25adff1694e99f0686780d189a71f3f625a73547f0cb784b956422d",
       "classifications": [
         "ADMISSION",
         "RUNTIME"
@@ -3389,6 +3389,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "NumberOfFilledGroupsStarDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "AncestorStarredGroupCountDiffTest"
         },
         {
           "classification": "RUNTIME",

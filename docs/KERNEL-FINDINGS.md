@@ -10183,7 +10183,7 @@ The computation rows carry a second alternative that a merely false precondition
 
 **Lock:** `adapter.laws.PartialKeyedSelectionRelevanceDiffTest`. The interpreter's side is [IF334](INTERPRETER-FINDINGS.md#if334).
 
-## §9 supplement — `NumberOfFilledGroups` takes any GROUP entity, and a sole one passes its arity law when its path carries a star on ANY level, its own or an ancestor's (measured + source-read, 2026-09-24) <a id="kf462"></a>
+## §9 supplement — `NumberOfFilledGroups` takes any GROUP entity, and a sole one passes its arity law when its path carries a star on ANY level, its own or an ancestor's, and counts only FILLED instances of a fixed group (measured + differential, both strategies, + source-read, 2026-09-24) <a id="kf462"></a>
 
 > Fold: pending — widens the arity bullet of §9's `NumberOfFilledGroups` law ("a single repeatable group as a wildcard scope") to any starred sole operand; folds into §9 beside it.
 
@@ -10197,8 +10197,21 @@ The computation rows carry a second alternative that a merely false precondition
 | `Grading, Weight` | `MVK_NO_FIELDS_ALLOWED` |
 | `Keyed For "k", Grading` | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` |
 
-`Seal` does not repeat, so the recorded law's "a single repeatable group as a wildcard scope" is too narrow: the admitted sole operand is any group whose path carries a star. What it counts at runtime is not measured here.
+`Seal` does not repeat, so the recorded law's "a single repeatable group as a wildcard scope" is too narrow: the admitted sole operand is any group whose path carries a star.
+
+**What it counts (differential, dynamic Groovy and static Java agree on every row).** The rule reads the one `== N` that fires, over documents built to separate three readings — a Seal counted when its batch exists, when the Seal group is instantiated, or when it holds a value:
+
+| document | `(Batches*/Seal)` | `(Batches*/Seal, Grading)` |
+|---|---|---|
+| no batch | 0 | 0 |
+| two batches, both Seals filled | 2 | 2 |
+| two batches, only the first Seal filled, the second batch holding a `Lot` | 1 | 1 |
+| two batches, each Seal instantiated and empty | 0 | 0 |
+| three batches, the first and third Seals filled | 2 | 2 |
+| one filled Seal, `Grading` filled | 1 | 2 |
+
+So a Seal counts only when it holds a value. That is the opposite of `Items*` over a repeatable group, which counts every instantiated row, an empty one included (`adapter.laws.NumberOfFilledGroupsStarDiffTest`). Beside a fixed group, that group's own filled state is added.
 
 **Mechanism (source-read, not discriminated beyond the table).** `CheckFeldListenAnzahlOpImpl` asks, on this operator and in this order, `checkNoRootGroupWhenMoreThanOneParameter`, `checkNoSemanticIndex`, `checkOnlyGroups` and `checkIsMoreThanOneGroup`. The last admits a sole operand when `EntityRef.hasWildCards()` is true, which reads the whole reference, and `checkOnlyGroups` asks `getEntity().isGroup()`, so a group counts however it was written. Every row above is one of these four gates or all four passing.
 
-**Lock:** `validate.laws.GroupCountScopeOperandLawsTest`, which also holds rulekit's `CountAggregate` to admitting each admitted row through a group scope in its operand list (DEV-API-GAPS DG76, retired).
+**Lock:** `validate.laws.GroupCountScopeOperandLawsTest` for admission, which also holds rulekit's `CountAggregate` to admitting each admitted row through a group scope in its operand list (DEV-API-GAPS DG76, retired). `adapter.laws.AncestorStarredGroupCountDiffTest` for the counts. The interpreter matches the sole form and declines the pair ([IG156](INTERPRETER-GAPS.md)).
