@@ -406,6 +406,22 @@ sealed interface io.github.mbackschat.a12.dm.consistency/Reference { // io.githu
         final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reference.Ambiguous.toString|toString(){}[0]
     }
 
+    final class MisplacedUpStep : io.github.mbackschat.a12.dm.consistency/Reference { // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep|null[0]
+        constructor <init>(kotlin/String, io.github.mbackschat.a12.dm.consistency/Reference?) // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.<init>|<init>(kotlin.String;io.github.mbackschat.a12.dm.consistency.Reference?){}[0]
+
+        final val walkedPrefix // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.walkedPrefix|{}walkedPrefix[0]
+            final fun <get-walkedPrefix>(): io.github.mbackschat.a12.dm.consistency/Reference? // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.walkedPrefix.<get-walkedPrefix>|<get-walkedPrefix>(){}[0]
+        final val written // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.written|{}written[0]
+            final fun <get-written>(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.written.<get-written>|<get-written>(){}[0]
+
+        final fun component1(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.component1|component1(){}[0]
+        final fun component2(): io.github.mbackschat.a12.dm.consistency/Reference? // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.component2|component2(){}[0]
+        final fun copy(kotlin/String = ..., io.github.mbackschat.a12.dm.consistency/Reference? = ...): io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.copy|copy(kotlin.String;io.github.mbackschat.a12.dm.consistency.Reference?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.toString|toString(){}[0]
+    }
+
     final class Resolved : io.github.mbackschat.a12.dm.consistency/Reference { // io.github.mbackschat.a12.dm.consistency/Reference.Resolved|null[0]
         constructor <init>(kotlin/String) // io.github.mbackschat.a12.dm.consistency/Reference.Resolved.<init>|<init>(kotlin.String){}[0]
 

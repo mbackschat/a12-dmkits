@@ -87,7 +87,7 @@ private fun TrackedFactBase.suppressionFindings(element: TrackedDeclaration): Li
     return listOf(Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, element.path))
 }
 
-private const val UNEXPECTED_TOKEN = "MVK_UNEXPECTED_TOKEN"
+internal const val UNEXPECTED_TOKEN = "MVK_UNEXPECTED_TOKEN"
 private const val INVALID_SUPPRESSED_WARNING = "MVK_INVALID_SUPPRESSED_WARNING"
 private const val LEXER_STANDARD_ERROR = "MVK_LEXER_STANDARD_ERROR"
 

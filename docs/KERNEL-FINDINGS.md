@@ -6730,7 +6730,7 @@ Reported by the portable checker (`CheckFamily.GROUP_LIST_OPERAND_KIND`) on the 
 | a MID-PATH up-step (`Guest/..*/Extras`) | any rule | `MVK_UNEXPECTED_TOKEN` |
 | …the same mid-path step unstarred — control | any rule | `MVK_UNEXPECTED_TOKEN` |
 
-**Two of those rows are pre-emptions rather than wildcard verdicts, and their controls are what say so.** From a root-level rule the up-step leaves the model and the DEPTH class answers before any star is considered; a `..` outside the leading run is not valid A12 at all, starred or not, so the parser answers first. Only the nested anchoring reaches the wildcard gate, which is why a grid anchored where the rest of this entry is anchored could not have found the class — the root-level row looks like a measurement and reports on a different gate. *Corrected 2026-09-24:* "starred or not" is true of the up-step's own star and not of the name before it. After a STARRED name that name's resolution, suffix and landing gates answer first, so `Nope*/..` draws `MVK_INVALID_ENTITY` and `/Claims*/..` `MVK_INVALID_ROOT_GROUP`; only a name that clears them, or an unstarred one like `Guest`, meets the token refusal ([KF465](#kf465)).
+**Two of those rows are pre-emptions rather than wildcard verdicts, and their controls are what say so.** From a root-level rule the up-step leaves the model and the DEPTH class answers before any star is considered; a `..` outside the leading run is not valid A12 at all, starred or not, so the parser answers first. Only the nested anchoring reaches the wildcard gate, which is why a grid anchored where the rest of this entry is anchored could not have found the class — the root-level row looks like a measurement and reports on a different gate. *Corrected 2026-09-24:* "starred or not" is true of the up-step's own star and not of the name before it. After a STARRED name, or behind a leading up-run, the segments before the step answer their resolution, suffix and landing gates first, so `Nope*/..` draws `MVK_INVALID_ENTITY` and `/Claims*/..` `MVK_INVALID_ROOT_GROUP`; only a prefix that clears them, or one like `Guest` with neither, meets the token refusal ([KF465](#kf465)).
 
 **A star on a leading up-step also PARSES.** `GroupFilled(..*)` is refused semantically, not syntactically, which is a fact about the grammar rather than about the gate: a reader treating `..` and `*` as a product accepts `..*/Extras` by accident (as division) and refuses `..*` outright, and is wrong both times.
 
@@ -10410,7 +10410,7 @@ The first table's last coverage follows from the third step rather than from a f
 
 **Lock:** `adapter.laws.PartialGroupStarFieldCoverageDiffTest`, all seven coverages of the first table, and `adapter.laws.PartialGroupCountRelevanceDiffTest`, all twelve rows of the second, each on three engines.
 
-## §14 supplement — an up-step stands only in a relative path's leading run; after a STARRED name that name's own gates answer first, and the short-name fallback reaches a starred first segment (measured, 2026-09-24) <a id="kf465"></a>
+## §14 supplement — an up-step stands only in a relative path's leading run; after a STARRED name or a leading up-run the segments before it answer their own gates first, and the short-name fallback reaches a starred first segment (measured, 2026-09-24) <a id="kf465"></a>
 
 > Fold: pending — refines §14's segment walk ([KF356](#kf356)) at the up-step and at the short-name fallback; folds beside the walk.
 
@@ -10419,6 +10419,7 @@ The first table's last coverage follows from the third step rather than from a f
 | operand | rule group | A12 | what it separates |
 |---|---|---|---|
 | `Claims/..`, `Holder/../Amount`, `Nope/../Holder` | `/Policy` | `MVK_UNEXPECTED_TOKEN` | after an UNSTARRED name the up-step is a token error, and `Nope` shows it is refused before the name is resolved |
+| `Claims/Nope/..`, `Nope/../Claims*`, `Nope/..*`, `Insured/Nope/../Claims*`, `/Nope/..` | `/Policy` | `MVK_UNEXPECTED_TOKEN` | no undeclared name before the step is resolved when no named segment before it is starred, and a star AFTER the step changes nothing |
 | `/Policy/Insured/..`, `/../Holder`, `/..*` | `/Policy` | `MVK_UNEXPECTED_TOKEN` | an absolute path takes no up-step at all |
 | `Claims*/..`, `Claims*/../Amount`, `/Policy/Claims*/..` | `/Policy` | `MVK_UNEXPECTED_TOKEN` | a starred name that clears its gates reaches the same refusal |
 | `Nope*/..`, `Nope*/../Holder` | `/Policy` | `MVK_INVALID_ENTITY` | after a STARRED name, that name is resolved first |
@@ -10426,15 +10427,24 @@ The first table's last coverage follows from the third step rather than from a f
 | `Claims.*/..` | `/Policy` | `MVK_POINT_IN_A12_MODEL` | …and its suffix is judged next |
 | `Claims.*/..` | `/Policy/Insured` | `MVK_INVALID_ENTITY` | …after its resolution, as KF356 has it without an up-step |
 | `Insured*/..`, `Holder*/..` | `/Policy` | `MVK_INVALID_WILDCARD` | …and its landing site last |
+| `Claims*/Nope/..`, `Nope/Claims*/..` | `/Policy` | `MVK_INVALID_ENTITY` | the star may stand ANYWHERE before the step, and then the whole prefix is judged, the unstarred names in it included |
+| `/Nope/Claims*/..` · `Claims.*/Nope/..` · `Claims/Amount*/..`, `Claims*/Amount*/..` | `/Policy` | `MVK_INVALID_ROOT_GROUP` · `MVK_POINT_IN_A12_MODEL` · `MVK_INVALID_WILDCARD` | …segment by segment, each with its own three gates |
+| `Claims*/Amount/..`, `Claims*/../..`, `Claims*/..*` | `/Policy` | `MVK_UNEXPECTED_TOKEN` | a prefix that clears still reaches the refusal |
+| `../Nope/..`, `../Nope*/..` | `/Policy/Insured` | `MVK_INVALID_ENTITY` | a LEADING up-run makes the walk judge the prefix too, with no star in it |
+| `../Claims/..`, `Remark/..` · `..*/Claims/..` | `/Policy/Insured` | `MVK_UNEXPECTED_TOKEN` · `MVK_INVALID_WILDCARD_REL` | …a cleared prefix is refused, and a starred leading step answers its own class first |
+| `Claims/..Policy/Holder`, `Claims/..Policy*/Holder`, `/Policy/..Policy/Holder` · `Nope*/..Policy/Holder` | `/Policy` | `MVK_UNEXPECTED_TOKEN` · `MVK_INVALID_ENTITY` | a NAMED turning point is an up-step, misplaced on the same terms |
+| `AtLeastOneGroupFilled(Claims/.., Insured)`, `Sum(Claims/../Claims*/Amount) > 0` | `/Policy` | `MVK_UNEXPECTED_TOKEN` | the refusal is the path's, not the carrier's |
 | `..`, `..*`, `../..`, `..*/..` | `/Policy` | `MVK_TOO_MANY_PARENT_GROUPS` | a leading run that leaves the model draws the depth class, starred or not |
 | `Holder*`, `Holder*/Claims`, `BrokerName*` | `/Policy/Insured` | `MVK_INVALID_WILDCARD` | the short-name fallback resolves a starred FIRST segment, and `BrokerName` (declared in a sibling group) rules out an ancestor walk |
 | `Holder`, `Holder*`, `BrokerName*`, flag OFF | `/Policy/Insured` | `MVK_INVALID_ENTITY` | the within-model control: the flag alone decides it |
 | `Remark*` | `/Policy` | `MVK_FIELDNAME_NOT_UNIQUE` | the fallback's uniqueness demand holds on a starred segment too |
 
-So the up-step rule has two tiers, and which one applies depends on the segment BEFORE the up-step, not on the up-step's own star: after an unstarred name the refusal comes before any resolution, and after a starred name it comes only once that name has cleared its own three gates. [KF328](#kf328)'s mid-path rows varied only the up-step's star, on an unstarred `Guest`, so they sat entirely in the first tier.
+Two more grids settle how the refusal meets the rest of the text and the other surface. In a condition A12 answers the FIRST defect in text order: `FieldFilled(Nope2) And FieldFilled(Claims/..)` is `MVK_INVALID_ENTITY` and the same two operands swapped are `MVK_UNEXPECTED_TOKEN`, a starred operand ahead of the step wins with `MVK_NO_WILDCARDS_ALLOWED`, and a stray `)` behaves the same way (a token alone, `MVK_INVALID_ENTITY` behind a `Nope2`), so the reference checks run as the parser reaches each reference rather than after a finished parse. In a MESSAGE parameter every misplaced up-step is `MVK_UNEXPECTED_TOKEN`, `$Claims/../Holder$`, `$Nope/../Holder$`, `$/Policy/../Holder$` and `$/../Holder$` from the root and `$../Nope/../Holder$` from `Insured` alike, where the controls keep the surface's own vocabulary (`$../Nope$` is `INVALID_ENTITY`, `$../../Holder$` is `ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS`): that surface never walks the prefix, and it spells the condition's grammar code here rather than an `ERROR_TEXT_` one.
 
-**Mechanism (hypothesis, not measured):** the grammar parses an unstarred name followed by `/..` as a malformed path, while a starred name ends one iteration segment, and the parser accepts the up-step that follows it, so the refusal falls to the segment walk.
+So the up-step rule has two tiers, and which one applies depends on what PRECEDES the up-step, not on the up-step's own star: with no starred named segment before it and no leading up-run, the refusal comes before any resolution; with either, it comes only once every segment before it has cleared its own three gates. *Corrected 2026-09-24:* this first said the tier turns on "the segment BEFORE the up-step", which `Claims*/Nope/..` refutes — the segment next to the step is unstarred and is resolved all the same, because the star two segments back put the whole prefix on the walk. [KF328](#kf328)'s mid-path rows varied only the up-step's star, on an unstarred `Guest`, so they sat entirely in the first tier.
 
-**Found by** the checker-vs-kernel path grid (`adapter.laws.CheckerPathGridAgreementTest`), where these spellings account for most of its 813 disagreeing rows on first run; the checker's side of each is a row of that grid's ledger.
+**Mechanism (hypothesis, not measured):** the grammar parses a plain name run followed by `/..` as a malformed path, while a starred name ends one iteration segment and a leading up-run opens a relative path, and in both cases the parser hands the prefix to the segment walk before the up-step that follows is refused.
 
-**Lock:** `rulekit.validate.laws.PathSegmentWalkLawsTest`, all six grids.
+**Found by** the checker-vs-kernel path grid (`adapter.laws.CheckerPathGridAgreementTest`), where these spellings account for most of its 813 disagreeing rows on first run; the checker's side is `consistency.MisplacedUpStepTest`, row for row.
+
+**Lock:** `rulekit.validate.laws.PathSegmentWalkLawsTest`, every grid.

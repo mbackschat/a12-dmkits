@@ -989,12 +989,16 @@ internal fun checkRun(
         it.key to (reusable.getValue(it.key) ?: tracked.cellFor(it.key, prepared, it.produce))
     }
     val reused = reusable.count { it.value != null }
-    val judged = (declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
+    val references = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         walked.mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
-        } + scheduled.flatMap { cells.getValue(it.key).findings })
-        .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
+        }
+    // A reference's own class is what withholds the text classes, so it is never withheld behind itself —
+    // which matters because a misplaced up-step's class is a token error, spelled like one of those it withholds.
+    val textClasses = scheduled.flatMap { cells.getValue(it.key).findings }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
+    val judged = (references + textClasses)
+        .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .withoutPostParseClassesBehindAPositionedDefect()
     val findings = judged.notSuppressedBy(tracked.variantFilterSuppressed())
     return CheckRun(

@@ -126,12 +126,10 @@ class RepetitionWildcardTest {
         val expected = mutableMapOf<String, List<String>>()
         expected["a starred segment whose own prefix does not resolve"] = listOf("MVK_INVALID_ENTITY")
         expected["a starred fixed group with an unresolvable LEAF"] = listOf(invalid)
-        // A `..` outside the LEADING run is not valid A12 at all — the parser refuses it starred or not — so
-        // there is no wildcard verdict here and the grammar family owns the text.
-        expected["a star on a MID-PATH up-step"] = emptyList()
-        // A12's class for a star on a named turning point is unmeasured; naming the wrong one on a correct
-        // rejection is worse than saying nothing.
-        expected["a star on a NAMED turning point"] = emptyList()
+        // An up-step outside the LEADING run is not valid A12 at all, starred, named or neither, so there is no
+        // wildcard verdict here: the reference family reports the misplaced step (`MisplacedUpStepTest`).
+        expected["a star on a MID-PATH up-step"] = listOf("MVK_UNEXPECTED_TOKEN")
+        expected["a star on a NAMED turning point"] = listOf("MVK_UNEXPECTED_TOKEN")
         // The DEPTH class pre-empts the wildcard gate, so A12 never reaches it and neither does this family;
         // the reference family reports the overflow.
         expected["a starred up-step that leaves the model"] = listOf("MVK_TOO_MANY_PARENT_GROUPS")

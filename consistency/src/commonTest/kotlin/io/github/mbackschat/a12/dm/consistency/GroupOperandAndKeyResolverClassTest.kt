@@ -14,35 +14,8 @@ import kotlin.test.assertTrue
  */
 class GroupOperandAndKeyResolverClassTest {
 
-    private fun rejections(errorField: String, condition: String, inInsured: Boolean = false): List<String> {
-        val rule = """{"type":"Rule","id":"r0","name":"Probe","Rule":{
-                  "errorCondition":"$condition",
-                  "errorEntityRelPath":"$errorField",
-                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
-        val source = if (inInsured) model(ruleInPolicy = "", ruleInInsured = ",$rule") else model(",$rule", "")
-        return check(ModelSource(source)).findings.filter { it.justifiesRejection }.map { it.code }.distinct()
-    }
-
-    private fun model(ruleInPolicy: String, ruleInInsured: String) = """
-            {"header":{"id":"policy","locales":[{"code":"en_US"}]},
-             "content":{"modelConfig":{"fieldRefByShortNameAllowed":true},"modelRoot":{"rootGroups":[
-              {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
-                {"type":"Field","id":"f0","name":"Holder","Field":{"fieldType":{"type":"StringType"}}},
-                {"type":"Group","id":"g1","name":"Insured","Group":{"elements":[
-                  {"type":"Field","id":"f1","name":"Remark","Field":{"fieldType":{"type":"StringType"}}},
-                  {"type":"Field","id":"f2","name":"Age","Field":{"fieldType":{"type":"NumberType"}}}$ruleInInsured
-                ]}},
-                {"type":"Group","id":"g2","name":"Broker","Group":{"elements":[
-                  {"type":"Field","id":"f3","name":"BrokerName","Field":{"fieldType":{"type":"StringType"}}}
-                ]}},
-                {"type":"Group","id":"g3","name":"Claims","Group":{"repeatability":20,"elements":[
-                  {"type":"Field","id":"f4","name":"ClaimRef","Field":{"fieldType":{"type":"StringType"}}},
-                  {"type":"Field","id":"f5","name":"Remark","Field":{"fieldType":{"type":"StringType"}}},
-                  {"type":"Field","id":"f6","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}}
-                ]}}$ruleInPolicy
-              ]}}
-             ]}}}
-            """.trimIndent()
+    private fun rejections(errorField: String, condition: String, inInsured: Boolean = false) =
+        PolicyPathSource.rejections(errorField, condition, inInsured)
 
     private val fixed = linkedMapOf(
         "/Policy/Insured" to emptyList(),
@@ -160,8 +133,8 @@ class GroupOperandAndKeyResolverClassTest {
         }.joinToString("")
         val unresolved = mutableListOf<String>()
         val silent = listOf(
-            model(ruleInPolicy = rules("../Holder"), ruleInInsured = ""),
-            model(ruleInPolicy = "", ruleInInsured = rules("../Remark")),
+            PolicyPathSource.model(ruleInPolicy = rules("../Holder")),
+            PolicyPathSource.model(ruleInInsured = rules("../Remark")),
         ).flatMap { json ->
             val source = ModelSource(json)
             val rejected = check(source).findings.filter { it.justifiesRejection }.mapNotNull { it.at }.toSet()

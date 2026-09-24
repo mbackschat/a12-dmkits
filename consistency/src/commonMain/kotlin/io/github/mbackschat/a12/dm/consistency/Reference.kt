@@ -47,6 +47,18 @@ sealed interface Reference {
      * the corrective is to remove a `..`, not to declare anything.
      */
     data class AboveRoot(val written: String) : Reference
+
+    /**
+     * [written] carries an up-step outside a relative path's leading run, where A12's grammar has no place for
+     * one, so it names nothing and A12 refuses it as `MVK_UNEXPECTED_TOKEN` ([KERNEL-FINDINGS KF465]).
+     *
+     * **[walkedPrefix] is what the segments before that step resolve to when a CONDITION walks them first**,
+     * and null when it does not. A condition walks them when a named segment before the step is starred or
+     * the path opens with an up-run, and then a prefix that fails answers with its own class: `Nope*` then
+     * `..` is an entity miss while `Nope/..` is a token error. It is carried here rather than decided because
+     * the role decides it: a message parameter never walks, so the same `../Nope/..` is a token error there.
+     */
+    data class MisplacedUpStep(val written: String, val walkedPrefix: Reference?) : Reference
 }
 
 /**
@@ -104,12 +116,35 @@ fun PreparedModel.resolveEntity(
     // written path is what the Kernel does before integration, so the reference names the element that
     // moved with it rather than one the host happens to have (KF3).
     val hosted = origin.rehost(written)
-    val steps = hosted.split('/').filter { it.isNotEmpty() }.map { it.withoutRepetitionSuffix() }
+    val segments = hosted.split('/').filter { it.isNotEmpty() }
     val absolute = hosted.startsWith("/")
+    val misplaced = segments.indices.firstOrNull { at ->
+        segments[at].startsWith(UP) && (absolute || segments.take(at).any { !it.startsWith(UP) })
+    } ?: return resolveSegments(declaringGroup, written, segments, absolute, origin)
+    // Cancelling each `X/..` pair instead read `Claims/..` as the rule's own group, a model A12 refuses.
+    val prefix = segments.take(misplaced)
+    val walked = (!absolute && prefix.first().startsWith(UP)) ||
+        prefix.any { !it.startsWith(UP) && it.endsWith("*") }
+    val prefixText = (if (absolute) "/" else "") + prefix.joinToString("/")
+    return Reference.MisplacedUpStep(
+        written,
+        if (walked) resolveSegments(declaringGroup, prefixText, prefix, absolute, origin) else null,
+    )
+}
+
+/** [resolveEntity] for a path of [segments] whose up-steps, if any, all lead it. */
+private fun PreparedModel.resolveSegments(
+    declaringGroup: String,
+    written: String,
+    segments: List<String>,
+    absolute: Boolean,
+    origin: DeclarationOrigin,
+): Reference {
+    val steps = segments.map { it.withoutRepetitionSuffix() }
     // The two-tier short-name treatment is for a single BARE LEAF. A starred segment names a repeatable
     // group's iteration rather than a leaf, and the Kernel gates its fallback per `idNameRef`, so `Lines*`
     // must not reach a model-wide field index that could resolve it to an unrelated field of that name.
-    if (!absolute && steps.size == 1 && steps.single() != UP && !hosted.contains('*')) {
+    if (!absolute && steps.size == 1 && steps.single() != UP && segments.none { it.contains('*') }) {
         return resolve(declaringGroup, steps.single(), origin)
     }
     val path = if (absolute) mutableListOf() else declaringGroup.split('/').filter { it.isNotEmpty() }.toMutableList()
@@ -135,6 +170,13 @@ fun PreparedModel.resolveEntity(
 }
 
 private const val UP = ".."
+
+/**
+ * Whether A12's walk meets this outcome only after the segments ahead of it, so an [earlierSegmentGate] can
+ * answer first: a name that does not resolve, or a misplaced up-step.
+ */
+internal val Reference.isMetAfterTheSegmentsAhead: Boolean
+    get() = this is Reference.Undeclared || this is Reference.MisplacedUpStep
 
 /** A per-segment gate that answers for an EARLIER segment of a path, ahead of a later one's resolution. */
 internal enum class EarlierSegmentGate {

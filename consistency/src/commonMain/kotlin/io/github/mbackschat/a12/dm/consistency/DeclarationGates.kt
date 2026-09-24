@@ -98,7 +98,7 @@ internal fun declarationsWithAnUnresolvableConditionReference(walked: List<Condi
 internal fun PreparedModel.conditionReferencesWalkedToTheirEnd(): List<ConditionReference> {
     val originOf = elements.associate { it.path to it.origin }
     return conditionReferences().filterNot { reference ->
-        reference.target is Reference.Undeclared && earlierSegmentGate(
+        reference.target.isMetAfterTheSegmentsAhead && earlierSegmentGate(
             reference.written,
             resolves = { prefix ->
                 resolveEntity(

@@ -12,7 +12,8 @@ package io.github.mbackschat.a12.dm.consistency
  * segment: the same suffix on a name nothing declares draws `MVK_INVALID_ENTITY` and this family must leave it
  * to the reference family. A miss AFTER the suffixed segment is another matter, since the walk answers at the
  * suffix and never reaches it, so `Claims.*` then `Nope` is this family's too (measured 2026-09-24,
- * `rulekit.validate.laws.GroupOperandAndKeyResolverClassLawsTest`). The reader strips the suffix before binding,
+ * `rulekit.validate.laws.GroupOperandAndKeyResolverClassLawsTest`), and so is `Claims.*` then a misplaced `..`
+ * (`rulekit.validate.laws.PathSegmentWalkLawsTest`). The reader strips the suffix before binding,
  * so a resolved outcome says nothing about whether it was written — which is why this reads the AUTHORED text
  * rather than the bound path.
  *
@@ -37,11 +38,11 @@ internal fun TrackedFactBase.hModelPathSuffixFindings(): List<Finding> = conditi
 private const val SUFFIX = ".*"
 
 /**
- * Whether an unresolvable [reference] is answered at its suffix before its miss is reached: the suffix is a
- * per-segment gate, so `Claims.*` answers ahead of a `Nope` behind it ([earlierSegmentGate]).
+ * Whether a [reference] A12 refuses further along is answered at its suffix first: the suffix is a
+ * per-segment gate, so `Claims.*` answers ahead of a `Nope` or a misplaced `..` behind it ([earlierSegmentGate]).
  */
 private fun TrackedFactBase.answersAtTheSuffix(reference: ConditionReference): Boolean {
-    if (reference.target !is Reference.Undeclared) {
+    if (!reference.target.isMetAfterTheSegmentsAhead) {
         return false
     }
     val group = reference.declaredAt.substringBeforeLast('/', missingDelimiterValue = "")

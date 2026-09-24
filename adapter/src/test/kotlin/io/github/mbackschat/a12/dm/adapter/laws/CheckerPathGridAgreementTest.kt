@@ -18,8 +18,8 @@ import java.io.File
  *
  * **It exists because hand-written rows could not find what the grid found.** The resolver-class rows of
  * `rulekit.validate.laws.GroupOperandAndKeyResolverClassLawsTest` were all green when this grid was first run
- * (2026-09-24), and the same model still disagreed with A12 on 813 of 4 888 rows. The largest groups are a
- * `..` after a named segment, which A12 refuses as a token and the checker resolves, and an undeclared segment
+ * (2026-09-24), and the same model still disagreed with A12 on 813 of 4 888 rows. The largest groups were a
+ * `..` after a named segment, which A12 refuses as a token and the checker resolved, and an undeclared segment
  * that a later `..` climbs back out of. Nobody writes rows for spellings they have not thought of, and a grid
  * needs no one to.
  *

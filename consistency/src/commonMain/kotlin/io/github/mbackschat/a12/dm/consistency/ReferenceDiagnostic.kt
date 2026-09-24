@@ -34,6 +34,11 @@ fun Reference.asFinding(
     member: String? = null,
     span: TextSpan? = null,
 ): Finding? {
+    // A condition that walks the segments before a misplaced up-step answers with THEIR outcome when they fail,
+    // so the finding is theirs, reported against the text the author wrote.
+    if (this is Reference.MisplacedUpStep && role.walksAPrefix) {
+        walkedPrefix?.takeUnless { it is Reference.Resolved }?.let { return it.asFinding(role, at, member, span) }
+    }
     val explain = when (this) {
         is Reference.Resolved -> return null
         is Reference.Undeclared ->
@@ -43,6 +48,8 @@ fun Reference.asFinding(
                 "${candidates.joinToString(", ")} — so the model-wide fallback cannot choose between them"
         is Reference.AboveRoot ->
             "`$written` climbs above the root group, so it names no position in this model"
+        is Reference.MisplacedUpStep ->
+            "`$written` carries an up-step `..` after its first named segment, where a path has no place for one"
     }
     return a12Error(role.codeFor(this), at, member?.let { "in `$it`: $explain" } ?: explain, span)
 }
@@ -78,6 +85,9 @@ internal const val ERROR_FIELD_MISSING = "MVK_ERROR_FIELD_MISSING"
 
 internal const val MISSING_ERROR_FIELD = "MVK_MISSING_ERROR_FIELD"
 
+/** Whether this role's A12 walk judges the segments before a misplaced up-step ([Reference.MisplacedUpStep]). */
+private val ReferenceRole.walksAPrefix get() = this == ReferenceRole.CONDITION_ENTITY
+
 private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
     // An unresolvable error target reports `MVK_ERROR_FIELD_MISSING` together with `MVK_MISSING_ERROR_FIELD`;
     // the checker reports the first, the second being the metamodel law restating it rather than a
@@ -88,6 +98,7 @@ private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
     ReferenceRole.CONDITION_ENTITY -> when (outcome) {
         is Reference.Ambiguous -> "MVK_FIELDNAME_NOT_UNIQUE"
         is Reference.AboveRoot -> "MVK_TOO_MANY_PARENT_GROUPS"
+        is Reference.MisplacedUpStep -> UNEXPECTED_TOKEN
         // A candidate whose ROOT SEGMENT is the one that failed is its own rejection, whatever follows it:
         // A12 resolves a path segment by segment, so the root-group class turns on WHICH segment missed and
         // not on how long the path is. Reading the separator count instead named `MVK_INVALID_ENTITY` for
@@ -104,6 +115,9 @@ private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
     ReferenceRole.MESSAGE_PARAMETER -> when (outcome) {
         is Reference.Ambiguous -> "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
         is Reference.AboveRoot -> "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+        // The message surface spells the condition's grammar code here, not an `ERROR_TEXT_` one
+        // (`rulekit.validate.laws.PathSegmentWalkLawsTest`).
+        is Reference.MisplacedUpStep -> UNEXPECTED_TOKEN
         // Same law, measured separately on this surface rather than transferred: a group parameter naming an
         // undeclared root draws the root class whether or not a child follows it
         // (`rulekit.validate.laws.RuleMessageGroupParameterLawsTest`).
