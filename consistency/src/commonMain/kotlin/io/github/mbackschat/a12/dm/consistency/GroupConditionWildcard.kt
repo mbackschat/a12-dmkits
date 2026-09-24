@@ -98,7 +98,7 @@ private fun TrackedFactBase.namesARootGroup(
     val written = path ?: return false
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return false
-    return resolved.path.count { it == '/' } == 1
+    return resolved.path.isRootGroup()
 }
 
 /** Whether [path] stars at least one level, and every level it stars is one A12 agrees repeats. */

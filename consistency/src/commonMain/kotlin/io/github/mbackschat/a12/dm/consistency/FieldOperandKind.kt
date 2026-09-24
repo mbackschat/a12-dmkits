@@ -60,7 +60,7 @@ private fun TrackedFactBase.groupFinding(
     val resolved = resolveEntity(declaringGroup, path, element.origin) as? Reference.Resolved ?: return null
     val target = declarationAt(resolved.path, DeclaredKind.GROUP)
         ?: return null
-    if (target.path.count { it == '/' } == 1) {
+    if (target.path.isRootGroup()) {
         return null
     }
     if (path.count { it == '*' } != repeatingLevelsOnThePathTo(target.path)) {

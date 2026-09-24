@@ -285,9 +285,6 @@ private fun List<String>.firstNestedEntity(written: List<ListOperand>): Int? =
         }
     }
 
-/** Whether this model path names a ROOT group — one step below the model, so one separator deep. */
-internal fun String.isRootGroup(): Boolean = count { it == '/' } == 1
-
 /**
  * Whether a duplicate or root-group gate answers this list before its operator asks anything.
  *

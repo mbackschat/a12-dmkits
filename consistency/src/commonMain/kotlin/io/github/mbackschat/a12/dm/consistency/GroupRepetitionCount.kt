@@ -36,7 +36,7 @@ internal fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclarati
         return null
     }
     val member = group.body?.get("repeatability") ?: return null
-    val cap = if (group.isRootGroup()) ROOT_GROUP_CAP else NESTED_GROUP_CAP
+    val cap = if (group.path.isRootGroup()) ROOT_GROUP_CAP else NESTED_GROUP_CAP
     // An explicit `null` is the DOMAIN's defect and not the absent key, and the two are one line apart
     // here: absence means a group that simply does not repeat, while a declared null draws
     // `MVK_MAX_VALUES_INVALID` with the same *greater than 0* wording `0` does (KF221). Reading the
@@ -65,7 +65,7 @@ internal fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclarati
             FindingSeverity.ERROR,
             "MVK_MAX_TOO_BIG",
             "`${group.path}` may repeat $declared times and A12 caps a " +
-                (if (group.isRootGroup()) "root" else "nested") + " group at $cap",
+                (if (group.path.isRootGroup()) "root" else "nested") + " group at $cap",
             group.path,
         )
 
@@ -94,6 +94,3 @@ private const val READABLE_CEILING = 2147483647L
 
 /** …and below this, symmetrically: the signed 32-bit floor, past which the reader refuses the source. */
 private const val READABLE_FLOOR = -2147483648L
-
-/** A root group is the one segment below the model root; every other group hangs under one. */
-private fun TrackedDeclaration.isRootGroup(): Boolean = path.count { it == '/' } == 1

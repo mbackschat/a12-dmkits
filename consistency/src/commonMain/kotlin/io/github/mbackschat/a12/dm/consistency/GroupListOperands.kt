@@ -181,7 +181,7 @@ private fun TrackedFactBase.rootFinding(
     member: String,
     at: String,
 ): Finding? {
-    val root = resolved.firstOrNull { path -> path.count { it == '/' } == 1 && isGroup(path) } ?: return null
+    val root = resolved.firstOrNull { path -> path.isRootGroup() && isGroup(path) } ?: return null
     return when {
         call.operator in soleRootCarriers() && call.operands.size < 2 -> null
         call.operator in soleRootCarriers() -> finding(

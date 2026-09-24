@@ -31,7 +31,7 @@ internal fun TrackedFactBase.emptyGroupOperandFindings(): List<Finding> = condit
     Finding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
-        if (group.path.count { it == '/' } == 1) "MVK_ROOT_GROUP_IS_EMPTY" else "MVK_GROUP_IS_EMPTY",
+        if (group.path.isRootGroup()) "MVK_ROOT_GROUP_IS_EMPTY" else "MVK_GROUP_IS_EMPTY",
         "this ${reference.member} names `$target`, a group with no field anywhere beneath it — A12 admits " +
             "the declaration and refuses every condition that names it, so either populate the group or " +
             "name one that carries something",

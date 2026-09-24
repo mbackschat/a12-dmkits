@@ -114,7 +114,7 @@ private fun groupArgumentDefect(
     if (argument == RULE_GROUP_SPELLING[language]) {
         // The refusal is of the WORD at this locus, not of the group it names: the same group is admitted
         // both as `RootGroup` and by its absolute path from the very same rule (measured).
-        return if (ruleGroup.count { it == '/' } == 1) IMMEDIATELY_BELOW_ROOT else null
+        return if (ruleGroup.isRootGroup()) IMMEDIATELY_BELOW_ROOT else null
     }
     if (argument == ROOT_GROUP_SPELLING[language]) {
         return null

@@ -202,6 +202,16 @@ fun PreparedModel.resolve(
 
 
 /**
+ * Whether this model path names a ROOT group of the model A12 builds: one step below the model, so one
+ * separator deep.
+ *
+ * Depth is the whole test, and correctly so across includes: a mounted provider's own root group DISAPPEARS
+ * into the mounting group, so an expanded include contributes no root group of its own and depth is what
+ * A12 sees.
+ */
+internal fun String.isRootGroup(): Boolean = count { it == '/' } == 1
+
+/**
  * The repeatable groups [path] lies inside, outermost first — the levels A12 iterates for a plain reference.
  *
  * A reference's index vector carries one entry per level, and every repeatable level it crosses without a

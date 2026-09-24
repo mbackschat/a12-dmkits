@@ -98,7 +98,7 @@ private fun TrackedDeclaration.groupNameFindings(): List<Finding> {
         // no name one, and on the root group the reverse.
         return listOf(
             nameFinding(
-                if (isRootGroup) "MVK_NAME_STARTS_WITH_DIGIT" else "MVK_PATH_INVALID",
+                if (path.isRootGroup()) "MVK_NAME_STARTS_WITH_DIGIT" else "MVK_PATH_INVALID",
                 "this group's name begins with a digit, and A12 requires a name to begin with a letter or " +
                     "an underscore",
             ),
@@ -109,7 +109,7 @@ private fun TrackedDeclaration.groupNameFindings(): List<Finding> {
     // legal, and a second gate then reserves that prefix for A12's own declarations. It is a law of groups
     // BELOW the root — the root group takes `_Orders` and `__other` — so asking it of every group refused a
     // legal model until the carrier was measured.
-    if (!isRootGroup && name.startsWith("_") &&
+    if (!path.isRootGroup() && name.startsWith("_") &&
         RESERVED_GROUP_NAMES.none { name == it || name.startsWith("${it}_") }
     ) {
         return listOf(
@@ -123,15 +123,6 @@ private fun TrackedDeclaration.groupNameFindings(): List<Finding> {
     }
     return emptyList()
 }
-
-/**
- * Whether this is a ROOT group of the model A12 builds, which its name laws part on.
- *
- * One path segment says it: a mounted provider's own root group DISAPPEARS into the mounting group, so an
- * expanded include contributes no root group of its own and depth is what A12 sees.
- */
-private val TrackedDeclaration.isRootGroup: Boolean
-    get() = path.count { it == '/' } == 1
 
 private fun TrackedDeclaration.fieldNameFindings(): List<Finding> {
     illegalCharacter()?.let { (at, character) ->
