@@ -172,35 +172,47 @@ class OperandRepetitionScopeTest {
     }
 
     /**
-     * The shapes it deliberately leaves alone, each because A12 answers them with a class this family may
-     * not name.
-     *
-     * A target OUTSIDE the declaring group is `MVK_ERROR_FIELD_NOT_IN_RULEGROUP`, drawn at the top of the
-     * same method and ahead of every gate here. A star on a level that does not repeat is
-     * `MVK_INVALID_WILDCARD` and outruns the whole walk. A GROUP operand is judged by the group-condition
-     * families, whose operators run their own wildcard gates first.
+     * A GROUP operand on the sibling cells draws the field's classes, its own level being the one crossed —
+     * `ParallelIterationRouteLawsTest.theSiblingCellsTakeAGroupOperandAlike`, the field read beside it the
+     * within-model twin.
      */
     @Test
-    fun theShapesItLeavesAlone() {
-        val actual = mutableMapOf<String, List<String>>()
-        actual["the target lies outside the declaring group"] = codes(
-            "Shipments", "../../OrderTotal",
-            "FieldFilled(/Fulfilment/OrderTotal) And [/Fulfilment/Refunds/RefundAmount] > 0",
+    fun aGroupOperandOnTheSiblingCellsDrawsTheFieldsClasses() {
+        fun group(path: String) =
+            codes("Invoices", "../InvoiceAmount", "FieldFilled(InvoiceAmount) And GroupFilled($path)")
+        val actual = linkedMapOf(
+            "a group keyed under the same name — the control" to group("/Fulfilment/Shipments"),
+            "a group keyed under ANOTHER name" to group("/Fulfilment/Refunds"),
+            "the same operand as a FIELD read" to probe("Invoices", "InvoiceAmount", "/Fulfilment/Refunds/RefundAmount"),
+            "a group keyed under the same name, of another TYPE" to group("/Fulfilment/Adjustments"),
+            "a group with NO index field" to group("/Fulfilment/Returns"),
         )
-        actual["a GROUP operand crossing a parallel repetition"] = codes(
-            "Invoices", "../InvoiceAmount",
-            "FieldFilled(InvoiceAmount) And GroupFilled(/Fulfilment/Refunds)",
+        val expected = linkedMapOf(
+            "a group keyed under the same name — the control" to emptyList(),
+            "a group keyed under ANOTHER name" to listOf("MVK_ERROR_FIELD_INVALID_INDEX"),
+            "the same operand as a FIELD read" to listOf("MVK_ERROR_FIELD_INVALID_INDEX"),
+            "a group keyed under the same name, of another TYPE" to listOf("MVK_ERROR_FIELD_INVALID_INDEX_TYPE"),
+            "a group with NO index field" to listOf(noWildcard),
         )
-        actual["the same operand as a FIELD read — the positive control"] =
-            probe("Invoices", "InvoiceAmount", "/Fulfilment/Refunds/RefundAmount")
+        assertEquals(expected, actual, "the sibling cells, over a group")
+    }
 
-        val expected = mutableMapOf<String, List<String>>()
+    /**
+     * The shape it deliberately leaves alone, because A12 answers it with a class another family names: a
+     * target OUTSIDE the declaring group is `MVK_ERROR_FIELD_NOT_IN_RULEGROUP`, drawn at the top of the same
+     * method and ahead of every gate here.
+     */
+    @Test
+    fun theShapeItLeavesAlone() {
         // Not silence, and no longer this family's business either: `ERROR_TARGET_CONTAINMENT` names the
         // class the KDoc above predicted, so the row asserts the prediction instead of only recording it.
-        expected["the target lies outside the declaring group"] = listOf("MVK_ERROR_FIELD_NOT_IN_RULEGROUP")
-        expected["a GROUP operand crossing a parallel repetition"] = emptyList()
-        expected["the same operand as a FIELD read — the positive control"] =
-            listOf("MVK_ERROR_FIELD_INVALID_INDEX")
-        assertEquals(expected, actual, "the shapes it leaves alone")
+        assertEquals(
+            listOf("MVK_ERROR_FIELD_NOT_IN_RULEGROUP"),
+            codes(
+                "Shipments", "../../OrderTotal",
+                "FieldFilled(/Fulfilment/OrderTotal) And [/Fulfilment/Refunds/RefundAmount] > 0",
+            ),
+            "the target lies outside the declaring group",
+        )
     }
 }

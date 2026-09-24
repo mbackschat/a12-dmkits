@@ -191,6 +191,31 @@ class ParallelIterationRouteLawsTest {
     }
 
     /**
+     * The same sibling cells with a GROUP operand, the rule declared in its error field's own group and the group
+     * named absolutely — the declaring group {@link KeyedParallelGroupOperandLawsTest} does not vary.
+     */
+    @Test
+    void theSiblingCellsTakeAGroupOperandAlike() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a group keyed under the same name — the control", groupVerdict("/Fulfilment/Shipments"));
+        actual.put("a group keyed under ANOTHER name", groupVerdict("/Fulfilment/Refunds"));
+        actual.put("a group keyed under the same name, of another TYPE", groupVerdict("/Fulfilment/Adjustments"));
+        actual.put("a group with NO index field", groupVerdict("/Fulfilment/Returns"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a group keyed under the same name — the control", KernelLaws.ADMITTED);
+        expected.put("a group keyed under ANOTHER name", "MVK_ERROR_FIELD_INVALID_INDEX");
+        expected.put("a group keyed under the same name, of another TYPE", "MVK_ERROR_FIELD_INVALID_INDEX_TYPE");
+        expected.put("a group with NO index field", NO_WILDCARD);
+        assertEquals(expected, actual, "the sibling cells, over a group");
+    }
+
+    private static String groupVerdict(String group) {
+        return KernelLaws.verdictModel(FULFILMENT, "/Fulfilment/Invoices", "../InvoiceAmount",
+                "FieldFilled(InvoiceAmount) And GroupFilled(" + group + ")");
+    }
+
+    /**
      * An unstarred repeatable level BELOW a starred one. The star collapses its own level, so nothing above
      * iterates — the question is only what the level beneath it draws, and it is the one shape
      * {@code ErrorFieldReference}'s residue note left unmeasured.

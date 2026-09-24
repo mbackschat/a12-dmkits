@@ -150,10 +150,11 @@ internal fun TrackedFactBase.groupOfTargetField(target: String): String? =
  * (`rulekit.validate.laws.RepetitionNotUniqueFromScopeLawsTest`). A repeatable ROOT group is no exception:
  * its root classes answer only once the walk passes (`rulekit.validate.laws.GroupListRootOperandLawsTest`).
  * The one exception is a group handed to a `Having` filter, which is refused as a group ahead of the walk
- * ([filtered]). On a group only the `MVK_NO_WILDCARD` and `MVK_ERROR_FIELD_NO_INDEX` arms are measured, the
- * latter on those carriers, for the group's own level and for one above a starred group (`rulekit.validate
- * .laws.GroupOperandRepetitionScopeLawsTest`, `…ComputationStarBindingLawsTest`), so a group's other parallel
- * classes are left unjudged rather than given a field's.
+ * ([filtered]). On a group the index classes are measured on those carriers, for the group's own level and for
+ * one above a starred group: the missing index (`rulekit.validate.laws.GroupOperandRepetitionScopeLawsTest`,
+ * `…ComputationStarBindingLawsTest`), and the index of another name or type beside a keyed error field
+ * (`…KeyedParallelGroupOperandLawsTest`). `MVK_MULTIPLE_INDEX_FIELDS` is not measured on a group, so it is
+ * left unjudged there rather than given a field's.
  *
  * @param filtered whether [written] is the base of a `Having` filter.
  * @return null wherever the reference is admitted, or is a shape another family owns.
@@ -199,7 +200,12 @@ private const val NO_WILDCARD = "MVK_NO_WILDCARD"
 private const val MULTIPLE_INDEX_FIELDS = "MVK_MULTIPLE_INDEX_FIELDS"
 
 /** The parallel-level classes measured on a GROUP operand; [levelClassOf] withholds the others there. */
-private val GROUP_PARALLEL_CLASSES = setOf(NO_WILDCARD, "MVK_ERROR_FIELD_NO_INDEX")
+private val GROUP_PARALLEL_CLASSES = setOf(
+    NO_WILDCARD,
+    "MVK_ERROR_FIELD_NO_INDEX",
+    "MVK_ERROR_FIELD_INVALID_INDEX",
+    "MVK_ERROR_FIELD_INVALID_INDEX_TYPE",
+)
 
 /**
  * What A12 answers about a PARALLEL level — one the target's coordinates neither contain nor lie under.

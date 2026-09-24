@@ -32,7 +32,7 @@ class GroupOperandRepetitionScopeLawsTest {
     private static final String NO_INDEX = "MVK_ERROR_FIELD_NO_INDEX";
 
     /** Every carrier that takes a group operand, each naming the repeatable {@code Claims} unstarred. */
-    private static final List<String> CARRIERS = List.of(
+    static final List<String> CARRIERS = List.of(
             "FieldFilled(Claims)",
             "FieldNotFilled(Claims)",
             "GroupFilled(Claims)",
@@ -188,7 +188,7 @@ class GroupOperandRepetitionScopeLawsTest {
     }
 
     /** {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. */
-    private static String verdict(String model, String group, String errorLeaf, String carrier) {
+    static String verdict(String model, String group, String errorLeaf, String carrier) {
         ValidationResult r = KernelLaws.checkModel(model, group, "../" + errorLeaf,
                 "FieldFilled(" + errorLeaf + ") And " + carrier);
         return r.ok() ? "admitted" : String.join(" + ", r.diagnostics().stream()

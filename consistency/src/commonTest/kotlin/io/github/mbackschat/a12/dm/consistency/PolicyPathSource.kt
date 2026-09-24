@@ -17,12 +17,14 @@ internal object PolicyPathSource {
         inInsured: Boolean = false,
         message: String = "x",
         claimsKeyed: Boolean = false,
+        recoveries: RecoveriesIndex? = null,
+        parts: Boolean = false,
     ): List<String> {
         val rule = rule(errorField, condition, message)
         val source = if (inInsured) {
-            model(ruleInInsured = rule, claimsKeyed = claimsKeyed)
+            model(ruleInInsured = rule, claimsKeyed = claimsKeyed, recoveries = recoveries, parts = parts)
         } else {
-            model(ruleInPolicy = rule, claimsKeyed = claimsKeyed)
+            model(ruleInPolicy = rule, claimsKeyed = claimsKeyed, recoveries = recoveries, parts = parts)
         }
         return check(ModelSource(source)).findings.filter { it.justifiesRejection }.map { it.code }.distinct()
     }
@@ -35,10 +37,28 @@ internal object PolicyPathSource {
                   "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"$message"}]}}"""
 
     /**
-     * The model, with [ruleInPolicy] and [ruleInInsured] spliced in as already comma-led element lists, and
-     * `ClaimRef` declared `Claims`' index field when [claimsKeyed].
+     * How a repeatable `Recoveries` beside `Claims` declares its index field — the fixture's
+     * `PolicyPathFixture.RecoveriesIndex`, which puts an error field there on a level parallel to `Claims`.
      */
-    fun model(ruleInPolicy: String = "", ruleInInsured: String = "", claimsKeyed: Boolean = false) = """
+    enum class RecoveriesIndex(val indexField: String?, val claimRefType: String) {
+        NONE(null, "StringType"),
+        CLAIM_REF("ClaimRef", "StringType"),
+        OTHER_NAME("RecoveryRef", "StringType"),
+        CLAIM_REF_AS_NUMBER("ClaimRef", "NumberType"),
+    }
+
+    /**
+     * The model, with [ruleInPolicy] and [ruleInInsured] spliced in as already comma-led element lists,
+     * `ClaimRef` declared `Claims`' index field when [claimsKeyed], a `Recoveries` group after `Claims` when
+     * [recoveries] is given, and a repeatable `Parts` inside `Claims` when [parts].
+     */
+    fun model(
+        ruleInPolicy: String = "",
+        ruleInInsured: String = "",
+        claimsKeyed: Boolean = false,
+        recoveries: RecoveriesIndex? = null,
+        parts: Boolean = false,
+    ) = """
             {"header":{"id":"policy","locales":[{"code":"en_US"}]},
              "content":{"modelConfig":{"fieldRefByShortNameAllowed":true},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
@@ -53,9 +73,20 @@ internal object PolicyPathSource {
                 {"type":"Group","id":"g3","name":"Claims","Group":{"repeatability":20,${if (claimsKeyed) "\"indexFieldName\":\"ClaimRef\"," else ""}"elements":[
                   {"type":"Field","id":"f4","name":"ClaimRef","Field":{"fieldType":{"type":"StringType"}}},
                   {"type":"Field","id":"f5","name":"Remark","Field":{"fieldType":{"type":"StringType"}}},
-                  {"type":"Field","id":"f6","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}}
-                ]}}$ruleInPolicy
+                  {"type":"Field","id":"f6","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}}${if (parts) PARTS else ""}
+                ]}}${recoveries?.let(::recoveriesGroup) ?: ""}$ruleInPolicy
               ]}}
              ]}}}
             """.trimIndent()
+
+    private const val PARTS = """,{"type":"Group","id":"g5","name":"Parts","Group":{"repeatability":20,""" +
+        """"elements":[{"type":"Field","id":"f10","name":"PartCost","Field":{"fieldType":{"type":"NumberType"}}}]}}"""
+
+    private fun recoveriesGroup(index: RecoveriesIndex) =
+        """,{"type":"Group","id":"g4","name":"Recoveries","Group":{"repeatability":20,""" +
+            (index.indexField?.let { "\"indexFieldName\":\"$it\"," } ?: "") +
+            """"elements":[""" +
+            """{"type":"Field","id":"f7","name":"ClaimRef","Field":{"fieldType":{"type":"${index.claimRefType}"}}},""" +
+            """{"type":"Field","id":"f8","name":"RecoveryRef","Field":{"fieldType":{"type":"StringType"}}},""" +
+            """{"type":"Field","id":"f9","name":"Note","Field":{"fieldType":{"type":"StringType"}}}]}}"""
 }
