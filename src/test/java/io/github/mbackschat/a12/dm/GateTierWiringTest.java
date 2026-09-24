@@ -693,7 +693,7 @@ class GateTierWiringTest {
     @Test
     void everyDocLaneIsNamedByTheAggregationTheHookAndItsRemediationCommand() throws IOException {
         String rootBuild = Files.readString(locate("build.gradle"));
-        String hook = Files.readString(locate(".githooks/pre-commit"));
+        String hook = docGuardBlock(Files.readString(locate(".githooks/pre-commit")));
 
         Set<String> aggregated = new TreeSet<>(List.of(":docGuardTest"));
         aggregated.addAll(matches(QUOTED_TASK, dependsOnStatement(gradleTask(rootBuild, "docGuardTest"))));
@@ -714,6 +714,19 @@ class GateTierWiringTest {
         assertEquals(checked, prescribed,
                 "the hook checks a set of lanes and prints a different command to fix them, so following its own "
                         + "advice cannot satisfy it");
+    }
+
+    /**
+     * The hook's doc-guard block, from its trigger set to the end of the command it prints.
+     *
+     * <p>The hook also demands evidence from the leak lane, which is not a doc lane and is not aggregated by
+     * {@code docGuardTest}, so reading the whole file would count it as one (2026-09-24). An empty string when
+     * the markers moved, which the floor then refuses.
+     */
+    private static String docGuardBlock(String hook) {
+        int start = hook.indexOf("doc_triggers=");
+        int end = hook.indexOf("\nDOCMESSAGE", Math.max(start, 0));
+        return start < 0 || end < 0 ? "" : hook.substring(start, end);
     }
 
     /**

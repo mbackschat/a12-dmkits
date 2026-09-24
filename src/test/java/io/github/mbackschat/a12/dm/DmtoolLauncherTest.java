@@ -44,12 +44,14 @@ class DmtoolLauncherTest {
     }
 
     /**
-     * The pre-commit doc-guard staleness check both fires and stays quiet. It exists because a prose trigger
-     * table did not hold — the same drift class shipped three times in one day, the last time hours after the
-     * note warning about it — so the check itself must be shown to work rather than believed.
+     * The pre-commit guard-evidence checks both fire and stay quiet: the doc guards' on a change that can drift a
+     * doc, and the leak lane's on every change, each refusing stale or red evidence. They exist because a prose
+     * trigger table did not hold — the same drift class shipped three times in one day, the last time hours after
+     * the note warning about it — and because a lane `-Pfast` skips sat red under 58 commits, so the checks
+     * themselves must be shown to work rather than believed.
      */
     @Test
-    void thePreCommitHookRefusesACommitWhoseDocGuardEvidenceIsStale() throws IOException, InterruptedException {
+    void thePreCommitHookRefusesACommitWhoseGuardEvidenceIsStaleOrRed() throws IOException, InterruptedException {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"), "POSIX-only hook self-test");
         Path script = CHECKOUT.requireFile("scripts/selftest-precommit-doc-guards.sh");
         Process process = new ProcessBuilder("/bin/bash", script.toString())

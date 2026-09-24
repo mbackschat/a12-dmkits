@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Refuses to stage build output or log files.
+# Refuses three kinds of commit, each block below carrying its own reason:
+#   - one that stages build output or log files;
+#   - one whose staged files can drift a CI-gated doc, unless the doc guards have run green since;
+#   - ANY commit, unless the repository-wide leak lane has run green since the newest staged change.
 #
-# .gitignore does NOT cover this: it is consulted only for UNTRACKED paths, so `git add -f` walks straight
-# past it and, once a path is tracked, the ignore rule is never consulted again. That is exactly how 72
+# BUILD OUTPUT. .gitignore does NOT cover this: it is consulted only for UNTRACKED paths, so `git add -f` walks
+# straight past it and, once a path is tracked, the ignore rule is never consulted again. That is exactly how 72
 # `build/*-red.log` files entered this repository across ~20 commits on 2026-07-26/27 and published 591 copies
 # of an absolute home path. This hook is the early, local half of the defence; the authoritative half is
 # `TrackedOutputGuardTest`, which runs in CI where a hook cannot be assumed.
@@ -14,7 +17,97 @@ staged="$(git diff --cached --name-only --diff-filter=ACMR)"
 [ -z "$staged" ] && exit 0
 
 # ---------------------------------------------------------------------------------------------------------
-# Refuse a commit whose staged files can drift a CI-GATED DOC, unless the doc guards have run since.
+# READING AN mtime PORTABLY, AND REFUSING WHEN WE CANNOT. `stat` speaks two incompatible dialects, and the
+# first version of the doc-guard check tried the BSD one and fell back to the GNU one — which does not work,
+# because the wrong dialect does not fail CLEANLY. GNU's `stat -f %m F` reads `%m` as a FILE: it prints F's
+# FILESYSTEM block on stdout and exits 1, so `stat -f %m F || stat -c %Y F` returned that block CONCATENATED
+# with the real number. Every `[ "$t" -gt … ]` then died as a non-integer — and because such a test sits on
+# the LEFT of a `&&`, `set -e` exempts it — so every mtime silently read as 0, `0 -lt 0` was false, and that
+# entire check NEVER FIRED on any GNU-coreutils machine, i.e. on Linux and on CI. It worked on macOS, which is
+# why only CI saw it (2026-08-22). Hence: probe the dialect ONCE, validate that every reading is an integer,
+# compare with `if` rather than `&&`, and REFUSE if a reading is unusable. A check that cannot measure must not
+# wave a commit through. Locked in both dialects plus the answers-neither case by
+# scripts/selftest-precommit-doc-guards.sh, which is CI-run via `:deliveryGuardTest`.
+is_epoch() { case "${1:-}" in '' | *[!0-9]*) return 1;; *) return 0;; esac; }
+if is_epoch "$(stat -c %Y -- . 2>/dev/null || true)"; then
+  stat_dialect=gnu
+elif is_epoch "$(stat -f %m . 2>/dev/null || true)"; then
+  stat_dialect=bsd
+else
+  printf '\npre-commit: cannot read file mtimes — neither `stat -c %%Y` nor `stat -f %%m` returned a number,\n' >&2
+  printf 'so the guard-evidence checks cannot run and are refusing rather than passing blind.\n' >&2
+  printf 'Teach the hook this platform, or bypass once with `git commit --no-verify` (CI still gates).\n' >&2
+  exit 1
+fi
+mtime_of() { # epoch seconds of $1, or the empty string
+  case "$stat_dialect" in
+    gnu) stat -c %Y -- "$1" 2>/dev/null || true;;
+    bsd) stat -f %m "$1" 2>/dev/null || true;;
+  esac
+}
+# Every helper below returns non-zero when a reading is unusable; callers must turn that into an exit, since
+# they run in a command substitution where an `exit` would only leave the subshell.
+epoch_or_refuse() {
+  t="$(mtime_of "$1")"
+  if ! is_epoch "$t"; then
+    printf '\npre-commit: could not read the mtime of %s (%s dialect); refusing rather than guessing.\n' \
+      "$1" "$stat_dialect" >&2
+    return 1
+  fi
+  printf '%s' "$t"
+}
+newest_mtime() { # the newest mtime among the whitespace-separated paths in $1, skipping absent ones; 0 if none
+  newest=0
+  for f in $1; do
+    [ -e "$f" ] || continue
+    t="$(epoch_or_refuse "$f")" || return 1
+    if [ "$t" -gt "$newest" ]; then newest=$t; fi
+  done
+  printf '%s' "$newest"
+}
+# What a lane's result directory $1 says about a change whose newest file has mtime $2: `stale` when no result
+# file was written since, `red` when one written since records a failure, `green` otherwise.
+#
+# RED IS NOT EVIDENCE. Freshness alone was the whole test until 2026-09-24, so a lane that ran red after the
+# change satisfied the check exactly as a green run did. Only files written since the change are read for
+# failures: result files persist, so a red file from an earlier run of a class that has since been re-run
+# green in a newer file must not refuse forever. Strictly-older is stale; mtimes are second-granular, so a tie
+# means "the guard ran in the same second as the edit" and counts as fresh, since a guard run cannot
+# realistically predate the change it validates by less than a second, and CI is the authoritative half.
+lane_state() {
+  newest_xml=0
+  red=""
+  if [ -d "$1" ]; then
+    for x in "$1"/TEST-*.xml; do
+      [ -e "$x" ] || continue
+      t="$(epoch_or_refuse "$x")" || return 1
+      if [ "$t" -gt "$newest_xml" ]; then newest_xml=$t; fi
+      if [ "$t" -ge "$2" ] && grep -Eq '<testsuite [^>]*(failures|errors)="[1-9]' "$x"; then red=1; fi
+    done
+  fi
+  if [ "$newest_xml" -lt "$2" ]; then
+    printf stale
+  elif [ -n "$red" ]; then
+    printf red
+  else
+    printf green
+  fi
+}
+report_evidence() { # $1 = the stale lanes, $2 = the red ones
+  if [ -n "$1" ]; then
+    printf '\nStale (or absent) evidence:\n' >&2
+    printf '  %s\n' $1 >&2
+  fi
+  if [ -n "$2" ]; then
+    printf '\nEvidence written since the change that records a FAILURE (read the failing class there):\n' >&2
+    printf '  %s\n' $2 >&2
+  fi
+}
+
+refused=""
+
+# ---------------------------------------------------------------------------------------------------------
+# Refuse a commit whose staged files can drift a CI-GATED DOC, unless the doc guards have run green since.
 #
 # WHY THIS IS A HOOK AND NOT A RULE. The guards exist and work; the gap is that `-Pfast` deliberately drops
 # them (51s + 51s is a real inner-loop tax), so the inner loop cannot see this class at all. That was written
@@ -40,53 +133,9 @@ doc_triggers="$(printf '%s\n' "$staged" | grep -E \
   '\.md$|^cli/src/main/resources/schema/|RkCode\.java$|^rulekit/src/main/resources/catalog/|^skill/' \
   || true)"
 if [ -n "$doc_triggers" ]; then
-  # READING AN mtime PORTABLY, AND REFUSING WHEN WE CANNOT. `stat` speaks two incompatible dialects, and the
-  # first version of this check tried the BSD one and fell back to the GNU one — which does not work, because
-  # the wrong dialect does not fail CLEANLY. GNU's `stat -f %m F` reads `%m` as a FILE: it prints F's
-  # FILESYSTEM block on stdout and exits 1, so `stat -f %m F || stat -c %Y F` returned that block
-  # CONCATENATED with the real number. Every `[ "$t" -gt … ]` then died as a non-integer — and because such a
-  # test sits on the LEFT of a `&&`, `set -e` exempts it — so every mtime silently read as 0, `0 -lt 0` was
-  # false, and this entire check NEVER FIRED on any GNU-coreutils machine, i.e. on Linux and on CI. It worked
-  # on macOS, which is why only CI saw it (2026-08-22). Hence: probe the dialect ONCE, validate that every
-  # reading is an integer, compare with `if` rather than `&&`, and REFUSE if a reading is unusable. A check
-  # that cannot measure must not wave a commit through. Locked in both dialects plus the answers-neither case
-  # by scripts/selftest-precommit-doc-guards.sh, which is CI-run via `:deliveryGuardTest`.
-  is_epoch() { case "${1:-}" in '' | *[!0-9]*) return 1;; *) return 0;; esac; }
-  if is_epoch "$(stat -c %Y -- . 2>/dev/null || true)"; then
-    stat_dialect=gnu
-  elif is_epoch "$(stat -f %m . 2>/dev/null || true)"; then
-    stat_dialect=bsd
-  else
-    printf '\npre-commit: cannot read file mtimes — neither `stat -c %%Y` nor `stat -f %%m` returned a number,\n' >&2
-    printf 'so the doc-guard staleness check cannot run and is refusing rather than passing blind.\n' >&2
-    printf 'Teach the hook this platform, or bypass once with `git commit --no-verify` (CI still gates).\n' >&2
-    exit 1
-  fi
-  mtime_of() { # epoch seconds of $1, or the empty string
-    case "$stat_dialect" in
-      gnu) stat -c %Y -- "$1" 2>/dev/null || true;;
-      bsd) stat -f %m "$1" 2>/dev/null || true;;
-    esac
-  }
-  # Returns non-zero when the reading is unusable; callers must turn that into an exit, since this runs in a
-  # command substitution where an `exit` would only leave the subshell.
-  epoch_or_refuse() {
-    t="$(mtime_of "$1")"
-    if ! is_epoch "$t"; then
-      printf '\npre-commit: could not read the mtime of %s (%s dialect); refusing rather than guessing.\n' \
-        "$1" "$stat_dialect" >&2
-      return 1
-    fi
-    printf '%s' "$t"
-  }
-
-  newest_trigger=0
-  for f in $doc_triggers; do
-    [ -e "$f" ] || continue
-    t="$(epoch_or_refuse "$f")" || exit 1
-    if [ "$t" -gt "$newest_trigger" ]; then newest_trigger=$t; fi
-  done
-  oldest_evidence=""
+  newest_trigger="$(newest_mtime "$doc_triggers")" || exit 1
+  stale_lanes=""
+  red_lanes=""
   # Every doc-driven lane. referentGuardTest and staleGapGuardTest were added 2026-09-03 after a
   # quoted-title ratchet in the first went red on commit 033fe3ef6, which this check had passed. Root
   # :docGuardTest already dependsOn all the cli lanes, so the gap is not the task graph: `--rerun` does
@@ -102,24 +151,17 @@ if [ -n "$doc_triggers" ]; then
   for d in build/test-results/docGuardTest cli/build/test-results/docGuardTest \
            cli/build/test-results/referentGuardTest cli/build/test-results/staleGapGuardTest \
            cli/build/test-results/semanticsMapGuardTest; do
-    newest_xml=0
-    if [ -d "$d" ]; then
-      for x in "$d"/TEST-*.xml; do
-        [ -e "$x" ] || continue
-        t="$(epoch_or_refuse "$x")" || exit 1
-        if [ "$t" -gt "$newest_xml" ]; then newest_xml=$t; fi
-      done
-    fi
-    # Strictly-older is stale. mtimes are second-granular, so a tie means "the guard ran in the same
-    # second as the edit" — treated as fresh, since a ~1-minute guard run cannot realistically predate
-    # the change it validates by less than a second, and CI is the authoritative half regardless.
-    if [ "$newest_xml" -lt "$newest_trigger" ]; then oldest_evidence="$oldest_evidence $d"; fi
+    state="$(lane_state "$d" "$newest_trigger")" || exit 1
+    case "$state" in
+      stale) stale_lanes="$stale_lanes $d";;
+      red) red_lanes="$red_lanes $d";;
+      green) ;;
+    esac
   done
-  if [ -n "$oldest_evidence" ]; then
-    printf '\nStaged changes can drift a CI-gated doc, and the doc guards have not run since:\n\n' >&2
+  if [ -n "$stale_lanes$red_lanes" ]; then
+    printf '\nStaged changes can drift a CI-gated doc, and the doc guards have not run since, or ran red:\n\n' >&2
     printf '  %s\n' $doc_triggers >&2
-    printf '\nStale (or absent) evidence:\n' >&2
-    printf '  %s\n' $oldest_evidence >&2
+    report_evidence "$stale_lanes" "$red_lanes"
     cat >&2 <<'DOCMESSAGE'
 
 Run them — WITHOUT -Pfast, which skips them by design:
@@ -137,16 +179,53 @@ Then commit again. If a demo drifted, the failing guard prints the exact regener
 `git commit --no-verify` bypasses this; CI will still fail, which is deliberate — a local bypass must not be
 able to make the repository wrong.
 DOCMESSAGE
-    exit 1
+    refused=1
   fi
 fi
 
-offenders="$(printf '%s\n' "$staged" | grep -E '(^|/)build/|\.log$' || true)"
-[ -z "$offenders" ] && exit 0
+# ---------------------------------------------------------------------------------------------------------
+# Refuse EVERY commit unless the repository-wide leak lane has run green since the newest staged change.
+#
+# `leakGuardTest` is always-run and repo-wide, so it sits behind `-Pfast` (TESTING-SPEC "Test tiers") and CI is
+# its only other runner — which runs only on a push, and pushes here are rare by design. The lane is no longer
+# only a leak scan: every guard whose denominator is a whole source tree rides it, so an ordinary kit change can
+# turn it red. BuilderCheckerDivergenceGuardTest did: 58 commits landed between 8d7c55ee0 (2026-09-22), the
+# first to cite one of the six codes it then flagged, and the fix ec9326df0 (2026-09-24), each on a green
+# -Pfast run.
+#
+# The trigger is EVERY staged file rather than a curated set, for the reason the lane gives for being
+# always-run: each class derives its own denominator, and the file that turns one red is the one nobody
+# listed. The price was measured before choosing that: 13s wall for a warm run (2026-09-24). A deleted file has
+# no mtime to compare, so a deletion-only commit is left to CI.
+leak_lane=build/test-results/leakGuardTest
+newest_staged="$(newest_mtime "$staged")" || exit 1
+leak_state="$(lane_state "$leak_lane" "$newest_staged")" || exit 1
+if [ "$leak_state" != green ]; then
+  printf '\nThe repository-wide leak lane has no green result since the newest staged change.\n' >&2
+  case "$leak_state" in
+    stale) report_evidence "$leak_lane" "";;
+    red) report_evidence "" "$leak_lane";;
+  esac
+  cat >&2 <<'LEAKMESSAGE'
 
-printf '\nRefusing to commit build output or log files:\n\n' >&2
-printf '  %s\n' $offenders >&2
-cat >&2 <<'MESSAGE'
+Run it — WITHOUT -Pfast, which skips it by design:
+
+  ./build.sh --console=plain :leakGuardTest
+
+It always runs in full, so it needs no rerun flag. When the doc guards were refused above as well, add it to
+their command: one Gradle start instead of two. A failure is fixed in the change, never bypassed.
+
+`git commit --no-verify` bypasses this; CI will still fail, which is deliberate.
+LEAKMESSAGE
+  refused=1
+fi
+
+# ---------------------------------------------------------------------------------------------------------
+offenders="$(printf '%s\n' "$staged" | grep -E '(^|/)build/|\.log$' || true)"
+if [ -n "$offenders" ]; then
+  printf '\nRefusing to commit build output or log files:\n\n' >&2
+  printf '  %s\n' $offenders >&2
+  cat >&2 <<'MESSAGE'
 
 These are ignored by .gitignore, so they can only have been staged with `git add -f`.
 Build output is reproducible and logs carry absolute machine paths; neither belongs in history.
@@ -158,4 +237,7 @@ Build output is reproducible and logs carry absolute machine paths; neither belo
 If you are certain, `git commit --no-verify` bypasses this hook — TrackedOutputGuardTest will still fail
 the build, which is deliberate: a local bypass must not be able to make the repository wrong.
 MESSAGE
-exit 1
+  refused=1
+fi
+
+if [ -n "$refused" ]; then exit 1; fi
