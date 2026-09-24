@@ -19,6 +19,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
 /**
  * DEV-API-GAPS DG76 — {@code NumberOfFilledGroups} takes any GROUP entity, so a group scope in the record's
@@ -46,7 +47,8 @@ class GroupCountScopeOperandLawsTest {
                     .group("Keyed", g -> g.repeatable(5).indexField("Key").field("Key", FieldKind.STRING)
                             .field("Amount", FieldKind.NUMBER))
                     .group("Batches", g -> g.repeatable(4)
-                            .group("Seal", s -> s.field("Code", FieldKind.STRING))))
+                            .group("Seal", s -> s.field("Code", FieldKind.STRING))
+                            .group("Boxes", x -> x.repeatable(2).group("Lid", l -> l.field("Tag", FieldKind.STRING)))))
             .rootGroup("Lot", l -> l.repeatable(3).field("Serial", FieldKind.STRING))
             .build().toJson();
 
@@ -115,6 +117,29 @@ class GroupCountScopeOperandLawsTest {
             expected.put(row.name(), row.recordVerdict());
             actual.put(row.name(), verdict(row.record(), row.kernel()));
         }
+        assertEquals(expected, actual);
+    }
+
+    /**
+     * The COMPUTATION arm takes the below-star forms the rule arm takes, and refuses each unstarred level with the
+     * class the rule arm uses. Measured because the two arms part on malformed content ([KF120]), so agreement on
+     * admission was not something to assume (a12-kernel-lean SPEC-2026-09-24-02, their report only).
+     */
+    @Test
+    void theComputationArmTakesTheBelowStarFormsAndRefusesAnUnstarredLevel() {
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Batches*/Seal", ADMITTED);
+        expected.put("Batches*/Seal, Grading", ADMITTED);
+        expected.put("Batches*/Seal, Batches*/Seal", ADMITTED);
+        expected.put("Batches*/Seal, Keyed*", ADMITTED);
+        expected.put("Batches*/Boxes*/Lid", ADMITTED);
+        expected.put("Batches/Seal", "MVK_NO_WILDCARD");
+        expected.put("Batches/Boxes*/Lid", "MVK_NO_WILDCARD");
+        expected.put("Batches*/Boxes/Lid", "MVK_NO_WILDCARD");
+        Map<String, String> actual = new LinkedHashMap<>();
+        expected.keySet().forEach(operands -> actual.put(operands, KernelLaws.computationVerdict(MODEL,
+                new DraftComputation("/Item", "TallyProbe", "../Weight", null, List.of(
+                        new DraftComputation.Alternative(null, "NumberOfFilledGroups(" + operands + ")", null))))));
         assertEquals(expected, actual);
     }
 

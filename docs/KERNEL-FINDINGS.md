@@ -10326,9 +10326,31 @@ Two starred scopes in one list are counted alike, and their extents add. The car
 
 **Under partial coverage** an operand is asked three things before its instances are counted, its extent, its first declared instance and the declared instances the document lacks, and a held instance then counts by its admitted content ([KF464](#kf464)).
 
+**The computation arm (measured 2026-09-24, both strategies and the interpreter).** A second fixture declares `Batches` at 2, each row holding a fixed `Seal` (a `Code`, a NUMBER `Weight`, a repeatable `Stamps` (2) of a `Mark`) and a repeatable `Boxes` (2) each holding a fixed `Lid`, beside fixed `Grading` and `Lab` groups and a repeatable `Crates` (2). Every operand form the rule arm admits is admitted here too — `Batches*/Seal` alone, beside `Grading`, twice, beside the disjoint `Keyed*`, and `Batches*/Boxes*/Lid` — and unstarring any level (`Batches/Seal`, `Batches/Boxes*/Lid`, `Batches*/Boxes/Lid`) draws `MVK_NO_WILDCARD`. Each computation's stored value is seeded wrong, so its implicit self-validation message types the count; – means that message is absent:
+
+| document | `(Batches*/Seal)` | `(Batches*)` | `(…/Seal, …/Seal)` | `(Batches*/Boxes*/Lid)` | `(Grading, Lab)` |
+|---|---|---|---|---|---|
+| two batches, both sealed | 2 V | 2 V | 4 V | 0 O | 0 O |
+| two batches, each Seal instantiated and empty | 0 O | 2 V | 0 O | 0 O | 0 O |
+| one Seal holding only an instantiated `Stamps` row | 1 O | 1 O | 2 O | 0 O | 0 O |
+| one Seal holding only a malformed `Weight` | 1 – | 1 O | 2 – | 0 O | 0 O |
+| one Seal holding a `Code` and a malformed `Weight` | 1 O | 1 O | 2 O | 0 O | 0 O |
+| a malformed-only Seal beside a sealed one | 2 – | 2 V | 4 – | 0 O | 0 O |
+| three batches, all sealed, over the limit of 2 | 2 V | 2 V | 4 V | 0 O | 0 O |
+| two sealed batches, a third over the limit whose Seal holds only a malformed `Weight` | 2 V | 2 V | 4 V | 0 O | 0 O |
+| every lid tagged | 0 O | 2 V | 0 O | 4 V | 0 O |
+| `Grading` holding only a malformed `Grade`, `Lab` staffed | 0 O | 0 O | 0 O | 0 O | 2 – |
+| `Grading` holding a `Note` and a malformed `Grade` | 0 O | 0 O | 0 O | 0 O | 1 O |
+
+`(Batches*/Seal, Crates*)` counts a sealed batch and a weighed crate as 2 O, so a disjoint star adds its own extent. So the computation arm counts what the rule arm counts, with one difference: a malformed-only instance COUNTS here, where on the rule arm it makes the count not evaluable ([KF120](#kf120)'s computation-arm note, now shown below a star). The extent is per position, so the same form twice doubles it, and a two-level form counts against the product of both maxima. **The implicit message is what the malformed-only instance withholds instead**: one such instance within capacity suppresses it, beside a filled Seal or a staffed `Lab` alike, while the same content in an over-limit row, which is never read, suppresses nothing. A starred ROW count over the same rows keeps its message, because a row counts by being instantiated. This confirms every row of a12-kernel-lean's `SPEC-2026-09-24-02` on our own fixture; the `Lab`, `Stamps` and over-limit rows are their separators, re-measured here.
+
+**Mechanism (hypothesis, not discriminated):** the self-validation compares a stored value against a computed one only when the computation decided every instance it read, and a malformed-only group is counted without being decided.
+
+*Lock:* `adapter.laws.AncestorStarredGroupCountComputationDiffTest` for the counts and messages (sixteen documents, six computations, three engines); `validate.laws.GroupCountScopeOperandLawsTest.theComputationArmTakesTheBelowStarFormsAndRefusesAnUnstarredLevel` for admission.
+
 **Mechanism (source-read, consistent with the table, not discriminated further).** `RuntimeController.anzahlAngegebenerEntities`, which `NumberOfFilledGroups` shares with `NumberOfFilledFields`, walks each operand through its own `EntityIterator` and asks `isWertAngegeben` of each instance, first letting a partly relevant group answer and, when that answer is false, again requiring the group wholly relevant (its `partialIsUnknown` flag), returning the not-evaluable count at the first UNKNOWN. There is one loop for every operand shape, which is why no row above depends on what else the list holds. The total it compares against is the iterator's `getAnzahlFelder()`, the product over its levels (`EbenenIterator`), read before the end indices are trimmed to the filled rows.
 
-**Unmeasured.** A list mixing an ancestor-starred scope with a starred repeatable group or with a second ancestor-starred scope; a rule placed on or below the starred level, since every rule here sits on `/Item`; over-limit ancestor rows below `Batches*/Seal`; and the computation arm of `Batches*/Seal`, where [KF120](#kf120) records the two arms diverging on malformed content.
+**Unmeasured.** A list holding two DIFFERENT ancestor-starred scopes, on either arm; on the rule arm, a list mixing an ancestor-starred scope with a starred repeatable group, and over-limit ancestor rows below `Batches*/Seal`, both of which the computation arm above measures; and a rule placed on or below the starred level, since every rule here sits on `/Item`.
 
 **Lock:** `adapter.laws.AncestorStarredGroupCountDiffTest` holds all thirteen documents of the full-validation table and the four two-scope documents on three engines, and `adapter.laws.MultiLevelStarredGroupCountDiffTest` the two-level carrier.
 
