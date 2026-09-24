@@ -221,6 +221,23 @@ class PathSegmentWalkLawsTest {
         assertEquals(rows, verdicts(SHORT_NAMES_ON, "/Policy", "Holder", rows), "a named turning point after a name");
     }
 
+    /**
+     * A starred LEADING up-step answers at its own segment, so a later segment's depth class and a later
+     * {@code .*} suffix are never reached: the walk's order holds past the up-run too. The controls are the
+     * same later defects with the leading step unstarred, where each does answer.
+     */
+    @Test
+    void aStarredLeadingUpStepAnswersBeforeALaterSegmentDoes() {
+        Map<String, String> rows = orderedMap(
+                "..*/../Amount", "MVK_INVALID_WILDCARD_REL",
+                "..*/..*/Nope", "MVK_INVALID_WILDCARD_REL",
+                "..*/Claims.*", "MVK_INVALID_WILDCARD_REL",
+                "..*/Claims.*/Amount", "MVK_INVALID_WILDCARD_REL",
+                "../../Amount", "MVK_TOO_MANY_PARENT_GROUPS",
+                "../Claims.*", "MVK_POINT_IN_A12_MODEL");
+        assertEquals(rows, verdicts(SHORT_NAMES_ON, "/Policy/Insured", "Remark", rows), "a starred leading up-step");
+    }
+
     /** The refusal is the path's, not the carrier's: a group operand and an aggregate operand draw it too. */
     @Test
     void theRefusalDoesNotDependOnTheCarrier() {

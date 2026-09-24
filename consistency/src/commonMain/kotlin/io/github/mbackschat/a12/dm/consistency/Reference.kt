@@ -180,10 +180,11 @@ private const val UP = ".."
 
 /**
  * Whether A12's walk meets this outcome only after the segments ahead of it, so an [earlierSegmentGate] can
- * answer first: a name that does not resolve, or a misplaced up-step.
+ * answer first: a name that does not resolve, a misplaced up-step, or a climb above the root one step after
+ * a starred leading `..*` (`rulekit.validate.laws.PathSegmentWalkLawsTest`).
  */
 internal val Reference.isMetAfterTheSegmentsAhead: Boolean
-    get() = this is Reference.Undeclared || this is Reference.MisplacedUpStep
+    get() = this is Reference.Undeclared || this is Reference.MisplacedUpStep || this is Reference.AboveRoot
 
 /** A per-segment gate that answers for an EARLIER segment of a path, ahead of a later one's resolution. */
 internal enum class EarlierSegmentGate {
