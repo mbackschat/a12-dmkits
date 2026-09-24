@@ -90,6 +90,8 @@ class SemanticIndexGroupOperandCarrierLawsTest {
         Map<String, Condition> authored = new LinkedHashMap<>();
         authored.put("NoGroupFilled one", Dsl.noGroupFilled(p1));
         authored.put("NoGroupFilled field key", Dsl.noGroupFilled(byTitle));
+        authored.put("GroupFilled one", p1.filled());
+        authored.put("GroupNotFilled field key", byTitle.notFilled());
         authored.put("AtLeastOneGroupFilled starred", Dsl.atLeastOneGroupFilled(parcelsOfP1));
         authored.put("AtLeastOneGroupFilled mixed", Dsl.atLeastOneGroupFilled(p1, title));
         authored.put("AllGroupsFilled two keys", Dsl.allGroupsFilled(p1, p2));

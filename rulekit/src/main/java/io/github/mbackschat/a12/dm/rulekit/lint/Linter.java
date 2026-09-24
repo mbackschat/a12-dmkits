@@ -33,6 +33,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RuleGroupPresenceCondition;
@@ -358,6 +360,13 @@ public final class Linter {
                     out.add(levelOf(p.index().field().path().value(), model));
                 }
             }
+            // the row peer of the indexed field presence above, counted as a guard on the same unmeasured,
+            // under-warning basis negativeOf states
+            case IndexedGroupPresenceCondition p -> {
+                if (p.filled()) {
+                    out.add(groupLevelOf(p.group().group().path(), model));
+                }
+            }
             // A list predicate's operands are paths, but its admission rule at a level is the group-list
             // topology of KERNEL-FINDINGS §9 rather than a plain reference — unmeasured for this lint, so it
             // keeps the old blanket suppression rather than risking a false positive on a legal model.
@@ -397,6 +406,11 @@ public final class Linter {
                             ? new String[] {"FieldNotFilled", keyed.indexField().path().value()}
                             : null;
             case IndexedPresenceCondition ignored -> null;
+            // The row peer splits on the key's form the same way (validate.laws.IndexedNegativeKeyFormLawsTest).
+            case IndexedGroupPresenceCondition g when !g.filled() ->
+                    g.group() instanceof GroupSemanticIndexFieldValue keyed
+                            ? new String[] {"FieldNotFilled", keyed.indexField().path().value()}
+                            : null;
             default -> null;
         };
     }

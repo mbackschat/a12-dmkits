@@ -47,6 +47,7 @@ public final class OperatorUsage {
             case GroupPresenceCondition ignored -> { }
             case RuleGroupPresenceCondition ignored -> { /* operatorId (GroupFilled/GroupNotFilled) already added */ }
             case IndexedPresenceCondition p -> ops.add(p.index().operatorId());   // the SemanticIndex operator
+            case IndexedGroupPresenceCondition ignored -> ops.add("SemanticIndex");
             case GroupListPredicate ignored -> { }
             case PatternCondition ignored -> { }
             case ValueListCondition v -> v.values().forEach(value -> collect(value, ops));

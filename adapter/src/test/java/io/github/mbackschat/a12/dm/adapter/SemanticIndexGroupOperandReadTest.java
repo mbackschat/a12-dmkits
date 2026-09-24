@@ -35,15 +35,15 @@ class SemanticIndexGroupOperandReadTest {
     @Test
     void everyAdmittedCarrierReadsTheIndexedGroupBack() {
         List<String> conditions = List.of(
-                // group-list quantifiers: one group, a starred group, several, a mixed list, a field key
-                "NoGroupFilled(/Order/Packages For \"P1\")",
-                "NoGroupFilled(/Order/Packages For /Order/Title)",
+                // group-list quantifiers: a starred group, several, a mixed list, a field key. One unstarred group
+                // is the presence leaf, locked below.
                 "NoGroupFilled(/Order/Packages/Parcels* For \"P1\")",
                 "AtLeastOneGroupFilled(/Order/Packages/Parcels* For \"P1\")",
                 "AllGroupsFilled(/Order/Packages For \"P1\", /Order/Packages For \"P2\")",
                 "NotAllGroupsFilled(/Order/Packages For \"P1\", /Order/Packages For \"P2\")",
                 "GroupsNotCollectivelyFilled(/Order/Packages For \"P1\", /Order/Packages For \"P2\")",
                 "AtLeastOneGroupFilled(/Order/Packages For \"P1\", /Order/Title)",
+                "AtLeastOneGroupFilled(/Order/Packages For /Order/Title, /Order/Title)",
                 // field-fill quantifiers over a group scope
                 "AllFieldsFilled(/Order/Packages For \"P1\")",
                 "NoFieldFilled(/Order/Packages/Parcels* For \"P1\")",
@@ -90,17 +90,22 @@ class SemanticIndexGroupOperandReadTest {
     }
 
     /**
-     * The single-group presence spellings. {@code GroupNotFilled(G For k)} is the kernel's one-operand
-     * {@code NoGroupFilled} node and reads as it. {@code GroupFilled(G For k)} is its one-operand
-     * {@code AllGroupsFilled} node, which A12 refuses when spelled that way ({@code MVK_PARAMSIZE_INVALID2}), and
-     * the typed group-presence condition holds no index, so it must stay verbatim rather than read into that.
+     * The single-group presence spellings. {@code GroupFilled(G For k)} is the kernel's one-operand
+     * {@code AllGroupsFilled} node, which A12 refuses when spelled that way ({@code MVK_PARAMSIZE_INVALID2}), so the
+     * presence spelling is the only one it can read back as. {@code GroupNotFilled(G For k)} is the one-operand
+     * {@code NoGroupFilled} node, and it canonicalizes to the presence spelling as a bare group's does, so the
+     * stored {@code NoGroupFilled} spelling reads as it too.
      */
     @Test
-    void aSingleIndexedGroupPresenceReadsAsItsNodeOrStaysVerbatim() {
-        assertEquals("FieldFilled(/Order/Title) And NoGroupFilled(/Order/Packages For \"P1\")",
+    void aSingleIndexedGroupPresenceReadsAsThePresenceLeaf() {
+        assertEquals("FieldFilled(/Order/Title) And GroupFilled(/Order/Packages For \"P1\")",
+                readBack("FieldFilled(/Order/Title) And GroupFilled(/Order/Packages For \"P1\")"));
+        assertEquals("FieldFilled(/Order/Title) And GroupNotFilled(/Order/Packages For \"P1\")",
                 readBack("FieldFilled(/Order/Title) And GroupNotFilled(/Order/Packages For \"P1\")"));
-        assertTrue(readBack("FieldFilled(/Order/Title) And GroupFilled(/Order/Packages For \"P1\")")
-                .startsWith("Opaque["), "GroupFilled over an indexed group has no typed spelling");
+        assertEquals("FieldFilled(/Order/Title) And GroupNotFilled(/Order/Packages For \"P1\")",
+                readBack("FieldFilled(/Order/Title) And NoGroupFilled(/Order/Packages For \"P1\")"));
+        assertEquals("FieldFilled(/Order/Title) And GroupNotFilled(/Order/Packages For /Order/Title)",
+                readBack("FieldFilled(/Order/Title) And NoGroupFilled(/Order/Packages For /Order/Title)"));
     }
 
     /** The renderer's spelling of what the adapter read, or the {@code Opaque} result that stopped it. */

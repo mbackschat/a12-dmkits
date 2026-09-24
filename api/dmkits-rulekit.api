@@ -1977,11 +1977,22 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValueAsString 
   public java.lang.String operatorId()
   public final java.lang.String toString()
 
+public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public IndexedGroupPresenceCondition(io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue, boolean)
+  public final boolean equals(java.lang.Object)
+  public boolean filled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue group()
+  public final int hashCode()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupScope
   public default java.lang.String duplicateIdentity()
   public default java.util.Optional<java.lang.String> exactIdentity()
   public default java.lang.String fieldPath()
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef group()
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
   public default java.lang.String overlapModifier()
   public default java.lang.String renderedPath()
 

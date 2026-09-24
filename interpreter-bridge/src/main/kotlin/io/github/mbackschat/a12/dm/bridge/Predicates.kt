@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.bridge
 
-import java.util.Optional
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand
@@ -15,10 +14,12 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef
+import java.util.Optional
 
 /**
  * Boolean-valued predicate functions — `Cond.Pred`, the interpreter's shape for `FieldFilled(x)`,
@@ -320,6 +321,11 @@ internal class Predicates(private val mapping: Mapping) {
      * reconstructing here is.
      */
     private fun groupPresence(node: Expr, operator: String, filled: Boolean): Condition {
+        // An index-selected row has a presence node of its own.
+        if (node is Expr.SemanticIndex && mapping.isGroup(node.path)) {
+            val row = mapping.aggregateOperand(node) as IndexedGroupValue
+            return if (filled) row.filled() else row.notFilled()
+        }
         // Only the plain reference form carries a marker we can reconstruct. Anything else — a starred
         // source, a semantic index — goes through `groupRef` unchanged and is refused there if marked,
         // which is the honest answer for a slot with no representation for it.

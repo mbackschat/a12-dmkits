@@ -88,4 +88,25 @@ class IndexedNegativeKeyFormLawsTest {
 
         assertEquals(expected, actual);
     }
+
+    /**
+     * The group peer, one variable apart again: {@code GroupNotFilled(Items For key)} with the key a constant
+     * and a field read at its own repeatable level. The rule sits at {@code Items} with a field of it as the
+     * error field, as above. Measured: the same split and the same code as the field form, so the advisory
+     * levels a field-keyed group negative by its key too.
+     */
+    @Test
+    void theKeysFormDecidesWhetherAnIndexedGroupNegativeIterates() {
+        var actual = new LinkedHashMap<String, String>();
+        var items = M.flattenGroup("/Order/Items");
+        actual.put("field-valued key, unguarded",
+                verdict("/Order/Items", "../Qty", items.forIndex(M.field("/Order/Keys/Wanted")).notFilled()));
+        actual.put("constant key, unguarded", verdict("/Order/Items", "../Qty", items.forIndex("SKU-1").notFilled()));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("field-valued key, unguarded", "MVK_SEMANTIC_INDEX_INVALID_ITER");
+        expected.put("constant key, unguarded", KernelLaws.ADMITTED);
+
+        assertEquals(expected, actual);
+    }
 }

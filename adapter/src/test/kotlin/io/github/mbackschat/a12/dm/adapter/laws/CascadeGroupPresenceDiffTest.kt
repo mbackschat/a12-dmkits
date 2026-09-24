@@ -25,8 +25,7 @@ import org.junit.jupiter.api.Test
  * interpreter read. Dynamic Groovy is normative, static Java must agree independently, and the interpreter's
  * report-all result is projected onto the kernel's change granularity first.
  *
- * Own domain (a parcel order). The computation texts are raw because `GroupFilled` over a keyed group has no typed
- * form yet (`DEV-API-GAPS` DG67), and one spelling serves every row.
+ * Own domain (a parcel order).
  */
 class CascadeGroupPresenceDiffTest {
 

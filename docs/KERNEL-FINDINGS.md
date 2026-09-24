@@ -9554,9 +9554,11 @@ Measured with both rows at the selected field's group and that field as the erro
 
 **So it is the key that decides, not the selection.** A field-valued key is itself a repeating read, so the selection iterates with it.
 
+**The ROW selection splits the same way** (extended 2026-09-24). `GroupNotFilled(Items For key)`, measured at the same locus with the same error field, is admitted under a constant key and refused under a field key with the same `MVK_SEMANTIC_INDEX_INVALID_ITER`. So the advisory levels a field-keyed row negative by its key too.
+
 **The code is locus-dependent, which is why neither one characterises the shape.** The same field-keyed negative draws `MVK_NEG_CONDITION_IN_ITERATION` when the rule sits at the KEY's group rather than the selected field's, and `MVK_SEMANTIC_INDEX_INVALID_ITER` when it sits at the selected field's. Both were measured; no mechanism is offered for the split, because nothing here discriminates one.
 
-*(Raised by an independent differential over real models, where the over-wide suppression cost an agreeing refusal. Locked: `validate.laws.IndexedNegativeKeyFormLawsTest`.)*
+*(Raised by an independent differential over real models, where the over-wide suppression cost an agreeing refusal. Locked: `validate.laws.IndexedNegativeKeyFormLawsTest`, both selections; the advisory's row arm in `lint.IterationGuardLintIndexedGroupTest`.)*
 
 ## §9 supplement: three more admission routes for a negative under iteration, and the level rule holds only for the STARRED spelling (kernel `checkConsistency`, 2026-09-07) <a id="kf438"></a>
 

@@ -617,15 +617,18 @@ final class ConditionConverter {
         // markers the render carries — refuse a legal model as Opaque.
         boolean outerGroup = single && entities.get(0).isOuter();
         return switch (name) {
-            // single-group GroupFilled/GroupNotFilled canonicalize to AllGroupsFilled/NoGroupFilled[g]. An
-            // index-selected group reads as NoGroupFilled over it, which A12 admits alone; its GroupFilled has no
-            // typed spelling, because GroupPresenceCondition holds a GroupRef and A12 refuses AllGroupsFilled
-            // over one operand (MVK_PARAMSIZE_INVALID2), so it stays verbatim rather than read into that.
+            // single-group GroupFilled/GroupNotFilled canonicalize to AllGroupsFilled/NoGroupFilled[g], and read
+            // back as the presence leaf. An index-selected group does too, as its own presence node: A12 refuses
+            // AllGroupsFilled over one operand (MVK_PARAMSIZE_INVALID2), so the leaf is the only spelling it has.
             case AllGroupsFilled -> single
-                    ? Dsl.groupFilled(unindexedGroup(entities.get(0), entityList), outerGroup)
+                    ? (hasSemanticIndex(entities.get(0))
+                            ? indexedGroupPresence(entities.get(0), true, entityList)
+                            : Dsl.groupFilled(unindexedGroup(entities.get(0), entityList), outerGroup))
                     : markedGroups(entities, Dsl::allGroupsFilled, entityList);
-            case NoGroupFilled -> single && !hasSemanticIndex(entities.get(0))
-                    ? Dsl.groupNotFilled(model.group(p[0]), outerGroup)
+            case NoGroupFilled -> single
+                    ? (hasSemanticIndex(entities.get(0))
+                            ? indexedGroupPresence(entities.get(0), false, entityList)
+                            : Dsl.groupNotFilled(model.group(p[0]), outerGroup))
                     : markedGroups(entities, Dsl::noGroupFilled, entityList);
             case AtLeastOneGroupFilled -> markedGroups(entities, Dsl::atLeastOneGroupFilled, entityList);
             case NotAllGroupsFilled -> markedGroups(entities, Dsl::notAllGroupsFilled, entityList);
@@ -1591,6 +1594,12 @@ final class ConditionConverter {
      */
     private GroupListOperand groupListOperand(IEntityId entity, String starPath, Object origin) {
         return hasSemanticIndex(entity) ? indexedGroup(entity, starPath, origin) : groupScopeOf(entity, starPath);
+    }
+
+    /** {@code GroupFilled(Group For key)} or {@code GroupNotFilled(Group For key)}, the presence of the selected row. */
+    private Condition indexedGroupPresence(IEntityId entity, boolean filled, Object origin) {
+        IndexedGroupValue row = indexedGroup(entity, entity.getFullName(), origin);
+        return filled ? row.filled() : row.notFilled();
     }
 
     /** The aggregate-operand peer of {@link #groupListOperand}. */

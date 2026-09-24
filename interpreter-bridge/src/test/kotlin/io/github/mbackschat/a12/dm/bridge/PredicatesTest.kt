@@ -28,6 +28,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupPresenceCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition
@@ -269,6 +270,15 @@ class PredicatesTest {
             translate("AtLeastOneGroupFilled(CustomerName, ShippingAddress)"))
         assertInstanceOf(FieldRef::class.java, c.operands().get(0))
         assertInstanceOf(GroupListRef::class.java, c.operands().get(1))
+    }
+
+    /** The presence of an index-selected row is its own node, spelled like a bare group's (API-FINDINGS AF169). */
+    @Test
+    fun anIndexSelectedGroupPresenceConverts() {
+        val filled = assertInstanceOf(IndexedGroupPresenceCondition::class.java, translate("GroupFilled(Items For \"S-1\")"))
+        assertTrue(filled.filled())
+        val empty = assertInstanceOf(IndexedGroupPresenceCondition::class.java, translate("GroupNotFilled(Items For \"S-1\")"))
+        assertFalse(empty.filled())
     }
 
     /** An index-selected field is an entity-list operand too, read as its keyed cell (API-FINDINGS AF167). */

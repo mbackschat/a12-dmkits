@@ -217,11 +217,14 @@ class NewShapesSnippetsTest {
         // The selected cell is a group-list operand beside a field.
         Condition anyGiven = Dsl.atLeastOneGroupFilled(
                 m.num("/Order/Items/Count").semanticIndex("SKU-1").index(), m.field("/Order/CustomerName"));
+        // The selected row has a presence of its own, as a bare group does.
+        Condition itemPresent = items.forIndex("SKU-1").filled();
         // end::indexed-group[]
         assertEquals("AllFieldsFilled(/Order/Items For \"SKU-1\", /Order/ShippingAddress)",
                 new DslRenderer().render(itemComplete));
         assertEquals("AtLeastOneGroupFilled(/Order/Items/Count For \"SKU-1\", /Order/CustomerName)",
                 new DslRenderer().render(anyGiven));
+        assertEquals("GroupFilled(/Order/Items For \"SKU-1\")", new DslRenderer().render(itemPresent));
     }
 
     @Test

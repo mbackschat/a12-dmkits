@@ -36,6 +36,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RuleGroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf;
@@ -97,6 +98,7 @@ final class ExplanationTreeBuilder {
             case GroupPresenceCondition g -> List.of();
             case RuleGroupPresenceCondition r -> List.of();
             case IndexedPresenceCondition p -> List.of();
+            case IndexedGroupPresenceCondition p -> List.of();
             case GroupListPredicate p -> List.of();
             case PatternCondition p -> List.of();
             case ValueListCondition v -> List.of();

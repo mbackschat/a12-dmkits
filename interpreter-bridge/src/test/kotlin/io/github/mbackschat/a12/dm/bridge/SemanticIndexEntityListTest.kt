@@ -194,19 +194,6 @@ class SemanticIndexEntityListTest {
     }
 
     /**
-     * §2c (an index-selected group as a SCALAR presence/`CurrentRepetition` operand, via
-     * `Operands.groupRef`) is a different, unrelated bridge call site from the entity-list one this task
-     * widens (`Operands.aggregateOperand`/`fieldOperand`) — it must keep throwing exactly as
-     * it did before, not silently start converting or start throwing a different exception type.
-     */
-    @Test
-    fun aGroupTargetedIndexInAScalarPresenceSlotStillThrowsNoTypedOperation() {
-        assertThrows(NoTypedOperationException::class.java) {
-            translate("GroupFilled(Items For \"a\")")
-        }
-    }
-
-    /**
      * §2b (an index-selected GROUP inside the entity-valued value-list quantifier form) is not evidenced
      * for this task and `ValueListOperand` carries no arm for it — [Conditions.valueListOperand]
      * explicitly refuses it rather than silently routing it through the new

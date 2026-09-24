@@ -28,6 +28,16 @@ public sealed interface IndexedGroupValue extends GroupScope, GroupListOperand
     /** The group scope the index is written on; it may carry a star below the index group (see the class doc). */
     GroupListRef group();
 
+    /** {@code GroupFilled(Group For key)}: the selected row holds content. */
+    default Condition filled() {
+        return new IndexedGroupPresenceCondition(this, true);
+    }
+
+    /** {@code GroupNotFilled(Group For key)}: the selected row holds none, or no row carries the key. */
+    default Condition notFilled() {
+        return new IndexedGroupPresenceCondition(this, false);
+    }
+
     /**
      * A plain diagnostic path — {@code Group For "key"} / {@code Group For keyField} — via the same
      * {@link SemanticIndexIdentity} helper {@link IndexedFieldValue} uses. The group itself never

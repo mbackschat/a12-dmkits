@@ -20,8 +20,7 @@ import org.junit.jupiter.api.Test
  *
  * The shape is authorable through `GroupListRef.forIndex` and the group-list factories (API-FINDINGS AF168), and a
  * wrong verdict here would be silent (API-FINDINGS on DG33), so the evaluators were measured before it was made
- * easy to write. Conditions are text because `GroupFilled` over a keyed group has no typed form yet (DEV-API-GAPS
- * DG67), and one spelling serves every row.
+ * easy to write.
  *
  * Each row compares the `errorPath|type` signature of the rule's messages, not a boolean, because a message of
  * the wrong polarity would otherwise read as agreement.

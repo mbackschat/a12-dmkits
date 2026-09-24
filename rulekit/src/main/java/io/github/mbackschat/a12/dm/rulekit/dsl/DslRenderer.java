@@ -253,6 +253,7 @@ public final class DslRenderer {
                     keyword(g.operatorId()) + "(" + (g.outer() ? "$" : "") + path(g.group().path().value()) + ")";
             case RuleGroupPresenceCondition r -> keyword(r.operatorId()) + "(" + ruleGroupKeyword() + ")";
             case IndexedPresenceCondition p -> keyword(p.operatorId()) + "(" + indexBody(p.index()) + ")";
+            case IndexedGroupPresenceCondition p -> keyword(p.operatorId()) + "(" + groupIndexBody(p.group()) + ")";
             case GroupListPredicate p -> keyword(p.operatorId()) + "("
                     + p.operands().stream().map(this::entityOperand)
                             .collect(Collectors.joining(", "))

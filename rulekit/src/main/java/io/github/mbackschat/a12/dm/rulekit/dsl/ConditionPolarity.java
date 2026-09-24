@@ -47,6 +47,8 @@ public final class ConditionPolarity {
                     Optional.of(new RuleGroupPresenceCondition(!r.filled()));
             case IndexedPresenceCondition p ->
                     Optional.of(new IndexedPresenceCondition(p.index(), !p.filled()));
+            case IndexedGroupPresenceCondition p ->
+                    Optional.of(new IndexedGroupPresenceCondition(p.group(), !p.filled()));
             case PatternCondition p ->
                     Optional.of(new PatternCondition(p.field(), !p.matched(), p.regex()));
             case ValueListCondition v ->

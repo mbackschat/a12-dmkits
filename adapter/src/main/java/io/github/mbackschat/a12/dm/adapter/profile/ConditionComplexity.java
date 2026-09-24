@@ -153,6 +153,12 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                     constructs.add(Construct.SEMANTIC_INDEX);
                     yield 2;
                 }
+                case IndexedGroupPresenceCondition ignored -> {
+                    op("SemanticIndex");
+                    constructs.add(Construct.GROUP_FILL);
+                    constructs.add(Construct.SEMANTIC_INDEX);
+                    yield 2;
+                }
                 case GroupListPredicate predicate -> {
                     constructs.add(Construct.QUANTIFIER);
                     predicate.operands().forEach(operand -> {
