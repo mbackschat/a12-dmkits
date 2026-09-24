@@ -10248,13 +10248,13 @@ The two-level carrier is a separate model, `Batches` (2) holding `Boxes` (2), ea
 | two batches, one box each sealed | 2 O | 2 O |
 | two batches, every box sealed | 4 V | 4 V |
 
-**Under partial coverage** a starred operand's instances are asked one more thing first, the extent gate [KF464](#kf464) measures for every starred group operand.
+**Under partial coverage** an operand is asked three things before its instances are counted, its extent, its first declared instance and the declared instances the document lacks, and a held instance then counts by its admitted content ([KF464](#kf464)).
 
-**Mechanism (source-read, consistent with the table, not discriminated further).** `RuntimeController.anzahlAngegebenerEntities`, which `NumberOfFilledGroups` shares with `NumberOfFilledFields`, walks every operand through one `EntityIterator` and asks `isWertAngegeben` of each instance, returning the not-evaluable count at the first UNKNOWN. There is one loop for every operand shape, which is why no row above depends on what else the list holds. The total it compares against is the iterator's `getAnzahlFelder()`, the product over its levels (`EbenenIterator`), read before the end indices are trimmed to the filled rows.
+**Mechanism (source-read, consistent with the table, not discriminated further).** `RuntimeController.anzahlAngegebenerEntities`, which `NumberOfFilledGroups` shares with `NumberOfFilledFields`, walks each operand through its own `EntityIterator` and asks `isWertAngegeben` of each instance, first letting a partly relevant group answer and, when that answer is false, again requiring the group wholly relevant (its `partialIsUnknown` flag), returning the not-evaluable count at the first UNKNOWN. There is one loop for every operand shape, which is why no row above depends on what else the list holds. The total it compares against is the iterator's `getAnzahlFelder()`, the product over its levels (`EbenenIterator`), read before the end indices are trimmed to the filled rows.
 
 **Lock:** `adapter.laws.AncestorStarredGroupCountDiffTest` holds all thirteen documents of the full-validation table on three engines, and `adapter.laws.MultiLevelStarredGroupCountDiffTest` the two-level carrier.
 
-## §12 supplement — under partial validation a starred GROUP operand is evaluable exactly when every field it contains is, each asked the extent gate a starred field would be asked (differential, both strategies, 2026-09-24) <a id="kf464"></a>
+## §12 supplement — under partial validation a field-expanding aggregate over a starred GROUP is evaluable exactly when every field it contains is, while `NumberOfFilledGroups` is decided on the counted group's own instances (differential, both strategies, 2026-09-24) <a id="kf464"></a>
 
 > Fold: pending — extends §12's partial-validation extent gates (the all-rows gate and the existential value-list gate) from a starred field to a starred group; folds beside them.
 
@@ -10270,14 +10270,40 @@ The two-level carrier is a separate model, `Batches` (2) holding `Boxes` (2), ea
 | both rows of each group concretely, nothing else | — | — | — | — |
 | `Lot` and `Qty` concretely in both rows, every other field `*` | — | ✓ | — | ✓ |
 
-So a starred group is asked the extent gate once for every field it contains, the gate a starred field of the same operator is asked, and it is evaluable only when every contained field passes. For a starred field that gate is reduced-universal for the counts and the all-rows aggregates and existential for `NumberOfValueInFields` ([IF264](INTERPRETER-FINDINGS.md#if264)); the rows here do not separate the two. Three consequences follow, each one a rule written for the group path would get wrong:
+So a field-expanding aggregate over a starred group asks the extent gate once for every field it contains, the gate a starred field of the same operator is asked, and it is evaluable only when every contained field passes. For a starred field that gate is reduced-universal for the counts and the all-rows aggregates and existential for `NumberOfValueInFields` ([IF264](INTERPRETER-FINDINGS.md#if264)); the rows here do not separate the two. Three consequences follow, each one a rule written for the group path would get wrong:
 
 - **Field identifiers settle an extent no identifier names on the group path.** A coverage made only of field wildcards counts `Batches*`, and a wildcard over the descendant group `Seal` covers the fields below it.
 - **Concrete group rows beside field wildcards are encompassed by them.** A field covered concretely in every row still leaves the extent unknown, although no cell is uncovered.
 - **`Batches*/Seal` asks only the Seal's own fields,** so an uncovered `Lot` never reaches it.
 
-**Mechanism (source-read, the two routes not discriminated).** The field-list operators receive a group operand already expanded into its contained fields, so each field brings its own entity iterator and gate. `NumberOfFilledGroups` iterates the group itself. But `ValidationCommand.compressRelevantFieldsForValidationCall` registers each relevant identifier's ancestor groups under their names (`markAllParentGroupsRelevant`) before `ValidationCache.reduceRedundancies`, and `EntityIterator.istEineWiederholungNichtPruefungsRelevant` then asks the first instance's relevance. The two routes agree on every row above, which is why one rule describes both.
+*Corrected 2026-09-24:* this said the same of `NumberOfFilledGroups`, and that its route through the group and the aggregates' route through the fields "agree on every row above, which is why one rule describes both". They do agree on every row above, and those rows cannot tell them apart. The rows below can, and there the group count follows a rule of its own.
 
-**Unmeasured.** `MinValue` and `NumberOfDifferentValues` share the gate `Sum` and `MaxValue` use and were not run. `SumOfProducts`'s complete-enumeration gate was not run on a group operand, and a multi-star group operand was not run under any coverage.
+**The group count.** A second fixture holds the same `Batches` of a `Lot` and a fixed `Seal` of a `Code` and a NUMBER `Weight`, at the capacity each row names, beside two fixed groups, a `Label` of a `Text` and a NUMBER `Grade` and a `Stamp` of a `Mark`. The document holds two batches, each with all three fields, and every fixed field. A12 refuses a lone fixed operand (`MVK_PARAMSIZE_INVALIDGN`), so the fixed count takes both groups. A cell reads as in the table above, with n/a where a malformed value moves the full-validation count off the rule's constant:
 
-**Lock:** `adapter.laws.PartialGroupStarFieldCoverageDiffTest`, all seven coverages on three engines.
+| capacity | coverage | `NumberOfFilledGroups(Batches*)` | `NumberOfFilledGroups(Batches*/Seal)` | `NumberOfFilledFields(Batches*)` | `NumberOfFilledGroups(Label, Stamp)` |
+|---|---|---|---|---|---|
+| 4 | `Lot` concretely in rows 1–4, `Code`, `Weight` `*` | ✓ | ✓ | — | — |
+| 4 | `Code` concretely in rows 1–4, `Lot`, `Weight` `*` | ✓ | ✓ | — | — |
+| 4 | `Lot` concretely in rows 1 and 2, `Code`, `Weight` `*` | — | ✓ | — | — |
+| 4 | `Lot` concretely in rows 1 and 3, `Code`, `Weight` `*` | — | ✓ | — | — |
+| 2 | `Lot` `*`, `Code` and `Weight` concretely in row 1 | ✓ | — | — | — |
+| 2 | `Lot` `*`, `Code` and `Weight` concretely in row 2 | — | — | — | — |
+| 2 | every batch field `*`, row 1's `Weight` malformed | — | — | n/a | — |
+| 2 | every batch field `*`, row 2's `Weight` malformed | ✓ | ✓ | n/a | — |
+| 2 | every field `*`, `Grade` malformed | ✓ | ✓ | ✓ | — |
+| 2 | every field `*` | ✓ | ✓ | ✓ | ✓ |
+
+Full validation fires every carrier the malformed value leaves at its constant, which is the liveness control for each row. So the count is decided in four steps, each discriminated by a pair of neighbouring rows that a simpler reading gets wrong on one side:
+
+- **The counted group's own identifiers settle the extent.** They are the relevant identifiers at or above the group together with every relevant descendant cut back to the group's depth, and a broader wildcard encompasses a narrower one as it does for a field. A `Lot` named in every declared row therefore leaves the batch count decidable where `NumberOfFilledFields`, which asks `Lot` itself, stays silent (rows 1 and 2). One concrete identifier left at a starred level makes the count undecidable: `Code` covered in row 1 alone cuts back to a concrete `Seal` (row 5).
+- **The first declared instance must be fully relevant and free of errors,** held or not. Covering row 2 instead of row 1 silences the count although both rows are filled (rows 5 and 6), and a malformed `Weight` silences it in row 1 but not in row 2 (rows 7 and 8). A fixed group is its own first instance (row 9).
+- **Every declared instance the document lacks must be fully relevant.** A12 walks the declared rows rather than the held ones: naming `Lot` in the two held rows leaves rows 3 and 4 open, and naming it in rows 1 and 3 still leaves row 4 open (rows 3 and 4 against row 1).
+- **A held instance then counts by its admitted content,** a partly covered row or an erroneous later row included (rows 5 and 8).
+
+The first table's last coverage follows from the third step rather than from a field gate: `Lot` named in the two held rows of four leaves the absent rows open.
+
+**Mechanism (source-read, consistent with every row; each step's attribution to its source is a hypothesis).** The field-list operators receive a group operand already expanded into its contained fields, so each field brings its own entity iterator and gate. `NumberOfFilledGroups` iterates the group itself, and under partial validation `RuntimeController.anzahlAngegebenerEntities` asks its operand iterator `EntityIterator.istEineWiederholungNichtPruefungsRelevant` before counting. The group's identifier set is what `ValidationCommand.compressRelevantFieldsForValidationCall` registers under the group's name for every relevant identifier below it (`markAllParentGroupsRelevant`), reduced by `ValidationCache.reduceRedundancies`; a concrete index at a starred level makes the iterator not relevant, and so does `EntityUtil.isPruefungsRelevant` of its first instance, which answers false for an erroneous group (`isFehlerhafteEntity`). That first-instance question requires the whole group relevant because its `partialIsUnknown` argument is `!metaData.hasUniqueEntities()`, and `MetaDataUtilValidierung.isHModel`, which answers it, is false for every A12 model; only a legacy key outside A12 changes it. The loop that follows asks `isWertAngegeben` of every declared instance, the end indices being trimmed to the filled rows only where every relevant field at that depth is relevant for every row (`ValidierungArt.istEbeneGleich`), which is when a trim cannot change the answer.
+
+**Unmeasured.** `MinValue` and `NumberOfDifferentValues` share the gate `Sum` and `MaxValue` use and were not run. `SumOfProducts`'s complete-enumeration gate was not run on a group operand, and a multi-star group operand was not run under any coverage. Every malformed value above was covered, so whether an uncovered malformed value makes a first instance erroneous is open.
+
+**Lock:** `adapter.laws.PartialGroupStarFieldCoverageDiffTest`, all seven coverages of the first table, and `adapter.laws.PartialGroupCountRelevanceDiffTest`, all ten rows of the second, each on three engines.

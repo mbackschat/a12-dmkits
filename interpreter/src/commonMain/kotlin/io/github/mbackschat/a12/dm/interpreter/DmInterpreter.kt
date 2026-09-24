@@ -10,6 +10,8 @@ import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.WorkLedger
 import io.github.mbackschat.a12.dm.interpreter.eval.EffectiveRelevanceIndex
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
+import io.github.mbackschat.a12.dm.interpreter.eval.GroupCountGate
+import io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState
 import io.github.mbackschat.a12.dm.interpreter.eval.GroupRelevance
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
 import io.github.mbackschat.a12.dm.interpreter.eval.DisplayPresentation
@@ -333,6 +335,7 @@ class DmInterpreter private constructor(
             starFullyEnumeratedOf(relevant),
             groupRelevanceOf(relevant),
             queries::isRelevantWithin,
+            GroupCountExtents(relevant),
         )
     }
 
@@ -353,14 +356,98 @@ class DmInterpreter private constructor(
         return { starPath, bindDepth, rowReps ->
             val scope = starScope(starPath, bindDepth, rowReps)
             decided.getOrPut(Triple(starPath, bindDepth, scope.bound)) {
-                reducedByPath.getOrPut(starPath) { reducedStarRelevantCandidates(candidates, starPath) }
-                    .filter { addressesRow(it, scope.bound) }
-                    .let { scoped ->
-                        scoped.isNotEmpty() && scope.levels.none { level ->
-                            scoped.any { it.indices[level] != RelevantEntity.ALL }
-                        }
-                    }
+                wildcardsEveryStarredLevel(
+                    reducedByPath.getOrPut(starPath) { reducedStarRelevantCandidates(candidates, starPath) },
+                    scope,
+                )
             }
+        }
+    }
+
+    /**
+     * Whether the reduced identifiers that address [scope]'s row establish the extent: at least one does, and
+     * none is concrete at a level the star iterates.
+     */
+    private fun wildcardsEveryStarredLevel(reduced: List<RelevantEntity>, scope: StarScope): Boolean {
+        val scoped = reduced.filter { addressesRow(it, scope.bound) }
+        return scoped.isNotEmpty() && scope.levels.none { level -> scoped.any { it.indices[level] != RelevantEntity.ALL } }
+    }
+
+    /**
+     * Partial validation's [GroupCountGate] for `NumberOfFilledGroups`, which A12 decides on the counted group
+     * itself rather than on its fields (KF464, IF339). An operand is countable when three things hold:
+     *
+     * 1. **The group's own identifiers establish the extent.** They are the relevant entities at or above the
+     *    group and every relevant descendant cut back to the group's depth, reduced exactly as [starRelevantOf]
+     *    reduces a field's, and none may stay concrete at a starred level.
+     * 2. **The first declared instance is fully relevant and not erroneous** — the one instance A12 inspects
+     *    before it counts anything, held or not, so a partly covered or erroneous first row leaves the count
+     *    undecidable even where every other row is decided.
+     * 3. **Every declared instance the document lacks is fully relevant.** A12 walks the declared rows, not the
+     *    held ones, and an absent row it cannot call empty has no count.
+     *
+     * Rule 3 is decided on one representative per equivalence class rather than on every declared coordinate:
+     * group relevance at a level depends only on whether an identifier names that index, so the indices some
+     * identifier or held instance names are checked each, and all the rest by the smallest of them, which is
+     * absent by construction. That keeps the check proportional to the named indices when a capacity is large.
+     * A group without a declared capacity, which only a hand-built model can express since `ModelLoader` gives
+     * every A12 repeatable group one, is read as having such a row beyond every named index.
+     */
+    private inner class GroupCountExtents(relevant: Set<RelevantEntity>) {
+        private val candidates = wellFormed(relevant)
+        private val reducedByPath = HashMap<String, List<RelevantEntity>>()
+
+        fun gate(presence: (String, List<Int>) -> GroupPresenceState): GroupCountGate {
+            val decided = HashMap<Triple<String, Int, List<Int>>, Boolean>()
+            return GroupCountGate { groupPath, bindDepth, rowReps, present ->
+                val scope = starScope(groupPath, bindDepth, rowReps)
+                decided.getOrPut(Triple(groupPath, bindDepth, scope.bound)) {
+                    wildcardsEveryStarredLevel(reducedByPath.getOrPut(groupPath) { ownIdentifiers(groupPath) }, scope) &&
+                        presence(groupPath, firstInstance(groupPath, scope))
+                            .let { it.relevance == GroupRelevance.FULL && !it.erroneous } &&
+                        absentRepresentatives(groupPath, scope, present)
+                            .all { presence(groupPath, it).relevance == GroupRelevance.FULL }
+                }
+            }
+        }
+
+        private fun ownIdentifiers(groupPath: String): List<RelevantEntity> {
+            val groupParts = pathParts(groupPath)
+            return reducedStarRelevantCandidates(
+                candidates.mapNotNull { e ->
+                    when {
+                        covers(e, groupPath) -> e
+                        pathParts(e.path).take(groupParts.size) == groupParts ->
+                            RelevantEntity(groupPath, e.indices.take(groupParts.size))
+                        else -> null
+                    }
+                },
+                groupPath,
+            )
+        }
+
+        private fun firstInstance(groupPath: String, scope: StarScope): List<Int> =
+            scope.bound + List(pathParts(groupPath).size - scope.bound.size) { 1 }
+
+        private fun absentRepresentatives(groupPath: String, scope: StarScope, present: Set<List<Int>>): List<List<Int>> {
+            val parts = pathParts(groupPath)
+            var tuples = listOf(scope.bound)
+            for (level in scope.bound.size until parts.size) {
+                val prefix = "/" + parts.take(level + 1).joinToString("/")
+                val axis = if (prefix !in model.repeatable) listOf(1) else {
+                    val named = HashSet<Int>()
+                    for (e in candidates) {
+                        val index = e.indices.getOrNull(level) ?: continue
+                        if (index != RelevantEntity.ALL && pathParts(e.path).take(level + 1) == parts.take(level + 1)) named += index
+                    }
+                    present.mapTo(named) { it[level] }
+                    val capacity = model.declaredReps[prefix]
+                    (named + generateSequence(1) { it + 1 }.first { it !in named })
+                        .filter { capacity == null || it <= capacity }
+                }
+                tuples = tuples.flatMap { tuple -> axis.map { tuple + it } }
+            }
+            return tuples.filter { it !in present }
         }
     }
 
@@ -649,7 +736,9 @@ class DmInterpreter private constructor(
             starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)? = null,
             groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL },
             /** Partial only: [EffectiveRelevanceIndex.isRelevantWithin] — the rule-run gate's bound-level query ([IF268]). */
-            relevantWithin: ((String, List<Int>, Int) -> Boolean)? = null): ValidationOutcome =
+            relevantWithin: ((String, List<Int>, Int) -> Boolean)? = null,
+            /** Partial only: the relevance side of `NumberOfFilledGroups`' [GroupCountGate] ([IF339]). */
+            groupCounts: GroupCountExtents? = null): ValidationOutcome =
         observeCaches(doc) {
             // The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible
             // clean-empty index cell's S-value into a call-local view — before the generated checks and
@@ -703,6 +792,7 @@ class DmInterpreter private constructor(
                     starExtentKnown,
                     starFullyEnumerated,
                     indexIdentityAdmitted,
+                    groupCounts?.gate { path, reps -> groupPresence.state(path, reps) },
                 ) { path, reps -> groupPresence.state(path, reps) },
                 formalResults, { formallyIncorrect })
             for (rule in model.rules) {
@@ -873,6 +963,7 @@ class DmInterpreter private constructor(
                 null,
                 null,
                 formalResults::admitsIdentityAt,
+                null,
             ) { path, reps -> groupPresence.state(path, reps) },
             formalResults,
             { formallyIncorrect },
@@ -915,7 +1006,8 @@ class DmInterpreter private constructor(
             starExtentKnown: ((String, Int, List<Int>) -> Boolean)?,
             starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)?,
             indexIdentityAdmitted: (String, List<Int>, String) -> Boolean,
-            groupPresence: (String, List<Int>) -> io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState): EvalConfig =
+            groupCountGate: GroupCountGate?,
+            groupPresence: (String, List<Int>) -> GroupPresenceState): EvalConfig =
         EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
             patternMatches = patterns::matches,
@@ -923,7 +1015,7 @@ class DmInterpreter private constructor(
             cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
             starRelevant = starRelevant, starExtentKnown = starExtentKnown,
             starFullyEnumerated = starFullyEnumerated,
-            customRelevant = customRelevant, groupPresence = groupPresence)
+            customRelevant = customRelevant, groupPresence = groupPresence, groupCountGate = groupCountGate)
             .also { it.work = workLedger }
 
     /** The kernel's allowed-and-eliminated raw-type length shape (see [rowOutcomes]): the whole condition is

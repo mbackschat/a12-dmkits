@@ -88,6 +88,10 @@ class EvalConfig(
      *  erroneous-group index. A coordinate rather than a context, because a keyed group no row carries is asked
      *  at a coordinate no context stands on (the unbound row, [UNKNOWN_REP]). */
     val groupPresence: ((String, List<Int>) -> GroupPresenceState)? = null,
+    /** Partial validation only: whether a `NumberOfFilledGroups` operand is countable at all ([GroupCountGate]).
+     *  The count does not take the field-by-field star gates, because A12 iterates the group rather than its
+     *  fields (KF464). **Null in full validation.** */
+    val groupCountGate: GroupCountGate? = null,
     /** Compute-only refinement for an identity-preserving [ScanCell]. The general document supplies the raw
      *  presence/format state; the computation call supplies its complete call-local formal oracle here so
      *  charset, custom-type, declared-constraint, and over-limit failures poison group/star scans exactly like

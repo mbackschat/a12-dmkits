@@ -114,6 +114,7 @@ class Interpreter(
     internal val starRelevant = config.starRelevant
     internal val starExtentKnown = config.starExtentKnown
     internal val starFullyEnumerated = config.starFullyEnumerated
+    internal val groupCountGate = config.groupCountGate
     private val customRelevant = config.customRelevant
     private val computeScanState = config.computeScanState
     internal val computeMode = config.computeMode

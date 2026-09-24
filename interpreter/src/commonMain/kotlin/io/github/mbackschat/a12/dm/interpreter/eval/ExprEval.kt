@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.nearestIndexFieldOf
+import io.github.mbackschat.a12.dm.interpreter.pathParts
 import io.github.mbackschat.a12.dm.interpreter.ast.ArithOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
@@ -86,23 +87,35 @@ private fun Interpreter.indexOperandNonEvaluable(c: EvalContext, path: String, b
  * expands to the group instances it names — a fixed group its own, a starred scope one per environment
  * [Interpreter.groupFillStates] also selects, so a repeatable terminal counts each instantiated row (a
  * created-but-empty one too, IF46) and a fixed group below starred levels counts by its content — and each
- * instance contributes its [GroupPresenceState.countProduct]. One undecidable instance makes the whole count
+ * instance contributes its [GroupPresenceState.fillProduct]. Under partial validation an operand is counted
+ * only once its [GroupCountGate] admits it, which asks about the declared instances the document lacks and
+ * so cannot be read off the held ones (KF464). One undecidable operand or instance makes the whole count
  * Unknown rather than a partial count (KF463). Linear in the instances.
  */
 private fun Interpreter.filledGroupsValue(args: List<Expr>): Val {
     rejectHaving(args, "NumberOfFilledGroups")
+    val gate = groupCountGate
     var count = 0
     for (arg in args) {
+        val c = ctxOf(arg)
         if (arg is Expr.Star) {
-            for (row in ctxOf(arg).groupListEnvironments(arg.path, arg.bindDepth))
-                count += countedGroup(groupPresence(row, arg.path)) ?: return Val.Unknown
-        } else count += countedGroup(groupPresence(ctxOf(arg), pathOf(arg))) ?: return Val.Unknown
+            val rows = c.groupListEnvironments(arg.path, arg.bindDepth)
+            if (gate != null &&
+                !gate.admits(arg.path, arg.bindDepth, c.repsOf(arg.path), rows.mapTo(HashSet()) { it.repsOf(arg.path) })
+            ) return Val.Unknown
+            for (row in rows) count += countedGroup(groupPresence(row, arg.path)) ?: return Val.Unknown
+        } else {
+            val path = pathOf(arg)
+            // Every level of a fixed operand is bound, so the gate asks about this one instance alone.
+            if (gate != null && !gate.admits(path, pathParts(path).size, c.repsOf(path), emptySet())) return Val.Unknown
+            count += countedGroup(groupPresence(c, path)) ?: return Val.Unknown
+        }
     }
     return Val.Num(dec(count))
 }
 
 /** One counted instance's addition to the count, or null when it leaves the count undecidable. */
-private fun countedGroup(state: GroupPresenceState): Int? = when (state.countProduct) {
+private fun countedGroup(state: GroupPresenceState): Int? = when (state.fillProduct) {
     Tri.TRUE -> 1
     Tri.FALSE -> 0
     Tri.UNKNOWN -> null
@@ -761,9 +774,11 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     val op = FunctionOp.byName(f.name)
     // Partial validation chooses the extent predicate by operator family. Most direct starred functions use
     // the reduced-universal all-rows gate. `NumberOfValueInFields` instead shares the existential value-list
-    // gate, `SumOfProducts` accepts a complete concrete enumeration, and `FirstFilledValue` is order-aware via
-    // per-cell relevance. These are four measured contracts, not interchangeable completeness spellings.
-    if (op != FunctionOp.FIRST_FILLED_VALUE) {
+    // gate, `SumOfProducts` accepts a complete concrete enumeration, `FirstFilledValue` is order-aware via
+    // per-cell relevance, and `NumberOfFilledGroups` asks its own [GroupCountGate] in [filledGroupsValue],
+    // because A12 iterates the counted group rather than its fields. These are five measured contracts, not
+    // interchangeable completeness spellings.
+    if (op != FunctionOp.FIRST_FILLED_VALUE && op != FunctionOp.NUMBER_OF_FILLED_GROUPS) {
         f.args.forEach { arg ->
             val star = arg as? Expr.Star
             if (star != null) {
@@ -779,9 +794,9 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
                     FunctionOp.NUMBER_OF_VALUE_IN_FIELDS -> starExtentKnown
                     else -> starRelevant
                 }
-                // A starred GROUP is asked field by field: the kernel expands it into its contained fields
-                // before any extent gate reads it, so field coverage settles an extent no identifier names on
-                // the group path — for the group count as for the field-expanding aggregates (KF464).
+                // A starred GROUP is asked field by field: a field-expanding aggregate expands it into its
+                // contained fields before any extent gate reads it, so field coverage settles an extent no
+                // identifier names on the group path (KF464).
                 val gated = if (namesAGroup(star)) expandOneGroupOperand(star) else listOf(star)
                 if (gate != null && gated.filterIsInstance<Expr.Star>()
                         .any { !gate.invoke(it.path, it.bindDepth, ctx.repsOf(it.path)) }) return Val.Unknown

@@ -11,14 +11,18 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Differential — a starred GROUP operand under partial validation is evaluable exactly when every field it
- * contains is, each asked the extent gate a starred field would be asked (KERNEL-FINDINGS KF464).
+ * Differential — which coverages leave a carrier over a starred GROUP evaluable under partial validation
+ * (KERNEL-FINDINGS KF464): a field-expanding aggregate exactly when every field it contains passes the extent
+ * gate a starred field would be asked.
  *
  * Every carrier here takes a group star: the group count `NumberOfFilledGroups` over a repeatable group and over
  * a fixed group below it, and the field-expanding `NumberOfFilledFields`, `Sum`, `MaxValue` and
- * `NumberOfValueInFields`. Each rule compares the carrier with the value full validation gives it, so under a
- * coverage it fires exactly when the carrier is evaluable there. The field star `Batches*` + `/Seal/Code` is the
- * control whose gate was already right, and a full-validation run shows every rule live on the document.
+ * `NumberOfValueInFields`. The group count follows a rule of its own, asking the counted group rather than its
+ * fields; it agrees with the field-by-field reading on every coverage here, and the rows that tell the two apart
+ * are `PartialGroupCountRelevanceDiffTest`'s. Each rule compares the carrier with the value full validation
+ * gives it, so under a coverage it fires exactly when the carrier is evaluable there. The field star
+ * `Batches*` + `/Seal/Code` is the control whose gate was already right, and a full-validation run shows every
+ * rule live on the document.
  *
  * The coverages separate the readings a reader could hold: the group path must itself be named, against its
  * fields being named in its place; concrete group rows beside field wildcards, which the wildcards encompass;
