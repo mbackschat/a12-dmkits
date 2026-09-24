@@ -8082,7 +8082,7 @@ So duplicates, the root-group gate ([KF388](#kf388)) and the param law come firs
 
 **Extended 2026-09-24: the three value-list quantifiers and a computation's `FirstFilledValue` ask the plain gate too, after the duplicates (measured; reconciles a12-kernel-lean `SPEC-2026-09-23-01`).** On a second-root model, `AtLeastOneFieldValueIncludedInValueList`, `NoFieldValueIncludedInValueList` and `NotAllFieldValuesIncludedInValueList` over `(/Parcel In "x")` or `(/Parcel, /Depot/Code In "x")` draw `MVK_ROOT_GROUP_REFERENCED`, and over `(/Parcel, /Parcel/Label In "x")` draw `MVK_DUPLICATE_PARAM2`. `FirstFilledValue(…)` as the operation of a computation into a String target draws the same three classes on the same three lists. A group inside the root, alone or beside the other root's field, is admitted on every carrier, so neither the carrier nor the cross-root reference is refused on its own.
 
-Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the carriers the group-list families do not own, the three value-list quantifiers excepted.
+Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the carriers the group-list families do not own, the three value-list quantifiers in their written-out spelling only: against a field-read value list the nested duplicate does not span the two halves while the root class does, and the checker reads neither.
 
 *Locked by:* `rulekit.validate.laws.EntityListPreGateLawsTest`, mirrored by `consistency.EntityListPreGatesTest`, and `rulekit.validate.laws.EntityListRootGateCarrierLawsTest` for the value-list and computation carriers.
 

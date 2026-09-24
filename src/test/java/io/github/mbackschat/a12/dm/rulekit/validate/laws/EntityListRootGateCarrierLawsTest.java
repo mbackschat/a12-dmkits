@@ -29,6 +29,8 @@ class EntityListRootGateCarrierLawsTest {
 
     private static final String ROOT = "MVK_ROOT_GROUP_REFERENCED";
     private static final String DUPLICATE = "MVK_DUPLICATE_PARAM2";
+    private static final List<String> VALUE_LIST_QUANTIFIERS = List.of("AtLeastOneFieldValueIncludedInValueList",
+            "NoFieldValueIncludedInValueList", "NotAllFieldValuesIncludedInValueList");
 
     private static final String MODEL = DocumentModelDraft.named("courier-desk").locale("en_US")
             .rootGroup("Parcel", p -> p
@@ -38,6 +40,7 @@ class EntityListRootGateCarrierLawsTest {
             .rootGroup("Depot", d -> d
                     .field("Code", FieldKind.STRING)
                     .field("Assigned", FieldKind.STRING))
+            .rootGroup("Ledger", l -> l.field("Booked", FieldKind.DATE))
             .build().toJson();
 
     /** Operand list → expected class, the same five for every carrier. */
@@ -57,8 +60,7 @@ class EntityListRootGateCarrierLawsTest {
     void theValueListQuantifiersReferToTheRootGate() {
         Map<String, String> actual = new LinkedHashMap<>();
         Map<String, String> expected = new LinkedHashMap<>();
-        for (String quantifier : List.of("AtLeastOneFieldValueIncludedInValueList",
-                "NoFieldValueIncludedInValueList", "NotAllFieldValuesIncludedInValueList")) {
+        for (String quantifier : VALUE_LIST_QUANTIFIERS) {
             LISTS.forEach((list, verdict) -> {
                 String row = quantifier + "(" + list + " In \"x\")";
                 actual.put(row, KernelLaws.verdictModel(MODEL, "/Parcel", "../Reference",
@@ -67,6 +69,39 @@ class EntityListRootGateCarrierLawsTest {
             });
         }
         assertEquals(expected, actual, "the root gate on every value-list quantifier");
+    }
+
+    /**
+     * Where the root sits in the value-list construct's own order. A root holding only a Date draws the root
+     * class, while its Date alone draws the slot-kind class, so the root gate answers before the kind gate its
+     * content would fail. In the field-read spelling a root on EITHER side draws the root class, and beside
+     * its own field across the {@code In} it still does: the nested-duplicate test, which answers first
+     * within one list, does not span the two.
+     */
+    @Test
+    void theRootGateAnswersAheadOfTheKindGateAndOnEitherSideOfAFieldReadList() {
+        Map<String, String> byList = new LinkedHashMap<>();
+        byList.put("/Ledger In \"x\"", ROOT);
+        byList.put("/Ledger/Booked In \"x\"", "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED");
+        byList.put("/Parcel In /Depot/Code", ROOT);
+        byList.put("/Depot/Code In /Parcel", ROOT);
+        byList.put("/Ledger In /Depot/Code", ROOT);
+        byList.put("/Depot/Code In /Ledger", ROOT);
+        byList.put("/Parcel In /Parcel/Label", ROOT);
+        byList.put("/Parcel/Label In /Parcel", ROOT);
+        byList.put("/Parcel/Handling In /Depot/Code", KernelLaws.ADMITTED);
+        byList.put("/Depot/Code In /Parcel/Handling", KernelLaws.ADMITTED);
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String quantifier : VALUE_LIST_QUANTIFIERS) {
+            byList.forEach((list, verdict) -> {
+                String row = quantifier + "(" + list + ")";
+                actual.put(row, KernelLaws.verdictModel(MODEL, "/Parcel", "../Reference",
+                        "FieldFilled(Reference) And " + row));
+                expected.put(row, verdict);
+            });
+        }
+        assertEquals(expected, actual, "the root gate's place in the value-list order");
     }
 
     @Test

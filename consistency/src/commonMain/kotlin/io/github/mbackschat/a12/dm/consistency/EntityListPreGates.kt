@@ -51,6 +51,7 @@ internal fun TrackedFactBase.entityListPreGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val gates = ROOT_GROUP_GATE_OF.mapNotNull { (id, gate) -> keywords[id]?.let { it to gate } }.toMap()
     val infixCarrier = keywords[VALUE_IN_FIELDS]
+    val valueListCarriers = VALUE_LIST_QUANTIFIERS.mapNotNull { keywords[it] }.toSet()
     if (gates.isEmpty()) {
         return emptyList()
     }
@@ -61,7 +62,7 @@ internal fun TrackedFactBase.entityListPreGateFindings(): List<Finding> {
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
                 .firstNotNullOfOrNull { call ->
                     gates[call.operator]?.let { gate ->
-                        preGateFinding(call, gate, infixCarrier, group, element, member)
+                        preGateFinding(call, gate, infixCarrier, valueListCarriers, group, element, member)
                     }
                 }
         }
@@ -79,6 +80,13 @@ private enum class RootGroupGate {
 
 /** `NumberOfValueInFields` lists its entities after an infix keyword rather than as its own operands. */
 private const val VALUE_IN_FIELDS = "NumberOfValueInFields"
+
+/** The value-list quantifiers, which list their entities BEFORE an infix keyword, the values after it. */
+private val VALUE_LIST_QUANTIFIERS = listOf(
+    "AtLeastOneFieldValueIncludedInValueList",
+    "NoFieldValueIncludedInValueList",
+    "NotAllFieldValuesIncludedInValueList",
+)
 
 /** The catalog id of the semantic-index clause — `For` in English, `Fuer` in German. */
 private const val SEMANTIC_INDEX = "SemanticIndex"
@@ -109,6 +117,9 @@ private val ROOT_GROUP_GATE_OF = mapOf(
     "NumberOfDifferentValues" to RootGroupGate.PLAIN,
     VALUE_IN_FIELDS to RootGroupGate.PLAIN,
     "DateRangesOverlap" to RootGroupGate.PLAIN,
+    "AtLeastOneFieldValueIncludedInValueList" to RootGroupGate.PLAIN,
+    "NoFieldValueIncludedInValueList" to RootGroupGate.PLAIN,
+    "NotAllFieldValuesIncludedInValueList" to RootGroupGate.PLAIN,
     "GroupFilled" to RootGroupGate.NONE,
     "GroupNotFilled" to RootGroupGate.NONE,
     "RepetitionNotUnique" to RootGroupGate.NONE,
@@ -127,11 +138,12 @@ private fun TrackedFactBase.preGateFinding(
     call: ConditionCall,
     gate: RootGroupGate,
     infixCarrier: String?,
+    valueListCarriers: Set<String>,
     declaringGroup: String,
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
-    val written = call.entityListOperands(conditionLanguage, infixCarrier) ?: return null
+    val written = call.entityListOperands(conditionLanguage, infixCarrier, valueListCarriers) ?: return null
     // ALL or nothing, and that is a measured rule rather than caution. One operand A12 cannot address makes
     // the per-reference wildcard bar answer for the whole call — `MVK_NO_WILDCARD`, in BOTH operand orders
     // (KERNEL-FINDINGS KF443, `validate.laws.DuplicateOverlapCarrierSweepLawsTest`) — so a duplicate sitting
@@ -186,6 +198,12 @@ private data class ListOperand(val spec: String, val key: String, val indexSelec
  * The infix carrier keeps its entities after an `In` keyword rather than as its own operands, so its texts
  * are re-read here; every other carrier has already reduced each operand.
  *
+ * **A value-list quantifier keeps them BEFORE the `In`, and is read only in its written-out spelling.**
+ * There the field list alone is the entity list. Against a field-read value list A12 still answers the root
+ * class on either side, but not the nested duplicate across the two halves (`/Parcel In /Parcel/Label` is
+ * the root class, KERNEL-FINDINGS KF388), so reading one half would name the wrong class and reading both
+ * as one list would too.
+ *
  * **A CLAUSE-carrying operand yields itself rather than silencing the list.** Returning null for the whole
  * list meant one such operand answered for its siblings: the plain duplicate in
  * `Sum(Lines/Amount For "A", Quantity, Quantity)` went unreported although it needs no clause read at all
@@ -203,10 +221,15 @@ private data class ListOperand(val spec: String, val key: String, val indexSelec
 private fun ConditionCall.entityListOperands(
     language: ConditionLanguage,
     infixCarrier: String?,
+    valueListCarriers: Set<String>,
 ): List<ListOperand>? {
-    if (operator == infixCarrier) {
-        val texts = splitAtIn()?.second ?: return null
-        return texts.map { text ->
+    val infixEntities = when (operator) {
+        infixCarrier -> splitAtIn()?.second ?: return null
+        in valueListCarriers -> splitAtIn()?.takeIf { it.second.isWrittenOutValueList() }?.first ?: return null
+        else -> null
+    }
+    if (infixEntities != null) {
+        return infixEntities.map { text ->
             if (!isBareEntitySpec(text)) return null
             referencesIn(text, language).singleOrNull()?.let { ListOperand(it, "") } ?: return null
         }
@@ -263,7 +286,7 @@ private fun List<String>.firstNestedEntity(written: List<ListOperand>): Int? =
     }
 
 /** Whether this model path names a ROOT group — one step below the model, so one separator deep. */
-private fun String.isRootGroup(): Boolean = count { it == '/' } == 1
+internal fun String.isRootGroup(): Boolean = count { it == '/' } == 1
 
 /**
  * Whether a duplicate or root-group gate answers this list before its operator asks anything.

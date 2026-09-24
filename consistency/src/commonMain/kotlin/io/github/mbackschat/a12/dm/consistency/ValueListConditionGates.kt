@@ -153,7 +153,15 @@ private fun TrackedFactBase.gateFinding(
         return null
     }
 
-    val literalList = opposite.all { tokenize(it).singleOrNull()?.kind == TokenKind.STRING }
+    // A ROOT group on either side is answered by the root class, ahead of every gate below its content would
+    // fail (a root holding only a Date is the root class, its Date alone the kind class; KERNEL-FINDINGS
+    // KF388, `rulekit.validate.laws.EntityListRootGateCarrierLawsTest`). `entityListPreGateFindings` names it
+    // on the written-out spelling; expanding the root here would name a kind or same-type class instead.
+    if ((written + opposite).any { declaredTargetOf(it, declaringGroup, element)?.path?.isRootGroup() == true }) {
+        return null
+    }
+
+    val literalList = opposite.isWrittenOutValueList()
     val listed = listedFields(written, declaringGroup, element) ?: return null
     val fields = listed.map { it.field }
     val values = if (literalList) {
@@ -343,6 +351,10 @@ private fun TrackedFactBase.expandedFields(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): List<TrackedDeclaration>? = listedFields(operands, declaringGroup, element)?.map { it.field }
+
+/** Whether a value list is written out, every entry a string literal, rather than read from fields. */
+internal fun List<String>.isWrittenOutValueList(): Boolean =
+    all { tokenize(it).singleOrNull()?.kind == TokenKind.STRING }
 
 /** Whether any field is named twice across the two lists, which A12 answers as a duplicate parameter. */
 private fun repeated(fields: List<TrackedDeclaration>): Boolean =

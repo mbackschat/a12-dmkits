@@ -125,7 +125,8 @@ class ValueListConditionGatesTest {
             quantifier("AtLeastOneDateRangeOverlaps(GiftNote, Quantity In Reference)")
 
         val expected = mutableMapOf<String, List<String>>()
-        expected["the same declaration listed twice in the field list"] = emptyList()
+        // A12's duplicate class, which the entity-list pre-gates name; this family's kind gates stay silent.
+        expected["the same declaration listed twice in the field list"] = listOf("MVK_DUPLICATE_PARAM1")
         expected["a declaration repeated across the field and value lists"] = emptyList()
         expected["the date-range quantifier over the same mixed list"] =
             listOf("MVK_VARYING_TYPES_NOT_ALLOWED")
