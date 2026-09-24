@@ -27,7 +27,15 @@ kotlin {
     // unconsumable artifact. The settings mirror `:interpreter`, the module that already ships to Node.
     js {
         outputModuleName = 'a12-consistency'
-        nodejs()
+        nodejs {
+            testTask {
+                useMocha {
+                    // `ConditionCorpusTest` runs 1.0s alone on Node and exceeded Mocha's 2s default beside a
+                    // concurrent build (measured 2026-09-24), turning a semantic guard into a host-speed probe.
+                    timeout = '10s'
+                }
+            }
+        }
         // The BROWSER is a target H5/F require and this module did not declare until 2026-09-17, which is
         // why F's "run the corpus through Java, packed Node and browser" could not have run its third arm:
         // a target the module does not compile for cannot be replayed against
