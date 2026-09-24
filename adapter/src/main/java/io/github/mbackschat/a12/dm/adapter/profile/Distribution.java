@@ -62,6 +62,25 @@ record Distribution(int n, int min, int max, double mean, int median, int p90, M
         }
     }
 
+    /**
+     * The fraction of {@code d}'s mass OUTSIDE its {@code "1"} bucket — how often an axis exceeds its default
+     * value, which is the question each synthesizer asks of its own axis (nested aggregates, multi-way hubs,
+     * work and scope capacity). Returns {@code fallback} when the axis is absent (an older profile) or empty,
+     * because that default differs per axis.
+     */
+    static double nonTrivialFraction(Distribution d, double fallback) {
+        if (d == null || d.n() == 0 || d.buckets().isEmpty()) {
+            return fallback;
+        }
+        int nonTrivial = 0;
+        for (var e : d.buckets().entrySet()) {
+            if (!"1".equals(e.getKey())) {
+                nonTrivial += e.getValue();
+            }
+        }
+        return (double) nonTrivial / d.n();
+    }
+
     /** The empty distribution — no samples. */
     public static Distribution empty() {
         return EMPTY;

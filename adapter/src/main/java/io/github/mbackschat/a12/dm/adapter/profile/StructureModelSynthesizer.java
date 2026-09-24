@@ -42,7 +42,7 @@ final class StructureModelSynthesizer {
         //    (a breadth-shaped or compact profile) is left untouched.
         SynthesisProfile.Iteration compIteration = profile.computations().iteration();
         int reachDemand = compIteration == null || compIteration.listScanCapacity() == null ? 0
-                : (int) Math.ceil(nonTrivialFraction(compIteration.listScanCapacity(), 0.0)
+                : (int) Math.ceil(Distribution.nonTrivialFraction(compIteration.listScanCapacity(), 0.0)
                         * profile.computations().count());
         // Supply-side scope planning: the measured
         // comp.iteration.scopeCapacity distribution sizes a SECOND, independent NUMBER-kind steering pass
@@ -470,16 +470,8 @@ final class StructureModelSynthesizer {
      * profile).
      */
     private static double multiWayHubFraction(Distribution siblingBranchFan) {
-        if (siblingBranchFan == null || siblingBranchFan.n() == 0 || siblingBranchFan.buckets().isEmpty()) {
-            return 0.3;
-        }
-        int multiWay = 0;
-        for (var e : siblingBranchFan.buckets().entrySet()) {
-            if (!"1".equals(e.getKey())) {                          // bucket "1" is exactly fan == 1 (single-branch)
-                multiWay += e.getValue();
-            }
-        }
-        return (double) multiWay / siblingBranchFan.n();
+        // bucket "1" is exactly fan == 1 (single-branch)
+        return Distribution.nonTrivialFraction(siblingBranchFan, 0.3);
     }
 
     /**
@@ -651,24 +643,6 @@ final class StructureModelSynthesizer {
         return out;
     }
 
-    /** The fraction of {@code d}'s mass OUTSIDE its {@code "1"} (trivial) bucket — the general form of the
-     *  "how often does this axis exceed its default value" signal
-     *  {@link ComputationModelSynthesizer#nestedAggregateFraction} and {@link #multiWayHubFraction} each compute
-     *  for their own axis; used by {@link ComputationModelSynthesizer#matchByCaptureTarget}'s reach budget to
-     *  size against {@code workCapacity}'s own measured non-trivial (>1) share. Falls back to {@code fallback}
-     *  when the axis is absent (an older profile) or degenerate. */
-    private static double nonTrivialFraction(Distribution d, double fallback) {
-        if (d == null || d.n() == 0 || d.buckets().isEmpty()) {
-            return fallback;
-        }
-        int nonTrivial = 0;
-        for (var e : d.buckets().entrySet()) {
-            if (!"1".equals(e.getKey())) {
-                nonTrivial += e.getValue();
-            }
-        }
-        return (double) nonTrivial / d.n();
-    }
     /**
      * The next rep size for a chain position whose cumulative product so far is {@code parentProduct}:
      * divide the next (largest-remaining) chain-product TARGET by {@code parentProduct} and take the value
@@ -1155,7 +1129,7 @@ final class StructureModelSynthesizer {
         // nonTrivialFraction (the same technique the reach-deficit steering's reachDemand uses) — how many
         // computations need a genuinely non-trivial scope, not "one per computation."
         int distinctEstimate = Math.max(1, Math.min(n / 2,
-                (int) Math.ceil(nonTrivialFraction(targetScopeCapacity, 0.0) * compCount)));
+                (int) Math.ceil(Distribution.nonTrivialFraction(targetScopeCapacity, 0.0) * compCount)));
         List<Integer> targets = sampleMultiset(targetScopeCapacity, distinctEstimate, rnd);
         List<Integer> pool = new ArrayList<>();
         for (int gi = 0; gi < n; gi++) {

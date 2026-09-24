@@ -1078,7 +1078,7 @@ final class ComputationModelSynthesizer {
                         .operand() != null)
                 .count();
         int reachBudget = Math.min(reachCapableCount, Math.min(distinctEstimate,
-                (int) Math.round(distinctEstimate * nonTrivialFraction(targetCapture, 0.0))));
+                (int) Math.round(distinctEstimate * Distribution.nonTrivialFraction(targetCapture, 0.0))));
         Distribution reachMagnitudes = reachBudget > 0 ? excludingTrivialBucket(targetCapture) : null;
 
         if (reachMagnitudes != null) {
@@ -1188,30 +1188,8 @@ final class ComputationModelSynthesizer {
      * the axis is absent (an older profile).
      */
     private static double nestedAggregateFraction(Distribution aggregateStars) {
-        if (aggregateStars == null || aggregateStars.n() == 0 || aggregateStars.buckets().isEmpty()) {
-            return 0.0;
-        }
-        int nested = 0;
-        for (var e : aggregateStars.buckets().entrySet()) {
-            if (!"1".equals(e.getKey())) {                          // bucket "1" is exactly a single-star flatten
-                nested += e.getValue();
-            }
-        }
-        return (double) nested / aggregateStars.n();
-    }
-
-
-    private static double nonTrivialFraction(Distribution d, double fallback) {
-        if (d == null || d.n() == 0 || d.buckets().isEmpty()) {
-            return fallback;
-        }
-        int nonTrivial = 0;
-        for (var e : d.buckets().entrySet()) {
-            if (!"1".equals(e.getKey())) {
-                nonTrivial += e.getValue();
-            }
-        }
-        return (double) nonTrivial / d.n();
+        // bucket "1" is exactly a single-star flatten
+        return Distribution.nonTrivialFraction(aggregateStars, 0.0);
     }
 
 
