@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.bridge
 
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal
 import io.github.mbackschat.a12.dm.core.ValueKind
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand
@@ -116,9 +117,12 @@ internal class Functions(private val mapping: Mapping) {
     private fun countOfFilledFields(args: List<Expr>): Calculation {
         // A MARKED group cannot ride the bare-GroupRef arm — `CountAggregate.groups` is a `List<GroupRef>`
         // and a group reference carries no marker; the aggregate-operand arm below maps it to a
-        // `GroupListRef`, which does. Same rendered text either way (DG49).
-        if (args.isNotEmpty() && args.all { it is Expr.Field && mapping.isGroup(it.path) && !it.outer }) {
-            val groups = args.map { mapping.groupRef(it) }
+        // `GroupListRef`, which does (DG49). Nor can a REPEATABLE one, which that arm renders starred while
+        // the author wrote it bare; the aggregate-operand arm keeps it as written.
+        if (args.isNotEmpty() && args.all {
+                it is Expr.Field && mapping.isGroup(it.path) && !it.outer && !mapping.groupRef(it).repeating()
+            }) {
+            val groups = inReadOrder(args) { mapping.groupRef(it) }
             return mapping.model().numberOfFilledFields(groups[0], *groups.drop(1).toTypedArray()).expression()
         }
         val operands = aggregateOperands(args)
@@ -133,7 +137,8 @@ internal class Functions(private val mapping: Mapping) {
     }
 
     private fun countOfFilledGroups(args: List<Expr>): Calculation {
-        val groups = args.map { mapping.groupRef(it) }
+        val soleOperand = args.size == 1
+        val groups = inReadOrder(args) { countedGroup(it, soleOperand) }
         if (groups.size == 1) {
             // A root group is banned in the ordinary count and legal as the sole starred operand, and rulekit
             // splits that across two nodes: CountAggregate refuses any root group, RootGroupCount exists for
@@ -146,6 +151,26 @@ internal class Functions(private val mapping: Mapping) {
             }
         }
         return mapping.model().numberOfFilledGroups(groups[0], groups[1], *groups.drop(2).toTypedArray()).expression()
+    }
+
+    /**
+     * One operand of `NumberOfFilledGroups`, which the count holds as a [GroupRef] and so renders starred exactly
+     * when the group repeats, and always as a sole root. A group the author wrote otherwise has no typed form:
+     * `NumberOfFilledGroups(Keyed)`, refused by A12 at a rule that does not iterate `Keyed`, would read as the
+     * admitted `Keyed*` (`rulekit.validate.laws.EntityListOperandReadLawsTest`). A star written on a group that
+     * does not repeat is refused while resolving it, with A12's class for it.
+     */
+    private fun countedGroup(node: Expr, soleOperand: Boolean): GroupRef {
+        val group = mapping.groupRef(node)
+        val written = (mapping.aggregateOperand(node) as GroupListRef).flattened().map { it.path() }
+        val rendersStarred = group.repeating() || soleOperand && isRootGroup(group)
+        if (written != (if (rendersStarred) listOf(group.path()) else listOf())) {
+            throw NoTypedOperationException(
+                "NumberOfFilledGroups over " + group.path() + " as written: the typed count stars a group exactly" +
+                    " when it repeats, and a sole root always"
+            )
+        }
+        return group
     }
 
     /**
@@ -311,7 +336,7 @@ internal class Functions(private val mapping: Mapping) {
         if (args.isEmpty()) {
             throw UnmappedConstructException("FirstFilledValue with no operands")
         }
-        val operands = args.map { firstFilledOperand(it) }
+        val operands = inReadOrder(args) { firstFilledOperand(it) }
         return FirstFilledValue(operands[0], operands.subList(1, operands.size))
     }
 
@@ -720,7 +745,41 @@ internal class Functions(private val mapping: Mapping) {
     }
 
     private fun aggregateOperands(args: List<Expr>): List<AggregateOperand> =
-        args.map { mapping.aggregateOperand(it) }
+        inReadOrder(args) { mapping.aggregateOperand(it) }
+
+    /**
+     * Builds an entity list's operands in list order, as A12 reads them. The first operand that fails
+     * answers, so a refusal met while building a later one keeps its class only when every operand before it
+     * is a field A12 cannot fail to read ([readsCleanly]); otherwise the refusal stands and the class is
+     * withheld, since an earlier read may answer first (KERNEL-FINDINGS KF458).
+     */
+    private fun <T> inReadOrder(args: List<Expr>, build: (Expr) -> T): List<T> =
+        args.mapIndexed { at, arg ->
+            try {
+                build(arg)
+            } catch (refusal: KernelCodeRefusal) {
+                throw if (args.subList(0, at).all { readsCleanly(it) }) refusal else refusal.withheld()
+            }
+        }
+
+    /**
+     * Whether A12's read of this operand cannot fail: a plain, uncorrelated field that no repeatable group
+     * encloses. An index, the `$` marker, a group (its emptiness, its star), a starred list and a repeatable
+     * level left unstarred can each answer (`rulekit.validate.laws.EntityListReadStageLawsTest`).
+     */
+    private fun readsCleanly(node: Expr): Boolean {
+        if (node !is Expr.Field || node.outer || mapping.isGroup(node.path)) {
+            return false
+        }
+        val level = StringBuilder()
+        for (segment in node.path.substring(1).split("/").dropLast(1)) {
+            level.append('/').append(segment)
+            if (mapping.model().group(level.toString()).repeating()) {
+                return false
+            }
+        }
+        return true
+    }
 
     /**
      * The class that picks the factory — the first operand that has one, read as its DECLARED temporal class

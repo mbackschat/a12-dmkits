@@ -11,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.function.Executable
 
+import io.github.mbackschat.a12.dm.core.KernelCode
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal
 import io.github.mbackschat.a12.dm.core.ModelIndex
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.ValueKind
@@ -839,17 +841,14 @@ class FunctionsTest {
     /**
      * rulekit splits the root-group rule across two nodes — `CountAggregate` bans any root group,
      * `RootGroupCount` exists for the sole starred one — so choosing the node is the bridge's job.
-     * Routing every single-group call to the first made the legal shape draw MVK_ROOT_GROUP_REFERENCED.
+     * Routing every single-group call to the first made the shape draw MVK_ROOT_GROUP_REFERENCED. `/Order`
+     * does not repeat, so its star is the class A12 reports (KERNEL-FINDINGS KF458), and asserting it, rather
+     * than only the absence of the ban, is what keeps this from passing on any refusal at all.
      */
     @Test
     fun theSoleStarredRootGroupDoesNotDrawTheRootGroupBan() {
-        try {
-            translate("NumberOfFilledGroups(/Order*) < 3")
-        } catch (e: RuntimeException) {
-            assertFalse(e.message.toString().contains("MVK_ROOT_GROUP_REFERENCED")) {
-                "the sole starred root group took the banning node: ${e.message}"
-            }
-        }
+        val refusal = assertThrows(KernelCodeRefusal::class.java) { translate("NumberOfFilledGroups(/Order*) < 3") }
+        assertEquals(KernelCode.MVK_INVALID_WILDCARD, refusal.code()) { "${refusal.message}" }
     }
 
     // --- AnzahlAngegebenerVordrucke (the legacy root-group-count keyword) --------------------------
