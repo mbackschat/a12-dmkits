@@ -82,6 +82,11 @@ class GroupCountScopeOperandLawsTest {
                 new Row("Keyed*", ADMITTED, count(List.of(keyed), List.of()), ADMITTED),
                 new Row("Batches*/Seal", ADMITTED,
                         count(List.of(seal), List.of()), ADMITTED),
+                // the duplicate gate skips a starred operand, so the same scope twice is two positions
+                new Row("Batches*/Seal, Batches*/Seal", ADMITTED,
+                        count(List.of(seal, seal), List.of()), ADMITTED),
+                new Row("Grading, Grading", "MVK_DUPLICATE_PARAM1",
+                        count(List.of(grading, grading), List.of()), REFUSED),
                 // a scope in the operand list beside a group in the group list: one list to A12
                 new Row("Grading, Specs split across both lists", "Grading, Specs", ADMITTED,
                         count(List.of(grading), List.of(M.group("/Item/Specs"))), ADMITTED),

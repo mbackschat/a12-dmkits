@@ -3411,7 +3411,7 @@
       "operator": "NumberOfFilledGroups",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:08a773bcd2d9d8cae632c94aceca64e89fc68bdab74c4b9ca260d173f7b380ad",
+      "digest": "sha256:f14a987fff9827164900498020624eaae1ebef1f296f87be54f8abc83ccb784a",
       "classifications": [
         "REJECTION",
         "ADMISSION",
@@ -3436,6 +3436,16 @@
           "classification": "ADMISSION",
           "type": "KERNEL_LAW",
           "id": "GroupCountScopeOperandLawsTest#theKernelTakesAnyGroupEntityAsAnOperand"
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "GroupCountScopeOperandLawsTest#theComputationArmTakesTheBelowStarFormsAndRefusesAnUnstarredLevel"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "AncestorStarredGroupCountComputationDiffTest"
         }
       ]
     },
