@@ -29,6 +29,7 @@ class GroupListRootOperandLawsTest {
 
     private static final String REFERENCED = "MVK_ROOT_GROUP_REFERENCED";
     private static final String WITH_OTHERS = "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS";
+    private static final String NO_WILDCARD = "MVK_NO_WILDCARD";
 
     private static final String STOREFRONT = DocumentModelDraft.named("storefront").locale("en_US")
             .rootGroup("Storefront", s -> s
@@ -169,6 +170,59 @@ class GroupListRootOperandLawsTest {
         expected.put("atLeastOne | sole root, error field INSIDE", "admitted");
         expected.put("all | root + an unstarred REPEATABLE co-operand, error field INSIDE it", REFERENCED);
         assertEquals(expected, actual, "the error field's locus and the root classes");
+    }
+
+    /**
+     * A REPEATABLE root read WITHOUT its star is walked like any other repeatable group, and judged as a root
+     * only once the walk passes (measured 2026-09-24).
+     *
+     * <p>From a rule in another root every carrier draws the walk's {@code MVK_NO_WILDCARD}
+     * ({@link GroupOperandRepetitionScopeLawsTest}), the root classes and the count's arity gate included. The
+     * two controls say the root classes are only BEHIND it: from a rule inside the root the walk passes and
+     * each carrier answers as it does for a fixed root, and the starred root from outside keeps the root class
+     * wherever the carrier refuses a root, which makes that class a second defect of the unstarred row rather
+     * than an alternative to it.
+     */
+    @Test
+    void anUnstarredRepeatableRootIsWalkedBeforeItIsJudgedAsARoot() {
+        Map<String, String> rows = new LinkedHashMap<>();
+        rows.put("AllGroupsFilled(/Batches)", NO_WILDCARD);
+        rows.put("AtLeastOneGroupFilled(/Batches)", NO_WILDCARD);
+        rows.put("NoGroupFilled(/Batches)", NO_WILDCARD);
+        rows.put("AtLeastOneGroupFilled(/Batches, Billing)", NO_WILDCARD);
+        rows.put("NumberOfFilledGroups(/Batches) > 0", NO_WILDCARD);
+        rows.put("NumberOfFilledGroups(/Batches, Billing) > 0", NO_WILDCARD);
+        rows.put("GroupFilled(/Batches)", NO_WILDCARD);
+        rows.put("GroupNotFilled(/Batches)", NO_WILDCARD);
+        rows.put("FieldFilled(/Batches)", NO_WILDCARD);
+        rows.put("AtLeastOneFieldFilled(/Batches)", NO_WILDCARD);
+        rows.put("NumberOfFilledFields(/Batches) > 0", NO_WILDCARD);
+        rows.put("Sum(/Batches) > 0", NO_WILDCARD);
+        rows.put("CurrentRepetition(/Batches) > 1", NO_WILDCARD);
+        rows.put("FieldFilled(/Batches/BatchCode)", NO_WILDCARD);
+        Map<String, String> actual = new LinkedHashMap<>();
+        rows.keySet().forEach(row -> actual.put(row, guarded(row)));
+        assertEquals(rows, actual, "an unstarred repeatable root");
+        Map<String, String> bound = new LinkedHashMap<>();
+        bound.put("AllGroupsFilled(/Batches)", REFERENCED);
+        bound.put("AtLeastOneGroupFilled(/Batches)", "admitted");
+        bound.put("AtLeastOneGroupFilled(/Batches, /Warehouse)", WITH_OTHERS);
+        bound.put("GroupFilled(/Batches)", "admitted");
+        bound.put("FieldFilled(/Batches)", REFERENCED);
+        bound.put("NumberOfFilledGroups(/Batches) > 0", "MVK_PARAMSIZE_INVALIDGN");
+        Map<String, String> boundActual = new LinkedHashMap<>();
+        bound.keySet().forEach(row -> boundActual.put(row,
+                verdict("/Batches", "../BatchCode", "FieldFilled(BatchCode) And " + row)));
+        assertEquals(bound, boundActual, "the same root read from a rule inside it");
+        Map<String, String> starred = new LinkedHashMap<>();
+        starred.put("AllGroupsFilled(/Batches*)", REFERENCED);
+        starred.put("AtLeastOneGroupFilled(/Batches*)", "admitted");
+        starred.put("AtLeastOneGroupFilled(/Batches*, Billing)", WITH_OTHERS);
+        starred.put("GroupFilled(/Batches*)", "MVK_NO_WILDCARDS_ALLOWED");
+        starred.put("FieldFilled(/Batches*)", REFERENCED);
+        Map<String, String> starredActual = new LinkedHashMap<>();
+        starred.keySet().forEach(row -> starredActual.put(row, guarded(row)));
+        assertEquals(starred, starredActual, "the root starred");
     }
 
     /** The model-level anchoring: the error field sits outside every repeatable group. */

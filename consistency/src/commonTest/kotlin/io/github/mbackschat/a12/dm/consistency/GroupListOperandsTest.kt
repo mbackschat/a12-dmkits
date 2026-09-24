@@ -276,34 +276,41 @@ class GroupListOperandsTest {
      *
      * The fixture's second root `/Broker` is disjoint from `/Policy`, which is what lets a root operand be
      * seen at all: beside the rule's own root every co-operand is also its descendant, and the overlap gate
-     * answers first.
+     * answers first. `/Broker` is FIXED and the third root `/Agencies` repeats, the shape of
+     * `rulekit.validate.laws.GroupListRootOperandLawsTest`: this fixture once made `/Broker` repeatable for its
+     * one starred row, which turned every unstarred row into one no lock had measured.
      */
-    private fun rootCodes(condition: String): List<String> = check(
-        ModelSource(
-            """
-            {"header":{"id":"policy","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
-              {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
-                {"type":"Field","id":"f0","name":"PolicyNumber","Field":{"fieldType":{"type":"StringType"}}},
-                {"type":"Group","id":"g1","name":"Garage","Group":{"elements":[
-                  {"type":"Field","id":"f1","name":"GarageName","Field":{"fieldType":{"type":"StringType"}}}
-                ]}},
-                {"type":"Group","id":"g3","name":"Workshop","Group":{"elements":[
-                  {"type":"Field","id":"f3","name":"Bench","Field":{"fieldType":{"type":"StringType"}}}
-                ]}},
+    private fun rootCodes(condition: String, inAgencies: Boolean = false): List<String> {
+        val probe = """
                 {"type":"Rule","id":"r0","name":"Probe","Rule":{
-                  "errorCondition":"FieldFilled(PolicyNumber) And ${'$'}CONDITION",
-                  "errorEntityRelPath":"../PolicyNumber",
-                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
-              ]}},
-              {"type":"Group","id":"g2","name":"Broker","Group":{"repeatability":4,
-                "elements":[
-                {"type":"Field","id":"f2","name":"BrokerName","Field":{"fieldType":{"type":"StringType"}}}
-              ]}}
-             ]}}}
-            """.trimIndent().replace("\$CONDITION", condition),
-        ),
-    ).findings.map { it.code }
+                  "errorCondition":"FieldFilled(${if (inAgencies) "AgencyCode" else "PolicyNumber"}) And ${'$'}CONDITION",
+                  "errorEntityRelPath":"../${if (inAgencies) "AgencyCode" else "PolicyNumber"}",
+                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
+        return check(
+            ModelSource(
+                """
+                {"header":{"id":"policy","locales":[{"code":"en_US"}]},
+                 "content":{"modelRoot":{"rootGroups":[
+                  {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
+                    {"type":"Field","id":"f0","name":"PolicyNumber","Field":{"fieldType":{"type":"StringType"}}},
+                    {"type":"Group","id":"g1","name":"Garage","Group":{"elements":[
+                      {"type":"Field","id":"f1","name":"GarageName","Field":{"fieldType":{"type":"StringType"}}}
+                    ]}},
+                    {"type":"Group","id":"g3","name":"Workshop","Group":{"elements":[
+                      {"type":"Field","id":"f3","name":"Bench","Field":{"fieldType":{"type":"StringType"}}}
+                    ]}}${if (inAgencies) "" else ",$probe"}
+                  ]}},
+                  {"type":"Group","id":"g2","name":"Broker","Group":{"elements":[
+                    {"type":"Field","id":"f2","name":"BrokerName","Field":{"fieldType":{"type":"StringType"}}}
+                  ]}},
+                  {"type":"Group","id":"g4","name":"Agencies","Group":{"repeatability":4,"elements":[
+                    {"type":"Field","id":"f4","name":"AgencyCode","Field":{"fieldType":{"type":"StringType"}}}${if (inAgencies) ",$probe" else ""}
+                  ]}}
+                 ]}}}
+                """.trimIndent().replace("\$CONDITION", condition),
+            ),
+        ).findings.map { it.code }
+    }
 
     @Test
     fun whichCarriersRefuseARootOperandAndWhichAdmitASoleOne() {
@@ -318,7 +325,7 @@ class GroupListOperandsTest {
         actual["atLeastOne | root + disjoint"] = rootCodes("AtLeastOneGroupFilled(/Broker, Garage)")
         actual["count | root + disjoint"] = rootCodes("NumberOfFilledGroups(/Broker, Garage) > 0")
         actual["all | root named SECOND"] = rootCodes("AllGroupsFilled(Garage, /Broker)")
-        actual["all | a STARRED root beside another operand"] = rootCodes("AllGroupsFilled(/Broker*, Garage)")
+        actual["all | a STARRED root beside another operand"] = rootCodes("AllGroupsFilled(/Agencies*, Garage)")
         actual["all | two groups BELOW the root — the control"] =
             rootCodes("AllGroupsFilled(Garage, /Policy/Workshop)")
 
@@ -338,6 +345,49 @@ class GroupListOperandsTest {
         expected["all | a STARRED root beside another operand"] = listOf(referenced)
         expected["all | two groups BELOW the root — the control"] = emptyList()
         assertEquals(expected, actual, "which carriers refuse a root operand")
+    }
+
+    /**
+     * A REPEATABLE root read without its star is walked first, like any repeatable group, and judged as a root
+     * only behind the walk: from a rule inside it the walk passes and the root classes answer as for a fixed
+     * root. Row for row with `rulekit.validate.laws.GroupListRootOperandLawsTest`, except that the checker also
+     * names the root class behind the walk where the starred row shows it to be a second defect.
+     */
+    @Test
+    fun anUnstarredRepeatableRootIsWalkedBeforeItIsJudgedAsARoot() {
+        val noWildcard = "MVK_NO_WILDCARD"
+        val referenced = "MVK_ROOT_GROUP_REFERENCED"
+        val withOthers = "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS"
+        // A12 answers the walk alone. The root class the checker adds is the one the starred twin still draws.
+        val outside = linkedMapOf(
+            "AllGroupsFilled(/Agencies)" to listOf(referenced, noWildcard),
+            "AtLeastOneGroupFilled(/Agencies)" to listOf(noWildcard),
+            "NoGroupFilled(/Agencies)" to listOf(noWildcard),
+            "AtLeastOneGroupFilled(/Agencies, Garage)" to listOf(withOthers, noWildcard),
+            "NumberOfFilledGroups(/Agencies, Garage) > 0" to listOf(withOthers, noWildcard),
+            "GroupFilled(/Agencies)" to listOf(noWildcard),
+            "FieldFilled(/Agencies)" to listOf(noWildcard),
+            "AtLeastOneFieldFilled(/Agencies)" to listOf(noWildcard),
+            "Sum(/Agencies) > 0" to listOf(noWildcard),
+            "FieldFilled(/Agencies/AgencyCode)" to listOf(noWildcard),
+        )
+        assertEquals(outside, outside.keys.associateWith { rootCodes(it) }, "from a rule in another root")
+        val inside = linkedMapOf(
+            "AllGroupsFilled(/Agencies)" to listOf(referenced),
+            "AtLeastOneGroupFilled(/Agencies)" to emptyList(),
+            "AtLeastOneGroupFilled(/Agencies, /Broker)" to listOf(withOthers),
+            "GroupFilled(/Agencies)" to emptyList(),
+            "FieldFilled(/Agencies)" to listOf(referenced),
+        )
+        assertEquals(inside, inside.keys.associateWith { rootCodes(it, inAgencies = true) }, "from a rule inside it")
+        val starred = linkedMapOf(
+            "AllGroupsFilled(/Agencies*)" to listOf(referenced),
+            "AtLeastOneGroupFilled(/Agencies*)" to emptyList(),
+            "AtLeastOneGroupFilled(/Agencies*, Garage)" to listOf(withOthers),
+            "NumberOfFilledGroups(/Agencies*, Garage) > 0" to listOf(withOthers),
+            "FieldFilled(/Agencies*)" to listOf(referenced),
+        )
+        assertEquals(starred, starred.keys.associateWith { rootCodes(it) }, "the root starred")
     }
 
     /** An overlap pre-empts the root class in A12, so the finding for that list names the overlap. */

@@ -148,10 +148,11 @@ internal fun TrackedFactBase.groupOfTargetField(target: String): String? =
  * outside it is `MVK_NO_WILDCARD` on all twenty-two carriers measured, the group quantifiers and the
  * aggregates among them, so no carrier's own gate answers first (`rulekit.validate.laws
  * .GroupOperandRepetitionScopeLawsTest`), and a `@From` scope is walked the same way
- * (`rulekit.validate.laws.RepetitionNotUniqueFromScopeLawsTest`). Two groups are exceptions: one handed to a
- * `Having` filter is refused as a group ahead of the walk ([filtered]), and a ROOT group is admitted even
- * where it repeats (`GroupListOperandsTest`'s sole-root rows). Only the `MVK_NO_WILDCARD` arm is measured on a
- * group, so a group's keyed parallel level is left unjudged rather than given a field's index class.
+ * (`rulekit.validate.laws.RepetitionNotUniqueFromScopeLawsTest`). A repeatable ROOT group is no exception:
+ * its root classes answer only once the walk passes (`rulekit.validate.laws.GroupListRootOperandLawsTest`).
+ * The one exception is a group handed to a `Having` filter, which is refused as a group ahead of the walk
+ * ([filtered]). Only the `MVK_NO_WILDCARD` arm is measured on a group, so a group's keyed parallel level is
+ * left unjudged rather than given a field's index class.
  *
  * @param filtered whether [written] is the base of a `Having` filter.
  * @return null wherever the reference is admitted, or is a shape another family owns.
@@ -167,8 +168,7 @@ internal fun TrackedFactBase.levelClassOf(
         as? Reference.Resolved ?: return null
     val declared = declarationAt(resolved.path) ?: return null
     val isGroup = declared.declaredKind == DeclaredKind.GROUP
-    val unwalkedGroup = isGroup && (filtered || resolved.path.isRootGroup())
-    if (!isGroup && declared.declaredKind != DeclaredKind.FIELD || unwalkedGroup) {
+    if (!isGroup && declared.declaredKind != DeclaredKind.FIELD || isGroup && filtered) {
         return null
     }
     val starred = starredLevelsOf(written, declaringGroup, element) ?: return null
