@@ -1406,6 +1406,15 @@ final class ConditionConverter {
         if (name == EntityListOperationName.FirstFilledValue) {
             return new NumberExpr(convertFirstFilledValue(aggregate));
         }
+        // A group below a starred level keeps that star only as a scope: a GroupRef is starred exactly when the
+        // group itself repeats (KERNEL-FINDINGS KF462), so reading one here renders a different, refused rule.
+        if (name == EntityListOperationName.NumberOfFilledGroups
+                && entities.stream().noneMatch(IEntityId::isField)
+                && entities.stream().anyMatch(this::starredAboveItself)) {
+            GroupListRef[] scopes = entities.stream()
+                    .map(e -> groupScopeOf(e, reconstructStarPath(e))).toArray(GroupListRef[]::new);
+            return Dsl.numberOfFilledGroups(scopes[0], Arrays.copyOfRange(scopes, 1, scopes.length));
+        }
         // NumberOfFilledGroups(Group*): a single repeatable group, all reps — a group scope, not a field.
         if (name == EntityListOperationName.NumberOfFilledGroups
                 && entities.size() == 1 && !entities.get(0).isField()) {
@@ -1581,6 +1590,12 @@ final class ConditionConverter {
      * UNREADABLE rather than merely unauthorable (DEV-API-GAPS {@code DG49};
      * {@code adapter.laws.CorrelatedGroupListReadTest}).
      */
+    /** Whether the group's stored path stars a level above the group itself, which a {@link GroupRef} cannot carry. */
+    private boolean starredAboveItself(IEntityId group) {
+        GroupListRef scope = model.flattenGroup(reconstructStarPath(group));
+        return scope.flattened().stream().anyMatch(level -> !level.path().equals(scope.group().path()));
+    }
+
     private GroupListRef groupScopeOf(IEntityId entity, String starPath) {
         GroupListRef scope = model.flattenGroup(starPath);
         return entity.isOuter() ? scope.outer() : scope;

@@ -504,6 +504,17 @@ Condition authored = model.field("/Claim/PolicyNumber").filled()
 
 `NumberOfFilledGroups` has two different contracts. The plain form takes two or more groups and counts their definitely-filled states, but the result is unavailable when any operand group is formally erroneous; it never silently returns the count of only the admitted subset. The single-star form (`NumberOfFilledGroups(Items*)`) is a structural row count: every instantiated repetition counts, including an empty row or a row whose field value is formally invalid.
 
+**A group below a starred level is counted through its scope.** A12 admits a fixed group under a starred repeatable level as an operand, alone or beside others ([KF462](KERNEL-FINDINGS.md#kf462)). The `GroupRef` factories cannot spell it, because they star a group exactly when the group itself repeats, so pass the group scopes `flattenGroup` returns. The adapter reads such a stored count back in this form. Round-trip lock: `AncestorStarredGroupCountReadTest`.
+
+<!-- snippet: group-count-scope -->
+```java
+// Seal is fixed inside the repeatable Batches. Its scope keeps the star on Batches, which a
+// GroupRef cannot spell: the GroupRef factories star a group only when the group itself repeats.
+GroupListRef seals = warehouse.flattenGroup("/Item/Batches*/Seal");
+NumberExpr sealedBatches = Dsl.numberOfFilledGroups(seals);
+NumberExpr sealsAndGrading = Dsl.numberOfFilledGroups(seals, warehouse.flattenGroup("/Item/Grading"));
+```
+
 ### 3.6 Study — a real, highly-repetitive rule, rebuilt (before → after)
 
 **Where this comes from.** A12 models *forms*, and a real pattern in them is that the same logical block is captured in more than one place. Here (an **insurance** application submitted through a broker portal): the policyholder block restated on the **policy schedule** (`Schedule/*`) — a section captured apart from where the underlying name and address were entered — must stay **consistent with** the application data. The engine can't auto-sync across form sections, so a **consistency rule** enforces that the schedule block **mirrors** whichever source the application's flags select — *null-safe*, so a not-yet-filled block (both empty) is allowed. The source is a **2×2**: policyholder type (organization vs person → which **name**) × whether a separate correspondence address was given (correspondence vs residence → which **locality**).

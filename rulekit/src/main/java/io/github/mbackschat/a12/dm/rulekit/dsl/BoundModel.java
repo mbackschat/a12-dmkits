@@ -920,6 +920,18 @@ public final class BoundModel {
     }
 
     /**
+     * {@code NumberOfFilledGroups(s1, s2, …)} over group scopes, checked against this model as {@link #sum} is:
+     * the form for a group below a starred repeatable level ({@link Dsl#numberOfFilledGroups(GroupListRef,
+     * GroupListRef...)}). catalog:NumberOfFilledGroups
+     */
+    public NumberExpr numberOfFilledGroups(GroupListRef first, GroupListRef... rest) {
+        List<AggregateOperand> scopes = List.copyOf(listOf(first, rest));
+        Dsl.readOperandsThen("NumberOfFilledGroups", this, scopes,
+                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, scopes, List.of()));
+        return Dsl.numberOfFilledGroups(first, rest);
+    }
+
+    /**
      * {@code NumberOfFilledGroups(/Root*)}, checked against this model. The star on a root that does not repeat
      * answers first, as the record asks it; an empty repeatable root is {@code MVK_ROOT_GROUP_IS_EMPTY}, which only
      * the model shows (KERNEL-FINDINGS KF458).

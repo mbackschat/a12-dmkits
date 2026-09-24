@@ -101,6 +101,7 @@ class DocSnippetFreshnessTest {
             new Lock("path-style-override", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/PathStyleHintRenderTest.java"),
             new Lock("date-minmax", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("group-count-scope", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("temporal-cross-ordering", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("temporal-declared-format", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("untyped-temporal-gate", "docs/API-GUIDE.md",

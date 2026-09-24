@@ -73,6 +73,32 @@ class NewShapesSnippetsTest {
                     .group("Policy", policy -> policy.numberField("MinimumOnHand", n -> n.fractionDigits(0))))
             .build().toJson();
     private static final BoundModel depot = BoundModel.ofJson(DEPOT_JSON);
+    private static final String WAREHOUSE_JSON = DocumentModelDraft.named("warehouse").locale("en_US")
+            .rootGroup("Item", item -> item
+                    .field("Title", FieldKind.STRING)
+                    .group("Grading", g -> g.field("Grade", FieldKind.NUMBER))
+                    .group("Batches", b -> b.repeatable(4)
+                            .field("Lot", FieldKind.STRING)
+                            .group("Seal", s -> s.field("Code", FieldKind.STRING))))
+            .build().toJson();
+    private static final BoundModel warehouse = BoundModel.ofJson(WAREHOUSE_JSON);
+
+    @Test
+    void groupCountScopeSnippet() {
+        // tag::group-count-scope[]
+        // Seal is fixed inside the repeatable Batches. Its scope keeps the star on Batches, which a
+        // GroupRef cannot spell: the GroupRef factories star a group only when the group itself repeats.
+        GroupListRef seals = warehouse.flattenGroup("/Item/Batches*/Seal");
+        NumberExpr sealedBatches = Dsl.numberOfFilledGroups(seals);
+        NumberExpr sealsAndGrading = Dsl.numberOfFilledGroups(seals, warehouse.flattenGroup("/Item/Grading"));
+        // end::group-count-scope[]
+        assertEquals("NumberOfFilledGroups(/Item/Batches*/Seal)", new DslRenderer().render(sealedBatches.expression()));
+        assertEquals("NumberOfFilledGroups(/Item/Batches*/Seal, /Item/Grading)",
+                new DslRenderer().render(sealsAndGrading.expression()));
+        Condition titled = warehouse.field("/Item/Title").filled();
+        assertKernelAccepts(WAREHOUSE_JSON, "/Item", titled.and(sealedBatches.gt(0)), "../Title");
+        assertKernelAccepts(WAREHOUSE_JSON, "/Item", titled.and(sealsAndGrading.gt(0)), "../Title");
+    }
 
     @Test
     void dateMinMaxSnippet() {

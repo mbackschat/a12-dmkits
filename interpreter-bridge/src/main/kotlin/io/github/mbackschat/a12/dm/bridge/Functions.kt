@@ -138,7 +138,13 @@ internal class Functions(private val mapping: Mapping) {
 
     private fun countOfFilledGroups(args: List<Expr>): Calculation {
         val soleOperand = args.size == 1
-        val groups = inReadOrder(args) { countedGroup(it, soleOperand) }
+        val operands = inReadOrder(args) { CountedGroup(mapping.groupRef(it), mapping.aggregateOperand(it) as GroupListRef) }
+        if (operands.any { it.starredAboveItself() }) {
+            // A group below a starred level keeps that star only as a scope (KERNEL-FINDINGS KF462).
+            val scopes = operands.map { it.scope }
+            return mapping.model().numberOfFilledGroups(scopes[0], *scopes.drop(1).toTypedArray()).expression()
+        }
+        val groups = operands.map { it.asTyped(soleOperand) }
         if (groups.size == 1) {
             // A root group is banned in the ordinary count and legal as the sole starred operand, and rulekit
             // splits that across two nodes: CountAggregate refuses any root group, RootGroupCount exists for
@@ -153,24 +159,30 @@ internal class Functions(private val mapping: Mapping) {
         return mapping.model().numberOfFilledGroups(groups[0], groups[1], *groups.drop(2).toTypedArray()).expression()
     }
 
-    /**
-     * One operand of `NumberOfFilledGroups`, which the count holds as a [GroupRef] and so renders starred exactly
-     * when the group repeats, and always as a sole root. A group the author wrote otherwise has no typed form:
-     * `NumberOfFilledGroups(Keyed)`, refused by A12 at a rule that does not iterate `Keyed`, would read as the
-     * admitted `Keyed*` (`rulekit.validate.laws.EntityListOperandReadLawsTest`). A star written on a group that
-     * does not repeat is refused while resolving it, with A12's class for it.
-     */
-    private fun countedGroup(node: Expr, soleOperand: Boolean): GroupRef {
-        val group = mapping.groupRef(node)
-        val written = (mapping.aggregateOperand(node) as GroupListRef).flattened().map { it.path() }
-        val rendersStarred = group.repeating() || soleOperand && isRootGroup(group)
-        if (written != (if (rendersStarred) listOf(group.path()) else listOf())) {
-            throw NoTypedOperationException(
-                "NumberOfFilledGroups over " + group.path() + " as written: the typed count stars a group exactly" +
-                    " when it repeats, and a sole root always"
-            )
+    /** One operand of `NumberOfFilledGroups`: the group, and the scope its author wrote, stars included. */
+    private class CountedGroup(val group: GroupRef, val scope: GroupListRef) {
+
+        /** Whether the written path stars a level above the group, which only the scope form can carry. */
+        fun starredAboveItself(): Boolean = scope.flattened().any { it.path() != group.path() }
+
+        /**
+         * The operand as the [GroupRef] the count holds, which renders starred exactly when the group repeats,
+         * and always as a sole root. A group the author wrote otherwise has no typed form here:
+         * `NumberOfFilledGroups(Keyed)`, refused by A12 at a rule that does not iterate `Keyed`, would read as
+         * the admitted `Keyed*` (`rulekit.validate.laws.EntityListOperandReadLawsTest`). A star written on a
+         * group that does not repeat is refused while resolving it, with A12's class for it.
+         */
+        fun asTyped(soleOperand: Boolean): GroupRef {
+            val written = scope.flattened().map { it.path() }
+            val rendersStarred = group.repeating() || soleOperand && isRootGroup(group)
+            if (written != (if (rendersStarred) listOf(group.path()) else listOf())) {
+                throw NoTypedOperationException(
+                    "NumberOfFilledGroups over " + group.path() + " as written: the typed count stars a group" +
+                        " exactly when it repeats, and a sole root always"
+                )
+            }
+            return group
         }
-        return group
     }
 
     /**

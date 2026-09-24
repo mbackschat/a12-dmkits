@@ -1743,6 +1743,19 @@ public final class Dsl {
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, List.of(), groups));
     }
 
+    /**
+     * {@code NumberOfFilledGroups(s1, s2, …)} over group scopes, each keeping the stars its path carries. It is
+     * the form for a group below a starred repeatable level, {@code Batches*}{@code /Seal}, which a
+     * {@link GroupRef} cannot spell: the {@link GroupRef} factories star a group exactly when it repeats
+     * (KERNEL-FINDINGS KF462). A sole scope needs a star somewhere on its path. catalog:NumberOfFilledGroups
+     */
+    public static NumberExpr numberOfFilledGroups(GroupListRef first, GroupListRef... rest) {
+        var scopes = new ArrayList<AggregateOperand>();
+        scopes.add(first);
+        scopes.addAll(List.of(rest));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, scopes, List.of()));
+    }
+
     // --- field-list × value-list quantifiers — Name(f1, f2 In v1, v2) --------------------------
     // Typed entry points keep the field list type-homogeneous (MVK_VARYING_TYPES_NOT_ALLOWED
     // erased); the enum variants domain-check every value against every field (the kernel's

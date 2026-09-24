@@ -37,6 +37,10 @@ class EntityListStarFidelityTest {
                 .group("Specs") { it.field("Label", FieldKind.STRING) }
                 .group("Hollow") { }
                 .group("Lapses") { it.repeatable(3) }
+                .group("Batches") { batches ->
+                    batches.repeatable(4).field("Lot", FieldKind.STRING)
+                        .group("Seal") { it.field("Code", FieldKind.STRING) }
+                }
                 .group("Keyed") { keyed ->
                     keyed.repeatable(5).indexField("Key").field("Key", FieldKind.STRING)
                         .field("Amount", FieldKind.NUMBER)
@@ -85,6 +89,17 @@ class EntityListStarFidelityTest {
         assertEquals("NumberOfFilledGroups(/Lot*) > 0", rendered("NumberOfFilledGroups(/Lot*) > 0"))
         assertEquals("NumberOfFilledGroups(/Item/Grading, /Item/Keyed*) > 0",
             rendered("NumberOfFilledGroups(Grading, Keyed*) > 0"))
+    }
+
+    /**
+     * A fixed group below a starred level keeps that star as a scope, alone or beside another group: a typed
+     * count over [io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef]s could not spell it (KERNEL-FINDINGS KF462).
+     */
+    @Test
+    fun aGroupBelowAStarredLevelKeepsTheStar() {
+        assertEquals("NumberOfFilledGroups(/Item/Batches*/Seal) > 0", rendered("NumberOfFilledGroups(Batches*/Seal) > 0"))
+        assertEquals("NumberOfFilledGroups(/Item/Batches*/Seal, /Item/Grading) > 0",
+            rendered("NumberOfFilledGroups(Batches*/Seal, Grading) > 0"))
     }
 
     /**
