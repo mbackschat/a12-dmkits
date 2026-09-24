@@ -7003,7 +7003,7 @@ Reported by the portable checker as `CheckFamily.MESSAGE_TEXT_CHARACTERS`.
 
 *Locked by:* `rulekit.validate.laws.MessageTextControlCharacterLawsTest`.
 
-## §13 supplement — a broken CONDITION withholds the message parameter's verdict entirely (measured, 2026-09-13) <a id="kf338"></a>
+## §13 supplement — any class drawn by the DSL member withholds the whole message verdict, a class about the name or code does not (measured, 2026-09-13, extended 2026-09-24) <a id="kf338"></a>
 
 > Fold: not-foldable — the error-text checker's dependence on a sibling member, not an evaluation behaviour.
 
@@ -7028,7 +7028,22 @@ The second row against the third is the measurement: the verdict is identical wh
 
 **This is a cross-member dependency, which is the shape a family-per-member checker gets wrong by construction.** Each family reads its own member and reports what it finds, so one with a broken condition and a message beside it draws a parameter class A12 gave no sign of. The shape is not exotic: a half-typed condition is the ordinary state of a model being edited, and that is exactly when a checker is asked.
 
-Reported by the portable checker as a WITHHOLDING — `CheckFamily.MESSAGE_PARAMETER_REFERENCE` and `CheckFamily.MESSAGE_TEXT_CHARACTERS` both fall silent for such a declaration, through one shared gate. Its stand-in for "does not parse" is an unbalanced delimiter, a necessary condition rather than a grammar, so balanced-but-refused text keeps its parameters judged — an under-report, which is the safe direction.
+**Extended 2026-09-24 — "unsound" is any class the DSL member draws, not only a name that does not resolve or a text that does not parse, and a class about another member does not count.** Measured with the text held fixed per column, on both carriers:
+
+| the DSL member | a TAB in the text | a parameter it does not read |
+|---|---|---|
+| `Sum(Claims*/Amount) > 0` — the control | `INVALID_CHARACTERS` | `INVALID_FIELD` |
+| `Sum(Claims/Amount*) > 0` — a star on the field | `MVK_INVALID_WILDCARD` only | `MVK_INVALID_WILDCARD` only |
+| `FieldFilled(Claims/Amount)` from the root — an unstarred read | `MVK_NO_WILDCARD` only | `MVK_NO_WILDCARD` only |
+| `FieldFilled(Claims*/Amount)` — a star in a scalar slot | `MVK_NO_WILDCARDS_ALLOWED` only | `MVK_NO_WILDCARDS_ALLOWED` only |
+| a sound condition that never names the error field — POST-parse | `MVK_ERROR_FIELD_NOT_REFERENCED` only | — |
+| a computation's operation `Sum(Claims/Amount*)` · `[Claims/Amount] + 1` | `MVK_INVALID_WILDCARD` only · `MVK_NO_WILDCARD` only | `MVK_INVALID_WILDCARD` only |
+| a sound condition, the rule NAMED `vk_vkProbe` | `MVK_RULE_NAME_INVALID,INVALID_CHARACTERS` | `MVK_RULE_NAME_INVALID,INVALID_FIELD` |
+| a sound condition, a BLANK error code | `MVK_ERROR_CODE_MISSING,INVALID_CHARACTERS` | `MVK_ERROR_CODE_MISSING,INVALID_FIELD` |
+
+The last two rows are the discriminator: a class about the name or the code is ACCOMPANIED by the message's verdict, so the trigger is the DSL member and not "the declaration drew something". The post-parse row says the gate is not "parsed and resolved" either.
+
+Reported by the portable checker as a WITHHOLDING at report assembly: every `MESSAGE_*`/`ERROR_TEXT_*` verdict is dropped at a declaration where a family judging its DSL draws a rejecting class (`Check.kt`, `withoutMessageVerdictsBehindARefusedDsl`, mirrored by `consistency.MessageBehindARefusedDslTest`). *Corrected 2026-09-24:* until then the only gate was the families' own unsound-DSL test, an unresolved name or an unbalanced delimiter, and this entry called what it missed "an under-report". It was a co-firing message class beside the condition's, on every row of the table above.
 
 *Locked by:* `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`.
 
@@ -9130,6 +9145,8 @@ Locked: `validate.laws.SemanticIndexStructureLawsTest`. **The key-kind gate is r
 **Found by a DIFFERENTIAL, and no grid in the estate could have found it.** `adapter.laws.CheckerSilenceOnMutatedModelsTest`'s sibling probe repointed each committed model's first rule at a newly added, unreferenced field; seven models answered `MVK_NO_WILDCARD` where the portable checker's reference family named its own class. Every row of `ErrorFieldReferenceReachLawsTest` had held the condition flat, so "the target is unreferenced" and "nothing iterates" were one thing across all of them — the constant no control inside a set can catch, and here the set was the whole file.
 
 **The first transfer from those seven models was WRONG and is worth recording as the trap.** Reproducing them as "the condition reads a repetition" on our own carrier drew `MVK_ERROR_FIELD_NOT_REFERENCED`, not the wildcard class: the seven models all read their repetition UNSTARRED, and the reproduction used a starred aggregate. A differential names a shape, never a mechanism.
+
+**Extended 2026-09-24 — the star has to cover EVERY level the read crosses.** With `Items` repeating inside `Parcels`, an unreferenced flat target draws `MVK_NO_WILDCARD` under `Sum(Parcels*/Items/Qty) > 0` and under `Sum(Parcels/Items*/Qty) > 0`, referenced or not, and `MVK_ERROR_FIELD_NOT_REFERENCED` only once both levels are starred. A star on the FIELD, `Sum(Parcels/Weight*) > 0`, draws `MVK_INVALID_WILDCARD` alone ([KF328](#kf328)). Locked by `…ErrorFieldReferenceReachLawsTest.aStarPreEmptsTheClassOnlyWhereItCoversEveryLevel`.
 
 Locked: `validate.laws.ErrorFieldReferenceReachLawsTest.aRepetitionReadPreEmptsTheUnreferencedTargetClass`. **Reported correctly by the portable checker since 2026-09-14** — `ERROR_FIELD_REFERENCE` now stays silent on an unstarred read past the target (`consistency.ErrorFieldReferenceTest.anUnstarredRepetitionReadPreEmptsTheClass`), which was a live wrong-class defect until the differential found it.
 

@@ -52,9 +52,22 @@ class ErrorFieldReferenceReachLawsTest {
                             .field("Contents", FieldKind.STRING)))
             .build().toJson();
 
+    /** The same shipment with a repeatable group NESTED in the parcels, so one reference crosses two levels. */
+    private static final String NESTED = DocumentModelDraft.named("parcel-shipment-nested").locale("en_US")
+            .rootGroup("Shipment", s -> s
+                    .field("Carrier", FieldKind.STRING)
+                    .group("Parcels", p -> p.repeatable(9)
+                            .field("Weight", FieldKind.NUMBER)
+                            .group("Items", i -> i.repeatable(9).field("Qty", FieldKind.NUMBER))))
+            .build().toJson();
+
     /** The kernel's verdict on the rule (`/Shipment`, [errorFieldRelPath], [condition]). */
     private static String verdict(String errorFieldRelPath, String condition) {
-        ValidationResult r = KernelLaws.checkModel(SHIPMENT, "/Shipment", errorFieldRelPath, condition);
+        return verdict(SHIPMENT, errorFieldRelPath, condition);
+    }
+
+    private static String verdict(String model, String errorFieldRelPath, String condition) {
+        ValidationResult r = KernelLaws.checkModel(model, "/Shipment", errorFieldRelPath, condition);
         return r.ok() ? KernelLaws.ADMITTED : r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).distinct()
                 .reduce((a, b) -> a + "," + b).orElse("?");
@@ -211,5 +224,29 @@ class ErrorFieldReferenceReachLawsTest {
         expected.put("flat REFERENCED target | UNSTARRED repetition read", "MVK_NO_WILDCARD");
         expected.put("flat REFERENCED target | STARRED aggregate", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "which class an unpinned flat target draws");
+    }
+
+    /**
+     * The pre-emption asks which LEVELS a reference leaves bare, not whether it is written with a star. A star
+     * on the outer level leaves the inner one iterating, so the iteration class answers as it does for an
+     * unstarred read; and a star on the field repeats nothing at all, so the wildcard class answers alone.
+     */
+    @Test
+    void aStarPreEmptsTheClassOnlyWhereItCoversEveryLevel() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the outer level starred, the inner bare", verdict(NESTED, "../Carrier", "Sum(Parcels*/Items/Qty) > 0"));
+        actual.put("the inner level starred, the outer bare", verdict(NESTED, "../Carrier", "Sum(Parcels/Items*/Qty) > 0"));
+        actual.put("both levels starred — the control", verdict(NESTED, "../Carrier", "Sum(Parcels*/Items*/Qty) > 0"));
+        actual.put("the outer level starred, REFERENCED target",
+                verdict(NESTED, "../Carrier", "FieldFilled(Carrier) And Sum(Parcels*/Items/Qty) > 0"));
+        actual.put("a star on the field, its level bare", verdict(NESTED, "../Carrier", "Sum(Parcels/Weight*) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the outer level starred, the inner bare", "MVK_NO_WILDCARD");
+        expected.put("the inner level starred, the outer bare", "MVK_NO_WILDCARD");
+        expected.put("both levels starred — the control", NOT_REFERENCED);
+        expected.put("the outer level starred, REFERENCED target", "MVK_NO_WILDCARD");
+        expected.put("a star on the field, its level bare", "MVK_INVALID_WILDCARD");
+        assertEquals(expected, actual, "which star pre-empts the unreferenced-target class");
     }
 }

@@ -147,6 +147,55 @@ class ErrorFieldReferenceTest {
         assertEquals(expected, actual, "an unstarred repetition read pre-empts the class")
     }
 
+    /**
+     * A star pre-empts the class only where it covers every level the read crosses: a star on the outer
+     * level leaves the inner one iterating, and a star on the field repeats nothing, so the wildcard class
+     * answers alone.
+     */
+    @Test
+    fun aStarPreEmptsTheClassOnlyWhereItCoversEveryLevel() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["the outer level starred, the inner bare"] = nestedCodes("Sum(Parcels*/Items/Qty) > 0")
+        actual["the inner level starred, the outer bare"] = nestedCodes("Sum(Parcels/Items*/Qty) > 0")
+        actual["both levels starred — the control"] = nestedCodes("Sum(Parcels*/Items*/Qty) > 0")
+        actual["the outer level starred, REFERENCED target"] =
+            nestedCodes("FieldFilled(Carrier) And Sum(Parcels*/Items/Qty) > 0")
+        actual["a star on the field, its level bare"] = nestedCodes("Sum(Parcels/Weight*) > 0")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["the outer level starred, the inner bare"] = listOf(noWildcard)
+        expected["the inner level starred, the outer bare"] = listOf(noWildcard)
+        expected["both levels starred — the control"] = listOf(notReferenced)
+        expected["the outer level starred, REFERENCED target"] = listOf(noWildcard)
+        expected["a star on the field, its level bare"] = listOf("MVK_INVALID_WILDCARD")
+        assertEquals(expected, actual, "which star pre-empts the unreferenced-target class")
+    }
+
+    /** The shipment with a repeatable `Items` nested in the parcels; the rule reports on `../Carrier`. */
+    private fun nestedCodes(condition: String): List<String> = check(
+        ModelSource(
+            """
+            {"header":{"id":"shipment-nested","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Shipment","Group":{"elements":[
+                {"type":"Field","id":"f0","name":"Carrier","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Group","id":"g1","name":"Parcels","Group":{"repeatability":9,
+                  "elements":[
+                  {"type":"Field","id":"f1","name":"Weight","Field":{"fieldType":{"type":"NumberType"}}},
+                  {"type":"Group","id":"g2","name":"Items","Group":{"repeatability":9,
+                    "elements":[
+                    {"type":"Field","id":"f2","name":"Qty","Field":{"fieldType":{"type":"NumberType"}}}
+                  ]}}
+                ]}},
+                {"type":"Rule","id":"r0","name":"Probe","Rule":{
+                  "errorCondition":"${'$'}CONDITION","errorEntityRelPath":"../Carrier",
+                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
+              ]}}
+             ]}}}
+            """.trimIndent().replace("\$CONDITION", condition),
+        ),
+    ).findings.map { it.code }
+
     /** The finding names the target, since the fix is to reference it or to point the rule elsewhere. */
     @Test
     fun theFindingNamesTheTargetItCouldNotFind() {

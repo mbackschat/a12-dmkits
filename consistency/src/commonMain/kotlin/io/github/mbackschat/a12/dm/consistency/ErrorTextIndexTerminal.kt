@@ -118,6 +118,11 @@ private fun TrackedFactBase.declaresASingleValuedEnumeration(fieldPath: String):
  *
  * A repetition wildcard and a semantic-index key are the two measured ones; every other form this reader
  * cannot tell apart from a plain read is left to iterate, which is the direction that under-reports.
+ *
+ * A star ANYWHERE in the reference counts here, while A12 reads only the index field's own level
+ * (`checkIndexFieldRefRepeatability4repeatableGroup`, source-read 30.8.1). The two differ only where the star
+ * sits on another level or on the field, and each such reference is refused during the parse, so the report
+ * withholds this verdict behind it ([KERNEL-FINDINGS KF338]).
  */
 private fun TrackedFactBase.conditionRidesItWithoutIterating(
     fieldPath: String,

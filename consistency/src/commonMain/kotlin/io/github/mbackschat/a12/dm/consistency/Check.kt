@@ -997,9 +997,14 @@ internal fun checkRun(
     // which matters because a misplaced up-step's class is a token error, spelled like one of those it withholds.
     val textClasses = scheduled.flatMap { cells.getValue(it.key).findings }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
+    val messageVerdicts = scheduled.filter { it.key.producer.completes.all { f -> f in MESSAGE_MEMBER_FAMILIES } }
+        .flatMapTo(mutableSetOf()) { cells.getValue(it.key).findings }
+    val dslVerdicts = scheduled.filter { it.key.producer.completes.none { f -> f in BESIDE_THE_DSL_FAMILIES } }
+        .flatMap { cells.getValue(it.key).findings }
     val judged = (references + textClasses)
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .withoutPostParseClassesBehindAPositionedDefect()
+        .withoutMessageVerdictsBehindARefusedDsl(messageVerdicts, dslVerdicts = references + dslVerdicts)
     val findings = judged.notSuppressedBy(tracked.variantFilterSuppressed())
     return CheckRun(
         report = ConsistencyReport(
@@ -1224,6 +1229,55 @@ private fun List<Finding>.withoutPostParseClassesBehindAPositionedDefect(): List
     val defective = filter { it.code in POSITIONED_CONDITION_CODES }.mapTo(mutableSetOf()) { it.at }
     return filterNot { it.at in defective && it.code in POST_PARSE_CONDITION_CODES }
 }
+
+/**
+ * Drops every MESSAGE verdict at a declaration whose own DSL member draws a class.
+ *
+ * A12 examines a rule's or a computation's message only once its condition or operation is sound, and
+ * "sound" is not "resolves and parses": a refused star, a missing one, a slot gate and the post-parse
+ * unreferenced-target class each withhold both message verdicts, on either carrier, while a class about the
+ * NAME or the ERROR CODE leaves them standing beside it ([KERNEL-FINDINGS KF338],
+ * `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`). The families' own
+ * [declarationsWithUnsoundDsl] gate covers only an unresolved name and an unbalanced delimiter, so this is
+ * where the law is whole.
+ *
+ * It reads the findings for the reason [withoutPostParseClassesBehindAPositionedDefect] does: whether the DSL
+ * drew a class is what the other families already said. Only a verdict that justifies rejection triggers it,
+ * because every measured trigger is one and a warning does not make the member unsound.
+ */
+private fun List<Finding>.withoutMessageVerdictsBehindARefusedDsl(
+    messageVerdicts: Set<Finding>,
+    dslVerdicts: List<Finding>,
+): List<Finding> {
+    val refused = dslVerdicts.filter { it.justifiesRejection }.mapTo(mutableSetOf()) { it.at }
+    return filterNot { it in messageVerdicts && it.at in refused }
+}
+
+/**
+ * The families that judge a declaration's MESSAGE member, whose verdicts A12 gives only beside a sound DSL.
+ *
+ * Listed by family rather than by code because every one of them draws unprefixed `FehlertextErrorType`
+ * classes and nothing else does, so the family is the fact and the code set would be its second copy.
+ */
+private val MESSAGE_MEMBER_FAMILIES = setOf(
+    CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.ERROR_TEXT_SEMANTIC_INDEX,
+    CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX, CheckFamily.ERROR_TEXT_INDEX_TERMINAL,
+    CheckFamily.MESSAGE_TEXT_CHARACTERS, CheckFamily.MESSAGE_PARAMETER_SYNTAX,
+    CheckFamily.MESSAGE_GROUP_PARAMETER, CheckFamily.MESSAGE_VALUE_SUFFIX,
+)
+
+/**
+ * The families that judge a declaration member OTHER than its DSL, whose classes leave the message judged.
+ *
+ * Listed as the families that do NOT withhold, for the reason [POSITIONED_CONDITION_CODES] is a drop-list: a
+ * family added later is far more likely to read the condition text, and it then withholds without an edit
+ * here. The name and error-code rows are measured; the name's uniqueness and alphabet, the presentation
+ * members, the suppressions and the variant filter are the same member kinds and are assumed alike.
+ */
+private val BESIDE_THE_DSL_FAMILIES = MESSAGE_MEMBER_FAMILIES + setOf(
+    CheckFamily.DECLARATION_SLOTS, CheckFamily.ELEMENT_NAME_UNIQUENESS, CheckFamily.ELEMENT_NAME_ALPHABET,
+    CheckFamily.RULE_PRESENTATION_MEMBERS, CheckFamily.SUPPRESSED_WARNINGS, CheckFamily.VARIANT_FILTER,
+)
 
 /**
  * The classes a defect at some OFFSET in the condition text draws — the ones that compete for first place.

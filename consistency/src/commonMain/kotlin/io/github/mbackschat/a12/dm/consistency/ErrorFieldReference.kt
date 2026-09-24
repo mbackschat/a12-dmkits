@@ -106,12 +106,12 @@ internal fun TrackedFactBase.errorFieldReferenceFindings(): List<Finding> {
  * no iteration class fires and this family's own is what answers ([KERNEL-FINDINGS KF424]). A containment
  * test cannot see it, which is why the measured walk is asked instead of re-derived.
  *
- * **One residue, stated rather than left to be discovered.** The star is tested on the WHOLE written
- * reference, so a single reference that stars an outer level while crossing an inner repeatable group
- * unstarred is not pre-empted here. A condition mixing a starred and an unstarred read is handled, because
- * the test is per reference; the nested single-reference case has no measured row and would name this
- * family's class where A12 may name the iteration one — a wrong class on a correct rejection, never an
- * over-rejection.
+ * **The star is tested on the WHOLE written reference, and that is coarse without being wrong.** A reference
+ * that stars one level and leaves another bare, or stars a field, is not pre-empted here — yet A12 answers
+ * both with a parse-time class alone (`MVK_NO_WILDCARD`, `MVK_INVALID_WILDCARD`), which this checker names
+ * too, and the report withholds this post-parse class behind it
+ * (`rulekit.validate.laws.ErrorFieldReferenceReachLawsTest.aStarPreEmptsTheClassOnlyWhereItCoversEveryLevel`,
+ * mirrored in `consistency.ErrorFieldReferenceTest`).
  */
 private fun TrackedFactBase.iteratesPastTheTarget(reference: ConditionReference, target: String): Boolean {
     if ('*' in reference.written) {

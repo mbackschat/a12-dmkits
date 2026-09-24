@@ -34,7 +34,9 @@ class MessageParameterConditionDependencyLawsTest {
     private static final String POLICY = DocumentModelDraft.named("claims-policy").locale("en_US")
             .rootGroup("Policy", policy -> policy
                     .stringField("Reference", f -> { })
-                    .numberField("Premium", f -> f.fractionDigits(0, 2)))
+                    .numberField("Premium", f -> f.fractionDigits(0, 2))
+                    .group("Claims", claims -> claims.repeatable(9)
+                            .numberField("Amount", f -> f.fractionDigits(0, 2))))
             .build().toJson();
 
     @Test
@@ -75,6 +77,41 @@ class MessageParameterConditionDependencyLawsTest {
     }
 
     /**
+     * A condition that PARSES and resolves but is refused: does its class withhold the message member too?
+     * The rows above broke the condition by a name or by the grammar, which is where the checker's gate
+     * stands; these move only the class, with the text held fixed per column.
+     */
+    @Test
+    void whetherARefusedConditionThatResolvesWithholdsTheMessage() {
+        String tab = "see" + (char) 0x09 + "the reference";
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> conditions = new LinkedHashMap<>();
+        conditions.put("a starred aggregate — the control", "FieldFilled(Reference) And Sum(Claims*/Amount) > 0");
+        conditions.put("a star on the field", "FieldFilled(Reference) And Sum(Claims/Amount*) > 0");
+        conditions.put("an unstarred repetition read", "FieldFilled(Reference) And FieldFilled(Claims/Amount)");
+        conditions.put("a star in a scalar slot", "FieldFilled(Reference) And FieldFilled(Claims*/Amount)");
+        conditions.put("the error field unreferenced", "FieldFilled(Premium)");
+        conditions.forEach((label, condition) -> {
+            actual.put(label + " | a control character", verdict(condition, "../Reference", tab));
+            actual.put(label + " | a parameter it does not read", verdict(condition, "../Reference", "see $Premium$"));
+        });
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a starred aggregate — the control | a control character", "INVALID_CHARACTERS");
+        expected.put("a starred aggregate — the control | a parameter it does not read", "INVALID_FIELD");
+        expected.put("a star on the field | a control character", "MVK_INVALID_WILDCARD");
+        expected.put("a star on the field | a parameter it does not read", "MVK_INVALID_WILDCARD");
+        expected.put("an unstarred repetition read | a control character", "MVK_NO_WILDCARD");
+        expected.put("an unstarred repetition read | a parameter it does not read", "MVK_NO_WILDCARD");
+        expected.put("a star in a scalar slot | a control character", "MVK_NO_WILDCARDS_ALLOWED");
+        expected.put("a star in a scalar slot | a parameter it does not read", "MVK_NO_WILDCARDS_ALLOWED");
+        // A POST-parse class withholds it too, so the gate is not "the condition parsed and resolved".
+        expected.put("the error field unreferenced | a control character", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("the error field unreferenced | a parameter it does not read", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        assertEquals(expected, actual, "whether a refused condition that resolves withholds the message");
+    }
+
+    /**
      * …and the same question on a COMPUTATION, whose unsound member is an operation rather than a condition.
      *
      * <p>The gate this file justifies reads a computation's members too, so those rows are a claim the rule
@@ -105,6 +142,24 @@ class MessageParameterConditionDependencyLawsTest {
         expected.put("a valid operation, a parameter it does not read — the control", "INVALID_FIELD");
         expected.put("an operation naming nothing, a parameter beside it", "MVK_INVALID_ENTITY");
         assertEquals(expected, actual, "whether a computation's message is withheld by its own broken member");
+
+        // An operation that resolves but is refused, the carrier twin of the rule rows above.
+        Map<String, String> refused = new LinkedHashMap<>();
+        refused.put("a starred aggregate — the control | a control character",
+                computing("Sum(Claims*/Amount)", "see" + (char) 0x09 + "the total"));
+        refused.put("a star on the field | a control character",
+                computing("Sum(Claims/Amount*)", "see" + (char) 0x09 + "the total"));
+        refused.put("a star on the field | a parameter it does not read",
+                computing("Sum(Claims/Amount*)", "see $Reference$"));
+        refused.put("an unstarred repetition read | a control character",
+                computing("[Claims/Amount] + 1", "see" + (char) 0x09 + "the total"));
+
+        Map<String, String> refusedExpected = new LinkedHashMap<>();
+        refusedExpected.put("a starred aggregate — the control | a control character", "INVALID_CHARACTERS");
+        refusedExpected.put("a star on the field | a control character", "MVK_INVALID_WILDCARD");
+        refusedExpected.put("a star on the field | a parameter it does not read", "MVK_INVALID_WILDCARD");
+        refusedExpected.put("an unstarred repetition read | a control character", "MVK_NO_WILDCARD");
+        assertEquals(refusedExpected, refused, "whether a refused operation that resolves withholds the message");
     }
 
     /** The drafted policy with one computation into `Premium`, carrying [operation] and [text]. */
@@ -124,16 +179,52 @@ class MessageParameterConditionDependencyLawsTest {
         }
     }
 
+    /**
+     * A class about a rule member that is NOT its DSL — the name, the error code — beside the same message
+     * defect, so the trigger's width is measured rather than guessed from the condition rows.
+     */
+    @Test
+    void whetherAClassAboutAnotherRuleMemberWithholdsTheMessage() {
+        String tab = "see" + (char) 0x09 + "the reference";
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a reserved rule name, a plain text — the control", rule("vk_vkProbe", "C1", "see it"));
+        actual.put("a reserved rule name, a control character", rule("vk_vkProbe", "C1", tab));
+        actual.put("a reserved rule name, a parameter it does not read", rule("vk_vkProbe", "C1", "see $Premium$"));
+        actual.put("a blank error code, a plain text — the control", rule("Probe", " ", "see it"));
+        actual.put("a blank error code, a control character", rule("Probe", " ", tab));
+        actual.put("a blank error code, a parameter it does not read", rule("Probe", " ", "see $Premium$"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a reserved rule name, a plain text — the control", "MVK_RULE_NAME_INVALID");
+        // ACCOMPANIED, not withheld: the member A12 declines to examine the message behind is the DSL, so a
+        // class about the name or the code leaves the message's own verdict standing beside it.
+        expected.put("a reserved rule name, a control character", "MVK_RULE_NAME_INVALID,INVALID_CHARACTERS");
+        expected.put("a reserved rule name, a parameter it does not read", "MVK_RULE_NAME_INVALID,INVALID_FIELD");
+        expected.put("a blank error code, a plain text — the control", "MVK_ERROR_CODE_MISSING");
+        expected.put("a blank error code, a control character", "MVK_ERROR_CODE_MISSING,INVALID_CHARACTERS");
+        expected.put("a blank error code, a parameter it does not read", "MVK_ERROR_CODE_MISSING,INVALID_FIELD");
+        assertEquals(expected, actual, "whether a class about another rule member withholds the message");
+    }
+
     /** The drafted policy with one rule injected, so the model is whole in every way but the condition. */
     private static String verdict(String condition, String errorField, String text) {
+        return rule("Probe", "C1", condition, errorField, text);
+    }
+
+    /** A rule with a sound condition, varying the name and the error code. */
+    private static String rule(String name, String errorCode, String text) {
+        return rule(name, errorCode, "FieldFilled(Reference)", "../Reference", text);
+    }
+
+    private static String rule(String name, String errorCode, String condition, String errorField, String text) {
         try {
             ObjectNode root = (ObjectNode) MAPPER.readTree(POLICY);
             ObjectNode node = (ObjectNode) ((ArrayNode) root.path("content").path("modelRoot")
                     .path("rootGroups").get(0).path("Group").path("elements")).addObject();
-            node.put("type", "Rule").put("id", "rprobe").put("name", "Probe");
+            node.put("type", "Rule").put("id", "rprobe").put("name", name);
             ObjectNode body = node.putObject("Rule");
             body.put("errorCondition", condition).put("errorEntityRelPath", errorField)
-                    .put("errorCode", "C1").put("severity", "ERROR");
+                    .put("errorCode", errorCode).put("severity", "ERROR");
             body.putArray("errorMessage").addObject().put("locale", "en_US").put("text", text);
             return KernelLaws.verdictOf(root.toString());
         } catch (IOException unreadable) {

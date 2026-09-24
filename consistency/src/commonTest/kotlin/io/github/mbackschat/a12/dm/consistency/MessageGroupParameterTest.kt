@@ -139,8 +139,14 @@ class MessageGroupParameterTest {
         ModelSource(model(argument, deep = true, condition = "AtLeastOneFieldFilled(/Policy/Cover/Sections*/Amount)")),
     ).findings.filter { it.code in owned }.map { it.code }
 
+    /**
+     * The root-locus rule reads the root's own field, as the kernel row does: the default condition reads
+     * `Sections` unstarred from the root, which A12 refuses with `MVK_NO_WILDCARD` and withholds the message
+     * behind ([KERNEL-FINDINGS KF338]) — a fixture that measured nothing about the parameter.
+     */
     private fun atRoot(argument: String): List<String> =
-        check(ModelSource(model(argument, deep = false))).findings.filter { it.code in owned }.map { it.code }
+        check(ModelSource(model(argument, deep = false, condition = "FieldFilled(/Policy/Reference)")))
+            .findings.filter { it.code in owned }.map { it.code }
 
     /** An insurance policy whose rule sits three levels down, or in the root group when [deep] is false. */
     private fun model(

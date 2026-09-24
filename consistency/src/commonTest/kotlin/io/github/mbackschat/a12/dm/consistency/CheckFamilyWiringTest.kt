@@ -391,7 +391,7 @@ class CheckFamilyWiringTest {
             {"type":"Field","id":"f14","name":"Remark","Field":{"fieldType":{"type":"StringType",
               "StringType":{"noValueValidation":true,"lineBreaksPermitted":true}}}},
             {"type":"Rule","id":"r67","name":"SuffixesAValueFreeField","Rule":{
-              "errorCondition":"FieldFilled(Remark)","errorEntityRelPath":"../Price","errorCode":"C67",
+              "errorCondition":"FieldFilled(Price) And FieldFilled(Remark)","errorEntityRelPath":"../Price","errorCode":"C67",
               "errorMessage":[{"locale":"en_US","text":"see ${'$'}Remark.value${'$'}"}]}},
             {"type":"Rule","id":"r66","name":"NamesAGroupBesideTheRule","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price","errorCode":"C66",

@@ -578,6 +578,12 @@ class CheckerClassAgreementTest {
          */
         private val KEYED_DECLARATION = Regex("^(\\w+) with path '([^']*)':", RegexOption.DOT_MATCHES_ALL)
 
+        /**
+         * A starred name followed by one unstarred name: the two captures are the names, the star is dropped.
+         * Letters rather than `\\w`, which is ASCII here and would split a German model's names mid-word.
+         */
+        private val STAR_BEFORE_A_NAME = Regex("([\\p{L}\\p{N}_]+)\\*/([\\p{L}\\p{N}_]+)(?![\\p{L}\\p{N}_*])")
+
         /** The declared NAME of the element whose `Group` body is [body], for building a relative path. */
         private fun nameOfGroupBody(root: ObjectNode, body: ObjectNode): String? {
             var found: String? = null
@@ -629,6 +635,21 @@ class CheckerClassAgreementTest {
             .filter { it["text"]?.isTextual == true }
             .drop(ordinal)
             .firstOrNull()
+
+        /** Moves the first star of the [ordinal]-th rule that has one onto the name after it; that rule, or null. */
+        private fun moveAStar(root: ObjectNode, ordinal: Int): ObjectNode? {
+            val rules = groupBodies(root).flatMap { body ->
+                (body["elements"] as? ArrayNode)?.mapNotNull { element ->
+                    (element["Rule"] as? ObjectNode)?.takeIf {
+                        element["type"]?.asText() == "Rule" &&
+                            STAR_BEFORE_A_NAME.containsMatchIn(it["errorCondition"]?.asText().orEmpty())
+                    }
+                }.orEmpty()
+            }
+            val rule = rules.getOrNull(ordinal) ?: return null
+            rule.put("errorCondition", STAR_BEFORE_A_NAME.replaceFirst(rule["errorCondition"].asText(), "$1/$2*"))
+            return rule
+        }
 
         /** One perturbation of a message TEXT — the position no declaration-shaped mutation reaches. */
         private fun messageMutation(label: String, appended: String) = Mutation(label) { root, ordinal ->
@@ -708,6 +729,23 @@ class CheckerClassAgreementTest {
                 }.getOrNull(ordinal) ?: return@Mutation false
                 val rule = elements[at]["Rule"] as ObjectNode
                 rule.put("errorCondition", rule["errorCondition"].asText().replaceFirst("*", ""))
+                true
+            },
+            // Move a star off a level and onto the name after it, so the level stays bare and the star lands
+            // where nothing repeats. A12 answers that with `MVK_INVALID_WILDCARD` alone ([KERNEL-FINDINGS
+            // KF328]), while a family that asks only WHETHER a star is written, or how many, still judges the
+            // read and speaks beside it — five did until 2026-09-24, each found by a hand-built row.
+            Mutation("move-a-star-onto-the-next-name") { root, ordinal ->
+                moveAStar(root, ordinal) != null
+            },
+            // …and break the SAME rule's message too. A12 examines a message only beside a sound condition
+            // ([KERNEL-FINDINGS KF338]), so it names the star's class alone; the pair sweep below cannot see
+            // this, because it composes defects on DIFFERENT declarations by construction.
+            Mutation("move-a-star-and-unterminate-its-message") { root, ordinal ->
+                val rule = moveAStar(root, ordinal) ?: return@Mutation false
+                val message = (rule["errorMessage"] as? ArrayNode)?.firstOrNull() as? ObjectNode
+                    ?: return@Mutation false
+                message.put("text", message["text"].asText() + " ${'$'}Oops")
                 true
             },
             // The three below aim at the error MESSAGE, which no declaration-shaped mutation reaches — the
