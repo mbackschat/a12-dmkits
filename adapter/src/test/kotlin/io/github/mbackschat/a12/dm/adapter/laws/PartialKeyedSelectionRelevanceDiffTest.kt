@@ -32,12 +32,14 @@ class PartialKeyedSelectionRelevanceDiffTest {
     private companion object {
         const val DOC = """{"Order":{"Reference":"R","WantedNo":3,"PickNo":1,"Flag":9,""" +
             """"Extra":{"B":4},"Service":{"S2":"EXPRESS"},""" +
-            """"Packages":[{"No":1,"Carrier":"DHL","Dims":{"Height":3}},{"No":2}]}}"""
+            """"Packages":[{"No":1,"Carrier":"DHL","Dims":{"Height":3},"Sizes":{"Width":7}},""" +
+            """{"No":2,"Sizes":{"Depth":8}}],""" +
+            """"Returns":[{"Code":"A","Reason":"torn"},{"Code":"B"}]}}"""
 
         /** A key no row carries: `3` over the packages `1` and `2`. */
         val ABSENT = setOf("AG", "AD", "AF", "AV", "AX")
 
-        /** A key selecting package 1, filled throughout, or package 2, which holds its key alone. */
+        /** A key selecting package 1, filled throughout, or package 2, which carries no `Carrier`. */
         val SELECTED = setOf("SG", "SF", "SN", "SV", "SX")
 
         /** Keys read from a field, `WantedNo` (a miss) and `PickNo` (package 1). */
@@ -48,6 +50,13 @@ class PartialKeyedSelectionRelevanceDiffTest {
 
         /** A category read outside `FirstFilledValue`, the value-read sibling of `BC`. */
         val CATEGORY = setOf("CR")
+
+        /** `FirstFilledValue` over a KEYED group, whose walk visits `Width` before `Depth`: filled first in
+         *  package 1 (`GX`), empty before a filled `Depth` in package 2 (`GY`). */
+        val KEYED_GROUP_WALK = setOf("GX", "GY")
+
+        /** The absent, selected and presence rows again, over `Returns`, whose index field is a String. */
+        val STRING_KEYED = setOf("TA", "TS", "TG")
 
         val RULES = linkedMapOf(
             "AG" to "NoGroupFilled(/Order/Packages For \"3\")",
@@ -70,6 +79,11 @@ class PartialKeyedSelectionRelevanceDiffTest {
             "BC" to "FirstFilledValue(/Order/Service/S1 -> Speed, /Order/Service/S2 -> Speed) == \"FAST\"",
             "BN" to "NoFieldFilled(/Order/Extra/A)",
             "CR" to "[/Order/Service/S2 -> Speed] == \"FAST\"",
+            "GX" to "FirstFilledValue(/Order/Packages/Sizes For \"1\") == 7",
+            "GY" to "FirstFilledValue(/Order/Packages/Sizes For \"2\") == 8",
+            "TA" to "FieldNotFilled(/Order/Returns/Reason For \"Z\")",
+            "TS" to "FieldFilled(/Order/Returns/Reason For \"A\")",
+            "TG" to "GroupFilled(/Order/Returns For \"A\")",
         )
 
         val REFERENCE = "/Order/Reference" to listOf(0, 0)
@@ -82,10 +96,12 @@ class PartialKeyedSelectionRelevanceDiffTest {
         val KEYS = listOf("/Order/WantedNo" to listOf(0, 0), "/Order/PickNo" to listOf(0, 0))
         fun extra(field: String) = "/Order/Extra/$field" to listOf(0, 0, 0)
         fun service(field: String) = "/Order/Service/$field" to listOf(0, 0, 0)
+        fun sizes(field: String) = "/Order/Packages/Sizes/$field" to listOf(0, 0, 0, 0)
+        fun returns(field: String) = "/Order/Returns/$field" to listOf(0, 0, 0)
 
         val COVERAGES: Map<String, List<Pair<String, List<Int>>>> = linkedMapOf(
             "group" to listOf(REFERENCE, PACKAGES),
-            "fields" to listOf(REFERENCE, NO, CARRIER, HEIGHT),
+            "fields" to listOf(REFERENCE, NO, CARRIER, HEIGHT, sizes("Width"), sizes("Depth")),
             "keyColumn" to listOf(REFERENCE, NO),
             "rows" to listOf(REFERENCE, NO, ROW1, ROW2),
             "rowsAllFields" to listOf(REFERENCE, ROW1, ROW2),
@@ -98,6 +114,16 @@ class PartialKeyedSelectionRelevanceDiffTest {
             "serviceS1S2" to listOf(REFERENCE, service("S1"), service("S2")),
             "extraAll" to listOf(REFERENCE, "/Order/Extra" to listOf(0, 0), "/Order/Service" to listOf(0, 0)),
             "root" to listOf("/Order" to listOf(0)),
+            "sizesDepth" to listOf(REFERENCE, NO, sizes("Depth")),
+            "sizesWidth" to listOf(REFERENCE, NO, sizes("Width")),
+            "sizesBoth" to listOf(REFERENCE, NO, sizes("Width"), sizes("Depth")),
+            "sizesNoKey" to listOf(REFERENCE, sizes("Width"), sizes("Depth")),
+            "returns" to listOf(REFERENCE, "/Order/Returns" to listOf(0, 0)),
+            "returnFields" to listOf(REFERENCE, returns("Code"), returns("Reason")),
+            "returnKey" to listOf(REFERENCE, returns("Code")),
+            "returnReason" to listOf(REFERENCE, returns("Reason")),
+            "returnRows" to listOf(REFERENCE, returns("Code"), "/Order/Returns" to listOf(0, 1),
+                "/Order/Returns" to listOf(0, 2)),
         )
 
         val model = DocumentModelDraft.named("parcel-relevance").locale("en_US")
@@ -119,6 +145,13 @@ class PartialKeyedSelectionRelevanceDiffTest {
                             .numberField("No") { it.fractionDigits(0, 0) }
                             .stringField("Carrier") { }
                             .group("Dims") { dims -> dims.numberField("Height") { it.fractionDigits(0, 0) } }
+                            .group("Sizes") { sizes ->
+                                sizes.numberField("Width") { it.fractionDigits(0, 0) }
+                                    .numberField("Depth") { it.fractionDigits(0, 0) }
+                            }
+                    }
+                    .group("Returns") { returns ->
+                        returns.repeatable(3).indexField("Code").stringField("Code") { }.stringField("Reason") { }
                     }
             }.build().toJson()
 
@@ -236,6 +269,48 @@ class PartialKeyedSelectionRelevanceDiffTest {
             "extraAB" to emptySet(),
             "serviceS2" to CATEGORY,
             "extraAll" to CATEGORY,
+        ))
+    }
+
+    /**
+     * a12-kernel-lean's `SPEC-2026-09-24-05` limit: the order-aware walk was measured on separately named
+     * operands only. Over a keyed GROUP the walk visits the selected row's fields in declared order, and the key
+     * column must be covered as for any keyed read. `sizesWidth` is the discriminator against "a group operand
+     * needs its whole group covered": package 1's walk stops at the covered, filled `Width`, so `GX` fires with
+     * `Depth` outside the coverage, while package 2's walk passes the empty `Width` and meets that uncovered
+     * `Depth`.
+     */
+    @Test
+    fun aKeyedGroupsWalkStopsAtTheFirstCellOutsideTheCoverage() {
+        assertFires(KEYED_GROUP_WALK, mapOf(
+            null to KEYED_GROUP_WALK,
+            "group" to KEYED_GROUP_WALK,
+            "fields" to KEYED_GROUP_WALK,
+            "rows" to KEYED_GROUP_WALK,
+            "rowsAllFields" to KEYED_GROUP_WALK,
+            "targetsNoKey" to emptySet(),
+            "sizesDepth" to emptySet(),
+            "sizesWidth" to setOf("GX"),
+            "sizesBoth" to KEYED_GROUP_WALK,
+            "sizesNoKey" to emptySet(),
+            "keyColumn" to emptySet(),
+            "none" to emptySet(),
+            "root" to KEYED_GROUP_WALK,
+        ))
+    }
+
+    /** …and the same three answers with a String index field, keyed by a text literal. */
+    @Test
+    fun aStringIndexIsDecidedAsANumberIndexIs() {
+        assertFires(STRING_KEYED, mapOf(
+            null to STRING_KEYED,
+            "returns" to STRING_KEYED,
+            "returnFields" to STRING_KEYED,
+            "returnKey" to setOf("TG"),
+            "returnRows" to setOf("TS", "TG"),
+            "returnReason" to emptySet(),
+            "none" to emptySet(),
+            "root" to STRING_KEYED,
         ))
     }
 }

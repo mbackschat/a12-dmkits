@@ -345,6 +345,29 @@ class StarBindingContainmentTest {
         assertEquals(expected, actual, "an operator's own gates behind a refused read")
     }
 
+    /**
+     * `PartialStarContainmentLawsTest.aBareRepeatableGroupOperandIsReadPerRowToo`: the group carriers over the
+     * repeatable `Shipments` itself, unstarred, answer containment from both groups the error field lies outside
+     * and the missing star from the one it lies in.
+     */
+    @Test
+    fun aBareRepeatableGroupOperandIsReadPerRowToo() {
+        val sheet = Sheet(ledger = true)
+        val reach = "FieldFilled(/Fulfilment/Summary/Result) And"
+        val actual = linkedMapOf<String, List<String>>()
+        val expected = linkedMapOf<String, List<String>>()
+        GroupOperandCarriers.CARRIERS.forEach { carrier ->
+            val read = carrier.replace("Claims", shipments).replace("Insured", "/Fulfilment/Summary")
+            listOf(shipments, ledger).forEach { group ->
+                actual["${group.substringAfterLast('/')} | $read"] = ruleCodes(sheet, group, "$reach $read")
+                expected["${group.substringAfterLast('/')} | $read"] = listOf(notInRuleGroup)
+            }
+            actual["Summary | $read"] = ruleCodes(sheet, "/Fulfilment/Summary", "$reach $read")
+            expected["Summary | $read"] = listOf("MVK_NO_WILDCARD")
+        }
+        assertEquals(expected, actual, "a bare repeatable group operand from outside the rule group")
+    }
+
     private fun codes(sheet: Sheet, group: String, computedField: String, operation: String): List<String> =
         a12Codes(sheet.json(group, computation(computedField, operation)))
 

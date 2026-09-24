@@ -442,4 +442,28 @@ class PartialStarContainmentLawsTest {
         });
         assertEquals(expected, actual, "an operator's own gates behind a refused read");
     }
+
+    /**
+     * a12-kernel-lean's {@code SPEC-2026-09-24-05} asked for a BARE group operand with the error field outside the
+     * rule group: {@link GroupOperandRepetitionScopeLawsTest}'s carriers over the repeatable {@code Shipments}
+     * itself, unstarred, with the fixed {@code Summary} as the second operand where a carrier takes two.
+     * Containment answers from both groups the error field lies outside, as it does for a field read, and the
+     * missing star from the one it lies in.
+     */
+    @Test
+    void aBareRepeatableGroupOperandIsReadPerRowToo() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        GroupOperandRepetitionScopeLawsTest.CARRIERS.forEach(carrier -> {
+            String read = carrier.replace("Claims", SHIPMENTS).replace("Insured", SUMMARY);
+            for (String group : List.of(SHIPMENTS, LEDGER)) {
+                String from = group.substring(group.lastIndexOf('/') + 1);
+                actual.put(from + " | " + read, PLAIN.textRule(group, read));
+                expected.put(from + " | " + read, is("FieldFilled(" + TARGET + ") And " + read, NOT_IN_RULEGROUP));
+            }
+            actual.put("Summary | " + read, PLAIN.textRule(SUMMARY, read));
+            expected.put("Summary | " + read, is("FieldFilled(" + TARGET + ") And " + read, NO_WILDCARD));
+        });
+        assertEquals(expected, actual, "a bare repeatable group operand from outside the rule group");
+    }
 }
