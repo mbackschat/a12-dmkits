@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
-import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
@@ -162,18 +161,6 @@ private fun TrackedFactBase.slotDefect(
     } else {
         null
     }
-}
-
-/** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
-private fun TrackedFactBase.declaredTargetOf(
-    operand: String,
-    declaringGroup: String,
-    element: TrackedDeclaration,
-): TrackedDeclaration? {
-    val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
-    val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
-    val target = (resolved as? Reference.Resolved)?.path ?: return null
-    return declarationAt(target)
 }
 
 private fun finding(

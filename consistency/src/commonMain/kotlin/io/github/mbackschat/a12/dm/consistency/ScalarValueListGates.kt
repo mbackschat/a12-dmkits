@@ -273,18 +273,6 @@ private fun CallOperand.namesAFieldEntry(): Boolean =
 /** Whether this operand is one number constant — the spelling A12's grammar sorts into a `numberListe`. */
 private fun CallOperand.isNumberLiteral(): Boolean = isNumberLiteral(tokenize(text))
 
-/** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
-private fun TrackedFactBase.declaredTargetOf(
-    operand: String,
-    declaringGroup: String,
-    element: TrackedDeclaration,
-): TrackedDeclaration? {
-    val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
-    val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
-    val target = (resolved as? Reference.Resolved)?.path ?: return null
-    return declarationAt(target)
-}
-
 private fun gate(
     code: String,
     operator: String,

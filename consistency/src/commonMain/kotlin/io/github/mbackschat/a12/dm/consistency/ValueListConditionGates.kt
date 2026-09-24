@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
-import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonArray
@@ -226,18 +225,6 @@ private fun TrackedFactBase.rangeShapeDefect(
     val only = written.singleOrNull() ?: return declaredTargetOf(written.first(), declaringGroup, element)
     val declared = declaredTargetOf(only, declaringGroup, element) ?: return null
     return if (declared.declaredKind != DeclaredKind.FIELD || '*' in only) declared else null
-}
-
-/** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
-private fun TrackedFactBase.declaredTargetOf(
-    operand: String,
-    declaringGroup: String,
-    element: TrackedDeclaration,
-): TrackedDeclaration? {
-    val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
-    val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
-    val target = (resolved as? Reference.Resolved)?.path ?: return null
-    return declarationAt(target)
 }
 
 /**

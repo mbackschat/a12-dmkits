@@ -560,6 +560,18 @@ internal fun TrackedFactBase.bareReferenceField(
     return declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
 }
 
+/** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
+internal fun TrackedFactBase.declaredTargetOf(
+    operand: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): TrackedDeclaration? {
+    val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
+    val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
+    val target = (resolved as? Reference.Resolved)?.path ?: return null
+    return declarationAt(target)
+}
+
 /** The one reference a bare entity spec reduces to, or null for text that is not one — no model read. */
 private fun bareReferenceIn(text: String, language: ConditionLanguage): String? {
     if (!isBareEntitySpec(text)) {
