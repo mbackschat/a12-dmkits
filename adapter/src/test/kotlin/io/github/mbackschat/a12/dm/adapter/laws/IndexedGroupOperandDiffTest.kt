@@ -14,7 +14,9 @@ import org.junit.jupiter.api.Test
 
 /**
  * Differential + tri-check (groovy-dynamic == java-static == interpreter) for an index-selected GROUP operand,
- * `Packages For "P1"`, on the carriers A12 admits it in (`validate.laws.SemanticIndexGroupOperandCarrierLawsTest`).
+ * `Packages For "P1"`. Every row first asserts that the kernel admits its model, because several carriers here lie
+ * outside the admission grid `validate.laws.SemanticIndexGroupOperandCarrierLawsTest` holds for the group-list
+ * quantifiers.
  *
  * The shape is authorable through `Dsl.entityListPredicate` and the group-list factories, and DEV-API-GAPS DG68
  * would make it easier to write, so the evaluators are measured first: a wrong verdict here would be silent
@@ -64,12 +66,13 @@ class IndexedGroupOperandDiffTest {
 
     /**
      * One grid row. [errorField] is where the rule attaches, because A12 re-anchors an error inside the indexed
-     * group to the selected row. [relevant] switches to partial validation over those `path` to `reps` entries,
-     * `0` wildcarding a level.
+     * group to the selected row. [guarded] conjoins `FieldFilled(errorField)`, an ordinary reference that makes
+     * the rule iterate the error field's rows instead. [relevant] switches to partial validation over those
+     * `path` to `reps` entries, `0` wildcarding a level. [declined] expects the interpreter to refuse the rule.
      */
     private data class Row(val condition: String, val fires: Boolean, val packages: List<Pkg> = standard,
-        val wanted: String? = "P3", val errorField: String = REFERENCE,
-        val relevant: Map<String, List<Int>>? = null)
+        val wanted: String? = "P3", val errorField: String = REFERENCE, val guarded: Boolean = true,
+        val relevant: Map<String, List<Int>>? = null, val declined: Boolean = false)
 
     private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
         fun group(path: String, vararg reps: Int): Both {
@@ -94,25 +97,27 @@ class IndexedGroupOperandDiffTest {
         }
     }
 
+    private fun assertAdmitted(kModel: String) = assertEquals(emptyList<String>(),
+        RuntimeLaws.consistencyMessages(kModel).filter { it.startsWith("ERROR") }, "the kernel admits the model")
+
     private fun signature(messages: List<RuntimeLaws.Msg>): String =
         messages.filter { it.code() == RULE_CODE }.map { "${it.field()}|${it.type().name}" }.sorted().toString()
 
     /** One row's three signatures, the interpreter's written as UNSUPPORTED when it declines the rule. */
     private fun verdicts(row: Row): String {
         val group = row.errorField.substringBeforeLast('/')
+        val condition = if (row.guarded) "FieldFilled(${row.errorField}) And ${row.condition}" else row.condition
         val kModel = RuntimeLaws.withRule(model, group, "R", "../" + row.errorField.substringAfterLast('/'),
-            RULE_CODE, "FieldFilled(${row.errorField}) And ${row.condition}")
+            RULE_CODE, condition)
+        assertAdmitted(kModel)
         val def = ModelLoader.load(kModel)
 
         val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also { build(it, row) }
         val kernelRelevant = row.relevant?.mapTo(HashSet()) { (path, reps) ->
             RuntimeLaws.Relevant.of(path, *reps.toIntArray())
         }
-        val kernelMessages = if (kernelRelevant == null) RuntimeLaws.messages(kModel, dynamic.kDoc)
-            else RuntimeLaws.messagesPart(kModel, dynamic.kDoc, kernelRelevant)
-        val refusals = kernelMessages.map { it.code() }.filter { it.startsWith("MVK_") }
-        if (refusals.isNotEmpty()) return "kernel refuses: $refusals"
-        val groovy = signature(kernelMessages)
+        val groovy = signature(if (kernelRelevant == null) RuntimeLaws.messages(kModel, dynamic.kDoc)
+            else RuntimeLaws.messagesPart(kModel, dynamic.kDoc, kernelRelevant))
 
         // the engines consume a document destructively, so the static arm gets its own instance
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also { build(it, row) }.kDoc
@@ -134,6 +139,7 @@ class IndexedGroupOperandDiffTest {
         val key = { r: Row ->
             "${r.condition} [${r.packages.joinToString { it.code ?: "-" }}; Wanted=${r.wanted}" +
                 (if (r.errorField == REFERENCE) "" else "; error=${r.errorField}") +
+                (if (r.guarded) "" else "; unguarded") +
                 (r.relevant?.let { "; relevant=${it.keys}" } ?: "") + "]"
         }
         val actual = rows.associate { key(it) to verdicts(it) }
@@ -141,7 +147,7 @@ class IndexedGroupOperandDiffTest {
         val expected = rows.associate { r ->
             val a = actual.getValue(key(r))
             val groovy = a.substringAfter("groovy=").substringBefore(" java=")
-            key(r) to "fires=${r.fires} groovy=$groovy java=$groovy interpreter=$groovy"
+            key(r) to "fires=${r.fires} groovy=$groovy java=$groovy interpreter=${if (r.declined) "UNSUPPORTED" else groovy}"
         }
         assertEquals(expected, actual)
     }
@@ -181,15 +187,61 @@ class IndexedGroupOperandDiffTest {
         Row("GroupNotFilled(/Order/Packages/Dims For \"P2\")", true, errorField = CARRIER)))
 
     /**
-     * An error field inside the indexed group. The guard `FieldFilled(Carrier)` makes the rule iterate the
-     * package rows, so the question is whether the keyed operand moves the message off the iterated row.
+     * A malformed `Length` is all P2's `Dims` holds, so the selected row's presence is its formal state, not its
+     * raw content: no presence condition over it is decided, while a deciding sibling operand still fires.
+     */
+    @Test
+    fun aMalformedCellAloneInTheSelectedRowLeavesItsPresenceUndecided() {
+        val malformed = listOf(Pkg("P1", "DHL", "3", "4"), Pkg("P2", length = "abc"))
+        assertGrid(listOf(
+            Row("GroupFilled(/Order/Packages/Dims For \"P2\")", false, malformed),
+            Row("GroupNotFilled(/Order/Packages/Dims For \"P2\")", false, malformed),
+            Row("NoGroupFilled(/Order/Packages/Dims For \"P2\")", false, malformed),
+            Row("AtLeastOneGroupFilled(/Order/Packages/Dims For \"P2\", /Order/Reference)", true, malformed)))
+    }
+
+    /**
+     * An error field inside the indexed group. Guarded, `FieldFilled(Carrier)` makes the rule iterate the package
+     * rows, so the question is whether the keyed operand moves the message off the iterated row. Unguarded, the
+     * keyed operand is the rule's only reference into the group, so A12 attaches the message to the row the key
+     * selects, or to the unbound row when no row carries the key.
      */
     @Test
     fun aKeyedGroupListErrorAttachesWhereTheKernelAttachesIt() = assertGrid(listOf(
         Row("NoGroupFilled(/Order/Packages/Dims For \"P2\")", true, errorField = CARRIER),
         Row("NoGroupFilled(/Order/Packages/Dims For \"P3\")", true, errorField = CARRIER),
         Row("AtLeastOneGroupFilled(/Order/Packages For \"P2\")", true, errorField = CARRIER),
-        Row("NoGroupFilled(/Order/Packages For \"P1\")", false, duplicated, errorField = CARRIER)))
+        Row("NoGroupFilled(/Order/Packages For \"P1\")", false, duplicated, errorField = CARRIER),
+        Row("NoGroupFilled(/Order/Packages For \"P3\")", true, errorField = CARRIER, guarded = false),
+        Row("GroupFilled(/Order/Packages For \"P2\")", true, errorField = CARRIER, guarded = false),
+        Row("AtLeastOneGroupFilled(/Order/Packages For \"P2\")", true, duplicated, errorField = CARRIER,
+            guarded = false),
+        Row("GroupFilled(RuleGroup For \"P2\")", true, errorField = CARRIER, guarded = false),
+        Row("NoGroupFilled(/Order/Packages/Dims For \"P2\")", true, errorField = LENGTH, guarded = false)))
+
+    /**
+     * `FirstFilledValue` walks past a key no row carries as it walks past an empty row: both are fillable, which
+     * A12 types OMISSION on the value the walk goes on to find.
+     */
+    @Test
+    fun firstFilledValueWalksPastAKeyNoRowCarriesAsAFillableEmpty() = assertGrid(listOf(
+        Row("FirstFilledValue(/Order/Packages/Dims For \"P3\", /Order/Packages/Dims For \"P1\") == 3", true),
+        Row("FirstFilledValue(/Order/Packages/Dims For \"P2\", /Order/Packages/Dims For \"P1\") == 3", true)))
+
+    /**
+     * The field-fill quantifiers and the aggregates are kernel-admitted over a keyed group, and the interpreter
+     * refuses them rather than answer (INTERPRETER-GAPS IG155). Each row keeps the kernel's own verdict, so the
+     * row that stops declining has its expectation already measured.
+     */
+    @Test
+    fun aKeyedGroupInAFieldFillQuantifierOrAnAggregateIsDeclined() = assertGrid(listOf(
+        Row("NumberOfFilledFields(/Order/Packages For \"P1\") == 4", true, declined = true),
+        Row("NumberOfFilledFields(/Order/Packages For \"P2\") == 1", true, declined = true),
+        Row("Sum(/Order/Packages/Dims For \"P1\") == 7", true, declined = true),
+        Row("Sum(/Order/Packages/Dims For \"P2\") == 0", true, declined = true),
+        Row("NoFieldFilled(/Order/Packages For \"P3\")", true, declined = true),
+        Row("AllFieldsFilled(/Order/Packages For \"P1\", /Order/Reference)", true, declined = true),
+        Row("AllFieldsFilled(/Order/Packages For \"P2\", /Order/Reference)", false, declined = true)))
 
     /** Partial validation: the selected row's relevance, not the whole document's, decides the operand. */
     @Test
@@ -206,13 +258,22 @@ class IndexedGroupOperandDiffTest {
             Row("AtLeastOneGroupFilled(/Order/Packages For \"P2\")", true, relevant = secondRow),
             Row("NoGroupFilled(/Order/Packages For \"P1\")", false, relevant = secondRow),
             Row("GroupNotFilled(/Order/Packages For \"P3\")", false, relevant = referenceOnly),
-            Row("GroupFilled(/Order/Packages For \"P2\")", true, relevant = secondRow)))
+            Row("GroupFilled(/Order/Packages For \"P2\")", true, relevant = secondRow),
+            // a filled row outside the coverage is not filled for the rule
+            Row("GroupFilled(/Order/Packages For \"P1\")", false, relevant = secondRow),
+            Row("GroupFilled(/Order/Packages/Dims For \"P1\")", false,
+                relevant = referenceOnly + mapOf(CODE to listOf(0, 0, 0), CARRIER to listOf(0, 0, 0)))))
     }
 
-    /** One tiered computation per row: `Flag` becomes 1 when [condition] holds, from a seeded 9. */
+    /**
+     * One tiered computation per row, from a seeded 9: `Flag` becomes 1 when [condition] holds, else 2, because
+     * the second alternative's `FieldFilled(Reference)` holds on every document. So a false [condition] stores 2,
+     * and only a read that poisons leaves `Flag` cleared.
+     */
     private fun computed(condition: String, packages: List<Pkg>, wanted: String?): String {
         val kModel = RuntimeLaws.withTieredComputation(model, "/Order", "FlagComp", "../Flag", null,
-            listOf(RuntimeLaws.CompAlt(condition, "1")))
+            listOf(RuntimeLaws.CompAlt(condition, "1"), RuntimeLaws.CompAlt("FieldFilled($REFERENCE)", "2")))
+        assertAdmitted(kModel)
         val def = ModelLoader.load(kModel)
         val row = Row(condition, false, packages, wanted)
         val seeded = { b: Both -> build(b, row); b.field("/Order/Flag", "9", 1, 1) }
@@ -241,21 +302,25 @@ class IndexedGroupOperandDiffTest {
     }
 
     /**
-     * Computation reads the key column differently from validation. The duplicated-key row is the discriminator:
-     * `P2` itself is unique, so validation resolves it and would answer TRUE, while computation poisons on any
-     * invalid key cell and leaves `Flag` cleared.
+     * Computation reads the key column differently from validation. The duplicated-key rows are the
+     * discriminator: `P2` itself is unique, so validation resolves it and would answer TRUE, while computation
+     * poisons on any invalid key cell, even for a key no row carries. The last two rows are the read order: an
+     * operand that decides first spares the keyed read.
      */
     @Test
     fun aKeyedGroupListOperandComputesLikeTheKernel() {
         val rows = listOf(
             Triple("NoGroupFilled(/Order/Packages For \"P3\")", standard, "P3") to "VALUE|1",
-            Triple("NoGroupFilled(/Order/Packages For \"P1\")", standard, "P3") to "CLEARED",
+            Triple("NoGroupFilled(/Order/Packages For \"P1\")", standard, "P3") to "VALUE|2",
             Triple("AtLeastOneGroupFilled(/Order/Packages/Dims For \"P1\")", standard, "P3") to "VALUE|1",
-            Triple("AtLeastOneGroupFilled(/Order/Packages/Dims For \"P2\")", standard, "P3") to "CLEARED",
+            Triple("AtLeastOneGroupFilled(/Order/Packages/Dims For \"P2\")", standard, "P3") to "VALUE|2",
             Triple("NoGroupFilled(/Order/Packages For /Order/Wanted)", standard, null) to "VALUE|1",
-            Triple("AtLeastOneGroupFilled(/Order/Packages For \"P2\")", duplicated, "P3") to "CLEARED",
             Triple("GroupNotFilled(/Order/Packages For \"P3\")", standard, "P3") to "VALUE|1",
-            Triple("GroupFilled(/Order/Packages For \"P2\")", duplicated, "P3") to "CLEARED")
+            Triple("AtLeastOneGroupFilled(/Order/Packages For \"P2\")", duplicated, "P3") to "CLEARED",
+            Triple("NoGroupFilled(/Order/Packages For \"P3\")", duplicated, "P3") to "CLEARED",
+            Triple("GroupFilled(/Order/Packages For \"P2\")", duplicated, "P3") to "CLEARED",
+            Triple("AtLeastOneGroupFilled($REFERENCE, /Order/Packages For \"P2\")", duplicated, "P3") to "VALUE|1",
+            Triple("AtLeastOneGroupFilled(/Order/Packages For \"P2\", $REFERENCE)", duplicated, "P3") to "CLEARED")
         val key = { c: String, p: List<Pkg>, w: String? -> "$c [${p.joinToString { it.code ?: "-" }}; Wanted=$w]" }
         val actual = rows.associate { (r, _) -> key(r.first, r.second, r.third) to computed(r.first, r.second, r.third) }
         val expected = rows.associate { (r, outcome) ->

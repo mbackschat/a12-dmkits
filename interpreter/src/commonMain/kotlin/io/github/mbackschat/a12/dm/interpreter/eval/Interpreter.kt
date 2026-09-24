@@ -490,8 +490,9 @@ class Interpreter(
             // COMPUTE mode replaces the tally with the kernel's ordered SCAN so a read is order-observable and a
             // later invalid operand after the deciding one is never read (IF85): the FIELD-fill family scans cells
             // ([computeFillQuantifier]); the GROUP-fill family scans its common entity list ([computeGroupFillQuantifier],
-            // IF219) — a FIELD operand READS its cell (an invalid one poisons), a GROUP operand is structural
-            // presence (never poison), each yielded lazily so the per-operator stop ends the scan.
+            // IF219) — a FIELD operand READS its cell (an invalid one poisons), a bare or starred GROUP operand is
+            // structural presence (never poison) and a keyed one poisons only on its key column (IF331), each
+            // yielded lazily so the per-operator stop ends the scan.
             PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED,
             PredicateOp.MORE_THAN_ONE_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
             PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED,
@@ -793,8 +794,9 @@ class Interpreter(
      *    `*`) yields one state per selected environment: a repeatable terminal row is FILLED structurally
      *    (IF46/IF68), while a non-repeatable terminal below starred ancestors retains its ordinary group-product
      *    state (SPEC-2026-07-26-02);
-     *  - a KEYED GROUP (`Group For key`) contributes the product of the row its key selects; no row reads
-     *    FALSE, like an absent group, and an undecidable key — a duplicated one, say — reads UNKNOWN;
+     *  - a KEYED GROUP (`Group For key`) contributes the product of the row its key selects; no row reads as an
+     *    empty group at the unbound row, so FALSE only where the coverage reaches that row (IF334), and an
+     *    undecidable key — a duplicated one, say — reads UNKNOWN, or poisons in compute;
      * Yielded lazily so a compute-mode consumer that decides early never reads (and never poisons on) a later
      * operand — the kernel's ordered `…EntityAngegeben` read.
      */
@@ -868,7 +870,8 @@ class Interpreter(
      * tally: [groupFillStates] is consumed lazily and each operator STOPS at its deciding operand, so a malformed
      * FIELD operand AFTER the decision is never read and cannot poison (a filled/empty operand before it decided
      * first) — the read-order divergence IF219 fixed. A FIELD operand read is poison-capable; a GROUP operand
-     * (bare or starred) is structural (never poison). Mirrors [computeFillQuantifier] for the field-fill family
+     * (bare or starred) is structural (never poison), and a keyed one poisons where its key column cannot
+     * resolve (IF331). Mirrors [computeFillQuantifier] for the field-fill family
      * (IF85); the composite `GroupsNotCollectivelyFilled` composes two passes like `FieldsNotCollectivelyFilled`.
      */
     private fun computeGroupFillQuantifier(op: PredicateOp, args: List<Expr>): Tri = when (op) {

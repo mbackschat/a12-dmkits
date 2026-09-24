@@ -375,10 +375,12 @@ internal sealed interface KeyedGroupSelection {
 /**
  * The row a keyed GROUP operand selects — the single owner every group-valued consumer reads through, so the
  * value scan of `FirstFilledValue` and the presence product of the group-list quantifiers cannot disagree on
- * which row a key names. The classification follows [computeGuardedIndexCell]'s for a keyed cell: validation
- * resolves a clean-key match whatever the rest of the column holds and reads a compromised no-match as
- * [KeyedGroupSelection.Unavailable]; computation poisons on any invalid key cell (IF107/IF115). Locked by
- * `adapter.laws.FirstFilledValueEntitySpecDiffTest` and `adapter.laws.IndexedGroupOperandDiffTest`.
+ * which row a key names. The key itself is read by [resolveIndexKey], the step a keyed cell shares, so a malformed
+ * field-valued key is unusable on both (IF333). The classification follows [computeGuardedIndexCell]'s for a
+ * keyed cell: validation resolves a clean-key match whatever the rest of the column holds and reads a
+ * compromised no-match as [KeyedGroupSelection.Unavailable]; computation poisons on any invalid key cell
+ * (IF107/IF115). Locked by `adapter.laws.FirstFilledValueEntitySpecDiffTest`,
+ * `adapter.laws.IndexedGroupOperandDiffTest` and `adapter.laws.MalformedIndexKeyDiffTest`.
  */
 internal fun Interpreter.keyedGroupSelection(e: Expr.SemanticIndex): KeyedGroupSelection {
     val c = ctxOf(e)
