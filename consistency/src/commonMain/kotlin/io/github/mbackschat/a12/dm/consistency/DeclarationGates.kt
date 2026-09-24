@@ -6,12 +6,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.delimitersBalanced
  * The declarations whose DSL cannot be trusted at all — a condition naming something that does not resolve, or
  * a text whose delimiters do not balance.
  *
- * **It gates a whole CLASS of findings rather than one, which is why it is ONE expression of the decision and
- * must stay one.** Report assembly asks it before keeping any message family's verdict, and two other
- * families ask it before they say anything themselves, so two copies of this could diverge without a single
- * test noticing — each caller's own tests would pass against whichever copy it happened to call.
+ * `OUTER_MARKER_POSITION` asks it before it says anything. The message families do not: report assembly
+ * withholds their verdicts behind any rejecting DSL finding at the declaration, and each of these declarations
+ * draws one of its own (`UnsoundDslDrawsARejectionTest`).
  *
- * Every declaration's body is read, and that is the charge these families' cells are keyed on: a cursor's
+ * Every declaration's body is read, and that is the charge the asking family's cells are keyed on: a cursor's
  * shape members are free and only `body` records, so the walk charges the set shape once plus one
  * [FactRead.DeclarationContent] per declaration.
  */

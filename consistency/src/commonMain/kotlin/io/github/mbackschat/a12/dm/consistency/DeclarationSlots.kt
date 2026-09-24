@@ -163,7 +163,8 @@ private val SEVERITIES = setOf("ERROR", "WARNING", "INFO")
  * **It is a family of its own, [CheckFamily.ERROR_TEXT_PRESENCE], because A12's error-text checker draws
  * it.** That checker judges a message only beside a sound condition or operation, while the prefixed class
  * it rides with is judged regardless: beside a refused condition A12 reports `MVK_ERROR_MESSAGE_MISSING` and
- * withholds this one (`rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`, [KF338]). Report
+ * withholds this one, measured over seven refused condition shapes and on a computation's operation and both
+ * its preconditions (`rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`, [KF338]). Report
  * assembly applies that, and it can only because the two are produced apart.
  */
 internal fun TrackedFactBase.errorTextPresenceFindings(): List<Finding> =

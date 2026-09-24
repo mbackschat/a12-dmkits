@@ -162,7 +162,10 @@ internal fun schedule(tracked: TrackedFactBase): List<ScheduledCell> {
             // explicit call was measured redundant — a mutant removing it survived every control
             // (2026-09-18). A walk that returned BEFORE iterating would charge no row and be refused by
             // `FamilyChargeProfileTest`, which is the loud outcome rather than a silent one: such a family
-            // decided on a model-wide fact and belongs in the parameter form.
+            // decided on a model-wide fact and belongs in the parameter form. The refusal reaches only the
+            // returns that test's fixture takes, and it declares no Base Year, so the two Base Year families'
+            // return on `hasBaseYear` goes unseen. That one is sound: the fact is charged, and the answer it
+            // gives is empty whatever the declaration holds.
             is CheckProducer.PerDeclarationWalk -> walked.map { (at, _, scoped) ->
                 ScheduledCell(CellKey(producer, at)) { producer.findings(scoped) to emptyList() }
             }
@@ -212,6 +215,12 @@ private fun perDeclarationWalk(
  * order they are produced, so this list preserves the concatenation it replaces exactly; the gaps were
  * emitted in an unrelated hand-written order and now follow this one, which is the single observable
  * difference and one no consumer can depend on — a gap is identified by its `at` and its reason.
+ *
+ * The order is family-major, so moving an arm into a family of its own reorders what a reader sees, though
+ * the report shape promises no order (`docs/CONSISTENCY-API.md`). Splitting [CheckFamily.ERROR_TEXT_PRESENCE]
+ * and [CheckFamily.MESSAGE_BASE_YEAR] out of the slot and Base Year families (2026-09-24) did exactly that:
+ * `RULE_HAS_NO_ERRORTEXT` now follows every slot finding in the model rather than its own declaration's, and
+ * `NO_BASE_YEAR` follows the message-reference classes rather than preceding them.
  *
  * **[CheckFamily.DECLARED_REFERENCES] and [CheckFamily.CONDITION_REFERENCES] are absent on purpose.** They
  * are produced by `checkPrepared`'s own composition passes rather than by a family, which is the boundary

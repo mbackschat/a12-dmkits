@@ -56,7 +56,7 @@ internal fun TrackedFactBase.messageParameterFindings(): List<Finding> {
                 // spelling — so the other's is an ordinary name here and draws a reference class below.
                 when (nameTerminalOf(parameter, conditionLanguage)) {
                     NameTerminal.RULE_GROUP -> return@mapNotNull ruleGroupFinding(parameter, element)
-                    // The model's own declaration answers this one, from [baseYearRequirementFindings].
+                    // The model's own declaration answers this one, from [messageBaseYearFindings].
                     NameTerminal.BASE_YEAR -> return@mapNotNull null
                     null -> Unit
                 }

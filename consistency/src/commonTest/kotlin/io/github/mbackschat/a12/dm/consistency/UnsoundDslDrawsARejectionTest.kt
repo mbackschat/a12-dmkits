@@ -13,15 +13,17 @@ import kotlin.test.assertEquals
  * also leave a refused model without the finding that says so.
  *
  * Each row is checked for the property only; which class it draws is the owning family's own test. The rows
- * are the two shapes the retired per-family gate named, unresolved names and unbalanced delimiters, and the
- * references an earlier segment's gate answers for before their missing name is reached ([earlierSegmentGate]),
- * each in the operand positions that carry it.
+ * are the shapes the retired per-family gate named — every reference outcome other than a resolved one
+ * (unresolved, ambiguous, above the root, a misplaced up-step, an unknown root group) and unbalanced
+ * delimiters — plus the references an earlier segment's gate answers for before their missing name is reached
+ * ([earlierSegmentGate]), in the operand positions and the DSL members that carry them.
  */
 class UnsoundDslDrawsARejectionTest {
 
     private val tab = "see" + 0x09.toChar() + "it"
 
-    private val parameter = "see \$Premium\$"
+    /** A parameter no condition below reads, so it draws `INVALID_FIELD` beside every sound one. */
+    private val parameter = "see \$Excess\$"
 
     private val refused = "refused, message withheld"
 
@@ -44,6 +46,10 @@ class UnsoundDslDrawsARejectionTest {
             "FieldFilled(Reference) And FieldValueIncludedInValueList(Holder*/Nope, \\\"x\\\")",
             "FieldFilled(Reference) And FieldFilled(Claims.*/Nope)",
             "FieldFilled(Reference) And FieldFilled(..*/Nope)",
+            "FieldFilled(Reference) And FieldFilled(Note)",
+            "FieldFilled(Reference) And FieldFilled(../../../Reference)",
+            "FieldFilled(Reference) And FieldFilled(Claims/../Reference)",
+            "FieldFilled(Reference) And FieldFilled(/Nope/Reference)",
         )
         val actual = linkedMapOf<String, String>()
         actual["a sound condition, a control character — the control"] =
@@ -80,18 +86,25 @@ class UnsoundDslDrawsARejectionTest {
         val actual = linkedMapOf<String, String>()
         actual["a sound operation — the control"] = verdict(computation("Sum(Claims*/Amount)", tab))
         operations.forEach { operation -> actual[operation] = verdict(computation(operation, tab)) }
+        actual["a common precondition naming nothing"] =
+            verdict(computation("Sum(Claims*/Amount)", tab, common = "FieldFilled(Nope)"))
+        actual["an alternative's precondition naming nothing"] =
+            verdict(computation("Sum(Claims*/Amount)", tab, precondition = "FieldFilled(Nope)"))
 
         val expected = linkedMapOf<String, String>()
         expected["a sound operation — the control"] = "sound, message: [INVALID_CHARACTERS]"
         operations.forEach { operation -> expected[operation] = refused }
+        expected["a common precondition naming nothing"] = refused
+        expected["an alternative's precondition naming nothing"] = refused
         assertEquals(expected, actual, "an unsound operation draws its own rejection")
     }
 
     private fun verdict(declaration: String): String {
         val findings = check(ModelSource(model(declaration))).findings.filter { it.at == AT }
-        // The message families draw A12's unprefixed error-text classes and the DSL families its `MVK_` ones.
-        val message = findings.map { it.code }.filterNot { it.startsWith("MVK_") }.sorted()
-        val rejected = findings.any { it.justifiesRejection && it.code.startsWith("MVK_") }
+        // Classified by the two classes the messages here can draw, not by a code prefix: A12's error-text
+        // checker draws `MVK_` keys too, so a prefix would count a leaked one as the DSL's rejection.
+        val message = findings.map { it.code }.filter { it in MESSAGE_CLASSES }.sorted()
+        val rejected = findings.any { it.justifiesRejection && it.code !in MESSAGE_CLASSES }
         return when {
             !rejected -> "sound, message: $message"
             message.isEmpty() -> refused
@@ -104,21 +117,35 @@ class UnsoundDslDrawsARejectionTest {
           "errorCondition":"$condition","errorEntityRelPath":"../Reference",
           "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"$message"}]}}"""
 
-    private fun computation(operation: String, message: String): String =
+    private fun computation(
+        operation: String,
+        message: String,
+        common: String? = null,
+        precondition: String? = null,
+    ): String =
         """{"type":"Computation","id":"c0","name":"Probe","Computation":{
-          "computedFieldRelPath":"../Premium","computationAlternatives":[{"operation":"$operation"}],
+          "computedFieldRelPath":"../Premium",${common?.let { "\"commonPrecondition\":\"$it\"," } ?: ""}
+          "computationAlternatives":[{${precondition?.let { "\"precondition\":\"$it\"," } ?: ""}"operation":"$operation"}],
           "errorMessage":[{"locale":"en_US","text":"$message"}]}}"""
 
-    /** An insurance policy with a fixed holder group and repeatable claims, and one probe declaration. */
+    /**
+     * An insurance policy with fixed holder and insured groups, repeatable claims, and one probe declaration.
+     * Short-name references are on and `Note` is declared in both fixed groups, so a bare `Note` is ambiguous.
+     */
     private fun model(declaration: String): String = """
         {"header":{"id":"policy","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+         "content":{"modelConfig":{"fieldRefByShortNameAllowed":true},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType",
               "NumberType":{"minFractionalDigits":0,"maxFractionalDigits":2}}}},
+            {"type":"Field","id":"f4","name":"Excess","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Group","id":"g1","name":"Holder","Group":{"elements":[
-              {"type":"Field","id":"f2","name":"HolderName","Field":{"fieldType":{"type":"StringType"}}}
+              {"type":"Field","id":"f2","name":"HolderName","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f5","name":"Note","Field":{"fieldType":{"type":"StringType"}}}
+            ]}},
+            {"type":"Group","id":"g3","name":"Insured","Group":{"elements":[
+              {"type":"Field","id":"f6","name":"Note","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
             {"type":"Group","id":"g2","name":"Claims","Group":{"repeatability":9,"elements":[
               {"type":"Field","id":"f3","name":"Amount","Field":{"fieldType":{"type":"NumberType",
@@ -131,5 +158,8 @@ class UnsoundDslDrawsARejectionTest {
 
     private companion object {
         const val AT = "/Policy/Probe"
+
+        /** What the two defective messages here draw beside a sound member. */
+        val MESSAGE_CLASSES = setOf("INVALID_CHARACTERS", "INVALID_FIELD")
     }
 }

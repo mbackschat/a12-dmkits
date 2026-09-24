@@ -116,15 +116,14 @@ class CheckerClassAgreementTest {
      * assertion exempts it rather than enumerating it per model. That became reachable on 2026-09-24, when a
      * mutation first emptied a rule's messages beside a refused condition and A12 answered with both.
      *
-     * **What this assertion catches is narrower than it reads, and saying so is the point.** A12 answers
-     * each mutant of the rest of this population with exactly ONE notification, so `ours ⊆ kernel.classes`
-     * already forces at most one distinct class and this check is implied by the disagreement assertion
-     * above. It is landed anyway because the implication is a property of the POPULATION, not of the
-     * contract: the moment A12 answers two notifications on some mutant, or [masked] gains a row, the subset
-     * check starts admitting a pair at one declaration and only this assertion refuses it. Two such
-     * over-reports were nearly shipped on 2026-09-15 and BOTH were caught by a family mirror rather than by
-     * this lane, because the corpus carries no model of either shape — which is the honest reason this is
-     * insurance rather than the net that would have caught them.
+     * **With that exemption this assertion adds nothing while [masked] and [positionsA12Masks] are empty, and
+     * saying so is the point.** A pair it refuses holds a class A12 did not name at that declaration, and such a
+     * class is already a row of the disagreement assertion (A12 named it nowhere) or of [misplaced] (A12 named
+     * it elsewhere). So the redundancy is a property of the contract, not of the population. It stays because
+     * each mask lets one class past those two assertions, and a masked class reported together with another is
+     * the pair only this check sees. Two co-firing over-reports were nearly shipped on 2026-09-15, and BOTH
+     * were caught by a family mirror rather than by this lane, because the corpus carries no model of either
+     * shape. That is the honest reason this is insurance rather than the net that would have caught them.
      */
     private val coFiring = emptySet<String>()
 
@@ -765,7 +764,10 @@ class CheckerClassAgreementTest {
                 rule.putArray("errorMessage")
                 true
             },
+            // Only where the model declares no Base Year, so `NO_BASE_YEAR` is at stake in every mutant this kind
+            // counts and the per-kind floor below cannot be met by mutants that withhold nothing.
             Mutation("move-a-star-and-name-the-base-year") { root, ordinal ->
+                if (root.path("content").path("modelInfo").has("baseYear")) return@Mutation false
                 val rule = moveAStar(root, ordinal) ?: return@Mutation false
                 val message = (rule["errorMessage"] as? ArrayNode)?.firstOrNull() as? ObjectNode
                     ?: return@Mutation false

@@ -165,7 +165,7 @@
       },
       {
         "at": null,
-        "reason": "the condition parser checks the SHAPE the grammar's productions share — a call is a name and a parenthesised argument list — and not each operator's own argument arity or operand kinds, so a call with the wrong number or kind of arguments is left to A12. Reproducing those per operator would be a second copy of the catalog, and every place the copy disagreed would refuse a condition A12 admits. A12's illegal-CHARACTER class IS reported, derived from the lexer's terminals"
+        "reason": "the condition parser checks the SHAPE the grammar's productions share — a call is a name and a parenthesised argument list — and not each operator's own argument arity or operand kinds, so a call with the wrong number or kind of arguments is left to A12. Reproducing those per operator would be a second copy of the catalog, and every place the copy disagreed would refuse a condition A12 admits. A12's illegal-CHARACTER class IS reported, derived from the lexer's terminals. The message beside such a call is still judged, so a message class A12 withholds behind the refused condition can be reported in its place (DEV-API-GAPS DG83)"
       },
       {
         "at": null,
@@ -306,7 +306,7 @@
       },
       {
         "at": null,
-        "reason": "the condition parser checks the SHAPE the grammar's productions share — a call is a name and a parenthesised argument list — and not each operator's own argument arity or operand kinds, so a call with the wrong number or kind of arguments is left to A12. Reproducing those per operator would be a second copy of the catalog, and every place the copy disagreed would refuse a condition A12 admits. A12's illegal-CHARACTER class IS reported, derived from the lexer's terminals"
+        "reason": "the condition parser checks the SHAPE the grammar's productions share — a call is a name and a parenthesised argument list — and not each operator's own argument arity or operand kinds, so a call with the wrong number or kind of arguments is left to A12. Reproducing those per operator would be a second copy of the catalog, and every place the copy disagreed would refuse a condition A12 admits. A12's illegal-CHARACTER class IS reported, derived from the lexer's terminals. The message beside such a call is still judged, so a message class A12 withholds behind the refused condition can be reported in its place (DEV-API-GAPS DG83)"
       },
       {
         "at": null,

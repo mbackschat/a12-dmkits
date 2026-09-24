@@ -1,11 +1,15 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -36,7 +40,10 @@ class MessageParameterConditionDependencyLawsTest {
                     .stringField("Reference", f -> { })
                     .numberField("Premium", f -> f.fractionDigits(0, 2))
                     .group("Claims", claims -> claims.repeatable(9)
-                            .numberField("Amount", f -> f.fractionDigits(0, 2))))
+                            .numberField("Amount", f -> f.fractionDigits(0, 2)))
+                    // Two fixed groups declaring one name, so a bare `Note` is ambiguous under short names.
+                    .group("Holder", holder -> holder.stringField("Note", f -> { }))
+                    .group("Insured", insured -> insured.stringField("Note", f -> { })))
             .build().toJson();
 
     @Test
@@ -273,12 +280,136 @@ class MessageParameterConditionDependencyLawsTest {
         expected.put("refused | an unterminated parameter", "MVK_NO_WILDCARD");
         expected.put("refused | a group parameter naming a descendant", "MVK_NO_WILDCARD");
         // The member's PRESENCE is judged beside the refused condition, under its prefixed classes, while the
-        // unprefixed error-text class that rides with them is withheld: the split is A12's own vocabulary, the
-        // model-validation keys against `FehlertextErrorType`, and not which member the defect sits in.
+        // error-text class that rides with them is withheld: the split is the checker that draws each, not
+        // which member the defect sits in (whichClassesEachRefusedConditionShapeWithholds, above).
         expected.put("refused | no message entry", "MVK_ERROR_MESSAGE_MISSING,MVK_NO_WILDCARD");
         expected.put("refused | a declared locale unanswered",
                 "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING,MVK_NO_WILDCARD");
         assertEquals(expected, actual, "which other message classes a refused condition withholds");
+    }
+
+    /**
+     * Every refused condition SHAPE withholds the same classes: the error-text checker's, prefixed or not, while
+     * the member-presence classes stay. Stated as a relation — the refused row is the condition's own class
+     * plus the presence class, and nothing else — so each shape's own class is measured rather than restated.
+     *
+     * <p>The two defects spelled with an {@code MVK_} key are the discriminators the vocabulary account gets
+     * wrong: the parameter parser's {@code MVK_UNEXPECTED_TOKEN} and {@code MVK_INDEX_FOR_ERROR_TEXT_INVALID}
+     * belong to the error-text checker, which A12 skips beside a refused condition, so a split by prefix would
+     * keep them.
+     */
+    @Test
+    void whichClassesEachRefusedConditionShapeWithholds() {
+        Map<String, String[]> defects = new LinkedHashMap<>();
+        defects.put("an unterminated parameter", new String[] {"en_US", "see $Premium"});
+        defects.put("an up-step after a named segment", new String[] {"en_US", "see $Claims/../Premium$"});
+        defects.put("a key on a field that declares no index", new String[] {"en_US", "see $Reference For \"x\"$"});
+        defects.put("no message entry", new String[] {});
+        Map<String, String> sound = new LinkedHashMap<>();
+        defects.forEach((defect, entries) -> sound.put(defect, sorted(messages("FieldFilled(Reference)", false, entries))));
+        sound.put("a declared locale unanswered", sorted(messages("FieldFilled(Reference)", true, "en_US", "see it")));
+
+        Map<String, String> soundExpected = new LinkedHashMap<>();
+        soundExpected.put("an unterminated parameter", "WRONG_NUMBER_OF_DOLLARS");
+        soundExpected.put("an up-step after a named segment", "MVK_UNEXPECTED_TOKEN");
+        soundExpected.put("a key on a field that declares no index", "MVK_INDEX_FOR_ERROR_TEXT_INVALID");
+        soundExpected.put("no message entry", "MVK_ERROR_MESSAGE_MISSING,RULE_HAS_NO_ERRORTEXT");
+        soundExpected.put("a declared locale unanswered", "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING,RULE_HAS_NO_ERRORTEXT");
+        assertEquals(soundExpected, sound, "each defect beside a sound condition — the controls");
+
+        Map<String, String> refused = new LinkedHashMap<>();
+        refused.put("an unresolved name", "FieldFilled(Reference) And FieldFilled(Nope)");
+        refused.put("a character the lexer cannot take", "FieldFilled(Reference) And % FieldFilled(Reference)");
+        refused.put("an unclosed call", "FieldFilled(Reference");
+        refused.put("an ambiguous short name", "FieldFilled(Reference) And FieldFilled(Note)");
+        refused.put("a path above the root", "FieldFilled(Reference) And FieldFilled(../../../Reference)");
+        refused.put("an up-step after a named segment", "FieldFilled(Reference) And FieldFilled(Claims/../Reference)");
+        refused.put("an unknown root group", "FieldFilled(Reference) And FieldFilled(/Nope/Reference)");
+        // Two calls whose shape parses and whose operator refuses them — an argument too many, and a number
+        // where a date belongs. The portable checker leaves both to A12 (DEV-API-GAPS DG83).
+        refused.put("an argument too many", "FieldFilled(Reference) And Abs([Premium], [Premium]) > 0");
+        refused.put("a number where a date belongs", "FieldFilled(Reference) And AddDays([Premium], 1) > 0");
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        refused.forEach((shape, condition) -> {
+            String alone = messages(condition, false, "en_US", "see it");
+            assertNotEquals(KernelLaws.ADMITTED, alone, shape + " must itself be refused");
+            defects.forEach((defect, entries) -> {
+                actual.put(shape + " | " + defect, sorted(messages(condition, false, entries)));
+                expected.put(shape + " | " + defect,
+                        sorted(defect.equals("no message entry") ? alone + ",MVK_ERROR_MESSAGE_MISSING" : alone));
+            });
+            actual.put(shape + " | a declared locale unanswered", sorted(messages(condition, true, "en_US", "see it")));
+            expected.put(shape + " | a declared locale unanswered",
+                    sorted(alone + ",MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING"));
+        });
+        assertEquals(expected, actual, "the condition's own class, plus only the presence class");
+    }
+
+    /**
+     * The same split on a COMPUTATION with no message: beside a sound operation, beside a refused one, and on a
+     * skeleton that has no alternative at all.
+     */
+    @Test
+    void whichPresenceClassesAMessagelessComputationDraws() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a sound operation", sorted(computingWithout(List.of("1"))));
+        actual.put("an operation naming nothing", sorted(computingWithout(List.of("[NoSuchField] + 1"))));
+        actual.put("an unstarred repetition read", sorted(computingWithout(List.of("[Claims/Amount] + 1"))));
+        actual.put("no alternative at all", sorted(computingWithout(List.of())));
+        actual.put("a common precondition naming nothing",
+                sorted(computingWithout(List.of("1"), "FieldFilled(NoSuchField)", null)));
+        actual.put("an alternative's precondition naming nothing",
+                sorted(computingWithout(List.of("1"), null, "FieldFilled(NoSuchField)")));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a sound operation", "MVK_ERROR_MESSAGE_MISSING,RULE_HAS_NO_ERRORTEXT");
+        expected.put("an operation naming nothing", "MVK_ERROR_MESSAGE_MISSING,MVK_INVALID_ENTITY");
+        expected.put("an unstarred repetition read", "MVK_ERROR_MESSAGE_MISSING,MVK_NO_WILDCARD");
+        // A12 parses the absent operation as empty input, and that DSL class withholds the unprefixed one here too.
+        expected.put("no alternative at all", "MVK_CONDITION_MISSING,MVK_ERROR_MESSAGE_MISSING,MVK_INCOMPLETE_INPUT");
+        expected.put("a common precondition naming nothing", "MVK_ERROR_MESSAGE_MISSING,MVK_INVALID_ENTITY");
+        expected.put("an alternative's precondition naming nothing", "MVK_ERROR_MESSAGE_MISSING,MVK_INVALID_ENTITY");
+        assertEquals(expected, actual, "a messageless computation's classes");
+    }
+
+    /** A computation into `Premium` with [operations] as its alternatives and no `errorMessage` member at all. */
+    private static String computingWithout(List<String> operations) {
+        return computingWithout(operations, null, null);
+    }
+
+    /**
+     * The same computation, with [common] as its common precondition and [precondition] on every alternative;
+     * a {@code null} leaves that member out.
+     */
+    private static String computingWithout(List<String> operations, String common, String precondition) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(POLICY);
+            ObjectNode node = (ObjectNode) ((ArrayNode) root.path("content").path("modelRoot")
+                    .path("rootGroups").get(0).path("Group").path("elements")).addObject();
+            node.put("type", "Computation").put("id", "cprobe").put("name", "PremiumCalc");
+            ObjectNode body = node.putObject("Computation");
+            body.put("computedFieldRelPath", "../Premium");
+            if (common != null) {
+                body.put("commonPrecondition", common);
+            }
+            ArrayNode alternatives = body.putArray("computationAlternatives");
+            operations.forEach(operation -> {
+                ObjectNode alternative = alternatives.addObject();
+                if (precondition != null) {
+                    alternative.put("precondition", precondition);
+                }
+                alternative.put("operation", operation);
+            });
+            return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture must parse", unreadable);
+        }
+    }
+
+    /** A verdict's classes in a fixed order, so a relation between two verdicts does not depend on emission order. */
+    private static String sorted(String verdict) {
+        return Arrays.stream(verdict.split(",")).distinct().sorted().collect(Collectors.joining(","));
     }
 
     /**

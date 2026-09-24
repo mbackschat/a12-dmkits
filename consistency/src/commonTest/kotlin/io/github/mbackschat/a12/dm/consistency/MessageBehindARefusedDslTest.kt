@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * The checker's half of "A12 examines a declaration's message only when its DSL member is sound".
@@ -124,6 +125,92 @@ class MessageBehindARefusedDslTest {
         assertEquals(expected, actual, "the Base Year and no-text classes behind a refused DSL")
     }
 
+    /**
+     * Every refused condition SHAPE keeps the presence class and withholds every error-text class, the two with
+     * an `MVK_` key included — `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest
+     * .whichClassesEachRefusedConditionShapeWithholds`. Stated as that lock's relation, against the checker's own
+     * verdict on the condition alone, so a condition class the checker under-reports cannot fail it — while a
+     * leaked message class, or a dropped presence one, does. A prefix or code test cannot say "leaked": an
+     * up-step in the condition draws the very `MVK_UNEXPECTED_TOKEN` an up-step in a parameter would.
+     */
+    @Test
+    fun everyRefusedConditionShapeKeepsOnlyThePresenceClass() {
+        val defects = linkedMapOf(
+            "an unterminated parameter" to ("""[{"locale":"en_US","text":"see ${'$'}Premium"}]""" to "WRONG_NUMBER_OF_DOLLARS"),
+            "an up-step after a named segment" to
+                ("""[{"locale":"en_US","text":"see ${'$'}Claims/../Premium${'$'}"}]""" to "MVK_UNEXPECTED_TOKEN"),
+            "a key on a field that declares no index" to
+                ("""[{"locale":"en_US","text":"see ${'$'}Reference For \"x\"${'$'}"}]""" to "MVK_INDEX_FOR_ERROR_TEXT_INVALID"),
+            "no message entry" to ("[]" to "MVK_ERROR_MESSAGE_MISSING"),
+        )
+        val actual = linkedMapOf<String, List<String>>()
+        val expected = linkedMapOf<String, List<String>>()
+        defects.forEach { (defect, row) ->
+            actual["sound | $defect"] = ruleCodes(messages = row.first).filter { it != "RULE_HAS_NO_ERRORTEXT" }
+            expected["sound | $defect"] = listOf(row.second)
+        }
+        listOf(
+            "FieldFilled(Reference) And FieldFilled(Nope)",
+            "FieldFilled(Reference) And % FieldFilled(Reference)",
+            "FieldFilled(Reference",
+            "FieldFilled(Reference) And FieldFilled(Note)",
+            "FieldFilled(Reference) And FieldFilled(../../../Reference)",
+            "FieldFilled(Reference) And FieldFilled(Claims/../Reference)",
+            "FieldFilled(Reference) And FieldFilled(/Nope/Reference)",
+        ).forEach { condition ->
+            val alone = ruleCodes(condition = condition)
+            assertTrue(alone.isNotEmpty(), "$condition must itself be refused")
+            defects.forEach { (defect, row) ->
+                actual["$condition | $defect"] = ruleCodes(condition = condition, messages = row.first).distinct()
+                val presence = listOf(row.second).filter { it == "MVK_ERROR_MESSAGE_MISSING" }
+                expected["$condition | $defect"] = (alone + presence).distinct().sorted()
+            }
+        }
+        assertEquals(expected, actual, "each refused condition shape, against each message defect")
+    }
+
+    /** A messageless computation keeps `MVK_ERROR_MESSAGE_MISSING` and withholds the unprefixed class beside a refused operation. */
+    @Test
+    fun aMessagelessComputationKeepsThePresenceClass() {
+        val actual = linkedMapOf(
+            "a sound operation" to messagelessComputationCodes(listOf("1")),
+            "an operation naming nothing" to messagelessComputationCodes(listOf("[NoSuchField] + 1")),
+            "an unstarred repetition read" to messagelessComputationCodes(listOf("[Claims/Amount] + 1")),
+            "no alternative at all" to messagelessComputationCodes(emptyList()),
+            "a common precondition naming nothing" to
+                messagelessComputationCodes(listOf("1"), common = "FieldFilled(NoSuchField)"),
+            "an alternative's precondition naming nothing" to
+                messagelessComputationCodes(listOf("1"), precondition = "FieldFilled(NoSuchField)"),
+        )
+        val expected = linkedMapOf(
+            "a sound operation" to listOf("MVK_ERROR_MESSAGE_MISSING", "RULE_HAS_NO_ERRORTEXT"),
+            "an operation naming nothing" to listOf("MVK_ERROR_MESSAGE_MISSING", "MVK_INVALID_ENTITY"),
+            "an unstarred repetition read" to listOf("MVK_ERROR_MESSAGE_MISSING", "MVK_NO_WILDCARD"),
+            "no alternative at all" to listOf("MVK_CONDITION_MISSING", "MVK_ERROR_MESSAGE_MISSING", "MVK_INCOMPLETE_INPUT"),
+            "a common precondition naming nothing" to listOf("MVK_ERROR_MESSAGE_MISSING", "MVK_INVALID_ENTITY"),
+            "an alternative's precondition naming nothing" to listOf("MVK_ERROR_MESSAGE_MISSING", "MVK_INVALID_ENTITY"),
+        )
+        assertEquals(expected, actual, "a messageless computation's classes")
+    }
+
+    private fun messagelessComputationCodes(
+        operations: List<String>,
+        common: String? = null,
+        precondition: String? = null,
+    ): List<String> = a12Codes(
+        model(
+            """{"type":"Computation","id":"c0","name":"PremiumCalc","Computation":{
+              "computedFieldRelPath":"../Premium",${common?.let { "\"commonPrecondition\":\"$it\"," } ?: ""}
+              "computationAlternatives":[${
+                operations.joinToString(",") { operation ->
+                    val guard = precondition?.let { "\"precondition\":\"$it\"," } ?: ""
+                    """{$guard"operation":"$operation"}"""
+                }
+            }]}}""",
+        ),
+        "/Policy/PremiumCalc",
+    )
+
     /** Every A12 class the report names about the probe rule, sorted, so a co-firing class shows. */
     private fun ruleCodes(
         name: String = "Probe",
@@ -162,6 +249,12 @@ class MessageBehindARefusedDslTest {
             {"type":"Group","id":"g1","name":"Claims","Group":{"repeatability":9,"elements":[
               {"type":"Field","id":"f2","name":"Amount","Field":{"fieldType":{"type":"NumberType",
                 "NumberType":{"minFractionalDigits":0,"maxFractionalDigits":2}}}}
+            ]}},
+            {"type":"Group","id":"g2","name":"Holder","Group":{"elements":[
+              {"type":"Field","id":"f3","name":"Note","Field":{"fieldType":{"type":"StringType"}}}
+            ]}},
+            {"type":"Group","id":"g3","name":"Insured","Group":{"elements":[
+              {"type":"Field","id":"f4","name":"Note","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
             $declaration
           ]}}

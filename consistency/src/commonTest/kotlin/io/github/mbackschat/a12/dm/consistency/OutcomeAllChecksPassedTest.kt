@@ -116,7 +116,7 @@ class OutcomeAllChecksPassedTest {
      *
      * **This is the over-claim the family denominator cannot see, and it is reachable on an ordinary model.**
      * `DECLARATION_NOT_WELL_FORMED` is reported and **skipped** — deliberately, so one broken element cannot
-     * hide its siblings' real errors — so all 103 families run and none rejects, while nobody examined the
+     * hide its siblings' real errors — so every family runs and none rejects, while nobody examined the
      * skipped declaration. Keyed on `checksCompleted` alone this model reads as a clean pass, which would
      * tell a consumer their model is fine on the strength of a declaration nothing read.
      *

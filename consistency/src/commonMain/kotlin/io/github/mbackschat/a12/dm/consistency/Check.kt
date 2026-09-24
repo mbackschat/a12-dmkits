@@ -30,7 +30,7 @@ enum class CheckFamily {
      * A12's unprefixed error-text class for a declaration that answers no declared locale. Its own constant
      * rather than part of [DECLARATION_SLOTS] because A12's error-text checker draws it, and that checker
      * judges a message only beside a sound condition or operation, while the prefixed slot classes it rides
-     * with are judged regardless ([KF338]).
+     * with are judged regardless — measured on both carriers, preconditions included ([KF338]).
      */
     ERROR_TEXT_PRESENCE,
 
@@ -1182,7 +1182,8 @@ private val UNREAD_MEMBERS = listOf(
             "kinds, so a call with the wrong number or kind of arguments is left to A12. Reproducing those " +
             "per operator would be a second copy of the catalog, and every place the copy disagreed would " +
             "refuse a condition A12 admits. A12's illegal-CHARACTER class IS reported, derived from the " +
-            "lexer's terminals",
+            "lexer's terminals. The message beside such a call is still judged, so a message class A12 " +
+            "withholds behind the refused condition can be reported in its place (DEV-API-GAPS DG83)",
     ),
     CoverageGap(
         at = null,
@@ -1250,8 +1251,8 @@ private fun List<Finding>.withoutPostParseClassesBehindAPositionedDefect(): List
  *
  * A12 examines a rule's or a computation's message only once its condition or operation is sound, and
  * "sound" is not "resolves and parses": a refused star, a missing one, a slot gate and the post-parse
- * unreferenced-target class each withhold both message verdicts, on either carrier, while a class about the
- * NAME or the ERROR CODE leaves them standing beside it ([KERNEL-FINDINGS KF338],
+ * unreferenced-target class each withhold every error-text class, on either carrier, while a class about the
+ * NAME or the ERROR CODE, and a member-presence class, stand beside it ([KERNEL-FINDINGS KF338],
  * `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`). This is the one site that applies
  * the law; the message families judge their member as if the DSL beside it were sound.
  *
@@ -1260,9 +1261,11 @@ private fun List<Finding>.withoutPostParseClassesBehindAPositionedDefect(): List
  * because every measured trigger is one and a warning does not make the member unsound.
  *
  * **That one trigger also covers the DSL A12 cannot resolve or parse**, because such a member draws a
- * rejecting finding of its own: an unresolved name, an unbalanced text, a reference an earlier segment's
- * gate answers for. `UnsoundDslDrawsARejectionTest` locks that over the shapes the retired per-family gate
- * named, so a syntax family falling silent on one fails there rather than leaking a message class here.
+ * rejecting finding of its own: every reference outcome but a resolved one, an unbalanced text, a reference an
+ * earlier segment's gate answers for. `UnsoundDslDrawsARejectionTest` locks that over those shapes in the
+ * condition, the operation and both preconditions, so a syntax family falling silent on one fails there rather
+ * than leaking a message class here. A DSL defect no family detects is the gap it cannot close: the member reads
+ * as sound, so its message classes stand where A12 withholds them.
  */
 private fun List<Finding>.withoutMessageVerdictsBehindARefusedDsl(
     messageVerdicts: Set<Finding>,
@@ -1273,13 +1276,17 @@ private fun List<Finding>.withoutMessageVerdictsBehindARefusedDsl(
 }
 
 /**
- * The families that judge a declaration's MESSAGE member, whose verdicts A12 gives only beside a sound DSL.
+ * The families that report A12's ERROR-TEXT checker, whose verdicts A12 gives only beside a sound DSL.
  *
- * Listed by family rather than by code because every one of them draws unprefixed `FehlertextErrorType`
- * classes and nothing else does, so the family is the fact and the code set would be its second copy. **That
- * holds only while no family judges the message beside another member**: the Base Year and no-text classes
- * were drawn from inside the condition and slot families and co-fired beside a refused DSL until each arm
- * became a family of its own (2026-09-24).
+ * The split is by checker, not by spelling. `RuleInfoBuilder.getErrorTextParameters` skips
+ * `checkErrorTextsAndParseParameters` when the condition errs, and that one pass is `RuleErrortextChecker`, which
+ * draws both the unprefixed classes and `MVK_`-keyed ones: the parameter parser's `MVK_UNEXPECTED_TOKEN` and
+ * `MVK_INDEX_FOR_ERROR_TEXT_INVALID` are withheld beside every refused condition shape measured, while the
+ * member-presence classes stay (`rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`, source read
+ * in kernel `30.8.1`, 2026-09-25). So the family is the fact, and no code prefix selects it. **That holds only
+ * while no family judges the message beside another member**: the Base Year and no-text classes were drawn from
+ * inside the condition and slot families and co-fired beside a refused DSL until each arm became a family of
+ * its own (2026-09-24).
  */
 internal val MESSAGE_MEMBER_FAMILIES = setOf(
     CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.ERROR_TEXT_SEMANTIC_INDEX,
