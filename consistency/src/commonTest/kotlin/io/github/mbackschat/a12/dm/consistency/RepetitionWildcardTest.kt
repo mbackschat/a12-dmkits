@@ -163,10 +163,9 @@ class RepetitionWildcardTest {
         expected["…the same unstarred — the control"] = emptyList()
         expected["a leading up-step, from a rule one level down"] = listOf("MVK_INVALID_WILDCARD_REL")
         expected["…the same step unstarred — the control"] = emptyList()
-        // A12 refuses this too, and the checker does not: a run that names nothing is not reported as a
-        // reference at all, so the family never sees it. Narrow, disclosed, and in the safe direction — every
-        // up-step carrying a name after it IS judged, as the row above shows.
-        expected["a leading up-step with nothing after it"] = emptyList()
+        // A run of up-steps alone is a reference too, so the step is judged with nothing after it
+        // (`rulekit.validate.laws.StarredNonRepeatableReachLawsTest`).
+        expected["a leading up-step with nothing after it"] = listOf("MVK_INVALID_WILDCARD_REL")
         assertEquals(expected, actual, "a star on a segment that is not a name")
     }
 

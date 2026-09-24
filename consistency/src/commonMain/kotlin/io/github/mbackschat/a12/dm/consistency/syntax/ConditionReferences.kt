@@ -141,6 +141,15 @@ internal val PATH_PUNCTUATION = setOf("/", "..", ".", "*")
 /** What a reference may end with — a trailing separator is a malformed tail, never part of the name. */
 private val PATH_SEPARATORS = setOf("/", ".")
 
+/**
+ * Whether a run of path tokens names an entity: it carries a name, or an up-step, which names an ancestor
+ * group on its own. A run of separators and stars alone — the `/` of `[A] / [B]` — names nothing.
+ *
+ * Keeping only a run with a NAME in it left `..`, `../..` and `/..` unread, so no family saw them and the
+ * checker was silent on every rejection A12 draws for them (`rulekit.validate.laws.PathSegmentWalkLawsTest`).
+ */
+internal fun List<Token>.namesAnEntity(): Boolean = any { it.isName() || it.text == UP_STEP }
+
 private class ReferenceScan(
     private val tokens: List<Token>,
     private val keywords: Map<String, KeywordKind>,
@@ -268,20 +277,18 @@ private class ReferenceScan(
     private fun readReference() {
         val begin = at
         var end = at
-        var names = 0
         while (end < tokens.size) {
             val token = tokens[end]
             when {
                 // A keyword ends the run: unquoted, the Kernel lexes it as the keyword, so it is not a segment.
                 token.kind == TokenKind.NAME && token.text in keywords -> break
-                token.isName() -> names++
-                token.kind == TokenKind.NUMBER || token.text in PATH_PUNCTUATION -> Unit
+                token.isName() || token.kind == TokenKind.NUMBER || token.text in PATH_PUNCTUATION -> Unit
                 else -> break
             }
             end++
         }
         while (end > begin && tokens[end - 1].text in PATH_SEPARATORS) end--
-        if (names > 0) {
+        if (tokens.subList(begin, end).namesAnEntity()) {
             val path = normalizedPath(tokens.subList(begin, end))
             found += path
             spans += ReferenceSpan(path, tokens[begin].start, tokens[end - 1].end)

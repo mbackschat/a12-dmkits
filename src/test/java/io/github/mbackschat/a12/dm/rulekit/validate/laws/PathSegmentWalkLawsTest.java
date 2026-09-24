@@ -238,6 +238,29 @@ class PathSegmentWalkLawsTest {
         assertEquals(rows, verdicts(SHORT_NAMES_ON, "/Policy/Insured", "Remark", rows), "a starred leading up-step");
     }
 
+    /**
+     * A path of up-steps alone names an ancestor group, and each carrier judges that group as it would any
+     * other: from a nested rule {@code ..} is the root group, which a field-fill operand refuses and a group
+     * operand takes, and a starred or overlong run answers its own classes.
+     */
+    @Test
+    void aPathOfUpStepsAloneNamesAnAncestorGroup() {
+        Map<String, String> rows = orderedMap(
+                "FieldFilled(..)", "MVK_ROOT_GROUP_REFERENCED",
+                "AtLeastOneGroupFilled(..)", "admitted",
+                "FieldFilled(..*)", "MVK_INVALID_WILDCARD_REL",
+                "AtLeastOneGroupFilled(..*)", "MVK_INVALID_WILDCARD_REL",
+                "FieldFilled(..*/..)", "MVK_INVALID_WILDCARD_REL",
+                "FieldFilled(../..)", "MVK_TOO_MANY_PARENT_GROUPS",
+                "AtLeastOneGroupFilled(../..)", "MVK_TOO_MANY_PARENT_GROUPS",
+                "FieldFilled(/..)", "MVK_UNEXPECTED_TOKEN",
+                "AtLeastOneGroupFilled(/../..)", "MVK_UNEXPECTED_TOKEN");
+        Map<String, String> actual = new LinkedHashMap<>();
+        rows.keySet().forEach(row -> actual.put(row,
+                verdict(SHORT_NAMES_ON, "/Policy/Insured", "Remark", "FieldFilled(Remark) And " + row)));
+        assertEquals(rows, actual, "a path of up-steps alone, from a nested rule");
+    }
+
     /** The refusal is the path's, not the carrier's: a group operand and an aggregate operand draw it too. */
     @Test
     void theRefusalDoesNotDependOnTheCarrier() {

@@ -189,16 +189,14 @@ private val CLOSING_DELIMITERS = setOf(")", "]")
  * selects a different repetition of the same element, which is a distinction paths do not carry.
  */
 private fun List<Token>.asPath(keywords: Map<String, KeywordKind>): String? {
-    var names = 0
     forEach { token ->
         when {
             token.kind == TokenKind.NAME && token.text in keywords -> return null
-            token.isName() -> names++
-            token.kind == TokenKind.NUMBER || token.text in PATH_PUNCTUATION -> Unit
+            token.isName() || token.kind == TokenKind.NUMBER || token.text in PATH_PUNCTUATION -> Unit
             else -> return null
         }
     }
-    return if (names > 0) normalizedPath(this) else null
+    return if (namesAnEntity()) normalizedPath(this) else null
 }
 
 /**
