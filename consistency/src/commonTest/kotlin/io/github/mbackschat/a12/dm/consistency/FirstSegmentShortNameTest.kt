@@ -48,6 +48,17 @@ class FirstSegmentShortNameTest {
         assertEquals(rows, actual, "from a root-level rule")
     }
 
+    /** A later segment is looked up below the one before it and nowhere else, so a unique short name there misses. */
+    @Test
+    fun aLaterSegmentNeverReachesIt() {
+        val rows = listOf("Insured/Holder", "Broker/Age", "Insured/ClaimRef", "Claims*/Age")
+            .associateWith { listOf("MVK_INVALID_ENTITY") }
+        val actual = rows.keys.associateWith {
+            PolicyPathSource.rejections("../Holder", "FieldFilled(Holder) And FieldFilled($it)")
+        }
+        assertEquals(rows, actual, "a unique short name after the first segment")
+    }
+
     @Test
     fun aMessageParameterReachesItOnItsOwnVocabulary() {
         val rows = linkedMapOf(

@@ -118,7 +118,8 @@ class PathSegmentWalkLawsTest {
      * {@code Remark/Nope} is not unique where a positional reading would call it an entity miss. That is the
      * row the two readings disagree on, because the fallback indexes fields and a field has nothing below it,
      * so a unique first segment ({@code Age/Nope}) is an entity miss either way. The flag-off twin shows the
-     * fallback is what answers.
+     * fallback is what answers. A LATER segment never reaches it: {@code Insured/Holder} and {@code Broker/Age}
+     * name unique fields that the fallback would bind, and both are entity misses.
      */
     @Test
     void theShortNameFallbackAnswersTheFirstSegmentOfALongerPath() {
@@ -127,7 +128,11 @@ class PathSegmentWalkLawsTest {
                 "Remark*/Nope", "MVK_FIELDNAME_NOT_UNIQUE",
                 "Remark/Claims*", "MVK_FIELDNAME_NOT_UNIQUE",
                 "Age/Nope", "MVK_INVALID_ENTITY",
-                "Age*/Nope", "MVK_INVALID_WILDCARD");
+                "Age*/Nope", "MVK_INVALID_WILDCARD",
+                "Insured/Holder", "MVK_INVALID_ENTITY",
+                "Broker/Age", "MVK_INVALID_ENTITY",
+                "Insured/ClaimRef", "MVK_INVALID_ENTITY",
+                "Claims*/Age", "MVK_INVALID_ENTITY");
         assertEquals(on, verdicts(SHORT_NAMES_ON, "/Policy", "Holder", on), "short-name references on");
         Map<String, String> off = orderedMap(
                 "Remark/Nope", "MVK_INVALID_ENTITY",
