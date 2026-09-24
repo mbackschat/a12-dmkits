@@ -52,10 +52,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * **A STARRED root is NOT exempt**, which is the asymmetry against the duplicate gate above: the wildcard
  * takes an operand out of the duplicate comparison and leaves it fully inside this one.
  *
- * **Neither the error field's locus nor a repeatable co-operand changes the verdict.** An unstarred
- * repeatable co-operand makes A12 report its wildcard class first from the outside anchoring and the root
- * class from the inside — so the root violation holds in both and only the reporting ORDER moves, which is
- * why this family needs no iteration analysis to be truthful.
+ * **An operand A12 refuses while reading it silences every gate here**, the duplicate and kind gates as well
+ * as the root one. An unstarred repeatable co-operand read from outside its group draws its wildcard or
+ * containment class ALONE, and the root class appears only once the read passes, as it does from inside
+ * ([anOperandIsRefusedOnRead]). *Corrected 2026-09-25:* this said the root violation "holds in both" and
+ * that the family needed no iteration analysis, so it named the root class beside the one A12 gives.
  *
  * ## …and a FIELD on the three carriers that refuse one
  *
@@ -111,6 +112,10 @@ private fun TrackedFactBase.operandFinding(
     val bound = call.operands.map { it to it.resolvedBy(this, declaringGroup, element.origin) }
     // A12 reports the entity and says nothing about the duplicate, so this family has nothing to add.
     if (bound.any { (operand, reference) -> operand.path != null && reference !is Reference.Resolved }) {
+        return null
+    }
+    // Every gate below is the operator's own, and A12 asks none of them once reading an operand has failed.
+    if (anOperandIsRefusedOnRead(call, element)) {
         return null
     }
     val resolved = bound.mapNotNull { (_, reference) -> (reference as? Reference.Resolved)?.path }

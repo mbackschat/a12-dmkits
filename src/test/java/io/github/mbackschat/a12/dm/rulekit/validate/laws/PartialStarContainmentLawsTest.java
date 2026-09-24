@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.junit.jupiter.api.Test;
 
@@ -127,6 +128,15 @@ class PartialStarContainmentLawsTest {
             Condition condition = model.field(TARGET).filled().and(read);
             return is(KernelLaws.render(group, condition),
                     KernelLaws.verdictModel(json, group, "../../Summary/Result", condition));
+        }
+
+        /**
+         * The same rule over a carrier written as text, for the grid below: the twenty-odd carriers have no one
+         * typed factory to vary, and the text is what the kernel is handed either way.
+         */
+        String textRule(String group, String read) {
+            String condition = "FieldFilled(" + TARGET + ") And " + read;
+            return is(condition, KernelLaws.verdictModel(json, group, "../../Summary/Result", condition));
         }
 
         Calculation sum(String starPath) {
@@ -320,5 +330,116 @@ class PartialStarContainmentLawsTest {
         expected.put("Ledger | Sum, every level starred — control",
                 is("FieldFilled(../Summary/Result) And Sum(../Shipments*/Parcels*/Weight) > 0", KernelLaws.ADMITTED));
         assertEquals(expected, actual, "a partial star in a rule reporting outside its group");
+    }
+
+    /** Every validation star carrier, over a level list {@code %s} that is starred or not below the first star. */
+    private static final List<String> CARRIERS = List.of(
+            "Sum(%s/Weight) > 0",
+            "MaxValue(%s/Weight) > 0",
+            "FirstFilledValue(%s/Weight) > 0",
+            "NumberOfValueInFields(0 In %s/Weight) > 0",
+            "NumberOfFilledGroups(%s/Seal) > 0",
+            "AtLeastOneFieldFilled(%s/Weight)",
+            "AllFieldsFilled(%s/Weight)",
+            "NoFieldFilled(%s/Weight)",
+            "NotAllFieldsFilled(%s/Weight)",
+            "FieldsNotCollectivelyFilled(%s/Weight)",
+            "NotExactlyOneFieldFilled(%s/Weight)",
+            "MoreThanOneFieldFilled(%s/Weight)",
+            "NumberOfFilledFields(%s/Weight) > 0",
+            "AtLeastOneFieldValueIncludedInValueList(%s/ParcelKey In \"X\")",
+            "NoFieldValueIncludedInValueList(%s/ParcelKey In \"X\")",
+            "NotAllFieldValuesIncludedInValueList(%s/ParcelKey In \"X\")",
+            "AtLeastOneGroupFilled(%s/Seal)",
+            "NoGroupFilled(%s/Seal)",
+            "AllGroupsFilled(%s/Seal)",
+            "NotAllGroupsFilled(%s/Seal)",
+            "GroupsNotCollectivelyFilled(%s/Seal)",
+            "FieldValuesNotUnique(%s/ParcelKey)",
+            "NumberOfDifferentValues(%s/ParcelKey) < 2");
+
+    /** The carriers that forbid a star in their operand, so their fully starred control draws that bar. */
+    private static final List<String> STAR_FORBIDDING = List.of(
+            "AllGroupsFilled(%s/Seal)", "NotAllGroupsFilled(%s/Seal)", "GroupsNotCollectivelyFilled(%s/Seal)");
+
+    /**
+     * a12-kernel-lean's {@code SPEC-2026-09-24-06}, measured here: every validation star carrier reads a level left
+     * unstarred below the first star per row, so a rule group the error field lies outside draws containment and
+     * the one it lies in draws the missing star — not only {@code Sum} and the group count, which the rule-arm test
+     * above carries. The fully starred row is each carrier's control, so a class the carrier draws of its own
+     * cannot pass for the placement.
+     */
+    @Test
+    void everyValidationStarCarrierPlacesAnUnstarredLevelBelowTheFirstStar() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        CARRIERS.forEach(carrier -> {
+            String below = carrier.formatted("/Fulfilment/Shipments*/Parcels");
+            String every = carrier.formatted("/Fulfilment/Shipments*/Parcels*");
+            String control =
+                    STAR_FORBIDDING.contains(carrier) ? "MVK_NO_WILDCARDS_G_ALLOWED" : KernelLaws.ADMITTED;
+            for (String group : List.of(SHIPMENTS, LEDGER)) {
+                String from = group.substring(group.lastIndexOf('/') + 1);
+                actual.put(from + " | " + below, PLAIN.textRule(group, below));
+                expected.put(from + " | " + below, is("FieldFilled(" + TARGET + ") And " + below, NOT_IN_RULEGROUP));
+                actual.put(from + " | " + every + " — control", PLAIN.textRule(group, every));
+                expected.put(from + " | " + every + " — control",
+                    is("FieldFilled(" + TARGET + ") And " + every, control));
+            }
+            actual.put("Summary | " + below, PLAIN.textRule(SUMMARY, below));
+            expected.put("Summary | " + below, is("FieldFilled(" + TARGET + ") And " + below, NO_WILDCARD));
+        });
+        assertEquals(expected, actual, "the placed class on every validation star carrier");
+    }
+
+    /** Calls whose operator runs a gate of its own, each with an operand A12 refuses while reading it. */
+    private static final Map<String, String> GATE_BEHIND_A_REFUSED_READ = Map.of(
+            "the scalar star bar", "GroupFilled(/Fulfilment/Shipments*/Parcels/Seal)",
+            "the scalar star bar, negated", "GroupNotFilled(/Fulfilment/Shipments/Parcels*/Seal)",
+            "the group-list star bar", "AllGroupsFilled(/Fulfilment/Shipments/Parcels*/Seal)",
+            "the root gate", "AllGroupsFilled(/Fulfilment/Shipments*/Parcels/Seal, /Fulfilment)",
+            "the duplicate gate",
+                    "AllGroupsFilled(/Fulfilment/Shipments/Parcels/Seal, /Fulfilment/Shipments/Parcels/Seal)",
+            "the overlap gate", "AtLeastOneGroupFilled(/Fulfilment, /Fulfilment/Shipments/Parcels/Seal)",
+            "the field-kind gate", "GroupFilled(/Fulfilment/Shipments/ShipWeight)",
+            "the field-kind gate on the count", "NumberOfFilledGroups(/Fulfilment/Shipments/ShipWeight) > 0");
+
+    /** …and each gate's control: the same gate over operands A12 reads, where it answers. */
+    private static final Map<String, String[]> GATE_ON_A_READ_OPERAND = Map.of(
+            "the scalar star bar",
+                    new String[] {"GroupFilled(/Fulfilment/Shipments*/Parcels*/Seal)", "MVK_NO_WILDCARDS_ALLOWED"},
+            "the group-list star bar",
+                    new String[] {
+                        "AllGroupsFilled(/Fulfilment/Shipments*/Parcels*/Seal)", "MVK_NO_WILDCARDS_G_ALLOWED"},
+            "the root gate", new String[] {"AllGroupsFilled(/Fulfilment)", "MVK_ROOT_GROUP_REFERENCED"},
+            "the duplicate gate",
+                    new String[] {"AllGroupsFilled(/Fulfilment/Ledger, /Fulfilment/Ledger)", "MVK_DUPLICATE_PARAM1"},
+            "the overlap gate",
+                    new String[] {"AtLeastOneGroupFilled(/Fulfilment, /Fulfilment/Ledger)", "MVK_DUPLICATE_PARAM2"},
+            "the field-kind gate", new String[] {"GroupFilled(/Fulfilment/Ledger/Total)", "MVK_NO_FIELDS_ALLOWED"});
+
+    /**
+     * An operator's own gates run only once its operands have been READ, so an operand the read refuses answers
+     * for the whole call. A12 checks each operand's entity spec as it parses it, and
+     * {@code CheckKontextListenBedingungImpl.check} then gets a list whose members have already been read. The rows
+     * separate that from the rival order, where the operator's gate would answer first: every gate below is
+     * silent, from a rule group the error field lies outside (containment) and from the one it lies in (the
+     * missing star), and every control shows the same gate answering over an operand A12 reads.
+     */
+    @Test
+    void anOperatorsOwnGatesWaitForItsOperandsRead() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        new TreeMap<>(GATE_BEHIND_A_REFUSED_READ).forEach((gate, read) -> {
+            actual.put(gate + " | from Ledger", PLAIN.textRule(LEDGER, read));
+            expected.put(gate + " | from Ledger", is("FieldFilled(" + TARGET + ") And " + read, NOT_IN_RULEGROUP));
+            actual.put(gate + " | from Summary", PLAIN.textRule(SUMMARY, read));
+            expected.put(gate + " | from Summary", is("FieldFilled(" + TARGET + ") And " + read, NO_WILDCARD));
+        });
+        new TreeMap<>(GATE_ON_A_READ_OPERAND).forEach((gate, row) -> {
+            actual.put(gate + " | the control", PLAIN.textRule(SUMMARY, row[0]));
+            expected.put(gate + " | the control", is("FieldFilled(" + TARGET + ") And " + row[0], row[1]));
+        });
+        assertEquals(expected, actual, "an operator's own gates behind a refused read");
     }
 }

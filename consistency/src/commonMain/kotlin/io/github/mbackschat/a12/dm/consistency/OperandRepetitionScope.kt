@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
@@ -130,6 +131,47 @@ private fun filteredBases(
     .filter { operand -> operand.clauses.any { it.keyword in filterKeyword } }
     .mapNotNull { it.base }
     .toSet()
+
+/**
+ * Whether A12 refuses one of [call]'s operands while READING it, so the operator's own gates never run.
+ *
+ * A12 checks an operand's entity spec as it parses that operand, and the operator's own check runs on the
+ * finished call: `CheckKontextListenBedingungImpl.check` is handed an operand list whose members have already
+ * been read. So a class the read draws answers for the whole call. There are two such classes here:
+ * containment, for a per-row read into a target outside the declaring group, and this family's walk, for a
+ * read into a target inside it. Both were measured ahead of the star bars on both group-condition arms, the
+ * group-list duplicate, overlap and root gates, and the field-kind gate
+ * (`rulekit.validate.laws.PartialStarContainmentLawsTest.anOperatorsOwnGatesWaitForItsOperandsRead`).
+ *
+ * **Not [addressedTargetOf]'s question.** That one also yields on a legal PARALLEL walk, which A12 admits
+ * before asking the operator's gates, so answering it here would silence a class A12 draws. A keyed operand
+ * reads as not refused, because the walk is not judged on one and silence here would be a guess.
+ */
+internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, element: TrackedDeclaration): Boolean {
+    val target = declaredReferences().firstOrNull {
+        it.declaredAt == element.path &&
+            (it.role == ReferenceRole.ERROR_TARGET || it.role == ReferenceRole.COMPUTED_TARGET)
+    }?.target as? Reference.Resolved ?: return false
+    val targetGroup = groupOfTargetField(target.path) ?: return false
+    val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    val contained = target.path == declaringGroup || target.path.startsWith("$declaringGroup/")
+    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]
+    val keyed = setOfNotNull(keywords?.get(SEMANTIC_INDEX))
+    val filter = setOfNotNull(keywords?.get(HAVING))
+    return call.operands.any { operand ->
+        val base = operand.base ?: return@any false
+        if (operand.clauses.any { it.keyword in keyed }) {
+            return@any false
+        }
+        if (contained) {
+            val filtered = operand.clauses.any { it.keyword in filter }
+            return@any levelClassOf(base, declaringGroup, targetGroup, element, filtered) != null
+        }
+        val resolved = resolveEntity(declaringGroup, base.replace("*", ""), element.origin)
+        val path = (resolved as? Reference.Resolved)?.path ?: return@any false
+        unstarredRepeatableLevels(base, path, declaringGroup, element)?.isNotEmpty() == true
+    }
+}
 
 /** The group whose repetitions A12 addresses the target by, or null when the target is not a FIELD. */
 internal fun TrackedFactBase.groupOfTargetField(target: String): String? =

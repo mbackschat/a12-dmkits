@@ -350,21 +350,20 @@ class GroupListOperandsTest {
     /**
      * A REPEATABLE root read without its star is walked first, like any repeatable group, and judged as a root
      * only behind the walk: from a rule inside it the walk passes and the root classes answer as for a fixed
-     * root. Row for row with `rulekit.validate.laws.GroupListRootOperandLawsTest`, except that the checker also
-     * names the root class behind the walk where the starred row shows it to be a second defect.
+     * root. Row for row with `rulekit.validate.laws.GroupListRootOperandLawsTest`: the walk answers alone from
+     * outside, because an operand refused on read silences every gate of the operator's own ([KF443]).
      */
     @Test
     fun anUnstarredRepeatableRootIsWalkedBeforeItIsJudgedAsARoot() {
         val noWildcard = "MVK_NO_WILDCARD"
         val referenced = "MVK_ROOT_GROUP_REFERENCED"
         val withOthers = "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS"
-        // A12 answers the walk alone. The root class the checker adds is the one the starred twin still draws.
         val outside = linkedMapOf(
-            "AllGroupsFilled(/Agencies)" to listOf(referenced, noWildcard),
+            "AllGroupsFilled(/Agencies)" to listOf(noWildcard),
             "AtLeastOneGroupFilled(/Agencies)" to listOf(noWildcard),
             "NoGroupFilled(/Agencies)" to listOf(noWildcard),
-            "AtLeastOneGroupFilled(/Agencies, Garage)" to listOf(withOthers, noWildcard),
-            "NumberOfFilledGroups(/Agencies, Garage) > 0" to listOf(withOthers, noWildcard),
+            "AtLeastOneGroupFilled(/Agencies, Garage)" to listOf(noWildcard),
+            "NumberOfFilledGroups(/Agencies, Garage) > 0" to listOf(noWildcard),
             "GroupFilled(/Agencies)" to listOf(noWildcard),
             "FieldFilled(/Agencies)" to listOf(noWildcard),
             "AtLeastOneFieldFilled(/Agencies)" to listOf(noWildcard),

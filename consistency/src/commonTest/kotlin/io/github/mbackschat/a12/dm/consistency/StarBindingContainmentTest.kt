@@ -272,6 +272,79 @@ class StarBindingContainmentTest {
         assertEquals(expected, actual, "a partial star in a rule reporting outside its group")
     }
 
+    /**
+     * `PartialStarContainmentLawsTest.everyValidationStarCarrierPlacesAnUnstarredLevelBelowTheFirstStar`, where
+     * a12-kernel-lean's `SPEC-2026-09-24-06` was measured: every validation star carrier places a level left
+     * unstarred below the first star, containment from a rule group the error field lies outside and the missing
+     * star from the one it lies in. `@` stands for the level list, starred or not below the first star.
+     */
+    @Test
+    fun everyValidationStarCarrierPlacesAnUnstarredLevelBelowTheFirstStar() {
+        val sheet = Sheet(ledger = true)
+        val reach = "FieldFilled(/Fulfilment/Summary/Result) And"
+        val starForbidding =
+            setOf("AllGroupsFilled(@/Seal)", "NotAllGroupsFilled(@/Seal)", "GroupsNotCollectivelyFilled(@/Seal)")
+        val actual = linkedMapOf<String, List<String>>()
+        val expected = linkedMapOf<String, List<String>>()
+        VALIDATION_STAR_CARRIERS.forEach { carrier ->
+            val below = carrier.replace("@", "/Fulfilment/Shipments*/Parcels")
+            val every = carrier.replace("@", "/Fulfilment/Shipments*/Parcels*")
+            listOf(shipments, ledger).forEach { group ->
+                val from = group.substringAfterLast('/')
+                actual["$from | $below"] = ruleCodes(sheet, group, "$reach $below")
+                expected["$from | $below"] = listOf(notInRuleGroup)
+                actual["$from | $every — control"] = ruleCodes(sheet, group, "$reach $every")
+                expected["$from | $every — control"] =
+                    if (carrier in starForbidding) listOf("MVK_NO_WILDCARDS_G_ALLOWED") else emptyList()
+            }
+            actual["Summary | $below"] = ruleCodes(sheet, "/Fulfilment/Summary", "$reach $below")
+            expected["Summary | $below"] = listOf("MVK_NO_WILDCARD")
+        }
+        assertEquals(expected, actual, "the placed class on every validation star carrier")
+    }
+
+    /**
+     * `PartialStarContainmentLawsTest.anOperatorsOwnGatesWaitForItsOperandsRead`: an operator's own gates run
+     * only once its operands have been read, so an operand the read refuses answers for the whole call, and
+     * each control shows the gate answering over an operand A12 reads.
+     */
+    @Test
+    fun anOperatorsOwnGatesWaitForItsOperandsRead() {
+        val sheet = Sheet(ledger = true)
+        val reach = "FieldFilled(/Fulfilment/Summary/Result) And"
+        val behind = listOf(
+            "GroupFilled(/Fulfilment/Shipments*/Parcels/Seal)",
+            "GroupNotFilled(/Fulfilment/Shipments/Parcels*/Seal)",
+            "AllGroupsFilled(/Fulfilment/Shipments/Parcels*/Seal)",
+            "AllGroupsFilled(/Fulfilment/Shipments*/Parcels/Seal, /Fulfilment)",
+            "AllGroupsFilled(/Fulfilment/Shipments/Parcels/Seal, /Fulfilment/Shipments/Parcels/Seal)",
+            "AtLeastOneGroupFilled(/Fulfilment, /Fulfilment/Shipments/Parcels/Seal)",
+            "GroupFilled(/Fulfilment/Shipments/ShipWeight)",
+            "NumberOfFilledGroups(/Fulfilment/Shipments/ShipWeight) > 0",
+        )
+        val controls = linkedMapOf(
+            "GroupFilled(/Fulfilment/Shipments*/Parcels*/Seal)" to "MVK_NO_WILDCARDS_ALLOWED",
+            "AllGroupsFilled(/Fulfilment/Shipments*/Parcels*/Seal)" to "MVK_NO_WILDCARDS_G_ALLOWED",
+            "AllGroupsFilled(/Fulfilment)" to "MVK_ROOT_GROUP_REFERENCED",
+            "AllGroupsFilled(/Fulfilment/Ledger, /Fulfilment/Ledger)" to "MVK_DUPLICATE_PARAM1",
+            "AtLeastOneGroupFilled(/Fulfilment, /Fulfilment/Ledger)" to "MVK_DUPLICATE_PARAM2",
+            "GroupFilled(/Fulfilment/Ledger/Total)" to "MVK_NO_FIELDS_ALLOWED",
+        )
+        val actual = linkedMapOf<String, List<String>>()
+        val expected = linkedMapOf<String, List<String>>()
+        behind.forEach { read ->
+            actual["Ledger | $read"] = ruleCodes(sheet, ledger, "$reach $read")
+            expected["Ledger | $read"] = listOf(notInRuleGroup)
+            actual["Summary | $read"] = ruleCodes(sheet, "/Fulfilment/Summary", "$reach $read")
+            expected["Summary | $read"] = listOf("MVK_NO_WILDCARD")
+        }
+        controls.forEach { (read, code) ->
+            actual["control | $read"] = ruleCodes(sheet, "/Fulfilment/Summary", "$reach $read")
+            expected["control | $read"] = listOf(code)
+        }
+        assertEquals(expected, actual, "an operator's own gates behind a refused read")
+    }
+
     private fun codes(sheet: Sheet, group: String, computedField: String, operation: String): List<String> =
         a12Codes(sheet.json(group, computation(computedField, operation)))
 
@@ -293,6 +366,35 @@ class StarBindingContainmentTest {
           "errorCondition":"$condition","errorEntityRelPath":"$errorField",
           "errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"x"}]}}
     """.trimIndent()
+
+    private companion object {
+        /** The lock's carriers, with `@` for the level list. */
+        val VALIDATION_STAR_CARRIERS = listOf(
+            "Sum(@/Weight) > 0",
+            "MaxValue(@/Weight) > 0",
+            "FirstFilledValue(@/Weight) > 0",
+            "NumberOfValueInFields(0 In @/Weight) > 0",
+            "NumberOfFilledGroups(@/Seal) > 0",
+            "AtLeastOneFieldFilled(@/Weight)",
+            "AllFieldsFilled(@/Weight)",
+            "NoFieldFilled(@/Weight)",
+            "NotAllFieldsFilled(@/Weight)",
+            "FieldsNotCollectivelyFilled(@/Weight)",
+            "NotExactlyOneFieldFilled(@/Weight)",
+            "MoreThanOneFieldFilled(@/Weight)",
+            "NumberOfFilledFields(@/Weight) > 0",
+            "AtLeastOneFieldValueIncludedInValueList(@/ParcelKey In \\\"X\\\")",
+            "NoFieldValueIncludedInValueList(@/ParcelKey In \\\"X\\\")",
+            "NotAllFieldValuesIncludedInValueList(@/ParcelKey In \\\"X\\\")",
+            "AtLeastOneGroupFilled(@/Seal)",
+            "NoGroupFilled(@/Seal)",
+            "AllGroupsFilled(@/Seal)",
+            "NotAllGroupsFilled(@/Seal)",
+            "GroupsNotCollectivelyFilled(@/Seal)",
+            "FieldValuesNotUnique(@/ParcelKey)",
+            "NumberOfDifferentValues(@/ParcelKey) < 2",
+        )
+    }
 
     /**
      * The locks' fulfilment sheet. Both key fields are always present and the flags only declare them their

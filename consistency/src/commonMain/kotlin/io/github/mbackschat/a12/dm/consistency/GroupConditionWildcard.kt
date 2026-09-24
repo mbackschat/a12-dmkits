@@ -28,6 +28,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * `MVK_NO_WILDCARDS_G_ALLOWED` is a class no filter gate can produce, so a quantifier nested in a filter is
  * answered by its own gate and this family may report there.
  *
+ * **Silent where A12 refuses an operand while reading it** — a per-row read out of a group the target lies
+ * outside, or one the repetition walk refuses — because that class answers before this gate is asked
+ * ([anOperandIsRefusedOnRead], [KERNEL-FINDINGS KF466]).
+ *
  * **Silent unless every starred segment lands on a group A12 agrees repeats, and the whole reference
  * resolves.** A star on a non-repeatable level is [repetitionWildcardFindings]' class and outruns this one;
  * an unresolvable leaf is unmeasured in this position, so silence is the safe answer.
@@ -44,6 +48,9 @@ internal fun TrackedFactBase.groupConditionWildcardFindings(): List<Finding> {
         conditionTexts(element.kind, body).flatMap { (member, text) ->
             callsIn(text, conditionLanguage, syntaxEntryOf(member)).mapNotNull { call ->
                 val arm = gates[call.operator] ?: return@mapNotNull null
+                if (anOperandIsRefusedOnRead(call, element)) {
+                    return@mapNotNull null
+                }
                 val rootSilencesIt = arm == GroupConditionArm.LIST &&
                     call.operands.any { namesARootGroup(it.path, group, element) }
                 if (rootSilencesIt) {
