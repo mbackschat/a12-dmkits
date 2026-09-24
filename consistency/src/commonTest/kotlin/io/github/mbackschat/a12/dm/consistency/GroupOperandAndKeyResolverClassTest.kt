@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * The checker's half of the resolver's segment classes on a GROUP operand and a `RepetitionNotUnique` KEY.
@@ -131,6 +132,48 @@ class GroupOperandAndKeyResolverClassTest {
         val actual = linkedMapOf<String, List<String>>()
         rows.keys.forEach { actual[it] = rejections("../Remark", "FieldFilled(Remark) And $it", inInsured = true) }
         assertEquals(rows, actual, "what each up-step path draws from a nested rule group")
+    }
+
+    /**
+     * The invariant the rows above rest on. Withholding a miss's entity class behind an earlier gate is sound
+     * only because another family then names that gate, and the two ask the question in separate code, so no
+     * reference that fails to resolve may be left without a rejection. The grid spells every path of up to
+     * two segments over this model's vocabulary, relative and absolute, plus a third that misses or gates,
+     * from both rule groups; a gate the composition withholds for and no family reports goes red here, where
+     * no single row would have been written for it.
+     */
+    @Test
+    fun noUnresolvableReferenceIsLeftWithoutARejection() {
+        val vocabulary = listOf(
+            "Claims", "Claims*", "Claims.*", "Insured", "Insured*", "Insured.*",
+            "Holder", "Holder*", "Amount", "Nope", "Nope*", "..", "..*",
+        )
+        // A third segment only has to miss or gate once more, so four spellings cover it; the full cube took
+        // 5.0 s of the node lane's 10 s per-test timeout (2026-09-24).
+        val third = listOf("Amount", "Nope", "Nope*", "Insured*")
+        val shorter = vocabulary + vocabulary.flatMap { a -> vocabulary.map { "$a/$it" } }
+        val paths = shorter + shorter.drop(vocabulary.size).flatMap { a -> third.map { "$a/$it" } } +
+            shorter.flatMap { listOf("/Policy/$it", "/$it") }
+        fun rules(errorField: String) = paths.mapIndexed { i, path ->
+            """,{"type":"Rule","id":"r$i","name":"Probe$i","Rule":{"errorCondition":"FieldFilled($path)",
+               "errorEntityRelPath":"$errorField","errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
+        }.joinToString("")
+        val unresolved = mutableListOf<String>()
+        val silent = listOf(
+            model(ruleInPolicy = rules("../Holder"), ruleInInsured = ""),
+            model(ruleInPolicy = "", ruleInInsured = rules("../Remark")),
+        ).flatMap { json ->
+            val source = ModelSource(json)
+            val rejected = check(source).findings.filter { it.justifiesRejection }.mapNotNull { it.at }.toSet()
+            prepare(admit(source) as Admission.Admitted).conditionReferences()
+                .filter { it.target !is Reference.Resolved }
+                .onEach { unresolved += it.written }
+                .filter { it.declaredAt !in rejected }
+                .map { "${it.declaredAt}: ${it.written}" }
+        }
+        // A floor, not a count: it answers whether the grid reached the checker at all.
+        assertTrue(unresolved.size > 500, "the grid spelled only ${unresolved.size} unresolvable references")
+        assertEquals(emptyList(), silent, "unresolvable references no family rejects")
     }
 
     @Test
