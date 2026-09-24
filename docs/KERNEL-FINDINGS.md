@@ -10238,8 +10238,36 @@ So every instance of every operand is decided alike:
 - **A repeatable row counts once it is instantiated,** whatever lies below it, a malformed value included.
 - **The extent is one instance per fixed operand and, for a starred operand, the declared capacity of the repeatable level it ranges over.** For `Batches*/Seal` that is four Seals, one per `Batches` row, so four sealed batches type VALUE. Beside an empty `Grading` the same count can still grow and types OMISSION.
 
-**Under partial coverage a counted instance needs every field of it covered.** Two sealed batches, coverage by field wildcards and the error field only: `(Batches*/Seal) == 2` fires when `Code` and `Weight` are covered, and not when `Code` alone is. `(Batches*) == 2` fires only once `Lot` is covered as well. That is the rule `PartialCoverageGroupOperandDiffTest` measured for a fixed operand group, now also true of each starred instance.
+**Under partial coverage** a starred operand's instances are asked one more thing first, the extent gate [KF464](#kf464) measures for every starred group operand.
 
 **Mechanism (source-read, consistent with the table, not discriminated further).** `RuntimeController.anzahlAngegebenerEntities`, which `NumberOfFilledGroups` shares with `NumberOfFilledFields`, walks every operand through one `EntityIterator` and asks `isWertAngegeben` of each instance, returning the not-evaluable count at the first UNKNOWN. There is one loop for every operand shape, which is why no row above depends on what else the list holds.
 
-**Lock:** `adapter.laws.AncestorStarredGroupCountDiffTest` holds all thirteen documents of the full-validation table on three engines, and the partial rows on both kernel strategies.
+**Lock:** `adapter.laws.AncestorStarredGroupCountDiffTest` holds all thirteen documents of the full-validation table on three engines.
+
+## §12 supplement — under partial validation a starred GROUP operand is evaluable exactly when every field it contains is, each asked the extent gate a starred field would be asked (differential, both strategies, 2026-09-24) <a id="kf464"></a>
+
+> Fold: pending — extends §12's partial-validation extent gates (the all-rows gate and the existential value-list gate) from a starred field to a starred group; folds beside them.
+
+**The claim.** The fixture is an `Item` holding a repeatable `Batches` (4) of a `Lot` and a fixed `Seal` of a `Code` and a NUMBER `Weight`, and a repeatable `Lines` (3) of NUMBER `Qty` and `Price`. There are two rows of each, with every field filled but `Lot`. Each rule compares a carrier with the value full validation gives it, so under a coverage the rule fires exactly when the carrier is evaluable. A coverage names field or group identifiers, `*` for every repetition, beside the error field. ✓ marks a firing rule, — a silent one:
+
+| coverage | `NumberOfFilledGroups(Batches*)`, `NumberOfFilledFields(Batches*)` | `NumberOfFilledGroups(Batches*/Seal)` | `Sum`, `MaxValue`, `NumberOfValueInFields(4 In …)` over `Lines*` | the field star `Batches*/Seal/Code` |
+|---|---|---|---|---|
+| every field `*` | ✓ | ✓ | ✓ | ✓ |
+| `Code`, `Weight`, `Qty` `*` | — | ✓ | — | ✓ |
+| `Batches` `*`, `Lines` `*` | ✓ | ✓ | ✓ | ✓ |
+| `Seal` `*`, `Lot`, `Qty`, `Price` `*` | ✓ | ✓ | ✓ | ✓ |
+| every field `*`, and both rows of each group concretely | ✓ | ✓ | ✓ | ✓ |
+| both rows of each group concretely, nothing else | — | — | — | — |
+| `Lot` and `Qty` concretely in both rows, every other field `*` | — | ✓ | — | ✓ |
+
+So a starred group is asked the extent gate once for every field it contains, the gate a starred field of the same operator is asked, and it is evaluable only when every contained field passes. For a starred field that gate is reduced-universal for the counts and the all-rows aggregates and existential for `NumberOfValueInFields` ([IF264](INTERPRETER-FINDINGS.md#if264)); the rows here do not separate the two. Three consequences follow, each one a rule written for the group path would get wrong:
+
+- **Field identifiers settle an extent no identifier names on the group path.** A coverage made only of field wildcards counts `Batches*`, and a wildcard over the descendant group `Seal` covers the fields below it.
+- **Concrete group rows beside field wildcards are encompassed by them.** A field covered concretely in every row still leaves the extent unknown, although no cell is uncovered.
+- **`Batches*/Seal` asks only the Seal's own fields,** so an uncovered `Lot` never reaches it.
+
+**Mechanism (source-read, the two routes not discriminated).** The field-list operators receive a group operand already expanded into its contained fields, so each field brings its own entity iterator and gate. `NumberOfFilledGroups` iterates the group itself. But `ValidationCommand.compressRelevantFieldsForValidationCall` registers each relevant identifier's ancestor groups under their names (`markAllParentGroupsRelevant`) before `ValidationCache.reduceRedundancies`, and `EntityIterator.istEineWiederholungNichtPruefungsRelevant` then asks the first instance's relevance. The two routes agree on every row above, which is why one rule describes both.
+
+**Unmeasured.** `MinValue` and `NumberOfDifferentValues` share the gate `Sum` and `MaxValue` use and were not run. `SumOfProducts`'s complete-enumeration gate was not run on a group operand, and a multi-star group operand was not run under any coverage.
+
+**Lock:** `adapter.laws.PartialGroupStarFieldCoverageDiffTest`, all seven coverages on three engines.

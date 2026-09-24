@@ -21,8 +21,8 @@ import java.util.Locale
  * where the count is not evaluable. The documents separate the readings a reader could hold: a Seal counted when
  * its batch exists, when the Seal group is instantiated, or when it holds admitted content; a malformed value
  * that suppresses the count against one that rides beside admitted content; and a count that has reached the
- * declared extent, which types VALUE, against one that can still grow. A last test reads both kernel strategies
- * under partial coverage.
+ * declared extent, which types VALUE, against one that can still grow. Partial coverage is
+ * `PartialGroupStarFieldCoverageDiffTest`'s.
  */
 class AncestorStarredGroupCountDiffTest {
 
@@ -125,48 +125,6 @@ class AncestorStarredGroupCountDiffTest {
         "$GRADING, $SPECS",
         listOf("0:O", "0:O", "0:O", "0:O", "0:O", "0:O", "1:O", "0:O", "0:O", "0:O", "1:O", SUPPRESSED, "2:V"),
     )
-
-    /**
-     * Under partial coverage a counted instance needs every field of it covered, on both kernel strategies: two
-     * sealed batches count through `Code` and `Weight` covered by field wildcards, not through `Code` alone, and
-     * a repeatable row needs its `Lot` covered as well. Kernel-only, because the interpreter misses the count
-     * where the coverage names no group entity (INTERPRETER-GAPS IG157).
-     */
-    @Test
-    fun underPartialCoverageACountedInstanceNeedsEveryFieldCovered() {
-        val covers = linkedMapOf(
-            "Code" to listOf(CODE),
-            "Code, Weight" to listOf(CODE, WEIGHT),
-            "Code, Weight, Lot" to listOf(CODE, WEIGHT, LOT),
-        )
-        val readings = listOf("$BATCHES*/Seal", "$BATCHES*").associateWith { operands ->
-            val model = (0..MAX_COUNT).fold(base) { json, n ->
-                RuntimeLaws.withRule(json, ITEM, "R$n", "../Title", "$MSG$n",
-                    "FieldFilled($TITLE) And NumberOfFilledGroups($operands) == $n")
-            }
-            val javaEngine = RuntimeLaws.kernelJavaEngine(model)
-            covers.mapValues { (_, fields) ->
-                val relevant = (fields + TITLE).map { path ->
-                    RuntimeLaws.Relevant.of(path, *IntArray(path.count { it == '/' }))
-                }.toSet()
-                fun doc() = RuntimeLaws.doc().group(ITEM, 1).field(TITLE, "crate", 1, 1)
-                    .group(BATCHES, 1, 1).field(CODE, "S1", 1, 1, 1, 1).group(BATCHES, 1, 2).field(CODE, "S2", 1, 2, 1, 1)
-                val dynamic = reading(RuntimeLaws.messagesPart(model, doc(), relevant).filter { it.code().startsWith(MSG) }
-                    .map { it.code() to (it.type().name == "VALUE_ERROR") })
-                val static = reading(javaEngine.messagesPart(doc(), relevant).filter { it.code().startsWith(MSG) }
-                    .map { it.code() to (it.type().name == "VALUE_ERROR") })
-                assertEquals(dynamic, static, "$operands covering $fields — static Java")
-                dynamic
-            }
-        }
-        assertEquals(
-            mapOf(
-                "$BATCHES*/Seal" to mapOf("Code" to SUPPRESSED, "Code, Weight" to "2:O", "Code, Weight, Lot" to "2:O"),
-                "$BATCHES*" to mapOf("Code" to SUPPRESSED, "Code, Weight" to SUPPRESSED, "Code, Weight, Lot" to "2:O"),
-            ),
-            readings,
-        )
-    }
 
     /**
      * Asserts the kernel's reading of every document against [expected] (`n:V`/`n:O`, or [SUPPRESSED]), then static

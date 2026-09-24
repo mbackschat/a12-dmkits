@@ -777,7 +777,12 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
                     FunctionOp.NUMBER_OF_VALUE_IN_FIELDS -> starExtentKnown
                     else -> starRelevant
                 }
-                if (gate != null && !gate.invoke(sp, star.bindDepth, ctx.repsOf(sp))) return Val.Unknown
+                // A starred GROUP is asked field by field: the kernel expands it into its contained fields
+                // before any extent gate reads it, so field coverage settles an extent no identifier names on
+                // the group path — for the group count as for the field-expanding aggregates (KF464).
+                val gated = if (namesAGroup(star)) expandOneGroupOperand(star) else listOf(star)
+                if (gate != null && gated.filterIsInstance<Expr.Star>()
+                        .any { !gate.invoke(it.path, it.bindDepth, ctx.repsOf(it.path)) }) return Val.Unknown
             }
         }
     }
