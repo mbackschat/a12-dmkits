@@ -162,6 +162,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                     case FieldRef field -> refs.field(field.path().value());
                     case GroupListRef scope -> refs.group(scope.path());
                     case IndexedGroupValue indexed -> collectIndexedGroup(indexed, refs);
+                    case IndexedFieldValue indexed -> collect(indexed, refs);
                 }
             });
             case PatternCondition p -> refs.field(p.field().path().value());

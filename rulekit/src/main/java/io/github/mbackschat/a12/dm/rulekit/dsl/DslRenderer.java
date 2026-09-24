@@ -366,12 +366,13 @@ public final class DslRenderer {
     }
 
     /** A fixed group-list entity: a checked field renders its plain path, a group scope its starred path,
-     *  an index-selected group its localized {@code Group For key} body. */
+     *  an index-selected group or field its localized {@code … For key} body. */
     private String entityOperand(GroupListOperand op) {
         return switch (op) {
             case FieldRef field -> path(field.path().value());
             case GroupListRef scope -> groupScope(scope);
             case IndexedGroupValue indexed -> groupIndexBody(indexed);
+            case IndexedFieldValue indexed -> indexBody(indexed);
         };
     }
 

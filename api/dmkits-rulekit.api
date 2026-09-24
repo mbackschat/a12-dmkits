@@ -1954,7 +1954,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue im
   public java.lang.String indexValue()
   public final java.lang.String toString()
 
-public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue extends io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue extends io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand
   public default java.lang.String duplicateIdentity()
   public default java.util.Optional<java.lang.String> exactIdentity()
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()

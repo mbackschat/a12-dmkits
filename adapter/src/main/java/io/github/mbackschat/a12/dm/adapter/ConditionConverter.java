@@ -506,12 +506,15 @@ final class ConditionConverter {
         if (isGroupListQuantifier(name) && entities.stream().anyMatch(IEntityId::isField)) {
             GroupListOperand[] operands = entities.stream().map(e -> {
                 if (e.isField()) {
-                    if (isWildcard(e) || e.getFilterCondition() != null || hasSemanticIndex(e)) {
-                        // a starred/filtered/indexed FIELD entity is repeatable addressing, outside the
-                        // fixed entity-list contract — preserved verbatim as Opaque, never guessed
+                    if (isWildcard(e) || e.getFilterCondition() != null) {
+                        // a starred/filtered FIELD entity is repeatable addressing, outside the fixed
+                        // entity-list contract — preserved verbatim as Opaque, never guessed
                         throw unsupported("group-list quantifier with a starred/filtered field operand", entityList);
                     }
-                    return (GroupListOperand) model.field(e.getFullName());
+                    // an index-selected field is one cell, so it keeps its key like any entity-list member (AF167)
+                    return hasSemanticIndex(e)
+                            ? (GroupListOperand) semanticIndex(e, entityList).index()
+                            : (GroupListOperand) model.field(e.getFullName());
                 }
                 return groupListOperand(e, isWildcard(e) ? reconstructStarPath(e) : e.getFullName(), entityList);
             }).toArray(GroupListOperand[]::new);

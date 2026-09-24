@@ -27,6 +27,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition
@@ -268,6 +269,14 @@ class PredicatesTest {
             translate("AtLeastOneGroupFilled(CustomerName, ShippingAddress)"))
         assertInstanceOf(FieldRef::class.java, c.operands().get(0))
         assertInstanceOf(GroupListRef::class.java, c.operands().get(1))
+    }
+
+    /** An index-selected field is an entity-list operand too, read as its keyed cell (API-FINDINGS AF167). */
+    @Test
+    fun anIndexSelectedFieldInTheEntityListConverts() {
+        val c = assertInstanceOf(GroupListPredicate::class.java,
+            translate("AtLeastOneGroupFilled(Items/Count For \"S-1\", CustomerName)"))
+        assertInstanceOf(IndexedFieldValue::class.java, c.operands().get(0))
     }
 
     /** `RuleGroup` (the kernel's `RegelKontext`) is the rule's own group, not a child path. */

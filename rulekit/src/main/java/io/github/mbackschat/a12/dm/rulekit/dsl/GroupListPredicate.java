@@ -72,6 +72,9 @@ public final class GroupListPredicate implements Condition {
             case IndexedGroupValue indexed -> throw new IllegalStateException(
                     "the entity list contains an index-selected group [" + indexed.renderedPath()
                             + "] — use operands()");
+            case IndexedFieldValue indexed -> throw new IllegalStateException(
+                    "the entity list contains an index-selected field [" + indexed.renderedPath()
+                            + "] — use operands()");
         }).toList();
     }
 

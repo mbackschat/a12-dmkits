@@ -11,13 +11,14 @@ import java.util.Optional;
  * ({@code ref.semanticIndex(key).filled()} / {@code .notFilled()}).
  *
  * <p>Also a {@link FieldOperand}: an index-selected field behaves like a single field
- * entity in every entity-list slot (an aggregate, a presence quantifier, a value-list membership check)
+ * entity in every entity-list slot (an aggregate, a presence quantifier, a value-list membership check, a
+ * group-list quantifier, which A12 reads as the selected cell's presence)
  * — it never satisfies arity alone the way a starred {@link FieldListRef} does, and it participates in
  * exact-duplicate detection keyed on field path AND index, never on path alone. No compact-constructor
  * check is added for this: the two identity switches that already exist for {@link FieldRef} are where
  * that gate lives, widened to this type via {@link #duplicateIdentity()}.
  */
-public sealed interface IndexedFieldValue extends Calculation, FieldOperand
+public sealed interface IndexedFieldValue extends Calculation, FieldOperand, GroupListOperand
         permits SemanticIndexValue, SemanticIndexFieldValue {
 
     /** The field whose indexed cell this reads. */

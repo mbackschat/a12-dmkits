@@ -17,7 +17,10 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * GroupListPredicate} pre-checks neither, so {@link IndexedGroupValue#duplicateIdentity()} is exercised
  * only where it already was — the entity-list aggregates ({@code DuplicateGate}), via
  * the {@link AggregateOperand} arm, not this one.
+ *
+ * <p>The fourth arm, {@link IndexedFieldValue}, is a field reached through a semantic index. A12 admits it where
+ * it admits a checked field and reads it as the selected cell's presence (INTERPRETER-FINDINGS IF335).
  */
 public sealed interface GroupListOperand extends DuplicateOperand
-        permits FieldRef, GroupListRef, IndexedGroupValue {
+        permits FieldRef, GroupListRef, IndexedGroupValue, IndexedFieldValue {
 }

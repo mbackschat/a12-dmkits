@@ -51,7 +51,13 @@ class SemanticIndexFieldOperandPositionReadTest {
                 // fill and uniqueness quantifiers
                 "AllFieldsFilled(/Order/Packages/Carrier For \"P1\", /Order/Title)",
                 "MoreThanOneFieldFilled(/Order/Packages/Carrier For \"P1\", /Order/Title)",
-                "FieldValuesNotUnique(/Order/Packages/Carrier For \"P1\", /Order/Title)"));
+                "FieldValuesNotUnique(/Order/Packages/Carrier For \"P1\", /Order/Title)",
+                // the group-list quantifiers, beside a field, the same field under another key, and a keyed group
+                "AtLeastOneGroupFilled(/Order/Packages/Carrier For \"P1\", /Order/Title)",
+                "NoGroupFilled(/Order/Packages/Carrier For \"P1\", /Order/Packages/Carrier For /Order/Title)",
+                "AllGroupsFilled(/Order/Packages/Weight For \"P1\", /Order/Packages/Weight For \"P2\")",
+                "NotAllGroupsFilled(/Order/Packages/Carrier For \"P1\", /Order/Packages/Schedule For \"P2\")",
+                "GroupsNotCollectivelyFilled(/Order/Packages/Carrier For \"P1\", /Order/Title)"));
     }
 
     /** Every value-operand position: each site asks for the keyed cell before building a handle from the path. */
