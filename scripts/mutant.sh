@@ -146,6 +146,7 @@ esac
 # the tasks that declare it — a doc never is — so re-using a filter string from an earlier run leaves the lane
 # up-to-date, runs NOTHING, and reports SURVIVED. Measured 2026-09-12 on `docs/MVK-LEDGER.md`: the same mutant
 # read SURVIVED, then KILLED on a re-run whose only difference was that the lane actually executed.
+RUN_MARK=$(mktemp)
 if ./build.sh --console=plain $FAST "$LANE" --rerun --tests "$FILTER" > "$LOG" 2>&1; then
   VERDICT=0
 else
@@ -177,6 +178,23 @@ if grep -q 'deliberately excludes' "$LOG"; then
   echo "        Re-run with that task as the 5th argument." >&2
   exit_and_clean=2
 fi
+# A Kotlin/JS lane reports no "No tests found" at all: a filter that selects nothing there passes, so every
+# mutant would read SURVIVED. Measured 2026-09-24 on `:consistency:jsNodeTest`, where `*ConditionCorpusTest`
+# ran no test and succeeded while `*ConditionCorpus*` and the fully qualified name ran the class — the JS
+# runner matches the pattern against the test's full name, method included. So a PASSING lane must show a
+# fresh result file with at least one test in it, whatever the platform.
+if [ "$VERDICT" -eq 0 ] && [ "${exit_and_clean:-0}" -eq 0 ]; then
+  lane_project=${LANE%:*}
+  lane_dir=$(printf '%s' "${lane_project#:}" | tr ':' '/')
+  results=${lane_dir:+$lane_dir/}build/test-results/${LANE##*:}
+  if [ -z "$(find "$results" -name 'TEST-*.xml' -newer "$RUN_MARK" -exec grep -l 'tests="[1-9]' {} + 2>/dev/null)" ]; then
+    echo "mutant: $LANE passed but ran no test under '$FILTER' (no fresh result in $results) — that is a" >&2
+    echo "        filter that selected nothing, not a verdict. On a Kotlin/JS lane end the pattern with a" >&2
+    echo "        wildcard (\`*Name*\`) or name the class fully qualified." >&2
+    exit_and_clean=2
+  fi
+fi
+/bin/rm -f "$RUN_MARK"
 if [ "${exit_and_clean:-0}" -ne 0 ]; then
   /bin/rm -f "$LOG"; exit "$exit_and_clean"
 fi
