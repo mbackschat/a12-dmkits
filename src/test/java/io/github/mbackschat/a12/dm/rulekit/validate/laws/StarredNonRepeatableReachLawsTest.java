@@ -135,21 +135,25 @@ class StarredNonRepeatableReachLawsTest {
     }
 
     /**
-     * A misplaced star in one operand of a list and an unstarred repeatable level in another: which operand
-     * answers. Both orders, because "the wildcard class outranks the walk" and "the operand read first answers"
-     * agree on the first row and disagree on the second.
+     * A misplaced star in one operand and an unstarred repeatable level in another, within one list and across
+     * two calls: which defect answers. Both orders, because "the wildcard class outranks the walk" and "the
+     * defect read first answers" agree on the first row of each pair and disagree on the second.
      */
     @Test
-    void aMisplacedStarAndAnUnstarredLevelInTwoOperandsAnswerInTextOrder() {
+    void aMisplacedStarAndAnUnstarredLevelAnswerInTextOrder() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("the misplaced star first", guarded("AllGroupsFilled(Guest*, Nights)"));
         actual.put("the unstarred level first", guarded("AllGroupsFilled(Nights, Guest*)"));
         actual.put("the unstarred level alone — the control", guarded("AllGroupsFilled(Extras, Nights)"));
+        actual.put("two calls, the misplaced star first", guarded("GroupFilled(Guest*) And GroupFilled(Nights)"));
+        actual.put("two calls, the unstarred level first", guarded("GroupFilled(Nights) And GroupFilled(Guest*)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("the misplaced star first", INVALID);
         expected.put("the unstarred level first", "MVK_NO_WILDCARD");
         expected.put("the unstarred level alone — the control", "MVK_NO_WILDCARD");
+        expected.put("two calls, the misplaced star first", INVALID);
+        expected.put("two calls, the unstarred level first", "MVK_NO_WILDCARD");
         assertEquals(expected, actual, "two operand defects in one list");
     }
 
