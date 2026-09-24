@@ -10387,27 +10387,29 @@ So a field-expanding aggregate over a starred group asks the extent gate once fo
 
 **The group count.** A second fixture holds the same `Batches` of a `Lot` and a fixed `Seal` of a `Code` and a NUMBER `Weight`, at the capacity each row names, beside two fixed groups, a `Label` of a `Text` and a NUMBER `Grade` and a `Stamp` of a `Mark`. The document holds two batches, each with all three fields, and every fixed field. A12 refuses a lone fixed operand (`MVK_PARAMSIZE_INVALIDGN`), so the fixed count takes both groups. A cell reads as in the table above, with n/a where a malformed value moves the full-validation count off the rule's constant:
 
-| capacity | coverage | `NumberOfFilledGroups(Batches*)` | `NumberOfFilledGroups(Batches*/Seal)` | `NumberOfFilledFields(Batches*)` | `NumberOfFilledGroups(Label, Stamp)` |
-|---|---|---|---|---|---|
-| 4 | `Lot` concretely in rows 1–4, `Code`, `Weight` `*` | ✓ | ✓ | — | — |
-| 4 | `Code` concretely in rows 1–4, `Lot`, `Weight` `*` | ✓ | ✓ | — | — |
-| 2 | `Lot` `*`, `Code` and `Weight` concretely in rows 1 and 2 | ✓ | — | — | — |
-| 2 | every batch field concretely in rows 1 and 2 | — | — | — | — |
-| 4 | `Lot` concretely in rows 1 and 2, `Code`, `Weight` `*` | — | ✓ | — | — |
-| 4 | `Lot` concretely in rows 1 and 3, `Code`, `Weight` `*` | — | ✓ | — | — |
-| 2 | `Lot` `*`, `Code` and `Weight` concretely in row 1 | ✓ | — | — | — |
-| 2 | `Lot` `*`, `Code` and `Weight` concretely in row 2 | — | — | — | — |
-| 2 | every batch field `*`, row 1's `Weight` malformed | — | — | n/a | — |
-| 2 | every batch field `*`, row 2's `Weight` malformed | ✓ | ✓ | n/a | — |
-| 2 | every field `*`, `Grade` malformed | ✓ | ✓ | ✓ | — |
-| 2 | every field `*` | ✓ | ✓ | ✓ | ✓ |
+| capacity | coverage | `NumberOfFilledGroups(Batches*)` | `NumberOfFilledGroups(Batches*/Seal)` | `NumberOfFilledFields(Batches*)` | `NumberOfFilledGroups(Label, Stamp)` | `NumberOfFilledGroups(Batches*, Label)` |
+|---|---|---|---|---|---|---|
+| 4 | `Lot` concretely in rows 1–4, `Code`, `Weight` `*` | ✓ | ✓ | — | — | — |
+| 4 | `Code` concretely in rows 1–4, `Lot`, `Weight` `*` | ✓ | ✓ | — | — | — |
+| 2 | `Lot` `*`, `Code` and `Weight` concretely in rows 1 and 2 | ✓ | — | — | — | — |
+| 2 | every batch field concretely in rows 1 and 2 | — | — | — | — | — |
+| 4 | `Lot` concretely in rows 1 and 2, `Code`, `Weight` `*` | — | ✓ | — | — | — |
+| 4 | `Lot` concretely in rows 1 and 3, `Code`, `Weight` `*` | — | ✓ | — | — | — |
+| 2 | `Lot` `*`, `Code` and `Weight` concretely in row 1 | ✓ | — | — | — | — |
+| 2 | `Lot` `*`, `Code` and `Weight` concretely in row 2 | — | — | — | — | — |
+| 2 | every batch field `*`, row 1's `Weight` malformed | — | — | n/a | — | — |
+| 2 | every batch field `*`, row 2's `Weight` malformed | ✓ | ✓ | n/a | — | — |
+| 2 | every field `*`, `Grade` malformed | ✓ | ✓ | ✓ | — | — |
+| 2 | `Lot` `*`, `Code` and `Weight` concretely in row 2, every fixed field `*` | — | — | — | ✓ | — |
+| 2 | every field `*` | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 Full validation fires every carrier the malformed value leaves at its constant, which is the liveness control for each row. So the count is decided in four steps, each discriminated by a pair of neighbouring rows that a simpler reading gets wrong on one side:
 
 - **The counted group's own identifiers settle the extent.** They are the relevant identifiers at or above the group together with every relevant descendant cut back to the group's depth, and a broader wildcard encompasses a narrower one as it does for a field. A `Lot` named in every declared row therefore leaves the batch count decidable where `NumberOfFilledFields`, which asks `Lot` itself, stays silent (rows 1 and 2). A concrete identifier left at a starred level makes the count undecidable even when every instance is wholly covered: naming `Code` and `Weight` in both declared rows silences the `Seal` count, and naming `Lot` as well silences the batch count (rows 3 and 4).
 - **The first declared instance must be fully relevant and free of errors,** held or not. Covering row 2 instead of row 1 silences the count although both rows are filled (rows 7 and 8), and a malformed `Weight` silences it in row 1 but not in row 2 (rows 9 and 10). A fixed group is its own first instance (row 11).
 - **Every declared instance the document lacks must be fully relevant.** A12 walks the declared rows rather than the held ones: naming `Lot` in the two held rows leaves rows 3 and 4 open, and naming it in rows 1 and 3 still leaves row 4 open (rows 5 and 6 against row 1).
-- **A held instance then counts by its admitted content,** a partly covered row or an erroneous later row included (rows 7 and 10), while a held instance no identifier reaches leaves the count undecidable, as the second `Seal` does in row 7.
+- **A held instance then counts by its admitted content,** a partly covered row or an erroneous later row included (rows 7 and 10). *Corrected 2026-09-24:* this bullet also said that a held instance no identifier reaches leaves the count undecidable, "as the second `Seal` does in row 7". Row 7 does not show that: `Code` and `Weight` named concretely in row 1 leave the `Seal`'s own identifiers concrete at the starred level, so the first step already refuses it. No row here isolates a reach check on a held instance (a12-kernel-lean `SPEC-2026-09-24-04`, their report). The kernel's comment in `EntityIterator.istEineWiederholungNichtPruefungsRelevant` says that once no starred level is partly covered every repetition there is relevant, which would leave such a check nothing to refuse on these shapes; that is a source-read hypothesis, not a measurement.
+- **One undecided operand leaves the whole list undecided.** The count over `Batches*` and `Label` is undecided when `Label` is (row 11) and when `Batches` is (row 12), and decided only when both are (row 13).
 
 The first table's last coverage follows from the third step rather than from a field gate: `Lot` named in the two held rows of four leaves the absent rows open.
 
@@ -10415,7 +10417,7 @@ The first table's last coverage follows from the third step rather than from a f
 
 **Unmeasured.** `MinValue` and `NumberOfDifferentValues` share the gate `Sum` and `MaxValue` use and were not run. `SumOfProducts`'s complete-enumeration gate was not run on a group operand, and neither a multi-star group operand nor a starred group containing a nested repeatable group was run under any coverage. Every malformed value above was covered, so whether an uncovered malformed value makes a first instance erroneous is open.
 
-**Lock:** `adapter.laws.PartialGroupStarFieldCoverageDiffTest`, all seven coverages of the first table, and `adapter.laws.PartialGroupCountRelevanceDiffTest`, all twelve rows of the second, each on three engines.
+**Lock:** `adapter.laws.PartialGroupStarFieldCoverageDiffTest`, all seven coverages of the first table, and `adapter.laws.PartialGroupCountRelevanceDiffTest`, all thirteen rows of the second, each on three engines.
 
 ## §14 supplement — an up-step stands only in a relative path's leading run; after a STARRED name or a leading up-run the segments before it answer their own gates first, and the short-name fallback reaches a relative path's first segment however it is spelled (measured, 2026-09-24) <a id="kf465"></a>
 

@@ -21,7 +21,8 @@ import org.junit.jupiter.api.Test
  * inspects the FIRST declared row and every declared row the document lacks. Gating every row on its errors
  * refuses a count A12 gives, since only the first row's errors matter there. The fixed `Label` beside the
  * fixed `Stamp` carries the first-row rule to an operand with no star; A12 refuses a lone fixed operand
- * (`MVK_PARAMSIZE_INVALIDGN`), so the count takes both.
+ * (`MVK_PARAMSIZE_INVALIDGN`), so the count takes both. The mixed count over `Batches*` and `Label` is decided
+ * only when both operands are, measured with each side undecided in turn.
  *
  * Every carrier compares with the value full validation gives it, so it fires exactly when it is decidable; the
  * full-validation reading runs beside each row as the liveness control.
@@ -62,6 +63,7 @@ class PartialGroupCountRelevanceDiffTest {
         "NFG_SEALS" to "NumberOfFilledGroups($BATCHES*/Seal) == 2",
         "NFF_BATCHES" to "NumberOfFilledFields($BATCHES*) == 6",
         "NFG_FIXED" to "NumberOfFilledGroups($LABEL, $STAMP) == 2",
+        "NFG_MIXED" to "NumberOfFilledGroups($BATCHES*, $LABEL) == 3",
     )
 
     private data class Selection(val path: String, val reps: List<Int>)
@@ -161,7 +163,7 @@ class PartialGroupCountRelevanceDiffTest {
         batchFields,
         setOf(),
         weights = "heavy" to "2",
-        fullExpected = setOf("NFG_BATCHES", "NFG_SEALS", "NFG_FIXED"),
+        fullExpected = setOf("NFG_BATCHES", "NFG_SEALS", "NFG_FIXED", "NFG_MIXED"),
     )
 
     /** The malformed `Weight` moved to row 2: a later row counts by its admitted content, errors or not. */
@@ -171,12 +173,13 @@ class PartialGroupCountRelevanceDiffTest {
         batchFields,
         setOf("NFG_BATCHES", "NFG_SEALS"),
         weights = "1" to "heavy",
-        fullExpected = setOf("NFG_BATCHES", "NFG_SEALS", "NFG_FIXED"),
+        fullExpected = setOf("NFG_BATCHES", "NFG_SEALS", "NFG_FIXED", "NFG_MIXED"),
     )
 
     /**
      * A fixed group is its own first instance: a malformed `Grade` beside an admitted `Text` leaves `Label`
-     * uncounted, and with it the count over both fixed groups.
+     * uncounted, and with it the count over both fixed groups and the mixed count, whose starred `Batches`
+     * operand alone is decided.
      */
     @Test
     fun anErroneousFixedGroupLeavesItsCountUndecidable() = assertFiredUnder(
@@ -184,6 +187,17 @@ class PartialGroupCountRelevanceDiffTest {
         batchFields + fixedFields,
         setOf("NFG_BATCHES", "NFG_SEALS", "NFF_BATCHES"),
         grade = "heavy",
+    )
+
+    /**
+     * The mixed count's other side: the fixed `Label` is decided and the starred `Batches` is not, because its
+     * first row is only partly covered. One undecided operand leaves the whole list undecided.
+     */
+    @Test
+    fun anUndecidedStarredOperandLeavesAMixedCountUndecidable() = assertFiredUnder(
+        2,
+        listOf(everyRow(LOT), row(CODE, 0, 2, 0, 0), row(WEIGHT, 0, 2, 0, 0)) + fixedFields,
+        setOf("NFG_FIXED"),
     )
 
     /** The control for the row above: the same coverage with a well-formed `Grade` decides every carrier. */
