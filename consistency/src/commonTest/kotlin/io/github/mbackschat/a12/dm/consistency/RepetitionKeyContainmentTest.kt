@@ -104,12 +104,11 @@ class RepetitionKeyContainmentTest {
         expected["the key sits directly in the scope"] = emptyList()
         expected["the key sits in a DESCENDANT of the scope"] = emptyList()
         // Index-free the two groups do not iterate together, so A12 refuses the pairing before containment
-        // with `MVK_NO_WILDCARD` — which the sibling family does not name on a scoped operand, an
-        // under-report of the estate rather than a verdict of this one.
-        expected["the key sits in a PARALLEL group — index-free"] = emptyList()
+        // with `MVK_NO_WILDCARD`, which the operand-scope walk names on the scope group.
+        expected["the key sits in a PARALLEL group — index-free"] = listOf("MVK_NO_WILDCARD")
         expected["the key sits in a PARALLEL group — INDEX-KEYED"] = listOf(notInGroup)
-        // A key with no repetition of its own cannot iterate jointly with the scope either.
-        expected["the key sits ABOVE the scope"] = emptyList()
+        // The scope repeats below the rule's own group, so the walk refuses it unstarred.
+        expected["the key sits ABOVE the scope"] = listOf("MVK_NO_WILDCARD")
         expected["the scope is the rule's own non-repeatable group"] = listOf("MVK_GROUP_NOT_REPEATABLE")
         assertEquals(expected, actual, "what the @From scope has to contain")
     }

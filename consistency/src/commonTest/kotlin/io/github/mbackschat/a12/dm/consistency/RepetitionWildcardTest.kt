@@ -70,12 +70,15 @@ class RepetitionWildcardTest {
         // operator-picked classes. Kept in the grid rather than filtered out, because a row that fell silent
         // would then mean the sibling family stopped firing — which is exactly what this grid should notice.
         expected["scalar GroupFilled | repeatable"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
-        expected["quantifier operand | FIXED"] = listOf(invalid)
+        // `Stays` repeats and is unstarred, a second defect A12 names once the first is fixed
+        // (`rulekit.validate.laws.GroupOperandRepetitionScopeLawsTest`); A12 stops at the first.
+        expected["quantifier operand | FIXED"] = listOf(invalid, "MVK_NO_WILDCARD")
         expected["quantifier operand | repeatable"] = listOf("MVK_NO_WILDCARDS_G_ALLOWED")
         expected["count operand | FIXED"] = listOf(invalid)
         expected["count operand | repeatable"] = emptyList()
         expected["a starred path PREFIX | FIXED"] = listOf(invalid)
-        expected["a starred path PREFIX | repeatable"] = emptyList()
+        // A scalar field slot refuses the star itself, `rulekit.validate.laws.StarredNonRepeatableReachLawsTest`.
+        expected["a starred path PREFIX | repeatable"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
         expected["a star on a FIELD"] = listOf(invalid)
         expected["a star on the ROOT group"] = listOf(invalid)
         assertEquals(expected, actual, "a star on a fixed group, in every position")

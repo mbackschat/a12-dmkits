@@ -104,9 +104,10 @@ class GroupListOperandsTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a starred repeatable named twice"] = emptyList()
-        // After the starred operand is skipped one operand is left, so there is no pair — which is also why
-        // the mixed row stays silent, and A12 answers it with its wildcard gate rather than a duplicate.
-        expected["a starred repeatable beside its UNSTARRED spelling"] = emptyList()
+        // After the starred operand is skipped one operand is left, so there is no pair: A12 answers the
+        // mixed row with the operand-scope walk on the unstarred spelling rather than with a duplicate
+        // (`rulekit.validate.laws.GroupListDuplicateReachLawsTest`).
+        expected["a starred repeatable beside its UNSTARRED spelling"] = listOf("MVK_NO_WILDCARD")
         // A12 reports the entity and nothing about the duplicate, so reporting both would name two fixes.
         expected["an UNRESOLVABLE operand beside an exact duplicate"] = listOf("MVK_INVALID_ENTITY")
         expected["the same group once in EACH of two calls"] = emptyList()

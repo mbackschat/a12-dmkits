@@ -1,20 +1,3 @@
 # Every row of CheckerPathGridAgreementTest's grid where the checker and A12 disagree: rule group, operand
 # (the condition reads `FieldFilled(<error field>) And <operand>`), verdict, A12's classes, the checker's classes.
 # A fix deletes its rows; a new row is a new defect. The live set is written to build/checker-path-grid/actual.tsv.
-/Policy	FieldFilled(Claims)	SILENT	MVK_NO_WILDCARD	
-/Policy	AtLeastOneGroupFilled(Claims)	SILENT	MVK_NO_WILDCARD	
-/Policy	FieldFilled(Claims.*)	EXTRA	MVK_POINT_IN_A12_MODEL	MVK_NO_GROUPS_ALLOWED,MVK_POINT_IN_A12_MODEL
-/Policy	FieldFilled(Claims*/Amount)	SILENT	MVK_NO_WILDCARDS_ALLOWED	
-/Policy	FieldFilled(/Policy/Claims)	SILENT	MVK_NO_WILDCARD	
-/Policy	AtLeastOneGroupFilled(/Policy/Claims)	SILENT	MVK_NO_WILDCARD	
-/Policy	FieldFilled(/Policy/Claims.*)	EXTRA	MVK_POINT_IN_A12_MODEL	MVK_NO_GROUPS_ALLOWED,MVK_POINT_IN_A12_MODEL
-/Policy	FieldFilled(/Policy/Claims*/Amount)	SILENT	MVK_NO_WILDCARDS_ALLOWED	
-/Policy/Insured	FieldFilled(../Claims)	SILENT	MVK_NO_WILDCARD	
-/Policy/Insured	AtLeastOneGroupFilled(../Claims)	SILENT	MVK_NO_WILDCARD	
-/Policy/Insured	FieldFilled(../Claims.*)	EXTRA	MVK_POINT_IN_A12_MODEL	MVK_NO_GROUPS_ALLOWED,MVK_POINT_IN_A12_MODEL
-/Policy/Insured	FieldFilled(..*/Claims)	EXTRA	MVK_INVALID_WILDCARD_REL	MVK_INVALID_WILDCARD_REL,MVK_NO_GROUPS_ALLOWED
-/Policy/Insured	FieldFilled(../Claims*/Amount)	SILENT	MVK_NO_WILDCARDS_ALLOWED	
-/Policy/Insured	FieldFilled(/Policy/Claims)	SILENT	MVK_NO_WILDCARD	
-/Policy/Insured	AtLeastOneGroupFilled(/Policy/Claims)	SILENT	MVK_NO_WILDCARD	
-/Policy/Insured	FieldFilled(/Policy/Claims.*)	EXTRA	MVK_POINT_IN_A12_MODEL	MVK_NO_GROUPS_ALLOWED,MVK_POINT_IN_A12_MODEL
-/Policy/Insured	FieldFilled(/Policy/Claims*/Amount)	SILENT	MVK_NO_WILDCARDS_ALLOWED	

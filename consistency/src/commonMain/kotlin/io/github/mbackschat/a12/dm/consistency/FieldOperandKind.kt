@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORD
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
- * A GROUP handed to one of the two field predicates that take an entity rather than a list.
+ * A GROUP, or a starred field, handed to one of the two field predicates that take an entity rather than a list.
  *
  * A12's `CheckEntityUtils` carries the pair `checkIsField` / `checkIsGroup`, and only the second half had
  * ever been measured in this estate ([KERNEL-FINDINGS KF327], the `MVK_NO_FIELDS_ALLOWED` direction). This
@@ -24,7 +24,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * The test is therefore that the operand's star COUNT matches the number of repeating levels on its path,
  * which is silent on a two-level repetition carrying one star rather than guessing which gate answers.
  *
- * **The root group is a third silence**, `MVK_ROOT_GROUP_REFERENCED` answering ahead of the kind class.
+ * **The root group is a third silence**, `MVK_ROOT_GROUP_REFERENCED` answering ahead of the kind class, and
+ * **an earlier segment's gate is a fourth**: the `.*` suffix and a starred leading `..*` answer ahead of it too
+ * ([earlierSegmentGate]).
+ *
+ * **A FIELD clears the kind gate and meets the star next**: a correctly starred `Claims*` then `Amount` is
+ * `MVK_NO_WILDCARDS_ALLOWED`, because these predicates read one addressed value
+ * (`rulekit.validate.laws.GroupOperandRepetitionScopeLawsTest`).
  */
 internal fun TrackedFactBase.fieldOperandKindFindings(): List<Finding> {
     val carriers = spelledCarriers()
@@ -35,8 +41,10 @@ internal fun TrackedFactBase.fieldOperandKindFindings(): List<Finding> {
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
                 .filter { it.operator in carriers }
                 .mapNotNull { call ->
-                    call.operands.firstNotNullOfOrNull { operand ->
-                        groupFinding(operand.path, call.operator, group, element, member)
+                    // A12's arity gate answers ahead of the operand's, so a call with the wrong count is
+                    // `EntityListArity`'s alone (`rulekit.validate.laws.EntityListArityLawsTest`).
+                    call.operands.singleOrNull()?.let { operand ->
+                        operandFinding(operand.path, call.operator, group, element, member)
                     }
                 }
         }
@@ -49,7 +57,7 @@ private val ENTITY_FIELD_OPERATORS = setOf("FieldFilled", "FieldNotFilled")
 private fun TrackedFactBase.spelledCarriers(): Set<String> =
     ENTITY_FIELD_OPERATORS.mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
 
-private fun TrackedFactBase.groupFinding(
+private fun TrackedFactBase.operandFinding(
     written: String?,
     operator: String,
     declaringGroup: String,
@@ -58,12 +66,17 @@ private fun TrackedFactBase.groupFinding(
 ): Finding? {
     val path = written ?: return null
     val resolved = resolveEntity(declaringGroup, path, element.origin) as? Reference.Resolved ?: return null
-    val target = declarationAt(resolved.path, DeclaredKind.GROUP)
-        ?: return null
-    if (target.path.isRootGroup()) {
+    val gate = earlierSegmentGate(
+        path,
+        resolves = { prefix -> resolveEntity(declaringGroup, prefix, element.origin) },
+        isRepeatableGroup = { declarationAt(it)?.isRepeatableGroup == true },
+    )
+    if (gate != null || path.count { it == '*' } != repeatingLevelsOnThePathTo(resolved.path)) {
         return null
     }
-    if (path.count { it == '*' } != repeatingLevelsOnThePathTo(target.path)) {
+    val target = declarationAt(resolved.path, DeclaredKind.GROUP)
+        ?: return starredFieldFinding(path, resolved.path, operator, element, member)
+    if (target.path.isRootGroup()) {
         return null
     }
     return Finding(
@@ -72,6 +85,27 @@ private fun TrackedFactBase.groupFinding(
         "MVK_NO_GROUPS_ALLOWED",
         "in `$member`: `$operator` takes one field and this hands it the group `${target.path}` — name a " +
             "field inside it, or use a field-LIST operator, which quantifies over the group's fields",
+        element.path,
+    )
+}
+
+/** The star gate a FIELD meets after the kind gate, or null where the operand carries no star. */
+private fun TrackedFactBase.starredFieldFinding(
+    written: String,
+    field: String,
+    operator: String,
+    element: TrackedDeclaration,
+    member: String,
+): Finding? {
+    if ('*' !in written || declarationAt(field, DeclaredKind.FIELD) == null) {
+        return null
+    }
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        "MVK_NO_WILDCARDS_ALLOWED",
+        "in `$member`: `$operator` reads one addressed value and `$written` reaches `$field` through a " +
+            "repetition star — drop the star to read the current repetition, or use a field-LIST operator",
         element.path,
     )
 }

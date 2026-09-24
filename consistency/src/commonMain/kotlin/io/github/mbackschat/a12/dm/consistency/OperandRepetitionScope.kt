@@ -81,10 +81,11 @@ internal fun TrackedFactBase.operandRepetitionScopeFindings(): List<Finding> {
             if (OUTER_MARKER in own) {
                 return@firstNotNullOfOrNull null
             }
+            val filtered = filteredBases(text, member, filterKeyword, conditionLanguage)
             referencesIn(own, conditionLanguage)
                 .filterNot { isRuleContext(it, conditionLanguage) }
                 .firstNotNullOfOrNull { written ->
-                    levelClassOf(written, declaringGroup, targetGroup, element)
+                    levelClassOf(written, declaringGroup, targetGroup, element, filtered = written in filtered)
                         ?.let { scopeFinding(it, written, target, element, member) }
                 }
         }
@@ -116,6 +117,18 @@ private fun withoutFilterBodies(
     .filter { it.isNotEmpty() }
     .fold(text) { stripped, bodyText -> stripped.replace(bodyText, " ") }
 
+/** The operands [text] hands to a `Having` filter, by their base. */
+private fun filteredBases(
+    text: String,
+    member: String,
+    filterKeyword: Set<String>,
+    conditionLanguage: ConditionLanguage,
+): Set<String> = callsIn(text, conditionLanguage, syntaxEntryOf(member))
+    .flatMap { call -> call.operands }
+    .filter { operand -> operand.clauses.any { it.keyword in filterKeyword } }
+    .mapNotNull { it.base }
+    .toSet()
+
 private const val HAVING = "Having"
 
 private const val SEMANTIC_INDEX = "SemanticIndex"
@@ -131,6 +144,16 @@ internal fun TrackedFactBase.groupOfTargetField(target: String): String? =
 /**
  * The class ONE reference draws, walking the repeatable levels it crosses from the outermost inwards.
  *
+ * **A GROUP is walked like a field, its own repetition included**: an unstarred repeatable group read from
+ * outside it is `MVK_NO_WILDCARD` on all twenty-two carriers measured, the group quantifiers and the
+ * aggregates among them, so no carrier's own gate answers first (`rulekit.validate.laws
+ * .GroupOperandRepetitionScopeLawsTest`), and a `@From` scope is walked the same way
+ * (`rulekit.validate.laws.RepetitionNotUniqueFromScopeLawsTest`). Two groups are exceptions: one handed to a
+ * `Having` filter is refused as a group ahead of the walk ([filtered]), and a ROOT group is admitted even
+ * where it repeats (`GroupListOperandsTest`'s sole-root rows). Only the `MVK_NO_WILDCARD` arm is measured on a
+ * group, so a group's keyed parallel level is left unjudged rather than given a field's index class.
+ *
+ * @param filtered whether [written] is the base of a `Having` filter.
  * @return null wherever the reference is admitted, or is a shape another family owns.
  */
 internal fun TrackedFactBase.levelClassOf(
@@ -138,17 +161,21 @@ internal fun TrackedFactBase.levelClassOf(
     declaringGroup: String,
     targetGroup: String,
     element: TrackedDeclaration,
+    filtered: Boolean = false,
 ): String? {
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
-    // A reference naming a GROUP is judged by the group-condition families, whose operators run their own
-    // wildcard gates ahead of this walk; only a FIELD read reaches it with nothing else to say about it.
-    if (declarationAt(resolved.path)?.declaredKind != DeclaredKind.FIELD) {
+    val declared = declarationAt(resolved.path) ?: return null
+    val isGroup = declared.declaredKind == DeclaredKind.GROUP
+    val unwalkedGroup = isGroup && (filtered || resolved.path.isRootGroup())
+    if (!isGroup && declared.declaredKind != DeclaredKind.FIELD || unwalkedGroup) {
         return null
     }
     val starred = starredLevelsOf(written, declaringGroup, element) ?: return null
+    val levels = crossedRepetitions(resolved.path) +
+        listOfNotNull(declared.takeIf { isGroup && it.isRepeatableGroup })
     var wildcardSeen = false
-    crossedRepetitions(resolved.path).forEach { level ->
+    levels.forEach { level ->
         if (level.path in starred) {
             wildcardSeen = true
             return@forEach
@@ -158,7 +185,7 @@ internal fun TrackedFactBase.levelClassOf(
             level.path.startsWith("$targetGroup/") -> return NO_WILDCARD
             targetGroup == level.path || targetGroup.startsWith("${level.path}/") -> Unit
             else -> when (val verdict = parallelVerdictOf(level, targetGroup)) {
-                is ParallelVerdict.Refused -> return verdict.code
+                is ParallelVerdict.Refused -> return verdict.code.takeUnless { isGroup && it != NO_WILDCARD }
                 ParallelVerdict.Joint, ParallelVerdict.Unjudged -> Unit
             }
         }

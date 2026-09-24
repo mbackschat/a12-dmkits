@@ -172,7 +172,8 @@ class ConditionBindingTest {
      */
     @Test
     fun aStarredPathBindsToTheDeclaredElement() {
-        assertEquals(emptyList(), codes("FieldFilled(Amount) And FieldFilled(../Lines*/Amount)"))
+        // A field LIST carrier, because a scalar `FieldFilled` refuses the star itself.
+        assertEquals(emptyList(), codes("FieldFilled(Amount) And AtLeastOneFieldFilled(../Lines*/Amount)"))
     }
 
     /** A computation's texts are all read, and the finding names the member so an author knows which. */

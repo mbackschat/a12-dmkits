@@ -8545,11 +8545,13 @@ A leading zero is optional (`Date("1","2","2024")` is admitted), so the day and 
 
 **Every level is asked on its own declaration, not once per reference.** An operand crossing an admitted keyed parallel level and then an UNKEYED one below it is refused at the lower level with that level's own class (`MVK_NO_WILDCARD`) — so "the reference is parallel" is not a property of the reference.
 
+**A GROUP operand is walked like a field, its own repetition included (measured 2026-09-24).** An unstarred repeatable `Claims` read from outside it is `MVK_NO_WILDCARD` on all twenty-two carriers measured: `FieldFilled`, `FieldNotFilled`, `GroupFilled`, `GroupNotFilled`, the six group quantifiers and `NumberOfFilledGroups`, the seven field lists that expand a group, `Sum`, `FirstFilledValue`, `NumberOfValueInFields` and `CurrentRepetition`. So no carrier's own gate answers first, and the non-repeating twins pass the walk to be admitted or refused by the carrier's own type gate (`Sum(Insured)` is `MVK_NO_NUMBER`). A `@From` scope is walked the same way ([KF349](#kf349)'s `RepetitionNotUniqueFromScopeLawsTest` rows). Two groups are not: a group handed to a `Having` filter is `MVK_NO_GROUPS_ALLOWED` ahead of the walk, starred or not, and a repeatable ROOT group is admitted as a group operand. Only the `MVK_NO_WILDCARD` arm is measured on a group; its keyed parallel arms are not. Locked by `rulekit.validate.laws.GroupOperandRepetitionScopeLawsTest`.
+
 **A star collapses its own level and nothing beneath it.** `Sum(Shipments*/Parcels/ParcelWeight)` is `MVK_NO_WILDCARD` on `Parcels`; starring both levels is admitted. This closes the residue `ErrorFieldReference`'s own note left open — a reference starring an outer level while crossing an inner repeatable group unstarred.
 
 **Which class the SIBLING cells draw was re-measured on one fixture rather than carried.** `RuleOperandScopeLawsTest` (motor claims), `ComputationOperandScopeLawsTest` (the same model, computation carrier) and `ParallelIterationGateLawsTest` (depot) each pinned some of them, and a checker implementing this chain reads ONE model — so a table mixing cells from three fixtures cannot say whether a verdict belongs to the chain or to a fixture. All four re-measure unchanged, the type row included, whose two index fields here differ in declared type and in nothing else.
 
-*Locked by:* `rulekit.validate.laws.ParallelIterationRouteLawsTest` (this chain) beside `…RuleOperandScopeLawsTest` and `…ComputationOperandScopeLawsTest` (the carrier pair); mirrored by `consistency … OperandRepetitionScopeTest`.
+*Locked by:* `rulekit.validate.laws.ParallelIterationRouteLawsTest` (this chain) beside `…RuleOperandScopeLawsTest` and `…ComputationOperandScopeLawsTest` (the carrier pair) and `…GroupOperandRepetitionScopeLawsTest` (a group operand); mirrored by `consistency … OperandRepetitionScopeTest` and `…GroupOperandRepetitionScopeTest`.
 
 ## §9 supplement — `SumOfProducts`' four operand laws are ONE gate chain, and the order is what a reproduction gets wrong (measured, 2026-09-14) <a id="kf370"></a>
 
@@ -8911,7 +8913,7 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 
 **Two carriers refuse a group; eight expand it.** `FieldFilled` and `FieldNotFilled` take one entity and have nothing to expand it to. Every field-LIST carrier — `AllFieldsFilled`, `NoFieldFilled`, `AtLeastOneFieldFilled`, `NotAllFieldsFilled`, `FieldsNotCollectivelyFilled`, `NotExactlyOneFieldFilled`, `MoreThanOneFieldFilled`, `NumberOfFilledFields` — ADMITS a group operand and quantifies over its fields (`EntityUtils.expandToFieldList`). A family assembled from what the operators are CALLED would refuse those eight, which is [KF327](#kf327)'s trap arriving from the other side: there the name would have refused five.
 
-**Three gates outrun the kind gate, so the class is only reachable where the path is otherwise well formed.**
+**Five gates outrun the kind gate, so the class is only reachable where the path is otherwise well formed.** The arity gate outruns all of them (`FieldFilled(Lines*/Amount, Lines*/Amount)` is `MVK_PARAMSIZE_INVALID1`).
 
 | the operand, on `FieldFilled` | A12 |
 |---|---|
@@ -8922,6 +8924,11 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 | the ROOT group | `MVK_ROOT_GROUP_REFERENCED` |
 | a correctly STARRED repeatable group | `MVK_NO_GROUPS_ALLOWED` |
 | a nested group below a correctly starred level | `MVK_NO_GROUPS_ALLOWED` |
+| the `.*` suffix on a repeatable group, `Claims.*` | `MVK_POINT_IN_A12_MODEL` |
+| a group behind a starred leading up-step, `..*/Claims` | `MVK_INVALID_WILDCARD_REL` |
+| a FIELD below a correctly starred level, `Claims*/Amount` | `MVK_NO_WILDCARDS_ALLOWED` |
+
+**The last row is the gate AFTER the kind gate (measured 2026-09-24):** a field clears the kind gate and the star is refused next, because the slot reads one addressed value. It holds inside a `Having` body too, where `FieldFilled(Claims*/Remark)` is refused and `FieldFilled(Claims/Remark)` admitted. Locked by `rulekit.validate.laws.GroupOperandRepetitionScopeLawsTest`; the `.*` and `..*` rows by the same test and [KF465](#kf465).
 
 **The two wildcard rows are the discriminating pair, and they point opposite ways.** A star is neither necessary nor sufficient: adding one to a repeatable group moves the verdict from the wildcard class to the kind class, and adding one to a group that does not repeat moves it from the kind class to the other wildcard class. So a checker cannot treat the star as noise in either direction — the portable family tests that the operand's star COUNT equals the number of repeating levels on its path, and stays silent otherwise (`CheckFamily.FIELD_OPERAND_KIND`).
 
@@ -9148,7 +9155,7 @@ Locked: `validate.laws.ErrorFieldReferenceReachLawsTest.aRepetitionReadPreEmptsT
 
 **The mechanism transfers to `MVK_NOT_IN_SAME_PATH`, measured rather than assumed.** The ledger carried the identical "fixture-sensitive, reason unmeasured" note for that class — two `RepetitionNotUnique` keys in parallel repeatable groups, no `@From` involved. It is a different class from a different check, so the transfer was predicted and then built on the same model both ways: index-free draws `MVK_NO_WILDCARD`, index-keyed draws `MVK_NOT_IN_SAME_PATH`. One mechanism therefore closes both of the ledger's unexplained-reachability notes.
 
-Locked: `validate.laws.RepetitionNotUniqueFromScopeLawsTest`. **The containment classes stay unreported by the portable checker** — their reachability turns on parallel iteration, which no family models. **The scope's own demand is reported since 2026-09-14** as `REPETITION_SCOPE_GROUP` (`consistency.RepetitionScopeGroupTest`), which the condition reader had to be taught first: `CallOperand` now carries the clause-reduced `base` and `clauses` beside the deliberately narrow `path`, so a family can see a scope at all.
+Locked: `validate.laws.RepetitionNotUniqueFromScopeLawsTest`. The portable checker's half is `consistency.RepetitionKeyContainmentTest` for the containment classes, `consistency.RepetitionScopeGroupTest` for the scope's own demand, and `consistency.GroupOperandRepetitionScopeTest` for the walk on the scope ([KF371](#kf371)). *Corrected 2026-09-24:* this said the containment classes stayed unreported by the portable checker, which its containment family had already made false. The scope family needed the condition reader taught first: `CallOperand` carries the clause-reduced `base` and `clauses` beside the deliberately narrow `path`, so a family can see a scope at all.
 
 ## §9 supplement — the root-only error-target iteration classes need THREE conditions, two of which were constants (measured, 2026-09-14) <a id="kf348"></a>
 

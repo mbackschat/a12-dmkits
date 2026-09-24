@@ -45,9 +45,9 @@ class FilterWildcardTest {
         expected["a star on a NON-repeatable group"] = emptyList()
         // MVK_INVALID_ENTITY, the reference family's; a star on an address that names nothing is not this.
         expected["a filter naming nothing declared"] = emptyList()
-        // Whether a star inside a call nested in a filter is refused is unmeasured, so the reader hands back
-        // no star at all rather than one resting on a reading.
-        expected["a filter carrying a nested CALL"] = emptyList()
+        // This family hands back no star for a call nested in a filter; the nested `FieldFilled` refuses its
+        // own starred operand (`rulekit.validate.laws.GroupOperandRepetitionScopeLawsTest`).
+        expected["a filter carrying a nested CALL"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
         assertEquals(expected, actual, "Having filter wildcard")
     }
 
