@@ -78,7 +78,7 @@ fun tokenize(text: String): List<Token> {
         val start = index
         val char = text[index]
         when {
-            char.isWhitespace() -> index++
+            char in LEXER_WHITESPACE -> index++
 
             char == ';' && text.startsWith(";;", index) -> {
                 index = text.indexOf('\n', index).takeIf { it >= 0 } ?: text.length
@@ -142,7 +142,9 @@ fun tokenize(text: String): List<Token> {
             else -> {
                 val symbol = SYMBOLS.firstOrNull { text.startsWith(it, index) } ?: char.toString()
                 index += symbol.length
-                val illegal = symbol.length == 1 && symbol[0].beginsNoTerminal()
+                // `#` begins exactly one terminal, the fixed literal `#Zeile`, so it is judged by what follows.
+                val illegal = symbol.length == 1 && symbol[0].beginsNoTerminal() ||
+                    symbol == "#" && !text.startsWith(ROW_ITERATION, start)
                 tokens += Token(
                     if (illegal) TokenKind.ILLEGAL_CHARACTER else symbol.kindOfSymbol(),
                     symbol,
@@ -171,14 +173,23 @@ fun tokenize(text: String): List<Token> {
  * - `!` and `;` reach this point only when the multi-character terminal they belong to did NOT match — `!=`
  *   is tried before the fallback and `;;` is consumed as a comment earlier — so a lone one is illegal and is
  *   reported. Both measured ([KERNEL-FINDINGS KF309]).
- * - `#` is NOT reported, though a lone one is equally measured as illegal. It is legal inside `#Zeile`, whose
- *   other language spellings this checker does not know, so reporting a `#` this tokenizer failed to pair
- *   would refuse a condition A12 may well accept. Under-reporting is the only safe direction and this is the
- *   one place the derived set is deliberately widened.
+ * - `#` begins a terminal, but only one: `ZEILE_ITER`, the fixed literal `#Zeile`, which the multi-language
+ *   handler never retypes and which is the only `#` either grammar spells. So whether a `#` is legal depends
+ *   on what follows it, and [tokenize] judges it there. It was once left unreported on the belief that
+ *   `#Zeile` had other language spellings; the grammar has none, and a lone `#` measures illegal.
  */
 private fun Char.beginsNoTerminal(): Boolean =
-    this !in STANDALONE_PUNCTUATION && this != '#' && !isWhitespace() && !isDigit() &&
+    this !in STANDALONE_PUNCTUATION && this != '#' && this !in LEXER_WHITESPACE && !isDigit() &&
         !isNameStart() && this != '"' && this != '\''
+
+/**
+ * The lexer's `WS` rule: space, carriage return, tab, form feed and line feed, and nothing else. Every other
+ * character Unicode calls whitespace — a no-break space, a vertical tab, an em space — begins no terminal and
+ * draws the lexer error ([KERNEL-FINDINGS KF309]), which `Char.isWhitespace` would have discarded instead.
+ */
+private const val LEXER_WHITESPACE = " \r\t\u000C\n"
+
+private const val ROW_ITERATION = "#Zeile"
 
 /** The punctuation A12's terminals spell as a complete token, `#` excepted — see [beginsNoTerminal]. */
 private const val STANDALONE_PUNCTUATION = "+-*/^><=()[]{},.@$"

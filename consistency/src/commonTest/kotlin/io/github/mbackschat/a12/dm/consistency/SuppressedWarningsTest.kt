@@ -97,8 +97,7 @@ class SuppressedWarningsTest {
      * Which single entry A12 reads as a CODE and which it cannot read as one at all, by lexical shape — the
      * rows `ComputationSuppressionLawsTest.whichSingleEntryA12ReadsAsACode` measures (2026-09-24). The entry
      * is the pragma's one operand, so its class is what A12's lexer and parser make of that text: a name it
-     * then compares, a token no name can be, or a character it cannot lex. A no-break space is absent on
-     * purpose: A12 cannot lex it, and this checker's tokenizer reads it as whitespace.
+     * then compares, a token no name can be, or a character it cannot lex.
      */
     @Test
     fun anEntryIsJudgedAsTheTextThePragmaParses() {
@@ -125,6 +124,7 @@ class SuppressedWarningsTest {
             "the supported name then a comment" to ("$supported ;; note" to "MVK_UNEXPECTED_TOKEN"),
             "a lone hash" to ("#LATE" to "MVK_LEXER_STANDARD_ERROR"),
             "the row-iteration keyword" to ("#Zeile" to "MVK_UNEXPECTED_TOKEN"),
+            "the supported name padded with a no-break space" to ("\u00a0$supported" to "MVK_LEXER_STANDARD_ERROR"),
             "a digit-led identifier then an unlexable character" to ("7_DAYS \u00c9" to "MVK_UNEXPECTED_TOKEN"),
             "a keyword then an unlexable character" to ("And \u00c9" to "MVK_UNEXPECTED_TOKEN"),
         )

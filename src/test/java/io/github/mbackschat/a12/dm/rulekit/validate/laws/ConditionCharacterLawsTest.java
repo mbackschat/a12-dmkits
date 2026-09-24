@@ -105,6 +105,46 @@ class ConditionCharacterLawsTest {
     }
 
     /**
+     * Which characters the lexer DISCARDS. Its {@code WS} rule is exactly space, carriage return, tab, form
+     * feed and line feed, so every other character Unicode calls whitespace is one no terminal spells. In the
+     * grid's slot a discarded character leaves a valid condition, so the two outcomes are ADMITTED and the
+     * lexer error. And {@code #} is legal exactly where it opens {@code #Zeile}, the only {@code #} either
+     * grammar spells ({@code ZEILE_ITER}, a fixed literal the multi-language handler never retypes), so
+     * {@code #Zeile} lexes and is refused a phase later while {@code #Zeil} cannot lex.
+     */
+    @Test
+    void onlyTheLexersFiveWhitespaceCharactersAreDiscarded() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a space — the control", verdictWithCharacter(" "));
+        actual.put("a tab", verdictWithCharacter("\t"));
+        actual.put("a form feed", verdictWithCharacter("\f"));
+        actual.put("a line feed", verdictWithCharacter("\n"));
+        actual.put("a carriage return", verdictWithCharacter("\r"));
+        actual.put("a no-break space", verdictWithCharacter("\u00a0"));
+        actual.put("a vertical tab", verdictWithCharacter("\u000b"));
+        actual.put("an em space", verdictWithCharacter("\u2003"));
+        actual.put("an ideographic space", verdictWithCharacter("\u3000"));
+        actual.put("a next-line character", verdictWithCharacter("\u0085"));
+        actual.put("`#Zeile`", verdictWithCharacter("#Zeile"));
+        actual.put("`#Zeil`", verdictWithCharacter("#Zeil"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a space — the control", KernelLaws.ADMITTED);
+        expected.put("a tab", KernelLaws.ADMITTED);
+        expected.put("a form feed", KernelLaws.ADMITTED);
+        expected.put("a line feed", KernelLaws.ADMITTED);
+        expected.put("a carriage return", KernelLaws.ADMITTED);
+        expected.put("a no-break space", LEXER);
+        expected.put("a vertical tab", LEXER);
+        expected.put("an em space", LEXER);
+        expected.put("an ideographic space", LEXER);
+        expected.put("a next-line character", LEXER);
+        expected.put("`#Zeile`", TOKEN);
+        expected.put("`#Zeil`", LEXER);
+        assertEquals(expected, actual, "which characters A12's condition lexer discards");
+    }
+
+    /**
      * Inside a STRING LITERAL every one of those characters is ordinary text.
      *
      * <p>{@code StringLiteral : '"' ( '""' | ~["] )* '"'} admits anything but a quote, so the illegal-character

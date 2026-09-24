@@ -21,9 +21,9 @@ import kotlin.test.assertTrue
  * probe was not a counterexample but a positive control: `@` IS a terminal, so it lexes and fails one phase
  * later, exactly as `$`, `,` and `ß` do here.
  *
- * **`#` is the one measured-illegal character deliberately NOT reported.** A lone one draws the lexer error,
- * but it is legal inside `#Zeile`, whose other language spellings this checker does not know — so refusing a
- * `#` it could not pair would reject text A12 may accept, and under-reporting is the only safe direction.
+ * **`#` is legal exactly where it opens `#Zeile`.** That is the only `#` either grammar spells (`ZEILE_ITER`, a
+ * fixed literal the multi-language handler never retypes), so a lone one draws the lexer error while `#Zeile`
+ * lexes and is refused a phase later — both measured.
  */
 class ConditionLexicalityTest {
 
@@ -145,8 +145,9 @@ class ConditionLexicalityTest {
         // proves the two-character terminal is still taken whole.
         actual["`!` alone"] = codesFor("!")
         actual["`!=` whole — the control for the row above"] = codesFor("!=")
-        // `#` is measured illegal alone and deliberately NOT reported; see the class note.
-        actual["`#`, measured illegal and deliberately unreported"] = codesFor("#")
+        // `#` is spelled only as `#Zeile`, the same pairing as `!` and `!=`.
+        actual["`#` alone"] = codesFor("#")
+        actual["`#Zeile` whole — the control for the row above"] = codesFor("#Zeile")
 
         val expected = mutableMapOf<String, List<String>>()
         for (legal in listOf("$", "@", ",", "ß")) {
@@ -157,9 +158,27 @@ class ConditionLexicalityTest {
         }
         expected["`!` alone"] = listOf("MVK_LEXER_STANDARD_ERROR")
         expected["`!=` whole — the control for the row above"] = emptyList()
-        expected["`#`, measured illegal and deliberately unreported"] = emptyList()
+        expected["`#` alone"] = listOf("MVK_LEXER_STANDARD_ERROR")
+        expected["`#Zeile` whole — the control for the row above"] = emptyList()
         assertEquals(expected, actual, "which characters the checker reports as untokenizable")
     }
+
+    /**
+     * Only the lexer's own whitespace is discarded — space, carriage return, tab, form feed and line feed.
+     * Every other character Unicode calls whitespace is one no terminal spells, and A12 answers each with the
+     * lexer error (`ConditionCharacterLawsTest.onlyTheLexersFiveWhitespaceCharactersAreDiscarded`).
+     */
+    @Test
+    fun onlyTheLexersFiveWhitespaceCharactersAreDiscarded() {
+        val discarded = listOf(" ", "\t", "\u000c", "\n", "\r")
+        val illegal = listOf("\u00a0", "\u000b", "\u2003", "\u3000", "\u0085")
+        val actual = (discarded + illegal).associate { it.escaped() to codesFor(it) }
+        val expected = discarded.associate { it.escaped() to emptyList<String>() } +
+            illegal.associate { it.escaped() to listOf("MVK_LEXER_STANDARD_ERROR") }
+        assertEquals(expected, actual, "which whitespace the checker discards")
+    }
+
+    private fun String.escaped(): String = map { "U+" + it.code.toString(16).padStart(4, '0') }.joinToString("")
 
     /**
      * The same characters inside a STRING LITERAL draw nothing, because A12 admits them there.

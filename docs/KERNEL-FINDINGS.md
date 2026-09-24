@@ -6173,7 +6173,11 @@ The last row generalizes the string-literal result above rather than repeating i
 
 **Inside a string literal none of it applies.** `StringLiteral : '"' ( '""' | ~["] )* '"'` admits every character but a quote, and all eleven above are ADMITTED there — so a checker scanning raw text for a bad character refuses conditions A12 accepts.
 
-*Locked by:* `rulekit.validate.laws.ConditionCharacterLawsTest`. The portable side is `consistency`'s `ConditionLexicalityTest`, which reports the class with one deliberate exception: a lone `#` is left unreported, because `#Zeile`'s other language spellings are unknown there and refusing an unpaired `#` could reject text A12 accepts.
+**"The whitespace set" is the lexer's `WS` rule and nothing wider** (measured 2026-09-24): `WS : (' '|'\r'|'\t'|'\u000C'|'\n') -> channel(HIDDEN)`. Those five are discarded and the condition is ADMITTED; a no-break space, a vertical tab, an em space, an ideographic space and U+0085 each draw `MVK_LEXER_STANDARD_ERROR`, in the same slot. A reader that takes "whitespace" from its platform's character class discards all five of the latter, which is what the portable tokenizer did until that day.
+
+**`#Zeile` has no other spelling.** `ZEILE_ITER : '#Zeile'` is a fixed literal, the lexer rule carries no `setTypeInLexer` call, and `'#` occurs in the two grammars only as `'#Zeile'` (three sites, all read). In an English model `#Zeile` lexes and is refused a phase later with `MVK_UNEXPECTED_TOKEN`, while `#Zeil` draws the lexer error. *Corrected 2026-09-24:* the portable side had left a lone `#` unreported on the belief that `#Zeile` had other language spellings, and now reports it.
+
+*Locked by:* `rulekit.validate.laws.ConditionCharacterLawsTest`. The portable side is `consistency`'s `ConditionLexicalityTest`, which reports the whole class.
 
 ## §12 supplement — a PRESENT-but-BLANK DSL slot parses, and answers differently on each member (measured, 2026-09-13) <a id="kf310"></a>
 

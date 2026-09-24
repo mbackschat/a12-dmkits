@@ -79,9 +79,14 @@ final class KernelLaws {
      * {@link #NOT_BUILDABLE}, which says A12 reached no verdict about the declaration. It had reached one.
      * Reading the key off the notification cannot miss a class this way, because it keys on the Kernel's
      * format rather than on a family of names someone listed.
+     *
+     * <p>{@code DOTALL}, because a message can echo the offending character and some characters are line
+     * terminators to {@code .}: a condition holding U+0085 draws {@code Character '…' at position 23 is
+     * incorrect. [MVK_LEXER_STANDARD_ERROR]} and read as {@link #REFUSED_CODELESS} without it
+     * ({@code ConditionCharacterLawsTest}). {@code CheckerClassAgreementTest}'s copy already matched that way.
      */
     private static final Pattern CLASS_KEY =
-            Pattern.compile(".*\\[(\\w+)]$");
+            Pattern.compile(".*\\[(\\w+)]$", Pattern.DOTALL);
 
     private KernelLaws() {
     }

@@ -116,28 +116,18 @@ private fun pragmaVerdict(text: String, language: ConditionLanguage): String? {
     val first = tokens.firstOrNull() ?: return UNEXPECTED_TOKEN
     val behind = tokens.getOrNull(1)
     return when {
-        first.isUnlexable(text) -> LEXER_STANDARD_ERROR
+        first.isUnlexable -> LEXER_STANDARD_ERROR
         !first.isPragmaName(language) -> UNEXPECTED_TOKEN
-        behind != null -> if (behind.isUnlexable(text)) LEXER_STANDARD_ERROR else UNEXPECTED_TOKEN
+        behind != null -> if (behind.isUnlexable) LEXER_STANDARD_ERROR else UNEXPECTED_TOKEN
         first.text == SUPPRESSIBLE -> null
         else -> INVALID_SUPPRESSED_WARNING
     }
 }
 
-/**
- * Whether A12's lexer fails on this token.
- *
- * The tokenizer never reports a `#` as illegal, deliberately (see `beginsNoTerminal`), so the one terminal that
- * spells it is asked here: `#Zeile` is `ZEILE_ITER`, a fixed literal with no per-language spelling, and a `#`
- * that does not open it is a character no terminal begins — measured on `#LATE` against `#Zeile`.
- */
-private fun Token.isUnlexable(source: String): Boolean = when (kind) {
-    TokenKind.ILLEGAL_CHARACTER, TokenKind.UNTERMINATED_STRING, TokenKind.UNTERMINATED_QUOTED_NAME -> true
-    TokenKind.PUNCTUATION -> text == "#" && !source.startsWith(ROW_ITERATION, start)
-    else -> false
-}
-
-private const val ROW_ITERATION = "#Zeile"
+/** Whether A12's lexer fails on this token. */
+private val Token.isUnlexable: Boolean
+    get() = kind == TokenKind.ILLEGAL_CHARACTER || kind == TokenKind.UNTERMINATED_STRING ||
+        kind == TokenKind.UNTERMINATED_QUOTED_NAME
 
 /** A name the pragma takes: the tokenizer's NAME minus a digit-led one and minus a keyword of [language]. */
 private fun Token.isPragmaName(language: ConditionLanguage): Boolean =
