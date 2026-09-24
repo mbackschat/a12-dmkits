@@ -106,8 +106,9 @@ class ErrorTargetContainmentTest {
         assertEquals(expected, actual, "containment against referenced-ness")
     }
 
-    private fun codes(source: String): List<String> =
-        check(ModelSource(source)).findings.filter { it.code == notInRuleGroup }.map { it.code }
+    /** Every A12 class the checker reports, so a co-firing class — or a fixture that never parsed — shows. */
+    private fun codes(source: String): List<String> = check(ModelSource(source)).findings
+        .filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }.distinct()
 
     private fun allCodes(source: String): List<String> =
         check(ModelSource(source)).findings.map { it.code }
@@ -127,7 +128,7 @@ class ErrorTargetContainmentTest {
         declaration = """
             {"type":"Computation","id":"c0","name":"Probe","Computation":{
               "computedFieldRelPath":"$computedField",
-              "alternatives":[{"operation":"$operation"}],
+              "computationAlternatives":[{"operation":"$operation"}],
               "errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"x"}]}}
         """.trimIndent(),
         into = group,
