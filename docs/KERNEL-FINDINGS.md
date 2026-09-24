@@ -5628,7 +5628,7 @@ The rule's other two declaration slots, measured for the first time because both
 
 | stored shape | A12 |
 |---|---|
-| `errorCode` absent · `""` · whitespace-only | `MVK_ERROR_CODE_MISSING` |
+| `errorCode` absent · `""` · whitespace-only (as Java's `Character.isWhitespace` counts it — a no-break space is not, [KF310](#kf310)) | `MVK_ERROR_CODE_MISSING` |
 | `errorCode` as a NUMBER (`7`) | **ADMITTED** — Jackson coerces the scalar, so the code is `"7"` |
 | `severity` `"ERROR"` · `"WARNING"` · `"INFO"` | ADMITTED |
 | **`severity` ABSENT** | **ADMITTED** |
@@ -5689,9 +5689,9 @@ The two members a stored rule cannot work without, measured because `Rule.Builde
 
 | stored shape | A12 |
 |---|---|
-| `errorCondition` present, blank or whitespace | `MVK_CONDITION_MISSING` **and** `MVK_INCOMPLETE_INPUT` |
+| `errorCondition` present, blank or ASCII whitespace (which other spaces count: [KF310](#kf310)) | `MVK_CONDITION_MISSING` **and** `MVK_INCOMPLETE_INPUT` |
 | `errorCondition` ABSENT | **NOT BUILDABLE** — a rejection carrying no `MVK_*` code at all |
-| `errorEntityRelPath` present, blank or whitespace | `MVK_ERROR_FIELD_MISSING` **and** `MVK_MISSING_ERROR_FIELD` |
+| `errorEntityRelPath` present, blank or whitespace (as is any text that does not resolve, [KF310](#kf310)) | `MVK_ERROR_FIELD_MISSING` **and** `MVK_MISSING_ERROR_FIELD` |
 | `errorEntityRelPath` ABSENT | **UNREADABLE** |
 | either member an explicit `null` | **UNREADABLE** ([KF291](#kf291)) |
 
@@ -6196,7 +6196,24 @@ The last row generalizes the string-literal result above rather than repeating i
 
 **Why this matters to a checker rather than being trivia.** A syntax layer reporting "a blank does not parse" under one code is right about one member and wrong about the rest, and the two that share `MVK_UNEXPECTED_TOKEN` are a condition member and a *common* condition member, while the operation — the one member that is an expression rather than a condition — is the one that parts. So the split follows the member's GRAMMAR ROLE and not its carrier, which is not what the names suggest.
 
-*Locked by:* `rulekit.validate.laws.ComputationAlternativeSlotLawsTest.aBlankSlotAnswersDifferentlyOnEachMemberOfThisCarrier` and `RuleConditionAndTargetSlotLawsTest`. The portable side is `consistency`'s `BlankDslSlotTest`.
+**Which text is blank takes two tests, and neither is "whitespace" as most platforms spell it (measured 2026-09-24).** The rows above use ASCII spaces. Six other spaces split the candidate definitions apart: the no-break family (U+00A0, U+2007, U+202F) and a vertical tab, an em space and an ideographic space (U+000B, U+2003, U+3000).
+
+| member | its presence test | text of VT / em / ideographic space | text of a no-break space |
+|---|---|---|---|
+| `errorCode` | Java whitespace | `MVK_ERROR_CODE_MISSING` | codeless prose — the content law below |
+| `errorCondition` | Java whitespace, then the lexer | `MVK_CONDITION_MISSING` **and** `MVK_LEXER_STANDARD_ERROR` | `MVK_LEXER_STANDARD_ERROR` |
+| `operation`, `commonPrecondition` | none — the lexer alone | `MVK_LEXER_STANDARD_ERROR` | `MVK_LEXER_STANDARD_ERROR` |
+| custom type `name` | Java whitespace | `CUSTOM_FIELD_TYPE_CODENAME_MISSING` | codeless prose |
+| `errorEntityRelPath` | none of its own | `MVK_ERROR_FIELD_MISSING` + `MVK_MISSING_ERROR_FIELD` | the same pair |
+
+- **The presence test counts exactly what Java's `Character.isWhitespace` counts on every row, and each rival gets one wrong.** `String.trim` would leave an em space present; Kotlin's `isBlank` and any definition that includes `Character.isSpaceChar` would make the no-break spaces blank; the lexer's five characters ([KF309](#kf309)) would leave a vertical tab present. No kernel source for these checks is in the checkout, so this is a characterization over six sampled characters, not a read of the implementation: the unsampled members of `isWhitespace` (U+001C–U+001F, U+1680, U+2028, …) are carried by it, not measured.
+- **The LEXER's blank is the other test.** A condition of ASCII spaces meets end of input, which is `MVK_INCOMPLETE_INPUT`; a condition of vertical tabs is missing to the presence test and unlexable to the lexer at once, so it draws both classes.
+- **The target has no blank class.** Every text that does not resolve draws the same pair, an unresolvable `../Nowhere` and a valid target padded with an ASCII, no-break or em space included.
+- **The error code's content law is prose alone.** `"The error code is only allowed to contain letters, digits, blanks and underscores."` carries no class key. Its "blanks" admit an ASCII space, padding included (`A B`, ` A`), and its letters reach past ASCII (`Ä`); `A-B` and a no-break space are refused. So no checker can cite a class for it.
+
+**This split was a portable-checker defect, not only trivia.** `consistency` asked Kotlin's `isBlank`, and `MemberBlanknessTest` run against that code named a class A12 did not on four members: `MVK_ERROR_CODE_MISSING` on a no-break code and `CUSTOM_FIELD_TYPE_CODENAME_MISSING` on a no-break type name, where A12 answers in prose; `MVK_INCOMPLETE_INPUT` on a condition or an operation of any of the six spaces, which A12 fails in the lexer; and `MVK_CONDITION_MISSING` on a no-break condition. It now asks `isA12Blank` (Java whitespace, spelled out per target) and the tokenizer's `isLexerBlank`. It stays silent on the two codeless rows, because it cannot cite a class A12 did not name.
+
+*Locked by:* `rulekit.validate.laws.ComputationAlternativeSlotLawsTest.aBlankSlotAnswersDifferentlyOnEachMemberOfThisCarrier` and `RuleConditionAndTargetSlotLawsTest`; the Unicode rows by the `whichSpacesMake…` tests of `RuleCodeAndSeverityLawsTest`, `RuleConditionAndTargetSlotLawsTest`, `ComputationAlternativeSlotLawsTest` and `FieldTypeBodyMemberLawsTest`, and the content law by `RuleCodeAndSeverityLawsTest.theErrorCodeContentLawIsStatedInProseAlone`. The portable side is `consistency`'s `BlankDslSlotTest` and `MemberBlanknessTest`, with `A12BlankJvmTest` comparing `isJavaWhitespace` with the JDK for every `char`.
 
 ## §12 supplement — with TWO syntax failures in one text, A12 reports the EARLIER one, whichever phase owns it (measured, 2026-09-13) <a id="kf311"></a>
 

@@ -122,7 +122,7 @@ private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
     }
     val declared = (element.body ?: return emptyList())["errorCode"]
     return when {
-        declared == null || (declared is JsonPrimitive && declared.isString && declared.content.isBlank()) ->
+        declared == null || (declared is JsonPrimitive && declared.isString && declared.content.isA12Blank()) ->
             listOf(
                 Finding(
                     FindingCategory.A12_CONSTRAINT,

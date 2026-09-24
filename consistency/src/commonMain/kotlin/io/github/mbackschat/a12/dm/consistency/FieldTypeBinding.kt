@@ -337,7 +337,7 @@ private val VERDICT_FOR_ABSENT_MEMBER = mapOf("CustomFieldType" to "CUSTOM_FIELD
  */
 private fun JsonObject.lacks(member: String): Boolean = when (val declared = this[member]) {
     null -> true
-    is JsonPrimitive -> declared.isString && declared.content.isBlank()
+    is JsonPrimitive -> declared.isString && declared.content.isA12Blank()
     else -> false
 }
 

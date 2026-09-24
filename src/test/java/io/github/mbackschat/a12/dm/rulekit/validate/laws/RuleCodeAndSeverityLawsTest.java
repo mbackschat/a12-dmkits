@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.de;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -16,6 +18,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
@@ -64,6 +68,62 @@ class RuleCodeAndSeverityLawsTest {
         // most readers and two tiers to A12.
         expected.put("null", KernelLaws.UNREADABLE);
         assertEquals(expected, actual, "what A12 does with each shape of a rule's errorCode");
+    }
+
+    /**
+     * Which spaces count as BLANK in the error code. Java's {@code Character.isWhitespace} excludes the three
+     * no-break spaces and includes the other three rows, so the rows split exactly where a reader taking
+     * "blank" from another platform's definition would diverge.
+     */
+    @Test
+    void whichSpacesMakeTheErrorCodeBlank() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a no-break space", verdict("errorCode", "\"\\u00a0\""));
+        actual.put("a figure space", verdict("errorCode", "\"\\u2007\""));
+        actual.put("a narrow no-break space", verdict("errorCode", "\"\\u202f\""));
+        actual.put("a vertical tab", verdict("errorCode", "\"\\u000b\""));
+        actual.put("an em space", verdict("errorCode", "\"\\u2003\""));
+        actual.put("an ideographic space", verdict("errorCode", "\"\\u3000\""));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        // Not blank, so the code's CONTENT law answers instead: "The error code is only allowed to contain
+        // letters, digits, blanks and underscores.", in prose and without a class key.
+        expected.put("a no-break space", KernelLaws.REFUSED_CODELESS);
+        expected.put("a figure space", KernelLaws.REFUSED_CODELESS);
+        expected.put("a narrow no-break space", KernelLaws.REFUSED_CODELESS);
+        expected.put("a vertical tab", "MVK_ERROR_CODE_MISSING");
+        expected.put("an em space", "MVK_ERROR_CODE_MISSING");
+        expected.put("an ideographic space", "MVK_ERROR_CODE_MISSING");
+        assertEquals(expected, actual, "which spaces make a rule's errorCode blank");
+    }
+
+    /**
+     * The error code's CONTENT law, which the no-break rows above reach: A12 states it in prose alone, so no
+     * checker can cite a class for it. Its "blanks" are an ASCII space, padding included, and its "letters"
+     * reach past ASCII.
+     */
+    @Test
+    void theErrorCodeContentLawIsStatedInProseAlone() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("A B", verdict("errorCode", "\"A B\""));
+        actual.put(" A", verdict("errorCode", "\" A\""));
+        actual.put("Ä", verdict("errorCode", "\"Ä\""));
+        actual.put("A_1", verdict("errorCode", "\"A_1\""));
+        actual.put("A-B", verdict("errorCode", "\"A-B\""));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("A B", KernelLaws.ADMITTED);
+        expected.put(" A", KernelLaws.ADMITTED);
+        expected.put("Ä", KernelLaws.ADMITTED);
+        expected.put("A_1", KernelLaws.ADMITTED);
+        expected.put("A-B", KernelLaws.REFUSED_CODELESS);
+        assertEquals(expected, actual, "which characters a rule's errorCode may hold");
+
+        ModelConsistencyException refused = assertThrows(ModelConsistencyException.class,
+                () -> BoundModel.ofJson(probe("errorCode", "\"A-B\"")));
+        assertTrue(refused.notifications().stream().anyMatch(n -> n.message().contains(
+                        "The error code is only allowed to contain letters, digits, blanks and underscores.")),
+                () -> "the content law's own sentence, got: " + refused.notifications());
     }
 
     /**

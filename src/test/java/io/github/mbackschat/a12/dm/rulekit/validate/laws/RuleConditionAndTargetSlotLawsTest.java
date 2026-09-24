@@ -96,6 +96,55 @@ class RuleConditionAndTargetSlotLawsTest {
         assertEquals(expected, actual, "what A12 does with each shape of a rule's errorEntityRelPath");
     }
 
+    /**
+     * Which spaces make the condition and the error target BLANK — the two members whose blank verdict
+     * {@link #anAbsentConditionStopsTheBuildWhereABlankOneDrawsAVerdict} and its sibling measure on ASCII
+     * spaces. Java's {@code Character.isWhitespace} excludes the three no-break spaces and includes the rest.
+     */
+    @Test
+    void whichSpacesMakeTheConditionAndTheTargetBlank() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("errorCondition: a no-break space", verdict("errorCondition", "\"\\u00a0\""));
+        actual.put("errorCondition: a figure space", verdict("errorCondition", "\"\\u2007\""));
+        actual.put("errorCondition: a narrow no-break space", verdict("errorCondition", "\"\\u202f\""));
+        actual.put("errorCondition: a vertical tab", verdict("errorCondition", "\"\\u000b\""));
+        actual.put("errorCondition: an em space", verdict("errorCondition", "\"\\u2003\""));
+        actual.put("errorCondition: an ideographic space", verdict("errorCondition", "\"\\u3000\""));
+        actual.put("errorEntityRelPath: a no-break space", verdict("errorEntityRelPath", "\"\\u00a0\""));
+        actual.put("errorEntityRelPath: a figure space", verdict("errorEntityRelPath", "\"\\u2007\""));
+        actual.put("errorEntityRelPath: a narrow no-break space", verdict("errorEntityRelPath", "\"\\u202f\""));
+        actual.put("errorEntityRelPath: a vertical tab", verdict("errorEntityRelPath", "\"\\u000b\""));
+        actual.put("errorEntityRelPath: an em space", verdict("errorEntityRelPath", "\"\\u2003\""));
+        actual.put("errorEntityRelPath: an ideographic space", verdict("errorEntityRelPath", "\"\\u3000\""));
+        actual.put("errorEntityRelPath: an unresolvable path", verdict("errorEntityRelPath", "\"../Nowhere\""));
+        actual.put("errorEntityRelPath: a no-break space before the target", verdict("errorEntityRelPath", "\"\\u00a0../Tier\""));
+        actual.put("errorEntityRelPath: an ASCII space before the target", verdict("errorEntityRelPath", "\" ../Tier\""));
+        actual.put("errorEntityRelPath: an em space before the target", verdict("errorEntityRelPath", "\"\\u2003../Tier\""));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        // The missing-condition test counts what Java's Character.isWhitespace counts, and the parse then
+        // fails in the LEXER, because none of these is one of its five whitespace characters.
+        expected.put("errorCondition: a no-break space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("errorCondition: a figure space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("errorCondition: a narrow no-break space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("errorCondition: a vertical tab", "MVK_CONDITION_MISSING,MVK_LEXER_STANDARD_ERROR");
+        expected.put("errorCondition: an em space", "MVK_CONDITION_MISSING,MVK_LEXER_STANDARD_ERROR");
+        expected.put("errorCondition: an ideographic space", "MVK_CONDITION_MISSING,MVK_LEXER_STANDARD_ERROR");
+        // The target has no blank class of its own: every text that does not resolve draws the same pair,
+        // an unresolvable path and a padded valid one included.
+        expected.put("errorEntityRelPath: a no-break space", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("errorEntityRelPath: a figure space", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("errorEntityRelPath: a narrow no-break space", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("errorEntityRelPath: a vertical tab", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("errorEntityRelPath: an em space", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("errorEntityRelPath: an ideographic space", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("errorEntityRelPath: an unresolvable path", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("errorEntityRelPath: a no-break space before the target", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("errorEntityRelPath: an ASCII space before the target", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("errorEntityRelPath: an em space before the target", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        assertEquals(expected, actual, "which spaces make a rule's condition and target blank");
+    }
+
     /** What A12 says about the probe model with one member of the rule replaced, or removed when null. */
     private static String verdict(String member, String rawJson) {
         return KernelLaws.verdictOf(probe(member, rawJson));

@@ -210,6 +210,43 @@ class ComputationAlternativeSlotLawsTest {
     }
 
     /**
+     * Which spaces make each DSL-bearing computation member BLANK, beside the ASCII blank rows above. Java's
+     * {@code Character.isWhitespace} excludes the three no-break spaces and includes the rest.
+     */
+    @Test
+    void whichSpacesMakeAComputationSlotBlank() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("operation: a no-break space", verdict("[{\"operation\":\"\\u00a0\"}]", null));
+        actual.put("operation: a figure space", verdict("[{\"operation\":\"\\u2007\"}]", null));
+        actual.put("operation: a narrow no-break space", verdict("[{\"operation\":\"\\u202f\"}]", null));
+        actual.put("operation: a vertical tab", verdict("[{\"operation\":\"\\u000b\"}]", null));
+        actual.put("operation: an em space", verdict("[{\"operation\":\"\\u2003\"}]", null));
+        actual.put("operation: an ideographic space", verdict("[{\"operation\":\"\\u3000\"}]", null));
+        actual.put("common precondition: a no-break space", verdict("[" + ALTERNATIVE + "]", "\u00a0"));
+        actual.put("common precondition: a figure space", verdict("[" + ALTERNATIVE + "]", "\u2007"));
+        actual.put("common precondition: a narrow no-break space", verdict("[" + ALTERNATIVE + "]", "\u202f"));
+        actual.put("common precondition: a vertical tab", verdict("[" + ALTERNATIVE + "]", "\u000b"));
+        actual.put("common precondition: an em space", verdict("[" + ALTERNATIVE + "]", "\u2003"));
+        actual.put("common precondition: an ideographic space", verdict("[" + ALTERNATIVE + "]", "\u3000"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        // No member-level presence test here: each text reaches the lexer, which none of these spaces passes.
+        expected.put("operation: a no-break space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("operation: a figure space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("operation: a narrow no-break space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("operation: a vertical tab", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("operation: an em space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("operation: an ideographic space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("common precondition: a no-break space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("common precondition: a figure space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("common precondition: a narrow no-break space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("common precondition: a vertical tab", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("common precondition: an em space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("common precondition: an ideographic space", "MVK_LEXER_STANDARD_ERROR");
+        assertEquals(expected, actual, "which spaces make a computation slot blank");
+    }
+
+    /**
      * A shape whose ENVELOPE A12's reader refuses, which is a tier above any verdict about the slot.
      *
      * <p>It is measured because a checker reading `declaration["Computation"]` as an object gets `null` here

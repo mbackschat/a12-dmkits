@@ -139,6 +139,30 @@ class FieldTypeBodyMemberLawsTest {
         assertEquals(expected, actual, "which member each constructing field type requires");
     }
 
+    /**
+     * Which spaces make a custom type's {@code name} BLANK, beside the ASCII row above. Java's
+     * {@code Character.isWhitespace} excludes the three no-break spaces and includes the rest.
+     */
+    @Test
+    void whichSpacesMakeACustomTypeNameBlank() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a no-break space", verdictFor("CustomFieldType", "{\"name\":\"\\u00a0\"}"));
+        actual.put("a figure space", verdictFor("CustomFieldType", "{\"name\":\"\\u2007\"}"));
+        actual.put("a narrow no-break space", verdictFor("CustomFieldType", "{\"name\":\"\\u202f\"}"));
+        actual.put("a vertical tab", verdictFor("CustomFieldType", "{\"name\":\"\\u000b\"}"));
+        actual.put("an em space", verdictFor("CustomFieldType", "{\"name\":\"\\u2003\"}"));
+        actual.put("an ideographic space", verdictFor("CustomFieldType", "{\"name\":\"\\u3000\"}"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a no-break space", KernelLaws.REFUSED_CODELESS);
+        expected.put("a figure space", KernelLaws.REFUSED_CODELESS);
+        expected.put("a narrow no-break space", KernelLaws.REFUSED_CODELESS);
+        expected.put("a vertical tab", "CUSTOM_FIELD_TYPE_CODENAME_MISSING");
+        expected.put("an em space", "CUSTOM_FIELD_TYPE_CODENAME_MISSING");
+        expected.put("an ideographic space", "CUSTOM_FIELD_TYPE_CODENAME_MISSING");
+        assertEquals(expected, actual, "which spaces make a custom type's name blank");
+    }
+
     /** The order fixture with {@code /Order/CustomerName} typed [type] and given [rawBody] verbatim. */
     private static String verdictFor(String type, String rawBody) {
         try {

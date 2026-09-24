@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.isLexerBlank
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -146,12 +147,15 @@ private fun unreadable(element: TrackedDeclaration, explain: String): Finding = 
 /**
  * Whether a member carries text A12 reads as present — absent, `null` and blank all count as none.
  *
+ * "Blank" is the lexer's: an operation has no presence test of its own, so text of any other space reaches the
+ * lexer and draws its error rather than this family's `MVK_INCOMPLETE_INPUT` ([KERNEL-FINDINGS KF310]).
+ *
  * A non-string primitive answers TRUE and draws no finding: A12 coerces a scalar to the String member, as it
  * does for a rule's `errorCode`, and a container in this slot is unmeasured. Under-reporting is the safe
  * direction; inventing a verdict for either would be a refusal with no Kernel basis.
  */
 private fun JsonElement?.isPresentText(): Boolean = when (this) {
     null, is JsonNull -> false
-    is JsonPrimitive -> !isString || content.isNotBlank()
+    is JsonPrimitive -> !isString || !content.isLexerBlank()
     else -> true
 }

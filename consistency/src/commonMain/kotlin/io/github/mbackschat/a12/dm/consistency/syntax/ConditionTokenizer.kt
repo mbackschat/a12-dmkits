@@ -189,6 +189,13 @@ private fun Char.beginsNoTerminal(): Boolean =
  */
 private const val LEXER_WHITESPACE = " \r\t\u000C\n"
 
+/**
+ * Whether the lexer finds no token at all in this text — every character is one of its five whitespace
+ * characters. Text of any other space reaches the lexer and fails there ([KERNEL-FINDINGS KF309]), which is a
+ * different verdict from an empty token stream.
+ */
+internal fun String.isLexerBlank(): Boolean = all { it in LEXER_WHITESPACE }
+
 private const val ROW_ITERATION = "#Zeile"
 
 /** The punctuation A12's terminals spell as a complete token, `#` excepted — see [beginsNoTerminal]. */

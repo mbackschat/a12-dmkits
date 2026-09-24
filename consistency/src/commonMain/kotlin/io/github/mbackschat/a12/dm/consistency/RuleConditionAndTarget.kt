@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.isLexerBlank
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -38,25 +39,42 @@ internal fun TrackedFactBase.ruleConditionAndTargetFindings(element: TrackedDecl
  * One required member's two outcomes, named so each row states which tier it belongs to.
  *
  * @param member the member's own name, for the explanation.
- * @param blankCodes what A12 reports when the member is present and blank — every one of them, because both
- *     members draw a PAIR and naming one would under-report what A12 said.
+ * @param blankCodes what A12 reports for the member's present text as a blank one — every code, because both
+ *     members draw a PAIR on an ASCII blank and naming one would under-report what A12 said — and nothing when
+ *     the text is not blank in the sense that member's verdicts use.
  * @param absentExplain what A12 does when it is absent, in A12's own terms rather than in a verdict's.
  */
 private class RequiredMember(
     val member: String,
-    val blankCodes: List<String>,
+    val blankCodes: (String) -> List<String>,
     val absentExplain: String,
 )
 
+/**
+ * The condition's pair comes from two different tests. `MVK_CONDITION_MISSING` is A12's member presence test,
+ * which counts Java's whitespace; `MVK_INCOMPLETE_INPUT` is the parser meeting no token, which only the lexer's
+ * five whitespace characters give. So a condition of vertical tabs draws the first and the lexer error instead
+ * of the second, and one of no-break spaces draws neither — measured on six spaces (KERNEL-FINDINGS KF310).
+ */
 private val CONDITION = RequiredMember(
     "errorCondition",
-    listOf("MVK_CONDITION_MISSING", "MVK_INCOMPLETE_INPUT"),
+    { text ->
+        listOfNotNull(
+            "MVK_CONDITION_MISSING".takeIf { text.isA12Blank() },
+            "MVK_INCOMPLETE_INPUT".takeIf { text.isLexerBlank() },
+        )
+    },
     "A12 cannot build the model from it",
 )
 
+/**
+ * The target has no blank class of its own: A12 answers every text that does not resolve with this pair, an
+ * unresolvable path and a padded valid one included, so any text of spaces alone draws it whichever spaces
+ * they are.
+ */
 private val ERROR_TARGET = RequiredMember(
     "errorEntityRelPath",
-    listOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD),
+    { text -> if (text.isBlank()) listOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD) else emptyList() },
     "A12's own reader refuses the source",
 )
 
@@ -64,29 +82,32 @@ private fun requiredTextFindings(
     element: TrackedDeclaration,
     declared: JsonElement?,
     required: RequiredMember,
-): List<Finding> = when {
-    declared == null || declared is JsonNull -> listOf(
-        Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            CK_MODEL_NOT_BUILDABLE,
-            "this rule declares no `${required.member}`, and ${required.absentExplain} — so no consistency " +
-                "verdict about this model exists, and a BLANK one would have drawn a verdict instead",
-            element.path,
-        ),
-    )
-    declared is JsonPrimitive && declared.isString && declared.content.isBlank() -> required.blankCodes.map {
-        Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            it,
-            "this rule's `${required.member}` is blank, which A12 judges and refuses — unlike an OMITTED " +
-                "member, which it never gets far enough to judge",
-            element.path,
+): List<Finding> {
+    val blank = (declared as? JsonPrimitive)?.takeIf { it.isString }?.let { required.blankCodes(it.content) }
+    return when {
+        declared == null || declared is JsonNull -> listOf(
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                CK_MODEL_NOT_BUILDABLE,
+                "this rule declares no `${required.member}`, and ${required.absentExplain} — so no consistency " +
+                    "verdict about this model exists, and a BLANK one would have drawn a verdict instead",
+                element.path,
+            ),
         )
+        !blank.isNullOrEmpty() -> blank.map {
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                it,
+                "this rule's `${required.member}` is blank, which A12 judges and refuses — unlike an OMITTED " +
+                    "member, which it never gets far enough to judge",
+                element.path,
+            )
+        }
+        // A non-string primitive is COERCED to the String member, as a rule's `errorCode` is, and a container
+        // is unmeasured. Under-reporting is the safe direction; inventing a verdict would be a refusal with no
+        // Kernel basis.
+        else -> emptyList()
     }
-    // A non-string primitive is COERCED to the String member, as a rule's `errorCode` is, and a container is
-    // unmeasured. Under-reporting is the safe direction; inventing a verdict would be a refusal with no
-    // Kernel basis.
-    else -> emptyList()
 }

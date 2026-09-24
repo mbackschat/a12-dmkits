@@ -131,7 +131,11 @@
   "gaps": [
     {
       "at": null,
-      "reason": "a field type's body is judged on the member A12 constructs from and on the two CONTENT laws measured beyond it — a `DateRangeType`'s (format, separator) pair, and an `EnumerationType`'s values against its categories. What a member otherwise holds is left to A12: a declared `format` outside the admitted vocabulary is refused there and cannot be reported here, since the admitted set is explicitly not closed and the refused one is a probe's universe rather than a law; a `CustomFieldType`'s `name` has no measured content law at all"
+      "reason": "a field type's body is judged on the member A12 constructs from and on the two CONTENT laws measured beyond it — a `DateRangeType`'s (format, separator) pair, and an `EnumerationType`'s values against its categories. What a member otherwise holds is left to A12: a declared `format` outside the admitted vocabulary is refused there and cannot be reported here, since the admitted set is explicitly not closed and the refused one is a probe's universe rather than a law; a `CustomFieldType`'s `name` is judged on presence alone, and A12 refuses a no-break-space name in prose with no class this checker could cite"
+    },
+    {
+      "at": null,
+      "reason": "a rule's `errorCode` is judged on presence alone. A12's content law — \"only letters, digits, blanks and underscores\" — states its verdict in prose with no class this checker could cite, and which characters it counts as letters rests on a handful of rows (KERNEL-FINDINGS KF310), so a code such as `A-B` is left to A12. Re-open when this checker owns a code of its own for it"
     },
     {
       "at": null,
