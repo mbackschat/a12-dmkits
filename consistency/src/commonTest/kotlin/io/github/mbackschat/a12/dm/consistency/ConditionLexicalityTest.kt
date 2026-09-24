@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -27,6 +28,13 @@ import kotlin.test.assertTrue
  */
 class ConditionLexicalityTest {
 
+    /**
+     * The fixture, with [condition] as JSON text: a caller escapes a quote itself, and a character-class row
+     * passes the raw character. It is deliberately not `trimIndent`ed, because that splits the text at a lone
+     * carriage return and rejoins it with a line feed, and strips the indentation it counts with `isWhitespace`,
+     * no-break spaces included — so a whitespace row would test a character the checker never saw
+     * (2026-09-24: the `\r` row here tested a line feed).
+     */
     private fun model(condition: String, operation: String = "42.00") = prepare(
         assertIs<Admission.Admitted>(
             admit(
@@ -42,7 +50,7 @@ class ConditionLexicalityTest {
                           "computationAlternatives":[{"operation":${'"'}$operation${'"'}}]}}
                       ]}}
                      ]}}}
-                    """.trimIndent(),
+                    """,
                 ),
             ),
         ),
@@ -198,6 +206,46 @@ class ConditionLexicalityTest {
         }
         assertEquals(expected, actual, "the same characters inside a string literal")
     }
+
+    /**
+     * A `;;` comment holds any character up to EITHER line terminator, and what follows a lone carriage return
+     * is live text again — the kernel's rows in `ConditionCharacterLawsTest.aCommentIsOrdinaryTextUpToEitherLineTerminator`.
+     *
+     * The whole report is read rather than this family alone, because the row a line-feed-only comment gets wrong
+     * is not lexical: swallowing the call after the CR leaves `… And` with nothing behind it, which the grammar
+     * families would refuse as incomplete where A12 admits the condition.
+     */
+    @Test
+    fun aCommentHoldsAnyCharacterUpToEitherLineTerminator() {
+        val rows = linkedMapOf(
+            "a comment — the control" to (";; a note\n" to emptyList()),
+            "a no-break space inside a comment" to (";; a\u00a0note\n" to emptyList()),
+            "a vertical tab inside a comment" to (";; a\u000bnote\n" to emptyList()),
+            "`é` inside a comment" to (";; a note é\n" to emptyList()),
+            "a comment a lone carriage return ends" to (";; a note\r" to emptyList()),
+            "`é` after a lone carriage return" to (";; a note\ré " to listOf("MVK_LEXER_STANDARD_ERROR")),
+            "a no-break space before a continuing comment line" to
+                (";; a note\n\u00a0;; more\n" to listOf("MVK_LEXER_STANDARD_ERROR")),
+        )
+        val actual = rows.mapValues { (_, row) -> reportCodes("FieldFilled(Price) And ${row.first} FieldFilled(Price)") }
+        assertEquals(rows.mapValues { (_, row) -> row.second }, actual, "which characters a condition comment holds")
+    }
+
+    private fun reportCodes(condition: String): List<String> = check(
+        ModelSource(
+            """
+            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Rule","id":"r0","name":"PriceRule","Rule":{
+                  "errorCondition":${JsonPrimitive(condition)},"errorEntityRelPath":"../Price",
+                  "errorCode":"P","errorMessage":[{"locale":"en_US","text":"x"}]}}
+              ]}}
+             ]}}}
+            """.trimIndent(),
+        ),
+    ).findings.map { it.code }
 
     /** One illegal character draws ONE finding across the whole report, not one per syntax family. */
     @Test

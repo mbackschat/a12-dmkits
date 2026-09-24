@@ -70,6 +70,17 @@ class ConditionTokenizerTest {
         )
     }
 
+    /**
+     * A lone carriage return ends a comment as a line feed does: `Comment : ';;' ~('\r' | '\n')* …`, measured
+     * on the kernel in `ConditionCharacterLawsTest.aCommentIsOrdinaryTextUpToEitherLineTerminator`. What
+     * follows it is live text, so a comment read up to the next line feed swallows a call A12 parses.
+     */
+    @Test
+    fun aLoneCarriageReturnEndsACommentToo() {
+        assertEquals(listOf(";; note", "FieldFilled", "(", "Code", ")"), texts(";; note\rFieldFilled(Code)"))
+        assertEquals(listOf(";; note", "FieldFilled", "(", "Code", ")"), texts(";; note\r\nFieldFilled(Code)"))
+    }
+
     @Test
     fun numbersAndPathStepsTokenizeAsTheirOwnKinds() {
         assertEquals(

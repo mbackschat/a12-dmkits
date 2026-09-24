@@ -28,7 +28,7 @@ enum class TokenKind {
      */
     UNTERMINATED_QUOTED_NAME,
 
-    /** A `;;` comment through the end of its line. */
+    /** A `;;` comment up to, not including, the next carriage return or line feed. */
     COMMENT,
 
     /** A symbolic operator such as `>` or `==`. */
@@ -59,7 +59,7 @@ data class Token(val kind: TokenKind, val text: String, val start: Int, val end:
  * Two terminals decide whether everything downstream is trustworthy, because each can contain text shaped
  * exactly like structure. A **string literal** escapes an embedded quote by DOUBLING it and gives backslash
  * no special meaning at all — the C-style reading would end a literal early and read its tail as a
- * reference. A **comment** opens with `;;` and runs to the end of its line.
+ * reference. A **comment** opens with `;;` and runs to the next carriage return or line feed.
  *
  * A single-quoted name is A12's escape for a field whose name collides with a keyword; the token carries the
  * bare name under [TokenKind.QUOTED_NAME], which is the escape the Kernel keeps in its own token type.
@@ -81,7 +81,7 @@ fun tokenize(text: String): List<Token> {
             char in LEXER_WHITESPACE -> index++
 
             char == ';' && text.startsWith(";;", index) -> {
-                index = text.indexOf('\n', index).takeIf { it >= 0 } ?: text.length
+                index = text.indexOfAny(COMMENT_TERMINATORS, index).takeIf { it >= 0 } ?: text.length
                 tokens += Token(TokenKind.COMMENT, text.substring(start, index), start, index)
             }
 
@@ -188,6 +188,13 @@ private fun Char.beginsNoTerminal(): Boolean =
  * draws the lexer error ([KERNEL-FINDINGS KF309]), which `Char.isWhitespace` would have discarded instead.
  */
 private const val LEXER_WHITESPACE = " \r\t\u000C\n"
+
+/**
+ * What ends a comment: `Comment : ';;' ~('\r' | '\n')* …`, so a lone carriage return does as well as a line
+ * feed, and the text after it is live — measured, a character harmless inside the comment draws the lexer
+ * error there (`rulekit.validate.laws.ConditionCharacterLawsTest`, [KERNEL-FINDINGS KF309]).
+ */
+private val COMMENT_TERMINATORS = charArrayOf('\r', '\n')
 
 /**
  * Whether the lexer finds no token at all in this text — every character is one of its five whitespace

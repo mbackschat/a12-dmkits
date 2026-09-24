@@ -164,6 +164,43 @@ class ConditionCharacterLawsTest {
         assertEquals(expected, actual, "the same characters inside a string literal");
     }
 
+    /**
+     * Inside a {@code ;;} COMMENT the same characters are ordinary text too, up to either line terminator.
+     *
+     * <p>{@code Comment : ';;' ~('\r' | '\n')* …} takes every character but the two terminators, so a no-break
+     * space is refused only where it stands between tokens. And the comment ends at a lone carriage return as
+     * well as at a line feed, so text after a CR is live again: the character that is harmless inside the
+     * comment answers with the lexer class there. That row is the one a tokenizer reading "to the end of the
+     * line" as "to the next line feed" gets wrong, and the grid's slot rows keep it from being about the slot.
+     */
+    @Test
+    void aCommentIsOrdinaryTextUpToEitherLineTerminator() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a comment — the control", verdictWithComment(";; a note\n"));
+        actual.put("a no-break space inside a comment", verdictWithComment(";; a\u00a0note\n"));
+        actual.put("a vertical tab inside a comment", verdictWithComment(";; a\u000bnote\n"));
+        actual.put("`é` inside a comment", verdictWithComment(";; a note é\n"));
+        actual.put("a comment a lone carriage return ends", verdictWithComment(";; a note\r"));
+        actual.put("`é` after a lone carriage return", verdictWithComment(";; a note\ré "));
+        actual.put("a no-break space before a continuing comment line",
+                verdictWithComment(";; a note\n\u00a0;; more\n"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a comment — the control", KernelLaws.ADMITTED);
+        expected.put("a no-break space inside a comment", KernelLaws.ADMITTED);
+        expected.put("a vertical tab inside a comment", KernelLaws.ADMITTED);
+        expected.put("`é` inside a comment", KernelLaws.ADMITTED);
+        expected.put("a comment a lone carriage return ends", KernelLaws.ADMITTED);
+        expected.put("`é` after a lone carriage return", LEXER);
+        expected.put("a no-break space before a continuing comment line", LEXER);
+        assertEquals(expected, actual, "which characters a condition comment holds");
+    }
+
+    /** A comment in the grid's slot, before the call it precedes, where the grammar admits one. */
+    private static String verdictWithComment(String comment) {
+        return verdict("FieldFilled(Tier) And " + comment + " FieldFilled(AutoRenew)");
+    }
+
     private static String verdict(String condition) {
         return KernelLaws.verdictOf(ModelWriter.addRule(Fixtures.subscriptionJson(), "/Subscription",
                 "CharacterProbe", "../Tier", "PROBE", condition, "ERROR", List.of(en("x"), de("y"))));
