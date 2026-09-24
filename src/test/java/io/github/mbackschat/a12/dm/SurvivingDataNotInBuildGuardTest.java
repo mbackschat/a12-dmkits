@@ -80,6 +80,11 @@ class SurvivingDataNotInBuildGuardTest {
                                     + "kernel regenerates on a miss and every entry is keyed by the kernel version, the "
                                     + "JDK and the model text — the measurement it must never hold is the kernel's "
                                     + "ANSWERS, which it does not store")),
+            Map.entry("build/checker-path-grid/actual.tsv",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "the path grid's LIVE disagreements, written only when they differ from the committed "
+                                    + "ledger so the diff can be reviewed; the ledger is the record, and the grid "
+                                    + "regenerates this file on the next run")),
             Map.entry("build/rp-large.dm.json",
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "a generated fixture for a manual before/after CLI comparison under -Drp.perf=true; "
