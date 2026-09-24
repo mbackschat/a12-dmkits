@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -110,6 +111,13 @@ class PartialStarContainmentLawsTest {
             return computation(group, TARGET, operation);
         }
 
+        /** The same, for an operation written as text because the typed surface refuses its shape. */
+        String textComputation(String group, String targetRelPath, String operation) {
+            return is(targetRelPath + " = " + operation, KernelLaws.computationVerdict(json, new DraftComputation(
+                    group, "ContainmentProbe", targetRelPath, null,
+                    List.of(new DraftComputation.Alternative(null, operation)))));
+        }
+
         /**
          * A rule reporting on the target, which its condition reaches through the non-repeatable root. The error
          * field is written as text because {@code Rule.Builder.build()} refuses an uncontained one outright
@@ -202,6 +210,34 @@ class PartialStarContainmentLawsTest {
         expected.put("Ledger | Sum, every level starred",
                 is("../../Shipments/ShipResult = Sum(../Shipments*/Parcels*/Weight)", NOT_IN_RULEGROUP));
         assertEquals(expected, actual, "into a repeatable target outside the declaring group");
+    }
+
+    /**
+     * A star on a level that does not repeat is the wildcard gate's, which answers during resolution, so it is
+     * not a star that spends itself on a repeatable level and says nothing about which rows the read takes.
+     */
+    @Test
+    void aStarOnALevelThatDoesNotRepeatIsTheWildcardGatesAlone() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("Ledger | a star on the field", PLAIN.textComputation(LEDGER, "../../Summary/Result",
+                "Sum(../Shipments/Parcels/Weight*)"));
+        actual.put("Summary | the same, contained", PLAIN.textComputation(SUMMARY, "../Result",
+                "Sum(../Shipments/Parcels/Weight*)"));
+        actual.put("Ledger | a star on the fixed group", PLAIN.textComputation(LEDGER, "../../Summary/Result",
+                "NumberOfFilledGroups(../Shipments/Parcels/Seal*)"));
+        actual.put("Ledger | a star on each level and on the field", PLAIN.textComputation(LEDGER,
+                "../../Summary/Result", "Sum(../Shipments*/Parcels*/Weight*)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Ledger | a star on the field",
+                is("../../Summary/Result = Sum(../Shipments/Parcels/Weight*)", "MVK_INVALID_WILDCARD"));
+        expected.put("Summary | the same, contained",
+                is("../Result = Sum(../Shipments/Parcels/Weight*)", "MVK_INVALID_WILDCARD"));
+        expected.put("Ledger | a star on the fixed group",
+                is("../../Summary/Result = NumberOfFilledGroups(../Shipments/Parcels/Seal*)", "MVK_INVALID_WILDCARD"));
+        expected.put("Ledger | a star on each level and on the field",
+                is("../../Summary/Result = Sum(../Shipments*/Parcels*/Weight*)", "MVK_INVALID_WILDCARD"));
+        assertEquals(expected, actual, "a star on a level that does not repeat");
     }
 
     @Test

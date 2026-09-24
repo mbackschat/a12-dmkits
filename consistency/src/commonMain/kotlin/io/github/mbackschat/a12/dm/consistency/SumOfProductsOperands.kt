@@ -86,6 +86,9 @@ private fun TrackedFactBase.readOperand(
     if (!field.path.startsWith("$declaringGroup/")) {
         return null
     }
+    // A star on a level that does not repeat is `MVK_INVALID_WILDCARD`, which A12 answers before comparing
+    // the pair (`rulekit.validate.laws.SumOfProductsLawsTest`), and it would still count below.
+    starredLevelsOf(written, declaringGroup, element) ?: return null
     val stars = written.count { it == '*' }
     if (stars != repeatableLevelsBetween(declaringGroup, field.path)) {
         return null

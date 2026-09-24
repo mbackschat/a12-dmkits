@@ -197,6 +197,24 @@ class StarBindingContainmentTest {
         assertEquals(expected, actual, "into a repeatable target outside the declaring group")
     }
 
+    /** A star on a level that does not repeat is the wildcard family's, never a star spent on a repeatable level. */
+    @Test
+    fun aStarOnALevelThatDoesNotRepeatIsTheWildcardGatesAlone() {
+        val sheet = Sheet(ledger = true)
+        val target = "../../Summary/Result"
+        val actual = mutableMapOf<String, List<String>>()
+        actual["Ledger | a star on the field"] = codes(sheet, ledger, target, "Sum(../Shipments/Parcels/Weight*)")
+        actual["Summary | the same, contained"] =
+            codes(sheet, summary, "../Result", "Sum(../Shipments/Parcels/Weight*)")
+        actual["Ledger | a star on the fixed group"] =
+            codes(sheet, ledger, target, "NumberOfFilledGroups(../Shipments/Parcels/Seal*)")
+        actual["Ledger | a star on each level and on the field"] =
+            codes(sheet, ledger, target, "Sum(../Shipments*/Parcels*/Weight*)")
+
+        val expected = actual.keys.associateWith { listOf("MVK_INVALID_WILDCARD") }
+        assertEquals(expected, actual, "a star on a level that does not repeat")
+    }
+
     @Test
     fun onTheRuleArmTheSameReadsArePerRow() {
         val sheet = Sheet(ledger = true)

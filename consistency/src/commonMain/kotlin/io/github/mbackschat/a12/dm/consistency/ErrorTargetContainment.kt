@@ -51,7 +51,8 @@ internal fun TrackedFactBase.errorTargetContainmentFindings(): List<Finding> {
             if (texts.any { it.target !is Reference.Resolved }) {
                 return@mapNotNull null
             }
-            val perRowRead = texts.firstOrNull { readsOneRowAtATime(it) }
+            val element = declarationAt(declared.declaredAt) ?: return@mapNotNull null
+            val perRowRead = texts.firstOrNull { readsOneRowAtATime(it, group, element) }
             val writtenIterates =
                 declared.role == ReferenceRole.COMPUTED_TARGET && repeatingLevelsOnThePathTo(written) > 0
             if (perRowRead == null && !writtenIterates) {
@@ -66,12 +67,18 @@ internal fun TrackedFactBase.errorTargetContainmentFindings(): List<Finding> {
  *
  * A star makes its level an aggregate over the extent rather than a read within it, and the authored
  * spelling is where that shows: the resolved path carries no star, so a family reading only the path cannot
- * tell the two apart and would refuse every aggregate. A star is spent on one level, so fewer stars than
- * crossed levels leaves a level read per row.
+ * tell the two apart and would refuse every aggregate. So a read is per-row exactly when a repeatable level it
+ * crosses carries no star. A star that lands on a level that does not repeat is `MVK_INVALID_WILDCARD`, which
+ * A12 answers alone (`rulekit.validate.laws.PartialStarContainmentLawsTest`), so such a reference is the
+ * wildcard family's and reads no row here.
  */
-private fun TrackedFactBase.readsOneRowAtATime(reference: ConditionReference): Boolean {
+private fun TrackedFactBase.readsOneRowAtATime(
+    reference: ConditionReference,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): Boolean {
     val path = (reference.target as? Reference.Resolved)?.path ?: return false
-    return reference.written.count { it == '*' } < repeatingLevelsOnThePathTo(path)
+    return unstarredRepeatableLevels(reference.written, path, declaringGroup, element)?.isNotEmpty() == true
 }
 
 /**

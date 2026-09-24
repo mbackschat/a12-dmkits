@@ -380,6 +380,27 @@ internal fun TrackedFactBase.starredLevelsOf(
     repeats = { path -> declarationAt(path)?.isRepeatableGroup == true },
 )
 
+/**
+ * The repeatable levels on the way to [path] that [written] leaves UNSTARRED, outermost first, or null when a
+ * star lands on a level that does not repeat.
+ *
+ * This is the question a star COUNT only approximates, and gets wrong exactly where it matters: a star on a
+ * field or a fixed group is stripped by resolution yet still counted, so `Lines/LineDate*` looks as starred as
+ * the same path with the star on `Lines`, and a family that then judges the read speaks beside
+ * `MVK_INVALID_WILDCARD`, which A12 answers alone ([KF328]; `rulekit.validate.laws.PartialStarContainmentLawsTest`,
+ * `…DateArgumentSlotLawsTest`, `…ScalarValueListGateLawsTest`). Null hands such a reference to
+ * [repetitionWildcardFindings].
+ */
+internal fun TrackedFactBase.unstarredRepeatableLevels(
+    written: String,
+    path: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): List<String>? {
+    val starred = starredLevelsOf(written, declaringGroup, element) ?: return null
+    return iteratedLevels(path).filterNot { it in starred }
+}
+
 private inline fun starredLevelsIn(
     written: String,
     resolve: (String) -> Reference,

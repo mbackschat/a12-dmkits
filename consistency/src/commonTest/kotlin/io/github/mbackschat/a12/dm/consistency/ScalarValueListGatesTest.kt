@@ -72,6 +72,8 @@ class ScalarValueListGatesTest {
         actual["a string field — the control"] = list("FieldValueIncludedInValueList(Holder, \\\"x\\\")")
         actual["a group"] = list("FieldValueIncludedInValueList(Broker, \\\"x\\\")")
         actual["a starred field"] = list("FieldValueIncludedInValueList(Items*/ItemCode, \\\"x\\\")")
+        actual["a star on the field, not on its level"] =
+            list("FieldValueIncludedInValueList(Items/ItemCode*, \\\"x\\\")")
         actual["a boolean field"] = list("FieldValueIncludedInValueList(Renewed, \\\"x\\\")")
         actual["a date field"] = list("FieldValueIncludedInValueList(IssuedOn, \\\"x\\\")")
         actual["a CUSTOM-typed field"] = list("FieldValueIncludedInValueList(Serial, \\\"x\\\")")
@@ -86,6 +88,7 @@ class ScalarValueListGatesTest {
         expected["a string field — the control"] = emptyList()
         expected["a group"] = listOf("MVK_NO_GROUPS_ALLOWED")
         expected["a starred field"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
+        expected["a star on the field, not on its level"] = listOf("MVK_INVALID_WILDCARD")
         expected["a boolean field"] = listOf(onlyThreeKinds)
         expected["a date field"] = listOf(onlyThreeKinds)
         // `isLikeString` admits a PREDEFINED type beside a string, so the gate takes a declaration whose
