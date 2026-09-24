@@ -198,7 +198,7 @@ class DoctorScriptTest {
 
         Process process = builder.start();
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8)
-                .replaceAll("\\[[0-9;]*m", "");
+                .replaceAll("\u001b\\[[0-9;]*m", "");
         return new Run(output, process.waitFor());
     }
 

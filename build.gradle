@@ -356,6 +356,9 @@ tasks.register('leakGuardTest', Test) {
         // Same derived-denominator reason: the subject is every tracked JVM source, and the file a bulk import
         // edit or an inserted member detaches a comment in next is not one anybody would list.
         includeTestsMatching 'io.github.mbackschat.a12.dm.DetachedDocCommentGuardTest'
+        // Same derived-denominator reason, on what a source HOLDS rather than what it says: the character a
+        // reader cannot see arrives through whichever file an agent writes next, never one anybody would list.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.InvisibleSourceCharacterGuardTest'
     }
 }
 
