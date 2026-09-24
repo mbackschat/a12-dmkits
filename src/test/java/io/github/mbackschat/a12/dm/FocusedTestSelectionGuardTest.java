@@ -61,6 +61,48 @@ class FocusedTestSelectionGuardTest {
         assertTrue(Files.exists(dir.resolve("prerequisite-ran")), capture::output);
     }
 
+    /**
+     * A JVM task with {@code failOnNoMatchingTests} switched off stands in for a Kotlin/JS test task, which
+     * ignores that switch, so only the policy can fail the empty selection; the matching filter is the control
+     * that proves the task runs at all.
+     */
+    @Test
+    void aFilterThatSelectsNoTestFailsWhereTheTaskItselfWouldNot(@TempDir Path dir) throws Exception {
+        Path policy = Path.of(System.getProperty("focusedTestPolicy")).toAbsolutePath();
+        Files.writeString(dir.resolve("settings.gradle"), "rootProject.name = 'empty-selection-control'\n");
+        Files.writeString(dir.resolve("build.gradle"), """
+                apply plugin: 'java'
+                repositories { mavenCentral() }
+                dependencies {
+                    testImplementation platform('org.junit:junit-bom:5.11.4')
+                    testImplementation 'org.junit.jupiter:junit-jupiter'
+                    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+                }
+                tasks.withType(Test).configureEach {
+                    useJUnitPlatform()
+                    filter.failOnNoMatchingTests = false
+                }
+                tasks.register('scriptFiltered', Test) {
+                    testClassesDirs = sourceSets.test.output.classesDirs
+                    classpath = sourceSets.test.runtimeClasspath
+                    filter.includeTestsMatching 'NoSuch*'
+                }
+                apply from: '%s'
+                """.formatted(policy.toString().replace("\\", "\\\\").replace("'", "\\'")));
+        Files.createDirectories(dir.resolve("src/test/java"));
+        Files.writeString(dir.resolve("src/test/java/ProbeTest.java"),
+                "class ProbeTest { @org.junit.jupiter.api.Test void runs() { } }\n");
+
+        Result matching = run(dir, ":test", "--tests", "*ProbeTest", "-Pfast");
+        assertEquals(0, matching.code(), matching::output);
+        for (String[] empty : List.of(new String[] {":test", "--tests", "NoSuch*", "-Pfast"},
+                new String[] {":scriptFiltered"})) {
+            Result refused = run(dir, empty);
+            assertNotEquals(0, refused.code(), refused::output);
+            assertTrue(refused.output().contains("selected no test"), refused::output);
+        }
+    }
+
     private static Result run(Path dir, String... arguments) throws Exception {
         List<String> command = new ArrayList<>(List.of(System.getProperty("gradleExecutable"),
                 "--offline", "--console=plain", "--max-workers=1", "-p", dir.toString()));

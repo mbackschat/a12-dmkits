@@ -14,3 +14,27 @@ gradle.taskGraph.whenReady { graph ->
                 "Native metadata capture (-PrkNativeAgent) deliberately retains its full prerequisite surface.")
     }
 }
+
+// A filter that selects nothing must fail, on every test task. A JVM `Test` does ("No tests found for given
+// includes"), but Kotlin/JS test tasks ignore `failOnNoMatchingTests`: `:consistency:jsNodeTest --tests
+// '*StarBindingContainmentTest'` ran no test and reported SUCCESS, because the JS runner matches the pattern
+// against class-and-method names, where the JVM lane matches the class (measured 2026-09-24). Counting the
+// root suite covers both kinds of filter, the command line's and a build script's.
+allprojects {
+    tasks.withType(AbstractTestTask).configureEach { task ->
+        def executed = 0L
+        task.afterSuite { descriptor, result ->
+            if (descriptor.parent == null) {
+                executed += result.testCount
+            }
+        }
+        task.doLast {
+            def patterns = task.filter.commandLineIncludePatterns + task.filter.includePatterns
+            if (!patterns.isEmpty() && executed == 0) {
+                throw new GradleException(
+                        "${task.path} selected no test for ${patterns}. A Kotlin/JS pattern is matched against " +
+                        "class-and-method names, so a class pattern needs a trailing '*'.")
+            }
+        }
+    }
+}

@@ -162,8 +162,10 @@ if grep -q "Unknown command-line option '--tests'" "$LOG"; then
   echo "        module that is :<module>:jvmTest or :<module>:jsNodeTest, never :<module>:check)." >&2
   exit_and_clean=2
 fi
-# A filter that matched NO test also "fails" — distinguish it, or a typo reads as a kill.
-if grep -q 'No tests found for given includes' "$LOG"; then
+# A filter that matched NO test also "fails" — distinguish it, or a typo reads as a kill. The second phrase is
+# the selection guard's refusal (gradle/focused-test-selection.gradle), which is how a Kotlin/JS lane fails an
+# empty selection, since that task never prints Gradle's own.
+if grep -qE 'No tests found for given includes|selected no test for' "$LOG"; then
   echo "mutant: the filter '$FILTER' matched no test in $LANE — that is a typo or the wrong lane, not a verdict" >&2
   exit_and_clean=2
 fi
@@ -178,11 +180,12 @@ if grep -q 'deliberately excludes' "$LOG"; then
   echo "        Re-run with that task as the 5th argument." >&2
   exit_and_clean=2
 fi
-# A Kotlin/JS lane reports no "No tests found" at all: a filter that selects nothing there passes, so every
-# mutant would read SURVIVED. Measured 2026-09-24 on `:consistency:jsNodeTest`, where `*ConditionCorpusTest`
+# A Kotlin/JS lane reports no "No tests found" at all: a filter that selects nothing there passed, so every
+# mutant read SURVIVED. Measured 2026-09-24 on `:consistency:jsNodeTest`, where `*ConditionCorpusTest`
 # ran no test and succeeded while `*ConditionCorpus*` and the fully qualified name ran the class — the JS
-# runner matches the pattern against the test's full name, method included. So a PASSING lane must show a
-# fresh result file with at least one test in it, whatever the platform.
+# runner matches the pattern against the test's full name, method included. The selection guard now fails
+# that run, and the check above reads its refusal; this one stays for any lane that passes without it, so a
+# PASSING lane must still show a fresh result file with at least one test in it, whatever the platform.
 if [ "$VERDICT" -eq 0 ] && [ "${exit_and_clean:-0}" -eq 0 ]; then
   lane_project=${LANE%:*}
   lane_dir=$(printf '%s' "${lane_project#:}" | tr ':' '/')
