@@ -7987,7 +7987,7 @@ Reported by the portable checker (`CheckFamily.DATE_ARITHMETIC_OPERANDS`), which
 
 **Corrected 2026-09-21: this paragraph read "reads the operand BASE type … every other pair of distinct kinds is refused — including two temporal kinds".** Both halves were wrong and both were already contradicted inside this repository. The gate is not `checkSameBaseType`: that method's `IDateType.matchBaseType` admits *any* `IDateType` pair and reads no format at all, so it cannot produce the refusals measured here — `CheckFeldListenOpImpl`'s `ERSTER_ANGEGEBENER_WERT` arm asks the result-type gate instead. And the temporal claim was a **confounded fixture**: every temporal field in `FieldListOperandKindLawsTest` carries a format bound 1:1 to its kind, so its "DATE then TIME" row moves both variables and cannot say which was read. [KF206](#kf206) had already established that the format vocabulary is kind-independent, which is what makes the discriminating declarations authorable, and both the operator catalog's `FirstFilledValue` constraint line and `FirstFilledValueFamilyLawsTest` had carried the format-keyed law since 2026-08-19. Flagged by a12-kernel-lean (`SPEC-2026-09-21-02`) against our own §9 question; re-measured here rather than adopted on their report, and the range cell that moves the KIND alone was added to the owning lock in the same pass, because the published family claim did not rest on one.
 
-**`Sum` has no leader slot and no escape arm**, which is what separates it from the extrema: a date operand is `MVK_NO_NUMBER` there and `MVK_DATEFORMATS_NOT_COMPATIBLE`-or-admitted at `MaxValue`, over the same two fields.
+**`Sum` has no leader slot and no escape arm**, which is what separates it from the extrema: a date operand is `MVK_NO_NUMBER` there and `MVK_DATEFORMATS_NOT_COMPATIBLE`-or-admitted at `MaxValue`, over the same two fields. Nor does it read the operand's form: a starred String is `MVK_NO_NUMBER` alone, leading a Number and following one, against a starred Number admitted beside a Number (*extended 2026-09-24*, reconciling a12-kernel-lean `SPEC-2026-09-23-01`).
 
 Reported by the portable checker (`CheckFamily.FIELD_LIST_OPERATION_OPERANDS`), which transcribes the caller table and leaves `MVK_VARYING_TYPES_NOT_ALLOWED` and `SumOfProducts`' own six gates to other families.
 
@@ -8080,9 +8080,11 @@ So duplicates, the root-group gate ([KF388](#kf388)) and the param law come firs
 
 **The one caller that asks no root-group gate and still asks both duplicate gates** is `RepetitionNotUnique`: `CheckWiederholungBedingungImpl` calls `getRefList` and goes straight to its own key-list gates, so `RepetitionNotUnique(Shipping, Shipping/Carrier)` is `MVK_DUPLICATE_PARAM2` — ahead of the `MVK_NO_GROUPS_ALLOWED` that a lone group draws there ([KF355](#kf355)), which is what fixes the order between the two sets.
 
-Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the carriers the group-list families do not own.
+**Extended 2026-09-24: the three value-list quantifiers and a computation's `FirstFilledValue` ask the plain gate too, after the duplicates (measured; reconciles a12-kernel-lean `SPEC-2026-09-23-01`).** On a second-root model, `AtLeastOneFieldValueIncludedInValueList`, `NoFieldValueIncludedInValueList` and `NotAllFieldValuesIncludedInValueList` over `(/Parcel In "x")` or `(/Parcel, /Depot/Code In "x")` draw `MVK_ROOT_GROUP_REFERENCED`, and over `(/Parcel, /Parcel/Label In "x")` draw `MVK_DUPLICATE_PARAM2`. `FirstFilledValue(…)` as the operation of a computation into a String target draws the same three classes on the same three lists. A group inside the root, alone or beside the other root's field, is admitted on every carrier, so neither the carrier nor the cross-root reference is refused on its own.
 
-*Locked by:* `rulekit.validate.laws.EntityListPreGateLawsTest`, mirrored by `consistency.EntityListPreGatesTest`.
+Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the carriers the group-list families do not own, the three value-list quantifiers excepted.
+
+*Locked by:* `rulekit.validate.laws.EntityListPreGateLawsTest`, mirrored by `consistency.EntityListPreGatesTest`, and `rulekit.validate.laws.EntityListRootGateCarrierLawsTest` for the value-list and computation carriers.
 
 ## §1 supplement — the PATTERN arm's first question is about SHAPE, and its four classes are strictly ordered (source-verified + measured, 2026-09-14) <a id="kf387"></a>
 

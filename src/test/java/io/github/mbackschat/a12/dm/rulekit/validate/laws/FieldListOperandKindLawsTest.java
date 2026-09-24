@@ -103,7 +103,9 @@ class FieldListOperandKindLawsTest {
                             .confirmField("LineConfirmed", f -> { }))
                     .group("Parts", g -> g.repeatable(20)
                             .numberField("PartAmount", f -> f.fractionDigits(2))
-                            .numberField("PartFee", f -> f.fractionDigits(2))))
+                            .numberField("PartFee", f -> f.fractionDigits(2)))
+                    .group("Witnesses", g -> g.repeatable(20)
+                            .stringField("WitnessName", f -> { })))
             .build().toJson();
 
     private static String verdict(String condition) {
@@ -238,6 +240,8 @@ class FieldListOperandKindLawsTest {
     /**
      * {@code Sum}'s arm: the flat numeric question over every expanded field, with no leader slot and no
      * escape. Every non-NUMBER declaration is refused in either position, and a typedef resolves to its base.
+     * A starred String is refused alone and in either position too, against a starred NUMBER admitted beside a
+     * NUMBER, so the class reads neither position nor operand form (a12-kernel-lean SPEC-2026-09-23-01).
      */
     @Test
     void sumDemandsANumberDeclarationOfEveryOperand() {
@@ -262,6 +266,14 @@ class FieldListOperandKindLawsTest {
         expected.put("an all-NUMBER group expansion", KernelLaws.ADMITTED);
         actual.put("a mixed group expansion", verdict("Sum(Items*) > 0"));
         expected.put("a mixed group expansion", NO_NUMBER);
+        actual.put("a starred STRING alone", verdict("Sum(Witnesses*/WitnessName) > 0"));
+        expected.put("a starred STRING alone", NO_NUMBER);
+        actual.put("a starred STRING leads a Sum", verdict("Sum(Witnesses*/WitnessName, Amount) > 0"));
+        expected.put("a starred STRING leads a Sum", NO_NUMBER);
+        actual.put("a starred STRING follows a NUMBER", verdict("Sum(Amount, Witnesses*/WitnessName) > 0"));
+        expected.put("a starred STRING follows a NUMBER", NO_NUMBER);
+        actual.put("a starred NUMBER leads a Sum", verdict("Sum(Parts*/PartAmount, Amount) > 0"));
+        expected.put("a starred NUMBER leads a Sum", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "Sum takes NUMBER declarations only, in every position");
     }
 }
