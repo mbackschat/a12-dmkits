@@ -4229,3 +4229,11 @@ The polarity carried a fourth, independent defect. It read the declared extent o
 **The fix.** The gate routes a starred group through `expandOneGroupOperand`, the expansion the value walk and the value-list quantifiers already read. Each contained field is asked the gate a starred field would be, and every one must pass.
 
 *Locked by:* `adapter.laws.PartialGroupStarFieldCoverageDiffTest`. Four of its coverages failed on the interpreter before the fix and pass after it. The other three coverages, and the full-validation control, held throughout.
+
+### IF338: in compute mode an enum category read of a malformed cell poisons, like the value read of the same cell (MEASURED 2026-09-24) <a id="if338"></a>
+
+**The defect.** `evalExprNode`'s `EnumCategory` arm had no compute-mode gate, so `[Plan -> Tier]` over a `GOLD` plan outside the value list read Unknown, the guard was not TRUE, and the next alternative computed `1`. A12 aborts the instance on that read and reports CLEARED, as it does for `[Plan]` ([IF85](#if85)). A category guard in `FirstFilledValue` had the same defect, while the value-list quantifier over the category was already right because it poisons through `filledTri`.
+
+**The fix.** The arm throws `PoisonedReadException` on a formally invalid cell in compute mode, the same row-correct `cellState` gate the `Field` arm applies.
+
+*Locked by:* `adapter.laws.EnumCategoryComputePoisonDiffTest`. On `GOLD`, the comparison and `FirstFilledValue` carriers computed `1` before the fix and are CLEARED after it. The value read and the quantifier carrier, and the valid, other-value and absent documents, held throughout.

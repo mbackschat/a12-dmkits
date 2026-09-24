@@ -254,8 +254,11 @@ private fun Interpreter.evalExprNode(e: Expr): Val = when (e) {
     is Expr.Arith -> evalArith(e)
     is Expr.Const -> evalConst(e.name)
     is Expr.SemanticIndex -> evalSemanticIndex(e)
+    // A category read `[Plan -> Tier]` reads the same cell, so it poisons exactly like the value read above
+    // (IF338).
     is Expr.EnumCategory -> when {
         outerUnknown(e) -> Val.Unknown
+        computeMode && ctxOf(e).cellState(e.path) == CellState.INVALID -> throw PoisonedReadException(e.path)
         outsideCoverage(e.path, ctxOf(e).repsOf(e.path)) -> Val.Unknown
         else -> ctxOf(e).enumCategory(e.path, e.category)
     }
