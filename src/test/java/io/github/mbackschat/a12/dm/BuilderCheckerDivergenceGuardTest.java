@@ -657,7 +657,15 @@ class BuilderCheckerDivergenceGuardTest {
                     Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_INVALID_DATE_TYPE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_INVALID_DATE_TYPE_FOR_OP", Disposition.SAME_LAW_SEPARATE_CARRIERS),
-            Map.entry("MVK_PARTIAL_DATE_NOT_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS));
+            Map.entry("MVK_PARTIAL_DATE_NOT_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // Both estates judge `errorCodesToSuppress` against A12's one suppressible code, and they part on
+            // exactly one spelling: the supported code padded with whitespace, which A12 admits because its
+            // lexer discards the padding. `Computation.Builder` refuses it so the member keeps one spelling;
+            // `SuppressedWarnings` classifies the rendered pragma with the checker's tokenizer and admits it,
+            // which is the row that found the checker's old character test reporting a false error (KF298).
+            // Elsewhere the builder cites this code only for a lone `MVK_`-shaped entry and withholds it.
+            Map.entry("MVK_INVALID_SUPPRESSED_WARNING", Disposition.STRICTER_IN_JAVA));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

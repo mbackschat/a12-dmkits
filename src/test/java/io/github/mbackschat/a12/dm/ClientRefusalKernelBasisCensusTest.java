@@ -45,6 +45,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * {@code rulekit.dsl.UntypedTemporalExtractionGateTest}). The division is: this one asks whether the code
  * exists at the kernel at all, a per-gate denominator test whether that gate's refusal is no broader than
  * the rows behind it. There is one of the first and one per gate of the second.
+ *
+ * <p><b>A bare {@code IllegalArgumentException} is outside this census by construction, and rightly so.</b>
+ * Such a refusal either reports an API-usage error the kernel never sees (a wrong-kind handle, an arity, a
+ * factory's routing) or encodes a rule the kernel also applies, and only the second owes a measured code.
+ * Telling them apart from source text is the low-precision classification API-FINDINGS AF158 records being
+ * built and reverted, so no guard reads bare refusals; the lever is promotion instead, since citing a code
+ * forces the ledger bucket and the pinned gate count to agree with the pre-check. The DG62 sweep classified
+ * the 63 bare refusals in {@code rulekit/dsl} this way (2026-09-22) and closed each kernel-rule site by
+ * citing the class its rows measured, or withholding it where the operand alone does not decide one.
  */
 class ClientRefusalKernelBasisCensusTest {
 

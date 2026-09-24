@@ -5828,15 +5828,40 @@ A computation's `errorCodesToSuppress` is declared `List<String>` and is not a s
 
 **A second entry is a PARSE error whatever it spells.** The pragma takes one code, so two entries render `@SuppressWarning(a,b)` and draw `MVK_UNEXPECTED_TOKEN`. The discriminating control carries the SUPPORTED code **twice** and fails identically to one supported plus one bogus — so validity explains nothing and the comma is the defect. A blank entry renders `@SuppressWarning()` and a numeric entry `@SuppressWarning(7)`, both the same failure. A plural-looking member is therefore single-valued in practice, and a checker treating it as a set would admit lists A12 refuses.
 
-**Only `MVK_INVALID_COMPARE_DEC_PLACES` is suppressible**, and any other spelling draws `MVK_INVALID_SUPPRESSED_WARNING` with the offending code echoed in the message — so a reader lifting every `MVK_*` token from that message sees two, the second being the verdict ([MVK-LEDGER](MVK-LEDGER.md) recorded the echo on 2026-07-30).
+**Only `MVK_INVALID_COMPARE_DEC_PLACES` is suppressible**, and any other NAME draws `MVK_INVALID_SUPPRESSED_WARNING` with the offending code echoed in the message — so a reader lifting every `MVK_*` token from that message sees two, the second being the verdict ([MVK-LEDGER](MVK-LEDGER.md) recorded the echo on 2026-07-30).
 
-**This CLEARS a client-side refusal rather than finding one, which was not the expected direction.** `Computation.Builder.errorCodesToSuppress` throws for any code outside that single-member allowlist, and a client-side refusal may never be broader than its measured basis. A12 refuses the same set, so the allowlist is audited and stands.
+**Which entry is a name is the LEXER's question, not a character class** (measured 2026-09-24, one entry per row, English model unless named). The pragma's operand is the lexer's `NameOhnePunktSTRAmAnfang` token, and `CheckPreambleImpl` compares that token's text with the one suppressible name, so A12 answers the first thing in the rendered text that is not that name:
+
+| entry | A12 |
+|---|---|
+| `Late_Fee`, `_LATE_FEE`, `MVK:LATE`, `MVK_GEBÜHR`, `MVK_CODE7`, `Latefee`, the supported name in lower case | `MVK_INVALID_SUPPRESSED_WARNING` |
+| the supported name padded with spaces, or with a tab and a line break | **admitted** |
+| `7_DAYS`, `MVK_LATE FEE`, `MVK_LATE.FEE`, `'MVK_LATE'`, `"MVK_LATE"`, `MVK_LATE ;; note`, `#Zeile`, a blank entry | `MVK_UNEXPECTED_TOKEN` |
+| `And`, `Sum` | `MVK_UNEXPECTED_TOKEN` |
+| `MVK_FRAÉ`, `"MVK_LATE` (unclosed), `#LATE`, the supported name behind a no-break space | `MVK_LEXER_STANDARD_ERROR` |
+| `7_DAYS É`, `And É` | `MVK_UNEXPECTED_TOKEN` |
+| `[MVK_FRAÉ, <supported>]` / `[<supported>, MVK_FRAÉ]` | `MVK_LEXER_STANDARD_ERROR` / `MVK_UNEXPECTED_TOKEN` |
+
+The last two rows fix the order: the FIRST failure in the text answers, whether it is a character the lexer cannot take or a token the parser cannot use, and the parser's recovery lookahead does not let an unlexable character behind a parse failure answer first. Whitespace is discarded, so the padded supported name is admitted, but only the lexer's five whitespace characters are; a no-break space is not one. A trailing comment runs to the end of the line and swallows the pragma's `)`.
+
+**A keyword is judged in the MODEL's condition language.** `ComputationAlternativesJoiner` renders the pragma as `@SuppressWarning(…)` or `@UnterdrueckeWarnung(…)` by that language, and `AbstractMultiLanguageHandler.setTypeInLexer` retypes a name against that language's terminals alone:
+
+| entry | English model | German model |
+|---|---|---|
+| the supported name | admitted | admitted |
+| `MVK_TOTALLY_BOGUS` | `MVK_INVALID_SUPPRESSED_WARNING` | `MVK_INVALID_SUPPRESSED_WARNING` |
+| `Summe` | `MVK_INVALID_SUPPRESSED_WARNING` | `MVK_UNEXPECTED_TOKEN` |
+| `Sum` | `MVK_UNEXPECTED_TOKEN` | `MVK_INVALID_SUPPRESSED_WARNING` |
+
+**This CLEARS a client-side refusal rather than finding one, which was not the expected direction.** `Computation.Builder.errorCodesToSuppress` throws for any code outside that single-member allowlist, and a client-side refusal may never be broader than its measured basis. A12 refuses the same set, with one exception: the whitespace-padded supported name, which A12 admits and the builder refuses deliberately so the member keeps the one spelling every consumer compares. The builder cites `MVK_INVALID_SUPPRESSED_WARNING` only for a lone `MVK_`-shaped entry, the one shape whose class no condition language can change, and withholds the class otherwise.
+
+**The portable checker had the opposite defect, and the tables above are what found it.** Its hand-written test for a code token read Kotlin's letter and whitespace classes instead of the lexer's. It reported a false `MVK_UNEXPECTED_TOKEN` ERROR on the padded supported name, a model A12 admits, and named the wrong class for an underscore-led or colon-holding name, an accented letter and a keyword. `SuppressedWarnings.pragmaVerdict` now asks the checker's own tokenizer and keyword table, in the order the rows fix.
 
 **The two routes to this pragma are different carriers and only one was previously measured.** [DirectiveLawsTest](../src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/DirectiveLawsTest.java) locks the INLINE form written into a rule's condition text; this entry measures the STRUCTURED member on a computation, which A12 renders into the same directive. A ledger note saying rulekit never authors the directive is true of the inline text and not of the member.
 
 **An explicit `null` refuses the READER**, where the rounding pair beside it takes `null` as absence ([KF297](#kf297)): this member is bound `@NonNull List<String>` rather than through an `Optional` accessor, so the tier is a property of the binding and not of DM-JSON. A bare string and an object are refused too; a numeric ELEMENT is coerced into the list and then fails in the pragma.
 
-*(Locked: `rulekit.validate.laws.ComputationSuppressionLawsTest`. The checker's own family is `CheckFamily.SUPPRESSED_WARNINGS`.)*
+*(Locked: `rulekit.validate.laws.ComputationSuppressionLawsTest`. The checker's own family is `CheckFamily.SUPPRESSED_WARNINGS`, whose rows are `consistency.SuppressedWarningsTest`; the builder's citations are `rulekit.dsl.ComputationSuppressionTest`.)*
 
 ## §13 supplement — an `ONLY` variant filter removes a declaration from `checkConsistency` entirely, so a BROKEN rule or computation is reported clean (measured 2×2 on both carriers + source-verified, 2026-09-12) <a id="kf299"></a>
 

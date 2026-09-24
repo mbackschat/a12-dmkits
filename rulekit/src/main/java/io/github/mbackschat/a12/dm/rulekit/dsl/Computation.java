@@ -61,6 +61,12 @@ public record Computation(
     private static final Set<String> SUPPORTED_ERROR_CODES_TO_SUPPRESS =
             Set.of(KernelCode.MVK_INVALID_COMPARE_DEC_PLACES.name());
 
+    /**
+     * A spelling A12's pragma reads as a NAME in either condition language: an underscore keeps it longer than
+     * any keyword the lexer could retype it to, and the leading letter keeps it off the digit-led name terminal.
+     */
+    private static final Pattern CODE_SHAPED = Pattern.compile("MVK_[A-Z0-9_]*");
+
     public Computation {
         alternatives = List.copyOf(alternatives);
         messages = List.copyOf(messages);
@@ -229,12 +235,23 @@ public record Computation(
          * model-level escape hatch. Each code is domain-checked against the kernel's supported set
          * (currently only {@code MVK_INVALID_COMPARE_DEC_PLACES}, the static assignment-scale gate that lets
          * a scale-mismatched operation load — IF92); an unsupported code is refused fail-fast, not written.
+         *
+         * <p>The refusal cites A12's class only where the entry alone decides it, because A12 judges the pragma
+         * the list renders into rather than the list (KERNEL-FINDINGS KF298): a lone code-shaped entry is a name
+         * it reads and then refuses, while a keyword's class depends on the model's condition language, which a
+         * computation does not carry, and a second entry fails on its comma first. The supported code padded
+         * with whitespace is the one spelling refused where A12 admits it, since its lexer discards the
+         * padding; refusing it keeps the member to the one spelling every consumer compares.
          */
         public Builder errorCodesToSuppress(String... codes) {
+            boolean lone = errorCodesToSuppress.isEmpty() && codes.length == 1;
             for (String code : codes) {
                 if (!supportedErrorCodesToSuppress().contains(code)) {
-                    throw new IllegalArgumentException("errorCodesToSuppress only accepts the kernel's"
-                            + " supported set " + supportedErrorCodesToSuppress() + " — got '" + code + "'");
+                    String message = "errorCodesToSuppress only accepts the kernel's supported set "
+                            + supportedErrorCodesToSuppress() + " — got '" + code + "'";
+                    throw lone && CODE_SHAPED.matcher(code).matches()
+                            ? Refusals.of(KernelCode.MVK_INVALID_SUPPRESSED_WARNING, message)
+                            : new IllegalArgumentException(message);
                 }
             }
             errorCodesToSuppress.addAll(List.of(codes));

@@ -94,6 +94,104 @@ class ComputationSuppressionLawsTest {
         assertEquals(expected, actual, "what A12 does with each shape of errorCodesToSuppress");
     }
 
+    /**
+     * Which single entry A12 reads as a CODE it then refuses, and which it cannot read as one at all — the
+     * distinction a client refusal needs before it can cite either class. The pragma's operand is the lexer's
+     * `NameOhnePunktSTRAmAnfang` token and `CheckPreambleImpl` compares its text with the one supported name,
+     * so the rows vary the spelling's lexical shape and hold everything else fixed.
+     */
+    @Test
+    void whichSingleEntryA12ReadsAsACode() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("an identifier without the MVK prefix", verdict("[\"Late_Fee\"]"));
+        actual.put("the supported name in lower case", verdict("[\"mvk_invalid_compare_dec_places\"]"));
+        actual.put("letters only", verdict("[\"Latefee\"]"));
+        actual.put("an identifier with a digit", verdict("[\"MVK_CODE7\"]"));
+        actual.put("an identifier led by a digit", verdict("[\"7_DAYS\"]"));
+        actual.put("two identifiers split by a space", verdict("[\"MVK_LATE FEE\"]"));
+        actual.put("an identifier with a dot", verdict("[\"MVK_LATE.FEE\"]"));
+        actual.put("a blank entry", verdict("[\" \"]"));
+        actual.put("the supported name padded with spaces", verdict("[\" " + SUPPORTED + " \"]"));
+        actual.put("the supported name padded with a tab and a line break", verdict("[\"\\t" + SUPPORTED + "\\n\"]"));
+        actual.put("an identifier led by an underscore", verdict("[\"_LATE_FEE\"]"));
+        actual.put("an identifier holding a colon", verdict("[\"MVK:LATE\"]"));
+        actual.put("an identifier holding an umlaut", verdict("[\"MVK_GEB\u00dcHR\"]"));
+        actual.put("an identifier holding an accented letter", verdict("[\"MVK_FRA\u00c9\"]"));
+        actual.put("a keyword", verdict("[\"And\"]"));
+        actual.put("an aggregate keyword", verdict("[\"Sum\"]"));
+        actual.put("a quoted name", verdict("[\"'MVK_LATE'\"]"));
+        actual.put("a string literal", verdict("[\"\\\"MVK_LATE\\\"\"]"));
+        actual.put("an unclosed string literal", verdict("[\"\\\"MVK_LATE\"]"));
+        actual.put("an identifier then a comment", verdict("[\"MVK_LATE ;; note\"]"));
+        actual.put("the supported name then a comment", verdict("[\"" + SUPPORTED + " ;; note\"]"));
+        actual.put("a lone hash", verdict("[\"#LATE\"]"));
+        actual.put("the row-iteration keyword", verdict("[\"#Zeile\"]"));
+        actual.put("the supported name padded with a no-break space", verdict("[\"\u00a0" + SUPPORTED + "\"]"));
+        actual.put("two entries, the first unlexable", verdict("[\"MVK_FRA\u00c9\",\"" + SUPPORTED + "\"]"));
+        actual.put("two entries, the second unlexable", verdict("[\"" + SUPPORTED + "\",\"MVK_FRA\u00c9\"]"));
+        actual.put("a digit-led identifier then an unlexable character", verdict("[\"7_DAYS \u00c9\"]"));
+        actual.put("a keyword then an unlexable character", verdict("[\"And \u00c9\"]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("an identifier without the MVK prefix", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("the supported name in lower case", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("letters only", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("an identifier with a digit", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("an identifier led by a digit", "MVK_UNEXPECTED_TOKEN");
+        expected.put("two identifiers split by a space", "MVK_UNEXPECTED_TOKEN");
+        expected.put("an identifier with a dot", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a blank entry", "MVK_UNEXPECTED_TOKEN");
+        expected.put("the supported name padded with spaces", KernelLaws.ADMITTED);
+        expected.put("the supported name padded with a tab and a line break", KernelLaws.ADMITTED);
+        expected.put("an identifier led by an underscore", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("an identifier holding a colon", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("an identifier holding an umlaut", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("an identifier holding an accented letter", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("a keyword", "MVK_UNEXPECTED_TOKEN");
+        expected.put("an aggregate keyword", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a quoted name", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a string literal", "MVK_UNEXPECTED_TOKEN");
+        expected.put("an unclosed string literal", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("an identifier then a comment", "MVK_UNEXPECTED_TOKEN");
+        expected.put("the supported name then a comment", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a lone hash", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("the row-iteration keyword", "MVK_UNEXPECTED_TOKEN");
+        expected.put("the supported name padded with a no-break space", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("two entries, the first unlexable", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("two entries, the second unlexable", "MVK_UNEXPECTED_TOKEN");
+        // A12 answers the FIRST failure in the text, and a parse failure is not deferred by the parser's
+        // recovery lookahead lexing the character behind it.
+        expected.put("a digit-led identifier then an unlexable character", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a keyword then an unlexable character", "MVK_UNEXPECTED_TOKEN");
+        assertEquals(expected, actual, "which single errorCodesToSuppress entry A12 reads as a code");
+    }
+
+    /**
+     * Whether a keyword is judged against the MODEL's condition language — A12 renders the pragma in it
+     * (`ComputationAlternativesJoiner`'s English and German preambles) and the lexer retypes a name only
+     * against that language's terminals (`AbstractMultiLanguageHandler.setTypeInLexer`). One variable per
+     * pair: the same entry in an English and in a German model.
+     */
+    @Test
+    void aKeywordIsJudgedInTheModelsConditionLanguage() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the supported code, German model", verdictIn("de_DE", "[\"" + SUPPORTED + "\"]"));
+        actual.put("a code that does not exist, German model", verdictIn("de_DE", "[\"MVK_TOTALLY_BOGUS\"]"));
+        actual.put("Summe, English model", verdictIn("en_US", "[\"Summe\"]"));
+        actual.put("Summe, German model", verdictIn("de_DE", "[\"Summe\"]"));
+        actual.put("Sum, English model", verdictIn("en_US", "[\"Sum\"]"));
+        actual.put("Sum, German model", verdictIn("de_DE", "[\"Sum\"]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the supported code, German model", KernelLaws.ADMITTED);
+        expected.put("a code that does not exist, German model", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("Summe, English model", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("Summe, German model", "MVK_UNEXPECTED_TOKEN");
+        expected.put("Sum, English model", "MVK_UNEXPECTED_TOKEN");
+        expected.put("Sum, German model", "MVK_INVALID_SUPPRESSED_WARNING");
+        assertEquals(expected, actual, "a keyword entry, per condition language");
+    }
+
     /** The shapes that are not a list of strings — the tier question, separate for the usual reason. */
     @Test
     void aSuppressionListThatIsNotAListOfStrings() {
@@ -117,10 +215,15 @@ class ComputationSuppressionLawsTest {
 
     /** What A12 says about the probe model with `errorCodesToSuppress` set to [rawJson], or absent when null. */
     private static String verdict(String rawJson) {
-        return KernelLaws.verdictOf(probe(rawJson));
+        return verdictIn("en_US", rawJson);
     }
 
-    private static String probe(String rawJson) {
+    /** The same, in a model whose condition language is [conditionLanguage]. */
+    private static String verdictIn(String conditionLanguage, String rawJson) {
+        return KernelLaws.verdictOf(probe(conditionLanguage, rawJson));
+    }
+
+    private static String probe(String conditionLanguage, String rawJson) {
         DraftComputation draft = DraftComputation.builder()
                 .groupPath(GROUP).name("SuppressProbe").computedFieldRelPath("../EffectiveFee")
                 .alternatives(List.of(new DraftComputation.Alternative(null, OPERATION)))
@@ -130,6 +233,8 @@ class ComputationSuppressionLawsTest {
                 List.of(en("x"), de("y")));
         try {
             ObjectNode root = (ObjectNode) MAPPER.readTree(written);
+            ((ObjectNode) root.path("content").path("modelConfig").path("conditionLanguage"))
+                    .put("code", conditionLanguage);
             ObjectNode computation = computationBody(root);
             if (rawJson != null) {
                 computation.set("errorCodesToSuppress", MAPPER.readTree(rawJson));

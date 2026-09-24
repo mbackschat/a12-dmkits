@@ -1,8 +1,12 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
+import io.github.mbackschat.a12.dm.consistency.syntax.Token
+import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
+import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
@@ -21,8 +25,9 @@ import kotlinx.serialization.json.JsonPrimitive
  * would admit models A12 refuses.
  *
  * **Only `MVK_INVALID_COMPARE_DEC_PLACES` is suppressible**, which the Kernel grammar states and the rows
- * confirm: any other code draws `MVK_INVALID_SUPPRESSED_WARNING`, with the offending code echoed in the
- * message. The Java builder's allowlist therefore has a measured basis and is not an over-rejection.
+ * confirm: any other NAME draws `MVK_INVALID_SUPPRESSED_WARNING`, with the offending code echoed in the
+ * message. Which entries are names is the lexer's question rather than a character class of our own, so
+ * [pragmaVerdict] asks this checker's tokenizer — see there for the rows that made a hand-written test wrong.
  *
  * **An explicit `null` refuses the READER here**, unlike the rounding pair beside it ([KERNEL-FINDINGS
  * KF297]), because the member is bound `@NonNull List<String>` rather than through an `Optional` accessor —
@@ -40,7 +45,7 @@ internal fun TrackedFactBase.suppressedWarningFindings(): List<Finding> =
  */
 internal const val SUPPRESSIBLE = "MVK_INVALID_COMPARE_DEC_PLACES"
 
-private fun suppressionFindings(element: TrackedDeclaration): List<Finding> {
+private fun TrackedFactBase.suppressionFindings(element: TrackedDeclaration): List<Finding> {
     // An envelope A12 cannot bind is the alternatives family's finding; naming it again would report one
     // unreadable computation twice in a single report.
     val body = element.body ?: return emptyList()
@@ -61,55 +66,82 @@ private fun suppressionFindings(element: TrackedDeclaration): List<Finding> {
     }
     // The rendering, not the list, is what A12 judges: everything below reads the pragma this array becomes.
     val spelled = declared.map { (it as? JsonPrimitive)?.content }
-    if (declared.size > 1) {
-        return listOf(
-            Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                "MVK_UNEXPECTED_TOKEN",
-                "this computation suppresses ${declared.size} codes, and A12 renders them into a single " +
-                    "`@SuppressWarning(...)` pragma that takes exactly one — a second entry fails to parse " +
-                    "whatever it spells. Keep at most `$SUPPRESSIBLE`.",
-                element.path,
-            ),
-        )
+    val rendered = spelled.joinToString(",") { it.orEmpty() }
+    val code = if (null in spelled) UNEXPECTED_TOKEN else pragmaVerdict(rendered, conditionLanguage)
+    val explain = when {
+        code == null -> return emptyList()
+        declared.size > 1 && code == UNEXPECTED_TOKEN ->
+            "this computation suppresses ${declared.size} codes, and A12 renders them into a single " +
+                "`@SuppressWarning(...)` pragma that takes exactly one — a second entry fails to parse " +
+                "whatever it spells. Keep at most `$SUPPRESSIBLE`."
+        code == INVALID_SUPPRESSED_WARNING ->
+            "`${rendered.trim()}` is not a warning A12 lets a computation suppress — `$SUPPRESSIBLE` is the only one"
+        code == LEXER_STANDARD_ERROR ->
+            "`errorCodesToSuppress` renders into `@SuppressWarning($rendered)`, which holds a character A12's " +
+                "condition lexer cannot read — the only suppressible code is `$SUPPRESSIBLE`"
+        else ->
+            "`errorCodesToSuppress` renders into `@SuppressWarning($rendered)`, which A12's condition " +
+                "parser cannot read — the entry must be a bare code token, and the only suppressible one " +
+                "is `$SUPPRESSIBLE`"
     }
-    val only = spelled.single()
-    if (only == null || only.isBlank() || !only.isCodeToken()) {
-        return listOf(
-            Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                "MVK_UNEXPECTED_TOKEN",
-                "`errorCodesToSuppress` renders into `@SuppressWarning(${only ?: ""})`, which A12's condition " +
-                    "parser cannot read — the entry must be a bare code token, and the only suppressible one " +
-                    "is `$SUPPRESSIBLE`",
-                element.path,
-            ),
-        )
+    return listOf(Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, element.path))
+}
+
+private const val UNEXPECTED_TOKEN = "MVK_UNEXPECTED_TOKEN"
+private const val INVALID_SUPPRESSED_WARNING = "MVK_INVALID_SUPPRESSED_WARNING"
+private const val LEXER_STANDARD_ERROR = "MVK_LEXER_STANDARD_ERROR"
+
+/**
+ * What A12 answers the pragma over [text] with, or `null` when it admits it.
+ *
+ * The operand is one `NameOhnePunktSTRAmAnfang` token, and `CheckPreambleImpl` compares that token's text with
+ * the one suppressible name. So A12 answers the FIRST thing in [text] that is not that name: a character its
+ * lexer cannot take is `MVK_LEXER_STANDARD_ERROR`, any other token where the name belongs or behind it is
+ * `MVK_UNEXPECTED_TOKEN`, and a lone name that is not the suppressible one is `MVK_INVALID_SUPPRESSED_WARNING`.
+ * Whitespace around the name is discarded, so a padded suppressible code is admitted. Every clause is a row of
+ * `ComputationSuppressionLawsTest` (kernel 30.8.1, 2026-09-24), including the two that fix the order: an
+ * unlexable first entry answers ahead of the comma behind it, and a parse failure answers ahead of an unlexable
+ * character behind it.
+ *
+ * **A keyword is not a name, and is a keyword only in the model's [language]**, because A12 renders the pragma
+ * in that language and its lexer retypes a name against that language's terminals alone — `Sum` is refused as
+ * a token in an English model and as an unsupported code in a German one, and `Summe` the other way round.
+ *
+ * **This replaced a hand-written character test that got five measured shapes wrong**: it refused the padded
+ * suppressible code A12 admits — a false ERROR, the one direction a checker must never take — and named the
+ * wrong class for an underscore-led or colon-holding name, an accented letter, and a keyword.
+ */
+private fun pragmaVerdict(text: String, language: ConditionLanguage): String? {
+    val tokens = tokenize(text)
+    val first = tokens.firstOrNull() ?: return UNEXPECTED_TOKEN
+    val behind = tokens.getOrNull(1)
+    return when {
+        first.isUnlexable(text) -> LEXER_STANDARD_ERROR
+        !first.isPragmaName(language) -> UNEXPECTED_TOKEN
+        behind != null -> if (behind.isUnlexable(text)) LEXER_STANDARD_ERROR else UNEXPECTED_TOKEN
+        first.text == SUPPRESSIBLE -> null
+        else -> INVALID_SUPPRESSED_WARNING
     }
-    if (only == SUPPRESSIBLE) {
-        return emptyList()
-    }
-    return listOf(
-        Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            "MVK_INVALID_SUPPRESSED_WARNING",
-            "`$only` is not a warning A12 lets a computation suppress — `$SUPPRESSIBLE` is the only one",
-            element.path,
-        ),
-    )
 }
 
 /**
- * Whether the entry would survive the condition parser as the pragma's single argument.
+ * Whether A12's lexer fails on this token.
  *
- * A code token is what the grammar admits there, so a numeric or punctuated entry is a parse failure rather
- * than an unsupported code — the two draw different A12 verdicts and must not be merged.
+ * The tokenizer never reports a `#` as illegal, deliberately (see `beginsNoTerminal`), so the one terminal that
+ * spells it is asked here: `#Zeile` is `ZEILE_ITER`, a fixed literal with no per-language spelling, and a `#`
+ * that does not open it is a character no terminal begins — measured on `#LATE` against `#Zeile`.
  */
-private fun String.isCodeToken(): Boolean =
-    isNotEmpty() && first().isLetter() && all { it.isLetterOrDigit() || it == '_' }
+private fun Token.isUnlexable(source: String): Boolean = when (kind) {
+    TokenKind.ILLEGAL_CHARACTER, TokenKind.UNTERMINATED_STRING, TokenKind.UNTERMINATED_QUOTED_NAME -> true
+    TokenKind.PUNCTUATION -> text == "#" && !source.startsWith(ROW_ITERATION, start)
+    else -> false
+}
+
+private const val ROW_ITERATION = "#Zeile"
+
+/** A name the pragma takes: the tokenizer's NAME minus a digit-led one and minus a keyword of [language]. */
+private fun Token.isPragmaName(language: ConditionLanguage): Boolean =
+    kind == TokenKind.NAME && !text.first().isDigit() && text !in CONDITION_KEYWORDS.getValue(language)
 
 private fun unbuildable(element: TrackedDeclaration, explain: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

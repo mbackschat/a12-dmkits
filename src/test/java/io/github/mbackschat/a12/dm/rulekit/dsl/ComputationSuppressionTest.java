@@ -10,6 +10,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -75,12 +77,43 @@ class ComputationSuppressionTest {
                 () -> "expected MVK_INVALID_COMPARE_DEC_PLACES, got: " + vr.diagnostics());
     }
 
+    /**
+     * Only the kernel's supported set is authorable, and a lone code-shaped entry is refused with the class
+     * A12 gives it ({@code validate.laws.ComputationSuppressionLawsTest}, KERNEL-FINDINGS KF298).
+     */
     @Test
-    void bogusSuppressionCodeIsRejectedFailFast() {
-        // only the kernel's supported set is authorable — a corrective error, not a silent no-op
-        assertThrows(IllegalArgumentException.class,
+    void anUnsupportedCodeIsRejectedWithTheKernelsClass() {
+        assertEquals(KernelCode.MVK_INVALID_SUPPRESSED_WARNING, citedBy("MVK_NO_WILDCARD"));
+    }
+
+    /**
+     * The class is withheld wherever the entry alone does not decide it: a keyword is a token in one condition
+     * language and a name in the other, a digit-led spelling is no name at all, and a list's comma answers
+     * ahead of any entry A12 would have compared.
+     */
+    @Test
+    void theClassIsWithheldWhereTheEntryAloneDoesNotDecideIt() {
+        assertEquals(null, citedBy("Sum"), "a keyword in English models, a name in German ones");
+        assertEquals(null, citedBy("7_DAYS"), "a digit-led spelling, which A12 cannot read as a name");
+        assertEquals(null, citedBy("MVK_INVALID_COMPARE_DEC_PLACES", "MVK_NO_WILDCARD"), "two entries");
+    }
+
+    /**
+     * A12 admits the supported code padded with whitespace, because its lexer discards the padding; the
+     * builder refuses it anyway so the stored member keeps the one spelling every consumer compares, and
+     * cites no class because A12 has none for it.
+     */
+    @Test
+    void aPaddedSupportedCodeIsRefusedDeliberatelyAndUncited() {
+        assertEquals(null, citedBy(" MVK_INVALID_COMPARE_DEC_PLACES "));
+    }
+
+    /** The code a refused {@code errorCodesToSuppress(codes)} cites, or {@code null} when it cites none. */
+    private static KernelCode citedBy(String... codes) {
+        IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
                 () -> m.computation(m.num("/Order/BackorderQuantity")).name("C")
                         .calc(m.num("/Order/UnitPrice").value())
-                        .errorCodesToSuppress("MVK_NO_WILDCARD"));
+                        .errorCodesToSuppress(codes));
+        return refusal instanceof KernelCodeRefusal coded ? coded.code() : null;
     }
 }
