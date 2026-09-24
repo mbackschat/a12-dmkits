@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -17,8 +18,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  *
  * <p>An unstarred repeatable group read from outside it is {@code MVK_NO_WILDCARD} on all twenty-two carriers
  * measured here, the group quantifiers, the field lists that expand a group, the aggregates and
- * {@code CurrentRepetition} alike, so no carrier's gate answers first. The controls that the walk then
- * passes are the non-repeating twins: they are admitted, or refused by the carrier's own type gate.
+ * {@code CurrentRepetition} alike, so no carrier's gate answers first; read from a parallel level it is
+ * {@code MVK_ERROR_FIELD_NO_INDEX} on all twenty-two once it declares an index field. The controls that the
+ * walk then passes are the non-repeating twins: they are admitted, or refused by the carrier's own type gate.
  *
  * <p>Own domain: {@link PolicyPathFixture}.
  */
@@ -29,32 +31,65 @@ class GroupOperandRepetitionScopeLawsTest {
     private static final String NO_WILDCARD = "MVK_NO_WILDCARD";
     private static final String NO_INDEX = "MVK_ERROR_FIELD_NO_INDEX";
 
+    /** Every carrier that takes a group operand, each naming the repeatable {@code Claims} unstarred. */
+    private static final List<String> CARRIERS = List.of(
+            "FieldFilled(Claims)",
+            "FieldNotFilled(Claims)",
+            "GroupFilled(Claims)",
+            "GroupNotFilled(Claims)",
+            "AtLeastOneGroupFilled(Claims)",
+            "AtLeastOneGroupFilled(Claims, Insured)",
+            "AllGroupsFilled(Claims, Insured)",
+            "NoGroupFilled(Claims, Insured)",
+            "NotAllGroupsFilled(Claims, Insured)",
+            "GroupsNotCollectivelyFilled(Claims, Insured)",
+            "NumberOfFilledGroups(Claims) > 0",
+            "AtLeastOneFieldFilled(Claims, Insured)",
+            "AllFieldsFilled(Claims, Insured)",
+            "NoFieldFilled(Claims, Insured)",
+            "NotAllFieldsFilled(Claims, Insured)",
+            "NotExactlyOneFieldFilled(Claims, Insured)",
+            "MoreThanOneFieldFilled(Claims, Insured)",
+            "NumberOfFilledFields(Claims) > 0",
+            "Sum(Claims, Insured) > 0",
+            "FirstFilledValue(Claims, Insured) > 0",
+            "NumberOfValueInFields(0 In Claims) > 0",
+            "CurrentRepetition(Claims) > 1");
+
     @Test
     void anUnstarredRepeatableGroupIsRefusedByTheWalkOnEveryCarrier() {
-        Map<String, String> rows = orderedMap(
-                "FieldFilled(Claims)", NO_WILDCARD,
-                "FieldNotFilled(Claims)", NO_WILDCARD,
-                "GroupFilled(Claims)", NO_WILDCARD,
-                "GroupNotFilled(Claims)", NO_WILDCARD,
-                "AtLeastOneGroupFilled(Claims)", NO_WILDCARD,
-                "AtLeastOneGroupFilled(Claims, Insured)", NO_WILDCARD,
-                "AllGroupsFilled(Claims, Insured)", NO_WILDCARD,
-                "NoGroupFilled(Claims, Insured)", NO_WILDCARD,
-                "NotAllGroupsFilled(Claims, Insured)", NO_WILDCARD,
-                "GroupsNotCollectivelyFilled(Claims, Insured)", NO_WILDCARD,
-                "NumberOfFilledGroups(Claims) > 0", NO_WILDCARD,
-                "AtLeastOneFieldFilled(Claims, Insured)", NO_WILDCARD,
-                "AllFieldsFilled(Claims, Insured)", NO_WILDCARD,
-                "NoFieldFilled(Claims, Insured)", NO_WILDCARD,
-                "NotAllFieldsFilled(Claims, Insured)", NO_WILDCARD,
-                "NotExactlyOneFieldFilled(Claims, Insured)", NO_WILDCARD,
-                "MoreThanOneFieldFilled(Claims, Insured)", NO_WILDCARD,
-                "NumberOfFilledFields(Claims) > 0", NO_WILDCARD,
-                "Sum(Claims, Insured) > 0", NO_WILDCARD,
-                "FirstFilledValue(Claims, Insured) > 0", NO_WILDCARD,
-                "NumberOfValueInFields(0 In Claims) > 0", NO_WILDCARD,
-                "CurrentRepetition(Claims) > 1", NO_WILDCARD);
+        Map<String, String> rows = new LinkedHashMap<>();
+        CARRIERS.forEach(carrier -> rows.put(carrier, NO_WILDCARD));
         assertEquals(rows, verdicts("/Policy", "Holder", rows), "an unstarred repeatable group, from the root");
+    }
+
+    /**
+     * The same carriers with {@code Claims} declaring an index field, nothing else moved, and the error field
+     * still at the root: {@code Claims} lies below the error field's own group, so A12 never asks whether the
+     * level could iterate in parallel, and the index moves nothing.
+     */
+    @Test
+    void anIndexOnALevelBelowTheErrorFieldsGroupMovesNothing() {
+        Map<String, String> rows = new LinkedHashMap<>();
+        CARRIERS.forEach(carrier -> rows.put(carrier, NO_WILDCARD));
+        assertEquals(rows, verdicts(CLAIMS_KEYED, "/Policy", "Holder", rows), "an index-keyed group, from the root");
+    }
+
+    /**
+     * The same carriers with the error field moved into {@code Insured}, so {@code Claims} is a PARALLEL level:
+     * each is the missing star, and the missing index once {@code Claims} declares one. The declaring group is the
+     * root on every row, so the error field's position is what the previous test's silence rests on.
+     */
+    @Test
+    void aParallelLevelDrawsTheMissingIndexOnEveryCarrierWhereItDeclaresOne() {
+        Map<String, String> unkeyed = new LinkedHashMap<>();
+        Map<String, String> keyed = new LinkedHashMap<>();
+        CARRIERS.forEach(carrier -> {
+            unkeyed.put(carrier, NO_WILDCARD);
+            keyed.put(carrier, NO_INDEX);
+        });
+        assertEquals(unkeyed, verdicts(MODEL, "/Policy", "Insured/Remark", unkeyed), "a parallel group, no index");
+        assertEquals(keyed, verdicts(CLAIMS_KEYED, "/Policy", "Insured/Remark", keyed), "a parallel group, keyed");
     }
 
     @Test
@@ -73,13 +108,14 @@ class GroupOperandRepetitionScopeLawsTest {
         Map<String, String> rows = orderedMap(
                 "FieldFilled(../Claims)", NO_WILDCARD,
                 "GroupFilled(../Claims)", NO_WILDCARD,
-                "AtLeastOneGroupFilled(../Claims)", NO_WILDCARD);
+                "AtLeastOneGroupFilled(../Claims)", NO_WILDCARD,
+                "NumberOfFilledGroups(../Claims) > 0", NO_WILDCARD);
         assertEquals(rows, verdicts("/Policy/Insured", "Remark", rows), "from a sibling group");
     }
 
     /**
-     * The same rows with {@code Claims} declaring an index field, nothing else moved: a group takes the field's
-     * missing-index class as it takes its missing-star class, because nothing on the target's chain is keyed.
+     * The sibling rows with {@code Claims} declaring an index field, nothing else moved: a group takes the field's
+     * missing-index class as it takes its missing-star class ([KF466]).
      */
     @Test
     void aParallelRepeatableGroupWithAnIndexDrawsTheMissingIndexClass() {

@@ -4,11 +4,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The checker's half of "a repeatable level a star leaves UNSTARRED must be bound" ([KERNEL-FINDINGS KF466]).
+ * The checker's half of "a repeatable level a star leaves UNSTARRED is a per-row read" ([KERNEL-FINDINGS KF466]):
+ * containment answers it into a target outside the declaring group, and the level must be bound otherwise.
  *
  * Mirrors `rulekit.validate.laws.ComputationStarBindingLawsTest` row for row, then
  * `rulekit.validate.laws.PartialStarContainmentLawsTest` on the same sheet with a fixed `Ledger` added. The
- * spellings are the ones those locks hand the kernel, rendered from each row's declaring group.
+ * spellings are the ones those locks pin, row by row, as the text the kernel was handed.
  *
  * Every row compares the checker's COMPLETE class list against A12's one class, so a co-firing second class
  * is as visible as a missing one.
@@ -25,7 +26,7 @@ class StarBindingContainmentTest {
     private val ledger = "/Fulfilment/Ledger"
 
     @Test
-    fun belowTheFirstStarAnUnstarredLevelIsRefusedWhateverBindsIt() {
+    fun belowTheFirstStarAContainedTargetRefusesTheLevelWhateverBindsIt() {
         val actual = mutableMapOf<String, List<String>>()
         actual["Sum into the fixed target"] = codes(Sheet(), summary, "../Result", "Sum(../Shipments*/Parcels/Weight)")
         actual["Sum into a target in Shipments"] =
@@ -44,7 +45,7 @@ class StarBindingContainmentTest {
     }
 
     @Test
-    fun aboveTheFirstStarWhoBindsTheOutermostLevelDecidesTheClass() {
+    fun aboveTheFirstStarContainmentAnswersBeforeTheOutermostLevel() {
         val actual = mutableMapOf<String, List<String>>()
         actual["declared in Shipments, relative"] =
             codes(Sheet(), shipments, "../../Summary/Result", "Sum(Parcels*/Weight)")
@@ -76,7 +77,7 @@ class StarBindingContainmentTest {
     }
 
     @Test
-    fun aTargetInsideTheLevelAdmitsTheSameOperand() {
+    fun aTargetThatBindsTheLevelAdmitsTheSameOperand() {
         val actual = mutableMapOf<String, List<String>>()
         actual["Sum"] = codes(Sheet(), shipments, "../ShipResult", "Sum(Parcels*/Weight)")
         actual["the group count"] = codes(Sheet(), shipments, "../ShipResult", "NumberOfFilledGroups(Parcels*/Seal)")
@@ -85,6 +86,8 @@ class StarBindingContainmentTest {
         actual["a plain read of the deeper level"] = codes(Sheet(), shipments, "../ShipResult", "[Parcels/Weight] + 1")
         actual["a plain read of the deeper level, Parcels index-keyed"] =
             codes(Sheet(parcelsKeyed = true), shipments, "../ShipResult", "[Parcels/Weight] + 1")
+        actual["a plain read of the deeper level, Shipments index-keyed"] =
+            codes(Sheet(shipmentsKeyed = true), shipments, "../ShipResult", "[Parcels/Weight] + 1")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["Sum"] = emptyList()
@@ -92,6 +95,7 @@ class StarBindingContainmentTest {
         expected["Sum, Shipments index-keyed"] = emptyList()
         expected["a plain read of the deeper level"] = listOf(noWildcard)
         expected["a plain read of the deeper level, Parcels index-keyed"] = listOf(noWildcard)
+        expected["a plain read of the deeper level, Shipments index-keyed"] = listOf(noWildcard)
         assertEquals(expected, actual, "a target inside the unstarred level")
     }
 
@@ -101,12 +105,15 @@ class StarBindingContainmentTest {
         actual["the group itself"] = codes(Sheet(), summary, "../Result", "NumberOfFilledGroups(../Shipments)")
         actual["the group itself, index-keyed"] =
             codes(Sheet(shipmentsKeyed = true), summary, "../Result", "NumberOfFilledGroups(../Shipments)")
+        actual["a starred group below it"] =
+            codes(Sheet(), summary, "../Result", "NumberOfFilledGroups(../Shipments/Parcels*)")
         actual["a starred group below it, index-keyed"] =
             codes(Sheet(shipmentsKeyed = true), summary, "../Result", "NumberOfFilledGroups(../Shipments/Parcels*)")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["the group itself"] = listOf(noWildcard)
         expected["the group itself, index-keyed"] = listOf(noIndex)
+        expected["a starred group below it"] = listOf(noWildcard)
         expected["a starred group below it, index-keyed"] = listOf(noIndex)
         assertEquals(expected, actual, "the group count's own level, from Summary")
     }
@@ -137,30 +144,57 @@ class StarBindingContainmentTest {
         assertEquals(expected, actual, "a plain read into the fixed target")
     }
 
-    /** `PartialStarContainmentLawsTest`: with the target outside the declaring group, a partial star is per-row. */
+    /**
+     * `PartialStarContainmentLawsTest`: with the target outside the declaring group, a partial star is per-row;
+     * each uncontained row has its contained twin, declared in `Summary`, on the same sheet.
+     */
     @Test
     fun onTheComputationArmEveryUnstarredLevelIsPerRow() {
         val sheet = Sheet(ledger = true)
+        val keyed = Sheet(shipmentsKeyed = true, ledger = true)
         val target = "../../Summary/Result"
         val actual = mutableMapOf<String, List<String>>()
-        actual["Ledger | Sum, unstarred above the first star"] =
-            codes(sheet, ledger, target, "Sum(../Shipments/Parcels*/Weight)")
-        actual["Ledger | Sum, unstarred below the first star"] =
-            codes(sheet, ledger, target, "Sum(../Shipments*/Parcels/Weight)")
+        actual["Ledger | Sum, above the first star"] = codes(sheet, ledger, target, "Sum(../Shipments/Parcels*/Weight)")
+        actual["Summary | Sum, above, contained — control"] =
+            codes(sheet, summary, "../Result", "Sum(../Shipments/Parcels*/Weight)")
+        actual["Ledger | Sum, below the first star"] = codes(sheet, ledger, target, "Sum(../Shipments*/Parcels/Weight)")
+        actual["Shipments | Sum, below the first star"] =
+            codes(sheet, shipments, target, "Sum(../Shipments*/Parcels/Weight)")
+        actual["Summary | Sum, below, contained — control"] =
+            codes(sheet, summary, "../Result", "Sum(../Shipments*/Parcels/Weight)")
         actual["Ledger | the group count, above"] =
             codes(sheet, ledger, target, "NumberOfFilledGroups(../Shipments/Parcels*/Seal)")
         actual["Ledger | the group count, below"] =
             codes(sheet, ledger, target, "NumberOfFilledGroups(../Shipments*/Parcels/Seal)")
         actual["Ledger | Sum, above, Shipments index-keyed"] =
-            codes(Sheet(shipmentsKeyed = true, ledger = true), ledger, target, "Sum(../Shipments/Parcels*/Weight)")
-        actual["Shipments | Sum, unstarred below the first star"] =
-            codes(sheet, shipments, target, "Sum(../Shipments*/Parcels/Weight)")
+            codes(keyed, ledger, target, "Sum(../Shipments/Parcels*/Weight)")
+        actual["Summary | Sum, above, Shipments index-keyed, contained — control"] =
+            codes(keyed, summary, "../Result", "Sum(../Shipments/Parcels*/Weight)")
         actual["Ledger | Sum, every level starred — control"] =
             codes(sheet, ledger, target, "Sum(../Shipments*/Parcels*/Weight)")
+        actual["Shipments | Sum, every level starred — control"] =
+            codes(sheet, shipments, target, "Sum(../Shipments*/Parcels*/Weight)")
 
         val expected = actual.keys.associateWith { listOf(notInRuleGroup) }.toMutableMap()
+        expected["Summary | Sum, above, contained — control"] = listOf(noWildcard)
+        expected["Summary | Sum, below, contained — control"] = listOf(noWildcard)
+        expected["Summary | Sum, above, Shipments index-keyed, contained — control"] = listOf(noIndex)
         expected["Ledger | Sum, every level starred — control"] = emptyList()
+        expected["Shipments | Sum, every level starred — control"] = emptyList()
         assertEquals(expected, actual, "a partial star into a target outside the declaring group")
+    }
+
+    /** A repeatable target outside the declaring group is refused whatever the operand stars (KF212). */
+    @Test
+    fun aTargetBindingTheLevelFromOutsideTheDeclaringGroupIsRefusedToo() {
+        val sheet = Sheet(ledger = true)
+        val target = "../../Shipments/ShipResult"
+        val actual = mutableMapOf<String, List<String>>()
+        actual["Ledger | Sum, above"] = codes(sheet, ledger, target, "Sum(../Shipments/Parcels*/Weight)")
+        actual["Ledger | Sum, every level starred"] = codes(sheet, ledger, target, "Sum(../Shipments*/Parcels*/Weight)")
+
+        val expected = actual.keys.associateWith { listOf(notInRuleGroup) }
+        assertEquals(expected, actual, "into a repeatable target outside the declaring group")
     }
 
     @Test
@@ -169,10 +203,17 @@ class StarBindingContainmentTest {
         val reach = "FieldFilled(../Summary/Result) And"
         val actual = mutableMapOf<String, List<String>>()
         actual["Shipments | Sum, above"] = ruleCodes(sheet, shipments, "$reach Sum(Parcels*/Weight) > 0")
+        actual["Shipments | Sum, below"] = ruleCodes(sheet, shipments, "$reach Sum(../Shipments*/Parcels/Weight) > 0")
         actual["Shipments | the group count, above"] =
             ruleCodes(sheet, shipments, "$reach NumberOfFilledGroups(Parcels*/Seal) > 0")
+        actual["Shipments | the group count, below"] =
+            ruleCodes(sheet, shipments, "$reach NumberOfFilledGroups(../Shipments*/Parcels/Seal) > 0")
         actual["Ledger | Sum, above"] = ruleCodes(sheet, ledger, "$reach Sum(../Shipments/Parcels*/Weight) > 0")
         actual["Ledger | Sum, below"] = ruleCodes(sheet, ledger, "$reach Sum(../Shipments*/Parcels/Weight) > 0")
+        actual["Ledger | the group count, above"] =
+            ruleCodes(sheet, ledger, "$reach NumberOfFilledGroups(../Shipments/Parcels*/Seal) > 0")
+        actual["Ledger | the group count, below"] =
+            ruleCodes(sheet, ledger, "$reach NumberOfFilledGroups(../Shipments*/Parcels/Seal) > 0")
         actual["Shipments | Sum, every level starred — control"] =
             ruleCodes(sheet, shipments, "$reach Sum(../Shipments*/Parcels*/Weight) > 0")
         actual["Ledger | Sum, every level starred — control"] =
@@ -217,8 +258,8 @@ class StarBindingContainmentTest {
     ) {
         fun json(into: String, declaration: String): String {
             fun body(path: String) = if (path == into) ",$declaration" else ""
-            fun number(id: String, name: String) =
-                """{"type":"Field","id":"$id","name":"$name","Field":{"fieldType":{"type":"NumberType"}}}"""
+            fun number(id: String, name: String) = """{"type":"Field","id":"$id","name":"$name","Field":{"fieldType":
+                {"type":"NumberType","NumberType":{"maxFractionalDigits":0}}}}"""
             fun string(id: String, name: String) =
                 """{"type":"Field","id":"$id","name":"$name","Field":{"fieldType":{"type":"StringType"}}}"""
             val ledgerGroup = if (!ledger) "" else """

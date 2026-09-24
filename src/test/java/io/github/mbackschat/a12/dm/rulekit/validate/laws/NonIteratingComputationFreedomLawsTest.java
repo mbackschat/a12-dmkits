@@ -35,7 +35,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
  * the shape that provably derives no iteration, so an operand class matching it row for row has been shown to
  * derive none either — which a table of admissions alone cannot show, since it is also what a degraded
  * validator would print. The refusal rows in {@link #containmentIsPathContainmentAndNotRootRelative} and
- * {@link #theWildcardGatePreEmptsPlacementOnlyFromANonRepeatableDeclaringGroup} are this class's positive
+ * {@link #theWildcardGatePreEmptsPlacementOnlyFromAFixedGroupThatContainsTheTarget} are this class's positive
  * control that {@code checkConsistency} actually arbitrated.
  *
  * <p>Own domain (a parts catalogue with a separate audit root).
@@ -118,7 +118,7 @@ class NonIteratingComputationFreedomLawsTest {
     void aStarAggregateIntoAFixedTargetIsAdmittedFromEveryPlacement() {
         Calculation starAggregate = Dsl.sum(M.flatten("/Catalogue/Lots*/Quantity")).expression();
         assertEquals(allAdmitted(), across(FIXED_TARGET, starAggregate),
-                "an aggregate reads no row, so nothing derives iteration and nothing gates placement");
+                "a star on the one repeatable level reads no row, so nothing derives iteration and nothing gates placement");
     }
 
     /**
@@ -210,10 +210,12 @@ class NonIteratingComputationFreedomLawsTest {
     }
 
     /**
-     * Which gate answers an UNSTARRED read of a repeatable field depends on the declaring group's own
-     * repeatability, so the two refusals are not interchangeable: {@code MVK_NO_WILDCARD} pre-empts placement
-     * only from a non-repeatable declaring group; from the repeatable group it reads, the same operand reaches
-     * the placement gate instead.
+     * Which gate answers an UNSTARRED read of a repeatable field depends on whether the declaring group contains
+     * the target, so the two refusals are not interchangeable: {@code MVK_NO_WILDCARD} pre-empts placement from
+     * the fixed {@code Pricing}, which contains the target; from the repeatable group it reads, which does not,
+     * the same operand reaches the placement gate instead. Those two moved together here; a fixed group the
+     * target lies outside draws the placement gate as well ({@code ErrorTargetContainmentLawsTest},
+     * {@code PartialStarContainmentLawsTest}), so it is containment and not the declaring group's repeatability.
      *
      * <p><b>The index declaration is controlled, and it turns out to move the code</b> — which is why the
      * qualifier above is about which gate PRE-EMPTS rather than about which code a fixed declaring group
@@ -226,7 +228,7 @@ class NonIteratingComputationFreedomLawsTest {
      * column: from the repeatable group it reads, either extent reaches the placement gate.
      */
     @Test
-    void theWildcardGatePreEmptsPlacementOnlyFromANonRepeatableDeclaringGroup() {
+    void theWildcardGatePreEmptsPlacementOnlyFromAFixedGroupThatContainsTheTarget() {
         Calculation lotRow = M.num("/Catalogue/Lots/Quantity").value();
         Calculation batchRow = M.num("/Catalogue/Batches/Quantity").value();
         Map<String, String> actual = new LinkedHashMap<>();
@@ -245,6 +247,6 @@ class NonIteratingComputationFreedomLawsTest {
         expected.put("indexed extent, from a FIXED declaring group", "MVK_ERROR_FIELD_NO_INDEX");
         expected.put("indexed extent, from the repeatable group it reads", NOT_IN_RULEGROUP);
         assertEquals(expected, actual,
-                "the declaring group decides whether placement is reached; the extent's keying decides which gate answers");
+                "containing the target decides whether placement is reached; the extent's keying decides which gate answers");
     }
 }

@@ -145,15 +145,16 @@ internal fun TrackedFactBase.groupOfTargetField(target: String): String? =
  * The class ONE reference draws, walking the repeatable levels it crosses from the outermost inwards.
  *
  * **A GROUP is walked like a field, its own repetition included**: an unstarred repeatable group read from
- * outside it is `MVK_NO_WILDCARD` on all twenty-two carriers measured, the group quantifiers and the
- * aggregates among them, so no carrier's own gate answers first (`rulekit.validate.laws
+ * outside it is `MVK_NO_WILDCARD`, or `MVK_ERROR_FIELD_NO_INDEX` from a parallel level that declares an index
+ * field, on all twenty-two carriers measured, the group quantifiers and the aggregates among them, so no
+ * carrier's own gate answers first (`rulekit.validate.laws
  * .GroupOperandRepetitionScopeLawsTest`), and a `@From` scope is walked the same way
  * (`rulekit.validate.laws.RepetitionNotUniqueFromScopeLawsTest`). A repeatable ROOT group is no exception:
  * its root classes answer only once the walk passes (`rulekit.validate.laws.GroupListRootOperandLawsTest`).
  * The one exception is a group handed to a `Having` filter, which is refused as a group ahead of the walk
  * ([filtered]). On a group only the `MVK_NO_WILDCARD` and `MVK_ERROR_FIELD_NO_INDEX` arms are measured, the
- * latter for the group's own level and for one above a starred group (`rulekit.validate.laws
- * .GroupOperandRepetitionScopeLawsTest`, `…ComputationStarBindingLawsTest`), so a group's other parallel
+ * latter on those carriers, for the group's own level and for one above a starred group (`rulekit.validate
+ * .laws.GroupOperandRepetitionScopeLawsTest`, `…ComputationStarBindingLawsTest`), so a group's other parallel
  * classes are left unjudged rather than given a field's.
  *
  * @param filtered whether [written] is the base of a `Having` filter.

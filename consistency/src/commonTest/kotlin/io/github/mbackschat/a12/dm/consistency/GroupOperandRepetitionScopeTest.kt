@@ -20,21 +20,32 @@ class GroupOperandRepetitionScopeTest {
     private fun fromInsured(carrier: String) =
         PolicyPathSource.rejections("../Remark", "FieldFilled(Remark) And $carrier", inInsured = true)
 
+    /** A rule declared at the root reporting on `Insured/Remark`, so `Claims` is a parallel level. */
+    private fun parallelFromRoot(carrier: String, claimsKeyed: Boolean) = PolicyPathSource.rejections(
+        "../Insured/Remark", "FieldFilled(Insured/Remark) And $carrier", claimsKeyed = claimsKeyed,
+    )
+
     @Test
     fun anUnstarredRepeatableGroupIsRefusedByTheWalkOnEveryCarrier() {
-        val rows = listOf(
-            "FieldFilled(Claims)", "FieldNotFilled(Claims)", "GroupFilled(Claims)", "GroupNotFilled(Claims)",
-            "AtLeastOneGroupFilled(Claims)", "AtLeastOneGroupFilled(Claims, Insured)",
-            "AllGroupsFilled(Claims, Insured)", "NoGroupFilled(Claims, Insured)",
-            "NotAllGroupsFilled(Claims, Insured)", "GroupsNotCollectivelyFilled(Claims, Insured)",
-            "NumberOfFilledGroups(Claims) > 0", "AtLeastOneFieldFilled(Claims, Insured)",
-            "AllFieldsFilled(Claims, Insured)", "NoFieldFilled(Claims, Insured)",
-            "NotAllFieldsFilled(Claims, Insured)", "NotExactlyOneFieldFilled(Claims, Insured)",
-            "MoreThanOneFieldFilled(Claims, Insured)", "NumberOfFilledFields(Claims) > 0",
-            "Sum(Claims, Insured) > 0", "FirstFilledValue(Claims, Insured) > 0",
-            "NumberOfValueInFields(0 In Claims) > 0", "CurrentRepetition(Claims) > 1",
-        ).associateWith { listOf(NO_WILDCARD) }
+        val rows = CARRIERS.associateWith { listOf(NO_WILDCARD) }
         assertEquals(rows, rows.keys.associateWith(::fromRoot), "an unstarred repeatable group, from the root")
+    }
+
+    @Test
+    fun anIndexOnALevelBelowTheErrorFieldsGroupMovesNothing() {
+        val rows = CARRIERS.associateWith { listOf(NO_WILDCARD) }
+        val actual = rows.keys.associateWith {
+            PolicyPathSource.rejections("../Holder", "FieldFilled(Holder) And $it", claimsKeyed = true)
+        }
+        assertEquals(rows, actual, "an index-keyed group, from the root")
+    }
+
+    @Test
+    fun aParallelLevelDrawsTheMissingIndexOnEveryCarrierWhereItDeclaresOne() {
+        val unkeyed = CARRIERS.associateWith { listOf(NO_WILDCARD) }
+        assertEquals(unkeyed, CARRIERS.associateWith { parallelFromRoot(it, claimsKeyed = false) }, "no index")
+        val keyed = CARRIERS.associateWith { listOf("MVK_ERROR_FIELD_NO_INDEX") }
+        assertEquals(keyed, CARRIERS.associateWith { parallelFromRoot(it, claimsKeyed = true) }, "keyed")
     }
 
     @Test
@@ -60,8 +71,10 @@ class GroupOperandRepetitionScopeTest {
 
     @Test
     fun aParallelRepeatableGroupWithoutAnIndexIsRefusedToo() {
-        val rows = listOf("FieldFilled(../Claims)", "GroupFilled(../Claims)", "AtLeastOneGroupFilled(../Claims)")
-            .associateWith { listOf(NO_WILDCARD) }
+        val rows = listOf(
+            "FieldFilled(../Claims)", "GroupFilled(../Claims)", "AtLeastOneGroupFilled(../Claims)",
+            "NumberOfFilledGroups(../Claims) > 0",
+        ).associateWith { listOf(NO_WILDCARD) }
         assertEquals(rows, rows.keys.associateWith(::fromInsured), "from a sibling group")
     }
 
@@ -99,6 +112,19 @@ class GroupOperandRepetitionScopeTest {
     }
 
     private companion object {
+        /** `GroupOperandRepetitionScopeLawsTest.CARRIERS`: every carrier naming the repeatable `Claims` unstarred. */
+        val CARRIERS = listOf(
+            "FieldFilled(Claims)", "FieldNotFilled(Claims)", "GroupFilled(Claims)", "GroupNotFilled(Claims)",
+            "AtLeastOneGroupFilled(Claims)", "AtLeastOneGroupFilled(Claims, Insured)",
+            "AllGroupsFilled(Claims, Insured)", "NoGroupFilled(Claims, Insured)",
+            "NotAllGroupsFilled(Claims, Insured)", "GroupsNotCollectivelyFilled(Claims, Insured)",
+            "NumberOfFilledGroups(Claims) > 0", "AtLeastOneFieldFilled(Claims, Insured)",
+            "AllFieldsFilled(Claims, Insured)", "NoFieldFilled(Claims, Insured)",
+            "NotAllFieldsFilled(Claims, Insured)", "NotExactlyOneFieldFilled(Claims, Insured)",
+            "MoreThanOneFieldFilled(Claims, Insured)", "NumberOfFilledFields(Claims) > 0",
+            "Sum(Claims, Insured) > 0", "FirstFilledValue(Claims, Insured) > 0",
+            "NumberOfValueInFields(0 In Claims) > 0", "CurrentRepetition(Claims) > 1",
+        )
         const val NO_WILDCARD = "MVK_NO_WILDCARD"
         const val NO_GROUPS = "MVK_NO_GROUPS_ALLOWED"
         const val NO_WILDCARDS = "MVK_NO_WILDCARDS_ALLOWED"
