@@ -10214,4 +10214,32 @@ So a Seal counts only when it holds a value. That is the opposite of `Items*` ov
 
 **Mechanism (source-read, not discriminated beyond the table).** `CheckFeldListenAnzahlOpImpl` asks, on this operator and in this order, `checkNoRootGroupWhenMoreThanOneParameter`, `checkNoSemanticIndex`, `checkOnlyGroups` and `checkIsMoreThanOneGroup`. The last admits a sole operand when `EntityRef.hasWildCards()` is true, which reads the whole reference, and `checkOnlyGroups` asks `getEntity().isGroup()`, so a group counts however it was written. Every row above is one of these four gates or all four passing.
 
-**Lock:** `validate.laws.GroupCountScopeOperandLawsTest` for admission, which also holds rulekit's `CountAggregate` to admitting each admitted row through a group scope in its operand list (DEV-API-GAPS DG76, retired). `adapter.laws.AncestorStarredGroupCountDiffTest` for the counts. The interpreter matches the sole form and declines the pair ([IG156](INTERPRETER-GAPS.md)).
+**Lock:** `validate.laws.GroupCountScopeOperandLawsTest` for admission, which also holds rulekit's `CountAggregate` to admitting each admitted row through a group scope in its operand list (DEV-API-GAPS DG76, retired). `adapter.laws.AncestorStarredGroupCountDiffTest` for the counts. *Corrected 2026-09-24:* this said the interpreter matched the sole form. It matched these six rows and diverged on the malformed and full-capacity rows [KF463](#kf463) added, and it declined the pair. Since [IF336](INTERPRETER-FINDINGS.md#if336) it matches every row.
+
+## §9 supplement — `NumberOfFilledGroups` decides every counted group instance by one rule, whatever mix of operand shapes its list holds (differential, both strategies, 2026-09-24) <a id="kf463"></a>
+
+> Fold: pending — extends §9's runtime counting semantics (the "Runtime counting semantics" bullets) from counted cells to counted group instances; folds beside them.
+
+**The claim.** The fixture is [KF462](#kf462)'s warehouse `Item`, with `Grading` holding a NUMBER `Grade` and a `Note`, and each batch's `Seal` holding a `Code` and a NUMBER `Weight`. `Batches` repeats up to four times. A ladder of `count == n` rules on `/Item` reads each count, and the fired message's type reads its polarity: V is VALUE_ERROR, O is OMISSION_ERROR, and — means no rung fires. The discriminating rows:
+
+| document | `(Batches*/Seal)` | `(Batches*/Seal, Grading)` | `(Batches*, Grading)` | `(Grading, Specs)` |
+|---|---|---|---|---|
+| four batches, each Seal holding a `Code` | 4 V | 4 O | 4 O | 0 O |
+| one batch, its Seal holding only a malformed `Weight` | — | — | 1 O | 0 O |
+| two batches, one Seal holding a `Code`, the other only a malformed `Weight` | — | — | 2 O | 0 O |
+| one batch, its Seal holding a `Code` and a malformed `Weight` | 1 O | 1 O | 1 O | 0 O |
+| one sealed batch, `Grading` holding a `Note` and a malformed `Grade` | 1 O | 2 O | 2 O | 1 O |
+| one sealed batch, `Grading` holding only a malformed `Grade` | 1 O | — | — | — |
+| `Grading` holding a `Note` and a malformed `Grade`, `Specs` a `Label` | 0 O | 1 O | 1 O | 2 V |
+
+So every instance of every operand is decided alike:
+
+- **A fixed group counts when it holds admitted content,** a malformed value beside that content notwithstanding. One holding only a malformed value makes the whole count not evaluable, so no rung fires, whatever else the list holds. This is the same for a bare fixed group and for a fixed group below a starred level.
+- **A repeatable row counts once it is instantiated,** whatever lies below it, a malformed value included.
+- **The extent is one instance per fixed operand and, for a starred operand, the declared capacity of the repeatable level it ranges over.** For `Batches*/Seal` that is four Seals, one per `Batches` row, so four sealed batches type VALUE. Beside an empty `Grading` the same count can still grow and types OMISSION.
+
+**Under partial coverage a counted instance needs every field of it covered.** Two sealed batches, coverage by field wildcards and the error field only: `(Batches*/Seal) == 2` fires when `Code` and `Weight` are covered, and not when `Code` alone is. `(Batches*) == 2` fires only once `Lot` is covered as well. That is the rule `PartialCoverageGroupOperandDiffTest` measured for a fixed operand group, now also true of each starred instance.
+
+**Mechanism (source-read, consistent with the table, not discriminated further).** `RuntimeController.anzahlAngegebenerEntities`, which `NumberOfFilledGroups` shares with `NumberOfFilledFields`, walks every operand through one `EntityIterator` and asks `isWertAngegeben` of each instance, returning the not-evaluable count at the first UNKNOWN. There is one loop for every operand shape, which is why no row above depends on what else the list holds.
+
+**Lock:** `adapter.laws.AncestorStarredGroupCountDiffTest` holds all thirteen documents of the full-validation table on three engines, and the partial rows on both kernel strategies.

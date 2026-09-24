@@ -310,21 +310,23 @@ internal interface GroupListEnvironmentProvider {
     fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext>
 
     /**
-     * The DECLARED maximum repetition count of [groupPath], or null when the group does not carry one — an
-     * unbounded repeatable group, a non-repeatable group, or a context that does not know the model. This is the
-     * extent the kernel's entity iterator spans after `setzeEndIndicesAufMaxGesetzt`, so a group-counting
-     * aggregate's fillability reads it: unused declared capacity is an uncounted entity even at zero
-     * instantiated rows, and "no declared maximum" means the tail never closes.
+     * The DECLARED number of instances the starred operand [groupPath] spans: the declared maximum repetition
+     * count of the environment [groupListEnvironments] ranges over, so a fixed group below a starred level spans
+     * one instance per row of its repeatable ancestor (KF463). Null when that environment carries no maximum —
+     * an unbounded repeatable group, or a context that does not know the model. This is the extent the kernel's
+     * entity iterator spans after `setzeEndIndicesAufMaxGesetzt`, so a group-counting aggregate's fillability
+     * reads it: unused declared capacity is an uncounted entity even at zero instantiated rows, and "no declared
+     * maximum" means the tail never closes.
      */
-    fun declaredGroupRepetitions(groupPath: String): Int? = null
+    fun declaredGroupListExtent(groupPath: String, bindDepth: Int): Int? = null
 }
 
 internal fun EvalContext.groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> =
     (this as? GroupListEnvironmentProvider)?.groupListEnvironments(groupPath, bindDepth)
         ?: rowContexts(groupPath, bindDepth)
 
-internal fun EvalContext.declaredGroupRepetitions(groupPath: String): Int? =
-    (this as? GroupListEnvironmentProvider)?.declaredGroupRepetitions(groupPath)
+internal fun EvalContext.declaredGroupListExtent(groupPath: String, bindDepth: Int): Int? =
+    (this as? GroupListEnvironmentProvider)?.declaredGroupListExtent(groupPath, bindDepth)
 
 /** A cell's COMPUTE-mode read state ([EvalContext.cellState], IF85) — a visited [INVALID] cell poisons the
  *  reading computation instance ([PoisonedReadException]). "Cell" (a repetition's field value) is a HOUSE

@@ -4207,3 +4207,17 @@ Closes [IG149](INTERPRETER-GAPS.md). [KF252](KERNEL-FINDINGS.md#kf252) widened t
 **The fix.** The quantifiers ask the declared kind at a keyed operand's target path, so a keyed field reaches `presenceTri` and so the keyed-cell read `FieldFilled` uses. The leaves `GroupFilled`/`GroupNotFilled`, where A12 refuses a field (`MVK_NO_FIELDS_ALLOWED`), keep `pathOf`'s refusal.
 
 *Locked by:* `adapter.laws.IndexedGroupOperandDiffTest.aKeyedFieldInAGroupListQuantifierReadsTheSelectedCell` and the keyed-field rows of `aKeyedGroupListOperandComputesLikeTheKernel`, all red on the interpreter before the fix and green after.
+
+### IF336: `NumberOfFilledGroups` counts every operand's group instances through one per-instance rule, and a starred operand's extent is the capacity of the level it ranges over (MEASURED 2026-09-24; graduated from IG156) <a id="if336"></a>
+
+**Three divergences, one mechanism.** The value of the count ran through two routines chosen by the operand list's shape, and neither was the kernel's single loop ([KF463](KERNEL-FINDINGS.md#kf463)):
+
+- The sole starred form counted the environments whose group was definitely filled and treated everything else as zero. A Seal holding only a malformed `Weight` was therefore counted as absent where A12 makes the count not evaluable, so `NumberOfFilledGroups(/Item/Batches*/Seal) == 0` fired on a document where the kernel fires nothing.
+- The fixed-group form made the count Unknown as soon as any operand group was erroneous. A `Grading` holding a valid `Note` beside a malformed `Grade` counts in A12, so `(Grading, Specs) == 2` stayed silent where the kernel fires VALUE.
+- A list mixing a starred operand with a fixed group reached neither routine and was declined through `pathOf` as unsupported (IG156).
+
+The polarity carried a fourth, independent defect. It read the declared extent of the operand's own group, which a fixed Seal does not carry, so the count looked unbounded and four sealed batches of four typed OMISSION where the kernel types VALUE.
+
+**The fix.** `filledGroupsValue` walks every operand: a fixed group's own instance, or one instance per environment `groupListEnvironments` selects for a starred scope, which is the stream the group-fill quantifiers and the polarity walk already read. Each instance contributes `GroupPresenceState.countProduct`, the presence product decidable only for a wholly relevant group, and the first undecidable instance makes the count Unknown. The extent is now `declaredGroupListExtent`, the declared capacity of that same environment. A `Having` on an operand is refused loudly, as the polarity walk already did, because no measured basis exists for it on this operator.
+
+*Locked by:* `adapter.laws.AncestorStarredGroupCountDiffTest`. Its four full-validation tests hold thirteen documents on three engines. Each failed on the interpreter before the fix and passes after it.

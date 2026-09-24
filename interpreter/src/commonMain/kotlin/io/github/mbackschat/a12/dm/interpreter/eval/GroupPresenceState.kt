@@ -50,6 +50,14 @@ data class GroupPresenceState(
      * is found.
      */
     val negativeLeaf: Tri get() = Kleene.not(fillProduct)
+
+    /**
+     * This instance's contribution to `NumberOfFilledGroups` — [fillProduct], decidable only for a wholly
+     * relevant group. The count asks every field of a counted group to be covered, where the group-fill
+     * quantifiers decide presence from whatever is covered (`PartialCoverageGroupOperandDiffTest`). One
+     * undecidable instance makes the whole count undecidable, whatever else is in its operand list (KF463).
+     */
+    val countProduct: Tri get() = if (relevance == GroupRelevance.FULL) fillProduct else Tri.UNKNOWN
 }
 
 /** How much of a group is validation-relevant for this concrete row. */

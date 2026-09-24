@@ -82,20 +82,30 @@ private fun Interpreter.indexOperandNonEvaluable(c: EvalContext, path: String, b
     path in indexFields && indexColumnOf(c, path, bindDepth).anyEmptyOrDuplicated
 
 /**
- * `NumberOfFilledGroups(...)`'s count — the STARRED single-repeatable-group form `NumberOfFilledGroups(
- * /Group*)` (the `RootGroupCount` DSL node / `Dsl.numberOfFilledGroups(repeatableGroup)`) counts the group's
- * **instantiated repetitions** (a created-but-empty row counts too — kernel-probed, IF46); the plain
- * multi-group form counts admitted groups only when every operand group is fully relevant and error-free; any
- * unavailable group makes the count Unknown rather than a partial count. Linear: O(rows) for the starred form
- * (one row-context list, already scoped + cached), O(args) for the plain form.
+ * `NumberOfFilledGroups(...)`'s count over its group list, whatever mix of shapes it holds. Every operand
+ * expands to the group instances it names — a fixed group its own, a starred scope one per environment
+ * [Interpreter.groupFillStates] also selects, so a repeatable terminal counts each instantiated row (a
+ * created-but-empty one too, IF46) and a fixed group below starred levels counts by its content — and each
+ * instance contributes its [GroupPresenceState.countProduct]. One undecidable instance makes the whole count
+ * Unknown rather than a partial count (KF463). Linear in the instances.
  */
 private fun Interpreter.filledGroupsValue(args: List<Expr>): Val {
-    val star = args.singleOrNull() as? Expr.Star
-    if (star != null) return Val.Num(dec(ctxOf(star).rowContexts(star.path, star.bindDepth)
-        .count { groupPresence(it, star.path).definitelyFilled }))
-    val states = args.map { groupPresence(ctxOf(it), pathOf(it)) }
-    if (states.any { it.erroneous || it.relevance != GroupRelevance.FULL }) return Val.Unknown
-    return Val.Num(dec(states.count { it.definitelyFilled }))
+    rejectHaving(args, "NumberOfFilledGroups")
+    var count = 0
+    for (arg in args) {
+        if (arg is Expr.Star) {
+            for (row in ctxOf(arg).groupListEnvironments(arg.path, arg.bindDepth))
+                count += countedGroup(groupPresence(row, arg.path)) ?: return Val.Unknown
+        } else count += countedGroup(groupPresence(ctxOf(arg), pathOf(arg))) ?: return Val.Unknown
+    }
+    return Val.Num(dec(count))
+}
+
+/** One counted instance's addition to the count, or null when it leaves the count undecidable. */
+private fun countedGroup(state: GroupPresenceState): Int? = when (state.countProduct) {
+    Tri.TRUE -> 1
+    Tri.FALSE -> 0
+    Tri.UNKNOWN -> null
 }
 
 /**

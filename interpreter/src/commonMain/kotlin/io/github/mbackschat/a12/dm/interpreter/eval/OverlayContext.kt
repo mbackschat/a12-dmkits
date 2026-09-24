@@ -232,7 +232,8 @@ internal class OverlayContext(
             .map { OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget) }
 
     // Not covered by `by d`, which forwards EvalContext alone: without this the provider's null default answers.
-    override fun declaredGroupRepetitions(groupPath: String): Int? = d.declaredGroupRepetitions(groupPath)
+    override fun declaredGroupListExtent(groupPath: String, bindDepth: Int): Int? =
+        d.declaredGroupListExtent(groupPath, bindDepth)
 
     // The `$`-join buckets must read joined values through the overlay — rebuilt from the wrapped rows (the
     // Document-side cache is scope-keyed on RAW reads; a cascade overlay is per-compute-pass). But within a step

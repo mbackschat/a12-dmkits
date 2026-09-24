@@ -1164,19 +1164,25 @@ class Document(internal val config: DocumentConfig) {
         override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> =
             rowContextsScoped(groupPath, groupScopePrefix(groupPath, bindDepth))
 
+        override fun declaredGroupListExtent(groupPath: String, bindDepth: Int): Int? =
+            declaredReps[groupListEnvironment(groupPath, bindDepth)]
+
+        override fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> {
+            val environment = groupListEnvironment(groupPath, bindDepth)
+            return rowContextsScoped(environment, groupScopePrefix(environment, bindDepth))
+        }
+
         /**
          * Reuse the first-star row topology, but choose its deepest repeatable ANCESTOR environment when the
          * addressed terminal is non-repeatable. Resolving [groupPath] from that row keeps the complete ancestry,
          * so [GroupPresenceState] remains the sole terminal product owner (SPEC-2026-07-26-02).
          */
-        override fun declaredGroupRepetitions(groupPath: String): Int? = declaredReps[groupPath]
-
-        override fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> {
+        private fun groupListEnvironment(groupPath: String, bindDepth: Int): String {
             var environment = groupPath
             while (environment !in repeatableGroups && partsOf(environment).size > bindDepth) {
                 environment = parentGroup(environment)
             }
-            return rowContextsScoped(environment, groupScopePrefix(environment, bindDepth))
+            return environment
         }
 
         // The declared fields under a group path, recursively and in model declaration order. Numeric `Sum`
