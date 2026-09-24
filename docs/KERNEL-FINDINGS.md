@@ -10284,6 +10284,8 @@ So a field-expanding aggregate over a starred group asks the extent gate once fo
 |---|---|---|---|---|---|
 | 4 | `Lot` concretely in rows 1–4, `Code`, `Weight` `*` | ✓ | ✓ | — | — |
 | 4 | `Code` concretely in rows 1–4, `Lot`, `Weight` `*` | ✓ | ✓ | — | — |
+| 2 | `Lot` `*`, `Code` and `Weight` concretely in rows 1 and 2 | ✓ | — | — | — |
+| 2 | every batch field concretely in rows 1 and 2 | — | — | — | — |
 | 4 | `Lot` concretely in rows 1 and 2, `Code`, `Weight` `*` | — | ✓ | — | — |
 | 4 | `Lot` concretely in rows 1 and 3, `Code`, `Weight` `*` | — | ✓ | — | — |
 | 2 | `Lot` `*`, `Code` and `Weight` concretely in row 1 | ✓ | — | — | — |
@@ -10295,10 +10297,10 @@ So a field-expanding aggregate over a starred group asks the extent gate once fo
 
 Full validation fires every carrier the malformed value leaves at its constant, which is the liveness control for each row. So the count is decided in four steps, each discriminated by a pair of neighbouring rows that a simpler reading gets wrong on one side:
 
-- **The counted group's own identifiers settle the extent.** They are the relevant identifiers at or above the group together with every relevant descendant cut back to the group's depth, and a broader wildcard encompasses a narrower one as it does for a field. A `Lot` named in every declared row therefore leaves the batch count decidable where `NumberOfFilledFields`, which asks `Lot` itself, stays silent (rows 1 and 2). One concrete identifier left at a starred level makes the count undecidable: `Code` covered in row 1 alone cuts back to a concrete `Seal` (row 5).
-- **The first declared instance must be fully relevant and free of errors,** held or not. Covering row 2 instead of row 1 silences the count although both rows are filled (rows 5 and 6), and a malformed `Weight` silences it in row 1 but not in row 2 (rows 7 and 8). A fixed group is its own first instance (row 9).
-- **Every declared instance the document lacks must be fully relevant.** A12 walks the declared rows rather than the held ones: naming `Lot` in the two held rows leaves rows 3 and 4 open, and naming it in rows 1 and 3 still leaves row 4 open (rows 3 and 4 against row 1).
-- **A held instance then counts by its admitted content,** a partly covered row or an erroneous later row included (rows 5 and 8).
+- **The counted group's own identifiers settle the extent.** They are the relevant identifiers at or above the group together with every relevant descendant cut back to the group's depth, and a broader wildcard encompasses a narrower one as it does for a field. A `Lot` named in every declared row therefore leaves the batch count decidable where `NumberOfFilledFields`, which asks `Lot` itself, stays silent (rows 1 and 2). A concrete identifier left at a starred level makes the count undecidable even when every instance is wholly covered: naming `Code` and `Weight` in both declared rows silences the `Seal` count, and naming `Lot` as well silences the batch count (rows 3 and 4).
+- **The first declared instance must be fully relevant and free of errors,** held or not. Covering row 2 instead of row 1 silences the count although both rows are filled (rows 7 and 8), and a malformed `Weight` silences it in row 1 but not in row 2 (rows 9 and 10). A fixed group is its own first instance (row 11).
+- **Every declared instance the document lacks must be fully relevant.** A12 walks the declared rows rather than the held ones: naming `Lot` in the two held rows leaves rows 3 and 4 open, and naming it in rows 1 and 3 still leaves row 4 open (rows 5 and 6 against row 1).
+- **A held instance then counts by its admitted content,** a partly covered row or an erroneous later row included (rows 7 and 10), while a held instance no identifier reaches leaves the count undecidable, as the second `Seal` does in row 7.
 
 The first table's last coverage follows from the third step rather than from a field gate: `Lot` named in the two held rows of four leaves the absent rows open.
 
@@ -10306,4 +10308,4 @@ The first table's last coverage follows from the third step rather than from a f
 
 **Unmeasured.** `MinValue` and `NumberOfDifferentValues` share the gate `Sum` and `MaxValue` use and were not run. `SumOfProducts`'s complete-enumeration gate was not run on a group operand, and a multi-star group operand was not run under any coverage. Every malformed value above was covered, so whether an uncovered malformed value makes a first instance erroneous is open.
 
-**Lock:** `adapter.laws.PartialGroupStarFieldCoverageDiffTest`, all seven coverages of the first table, and `adapter.laws.PartialGroupCountRelevanceDiffTest`, all ten rows of the second, each on three engines.
+**Lock:** `adapter.laws.PartialGroupStarFieldCoverageDiffTest`, all seven coverages of the first table, and `adapter.laws.PartialGroupCountRelevanceDiffTest`, all twelve rows of the second, each on three engines.

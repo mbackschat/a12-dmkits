@@ -94,6 +94,26 @@ class PartialGroupCountRelevanceDiffTest {
     )
 
     /**
+     * `Code` and `Weight` named concretely in both declared rows: every `Seal` is wholly covered, yet no
+     * identifier wildcards the starred level, so the `Seal` count is undecidable. The `Lot` wildcard keeps the
+     * batch count's identifiers settled.
+     */
+    @Test
+    fun everyDeclaredRowNamedOnlyConcretelyLeavesTheExtentUnknown() = assertFiredUnder(
+        2,
+        listOf(everyRow(LOT)) + listOf(CODE, WEIGHT).flatMap { f -> (1..2).map { row(f, 0, it, 0, 0) } },
+        setOf("NFG_BATCHES"),
+    )
+
+    /** The same with `Lot` named concretely too: now neither count's identifiers wildcard `Batches`. */
+    @Test
+    fun everyFieldNamedOnlyConcretelyLeavesBothExtentsUnknown() = assertFiredUnder(
+        2,
+        (1..2).flatMap { listOf(row(LOT, 0, it, 0), row(CODE, 0, it, 0, 0), row(WEIGHT, 0, it, 0, 0)) },
+        setOf(),
+    )
+
+    /**
      * `Lot` named in the two held rows only: rows 3 and 4 are absent and not wholly covered, so the batch
      * count is undecidable although every held row is decided. The `Seal` count's fields stay wildcarded.
      */
