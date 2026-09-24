@@ -4192,3 +4192,18 @@ Closes [IG149](INTERPRETER-GAPS.md). [KF252](KERNEL-FINDINGS.md#kf252) widened t
 **The fix.** A key resolves to one coordinate, either the selected row's or `unmatchedCoordinate`, which sets the keyed level to `UNKNOWN_REP`. The group-presence seam `EvalConfig.groupPresence` now takes a coordinate rather than a context. So an absent keyed group is asked of the same `GroupPresenceIndex` at the unbound row, and `KeyedGroupSelection.Absent` carries that coordinate for `FirstFilledValue` too. Every visited cell goes through one partial-only test, `outsideCoverage`. Full validation and computation carry no coverage, so neither path changes. The field-valued key's own gate from [IF333](#if333) already matched the kernel here, and a key field outside the coverage leaves the lookup undecided. This slice is the first to measure that under partial validation.
 
 *Locked by:* `adapter.laws.PartialKeyedSelectionRelevanceDiffTest`, a grid of fourteen coverages over one model, asserted on both kernel strategies and the interpreter. Ten planted mutants die in it (2026-09-24): the coverage test disabled outright, each of its eight sites skipped in turn, and the unbound row pinned to row 1 instead of `UNKNOWN_REP`.
+
+### IF335: an index-selected FIELD in a group-list quantifier reads its selected cell, as `FieldFilled` would (MEASURED 2026-09-24; from the IF331 cold review) <a id="if335"></a>
+
+**The gap.** `AtLeastOneGroupFilled(/Order/Packages/Carrier For "P1", /Order/Reference)` is kernel-admitted, yet `groupFillStates` sent every keyed operand to the group-presence path, which refuses a field through `pathOf`. So `model eval` reported every such rule unsupported, a loud refusal that no ledger row recorded.
+
+**What the kernel does, both strategies agreeing on every row.** The operand counts as its cell: filled where the key selects a filled cell, empty for an empty cell or a key no row carries, and undecided for a key two rows carry. Validation, computation and message attachment all follow from that:
+
+- `NoGroupFilled(Carrier For "P2", Carrier For "P3")` fires OMISSION.
+- `AtLeastOneGroupFilled(Carrier For "P1", Carrier For "P3")` is silent over a duplicated `P1` and while the key column lies outside partial relevance.
+- Computation poisons on a duplicated column unless an earlier operand has already decided.
+- Unguarded, the message attaches to the selected row's `Carrier`.
+
+**The fix.** The quantifiers ask the declared kind at a keyed operand's target path, so a keyed field reaches `presenceTri` and so the keyed-cell read `FieldFilled` uses. The leaves `GroupFilled`/`GroupNotFilled`, where A12 refuses a field (`MVK_NO_FIELDS_ALLOWED`), keep `pathOf`'s refusal.
+
+*Locked by:* `adapter.laws.IndexedGroupOperandDiffTest.aKeyedFieldInAGroupListQuantifierReadsTheSelectedCell` and the keyed-field rows of `aKeyedGroupListOperandComputesLikeTheKernel`, all red on the interpreter before the fix and green after.

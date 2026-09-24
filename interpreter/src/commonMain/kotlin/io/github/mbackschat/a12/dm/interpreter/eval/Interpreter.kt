@@ -185,7 +185,8 @@ class Interpreter(
 
     /** The presence of a GROUP operand, bare or keyed. A keyed group reads the row its key selects, a key no row
      *  carries reads as an empty group at the unbound row, and an undecidable key is null, which every consumer
-     *  reads as UNKNOWN (IF331). A keyed FIELD is not a group operand and still meets [pathOf]'s refusal. */
+     *  reads as UNKNOWN (IF331). A keyed FIELD is not a group operand: the quantifiers read it as a cell before
+     *  asking here, and the leaves, which A12 refuses it in (`MVK_NO_FIELDS_ALLOWED`), meet [pathOf]'s refusal. */
     private fun groupOperandPresence(arg: Expr): GroupPresenceState? =
         if (arg is Expr.SemanticIndex && ctxOf(arg).declaredKind(arg.path) == null) when (val selection = keyedGroupSelection(arg)) {
             is KeyedGroupSelection.Row -> groupPresence(selection.ctx, arg.path)
@@ -794,6 +795,8 @@ class Interpreter(
      *    `*`) yields one state per selected environment: a repeatable terminal row is FILLED structurally
      *    (IF46/IF68), while a non-repeatable terminal below starred ancestors retains its ordinary group-product
      *    state (SPEC-2026-07-26-02);
+     *  - a KEYED FIELD (`Field For key`) contributes the presence of the cell its key selects, as `FieldFilled`
+     *    reads it;
      *  - a KEYED GROUP (`Group For key`) contributes the product of the row its key selects; no row reads as an
      *    empty group at the unbound row, so FALSE only where the coverage reaches that row (IF334), and an
      *    undecidable key — a duplicated one, say — reads UNKNOWN, or poisons in compute;
@@ -808,8 +811,9 @@ class Interpreter(
                     yield(groupPresence(rc, arg.path).fillProduct)
                 }
             }
-            // a keyed GROUP has no single path to test for a declared kind, so it answers before that test does
-            arg !is Expr.SemanticIndex && ctxOf(arg).declaredKind(pathOf(arg)) != null -> yield(presenceTri(arg))
+            // a keyed operand names its target by path, so a keyed FIELD reads its selected cell like `FieldFilled`
+            ctxOf(arg).declaredKind(if (arg is Expr.SemanticIndex) arg.path else pathOf(arg)) != null ->
+                yield(presenceTri(arg))
             else -> yield(groupOperandPresence(arg)?.fillProduct ?: Tri.UNKNOWN)
         }
     }

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test
 
 /**
  * Differential + tri-check (groovy-dynamic == java-static == interpreter) for an index-selected GROUP operand,
- * `Packages For "P1"`. Every row first asserts that the kernel admits its model, because several carriers here lie
+ * `Packages For "P1"`, and for an index-selected FIELD in the same group-list quantifiers. Every row first asserts that the kernel admits its model, because several carriers here lie
  * outside the admission grid `validate.laws.SemanticIndexGroupOperandCarrierLawsTest` holds for the group-list
  * quantifiers.
  *
@@ -173,6 +173,37 @@ class IndexedGroupOperandDiffTest {
         Row("AtLeastOneGroupFilled(/Order/Packages For \"P1\")", false, duplicated),
         Row("AtLeastOneGroupFilled(/Order/Packages For \"P2\")", true, duplicated)))
 
+    /**
+     * An index-selected FIELD is a group-list operand too, read like `FieldFilled(Carrier For key)`: the selected
+     * row's cell, an empty one for a key no row carries, and undecided for a key two rows carry.
+     */
+    @Test
+    fun aKeyedFieldInAGroupListQuantifierReadsTheSelectedCell() = assertGrid(listOf(
+        Row("AtLeastOneGroupFilled(/Order/Packages/Carrier For \"P1\", /Order/Reference)", true),
+        Row("AtLeastOneGroupFilled(/Order/Packages/Carrier For \"P2\", /Order/Packages/Carrier For \"P3\")", false),
+        Row("NoGroupFilled(/Order/Packages/Carrier For \"P2\", /Order/Packages/Carrier For \"P3\")", true),
+        Row("NoGroupFilled(/Order/Packages/Carrier For \"P1\", /Order/Packages/Carrier For \"P3\")", false),
+        Row("AllGroupsFilled(/Order/Packages/Carrier For \"P1\", /Order/Reference)", true),
+        Row("AllGroupsFilled(/Order/Packages/Carrier For \"P2\", /Order/Reference)", false),
+        Row("NotAllGroupsFilled(/Order/Packages/Carrier For \"P2\", /Order/Reference)", true),
+        Row("GroupsNotCollectivelyFilled(/Order/Packages/Carrier For \"P1\", /Order/Packages/Carrier For \"P2\")", true),
+        Row("AtLeastOneGroupFilled(/Order/Packages For \"P3\", /Order/Packages/Carrier For \"P1\")", true),
+        Row("NoGroupFilled(/Order/Packages/Carrier For /Order/Wanted, /Order/Packages/Carrier For \"P3\")", true,
+            wanted = "P2"),
+        Row("NoGroupFilled(/Order/Packages/Carrier For /Order/Wanted, /Order/Packages/Carrier For \"P3\")", false,
+            wanted = "P1"),
+        Row("AtLeastOneGroupFilled(/Order/Packages/Carrier For \"P1\", /Order/Packages/Carrier For \"P3\")", false,
+            duplicated),
+        Row("NoGroupFilled(/Order/Packages/Carrier For \"P1\", /Order/Packages/Carrier For \"P3\")", false, duplicated),
+        Row("AtLeastOneGroupFilled(/Order/Packages/Carrier For \"P2\", /Order/Packages/Carrier For \"P1\")", true,
+            duplicated),
+        Row("AtLeastOneGroupFilled(/Order/Packages/Carrier For \"P1\", /Order/Packages/Carrier For \"P3\")", true,
+            relevant = mapOf("/Order" to listOf(0))),
+        Row("AtLeastOneGroupFilled(/Order/Packages/Carrier For \"P1\", /Order/Packages/Carrier For \"P3\")", false,
+            relevant = mapOf(REFERENCE to listOf(0, 0), WANTED to listOf(0, 0))),
+        Row("AtLeastOneGroupFilled(/Order/Packages/Carrier For \"P1\", /Order/Reference)", true, errorField = CARRIER,
+            guarded = false)))
+
     @Test
     fun aKeyedGroupInAPresenceLeafReadsTheSelectedRow() = assertGrid(listOf(
         Row("GroupFilled(/Order/Packages For \"P2\")", true),
@@ -320,7 +351,12 @@ class IndexedGroupOperandDiffTest {
             Triple("NoGroupFilled(/Order/Packages For \"P3\")", duplicated, "P3") to "CLEARED",
             Triple("GroupFilled(/Order/Packages For \"P2\")", duplicated, "P3") to "CLEARED",
             Triple("AtLeastOneGroupFilled($REFERENCE, /Order/Packages For \"P2\")", duplicated, "P3") to "VALUE|1",
-            Triple("AtLeastOneGroupFilled(/Order/Packages For \"P2\", $REFERENCE)", duplicated, "P3") to "CLEARED")
+            Triple("AtLeastOneGroupFilled(/Order/Packages For \"P2\", $REFERENCE)", duplicated, "P3") to "CLEARED",
+            Triple("AtLeastOneGroupFilled($CARRIER For \"P1\", $REFERENCE)", standard, "P3") to "VALUE|1",
+            Triple("NoGroupFilled($CARRIER For \"P2\", $CARRIER For \"P3\")", standard, "P3") to "VALUE|1",
+            Triple("NoGroupFilled($CARRIER For \"P1\", $CARRIER For \"P3\")", standard, "P3") to "VALUE|2",
+            Triple("AtLeastOneGroupFilled($CARRIER For \"P2\", $REFERENCE)", duplicated, "P3") to "CLEARED",
+            Triple("AtLeastOneGroupFilled($REFERENCE, $CARRIER For \"P2\")", duplicated, "P3") to "VALUE|1")
         val key = { c: String, p: List<Pkg>, w: String? -> "$c [${p.joinToString { it.code ?: "-" }}; Wanted=$w]" }
         val actual = rows.associate { (r, _) -> key(r.first, r.second, r.third) to computed(r.first, r.second, r.third) }
         val expected = rows.associate { (r, outcome) ->
