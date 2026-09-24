@@ -87,6 +87,8 @@ class GroupCountScopeOperandLawsTest {
                         count(List.of(grading), List.of()), REFUSED),
                 new Row("Grading, /Lot*", "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS",
                         count(List.of(grading, lot), List.of()), REFUSED),
+                new Row("Batches*/Seal, /Lot*", "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS",
+                        count(List.of(seal, lot), List.of()), REFUSED),
                 new Row("Grading, Weight", "MVK_NO_FIELDS_ALLOWED",
                         count(List.of(grading, M.field("/Item/Weight")), List.of()), REFUSED),
                 new Row("Keyed For \"k\", Grading", "MVK_SEMANTIC_INDEX_NOT_ALLOWED",

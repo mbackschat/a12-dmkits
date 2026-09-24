@@ -100,6 +100,9 @@ class EntityListStarFidelityTest {
         assertEquals("NumberOfFilledGroups(/Item/Batches*/Seal) > 0", rendered("NumberOfFilledGroups(Batches*/Seal) > 0"))
         assertEquals("NumberOfFilledGroups(/Item/Batches*/Seal, /Item/Grading) > 0",
             rendered("NumberOfFilledGroups(Batches*/Seal, Grading) > 0"))
+        // the scope form reads the model too, so the list gate after the read keeps its class
+        // (rulekit.validate.laws.GroupCountScopeOperandLawsTest)
+        assertCited(KernelCode.MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS, "NumberOfFilledGroups(Batches*/Seal, /Lot*) > 0")
     }
 
     /**
