@@ -121,8 +121,8 @@ class GroupOperandAndKeyResolverClassTest {
             "Claims", "Claims*", "Claims.*", "Insured", "Insured*", "Insured.*",
             "Holder", "Holder*", "Amount", "Nope", "Nope*", "..", "..*",
         )
-        // A third segment only has to miss or gate once more, so four spellings cover it; the full cube took
-        // 5.0 s of the node lane's 10 s per-test timeout (2026-09-24).
+        // A third segment only has to miss or gate once more, so four spellings cover it and keep the Node lane
+        // short; the full cube took 5.0 s there (2026-09-24).
         val third = listOf("Amount", "Nope", "Nope*", "Insured*")
         val shorter = vocabulary + vocabulary.flatMap { a -> vocabulary.map { "$a/$it" } }
         val paths = shorter + shorter.drop(vocabulary.size).flatMap { a -> third.map { "$a/$it" } } +

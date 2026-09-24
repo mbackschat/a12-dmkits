@@ -58,7 +58,9 @@ kotlin {
                 useMocha {
                     // Hostile workspace-boundary cases intentionally build large inputs; Mocha's 2s default
                     // is below their verified Node runtime and turns a semantic guard into a host-speed probe.
-                    timeout = '10s'
+                    // The bound only has to catch a hang, and a sibling lane's test ran 6x slower under a
+                    // load average of 288 (`consistency/build.gradle`, measured 2026-09-24).
+                    timeout = '120s'
                 }
             }
         }

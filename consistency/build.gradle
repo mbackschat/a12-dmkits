@@ -30,9 +30,11 @@ kotlin {
         nodejs {
             testTask {
                 useMocha {
-                    // `ConditionCorpusTest` runs 1.0s alone on Node and exceeded Mocha's 2s default beside a
-                    // concurrent build (measured 2026-09-24), turning a semantic guard into a host-speed probe.
-                    timeout = '10s'
+                    // The timeout exists to catch a hang, so it must sit far above any host's load factor:
+                    // `ConditionCorpusTest` exceeded Mocha's 2s default beside a concurrent build, and
+                    // `GroupOperandAndKeyResolverClassTest`'s grid ran 4.6s alone and 28.2s at a load average
+                    // of 288 (both measured 2026-09-24), so a 10s bound was still a host-speed probe.
+                    timeout = '120s'
                 }
             }
         }

@@ -17,8 +17,8 @@ import kotlin.test.assertEquals
  * Correctness here = the row count we computed; kernel parity is the `:adapter` job.
  *
  * **It asserts no elapsed time** (2026-08-13, IF295). It used to carry `elapsed < 20.seconds` per case, and that
- * bound was neither a performance requirement nor a working liveness net: on JS the Mocha framework's hard
- * 2000 ms per-test cap fires an order of magnitude earlier, and on the JVM the same regression is measured
+ * bound was neither a performance requirement nor a working liveness net: on JS the Mocha per-test cap then stood
+ * an order of magnitude below it (2 s at the time), and on the JVM the same regression is measured
  * properly — as a paired N/4N growth ratio under isolation — by `:adapter`'s routine tier, which carries 19
  * sub-quadratic scenarios including the general per-row one. A wall-clock assertion here would have added a
  * clock-dependent verdict to a lane that forks tests in parallel, without covering anything those two do not.
