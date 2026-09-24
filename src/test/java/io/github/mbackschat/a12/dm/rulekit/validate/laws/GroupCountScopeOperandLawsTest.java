@@ -121,8 +121,8 @@ class GroupCountScopeOperandLawsTest {
     }
 
     /**
-     * The COMPUTATION arm takes the below-star forms the rule arm takes, and refuses each unstarred level with the
-     * class the rule arm uses. Measured because the two arms part on malformed content ([KF120]), so agreement on
+     * The COMPUTATION arm takes the below-star forms the rule arm takes, the same starred form twice included,
+     * and refuses each unstarred level with the class the rule arm uses. Measured because the two arms part on malformed content ([KF120]), so agreement on
      * admission was not something to assume (a12-kernel-lean SPEC-2026-09-24-02, their report only).
      */
     @Test
@@ -131,6 +131,8 @@ class GroupCountScopeOperandLawsTest {
         expected.put("Batches*/Seal", ADMITTED);
         expected.put("Batches*/Seal, Grading", ADMITTED);
         expected.put("Batches*/Seal, Batches*/Seal", ADMITTED);
+        // the within-model control for the row above: the duplicate gate skips a starred operand, not a fixed one
+        expected.put("Grading, Grading", "MVK_DUPLICATE_PARAM1");
         expected.put("Batches*/Seal, Keyed*", ADMITTED);
         expected.put("Batches*/Boxes*/Lid", ADMITTED);
         expected.put("Batches/Seal", "MVK_NO_WILDCARD");
