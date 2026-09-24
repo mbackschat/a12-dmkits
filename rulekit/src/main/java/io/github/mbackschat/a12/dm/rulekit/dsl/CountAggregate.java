@@ -13,9 +13,9 @@ import io.github.mbackschat.a12.dm.core.Refusals;
  * entity list (the kernel's {@code feldListenAnzahlOp}). The kernel's slot rules (verified
  * 2026-06-04, KERNEL-FINDINGS): {@code NumberOfFilledFields} needs more than one field <em>or</em>
  * at least one group ({@code MVK_PARAMSIZE_INVALIDN}); {@code NumberOfFilledGroups} needs more than
- * one group <em>or</em> a single repeatable group as a wildcard scope ({@code Group*}, counting that
- * group's filled repetitions), groups only ({@code MVK_PARAMSIZE_INVALIDGN}, {@code
- * MVK_NO_FIELDS_ALLOWED}); a root group is banned in {@code NumberOfFilledFields} ({@code
+ * one group <em>or</em> a sole group whose path carries a star ({@code Group*} counting that group's filled
+ * repetitions, or a star on an ancestor level), groups only ({@code MVK_PARAMSIZE_INVALIDGN}, {@code
+ * MVK_NO_FIELDS_ALLOWED}), and a group scope in {@link #fields} counts as a group; a root group is banned in {@code NumberOfFilledFields} ({@code
  * MVK_ROOT_GROUP_REFERENCED}) and admitted by {@code NumberOfFilledGroups} only alone ({@code
  * MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS}). The
  * {@link Dsl} entry points enforce all of that by signature + pre-check; field kinds may be mixed.
@@ -77,39 +77,63 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
                 }
             }
             case FILLED_GROUPS -> {
+                // Any GROUP entity is an operand here, a group scope in the field list as much as a group in
+                // the group list, and A12 asks these gates in this order over the one list it reads
+                // (CheckFeldListenAnzahlOpImpl; validate.laws.GroupCountScopeOperandLawsTest).
+                List<AggregateOperand> entities = allOperands(fields, groups);
                 // A root is legal here only ALONE, and A12 asks that after duplicates
-                // under a class of its own (CheckFeldListenAnzahlOpImpl, KERNEL-FINDINGS KF388,
-                // validate.laws.GroupListDiagnosticIdentityLawsTest).
-                if (fields.size() + groups.size() > 1) {
-                    for (GroupRef g : groups) {
-                        if (isRoot(g)) {
+                // under a class of its own (KERNEL-FINDINGS KF388, validate.laws.GroupListDiagnosticIdentityLawsTest).
+                if (entities.size() > 1) {
+                    for (AggregateOperand entity : entities) {
+                        if (entity instanceof GroupListRef scope && isRoot(scope.group())) {
                             throw Refusals.of(KernelCode.MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS,
-                                    "NumberOfFilledGroups takes a root group only as its sole operand: " + g.path());
+                                    "NumberOfFilledGroups takes a root group only as its sole operand: "
+                                            + scope.group().path());
                         }
                     }
                 }
-                if (!fields.isEmpty()) {
-                    throw Refusals.of(KernelCode.MVK_NO_FIELDS_ALLOWED,
-                            "NumberOfFilledGroups takes groups only, no fields");
+                for (AggregateOperand entity : entities) {
+                    if (indexSelected(entity)) {
+                        throw Refusals.of(KernelCode.MVK_SEMANTIC_INDEX_NOT_ALLOWED,
+                                "NumberOfFilledGroups takes no index-selected operand: " + entity.renderedPath());
+                    }
                 }
-                // ≥2 distinct groups, OR a single repeatable group as a wildcard scope (Group*) —
-                // the latter counts that group's filled repetitions (kernel-accepted, verified).
-                boolean singleWildcard = groups.size() == 1 && groups.get(0).repeating();
-                if (groups.size() < 2 && !singleWildcard) {
+                for (AggregateOperand entity : entities) {
+                    if (!(entity instanceof GroupListRef)) {
+                        throw Refusals.of(KernelCode.MVK_NO_FIELDS_ALLOWED,
+                                "NumberOfFilledGroups takes groups only, no fields: " + entity.renderedPath());
+                    }
+                }
+                // ≥2 group entities, OR a sole one whose path carries a star on any level, its own or an
+                // ancestor's (KERNEL-FINDINGS KF462); `Group*` counts that group's filled repetitions.
+                boolean soleStarred = entities.size() == 1
+                        && !((GroupListRef) entities.getFirst()).flattened().isEmpty();
+                if (entities.size() < 2 && !soleStarred) {
                     throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDGN,
-                            "NumberOfFilledGroups needs more than one group, or a"
-                                    + " single repeatable group as a wildcard scope");
+                            "NumberOfFilledGroups needs more than one group, or a single starred group scope");
                 }
-                if (singleWildcard && isRoot(groups.get(0))) {
+                GroupRef sole = soleStarred ? ((GroupListRef) entities.getFirst()).group() : null;
+                if (sole != null && isRoot(sole)) {
                     // A12 admits this text; it is the root-group count, a record of its own.
                     throw new IllegalArgumentException("NumberOfFilledGroups over the repeatable root group "
-                            + groups.get(0).path() + " counts its repetitions: build it with Dsl.numberOfFilledRootGroups");
+                            + sole.path() + " counts its repetitions: build it with Dsl.numberOfFilledRootGroups");
                 }
             }
         }
         if (op == CountOp.DIFFERENT_VALUES) {
             checkValueComparable(fields);
         }
+    }
+
+    /** Whether A12 reads the operand through a semantic index, which this operator refuses. */
+    private static boolean indexSelected(AggregateOperand operand) {
+        return switch (operand) {
+            case IndexedFieldValue ignored -> true;
+            case IndexedGroupValue ignored -> true;
+            case FieldRef ignored -> false;
+            case FieldListRef ignored -> false;
+            case GroupListRef ignored -> false;
+        };
     }
 
     private static boolean isRoot(GroupRef group) {

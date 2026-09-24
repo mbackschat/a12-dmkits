@@ -3406,7 +3406,7 @@
       "operator": "NumberOfFilledGroups",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:0246925ca89fd627bf780c0b0fec723d5568c9c5da79d05fb77e5b7c26cb7ecd",
+      "digest": "sha256:f30974cf4b5516d64270789b9023d2450b2ff0d6592f2621b127190b4cde39b3",
       "classifications": [
         "REJECTION",
         "ADMISSION",
@@ -3426,6 +3426,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "NumberOfFilledGroupsStarDiffTest"
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "GroupCountScopeOperandLawsTest#theKernelTakesAnyGroupEntityAsAnOperand"
         }
       ]
     },
@@ -3433,7 +3438,7 @@
       "operator": "NumberOfFilledGroups",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:e9cbf9027d6c1007b41f65e750f051a6790844915c0568d64100f3d3246e56ab",
+      "digest": "sha256:37de7bfe24c3ecda532bc200998cdfc0532cfd94f2370ed28ddddec1b1e48aeb",
       "classifications": [
         "REJECTION",
         "ADMISSION",
@@ -3453,6 +3458,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "NumberOfFilledGroupsStarDiffTest"
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "GroupCountScopeOperandLawsTest#theKernelTakesAnyGroupEntityAsAnOperand"
         }
       ]
     },
