@@ -136,6 +136,63 @@ fun PreparedModel.resolveEntity(
 
 private const val UP = ".."
 
+/** A per-segment gate that answers for an EARLIER segment of a path, ahead of a later one's resolution. */
+internal enum class EarlierSegmentGate {
+    /** The H-model `.*` suffix, `MVK_POINT_IN_A12_MODEL`, which outranks the landing site. */
+    H_MODEL_SUFFIX,
+
+    /** A star on a name that has no repetitions, `MVK_INVALID_WILDCARD`. */
+    WILDCARD_LANDING,
+
+    /** A star on a step of the leading up-run, `MVK_INVALID_WILDCARD_REL`. */
+    UP_STEP_WILDCARD,
+}
+
+/**
+ * The gate A12's walk answers at before it reaches the segment of [written] that does not resolve, or null
+ * when the walk reaches that segment first.
+ *
+ * **A12 judges a path segment by segment, running resolution, then the `.*` suffix, then the star's landing
+ * site on each** (`CheckIdNameRefImpl.checkIdNameRef`, [KERNEL-FINDINGS KF356]). So a reference that does not
+ * resolve as a whole is not necessarily a resolution failure to A12: `Insured*` followed by `Nope` answers at
+ * `Insured*`, because a fixed group is starred there, and never reaches `Nope`. Treating the whole path as one lookup
+ * named `MVK_INVALID_ENTITY` for it, and withheld the landing class behind that (measured on group operands,
+ * field paths and `RepetitionNotUnique` keys, `rulekit.validate.laws.GroupOperandAndKeyResolverClassLawsTest`).
+ *
+ * Each prefix is resolved through [resolves], the same resolver the reference itself went through, so this
+ * adds no second reading of a path. [isRepeatableGroup] is asked only of a starred prefix that resolved,
+ * which is what lets a charged caller pay for exactly the bodies it reads. A star on a named turning point
+ * or a self-step is unmeasured and answers null, as it does in `repetitionWildcardFindings`.
+ */
+internal fun earlierSegmentGate(
+    written: String,
+    resolves: (String) -> Reference,
+    isRepeatableGroup: (String) -> Boolean,
+): EarlierSegmentGate? {
+    val segments = written.split('/')
+    for (at in segments.indices) {
+        val segment = segments[at]
+        if (segment.isEmpty()) {
+            // The leading slash of an absolute path, whose root segment is the next one.
+            continue
+        }
+        val resolved = resolves(segments.take(at + 1).joinToString("/")) as? Reference.Resolved ?: return null
+        if (!segment.endsWith("*")) {
+            continue
+        }
+        val stepped = segment.removeSuffix("*")
+        val gate = when {
+            stepped == UP -> EarlierSegmentGate.UP_STEP_WILDCARD.takeIf { segments.take(at).all { it == UP } }
+            stepped.isEmpty() || stepped.startsWith(".") -> null
+            stepped.endsWith(".") -> EarlierSegmentGate.H_MODEL_SUFFIX
+            !isRepeatableGroup(resolved.path) -> EarlierSegmentGate.WILDCARD_LANDING
+            else -> continue
+        }
+        return gate
+    }
+    return null
+}
+
 /** Drop a repetition wildcard (`Lines*`, `Lines.*`) without touching the `..` step, whose text ends in `.`. */
 private fun String.withoutRepetitionSuffix(): String {
     val withoutStar = removeSuffix("*")

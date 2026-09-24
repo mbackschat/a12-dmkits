@@ -81,8 +81,36 @@ internal fun PreparedModel.declarationsWithABrokenErrorTarget(
  * syntax class of its OPERATION (`ComputationMemberVerdictLawsTest`). A gate applied one text at a time
  * would report that syntax class.
  */
-internal fun PreparedModel.declarationsWithAnUnresolvableConditionReference(): Set<String> =
-    conditionReferences().declarationsWithAnUnresolvedReference()
+internal fun declarationsWithAnUnresolvableConditionReference(walked: List<ConditionReference>): Set<String> =
+    walked.declarationsWithAnUnresolvedReference()
+
+/**
+ * The condition references A12's segment walk reaches the END of: all of them except those an EARLIER
+ * segment's own gate answers for, before the walk gets to the segment that does not resolve.
+ *
+ * Such a reference is refused, but not as a missing name, so neither the reference's own class nor the
+ * withholding above may treat it as one: `Insured*` answers with the landing class and a later `Nope` is
+ * never looked up ([earlierSegmentGate]). Which family names that earlier class is the gate's own business;
+ * this only removes the resolution reading that A12 never reached.
+ *
+ * Untracked, like the composition that calls it, which is not a cell and so has no transcript to keep.
+ */
+internal fun PreparedModel.conditionReferencesWalkedToTheirEnd(): List<ConditionReference> {
+    val originOf = elements.associate { it.path to it.origin }
+    return conditionReferences().filterNot { reference ->
+        reference.target is Reference.Undeclared && earlierSegmentGate(
+            reference.written,
+            resolves = { prefix ->
+                resolveEntity(
+                    reference.declaredAt.substringBeforeLast('/', missingDelimiterValue = ""),
+                    prefix,
+                    originOf[reference.declaredAt] ?: DeclarationOrigin(""),
+                )
+            },
+            isRepeatableGroup = { path -> resolvableByPath[path]?.isRepeatableGroup == true },
+        ) != null
+    }
+}
 
 /**
  * The declarations a condition reference fails to resolve in — the one expression of that question.

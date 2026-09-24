@@ -3033,8 +3033,8 @@ Canonical in §9 "RepetitionNotUnique". Reconciling a12-kernel-lean `SPEC-2026-0
 | key-path shape (rule group `/Basket` above the repeatable `Lines`) | class |
 |---|---|
 | a repeated key | `MVK_DUPLICATE_PARAM1` |
-| an unresolvable key path | `MVK_INVALID_ENTITY` |
-| a starred key path | `MVK_NO_WILDCARDS_ALLOWED` |
+| an unresolvable key path | `MVK_INVALID_ENTITY` — **corrected 2026-09-24:** only for a relative miss or one below the root. An absolute key whose first segment is not the root is `MVK_INVALID_ROOT_GROUP`, a key climbing above the root `MVK_TOO_MANY_PARENT_GROUPS`, and an ambiguous bare name `MVK_FIELDNAME_NOT_UNIQUE`, the classes a condition reference draws ([KF356](#kf356)) |
+| a starred key path | `MVK_NO_WILDCARDS_ALLOWED` — once the key resolves: it is walked segment by segment first, so a star on a fixed group is `MVK_INVALID_WILDCARD` and a miss behind a star is `MVK_INVALID_ENTITY` (corrected 2026-09-24, [KF356](#kf356)) |
 | an error field that leaves a repetition level unpinned | `MVK_NO_WILDCARD` |
 | keys naming a sibling rather than the error field | `MVK_ERROR_FIELD_NOT_REFERENCED` |
 
@@ -5442,7 +5442,7 @@ One model carries every row: a root group `Order` with a field `Code` and a subg
 | the reference that does not resolve | what A12 reports |
 |---|---|
 | an entity in a condition | `MVK_INVALID_ENTITY` |
-| an entity in a condition, at ROOT-GROUP level (`/Nope`) | `MVK_INVALID_ROOT_GROUP` — the Kernel branches on `EntityUtils.isRootGroup`, exactly one path separator |
+| an entity in a condition, at ROOT-GROUP level (`/Nope`) | `MVK_INVALID_ROOT_GROUP` — **corrected 2026-09-24:** not "exactly one path separator". The class follows an ABSOLUTE path whose first segment is not a root, however many segments follow, and a declared group read at root position (`/Lines`) is one ([KF356](#kf356)) |
 | an entity in a condition, climbing out of the root group | `MVK_TOO_MANY_PARENT_GROUPS` |
 | a rule's `errorEntityRelPath` naming nothing | `MVK_ERROR_FIELD_MISSING` **and** `MVK_MISSING_ERROR_FIELD`, together |
 | a rule's `errorEntityRelPath` climbing PAST the root | **no code at all** — `ElementPathUtils.absPath` raises while the model is deserialized |
@@ -8950,7 +8950,26 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 
 **The row that mattered was `/NoSuchRoot/Amount`, and it exposed a live wrong-class defect in the portable checker.** Every earlier measurement of the root-group class used a path of exactly one segment, so "the path is one segment long" and "the ROOT segment is what failed" were one thing across all of them — and the checker had implemented the first, counting separators in the whole candidate. It named `MVK_INVALID_ENTITY` where A12 names `MVK_INVALID_ROOT_GROUP`, on every absolute path whose missing root carries a child. Two of its own mirrors asserted that wrong class, neither of them ever put to the Kernel; the message-parameter surface had the separating row (`RuleMessageGroupParameterLawsTest`) and the shared helper got it wrong there too.
 
-Locked: `validate.laws.ReferenceSegmentGateOrderLawsTest`. **Fixed in the portable checker on 2026-09-14** — `Reference.Undeclared` now carries whether the root segment resolved, because only the resolver knows which roots a model declares.
+**Extended 2026-09-24: the same walk runs on a GROUP operand and on a `RepetitionNotUnique` KEY, and every one of the three gates answers ahead of a later miss** (reconciles a12-kernel-lean `SPEC-2026-09-24-01`, their report; every row measured here on our own fixture, a rule in `/Policy` of a model with a fixed `Insured` and `Broker`, a repeatable `Claims`, and a `Remark` in both `Insured` and `Claims`):
+
+| the operand that does not resolve | A12 |
+|---|---|
+| a fixed group, on all five group-list quantifiers, `NumberOfFilledGroups` and `GroupFilled`: `/Nope/Insured`, `/Nope`, `/Claims` | `MVK_INVALID_ROOT_GROUP` |
+| the same seven carriers: `../Insured` | `MVK_TOO_MANY_PARENT_GROUPS` |
+| the same seven carriers: `/Policy/Nope`, bare `Nope` | `MVK_INVALID_ENTITY` |
+| a starred group: `Nope*`, `Claims*/Nope`, `Nope/Claims*` | `MVK_INVALID_ENTITY` |
+| a starred group: `/Nope/Claims*`, `/Claims*` | `MVK_INVALID_ROOT_GROUP` |
+| a starred group: `Insured*`, `Insured*` then `Nope`, `Holder*` then `Nope`, `/Policy*/Claims*` | `MVK_INVALID_WILDCARD` |
+| a key: `/Nope/Claims/ClaimRef` · `../Claims/ClaimRef` · ambiguous `Remark` | `MVK_INVALID_ROOT_GROUP` · `MVK_TOO_MANY_PARENT_GROUPS` · `MVK_FIELDNAME_NOT_UNIQUE` |
+| a starred key: `Claims*/ClaimRef` · `Insured*` then `Remark` or `Nope` · `Claims*` then `Nope`, `Nope*/ClaimRef` | `MVK_NO_WILDCARDS_ALLOWED` · `MVK_INVALID_WILDCARD` · `MVK_INVALID_ENTITY` |
+| a field path with the suffix ahead of a miss: `Claims.*` then `Nope`, `Insured.*` then `Nope` | `MVK_POINT_IN_A12_MODEL` |
+| a starred up-step ahead of a miss, from `/Policy/Insured`: `..*` then `Nope` | `MVK_INVALID_WILDCARD_REL` |
+
+Every table carries an admitted control. **The discriminators are the rows with a gated segment AHEAD of a miss**: a reader resolving the whole path first predicts `MVK_INVALID_ENTITY` on each, and a reader judging every star first predicts the landing class on `Nope*/ClaimRef`. A starred key is resolved before the key list's own wildcard gate reads it ([KF355](#kf355)).
+
+**It exposed a second wrong-class defect in the portable checker, on the rows the first fix could not see.** The checker resolved a reference as one lookup, so a gated segment ahead of a miss read as a missing name: it named `MVK_INVALID_ENTITY` for `Insured*` then `Nope` on every carrier, and its first-defect withholding then dropped the landing class it had found. `RepetitionWildcardTest` had locked that substitution as a disclosed price. The reference walk now asks each prefix's gate (`earlierSegmentGate`), so those rows name A12's class. One row stays an under-report: the checker does not carry the key list's own wildcard gate, so `Claims*/ClaimRef` is silent ([DEV-API-GAPS DG80](DEV-API-GAPS.md)).
+
+Locked: `validate.laws.ReferenceSegmentGateOrderLawsTest`, and the 2026-09-24 carriers by `validate.laws.GroupOperandAndKeyResolverClassLawsTest` with `consistency`'s `GroupOperandAndKeyResolverClassTest` as the checker mirror. **Fixed in the portable checker on 2026-09-14** — `Reference.Undeclared` now carries whether the root segment resolved, because only the resolver knows which roots a model declares.
 
 ## §9 supplement — `RepetitionNotUnique`'s COMPLETE gate order, and the two branches that never both run (measured, 2026-09-14) <a id="kf355"></a>
 
@@ -8959,6 +8978,8 @@ Locked: `validate.laws.ReferenceSegmentGateOrderLawsTest`. **Fixed in the portab
 **Eleven classes guard one construct, and until now the estate had measured them one containment assertion at a time across four files.** A containment claim cannot say which gate answers when two are violated, which is the only question that matters to a client-side checker deciding whether it may speak.
 
 **The KEY LIST is checked first, in this order**, every gate over the whole list: a CATEGORY projection `MVK_CATEGORY_NOT_ALLOWED` · a GROUP `MVK_NO_GROUPS_ALLOWED` · a WILDCARD `MVK_NO_WILDCARDS_ALLOWED` · a SEMANTIC INDEX `MVK_SEMANTIC_INDEX_NOT_ALLOWED` · a field without value validation `MVK_INVALID_RAW_TYPE`. **Every one of them reports ahead of every scope and placement gate** — measured on three shapes that break a key rule and a later rule at once.
+
+**A key is RESOLVED before this list is read** (measured 2026-09-24): a starred key is walked segment by segment first, so a star on a fixed group answers `MVK_INVALID_WILDCARD` and a miss behind a star `MVK_INVALID_ENTITY`, and only a key that resolves reaches `MVK_NO_WILDCARDS_ALLOWED` ([KF356](#kf356)).
 
 **Then exactly ONE of two branches runs, chosen by whether `@From` is present**, and that is the structural claim worth keeping:
 

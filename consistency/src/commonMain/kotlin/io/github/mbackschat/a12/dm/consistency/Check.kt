@@ -974,7 +974,10 @@ internal fun checkRun(
     // unresolvable name withholds every class that would have been drawn later in the same text (KF340).
     // Eleven families read that text, so without this any condition carrying two defects — the normal state
     // of one being written — draws a class A12 withheld.
-    val resolvedFirst = prepared.declarationsWithAnUnresolvableConditionReference()
+    // A reference an earlier segment's gate answers for never reaches its miss, so it is neither a missing
+    // name nor a reason to withhold what follows it (KF356).
+    val walked = prepared.conditionReferencesWalkedToTheirEnd()
+    val resolvedFirst = declarationsWithAnUnresolvableConditionReference(walked)
     // Every cell this check must produce, in dispatch order. Validity is decided ONCE per cell and
     // everything below reads that decision — both output channels and the counter.
     val scheduled = schedule(tracked)
@@ -987,7 +990,7 @@ internal fun checkRun(
     }
     val reused = reusable.count { it.value != null }
     val judged = (declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
-        prepared.conditionReferences().mapNotNull {
+        walked.mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
         } + scheduled.flatMap { cells.getValue(it.key).findings })
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
@@ -1304,9 +1307,13 @@ private val POST_PARSE_CONDITION_CODES = setOf(
  * names the other defect: one class either way, both true of the text, and the author reaches the same fixed
  * condition. What it never does is reject a model A12 admits, or report two classes where A12 reports one.
  *
- * `RepetitionWildcardTest.theShapesItLeavesAlone` is the row where the substitution is visible, and it used
- * to assert both classes on the reasoning that the extra one was still true. [ConsistencyReport] settles
- * that: a finding is A12's verdict on a declaration, so a class A12 did not draw is a divergence however
- * true it is.
+ * **The substitution survives only between two DIFFERENT references.** Within one path the order is known
+ * without an offset, because A12 walks the path segment by segment: a reference whose earlier segment's gate
+ * answers never reaches its miss, so it is not an unresolvable name here at all
+ * ([conditionReferencesWalkedToTheirEnd], measured 2026-09-24). `RepetitionWildcardTest.theShapesItLeavesAlone`
+ * was the row that showed the substitution, a starred fixed group ahead of a missing leaf, and it now names
+ * A12's class. It once asserted both classes on the reasoning that the extra one was still true;
+ * [ConsistencyReport] settles that: a finding is A12's verdict on a declaration, so a class A12 did not draw
+ * is a divergence however true it is.
  */
 private val CONDITION_TEXT_CODES = POSITIONED_CONDITION_CODES + POST_PARSE_CONDITION_CODES

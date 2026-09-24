@@ -8,10 +8,13 @@ package io.github.mbackschat.a12.dm.consistency
  * never emits it, which is why the ledger carried the code as erased — but a STORED condition is authored
  * text, and `rule check` and `modify --condition` both accept raw strings, so a model can carry it.
  *
- * **It is reported only where the reference otherwise RESOLVES**, because A12 runs resolution first within
- * each segment: the same suffix on a name nothing declares draws `MVK_INVALID_ENTITY` and this family must leave it to the
- * reference family. The reader strips the suffix before binding, so a resolved outcome says nothing about
- * whether it was written — which is why this reads the AUTHORED text rather than the bound path.
+ * **It is reported only where the SUFFIXED segment resolves**, because A12 runs resolution first within each
+ * segment: the same suffix on a name nothing declares draws `MVK_INVALID_ENTITY` and this family must leave it
+ * to the reference family. A miss AFTER the suffixed segment is another matter, since the walk answers at the
+ * suffix and never reaches it, so `Claims.*` then `Nope` is this family's too (measured 2026-09-24,
+ * `rulekit.validate.laws.GroupOperandAndKeyResolverClassLawsTest`). The reader strips the suffix before binding,
+ * so a resolved outcome says nothing about whether it was written — which is why this reads the AUTHORED text
+ * rather than the bound path.
  *
  * **It reports ahead of the wildcard's landing site, measured**: the suffix on a non-repeatable group draws
  * this class from A12 and not `MVK_INVALID_WILDCARD`, so a consumer told only the landing-site class would be
@@ -19,7 +22,7 @@ package io.github.mbackschat.a12.dm.consistency
  * suffix — `Insured*` still stars a group that does not repeat.
  */
 internal fun TrackedFactBase.hModelPathSuffixFindings(): List<Finding> = conditionReferences()
-    .filter { it.target is Reference.Resolved && it.written.carriesTheSuffix() }
+    .filter { it.written.carriesTheSuffix() && (it.target is Reference.Resolved || answersAtTheSuffix(it)) }
     .map { reference ->
         Finding(
             FindingCategory.A12_CONSTRAINT,
@@ -32,6 +35,23 @@ internal fun TrackedFactBase.hModelPathSuffixFindings(): List<Finding> = conditi
     }
 
 private const val SUFFIX = ".*"
+
+/**
+ * Whether an unresolvable [reference] is answered at its suffix before its miss is reached: the suffix is a
+ * per-segment gate, so `Claims.*` answers ahead of a `Nope` behind it ([earlierSegmentGate]).
+ */
+private fun TrackedFactBase.answersAtTheSuffix(reference: ConditionReference): Boolean {
+    if (reference.target !is Reference.Undeclared) {
+        return false
+    }
+    val group = reference.declaredAt.substringBeforeLast('/', missingDelimiterValue = "")
+    val origin = declarationAt(reference.declaredAt)?.origin ?: DeclarationOrigin("")
+    return earlierSegmentGate(
+        reference.written,
+        resolves = { prefix -> resolveEntity(group, prefix, origin) },
+        isRepeatableGroup = { path -> declarationAt(path)?.isRepeatableGroup == true },
+    ) == EarlierSegmentGate.H_MODEL_SUFFIX
+}
 
 /**
  * Whether the text carries the suffix on a NAME segment.
