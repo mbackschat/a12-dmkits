@@ -10410,7 +10410,7 @@ The first table's last coverage follows from the third step rather than from a f
 
 **Lock:** `adapter.laws.PartialGroupStarFieldCoverageDiffTest`, all seven coverages of the first table, and `adapter.laws.PartialGroupCountRelevanceDiffTest`, all twelve rows of the second, each on three engines.
 
-## §14 supplement — an up-step stands only in a relative path's leading run; after a STARRED name or a leading up-run the segments before it answer their own gates first, and the short-name fallback reaches a starred first segment (measured, 2026-09-24) <a id="kf465"></a>
+## §14 supplement — an up-step stands only in a relative path's leading run; after a STARRED name or a leading up-run the segments before it answer their own gates first, and the short-name fallback reaches a relative path's first segment however it is spelled (measured, 2026-09-24) <a id="kf465"></a>
 
 > Fold: pending — refines §14's segment walk ([KF356](#kf356)) at the up-step and at the short-name fallback; folds beside the walk.
 
@@ -10438,6 +10438,9 @@ The first table's last coverage follows from the third step rather than from a f
 | `Holder*`, `Holder*/Claims`, `BrokerName*` | `/Policy/Insured` | `MVK_INVALID_WILDCARD` | the short-name fallback resolves a starred FIRST segment, and `BrokerName` (declared in a sibling group) rules out an ancestor walk |
 | `Holder`, `Holder*`, `BrokerName*`, flag OFF | `/Policy/Insured` | `MVK_INVALID_ENTITY` | the within-model control: the flag alone decides it |
 | `Remark*` | `/Policy` | `MVK_FIELDNAME_NOT_UNIQUE` | the fallback's uniqueness demand holds on a starred segment too |
+| `Remark/Nope`, `Remark*/Nope`, `Remark/Claims*` · `Age/Nope` · `Age*/Nope` | `/Policy` | `MVK_FIELDNAME_NOT_UNIQUE` · `MVK_INVALID_ENTITY` · `MVK_INVALID_WILDCARD` | the fallback answers the FIRST segment of a longer path, starred or not: an ambiguous one is not unique where a positional reading names a miss, and a unique one binds a field with nothing below it |
+| `Remark/Nope`, `Age/Nope`, flag OFF | `/Policy` | `MVK_INVALID_ENTITY` | …and the flag alone decides it there too |
+| `$Remark/Nope$` · `$Age/Nope$` in the message | `/Policy` | `ERROR_TEXT_FIELDNAME_NOT_UNIQUE` · `INVALID_ENTITY` | a message parameter's first segment reaches the same fallback, in that surface's vocabulary |
 
 Two more grids settle how the refusal meets the rest of the text and the other surface. In a condition A12 answers the FIRST defect in text order: `FieldFilled(Nope2) And FieldFilled(Claims/..)` is `MVK_INVALID_ENTITY` and the same two operands swapped are `MVK_UNEXPECTED_TOKEN`, a starred operand ahead of the step wins with `MVK_NO_WILDCARDS_ALLOWED`, and a stray `)` behaves the same way (a token alone, `MVK_INVALID_ENTITY` behind a `Nope2`), so the reference checks run as the parser reaches each reference rather than after a finished parse. In a MESSAGE parameter every misplaced up-step is `MVK_UNEXPECTED_TOKEN`, `$Claims/../Holder$`, `$Nope/../Holder$`, `$/Policy/../Holder$` and `$/../Holder$` from the root and `$../Nope/../Holder$` from `Insured` alike, where the controls keep the surface's own vocabulary (`$../Nope$` is `INVALID_ENTITY`, `$../../Holder$` is `ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS`): that surface never walks the prefix, and it spells the condition's grammar code here rather than an `ERROR_TEXT_` one.
 
@@ -10445,6 +10448,6 @@ So the up-step rule has two tiers, and which one applies depends on what PRECEDE
 
 **Mechanism (hypothesis, not measured):** the grammar parses a plain name run followed by `/..` as a malformed path, while a starred name ends one iteration segment and a leading up-run opens a relative path, and in both cases the parser hands the prefix to the segment walk before the up-step that follows is refused.
 
-**Found by** the checker-vs-kernel path grid (`adapter.laws.CheckerPathGridAgreementTest`), where these spellings account for most of its 813 disagreeing rows on first run; the checker's side is `consistency.MisplacedUpStepTest`, row for row.
+**Found by** the checker-vs-kernel path grid (`adapter.laws.CheckerPathGridAgreementTest`), where these spellings account for most of its 813 disagreeing rows on first run; the checker's side is `consistency.MisplacedUpStepTest` and, for the fallback rows, `consistency.FirstSegmentShortNameTest`, row for row.
 
 **Lock:** `rulekit.validate.laws.PathSegmentWalkLawsTest`, every grid.

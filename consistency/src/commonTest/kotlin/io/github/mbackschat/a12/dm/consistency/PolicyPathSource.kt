@@ -17,13 +17,17 @@ internal object PolicyPathSource {
         inInsured: Boolean = false,
         message: String = "x",
     ): List<String> {
-        val rule = """,{"type":"Rule","id":"r0","name":"Probe","Rule":{
-                  "errorCondition":"$condition",
-                  "errorEntityRelPath":"$errorField",
-                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"$message"}]}}"""
+        val rule = rule(errorField, condition, message)
         val source = if (inInsured) model(ruleInInsured = rule) else model(ruleInPolicy = rule)
         return check(ModelSource(source)).findings.filter { it.justifiesRejection }.map { it.code }.distinct()
     }
+
+    /** One rule named `Probe`, comma-led so it splices into [model]'s element lists. */
+    fun rule(errorField: String, condition: String, message: String = "x") =
+        """,{"type":"Rule","id":"r0","name":"Probe","Rule":{
+                  "errorCondition":"$condition",
+                  "errorEntityRelPath":"$errorField",
+                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"$message"}]}}"""
 
     /** The model, with [ruleInPolicy] and [ruleInInsured] spliced in as already comma-led element lists. */
     fun model(ruleInPolicy: String = "", ruleInInsured: String = "") = """

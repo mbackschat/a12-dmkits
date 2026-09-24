@@ -97,7 +97,7 @@ fun PreparedModel.dependencyEdges(): List<DependencyEdge> = buildList {
                 resolved = reference.target is Reference.Resolved,
             ),
         )
-        reference.rebindableShortName()?.let { name ->
+        rebindableShortName(reference)?.let { name ->
             add(DependencyEdge(reference.declaredAt, reference.member, reference.written,
                 DependencyOn.ShortName(name), reference.target is Reference.Resolved))
         }
@@ -123,19 +123,22 @@ private fun Reference.asElementDependency(): DependencyOn = when (this) {
 }
 
 /**
- * The bare name a namesake elsewhere could rebind, or null when no namesake can.
+ * The name a namesake elsewhere could rebind, or null when no namesake can.
  *
- * A reference is rebindable exactly when it is one bare segment AND the declaring group is not what resolved
- * it — the local tier wins first, so a group's own field cannot be taken over by a namesake. A bare name that
- * resolves to NOTHING is rebindable too: declaring it anywhere is what would bind it.
+ * It is a relative path's FIRST segment, since that is where [resolveEntity] applies the model-wide fallback,
+ * and only when the declaring group does not declare it — the local tier wins first, so a group's own field
+ * cannot be taken over by a namesake. A name that resolves to NOTHING is rebindable too: declaring it anywhere
+ * is what would bind it, and a second `Age` turns `Age/Nope` from a miss into a name that is not unique.
  */
-private fun ConditionReference.rebindableShortName(): String? {
-    // `.*` before `*`, or the dot survives and the name matches nothing — a silent false negative.
-    val name = written.removeSuffix(".*").removeSuffix("*")
-    if ('/' in name || name.isEmpty()) {
+private fun PreparedModel.rebindableShortName(reference: ConditionReference): String? {
+    if (reference.written.startsWith("/")) {
         return null
     }
-    val declaringGroup = declaredAt.substringBeforeLast('/', missingDelimiterValue = "")
-    val locallyResolved = (target as? Reference.Resolved)?.path == "$declaringGroup/$name"
-    return name.takeUnless { locallyResolved }
+    // `.*` before `*`, or the dot survives and the name matches nothing — a silent false negative.
+    val name = reference.written.substringBefore('/').removeSuffix(".*").removeSuffix("*")
+    if (name.isEmpty() || name.startsWith("..")) {
+        return null
+    }
+    val declaringGroup = reference.declaredAt.substringBeforeLast('/', missingDelimiterValue = "")
+    return name.takeUnless { "$declaringGroup/$name" in resolvableByPath }
 }

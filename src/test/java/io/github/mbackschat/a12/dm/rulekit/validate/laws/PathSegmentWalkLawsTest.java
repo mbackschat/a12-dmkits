@@ -113,6 +113,36 @@ class PathSegmentWalkLawsTest {
         assertEquals(off, verdicts(SHORT_NAMES_OFF, "/Policy/Insured", "Remark", off), "short-name references off");
     }
 
+    /**
+     * The fallback answers the FIRST segment of a longer path too, starred or not, and on both surfaces:
+     * {@code Remark/Nope} is not unique where a positional reading would call it an entity miss. That is the
+     * row the two readings disagree on, because the fallback indexes fields and a field has nothing below it,
+     * so a unique first segment ({@code Age/Nope}) is an entity miss either way. The flag-off twin shows the
+     * fallback is what answers.
+     */
+    @Test
+    void theShortNameFallbackAnswersTheFirstSegmentOfALongerPath() {
+        Map<String, String> on = orderedMap(
+                "Remark/Nope", "MVK_FIELDNAME_NOT_UNIQUE",
+                "Remark*/Nope", "MVK_FIELDNAME_NOT_UNIQUE",
+                "Remark/Claims*", "MVK_FIELDNAME_NOT_UNIQUE",
+                "Age/Nope", "MVK_INVALID_ENTITY",
+                "Age*/Nope", "MVK_INVALID_WILDCARD");
+        assertEquals(on, verdicts(SHORT_NAMES_ON, "/Policy", "Holder", on), "short-name references on");
+        Map<String, String> off = orderedMap(
+                "Remark/Nope", "MVK_INVALID_ENTITY",
+                "Age/Nope", "MVK_INVALID_ENTITY");
+        assertEquals(off, verdicts(SHORT_NAMES_OFF, "/Policy", "Holder", off), "short-name references off");
+        Map<String, String> message = orderedMap(
+                "see $Remark$", "ERROR_TEXT_FIELDNAME_NOT_UNIQUE",
+                "see $Remark/Nope$", "ERROR_TEXT_FIELDNAME_NOT_UNIQUE",
+                "see $Age/Nope$", "INVALID_ENTITY");
+        Map<String, String> actual = new LinkedHashMap<>();
+        message.keySet().forEach(text -> actual.put(text, KernelLaws.messageVerdict(SHORT_NAMES_ON, "/Policy",
+                "../Holder", "FieldFilled(Holder)", "en_US", text)));
+        assertEquals(message, actual, "a message parameter");
+    }
+
     /** An ambiguous starred name meets the uniqueness demand the fallback carries on a bare leaf. */
     @Test
     void anAmbiguousStarredNameIsNotUnique() {

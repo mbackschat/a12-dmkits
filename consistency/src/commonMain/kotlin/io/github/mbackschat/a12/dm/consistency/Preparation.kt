@@ -354,13 +354,13 @@ data class PreparedModel(
     internal val conditionReferenceList: List<ConditionReference> by lazy { computeConditionReferences() }
 
     /**
-     * Every resolvable FIELD's path, keyed by its short name — the bare-leaf fallback's lookup.
+     * Every resolvable FIELD's path, keyed by its short name — the first-segment fallback's lookup.
      *
      * **The last scan on the resolver, which the sibling sweep reached rather than a profile.**
      * [resolvableByPath] says its job is to make resolving a reference "a lookup rather than a scan", and the
      * short-name arm of `PreparedModel.resolve` was still filtering every element and allocating a
      * `substringAfterLast` per one, on the resolver the [declaredReferenceList] note names as part of the
-     * measured 95 %. It runs only when a bare leaf misses its own group AND the model turns
+     * measured 95 %. It runs only when a relative path's first segment misses its own group AND the model turns
      * `fieldRefByShortNameAllowed` on, so it is a gated path rather than a hot one on every model — no timing
      * claim rides on this.
      *

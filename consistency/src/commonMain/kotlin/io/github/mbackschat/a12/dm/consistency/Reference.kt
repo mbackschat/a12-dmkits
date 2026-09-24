@@ -97,10 +97,11 @@ enum class ReferenceRole {
  * both spellings look identical, so the asymmetry is measured rather than assumed: a rule in `/Order/Lines`
  * reaches `/Order/Code` as `../Code` in its condition and as `../../Code` in its error target.
  *
- * A leading `/` makes the path absolute. A single bare name keeps the two-tier treatment of [resolve] —
- * the declaring group first, then the model-wide field short name when the model allows it — while a
- * multi-segment path is positional and gets no fallback. A trailing `*` or `.*` is a repetition wildcard
- * rather than part of a name, so it is stripped before matching and kept in the reported text.
+ * A leading `/` makes the path absolute. A relative path's FIRST segment keeps the two-tier treatment of
+ * [resolve] — the declaring group first, then the model-wide field short name when the model allows it —
+ * whether it is starred and whatever follows it, and the rest of the path is positional. A trailing `*` or
+ * `.*` is a repetition wildcard rather than part of a name, so it is stripped before matching and kept in the
+ * reported text.
  *
  * **The floor is the ROOT GROUP, not the model root.** A `..` that would leave the outermost group has no
  * position to name — the model root holds groups, not fields — and A12 says so with a distinct code rather
@@ -141,11 +142,17 @@ private fun PreparedModel.resolveSegments(
     origin: DeclarationOrigin,
 ): Reference {
     val steps = segments.map { it.withoutRepetitionSuffix() }
-    // The two-tier short-name treatment is for a single BARE LEAF. A starred segment names a repeatable
-    // group's iteration rather than a leaf, and the Kernel gates its fallback per `idNameRef`, so `Lines*`
-    // must not reach a model-wide field index that could resolve it to an unrelated field of that name.
-    if (!absolute && steps.size == 1 && steps.single() != UP && segments.none { it.contains('*') }) {
-        return resolve(declaringGroup, steps.single(), origin)
+    // A12 looks each segment up with the fallback gated on the path being relative ALONE, so the first
+    // segment gets it however it is spelled (`CheckIdNameRefImpl.getEntityFromConditionText`): `Holder*` from a
+    // nested rule lands on the root field, and `Remark/Nope` is not unique where a positional reading names a
+    // miss (`rulekit.validate.laws.PathSegmentWalkLawsTest`). The fallback reaches only fields, which have
+    // nothing below them, so after a first segment it bound the rest cannot resolve and positional is exact.
+    val first = steps.firstOrNull()
+    if (!absolute && first != null && !first.startsWith(UP)) {
+        val tiered = resolve(declaringGroup, first, origin)
+        if (steps.size == 1 || tiered is Reference.Ambiguous) {
+            return tiered
+        }
     }
     val path = if (absolute) mutableListOf() else declaringGroup.split('/').filter { it.isNotEmpty() }.toMutableList()
     var aboveRoot = false
