@@ -38,5 +38,5 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * nested inside an existing sealed member.
  */
 public sealed interface AggregateOperand extends DuplicateOperand
-        permits FieldOperand, GroupListRef, IndexedGroupValue {
+        permits FieldOperand, GroupScope {
 }

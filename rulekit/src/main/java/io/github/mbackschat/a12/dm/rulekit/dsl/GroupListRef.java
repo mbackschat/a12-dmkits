@@ -13,7 +13,7 @@ import java.util.List;
  * to scan instantiated group repetitions. Obtain via {@link BoundModel#flattenGroup(String)}.
  */
 public record GroupListRef(GroupRef group, List<GroupRef> flattened, boolean correlated)
-        implements GroupListOperand, AggregateOperand, ValueListOperand {
+        implements GroupListOperand, GroupScope, ValueListOperand {
 
     public GroupListRef {
         flattened = List.copyOf(flattened);
@@ -37,6 +37,20 @@ public record GroupListRef(GroupRef group, List<GroupRef> flattened, boolean cor
      */
     public GroupListRef outer() {
         return new GroupListRef(group, flattened, true);
+    }
+
+    /**
+     * The row of this scope whose index field holds [indexValue], {@code Group For "key"}: the group peer of a
+     * field handle's {@code semanticIndex(key)}. A star below the index group stays on the scope, which A12
+     * admits ({@code validate.laws.SemanticIndexWildcardPlacementLawsTest}).
+     */
+    public IndexedGroupValue forIndex(String indexValue) {
+        return new GroupSemanticIndexValue(this, indexValue);
+    }
+
+    /** The row whose index field holds the value [keyField] holds at run time, {@code Group For KeyField}. */
+    public IndexedGroupValue forIndex(FieldRef keyField) {
+        return new GroupSemanticIndexFieldValue(this, keyField);
     }
 
     /** The terminal group's absolute path (no stars). */

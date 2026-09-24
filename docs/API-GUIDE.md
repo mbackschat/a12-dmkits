@@ -864,7 +864,18 @@ Condition c = m.str("/Order/CustomerName").eq(
 
 Both indexed shapes are bidirectional: `KernelAdapter.read` reconstructs the same `SemanticIndex` payload for foreign `FieldFilled([… For …])`, `FieldNotFilled([… For …])`, and `FieldValueAsString([… For …])` expressions instead of reducing them to the underlying field.
 
-**An index-selected GROUP** (`Packages For "P1"`) is an `IndexedGroupValue`: `new GroupSemanticIndexValue(m.flattenGroup(path), key)`, or `GroupSemanticIndexFieldValue` for a field key. It is an operand of the group-list quantifiers (`Dsl.noGroupFilled(p1)`), of the field-fill quantifiers through `Dsl.entityListPredicate`, and of the aggregates, alone or beside other operands. Alone it satisfies an aggregate's arity (`Dsl.sum(p1)`, `Dsl.numberOfFilledFields(p1)`), exactly where A12 admits it, and `KernelAdapter.read` reads each of these shapes back with the key kept (`validate.laws.SemanticIndexGroupOperandCarrierLawsTest`, `adapter.SemanticIndexGroupOperandReadTest`). An index-selected FIELD, `m.num(path).semanticIndex(key).index()`, is a group-list operand too, beside fields and groups: `Dsl.atLeastOneGroupFilled(count.semanticIndex("SKU-1").index(), customer)` asks whether the selected cell is filled ([AF167](API-FINDINGS.md#af167)).
+**An index-selected GROUP** (`Packages For "P1"`) is an `IndexedGroupValue`: `m.flattenGroup(path).forIndex(key)`, or `.forIndex(keyField)` for a key read from a field. It is an operand of the group-list quantifiers (`Dsl.noGroupFilled(p1)`), of the group-scoped field-fill quantifiers, where it and a plain scope are both a `GroupScope`, and of the aggregates, alone or beside other operands. Alone it satisfies an aggregate's arity (`Dsl.sum(p1)`, `Dsl.numberOfFilledFields(p1)`), exactly where A12 admits it, and `KernelAdapter.read` reads each of these shapes back with the key kept (`validate.laws.SemanticIndexGroupOperandCarrierLawsTest`, `adapter.SemanticIndexGroupOperandReadTest`). An index-selected FIELD, `m.num(path).semanticIndex(key).index()`, is a group-list operand too, asking whether the selected cell is filled ([AF167](API-FINDINGS.md#af167)):
+
+<!-- snippet: indexed-group -->
+```java
+// forIndex(key) selects one row of a group scope, as semanticIndex(key) selects one cell of a field.
+// The row is a GroupScope, so it stands beside a plain scope in the group-scoped field-fill quantifiers.
+GroupListRef items = m.flattenGroup("/Order/Items");
+Condition itemComplete = Dsl.allFieldsFilled(items.forIndex("SKU-1"), m.flattenGroup("/Order/ShippingAddress"));
+// The selected cell is a group-list operand beside a field.
+Condition anyGiven = Dsl.atLeastOneGroupFilled(
+        m.num("/Order/Items/Count").semanticIndex("SKU-1").index(), m.field("/Order/CustomerName"));
+```
 
 **The rule's own group.** `Dsl.ruleGroup()` is the self-reference to the rule's containing group (the kernel's `RegelKontext`); it renders the reserved keyword (EN `RuleGroup`, DE `RegelKontext`), never a path. On a rule iterating a repeatable group it is the "is this row present" guard — the shape behind attachment/row-content rules (finding 60):
 

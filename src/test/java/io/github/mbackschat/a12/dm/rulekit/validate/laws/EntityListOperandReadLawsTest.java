@@ -21,7 +21,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
 
@@ -356,7 +355,7 @@ class EntityListOperandReadLawsTest {
         }
         String key = token.substring(keyAt + " For ".length());
         if (isGroup) {
-            return new GroupSemanticIndexValue(M.flattenGroup(path), key.substring(1, key.length() - 1));
+            return M.flattenGroup(path).forIndex(key.substring(1, key.length() - 1));
         }
         return key.startsWith("\"") ? new SemanticIndexValue(M.field(path), key.substring(1, key.length() - 1))
                 : new SemanticIndexFieldValue(M.field(path), M.field("/Item/" + key));

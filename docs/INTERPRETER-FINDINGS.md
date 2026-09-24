@@ -4130,7 +4130,7 @@ Closes [IG149](INTERPRETER-GAPS.md). [KF252](KERNEL-FINDINGS.md#kf252) widened t
 
 ### IF331: a keyed GROUP operand is read through the one row its key selects, and every group-presence condition now evaluates it on the selection `FirstFilledValue` already used (MEASURED 2026-09-23) <a id="if331"></a>
 
-**The gap.** `NoGroupFilled(/Order/Packages For "P1")`, its four group-list siblings and the scalar `GroupFilled`/`GroupNotFilled` leaves are kernel-admitted (`validate.laws.SemanticIndexGroupOperandCarrierLawsTest`), yet the prepared-plan audit admitted a group semantic index only inside `FirstFilledValue`, so `model eval` reported every such rule unsupported. The refusal was loud, never a wrong verdict, which is why it was measured before DEV-API-GAPS DG68 made the shape easier to author. The field-fill quantifiers and the aggregates stay declined: [IG155](INTERPRETER-GAPS.md).
+**The gap.** `NoGroupFilled(/Order/Packages For "P1")`, its four group-list siblings and the scalar `GroupFilled`/`GroupNotFilled` leaves are kernel-admitted (`validate.laws.SemanticIndexGroupOperandCarrierLawsTest`), yet the prepared-plan audit admitted a group semantic index only inside `FirstFilledValue`, so `model eval` reported every such rule unsupported. The refusal was loud, never a wrong verdict, which is why it was measured before [AF168](API-FINDINGS.md#af168) made the shape easier to author. The field-fill quantifiers and the aggregates stay declined: [IG155](INTERPRETER-GAPS.md).
 
 **What the kernel does, both strategies agreeing on every row.** One fixture: package rows keyed `P1` (filled throughout) and `P2` (its key alone), none keyed `P3`.
 

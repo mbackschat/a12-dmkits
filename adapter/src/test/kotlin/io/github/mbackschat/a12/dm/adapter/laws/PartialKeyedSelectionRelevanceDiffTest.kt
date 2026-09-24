@@ -25,8 +25,8 @@ import java.util.Locale
  * silence below a relevance fact rather than a false condition. Every rule's error field `Reference` is relevant
  * in every coverage, so the rule-run gate is never what silences it.
  *
- * Own domain (a parcel order). Conditions are raw because the keyed group operand has no typed form yet
- * (DEV-API-GAPS DG67/DG68).
+ * Own domain (a parcel order). Conditions are raw because `GroupFilled` over a keyed group has no typed form yet
+ * (DEV-API-GAPS DG67), and one spelling serves every row.
  */
 class PartialKeyedSelectionRelevanceDiffTest {
 

@@ -15,8 +15,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
@@ -119,9 +117,9 @@ class SemanticIndexWildcardPlacementLawsTest {
         authored.put("field at", () -> FirstFilledOperand.of(m.flatten("/Order/Packages*/Carrier")).forIndex("P1"));
         expected.put("field at", ADMITTED);
         authored.put("entity list below",
-                () -> new GroupSemanticIndexValue(m.flattenGroup("/Order/Packages/Parcels*"), "P1"));
+                () -> m.flattenGroup("/Order/Packages/Parcels*").forIndex("P1"));
         expected.put("entity list below", ADMITTED);
-        authored.put("entity list at", () -> new GroupSemanticIndexValue(m.flattenGroup("/Order/Packages*"), "P1"));
+        authored.put("entity list at", () -> m.flattenGroup("/Order/Packages*").forIndex("P1"));
         expected.put("entity list at", ADMITTED);
 
         Map<String, String> actual = new LinkedHashMap<>();
@@ -140,9 +138,8 @@ class SemanticIndexWildcardPlacementLawsTest {
                 FirstFilledOperand.of(m.flatten("/Order/Packages/Parcels*/Label")).forIndex("P1"),
                 FirstFilledOperand.of(m.field("/Order/Title"))).eq("x"));
         Condition noParcel = title.and(Dsl.noGroupFilled(
-                new GroupSemanticIndexValue(m.flattenGroup("/Order/Packages/Parcels*"), "P1")));
-        Condition noParcelKeyedByField = title.and(Dsl.noGroupFilled(new GroupSemanticIndexFieldValue(
-                m.flattenGroup("/Order/Packages/Parcels*"), m.field("/Order/Title"))));
+                m.flattenGroup("/Order/Packages/Parcels*").forIndex("P1")));
+        Condition noParcelKeyedByField = title.and(Dsl.noGroupFilled(m.flattenGroup("/Order/Packages/Parcels*").forIndex(m.field("/Order/Title"))));
 
         for (Condition condition : List.of(firstParcel, firstLabel, noParcel, noParcelKeyedByField)) {
             assertEquals(KernelLaws.ADMITTED, KernelLaws.verdictModel(MODEL, "/Order", "../Title", condition),

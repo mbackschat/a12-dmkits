@@ -2150,37 +2150,37 @@ public final class Dsl {
     // --- group-scoped field-fill — the fields inside a group scope (optionally across all reps) ----
 
     /** {@code AllFieldsFilled(Group*)} — all fields inside the group scope(s) are filled. */
-    public static Condition allFieldsFilled(GroupListRef first, GroupListRef... rest) {
+    public static Condition allFieldsFilled(GroupScope first, GroupScope... rest) {
         return groupScopedFieldFill(Quantifier.ALL_FIELDS_FILLED, first, rest);
     }
 
     /** {@code NoFieldFilled(Group*)} — no field inside the group scope(s) is filled. */
-    public static Condition noFieldFilled(GroupListRef first, GroupListRef... rest) {
+    public static Condition noFieldFilled(GroupScope first, GroupScope... rest) {
         return groupScopedFieldFill(Quantifier.NO_FIELD_FILLED, first, rest);
     }
 
     /** {@code AtLeastOneFieldFilled(Group*)} — at least one field inside the group scope(s) is filled. */
-    public static Condition atLeastOneFieldFilled(GroupListRef first, GroupListRef... rest) {
+    public static Condition atLeastOneFieldFilled(GroupScope first, GroupScope... rest) {
         return groupScopedFieldFill(Quantifier.AT_LEAST_ONE_FIELD_FILLED, first, rest);
     }
 
     /** {@code NotAllFieldsFilled(Group*)} — at least one field inside the group scope(s) is empty. */
-    public static Condition notAllFieldsFilled(GroupListRef first, GroupListRef... rest) {
+    public static Condition notAllFieldsFilled(GroupScope first, GroupScope... rest) {
         return groupScopedFieldFill(Quantifier.NOT_ALL_FIELDS_FILLED, first, rest);
     }
 
     /** {@code FieldsNotCollectivelyFilled(Group*)} — the group scope's fields are partially filled. */
-    public static Condition fieldsNotCollectivelyFilled(GroupListRef first, GroupListRef... rest) {
+    public static Condition fieldsNotCollectivelyFilled(GroupScope first, GroupScope... rest) {
         return groupScopedFieldFill(Quantifier.FIELDS_NOT_COLLECTIVELY_FILLED, first, rest);
     }
 
     /** {@code NotExactlyOneFieldFilled(Group*)} — not exactly one field inside the group scope(s) is filled. */
-    public static Condition notExactlyOneFieldFilled(GroupListRef first, GroupListRef... rest) {
+    public static Condition notExactlyOneFieldFilled(GroupScope first, GroupScope... rest) {
         return groupScopedFieldFill(Quantifier.NOT_EXACTLY_ONE_FIELD_FILLED, first, rest);
     }
 
     /** {@code MoreThanOneFieldFilled(Group*)} — two or more fields inside the group scope(s) are filled. */
-    public static Condition moreThanOneFieldFilled(GroupListRef first, GroupListRef... rest) {
+    public static Condition moreThanOneFieldFilled(GroupScope first, GroupScope... rest) {
         return groupScopedFieldFill(Quantifier.MORE_THAN_ONE_FIELD_FILLED, first, rest);
     }
 
@@ -2204,11 +2204,11 @@ public final class Dsl {
      * interpreter did not, so authoring this would otherwise have admitted a form that was silently answered
      * wrong ({@code adapter.laws.FieldValuesNotUniqueGroupOperandDiffTest}).
      */
-    public static Condition fieldValuesNotUnique(GroupListRef first, GroupListRef... rest) {
+    public static Condition fieldValuesNotUnique(GroupScope first, GroupScope... rest) {
         return groupScopedFieldFill(Quantifier.FIELD_VALUES_NOT_UNIQUE, first, rest);
     }
 
-    private static Condition groupScopedFieldFill(Quantifier q, GroupListRef first, GroupListRef... rest) {
+    private static Condition groupScopedFieldFill(Quantifier q, GroupScope first, GroupScope... rest) {
         var scopes = new ArrayList<AggregateOperand>();
         scopes.add(first);
         scopes.addAll(List.of(rest));

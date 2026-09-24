@@ -109,13 +109,13 @@ class EntityListDuplicateGateTest {
 
         String refused = refusal(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
                 List.of(new SemanticIndexValue(field, "a"),
-                        new GroupSemanticIndexValue(group, "a"))));
+                        group.forIndex("a"))));
         assertTrue(refused.contains("MVK_DUPLICATE_PARAM2"),
                 () -> "the same key makes this a containment: " + refused);
 
         assertDoesNotThrow(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
                 List.of(new SemanticIndexValue(field, "a"),
-                        new GroupSemanticIndexValue(group, "b"))),
+                        group.forIndex("b"))),
                 "different keys address different repetitions, so there is no containment");
     }
 
@@ -139,8 +139,8 @@ class EntityListDuplicateGateTest {
                 () -> "one field under one key twice is an exact duplicate: " + repeatedField);
 
         String repeatedGroup = refusal(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
-                List.of(new GroupSemanticIndexValue(group, "a"),
-                        new GroupSemanticIndexValue(group, "a"))));
+                List.of(group.forIndex("a"),
+                        group.forIndex("a"))));
         assertTrue(repeatedGroup.contains("MVK_DUPLICATE_PARAM1"),
                 () -> "one group under one key twice is an exact duplicate: " + repeatedGroup);
 
@@ -148,8 +148,8 @@ class EntityListDuplicateGateTest {
                 List.of(new SemanticIndexValue(field, "a"), new SemanticIndexValue(field, "b"))),
                 "two keys address two repetitions, so the pair is not a duplicate");
         assertDoesNotThrow(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
-                List.of(new GroupSemanticIndexValue(group, "a"),
-                        new GroupSemanticIndexValue(group, "b"))),
+                List.of(group.forIndex("a"),
+                        group.forIndex("b"))),
                 "the same, one level up");
     }
 

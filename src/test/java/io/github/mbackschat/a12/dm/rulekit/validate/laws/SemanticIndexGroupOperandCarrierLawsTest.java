@@ -12,8 +12,6 @@ import io.github.mbackschat.a12.dm.ModelDrafts;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier;
 
 /**
@@ -54,6 +52,7 @@ class SemanticIndexGroupOperandCarrierLawsTest {
         expected.put("NoFieldFilled(Packages/Parcels* For \"P1\")", ADMITTED);
         expected.put("AllFieldsFilled(Packages For \"P1\", Packages For \"P2\")", ADMITTED);
         expected.put("AllFieldsFilled(Packages For \"P1\", Title)", ADMITTED);
+        expected.put("AllFieldsFilled(Packages For \"P1\", Lines*)", ADMITTED);
         // aggregates, a lone indexed group included
         expected.put("NumberOfFilledFields(Packages For \"P1\") > 0", ADMITTED);
         expected.put("NumberOfFilledFields(Packages/Parcels* For \"P1\") > 0", ADMITTED);
@@ -78,13 +77,15 @@ class SemanticIndexGroupOperandCarrierLawsTest {
     @Test
     void theTypedSurfaceAuthorsEveryAdmittedCarrier() {
         BoundModel m = BoundModel.ofJson(MODEL);
-        var p1 = new GroupSemanticIndexValue(m.flattenGroup("/Order/Packages"), "P1");
-        var p2 = new GroupSemanticIndexValue(m.flattenGroup("/Order/Packages"), "P2");
-        var byTitle = new GroupSemanticIndexFieldValue(m.flattenGroup("/Order/Packages"), m.field("/Order/Title"));
-        var parcelsOfP1 = new GroupSemanticIndexValue(m.flattenGroup("/Order/Packages/Parcels*"), "P1");
-        var dimensionsOfP1 = new GroupSemanticIndexValue(m.flattenGroup("/Order/Packages/Dimensions"), "P1");
-        var dimensionsOfP2 = new GroupSemanticIndexValue(m.flattenGroup("/Order/Packages/Dimensions"), "P2");
         var title = m.field("/Order/Title");
+        var packages = m.flattenGroup("/Order/Packages");
+        var dimensions = m.flattenGroup("/Order/Packages/Dimensions");
+        var p1 = packages.forIndex("P1");
+        var p2 = packages.forIndex("P2");
+        var byTitle = packages.forIndex(title);
+        var parcelsOfP1 = m.flattenGroup("/Order/Packages/Parcels*").forIndex("P1");
+        var dimensionsOfP1 = dimensions.forIndex("P1");
+        var dimensionsOfP2 = dimensions.forIndex("P2");
 
         Map<String, Condition> authored = new LinkedHashMap<>();
         authored.put("NoGroupFilled one", Dsl.noGroupFilled(p1));
@@ -92,7 +93,10 @@ class SemanticIndexGroupOperandCarrierLawsTest {
         authored.put("AtLeastOneGroupFilled starred", Dsl.atLeastOneGroupFilled(parcelsOfP1));
         authored.put("AtLeastOneGroupFilled mixed", Dsl.atLeastOneGroupFilled(p1, title));
         authored.put("AllGroupsFilled two keys", Dsl.allGroupsFilled(p1, p2));
-        authored.put("AllFieldsFilled one", Dsl.entityListPredicate(Quantifier.ALL_FIELDS_FILLED, List.of(p1)));
+        authored.put("AllFieldsFilled one", Dsl.allFieldsFilled(p1));
+        authored.put("NoFieldFilled starred", Dsl.noFieldFilled(parcelsOfP1));
+        authored.put("AllFieldsFilled two keys", Dsl.allFieldsFilled(p1, p2));
+        authored.put("AllFieldsFilled beside a scope", Dsl.allFieldsFilled(p1, m.flattenGroup("/Order/Lines*")));
         authored.put("AllFieldsFilled mixed",
                 Dsl.entityListPredicate(Quantifier.ALL_FIELDS_FILLED, List.of(p1, title)));
         authored.put("NumberOfFilledFields one", Dsl.numberOfFilledFields(p1).gt(0));

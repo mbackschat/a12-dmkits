@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Test
  * `FirstFilledValue` over a keyed group — each beside a control whose key is well-formed.
  *
  * Each case is one canonical A12 Document JSON string that both kernel strategies and the interpreter read. Own
- * domain (a parcel order). Conditions are raw because the keyed group operand has no typed form yet (DEV-API-GAPS
- * DG67/DG68).
+ * domain (a parcel order). Conditions are raw because `GroupFilled` over a keyed group has no typed form yet
+ * (DEV-API-GAPS DG67), and one spelling serves every row.
  */
 class MalformedIndexKeyDiffTest {
 

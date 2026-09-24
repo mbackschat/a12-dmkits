@@ -85,8 +85,7 @@ class GroupListDuplicateGateTest {
      */
     @Test
     void anIndexSelectedGroupDoesNotContainItsPlainDescendant() {
-        var indexed = new GroupSemanticIndexValue(
-                new GroupListRef(CLAIM.group("/Claim/Damages"), List.of()), "D1");
+        var indexed = new GroupListRef(CLAIM.group("/Claim/Damages"), List.of()).forIndex("D1");
         assertDoesNotThrow(() -> Dsl.allGroupsFilled(indexed, CLAIM.field("/Claim/Damages/Description")),
                 "the index selection is part of what containment compares, so this is not an overlap");
     }

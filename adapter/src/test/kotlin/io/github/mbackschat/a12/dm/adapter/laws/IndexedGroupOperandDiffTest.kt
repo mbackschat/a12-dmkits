@@ -18,9 +18,10 @@ import org.junit.jupiter.api.Test
  * outside the admission grid `validate.laws.SemanticIndexGroupOperandCarrierLawsTest` holds for the group-list
  * quantifiers.
  *
- * The shape is authorable through `Dsl.entityListPredicate` and the group-list factories, and DEV-API-GAPS DG68
- * would make it easier to write, so the evaluators are measured first: a wrong verdict here would be silent
- * (API-FINDINGS on DG33). Conditions are text, because the typed spelling is what DG68 is about to change.
+ * The shape is authorable through `GroupListRef.forIndex` and the group-list factories (API-FINDINGS AF168), and a
+ * wrong verdict here would be silent (API-FINDINGS on DG33), so the evaluators were measured before it was made
+ * easy to write. Conditions are text because `GroupFilled` over a keyed group has no typed form yet (DEV-API-GAPS
+ * DG67), and one spelling serves every row.
  *
  * Each row compares the `errorPath|type` signature of the rule's messages, not a boolean, because a message of
  * the wrong polarity would otherwise read as agreement.

@@ -14,8 +14,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EntityListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier;
 
@@ -47,7 +45,7 @@ class IndexedGroupOperandTest {
     @Test
     void aLiteralKeyedIndexedGroupReferencesTheGroup() {
         ConditionReferences refs =
-                refsOf(new GroupSemanticIndexValue(items(), "SKU-1"), ORDER.field("/Order/CustomerName"));
+                refsOf(items().forIndex("SKU-1"), ORDER.field("/Order/CustomerName"));
         assertTrue(refs.groupPaths().contains("/Order/Items"),
                 () -> "expected the group among " + refs.groupPaths());
     }
@@ -56,7 +54,7 @@ class IndexedGroupOperandTest {
     @Test
     void theKeyFieldOfAFieldKeyedIndexedGroupIsReferenced() {
         ConditionReferences refs = refsOf(
-                new GroupSemanticIndexFieldValue(items(), ORDER.field("/Order/ProductCode")),
+                items().forIndex(ORDER.field("/Order/ProductCode")),
                 ORDER.field("/Order/CustomerName"));
         assertTrue(refs.groupPaths().contains("/Order/Items"),
                 () -> "expected the group among " + refs.groupPaths());
@@ -68,7 +66,7 @@ class IndexedGroupOperandTest {
     @Test
     void aFieldTheConditionNeverMentionsIsNotReferenced() {
         ConditionReferences refs =
-                refsOf(new GroupSemanticIndexValue(items(), "SKU-1"), ORDER.field("/Order/CustomerName"));
+                refsOf(items().forIndex("SKU-1"), ORDER.field("/Order/CustomerName"));
         assertFalse(refs.fieldPaths().contains("/Order/ProductCode"),
                 () -> "an unmentioned field must stay unreferenced — got " + refs.fieldPaths());
     }

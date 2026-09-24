@@ -121,8 +121,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
@@ -1614,8 +1612,8 @@ final class ConditionConverter {
         }
         GroupListRef scope = model.flattenGroup(starPath);
         return switch (keys.getFirst()) {
-            case String literal -> new GroupSemanticIndexValue(scope, literal);
-            case IEntityId keyField -> new GroupSemanticIndexFieldValue(scope, keyFieldRef(keyField));
+            case String literal -> scope.forIndex(literal);
+            case IEntityId keyField -> scope.forIndex(keyFieldRef(keyField));
             case Object other -> throw unsupported("group semantic index with key "
                     + other.getClass().getSimpleName(), origin);
         };

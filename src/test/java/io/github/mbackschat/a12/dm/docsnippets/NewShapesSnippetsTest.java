@@ -24,6 +24,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeIndexedValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
@@ -204,6 +205,23 @@ class NewShapesSnippetsTest {
         Condition present = m.num("/Order/Items/Count").semanticIndex("SKU-1").filled();
         // end::indexed-presence[]
         assertEquals("FieldFilled(/Order/Items/Count For \"SKU-1\")", new DslRenderer().render(present));
+    }
+
+    @Test
+    void indexedGroupSnippet() {
+        // tag::indexed-group[]
+        // forIndex(key) selects one row of a group scope, as semanticIndex(key) selects one cell of a field.
+        // The row is a GroupScope, so it stands beside a plain scope in the group-scoped field-fill quantifiers.
+        GroupListRef items = m.flattenGroup("/Order/Items");
+        Condition itemComplete = Dsl.allFieldsFilled(items.forIndex("SKU-1"), m.flattenGroup("/Order/ShippingAddress"));
+        // The selected cell is a group-list operand beside a field.
+        Condition anyGiven = Dsl.atLeastOneGroupFilled(
+                m.num("/Order/Items/Count").semanticIndex("SKU-1").index(), m.field("/Order/CustomerName"));
+        // end::indexed-group[]
+        assertEquals("AllFieldsFilled(/Order/Items For \"SKU-1\", /Order/ShippingAddress)",
+                new DslRenderer().render(itemComplete));
+        assertEquals("AtLeastOneGroupFilled(/Order/Items/Count For \"SKU-1\", /Order/CustomerName)",
+                new DslRenderer().render(anyGiven));
     }
 
     @Test

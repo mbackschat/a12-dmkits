@@ -22,7 +22,7 @@ import java.util.Optional;
  * to the kernel too: A12 admits one below the index group and refuses one on or above it, and which group is
  * the index group is a model fact these records never see ({@code validate.laws.SemanticIndexWildcardPlacementLawsTest}).
  */
-public sealed interface IndexedGroupValue extends AggregateOperand, GroupListOperand
+public sealed interface IndexedGroupValue extends GroupScope, GroupListOperand
         permits GroupSemanticIndexValue, GroupSemanticIndexFieldValue {
 
     /** The group scope the index is written on; it may carry a star below the index group (see the class doc). */
