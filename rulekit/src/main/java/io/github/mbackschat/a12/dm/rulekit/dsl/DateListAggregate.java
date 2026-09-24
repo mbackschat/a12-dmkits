@@ -57,9 +57,10 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
     public DateListAggregate {
         operands = List.copyOf(operands);
         if (kind != ValueKind.DATE && kind != ValueKind.TIME && kind != ValueKind.DATE_TIME) {
-            throw Refusals.of(KernelCode.MVK_NOT_SORTABLE,
-                    mode.operatorId() + " over date-like values needs a DATE, TIME,"
-                            + " or DATETIME operand kind; got " + kind);
+            // Uncoded: the kind types this node for its caller and is never rendered, so a wrong one is a misuse
+            // of the constructor, not a list A12 could report on.
+            throw new IllegalArgumentException(mode.operatorId() + " over date-like values needs a DATE, TIME,"
+                    + " or DATETIME operand kind; got " + kind);
         }
         try {
             requireDateLikeList(mode, kind, operands);
