@@ -16,9 +16,14 @@ internal object PolicyPathSource {
         condition: String,
         inInsured: Boolean = false,
         message: String = "x",
+        claimsKeyed: Boolean = false,
     ): List<String> {
         val rule = rule(errorField, condition, message)
-        val source = if (inInsured) model(ruleInInsured = rule) else model(ruleInPolicy = rule)
+        val source = if (inInsured) {
+            model(ruleInInsured = rule, claimsKeyed = claimsKeyed)
+        } else {
+            model(ruleInPolicy = rule, claimsKeyed = claimsKeyed)
+        }
         return check(ModelSource(source)).findings.filter { it.justifiesRejection }.map { it.code }.distinct()
     }
 
@@ -29,8 +34,11 @@ internal object PolicyPathSource {
                   "errorEntityRelPath":"$errorField",
                   "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"$message"}]}}"""
 
-    /** The model, with [ruleInPolicy] and [ruleInInsured] spliced in as already comma-led element lists. */
-    fun model(ruleInPolicy: String = "", ruleInInsured: String = "") = """
+    /**
+     * The model, with [ruleInPolicy] and [ruleInInsured] spliced in as already comma-led element lists, and
+     * `ClaimRef` declared `Claims`' index field when [claimsKeyed].
+     */
+    fun model(ruleInPolicy: String = "", ruleInInsured: String = "", claimsKeyed: Boolean = false) = """
             {"header":{"id":"policy","locales":[{"code":"en_US"}]},
              "content":{"modelConfig":{"fieldRefByShortNameAllowed":true},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
@@ -42,7 +50,7 @@ internal object PolicyPathSource {
                 {"type":"Group","id":"g2","name":"Broker","Group":{"elements":[
                   {"type":"Field","id":"f3","name":"BrokerName","Field":{"fieldType":{"type":"StringType"}}}
                 ]}},
-                {"type":"Group","id":"g3","name":"Claims","Group":{"repeatability":20,"elements":[
+                {"type":"Group","id":"g3","name":"Claims","Group":{"repeatability":20,${if (claimsKeyed) "\"indexFieldName\":\"ClaimRef\"," else ""}"elements":[
                   {"type":"Field","id":"f4","name":"ClaimRef","Field":{"fieldType":{"type":"StringType"}}},
                   {"type":"Field","id":"f5","name":"Remark","Field":{"fieldType":{"type":"StringType"}}},
                   {"type":"Field","id":"f6","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}}

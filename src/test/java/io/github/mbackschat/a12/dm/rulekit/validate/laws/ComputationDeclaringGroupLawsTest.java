@@ -211,9 +211,9 @@ class ComputationDeclaringGroupLawsTest {
      * placement. It is not.
      *
      * <p><b>The four verdicts are cell-for-cell the bare constant's above, and that identity is the finding.</b>
-     * A star aggregate contributes no per-row read, so it derives no iteration of its own; the iteration still
-     * comes from the target's own repeatable scope, and an aggregating operand changes nothing about which
-     * placements survive. Read together with the constant table, the pair separates the two candidate accounts
+     * A star aggregate over its one repeatable level contributes no per-row read, so it derives no iteration of
+     * its own; the iteration still comes from the target's own repeatable scope, and an aggregating operand
+     * changes nothing about which placements survive. Read together with the constant table, the pair separates the two candidate accounts
      * of the admission — "the star operand earns the ancestor" versus "containment alone decides" — because
      * only the second predicts a row-for-row match.
      */

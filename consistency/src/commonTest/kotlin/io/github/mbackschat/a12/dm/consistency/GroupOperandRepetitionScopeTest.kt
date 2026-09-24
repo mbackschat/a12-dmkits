@@ -66,6 +66,18 @@ class GroupOperandRepetitionScopeTest {
     }
 
     @Test
+    fun aParallelRepeatableGroupWithAnIndexDrawsTheMissingIndexClass() {
+        val rows = listOf(
+            "FieldFilled(../Claims)", "GroupFilled(../Claims)", "AtLeastOneGroupFilled(../Claims)",
+            "NumberOfFilledGroups(../Claims) > 0",
+        ).associateWith { listOf("MVK_ERROR_FIELD_NO_INDEX") }
+        val actual = rows.keys.associateWith {
+            PolicyPathSource.rejections("../Remark", "FieldFilled(Remark) And $it", inInsured = true, claimsKeyed = true)
+        }
+        assertEquals(rows, actual, "from a sibling group, Claims index-keyed")
+    }
+
+    @Test
     fun theScalarFieldSlotsRefuseAGroupThenAStar() {
         val rows = linkedMapOf(
             "FieldFilled(Claims*)" to listOf(NO_GROUPS),

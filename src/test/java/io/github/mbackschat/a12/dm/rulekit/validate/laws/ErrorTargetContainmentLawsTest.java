@@ -138,9 +138,10 @@ class ErrorTargetContainmentLawsTest {
         actual.put("rule | per-row read of a NON-indexed extent from a fixed declaring group",
                 rule("/Returns/Policy", "../../TotalRefund",
                         "FieldFilled(../TotalRefund) And [../Inspections/Amount] > 0"));
-        // A star aggregate reads no row, so it derives no iteration — measured on the computation side and
-        // asked here because the rule side had no such cell, and the predicate would otherwise refuse every
-        // aggregate rule whose error field sits outside its group.
+        // A star aggregate over its one repeatable level reads no row, so it derives no iteration — measured on
+        // the computation side and asked here because the rule side had no such cell, and the predicate would
+        // otherwise refuse every aggregate rule whose error field sits outside its group. A star that leaves a
+        // second level unstarred does read per row (PartialStarContainmentLawsTest).
         actual.put("rule | STAR aggregate over an extent, no per-row read",
                 rule("/Returns/Policy", "../../TotalRefund",
                         "FieldFilled(../TotalRefund) And Sum(/Returns/Claims*/Amount) > 0"));

@@ -13,8 +13,9 @@ import kotlin.test.assertEquals
  *   does.** The gate is one gate, but the two written fields are not alike, so a family that keyed on
  *   "the written field repeats" would refuse rules A12 admits — measured across the 2×2 of construct against
  *   the declaring group's own repeatability, which is what separates the construct from the placement.
- * - **A STAR aggregate reads no row**, so it derives no iteration either. Without that cell every aggregate
- *   rule reporting on a field outside its group is refused.
+ * - **A STAR aggregate that stars every level it crosses reads no row**, so it derives no iteration either.
+ *   Without that cell every aggregate rule reporting on a field outside its group is refused; a partial star
+ *   is the other side, mirrored in [StarBindingContainmentTest].
  *
  * The admitted rows are therefore not politeness: each is a shape this family would refuse if it read the
  * law one step more coarsely.

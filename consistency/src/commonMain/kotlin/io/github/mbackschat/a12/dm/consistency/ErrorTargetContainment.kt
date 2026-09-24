@@ -15,9 +15,12 @@ package io.github.mbackschat.a12.dm.consistency
  * both variables at once and neither could say which carried the difference
  * (`rulekit.validate.laws.ErrorTargetContainmentLawsTest`, 2026-09-15).
  *
- * **A STAR aggregate reads no row, so it derives no iteration.** Without that the family would refuse every
- * aggregate rule reporting on a field outside its group — the discriminator between "a repeatable group
- * appears in the path" and "the construct reads one row at a time", and only the second is A12's.
+ * **A star aggregate reads no row only when it stars EVERY repeatable level it crosses.** Without that the
+ * family would refuse every aggregate rule reporting on a field outside its group — the discriminator between
+ * "a repeatable group appears in the path" and "the construct reads one row at a time", and only the second
+ * is A12's. A level the star leaves unstarred is read one row at a time, on either side of the first star,
+ * whether or not the declaring group binds it, and on both constructs
+ * (`rulekit.validate.laws.PartialStarContainmentLawsTest`, [KERNEL-FINDINGS KF466]).
  *
  * **This gate answers FIRST**, which is why it carries none of the preconditions its neighbours do. It
  * pre-empts `MVK_ERROR_FIELDGROUP_ITERATION{4,5}_INVALID` ([KERNEL-FINDINGS KF372]), the wildcard classes
@@ -59,15 +62,16 @@ internal fun TrackedFactBase.errorTargetContainmentFindings(): List<Finding> {
 }
 
 /**
- * Whether [reference] reads ONE ROW — the only kind of read that derives iteration.
+ * Whether [reference] reads ONE ROW of some repeatable level — the only kind of read that derives iteration.
  *
- * A star makes the reference an aggregate over the extent rather than a read within it, and the authored
+ * A star makes its level an aggregate over the extent rather than a read within it, and the authored
  * spelling is where that shows: the resolved path carries no star, so a family reading only the path cannot
- * tell the two apart and would refuse every aggregate.
+ * tell the two apart and would refuse every aggregate. A star is spent on one level, so fewer stars than
+ * crossed levels leaves a level read per row.
  */
 private fun TrackedFactBase.readsOneRowAtATime(reference: ConditionReference): Boolean {
     val path = (reference.target as? Reference.Resolved)?.path ?: return false
-    return '*' !in reference.written && repeatingLevelsOnThePathTo(path) > 0
+    return reference.written.count { it == '*' } < repeatingLevelsOnThePathTo(path)
 }
 
 /**

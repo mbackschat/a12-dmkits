@@ -23,7 +23,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
  * The companion of {@link ComputationDeclaringGroupLawsTest}, which measures the gate when iteration IS
  * derived; this one measures what is left when nothing derives it.
  *
- * <p><b>The load-bearing negative: a STAR AGGREGATE is not a per-row operand.</b> That is the discriminator
+ * <p><b>The load-bearing negative: a STAR AGGREGATE over its one repeatable level is not a per-row operand</b>
+ * (a star that leaves a second level unstarred is, {@code PartialStarContainmentLawsTest}). That is the discriminator
  * between the two accounts of {@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP} — "a repeatable group appears in the
  * operand path" versus "the operand reads one row at a time". Only the second predicts that
  * {@code Sum(Lots*&#47;Quantity)} into a fixed target is admitted from the starred group itself, which is the

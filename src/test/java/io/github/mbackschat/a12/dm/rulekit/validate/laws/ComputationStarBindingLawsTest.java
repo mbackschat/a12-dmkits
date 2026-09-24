@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -94,6 +95,12 @@ class ComputationStarBindingLawsTest {
             return KernelLaws.computationVerdict(json, computation(target, group, operation));
         }
 
+        /** The verdict on an operation written as text, for a shape the typed surface refuses. */
+        String draftVerdict(String group, String targetRelPath, String operation) {
+            return KernelLaws.computationVerdict(json, new DraftComputation(group, "BindingProbe", targetRelPath,
+                    null, List.of(new DraftComputation.Alternative(null, operation))));
+        }
+
         /** What the kernel is handed: the declaring group, the target as written from it, and the operation. */
         String rendered(String target, String group, Function<BoundModel, Calculation> operation) {
             DraftComputation draft = computation(target, group, operation).draft();
@@ -138,6 +145,7 @@ class ComputationStarBindingLawsTest {
         actual.put("group count",
                 PLAIN.rendered(SHIPMENT_TARGET, SHIPMENTS, countSeals("/Fulfilment/Shipments/Parcels*/Seal")));
         actual.put("plain read", PLAIN.rendered(FIXED_TARGET, SUMMARY, plusOne(SHIPMENTS + "/ShipWeight")));
+        actual.put("starred group count", PLAIN.rendered(FIXED_TARGET, SUMMARY, countSeals(PARCELS + "*")));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("relative", "/Fulfilment/Shipments | ../../Summary/Result | Sum(Parcels*/Weight)");
@@ -147,6 +155,7 @@ class ComputationStarBindingLawsTest {
         expected.put("below the star", "/Fulfilment/Summary | ../Result | Sum(../Shipments*/Parcels/Weight)");
         expected.put("group count", "/Fulfilment/Shipments | ../ShipResult | NumberOfFilledGroups(Parcels*/Seal)");
         expected.put("plain read", "/Fulfilment/Summary | ../Result | [../Shipments/ShipWeight] + 1");
+        expected.put("starred group count", "/Fulfilment/Summary | ../Result | NumberOfFilledGroups(../Shipments/Parcels*)");
         assertEquals(expected, actual, "the rendered computations");
     }
 
@@ -227,6 +236,29 @@ class ComputationStarBindingLawsTest {
         expected.put("a plain read of the deeper level", NO_WILDCARD);
         expected.put("a plain read of the deeper level, Parcels index-keyed", NO_WILDCARD);
         assertEquals(expected, actual, "a target inside the unstarred level");
+    }
+
+    /**
+     * The group count's own repeatable level is walked like any other: unbound, it is the missing star, or the
+     * missing index where the level declares one — the group itself as the level, and a level above a starred one.
+     *
+     * <p>The lone unstarred group is written as text because the typed count refuses it, a single group needing a
+     * star; A12 refuses it too, and these rows measure which class it names.
+     */
+    @Test
+    void aGroupOperandsOwnLevelFollowsTheSameTable() {
+        String lone = "NumberOfFilledGroups(../Shipments)";
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the group itself", PLAIN.draftVerdict(SUMMARY, "../Result", lone));
+        actual.put("the group itself, index-keyed", SHIPMENTS_KEYED.draftVerdict(SUMMARY, "../Result", lone));
+        actual.put("a starred group below it, index-keyed",
+                SHIPMENTS_KEYED.verdict(FIXED_TARGET, SUMMARY, countSeals(PARCELS + "*")));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the group itself", NO_WILDCARD);
+        expected.put("the group itself, index-keyed", NO_INDEX);
+        expected.put("a starred group below it, index-keyed", NO_INDEX);
+        assertEquals(expected, actual, "the group count's own level, from Summary");
     }
 
     /** A plain read into the fixed target, where the OUTERMOST repeatable level it crosses decides. */

@@ -25,7 +25,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 class GroupOperandRepetitionScopeLawsTest {
 
     private static final String MODEL = PolicyPathFixture.policy(true);
+    private static final String CLAIMS_KEYED = PolicyPathFixture.policy(true, true);
     private static final String NO_WILDCARD = "MVK_NO_WILDCARD";
+    private static final String NO_INDEX = "MVK_ERROR_FIELD_NO_INDEX";
 
     @Test
     void anUnstarredRepeatableGroupIsRefusedByTheWalkOnEveryCarrier() {
@@ -73,6 +75,20 @@ class GroupOperandRepetitionScopeLawsTest {
                 "GroupFilled(../Claims)", NO_WILDCARD,
                 "AtLeastOneGroupFilled(../Claims)", NO_WILDCARD);
         assertEquals(rows, verdicts("/Policy/Insured", "Remark", rows), "from a sibling group");
+    }
+
+    /**
+     * The same rows with {@code Claims} declaring an index field, nothing else moved: a group takes the field's
+     * missing-index class as it takes its missing-star class, because nothing on the target's chain is keyed.
+     */
+    @Test
+    void aParallelRepeatableGroupWithAnIndexDrawsTheMissingIndexClass() {
+        Map<String, String> rows = orderedMap(
+                "FieldFilled(../Claims)", NO_INDEX,
+                "GroupFilled(../Claims)", NO_INDEX,
+                "AtLeastOneGroupFilled(../Claims)", NO_INDEX,
+                "NumberOfFilledGroups(../Claims) > 0", NO_INDEX);
+        assertEquals(rows, verdicts(CLAIMS_KEYED, "/Policy/Insured", "Remark", rows), "from a sibling group");
     }
 
     /**
@@ -125,14 +141,19 @@ class GroupOperandRepetitionScopeLawsTest {
 
     /** Each carrier, read beside the error field's own reference. */
     private static Map<String, String> verdicts(String group, String errorLeaf, Map<String, String> rows) {
+        return verdicts(MODEL, group, errorLeaf, rows);
+    }
+
+    private static Map<String, String> verdicts(String model, String group, String errorLeaf,
+            Map<String, String> rows) {
         Map<String, String> actual = new LinkedHashMap<>();
-        rows.keySet().forEach(row -> actual.put(row, verdict(group, errorLeaf, row)));
+        rows.keySet().forEach(row -> actual.put(row, verdict(model, group, errorLeaf, row)));
         return actual;
     }
 
     /** {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. */
-    private static String verdict(String group, String errorLeaf, String carrier) {
-        ValidationResult r = KernelLaws.checkModel(MODEL, group, "../" + errorLeaf,
+    private static String verdict(String model, String group, String errorLeaf, String carrier) {
+        ValidationResult r = KernelLaws.checkModel(model, group, "../" + errorLeaf,
                 "FieldFilled(" + errorLeaf + ") And " + carrier);
         return r.ok() ? "admitted" : String.join(" + ", r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code)")).distinct().toList());

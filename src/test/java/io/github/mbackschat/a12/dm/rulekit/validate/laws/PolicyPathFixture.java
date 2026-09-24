@@ -17,15 +17,25 @@ final class PolicyPathFixture {
     }
 
     static String policy(boolean shortNameRefs) {
+        return policy(shortNameRefs, false);
+    }
+
+    /** …with {@code ClaimRef} optionally declared {@code Claims}' index field, the one call that differs. */
+    static String policy(boolean shortNameRefs, boolean claimsKeyed) {
         return ModelDocument.read(DocumentModelDraft.named("policy").locale("en_US")
                         .rootGroup("Policy", p -> p
                                 .field("Holder", FieldKind.STRING)
                                 .group("Insured", i -> i.field("Remark", FieldKind.STRING).field("Age", FieldKind.NUMBER))
                                 .group("Broker", b -> b.field("BrokerName", FieldKind.STRING))
-                                .group("Claims", c -> c.repeatable(20)
-                                        .field("ClaimRef", FieldKind.STRING)
-                                        .field("Remark", FieldKind.STRING)
-                                        .field("Amount", FieldKind.NUMBER)))
+                                .group("Claims", c -> {
+                                    c.repeatable(20);
+                                    if (claimsKeyed) {
+                                        c.indexField("ClaimRef");
+                                    }
+                                    c.field("ClaimRef", FieldKind.STRING)
+                                            .field("Remark", FieldKind.STRING)
+                                            .field("Amount", FieldKind.NUMBER);
+                                }))
                         .build().toJson())
                 .setFieldRefByShortNameAllowed(shortNameRefs)
                 .toJson();

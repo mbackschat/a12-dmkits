@@ -201,8 +201,9 @@ public final class StructuralKernelFix {
                             + "the first is usually the smallest: DECLARE it in a group that contains the field it "
                             + "writes — an ancestor will do, containment is what the kernel asks for, not membership "
                             + "of the repeating group. Or write into a field under the declaring group. Or stop "
-                            + "iterating: a STAR aggregate (Sum(Group*/Field)) reads no row, so it lifts the demand "
-                            + "entirely, where the same operand unstarred is what creates it.",
+                            + "iterating: a STAR aggregate that stars EVERY repeatable level it crosses "
+                            + "(Sum(Group*/Field), Sum(Outer*/Inner*/Field)) reads no row, so it lifts the demand "
+                            + "entirely, where any level left unstarred is what creates it.",
                     "A declaration that iterates has to say which repetition its result belongs to, and the kernel "
                             + "reads that from PATH CONTAINMENT: the written field must lie at or below the declaring "
                             + "group. It gates both constructs, but they differ in what derives the iteration — an "
