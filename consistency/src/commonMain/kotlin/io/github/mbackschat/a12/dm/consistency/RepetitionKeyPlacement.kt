@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
@@ -54,8 +55,6 @@ internal fun TrackedFactBase.repetitionKeyPlacementFindings(): List<Finding> {
         }
     }
 }
-
-private const val REPETITION_NOT_UNIQUE = "RepetitionNotUnique"
 
 /**
  * The one finding this call draws, or null for every shape the grid left to A12.

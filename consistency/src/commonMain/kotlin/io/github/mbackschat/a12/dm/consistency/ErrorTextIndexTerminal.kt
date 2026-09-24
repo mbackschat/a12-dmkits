@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
@@ -144,9 +145,6 @@ private fun TrackedFactBase.conditionRidesItWithoutIterating(
 /** How many GROUPS declare an index field of this short name — A12's list is not scoped to the path. */
 private fun TrackedFactBase.groupsDeclaringIndexFieldNamed(name: String): Int =
     allDeclarations().count { it.declaredKind == DeclaredKind.GROUP && indexFieldNameOf(it) == name }
-
-/** A12's own spelling of the semantic-index keyword, which only the catalog knows per language. */
-private const val SEMANTIC_INDEX = "SemanticIndex"
 
 private const val INDEX_TERMINAL = "index("
 

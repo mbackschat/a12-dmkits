@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
+import io.github.mbackschat.a12.dm.consistency.syntax.DATE_CONSTRUCTION
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.NameTerminal
 import io.github.mbackschat.a12.dm.consistency.syntax.callShapes
@@ -103,8 +104,6 @@ private fun TrackedFactBase.messageConstantFinding(
 }
 
 private const val BASE_YEAR_CONSTANT = "BaseYear"
-
-private const val DATE_CONSTRUCTION = "Date"
 
 /**
  * Whether the text names the constant as a NAME token of its own.

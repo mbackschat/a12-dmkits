@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 
@@ -47,8 +48,6 @@ internal fun TrackedFactBase.filterWildcardFindings(): List<Finding> {
         }
     }
 }
-
-private const val HAVING = "Having"
 
 /**
  * The repeatable groups a filter body stars, or none when the body is a shape no row covers.

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
@@ -54,7 +55,6 @@ internal fun TrackedFactBase.sumOfProductsOperandFindings(): List<Finding> {
 }
 
 private const val SUM_OF_PRODUCTS = "SumOfProducts"
-private const val HAVING = "Having"
 
 /** One operand reduced to what the four laws read, or null when this family may not judge the call. */
 private class ParallelOperand(val owningGroup: String, val stars: Int, val filtered: Boolean, val at: String)

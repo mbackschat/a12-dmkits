@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -36,7 +37,7 @@ import kotlinx.serialization.json.contentOrNull
  */
 internal fun TrackedFactBase.parallelIterationUniquenessFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val spelling = keywords[REPETITION_NOT_UNIQUE_CALL] ?: return emptyList()
+    val spelling = keywords[REPETITION_NOT_UNIQUE] ?: return emptyList()
     val referencesByElement = conditionReferences().groupBy { it.declaredAt }
     return declarations().filter { it.kind == "Rule" }.mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
@@ -67,8 +68,6 @@ internal fun TrackedFactBase.parallelIterationUniquenessFindings(): List<Finding
         )
     }
 }
-
-private const val REPETITION_NOT_UNIQUE_CALL = "RepetitionNotUnique"
 
 /** A repeatable group that declares an index field, with the field's short name and declared type. */
 private data class KeyedGroup(val path: String, val indexField: String, val indexType: String)

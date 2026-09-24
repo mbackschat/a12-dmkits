@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
+import io.github.mbackschat.a12.dm.consistency.syntax.FALSE_CONSTANT
+import io.github.mbackschat.a12.dm.consistency.syntax.TRUE_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.comparisonsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
@@ -62,10 +64,6 @@ internal fun TrackedFactBase.booleanComparisonAgreementFindings(): List<Finding>
         }
     }
 }
-
-private const val TRUE_CONSTANT = "True"
-
-private const val FALSE_CONSTANT = "False"
 
 /** The two constants carrying A12's DATETIME base type; neither boolean kind admits one. */
 private val TEMPORAL_CONSTANTS = listOf("Today", "Now")

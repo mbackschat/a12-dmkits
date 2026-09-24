@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexKeysIn
 
@@ -81,10 +83,6 @@ private fun TrackedFactBase.keysInsideAFilter(
         .flatMap { operand -> operand.clauses.filter { it.keyword == filterKeyword } }
         .flatMapTo(mutableSetOf()) { semanticIndexKeysIn(it.text, conditionLanguage, indexKeyword) }
 }
-
-private const val SEMANTIC_INDEX = "SemanticIndex"
-
-private const val HAVING = "Having"
 
 /** The finding one key draws, in A12's order, or null for every shape it answers with another class. */
 private fun TrackedFactBase.keyFinding(

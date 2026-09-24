@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.FROM_SCOPE
+import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
@@ -59,10 +61,6 @@ internal fun TrackedFactBase.repetitionKeyContainmentFindings(): List<Finding> {
         }
     }
 }
-
-private const val REPETITION_NOT_UNIQUE = "RepetitionNotUnique"
-
-private const val FROM_SCOPE = "FromScope"
 
 private data class ContainmentDefect(val code: String, val key: String, val bound: String)
 

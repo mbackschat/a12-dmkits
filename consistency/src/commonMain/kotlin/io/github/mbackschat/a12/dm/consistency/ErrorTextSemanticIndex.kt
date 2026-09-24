@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
@@ -78,8 +79,6 @@ internal fun TrackedFactBase.errorTextSemanticIndexFindings(): List<Finding> {
         }
     }
 }
-
-private const val SEMANTIC_INDEX = "SemanticIndex"
 
 /** An indexed read reduced to what `tryGetFor` keys on: the resolved value path and the key's SPEC. */
 private data class BoundPair(val valuePath: String, val keySpec: String)

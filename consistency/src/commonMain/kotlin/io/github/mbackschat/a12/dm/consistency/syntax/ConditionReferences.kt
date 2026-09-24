@@ -125,16 +125,6 @@ internal fun starsRuleContext(text: String, language: ConditionLanguage): Boolea
 internal fun isRuleContext(name: String, language: ConditionLanguage): Boolean =
     name in RULE_CONTEXT_SPELLINGS && name in CONDITION_KEYWORDS.getValue(language)
 
-/**
- * The catalog id of the one predicate spelled as a keyword followed by a BARE NAME rather than a call.
- *
- * Resolved to the model's own language through [CONDITION_OPERATOR_KEYWORDS] rather than written as a literal,
- * because the German spelling is a different word (`ApplikationsBedingung`).
- * `ConditionReferenceTest.theNameAfterTheCustomConditionKeywordIsNotAReference` fails in both languages if the
- * catalog ever stops carrying it, so the lookup cannot degrade silently back into the over-rejection.
- */
-private const val CUSTOM_CONDITION = "CustomCondition"
-
 /** Path syntax that continues a reference: the separator, the two step forms, and the repetition wildcard. */
 internal val PATH_PUNCTUATION = setOf("/", "..", ".", "*")
 
@@ -323,7 +313,6 @@ internal fun normalizedPath(run: List<Token>): String {
 }
 
 private const val UP_STEP = ".."
-
 
 /**
  * The first of [spellings] that [text] uses as a KEYWORD, or null.

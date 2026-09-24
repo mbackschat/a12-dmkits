@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
@@ -39,9 +41,9 @@ internal fun TrackedFactBase.repetitionNotUniqueCombinationFindings(
         return emptyList()
     }
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val spelling = keywords[REPETITION_NOT_UNIQUE_OPERATOR] ?: return emptyList()
+    val spelling = keywords[REPETITION_NOT_UNIQUE] ?: return emptyList()
     val body = element.body ?: return emptyList()
-    val filterKeyword = keywords[FILTER]
+    val filterKeyword = keywords[HAVING]
     return conditionTexts(element.kind, body).mapNotNull { (member, text) ->
         val entry = syntaxEntryOf(member)
         val found = callsIn(text, conditionLanguage, entry)
@@ -64,7 +66,3 @@ internal fun TrackedFactBase.repetitionNotUniqueCombinationFindings(
         )
     }
 }
-
-private const val REPETITION_NOT_UNIQUE_OPERATOR = "RepetitionNotUnique"
-
-private const val FILTER = "Having"

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
@@ -121,8 +122,6 @@ private val ARITY_OF = mapOf(
     "NotAllGroupsFilled" to ArityLaw.MORE_THAN_ONE_ENTITY,
     "NumberOfFilledGroups" to ArityLaw.MORE_THAN_ONE_GROUP,
 )
-
-private const val HAVING = "Having"
 
 private fun TrackedFactBase.arityFinding(
     call: ConditionCall,

@@ -1,7 +1,11 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.CUSTOM_CONDITION
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
 import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
@@ -97,11 +101,7 @@ internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> {
     }
 }
 
-private const val HAVING = "Having"
-
 private const val FROM = "From"
-
-private const val SEMANTIC_INDEX = "SemanticIndex"
 
 private data class FilterDefect(val code: String, val wrote: String, val level: String?)
 
@@ -211,10 +211,6 @@ private const val NO_ITERATION = "MVK_NO_ITERATION_FOR_WILDCARD"
 private const val INDEX_NOT_ALLOWED = "MVK_SEMANTIC_INDEX_NOT_ALLOWED"
 
 private const val DISALLOWED_CONSTRUCT = "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
-
-private const val CUSTOM_CONDITION = "CustomCondition"
-
-private const val REPETITION_NOT_UNIQUE = "RepetitionNotUnique"
 
 private fun filterFinding(defect: FilterDefect, element: TrackedDeclaration, member: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

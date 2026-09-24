@@ -2,6 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -73,12 +76,6 @@ internal fun TrackedFactBase.filteredEntityIterationFindings(): List<Finding> {
         }
     }
 }
-
-private const val HAVING = "Having"
-
-private const val SEMANTIC_INDEX = "SemanticIndex"
-
-private const val REPETITION_NOT_UNIQUE = "RepetitionNotUnique"
 
 /** The first filtered operand A12 would find marked, or null when the condition draws no such class. */
 private fun TrackedFactBase.markedFilteredOperand(

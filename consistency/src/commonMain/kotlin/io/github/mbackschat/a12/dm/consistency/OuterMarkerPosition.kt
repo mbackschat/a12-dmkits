@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
@@ -50,8 +51,6 @@ internal fun TrackedFactBase.outerMarkerPositionFindings(): List<Finding> {
         }
     }
 }
-
-private const val HAVING = "Having"
 
 /**
  * The paths of the `$`-marked references this text writes OUTSIDE every `Having` clause it carries.

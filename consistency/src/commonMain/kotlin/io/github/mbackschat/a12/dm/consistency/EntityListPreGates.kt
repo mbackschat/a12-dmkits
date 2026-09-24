@@ -4,6 +4,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORD
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
+import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
@@ -50,7 +52,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 internal fun TrackedFactBase.entityListPreGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val gates = ROOT_GROUP_GATE_OF.mapNotNull { (id, gate) -> keywords[id]?.let { it to gate } }.toMap()
-    val infixCarrier = keywords[VALUE_IN_FIELDS]
+    val infixCarrier = keywords[NUMBER_OF_VALUE_IN_FIELDS]
     val valueListCarriers = VALUE_LIST_QUANTIFIERS.mapNotNull { keywords[it] }.toSet()
     if (gates.isEmpty()) {
         return emptyList()
@@ -78,18 +80,12 @@ private enum class RootGroupGate {
     NONE,
 }
 
-/** `NumberOfValueInFields` lists its entities after an infix keyword rather than as its own operands. */
-private const val VALUE_IN_FIELDS = "NumberOfValueInFields"
-
 /** The value-list quantifiers, which list their entities BEFORE an infix keyword, the values after it. */
 private val VALUE_LIST_QUANTIFIERS = listOf(
     "AtLeastOneFieldValueIncludedInValueList",
     "NoFieldValueIncludedInValueList",
     "NotAllFieldValuesIncludedInValueList",
 )
-
-/** The catalog id of the semantic-index clause — `For` in English, `Fuer` in German. */
-private const val SEMANTIC_INDEX = "SemanticIndex"
 
 /**
  * Every operator that builds an entity list, and the root-group gate its construct class asks.
@@ -115,7 +111,7 @@ private val ROOT_GROUP_GATE_OF = mapOf(
     "FirstFilledValue" to RootGroupGate.PLAIN,
     "NumberOfFilledFields" to RootGroupGate.PLAIN,
     "NumberOfDifferentValues" to RootGroupGate.PLAIN,
-    VALUE_IN_FIELDS to RootGroupGate.PLAIN,
+    NUMBER_OF_VALUE_IN_FIELDS to RootGroupGate.PLAIN,
     "DateRangesOverlap" to RootGroupGate.PLAIN,
     "AtLeastOneFieldValueIncludedInValueList" to RootGroupGate.PLAIN,
     "NoFieldValueIncludedInValueList" to RootGroupGate.PLAIN,

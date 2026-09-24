@@ -2,6 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.FALSE_CONSTANT
+import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
+import io.github.mbackschat.a12.dm.consistency.syntax.TRUE_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -71,7 +74,7 @@ import kotlinx.serialization.json.contentOrNull
  */
 internal fun TrackedFactBase.valueInFieldsConstantKindFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val carrier = keywords[VALUE_IN_FIELDS] ?: return emptyList()
+    val carrier = keywords[NUMBER_OF_VALUE_IN_FIELDS] ?: return emptyList()
     val spellings = ConstantSpellings(
         keywords[TRUE_CONSTANT],
         keywords[FALSE_CONSTANT],
@@ -87,12 +90,6 @@ internal fun TrackedFactBase.valueInFieldsConstantKindFindings(): List<Finding> 
         }
     }
 }
-
-private const val VALUE_IN_FIELDS = "NumberOfValueInFields"
-
-private const val TRUE_CONSTANT = "True"
-
-private const val FALSE_CONSTANT = "False"
 
 private const val TODAY_CONSTANT = "Today"
 
@@ -158,7 +155,7 @@ private fun TrackedFactBase.constantKindFinding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
             arm.code,
-            "in `$member`: `$VALUE_IN_FIELDS` counts `${constantText.trim()}`, a point in time — this " +
+            "in `$member`: `$NUMBER_OF_VALUE_IN_FIELDS` counts `${constantText.trim()}`, a point in time — this " +
                 "operator counts a number, a text or a boolean constant and nothing else, whatever the " +
                 "listed declarations are. Compare the date against a field instead of counting it",
             element.path,
@@ -183,7 +180,7 @@ private fun TrackedFactBase.constantKindFinding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         defect.code,
-        "in `$member`: `$VALUE_IN_FIELDS` ${defect.detail}",
+        "in `$member`: `$NUMBER_OF_VALUE_IN_FIELDS` ${defect.detail}",
         element.path,
     )
 }
@@ -338,7 +335,7 @@ private fun TrackedFactBase.unexpectedConstantToken(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         "MVK_UNEXPECTED_TOKEN",
-        "in `$member`: `$VALUE_IN_FIELDS` counts " +
+        "in `$member`: `$NUMBER_OF_VALUE_IN_FIELDS` counts " +
             (constantText.trim().takeIf { it.isNotEmpty() }?.let { "`$it`, which is not a constant" }
                 ?: "nothing — the slot before `In` is empty") +
             ". That position takes a number, a text, `True`, `False` or a point in time, and nothing " +

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
+import io.github.mbackschat.a12.dm.consistency.syntax.DATE_CONSTRUCTION
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.callShapes
@@ -73,8 +74,6 @@ internal fun TrackedFactBase.validityConditionOperandFindings(): List<Finding> {
 
 /** Both spellings of the keyword; the two arms share it and are told apart by the operand shape. */
 private val VALIDITY_CONDITIONS = listOf("ValidType", "InvalidType")
-
-private const val DATE_CONSTRUCTION = "Date"
 
 /** The two declarations `isStringEnumOrExtensibleEnum` admits — the third disjunct is a string-type FLAG. */
 private val CODE_BEARING_TYPES = setOf("StringType", "EnumerationType")

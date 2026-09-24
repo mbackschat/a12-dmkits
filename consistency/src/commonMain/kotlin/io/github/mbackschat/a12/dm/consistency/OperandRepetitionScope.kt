@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
@@ -129,10 +131,6 @@ private fun filteredBases(
     .mapNotNull { it.base }
     .toSet()
 
-private const val HAVING = "Having"
-
-private const val SEMANTIC_INDEX = "SemanticIndex"
-
 /** The group whose repetitions A12 addresses the target by, or null when the target is not a FIELD. */
 internal fun TrackedFactBase.groupOfTargetField(target: String): String? =
     if (declarationAt(target)?.declaredKind == DeclaredKind.FIELD) {
@@ -202,7 +200,6 @@ private const val MULTIPLE_INDEX_FIELDS = "MVK_MULTIPLE_INDEX_FIELDS"
 
 /** The parallel-level classes measured on a GROUP operand; [levelClassOf] withholds the others there. */
 private val GROUP_PARALLEL_CLASSES = setOf(NO_WILDCARD, "MVK_ERROR_FIELD_NO_INDEX")
-
 
 /**
  * What A12 answers about a PARALLEL level — one the target's coordinates neither contain nor lie under.

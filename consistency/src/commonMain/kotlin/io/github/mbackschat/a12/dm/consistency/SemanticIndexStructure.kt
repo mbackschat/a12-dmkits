@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import kotlinx.serialization.json.JsonObject
@@ -60,8 +61,6 @@ internal fun TrackedFactBase.semanticIndexStructureFindings(): List<Finding> {
         }
     }
 }
-
-private const val SEMANTIC_INDEX = "SemanticIndex"
 
 /**
  * The class the FIRST defective index in one text draws, or null when this family may not speak about it.

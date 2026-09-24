@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
@@ -71,10 +73,6 @@ private fun TrackedFactBase.iterationScopeOf(declared: DeclaredReference?, decla
     }
     return groupOfTargetField(target)
 }
-
-private const val HAVING = "Having"
-
-private const val SEMANTIC_INDEX = "SemanticIndex"
 
 private fun TrackedFactBase.operandFinding(
     base: String?,

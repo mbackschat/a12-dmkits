@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -70,8 +71,6 @@ internal fun TrackedFactBase.computationSelfReadFindings(): List<Finding> {
 private const val GROUP_FILLED = "GroupFilled"
 
 private const val CURRENT_REPETITION = "CurrentRepetition"
-
-private const val SEMANTIC_INDEX = "SemanticIndex"
 
 /** The absolute path this computation writes, absent when the member does not resolve. */
 private fun TrackedFactBase.computedTargetOf(element: TrackedDeclaration): String? = declaredReferences()
