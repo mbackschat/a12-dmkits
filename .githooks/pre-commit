@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Refuses three kinds of commit, each block below carrying its own reason:
+# Refuses four kinds of commit, each block below carrying its own reason:
 #   - one that stages build output or log files;
 #   - one whose staged files can drift a CI-gated doc, unless the doc guards have run green since;
-#   - ANY commit, unless the repository-wide leak lane has run green since the newest staged change.
+#   - ANY commit, unless the repository-wide leak lane has run green since the newest staged change;
+#   - ANY commit, when any test run written since the newest staged change recorded a failure.
 #
 # BUILD OUTPUT. .gitignore does NOT cover this: it is consulted only for UNTRACKED paths, so `git add -f` walks
 # straight past it and, once a path is tracked, the ignore rule is never consulted again. That is exactly how 72
@@ -56,14 +57,19 @@ epoch_or_refuse() {
   fi
   printf '%s' "$t"
 }
-newest_mtime() { # the newest mtime among the whitespace-separated paths in $1, skipping absent ones; 0 if none
+newest_path() { # the newest of the whitespace-separated paths in $1, skipping absent ones; empty if none
   newest=0
+  newest_file=""
   for f in $1; do
     [ -e "$f" ] || continue
     t="$(epoch_or_refuse "$f")" || return 1
-    if [ "$t" -gt "$newest" ]; then newest=$t; fi
+    if [ "$t" -gt "$newest" ]; then newest=$t; newest_file=$f; fi
   done
-  printf '%s' "$newest"
+  printf '%s' "$newest_file"
+}
+newest_mtime() { # the mtime of newest_path $1; 0 if none
+  p="$(newest_path "$1")" || return 1
+  if [ -z "$p" ]; then printf 0; else epoch_or_refuse "$p"; fi
 }
 # What a lane's result directory $1 says about a change whose newest file has mtime $2: `stale` when no result
 # file was written since, `red` when one written since records a failure, `green` otherwise.
@@ -217,6 +223,60 @@ their command: one Gradle start instead of two. A failure is fixed in the change
 
 `git commit --no-verify` bypasses this; CI will still fail, which is deliberate.
 LEAKMESSAGE
+  refused=1
+fi
+
+# ---------------------------------------------------------------------------------------------------------
+# Refuse EVERY commit when ANY test run written since the newest staged change recorded a failure.
+#
+# The blocks above ask whether NAMED lanes have run green since the change; none asks whether the runs that
+# did happen passed. a878443c8 (2026-09-24) landed with `:catalogProseReviewGuardTest` red: the guard had run
+# against the staged change and failed, but the command chain that ran it did not gate the commit on its
+# status, and no block here read that lane. A result file written after the change that records a failure is
+# the one piece of evidence that is never ambiguous, so this reads every lane, root and module, rather than a
+# curated list that the next unlisted lane would walk past.
+#
+# Only files strictly newer than the newest staged file are read. That keeps an old red from refusing
+# forever: a class re-run green rewrites its own file, and an edit made after a red run moves the comparison
+# past it. It also sets the limit, stated rather than hidden: a red run followed by a later, unrelated edit
+# is not seen here, and the lane blocks above and CI stay the net for it.
+newest_staged_file="$(newest_path "$staged")" || exit 1
+result_roots=""
+for d in build/test-results */build/test-results; do
+  if [ -d "$d" ]; then result_roots="$result_roots $d"; fi
+done
+red_results=""
+if [ -n "$newest_staged_file" ] && [ -n "$result_roots" ]; then
+  fresh_results="$(find $result_roots -name 'TEST-*.xml' -newer "$newest_staged_file")" || exit 1
+  if [ -n "$fresh_results" ]; then
+    # grep answers 1 for "no file matched", which is the green case; anything above that is a read it could
+    # not make, and a check that cannot read must refuse rather than pass blind.
+    set +e
+    red_results="$(grep -lE '<testsuite [^>]*(failures|errors)="[1-9]' $fresh_results)"
+    grep_status=$?
+    set -e
+    if [ "$grep_status" -gt 1 ]; then
+      printf '\npre-commit: could not read the test results written since the change; refusing.\n' >&2
+      exit 1
+    fi
+  fi
+fi
+if [ -n "$red_results" ]; then
+  printf '\nA test run written since the newest staged change recorded a FAILURE:\n\n' >&2
+  for x in $red_results; do
+    lane="$(printf '%s' "$x" | sed -e 's#^build/test-results/\([^/]*\)/.*#:\1#' \
+      -e 's#^\([^/]*\)/build/test-results/\([^/]*\)/.*#:\1:\2#')"
+    printf '  %s  (lane %s)\n' "$x" "$lane" >&2
+  done
+  cat >&2 <<'REDMESSAGE'
+
+Read the failing class there, fix it in the change, and re-run that lane: a green run rewrites the file.
+
+A deliberately red run leaves the same evidence — the red half of red/green, or a mutant that was killed —
+and is cleared the same way, by the green run that follows it.
+
+`git commit --no-verify` bypasses this; CI will still fail on a real red, which is deliberate.
+REDMESSAGE
   refused=1
 fi
 

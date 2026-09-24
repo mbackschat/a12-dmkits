@@ -121,8 +121,9 @@ printf '<testsuite name="x" tests="2" skipped="0" failures="0" errors="1">\n' \
   > "$REPO/cli/build/test-results/referentGuardTest/TEST-x.xml"
 fabricate_leak_evidence
 red_doc_out="$(commit_expecting_refusal "docs: red guard")"
-[[ "$red_doc_out" == *"FAILURE"* && "$red_doc_out" == *"cli/build/test-results/referentGuardTest"* ]] \
-  || fail "a doc guard that ran red was not named as a failure: $red_doc_out"
+[[ "$red_doc_out" == *"CI-gated doc"* && "$red_doc_out" == *"FAILURE"* \
+   && "$red_doc_out" == *"cli/build/test-results/referentGuardTest"* ]] \
+  || fail "the doc check did not name its red guard as a failure: $red_doc_out"
 fabricate_guard_evidence
 git -C "$REPO" commit -qm "docs: red guard, fixed" || fail "re-run green doc evidence did not satisfy the check"
 
@@ -143,23 +144,56 @@ leak_stale_out="$(commit_expecting_refusal "stale leak evidence")"
 [[ "$leak_stale_out" == *"Stale"* ]] || fail "stale leak evidence was not reported as stale: $leak_stale_out"
 fabricate_leak_evidence 3
 leak_red_out="$(commit_expecting_refusal "red leak evidence")"
-[[ "$leak_red_out" == *"FAILURE"* ]] || fail "a red leak lane was not reported as a failure: $leak_red_out"
+[[ "$leak_red_out" == *"leak lane has no green result"* && "$leak_red_out" == *"FAILURE"* ]] \
+  || fail "the leak check did not report its red lane as a failure: $leak_red_out"
 fabricate_leak_evidence
 git -C "$REPO" commit -qm "leak lane green" || fail "fresh green leak evidence did not satisfy the check"
 
-# 8. --no-verify still bypasses, deliberately — a local hook must not be the only thing standing anywhere.
+# 8. A red run of ANY lane written since the change is refused, not only the lanes the blocks above name:
+#    a878443c8 landed with :catalogProseReviewGuardTest red because nothing in the hook read that lane. The
+#    other blocks are satisfied first, so the refusal can only be this one; a green re-run then clears it, and
+#    a red run OLDER than the change does not refuse, since this check reads only what ran after it.
+fabricate_any_lane() { # $1 = failures, then the result directories
+  local failures=$1 d
+  shift
+  for d in "$@"; do
+    mkdir -p "$REPO/$d"
+    printf '<testsuite name="x" tests="1" skipped="0" failures="%s" errors="0">\n' "$failures" > "$REPO/$d/TEST-x.xml"
+  done
+}
+echo "any lane" > "$REPO/tool.py"
+git -C "$REPO" add -A
+fabricate_leak_evidence
+sleep 1
+fabricate_any_lane 1 build/test-results/catalogProseReviewGuardTest adapter/build/test-results/test
+any_red_out="$(commit_expecting_refusal "any lane red")"
+[[ "$any_red_out" == *"lane :catalogProseReviewGuardTest"* && "$any_red_out" == *"lane :adapter:test"* ]] \
+  || fail "a red root lane and a red module lane were not both named with their task: $any_red_out"
+[[ "$any_red_out" != *"leak lane has no green"* && "$any_red_out" != *"CI-gated doc"* ]] \
+  || fail "another check answered for the any-lane case: $any_red_out"
+fabricate_any_lane 0 build/test-results/catalogProseReviewGuardTest adapter/build/test-results/test
+git -C "$REPO" commit -qm "any lane re-run green" || fail "a green re-run did not clear the red-run refusal"
+fabricate_any_lane 1 build/test-results/catalogProseReviewGuardTest
+sleep 1
+echo "edited after the red run" > "$REPO/tool.py"
+git -C "$REPO" add -A
+fabricate_leak_evidence
+git -C "$REPO" commit -qm "red run older than the change" \
+  || fail "a red run older than the newest staged change refused the commit"
+
+# 9. --no-verify still bypasses, deliberately — a local hook must not be the only thing standing anywhere.
 echo "one more" > "$REPO/docs/bypass-me.md"
 git -C "$REPO" add -A
 git -C "$REPO" commit -qm "docs: bypass" --no-verify \
   || fail "--no-verify did not bypass the hook"
 
-# 9. THE `stat` DIALECT TRAP, locked on EVERY platform — the defect that shipped. `stat` speaks two
+# 10. THE `stat` DIALECT TRAP, locked on EVERY platform — the defect that shipped. `stat` speaks two
 #    incompatible dialects and picking the wrong one does NOT fail cleanly: GNU's `stat -f %m F` reads `%m`
 #    as a FILE, so it prints F's FILESYSTEM block on stdout and exits 1, and the original
 #    `stat -f %m … || stat -c %Y …` therefore yielded that block CONCATENATED with the real number. Every
 #    later `[ "$t" -gt … ]` died as a non-integer — silently, because a test on the LEFT of a `&&` is exempt
 #    from `set -e` — so every mtime read as 0, `0 -lt 0` was false, and the check NEVER FIRED on Linux. It
-#    worked on macOS, so only CI saw it, and steps 1-8 above could not: they exercise whatever dialect the
+#    worked on macOS, so only CI saw it, and steps 1-9 above could not: they exercise whatever dialect the
 #    host happens to speak. These shims speak exactly ONE dialect each, so both branches are exercised
 #    wherever this selftest runs.
 make_stat_shim() { # $1 = gnu|bsd|garbage -> prints a PATH-prefix directory holding a one-dialect `stat`
@@ -207,7 +241,7 @@ for dialect in gnu bsd; do
     || fail "with a ${dialect}-only stat, fresh doc-guard evidence was rejected"
 done
 
-# 10. When NEITHER dialect answers, the check REFUSES. This is the property whose absence made step 9's bug
+# 11. When NEITHER dialect answers, the check REFUSES. This is the property whose absence made step 10's bug
 #     invisible: a check that cannot measure must not wave a commit through.
 shim="$(make_stat_shim garbage)"
 rm -rf "$REPO/build/test-results" "$REPO/cli/build/test-results"
@@ -220,4 +254,4 @@ set -e
 [[ $blind_status -ne 0 ]] || fail "an unusable stat let the commit through — the check passed without measuring"
 [[ "$blind_out" == *"mtime"* ]] || fail "the refusal did not say it could not read mtimes: $blind_out"
 
-echo "SELFTEST OK: doc check spares a non-trigger, missing/stale/red evidence refused, fresh green accepted; leak lane demanded for every file, stale and red refused; both stat dialects measured, an unusable stat refused, bypass works"
+echo "SELFTEST OK: doc check spares a non-trigger, missing/stale/red evidence refused, fresh green accepted; leak lane demanded for every file, stale and red refused; a red run of any lane since the change refused, an older one ignored; both stat dialects measured, an unusable stat refused, bypass works"
