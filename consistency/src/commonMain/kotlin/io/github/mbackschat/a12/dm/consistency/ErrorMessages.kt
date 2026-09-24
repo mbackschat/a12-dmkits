@@ -85,6 +85,18 @@ internal fun List<AuthoredMessage>.collectedTexts(declaredLocales: List<String>)
     return collected
 }
 
+/**
+ * The entries A12's error-text checker examines: each declared locale's LAST entry, and none for a locale the
+ * model does not declare (`rulekit.validate.laws.ErrorTextLocaleScopeLawsTest.whichEntriesTheErrorTextCheckerExamines`,
+ * [KERNEL-FINDINGS KF197]).
+ *
+ * Every family that judges a message's TEXT reads these. Judging every authored entry instead rejects a model
+ * A12 admits, since a text A12 never examines cannot draw its class; the slot families that judge presence and
+ * duplicates read [AuthoredMessages.Read.entries] on purpose.
+ */
+internal fun AuthoredMessages.Read.examined(declaredLocales: List<String>): List<AuthoredMessage> =
+    entries.collectedTexts(declaredLocales).map { (locale, text) -> AuthoredMessage(locale, text) }
+
 /** A member A12 binds to a `String`, absent when it is missing or is not a JSON string. */
 internal fun JsonObject.string(key: String): String? =
     (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull

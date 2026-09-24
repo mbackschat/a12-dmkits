@@ -93,7 +93,7 @@ private fun TrackedFactBase.messageConstantFinding(
     body: kotlinx.serialization.json.JsonObject,
 ): Finding? {
     val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return null
-    return messages.entries.firstNotNullOfOrNull { message ->
+    return messages.examined(declaredLocales).firstNotNullOfOrNull { message ->
         if (message.text.carriesAnOffendingCharacter()) {
             return@firstNotNullOfOrNull null
         }

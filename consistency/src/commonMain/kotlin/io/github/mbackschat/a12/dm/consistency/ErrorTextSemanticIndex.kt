@@ -47,7 +47,7 @@ internal fun TrackedFactBase.errorTextSemanticIndexFindings(): List<Finding> {
             .flatMap { (_, text) -> semanticIndexUsesIn(text, conditionLanguage, keyword) }
             .mapNotNull { use -> boundPair(use, group, element) }
             .toSet()
-        messages.entries.flatMap { message ->
+        messages.examined(declaredLocales).flatMap { message ->
             if (message.text.carriesAnOffendingCharacter()) {
                 return@flatMap emptyList()
             }

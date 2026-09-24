@@ -1,10 +1,14 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.de;
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -15,6 +19,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
+import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
  * KERNEL-FINDINGS §13 — the rule error-text checker runs per <b>DECLARED</b> locale, so a message for a locale
@@ -133,6 +138,53 @@ class ErrorTextLocaleScopeLawsTest {
 
         assertEquals(List.of("fr_FR"), new RuleValidator().undeclaredMessageLocales(ORDER, draft));
         assertEquals(List.of("en_US", "de_DE"), new RuleValidator().declaredLocales(ORDER));
+    }
+
+    /**
+     * Every error-text class the portable checker names, from an undeclared locale and from a declared locale's
+     * REPLACED entry, each beside its declared-locale twin that draws it.
+     *
+     * <p>Written as raw DM-JSON rather than through {@link #check}, which merges messages by locale and would
+     * collapse the duplicate before A12 saw it. The undeclared rows generalize {@link
+     * #theSameTextInAnUndeclaredLocaleIsNotCheckedAtAll} from one class to four; the duplicate rows ask which of
+     * two entries for one locale A12 examines.
+     */
+    @Test
+    void whichEntriesTheErrorTextCheckerExamines() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        Map<String, String> defects = new LinkedHashMap<>();
+        defects.put("a parameter naming nothing", NAMES_NOTHING);
+        defects.put("a control character", "a\tb");
+        defects.put("an odd number of dollars", "a $ b");
+        defects.put("the base year, in a model without one", "since $BaseYear$");
+        Map<String, String> classes = Map.of(
+                "a parameter naming nothing", INVALID_ENTITY,
+                "a control character", "INVALID_CHARACTERS",
+                "an odd number of dollars", "WRONG_NUMBER_OF_DOLLARS",
+                "the base year, in a model without one", "NO_BASE_YEAR");
+        defects.forEach((defect, text) -> {
+            actual.put("en_US: " + defect + " — the twin", verdict(en(text), de(WELL_FORMED)));
+            expected.put("en_US: " + defect + " — the twin", classes.get(defect));
+            actual.put("fr_FR: " + defect, verdict(en(WELL_FORMED), de(WELL_FORMED),
+                    new LocalizedText("fr_FR", text)));
+            expected.put("fr_FR: " + defect, KernelLaws.ADMITTED);
+        });
+        actual.put("en_US twice, the EARLIER naming nothing",
+                verdict(en(NAMES_NOTHING), en(WELL_FORMED), de(WELL_FORMED)));
+        actual.put("en_US twice, the LATER naming nothing",
+                verdict(en(WELL_FORMED), en(NAMES_NOTHING), de(WELL_FORMED)));
+        expected.put("en_US twice, the EARLIER naming nothing", KernelLaws.ADMITTED);
+        expected.put("en_US twice, the LATER naming nothing", INVALID_ENTITY);
+        assertEquals(expected, actual, "which authored entries A12's error-text checker examines");
+    }
+
+    private static String verdict(LocalizedText... messages) {
+        String model = ModelWriter.addRule(ORDER, GROUP, "ProbeRule", "../Reference", "PROBE", CONDITION, "ERROR",
+                List.of(messages));
+        assertEquals(messages.length, model.split("\"locale\"", -1).length - 1,
+                "every authored entry must reach the DM-JSON, duplicates included");
+        return KernelLaws.verdictOf(model);
     }
 
     private static ValidationResult check(LocalizedText message) {

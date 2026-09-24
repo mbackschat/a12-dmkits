@@ -33,7 +33,7 @@ internal fun TrackedFactBase.errorTextCategorySuffixFindings(): List<Finding> {
         val membership = readBy[element.path] ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.entries.flatMap { message ->
+        messages.examined(declaredLocales).flatMap { message ->
             if (message.text.carriesAnOffendingCharacter()) {
                 return@flatMap emptyList()
             }

@@ -35,7 +35,7 @@ internal fun TrackedFactBase.messageValueSuffixFindings(): List<Finding> {
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val starredOnly = pathsReadThroughAStarAlone(element, group)
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.entries.flatMap { message ->
+        messages.examined(declaredLocales).flatMap { message ->
             if (message.text.carriesAnOffendingCharacter()) {
                 return@flatMap emptyList()
             }

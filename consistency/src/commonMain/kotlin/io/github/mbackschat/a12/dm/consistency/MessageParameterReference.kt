@@ -43,7 +43,7 @@ internal fun TrackedFactBase.messageParameterFindings(): List<Finding> {
         val membership = readBy[element.path] ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.entries.flatMap { message ->
+        messages.examined(declaredLocales).flatMap { message ->
             // A12 gates the text on its CHARACTERS before it reads a parameter out of it, so a message
             // carrying a control character draws that class and nothing about its parameters — wherever the
             // character sits, which is what makes this a gate rather than a race (KF343). Applied per

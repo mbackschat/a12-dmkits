@@ -1281,7 +1281,7 @@ private fun List<Finding>.withoutMessageVerdictsBehindARefusedDsl(
  * were drawn from inside the condition and slot families and co-fired beside a refused DSL until each arm
  * became a family of its own (2026-09-24).
  */
-private val MESSAGE_MEMBER_FAMILIES = setOf(
+internal val MESSAGE_MEMBER_FAMILIES = setOf(
     CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.ERROR_TEXT_SEMANTIC_INDEX,
     CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX, CheckFamily.ERROR_TEXT_INDEX_TERMINAL,
     CheckFamily.MESSAGE_TEXT_CHARACTERS, CheckFamily.MESSAGE_PARAMETER_SYNTAX,

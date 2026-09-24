@@ -25,7 +25,7 @@ internal fun TrackedFactBase.messageTextCharacterFindings(): List<Finding> {
     return declarations().filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.entries.mapNotNull { message -> element.messageTextFinding(message) }
+        messages.examined(declaredLocales).mapNotNull { message -> element.messageTextFinding(message) }
     }
 }
 

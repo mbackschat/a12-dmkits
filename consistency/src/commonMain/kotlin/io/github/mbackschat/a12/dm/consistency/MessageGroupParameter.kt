@@ -66,7 +66,7 @@ internal fun TrackedFactBase.messageGroupParameterFindings(): List<Finding> {
         val body = element.body ?: return@flatMap emptyList()
         val ruleGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.entries.flatMap { message ->
+        messages.examined(declaredLocales).flatMap { message ->
             if (message.text.carriesAnOffendingCharacter()) {
                 return@flatMap emptyList()
             }
