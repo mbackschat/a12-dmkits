@@ -14,7 +14,8 @@ import java.util.Locale
 /**
  * Differential + tri-check — what `NumberOfFilledGroups` counts over every operand shape its group list admits:
  * a fixed group below a starred repeatable level (`Batches*` + `/Seal`, KERNEL-FINDINGS KF462) alone and beside
- * a fixed group, a starred repeatable group beside a fixed one, and two fixed groups (KF463).
+ * a fixed group, a starred repeatable group beside a fixed one, two starred repeatable groups, and two fixed
+ * groups (KF463).
  *
  * A count is read as the one `count == n` rule that fires, and its polarity as that message's type, so every
  * document yields a `n:TYPE` reading under dynamic Groovy, static Java and the interpreter, or no reading at all
@@ -39,8 +40,10 @@ class AncestorStarredGroupCountDiffTest {
         const val SEAL = "/Item/Batches/Seal"
         const val CODE = "/Item/Batches/Seal/Code"
         const val WEIGHT = "/Item/Batches/Seal/Weight"
+        const val CRATES = "/Item/Crates"
+        const val TARE = "/Item/Crates/Tare"
         const val MSG = "ASGC"
-        const val MAX_COUNT = 5
+        const val MAX_COUNT = 6
         const val SUPPRESSED = ""
     }
 
@@ -53,6 +56,7 @@ class AncestorStarredGroupCountDiffTest {
                     b.repeatable(4).field("Lot", FieldKind.STRING)
                         .group("Seal") { it.field("Code", FieldKind.STRING).field("Weight", FieldKind.NUMBER) }
                 }
+                .group("Crates") { it.repeatable(2).field("Tare", FieldKind.NUMBER) }
         }.build().toJson()
 
     private fun titled(b: Both) = b.group(ITEM, 1).field(TITLE, "crate", 1, 1)
@@ -119,6 +123,32 @@ class AncestorStarredGroupCountDiffTest {
         listOf("0:O", "2:O", "2:O", "2:O", "3:O", "4:O", "2:O", "1:O", "2:O", "1:O", "2:O", SUPPRESSED, "1:O"),
     )
 
+    /** Documents for the two-scope list, each holding at most the declared four batches and two crates. */
+    private val crateDocuments: Map<String, (Both) -> Unit> = linkedMapOf(
+        "a sealed batch, one weighed crate" to { b -> sealed(titled(b), 1).group(CRATES, 1, 1).field(TARE, "3", 1, 1, 1) },
+        "a sealed batch, a crate holding only a malformed tare" to { b ->
+            sealed(titled(b), 1).group(CRATES, 1, 1).field(TARE, "abc", 1, 1, 1)
+        },
+        "no batch, a crate holding only a malformed tare" to { b ->
+            titled(b).group(CRATES, 1, 1).field(TARE, "abc", 1, 1, 1)
+        },
+        "four sealed batches, two crates" to { b ->
+            (1..4).fold(titled(b)) { acc, row -> sealed(acc, row) }.group(CRATES, 1, 1).group(CRATES, 1, 2)
+        },
+    )
+
+    /**
+     * Two starred scopes in one list are counted alike, and against the sum of their extents: a crate holding
+     * only a malformed value directly in its row still counts once it is instantiated, and four batches with
+     * both crates reach six, which types VALUE.
+     */
+    @Test
+    fun twoStarredScopesCountEveryInstantiatedRowAgainstBothCapacities() = assertAllEnginesRead(
+        "$BATCHES*, $CRATES*",
+        listOf("2:O", "2:O", "1:O", "6:V"),
+        crateDocuments,
+    )
+
     /** Two fixed groups: one holding admitted content counts although it also holds a malformed value. */
     @Test
     fun aFixedGroupHoldingAdmittedContentBesideAnErrorCounts() = assertAllEnginesRead(
@@ -130,7 +160,11 @@ class AncestorStarredGroupCountDiffTest {
      * Asserts the kernel's reading of every document against [expected] (`n:V`/`n:O`, or [SUPPRESSED]), then static
      * Java and the interpreter against dynamic Groovy.
      */
-    private fun assertAllEnginesRead(operands: String, expected: List<String>) {
+    private fun assertAllEnginesRead(
+        operands: String,
+        expected: List<String>,
+        documents: Map<String, (Both) -> Unit> = this.documents,
+    ) {
         val model = (0..MAX_COUNT).fold(base) { json, n ->
             RuntimeLaws.withRule(json, ITEM, "R$n", "../Title", "$MSG$n",
                 "FieldFilled($TITLE) And NumberOfFilledGroups($operands) == $n")

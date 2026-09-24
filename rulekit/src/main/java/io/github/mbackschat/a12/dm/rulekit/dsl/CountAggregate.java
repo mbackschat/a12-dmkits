@@ -13,8 +13,8 @@ import io.github.mbackschat.a12.dm.core.Refusals;
  * entity list (the kernel's {@code feldListenAnzahlOp}). The kernel's slot rules (verified
  * 2026-06-04, KERNEL-FINDINGS): {@code NumberOfFilledFields} needs more than one field <em>or</em>
  * at least one group ({@code MVK_PARAMSIZE_INVALIDN}); {@code NumberOfFilledGroups} needs more than
- * one group <em>or</em> a sole group whose path carries a star ({@code Group*} counting that group's filled
- * repetitions, or a star on an ancestor level), groups only ({@code MVK_PARAMSIZE_INVALIDGN}, {@code
+ * one group <em>or</em> a sole group whose path carries a star ({@code Group*} counting that group's
+ * instantiated repetitions, empty ones included, or a star on an ancestor level), groups only ({@code MVK_PARAMSIZE_INVALIDGN}, {@code
  * MVK_NO_FIELDS_ALLOWED}), and a group scope in {@link #fields} counts as a group; a root group is banned in {@code NumberOfFilledFields} ({@code
  * MVK_ROOT_GROUP_REFERENCED}) and admitted by {@code NumberOfFilledGroups} only alone ({@code
  * MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS}). The
@@ -105,7 +105,7 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
                     }
                 }
                 // ≥2 group entities, OR a sole one whose path carries a star on any level, its own or an
-                // ancestor's (KERNEL-FINDINGS KF462); `Group*` counts that group's filled repetitions.
+                // ancestor's (KERNEL-FINDINGS KF462); `Group*` counts that group's instantiated repetitions (KF463).
                 boolean soleStarred = entities.size() == 1
                         && !((GroupListRef) entities.getFirst()).flattened().isEmpty();
                 if (entities.size() < 2 && !soleStarred) {

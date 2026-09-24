@@ -26,7 +26,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * F10 read tail — the filled-count aggregates over a single wildcard scope (kernel
  * {@code IEntityListOperation}): {@code NumberOfFilledFields} over a flattened repetition list (e.g.
  * counting filled reps of an {@code IndexFields} index field), and {@code NumberOfFilledGroups} over a
- * single repeatable group ({@code Group*}, counting that group's filled repetitions). The latter
+ * single repeatable group ({@code Group*}, counting that group's instantiated repetitions). The latter
  * corrected the {@code CountAggregate} ≥2-groups invariant — the kernel accepts the wildcard single-group
  * form, confirmed by {@link #numberOfFilledGroupsIsKernelValid()}.
  */
