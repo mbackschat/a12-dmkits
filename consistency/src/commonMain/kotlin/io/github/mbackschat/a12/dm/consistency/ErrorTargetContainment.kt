@@ -1,5 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
+
 /**
  * A rule or computation that ITERATES must write into a field at or below its own declaring group.
  *
@@ -52,7 +56,8 @@ internal fun TrackedFactBase.errorTargetContainmentFindings(): List<Finding> {
                 return@mapNotNull null
             }
             val element = declarationAt(declared.declaredAt) ?: return@mapNotNull null
-            val perRowRead = texts.firstOrNull { readsOneRowAtATime(it, group, element) }
+            val ownReads = spellingsThatCanReadARow(element)
+            val perRowRead = texts.firstOrNull { it.written in ownReads && readsOneRowAtATime(it, group, element) }
             val writtenIterates =
                 declared.role == ReferenceRole.COMPUTED_TARGET && repeatingLevelsOnThePathTo(written) > 0
             if (perRowRead == null && !writtenIterates) {
@@ -79,6 +84,26 @@ private fun TrackedFactBase.readsOneRowAtATime(
 ): Boolean {
     val path = (reference.target as? Reference.Resolved)?.path ?: return false
     return unstarredRepeatableLevels(reference.written, path, declaringGroup, element)?.isNotEmpty() == true
+}
+
+/**
+ * The spellings in [element]'s texts that can read a row for the construct itself.
+ *
+ * Two unstarred spellings read no row of the path they name, and both were measured admitted from outside
+ * the declaring group, on either construct: a `Having` filter's own leaf, which is about the starred extent,
+ * and the value half of a semantic index, which picks its row by key
+ * (`rulekit.validate.laws.PartialStarContainmentLawsTest.aFilterLeafAndAKeyedReadAreNotPerRowReads`). The
+ * filter body is removed from the text; a text that writes a semantic index offers no row read at all,
+ * because the reference scan cannot tell its keyed spelling from a plain one — silence there is the
+ * under-report [operandRepetitionScopeFindings] accepts on the same text.
+ */
+private fun TrackedFactBase.spellingsThatCanReadARow(element: TrackedDeclaration): Set<String> {
+    val keyed = setOfNotNull(CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX))
+    val body = element.body ?: return emptySet()
+    if (conditionTexts(element.kind, body).any { (_, text) -> namesKeyword(text, keyed) != null }) {
+        return emptySet()
+    }
+    return referencesOutsideFilterBodies(element)
 }
 
 /**

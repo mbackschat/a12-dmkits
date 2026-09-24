@@ -213,6 +213,47 @@ class PartialStarContainmentLawsTest {
     }
 
     /**
+     * A leaf inside a {@code Having} filter and a semantic-index read, the two unstarred spellings that do not
+     * read the path they name one row at a time. Each has its contained twin, declared in {@code Summary}.
+     */
+    @Test
+    void aFilterLeafAndAKeyedReadAreNotPerRowReads() {
+        String filtered = "Sum(../Shipments*/ShipWeight Having [../Shipments/ShipKey] == \"X\")";
+        String keyed = "[../Shipments/ShipWeight For \"A\"] + 1";
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("Ledger | a plain unstarred read — the other control",
+                PLAIN.textComputation(LEDGER, "../../Summary/Result", "[../Shipments/ShipWeight] + 1"));
+        actual.put("Ledger | a starred aggregate — the control",
+                PLAIN.textComputation(LEDGER, "../../Summary/Result", "Sum(../Shipments*/ShipWeight)"));
+        actual.put("Ledger | the same, filtered", PLAIN.textComputation(LEDGER, "../../Summary/Result", filtered));
+        actual.put("Summary | the same, filtered, contained",
+                PLAIN.textComputation(SUMMARY, "../Result", filtered));
+        actual.put("Ledger | a keyed read", SHIPMENTS_KEYED.textComputation(LEDGER, "../../Summary/Result", keyed));
+        actual.put("Summary | a keyed read, contained", SHIPMENTS_KEYED.textComputation(SUMMARY, "../Result", keyed));
+        actual.put("Ledger | rule, the same filtered aggregate", is(filtered, KernelLaws.verdictModel(PLAIN.json(),
+                LEDGER, "../../Summary/Result", "FieldFilled(../Summary/Result) And " + filtered + " > 0")));
+        actual.put("Ledger | rule, a keyed read", is("[../Shipments/ShipWeight For \"A\"] > 0", KernelLaws.verdictModel(SHIPMENTS_KEYED.json(), LEDGER,
+                "../../Summary/Result", "FieldFilled(../Summary/Result) And [../Shipments/ShipWeight For \"A\"] > 0")));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        String admitted = KernelLaws.ADMITTED;
+        expected.put("Ledger | a plain unstarred read — the other control",
+                is("../../Summary/Result = [../Shipments/ShipWeight] + 1", NOT_IN_RULEGROUP));
+        expected.put("Ledger | a starred aggregate — the control",
+                is("../../Summary/Result = Sum(../Shipments*/ShipWeight)", admitted));
+        // The filter's own leaf names `Shipments` unstarred and reads no row of it: the filter is about the
+        // starred extent, so the construct stays non-iterating and may write outside its group.
+        expected.put("Ledger | the same, filtered", is("../../Summary/Result = " + filtered, admitted));
+        expected.put("Summary | the same, filtered, contained", is("../Result = " + filtered, admitted));
+        // …and a semantic-index key picks one row by VALUE, not by position, so it iterates nothing either.
+        expected.put("Ledger | a keyed read", is("../../Summary/Result = " + keyed, admitted));
+        expected.put("Summary | a keyed read, contained", is("../Result = " + keyed, admitted));
+        expected.put("Ledger | rule, the same filtered aggregate", is(filtered, admitted));
+        expected.put("Ledger | rule, a keyed read", is("[../Shipments/ShipWeight For \"A\"] > 0", admitted));
+        assertEquals(expected, actual, "a filter leaf and a keyed read");
+    }
+
+    /**
      * A star on a level that does not repeat is the wildcard gate's, which answers during resolution, so it is
      * not a star that spends itself on a repeatable level and says nothing about which rows the read takes.
      */

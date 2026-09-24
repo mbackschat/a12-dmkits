@@ -215,6 +215,35 @@ class StarBindingContainmentTest {
         assertEquals(expected, actual, "a star on a level that does not repeat")
     }
 
+    /**
+     * A filter's own leaf and a semantic-index read name `Shipments` unstarred and read no row of it, so the
+     * construct stays non-iterating and may write outside its group. The control row keeps the checker from
+     * passing by never reading the operation: a plain unstarred read of the same field is refused.
+     */
+    @Test
+    fun aFilterLeafAndAKeyedReadAreNotPerRowReads() {
+        val filtered = "Sum(../Shipments*/ShipWeight Having [../Shipments/ShipKey] == \\\"X\\\")"
+        val keyed = "[../Shipments/ShipWeight For \\\"A\\\"] + 1"
+        val target = "../../Summary/Result"
+        val plain = Sheet(ledger = true)
+        val keyedSheet = Sheet(shipmentsKeyed = true, ledger = true)
+        val reach = "FieldFilled(../Summary/Result) And"
+        val actual = mutableMapOf<String, List<String>>()
+        actual["Ledger | a plain unstarred read — the control"] =
+            codes(plain, ledger, target, "[../Shipments/ShipWeight] + 1")
+        actual["Ledger | a filtered aggregate"] = codes(plain, ledger, target, filtered)
+        actual["Summary | a filtered aggregate, contained"] = codes(plain, summary, "../Result", filtered)
+        actual["Ledger | a keyed read"] = codes(keyedSheet, ledger, target, keyed)
+        actual["Summary | a keyed read, contained"] = codes(keyedSheet, summary, "../Result", keyed)
+        actual["Ledger | rule, a filtered aggregate"] = ruleCodes(plain, ledger, "$reach $filtered > 0")
+        actual["Ledger | rule, a keyed read"] =
+            ruleCodes(keyedSheet, ledger, "$reach [../Shipments/ShipWeight For \\\"A\\\"] > 0")
+
+        val expected = actual.keys.associateWith { emptyList<String>() }.toMutableMap()
+        expected["Ledger | a plain unstarred read — the control"] = listOf(notInRuleGroup)
+        assertEquals(expected, actual, "a filter leaf and a keyed read")
+    }
+
     @Test
     fun onTheRuleArmTheSameReadsArePerRow() {
         val sheet = Sheet(ledger = true)
