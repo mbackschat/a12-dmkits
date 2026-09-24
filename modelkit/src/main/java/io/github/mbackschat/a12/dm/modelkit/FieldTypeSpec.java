@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 import io.github.mbackschat.a12.dm.core.KernelPatternPolicy;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
  * The typed configuration of a field — one record per kind, carrying only the slots that kind
@@ -17,9 +19,6 @@ import io.github.mbackschat.a12.dm.core.KernelPatternPolicy;
  * <p>{@code null} fields mean "slot not set" (the kernel's default applies). Value-range sanity
  * (min ≤ max) is checked where the builder constructs the record; full validity is the kernel's call.
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public sealed interface FieldTypeSpec {
 
     /** The kernel DM-JSON {@code fieldType.type} discriminator (e.g. {@code "StringType"}). */

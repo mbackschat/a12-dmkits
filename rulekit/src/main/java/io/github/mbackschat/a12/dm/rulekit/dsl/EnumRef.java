@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.List;
 import java.util.Map;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
  * A typed handle to an enumeration field. Comparisons are by <em>stored value</em> (§5b), and the
@@ -10,9 +12,6 @@ import java.util.Map;
  * later rejects. {@link #category(String)} navigates to a model-declared category
  * ({@code [field -> Category]}). Obtain from {@link BoundModel#enumOf(String)}.
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, List<String>> categories,
         boolean correlated) implements EnumListRef, NumericTextSource {
 

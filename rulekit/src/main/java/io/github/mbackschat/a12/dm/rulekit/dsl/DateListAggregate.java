@@ -3,6 +3,9 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.List;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
+import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
  * A <b>date-like</b> {@code MaxValue(…)} / {@code MinValue(…)} — the latest/earliest DATE, TIME, or DATETIME
@@ -32,10 +35,6 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * {@code yyyy-MM-dd} is a legal member of a DATE list. An over-strict copy of either refuses lists the kernel
  * admits.
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public record DateListAggregate(Mode mode, List<AggregateOperand> operands, ValueKind kind) implements Calculation {
 
     /** The two date aggregations, carrying the catalog operator-id shared with the numeric variant. */

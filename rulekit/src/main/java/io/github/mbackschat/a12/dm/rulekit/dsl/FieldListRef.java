@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
  * A flattened repetition list — the {@code Group*}{@code /Field} path syntax (KERNEL-SEMANTICS §9): the
@@ -16,9 +18,6 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * field ({@code MVK_WILDCARDS_REQUIRED} — satisfied structurally, since only {@code FieldListRef}
  * offers it).
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Condition> filter, boolean correlated)
         implements FieldOperand {
 

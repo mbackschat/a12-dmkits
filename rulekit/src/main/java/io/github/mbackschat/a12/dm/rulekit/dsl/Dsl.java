@@ -11,6 +11,9 @@ import java.util.Optional;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
+import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
  * The static-import facade (PROJECT-DESIGN §10, jOOQ-style): free-standing factories for composing
@@ -36,10 +39,6 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  *   <li>group predicates — {@code groupFilled}, {@code allGroupsFilled}, …</li>
  * </ol>
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public final class Dsl {
 
     /** The kernel's date-constant form (German {@code dd.MM.yyyy}); see {@link DateLiteral}. */

@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.ArrayList;
 import java.util.List;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
  * {@code AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In g1, g2)} where the value list
@@ -14,9 +16,6 @@ import java.util.List;
  * point (the smallest model-aware owner); the value entities carry their static {@link
  * ValueListOperand#kind() kind} here.
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public record FieldListEntityListCondition(
         ValueListQuantifier quantifier, List<ValueListOperand> fields, List<ValueListOperand> valueFields)
         implements Condition {

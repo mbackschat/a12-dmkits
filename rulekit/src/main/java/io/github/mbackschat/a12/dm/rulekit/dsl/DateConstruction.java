@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
  * {@code Date(day, month, year)} / {@code Date(day, month, century, decade)} — the kernel's date
@@ -22,9 +24,6 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * (F4/N7) for want of a measurement: a String component's exact digit pattern, and the year slot's
  * {@code yyyy} Date exception.
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public record DateConstruction(Calculation day, Calculation month, Calculation year1,
         Optional<Calculation> year2) implements Calculation {
 

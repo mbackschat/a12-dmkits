@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
+import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
  * {@code NumberOfFilledFields(…)} / {@code NumberOfFilledGroups(…)} — a numeric aggregate over an
@@ -17,10 +20,6 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS}). The
  * {@link Dsl} entry points enforce all of that by signature + pre-check; field kinds may be mixed.
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<GroupRef> groups)
         implements Calculation {
 

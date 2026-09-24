@@ -8,6 +8,9 @@ import io.github.mbackschat.a12.dm.predicates.ElementNamePredicatesKt;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 /**
  * A typed validation rule — the F2a authoring object (study §4.1): the rule lives in a group by
@@ -23,10 +26,6 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
  * later, on demand). Messages are plain localized texts; the typed interpolation helper is the F2a
  * follow-up.
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.Refusals;
-import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
-
 public record Rule(
         GroupRef group,
         String name,

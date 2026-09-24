@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.List;
 import java.util.Optional;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
  * {@code RepetitionNotUnique(key1, key2 @From Scope)} — true for a repetition whose (composite) key
@@ -12,9 +14,6 @@ import java.util.Optional;
  * the rule must iterate, and the optional {@code @From} scope group must be repeatable
  * ({@code MVK_GROUP_NOT_REPEATABLE}, pre-checked in {@link #from}).
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public record RepetitionNotUniqueCondition(List<FieldRef> keys, Optional<GroupRef> scope)
         implements Condition {
 

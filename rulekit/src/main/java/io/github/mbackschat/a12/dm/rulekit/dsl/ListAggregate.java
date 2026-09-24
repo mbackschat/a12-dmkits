@@ -3,6 +3,9 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.List;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
+import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
  * {@code Sum(…)} / {@code MaxValue(…)} / {@code MinValue(…)} — numeric aggregates over an entity
@@ -26,10 +29,6 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * group's contained fields; the two gates that behave differently for it, and why they are delegated rather
  * than pre-checked, are on {@link AggregateOperand}.
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public record ListAggregate(AggOp op, List<AggregateOperand> operands) implements Calculation {
 
     public enum AggOp {

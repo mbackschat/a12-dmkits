@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.List;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
  * {@code Time(hour?, minute?, second?)} — the kernel's time-of-day construction from a zero-to-three
@@ -13,9 +15,6 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * ({@code Time("10", "30", "50")}), or a matching time extractor as its call. The kernel rejects a bracketed
  * value ({@code [H]}) here; the renderer therefore preserves the constructor's bare-field syntax.
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public record TimeConstruction(List<Calculation> components) implements Calculation {
 
     /**
