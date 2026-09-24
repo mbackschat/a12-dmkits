@@ -310,13 +310,15 @@ internal interface GroupListEnvironmentProvider {
     fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext>
 
     /**
-     * The DECLARED number of instances the starred operand [groupPath] spans: the declared maximum repetition
-     * count of the environment [groupListEnvironments] ranges over, so a fixed group below a starred level spans
-     * one instance per row of its repeatable ancestor (KF463). Null when that environment carries no maximum —
-     * an unbounded repeatable group, or a context that does not know the model. This is the extent the kernel's
-     * entity iterator spans after `setzeEndIndicesAufMaxGesetzt`, so a group-counting aggregate's fillability
-     * reads it: unused declared capacity is an uncounted entity even at zero instantiated rows, and "no declared
-     * maximum" means the tail never closes.
+     * The DECLARED number of instances the starred operand [groupPath] spans: the product of the declared
+     * maximum repetition counts of every repeatable level below [bindDepth], down to the environment
+     * [groupListEnvironments] ranges over. So a fixed group below a starred level spans one instance per row of
+     * its repeatable ancestor, and an operand crossing two starred levels spans both capacities multiplied
+     * (KF463). Null when one of those levels carries no maximum — an unbounded repeatable group — or when the
+     * context does not know the model. It is the total the kernel's entity iterator declares before it trims its
+     * end indices to the filled rows, so a group-counting aggregate's fillability reads it: unused declared
+     * capacity is an uncounted entity even at zero instantiated rows, and "no declared maximum" means the tail
+     * never closes. Saturates at [Int.MAX_VALUE].
      */
     fun declaredGroupListExtent(groupPath: String, bindDepth: Int): Int? = null
 }

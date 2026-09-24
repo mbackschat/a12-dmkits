@@ -1164,8 +1164,19 @@ class Document(internal val config: DocumentConfig) {
         override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> =
             rowContextsScoped(groupPath, groupScopePrefix(groupPath, bindDepth))
 
-        override fun declaredGroupListExtent(groupPath: String, bindDepth: Int): Int? =
-            declaredReps[groupListEnvironment(groupPath, bindDepth)]
+        override fun declaredGroupListExtent(groupPath: String, bindDepth: Int): Int? {
+            val environment = groupListEnvironment(groupPath, bindDepth)
+            val bound = if (bindDepth >= 0) bindDepth else partsOf(environment).size - 1
+            var extent: Long? = null
+            var level = environment
+            while (partsOf(level).size > bound) {
+                if (level in repeatableGroups) {
+                    extent = (extent ?: 1L) * (declaredReps[level] ?: return null)
+                }
+                level = parentGroup(level)
+            }
+            return extent?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt()
+        }
 
         /**
          * Reuse the first-star row topology over [groupListEnvironment]'s rows. Resolving [groupPath] from each

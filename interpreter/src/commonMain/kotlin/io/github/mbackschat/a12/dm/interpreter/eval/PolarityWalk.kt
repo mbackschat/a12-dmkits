@@ -365,9 +365,9 @@ private fun Interpreter.countFill(
  *
  * `given` is the number of entities whose group product state is FILLED, read through [Interpreter.groupFillStates] —
  * the same stream the group-fill quantifiers tally, so group presence is decided in one place. `total` is the
- * DECLARED extent, matching the kernel's `setzeEndIndicesAufMaxGesetzt(fIt, true)`: one entity per unstarred
- * operand, and for a starred one the declared capacity of the environment it ranges over — its own for a
- * repeatable terminal, its repeatable ancestor's for a fixed group below a starred level (KF463). Reading the
+ * DECLARED extent, the total the kernel's entity iterator declares before it trims to the filled rows: one entity
+ * per unstarred operand, and for a starred one [declaredGroupListExtent], the product of the declared capacities
+ * of the repeatable levels it ranges over (KF463). Reading the
  * declared extent rather than the instantiated rows is what makes an EMPTY repeatable group growable — with no
  * rows at all there is nothing for [Interpreter.groupFillStates] to yield, and an instantiated-row tally would
  * answer `0 > 0` and type a fired comparison VALUE. An unbounded repeatable operand never closes its tail.

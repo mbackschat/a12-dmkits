@@ -10236,13 +10236,21 @@ So every instance of every operand is decided alike:
 
 - **A fixed group counts when it holds admitted content,** a malformed value beside that content notwithstanding. One holding only a malformed value makes the whole count not evaluable, so no rung fires, whatever else the list holds. This is the same for a bare fixed group and for a fixed group below a starred level.
 - **A repeatable row counts once it is instantiated,** whatever lies below it, a malformed value included.
-- **The extent is one instance per fixed operand and, for a starred operand, the declared capacity of the repeatable level it ranges over.** For `Batches*/Seal` that is four Seals, one per `Batches` row, so four sealed batches type VALUE. Beside an empty `Grading` the same count can still grow and types OMISSION.
+- **The extent is one instance per fixed operand and, for a starred operand, the product of the declared capacities of the repeatable levels it ranges over.** For `Batches*/Seal` that is four Seals, one per `Batches` row, so four sealed batches type VALUE. Beside an empty `Grading` the same count can still grow and types OMISSION. *Corrected 2026-09-24:* this said "the declared capacity of the repeatable level", which a single starred level cannot tell apart from the product. The two-level carrier below does.
+
+The two-level carrier is a separate model, `Batches` (2) holding `Boxes` (2), each box holding a fixed `Seal` with a `Code`. The same count reaches the inner capacity at 2 and the product at 4:
+
+| document | `(Batches*/Boxes*/Seal)` | `(Batches*/Boxes*)` |
+|---|---|---|
+| one batch, both its boxes sealed | 2 O | 2 O |
+| two batches, one box each sealed | 2 O | 2 O |
+| two batches, every box sealed | 4 V | 4 V |
 
 **Under partial coverage** a starred operand's instances are asked one more thing first, the extent gate [KF464](#kf464) measures for every starred group operand.
 
-**Mechanism (source-read, consistent with the table, not discriminated further).** `RuntimeController.anzahlAngegebenerEntities`, which `NumberOfFilledGroups` shares with `NumberOfFilledFields`, walks every operand through one `EntityIterator` and asks `isWertAngegeben` of each instance, returning the not-evaluable count at the first UNKNOWN. There is one loop for every operand shape, which is why no row above depends on what else the list holds.
+**Mechanism (source-read, consistent with the table, not discriminated further).** `RuntimeController.anzahlAngegebenerEntities`, which `NumberOfFilledGroups` shares with `NumberOfFilledFields`, walks every operand through one `EntityIterator` and asks `isWertAngegeben` of each instance, returning the not-evaluable count at the first UNKNOWN. There is one loop for every operand shape, which is why no row above depends on what else the list holds. The total it compares against is the iterator's `getAnzahlFelder()`, the product over its levels (`EbenenIterator`), read before the end indices are trimmed to the filled rows.
 
-**Lock:** `adapter.laws.AncestorStarredGroupCountDiffTest` holds all thirteen documents of the full-validation table on three engines.
+**Lock:** `adapter.laws.AncestorStarredGroupCountDiffTest` holds all thirteen documents of the full-validation table on three engines, and `adapter.laws.MultiLevelStarredGroupCountDiffTest` the two-level carrier.
 
 ## §12 supplement — under partial validation a starred GROUP operand is evaluable exactly when every field it contains is, each asked the extent gate a starred field would be asked (differential, both strategies, 2026-09-24) <a id="kf464"></a>
 
