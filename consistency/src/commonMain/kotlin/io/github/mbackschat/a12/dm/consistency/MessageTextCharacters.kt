@@ -18,16 +18,12 @@ package io.github.mbackschat.a12.dm.consistency
  * a different carrier — the charset refusal for a supplementary-plane code point carries no class at all
  * (`RuleMessageAdmissionGateLawsTest`) — so this family stays inside the control blocks.
  *
- * **A broken CONDITION withholds this verdict too**, which is A12 declining to examine the message member
- * at all rather than a rule about parameters ([declarationsWithUnsoundDsl], [KF338]).
+ * **A refused condition or operation withholds this verdict too**, which is A12 declining to examine the message
+ * member at all rather than a rule about parameters. Report assembly applies that, not this family ([KF338]).
  */
 internal fun TrackedFactBase.messageTextCharacterFindings(): List<Finding> {
-    val unsound = declarationsWithUnsoundDsl()
     return declarations().filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
-        if (element.path in unsound) {
-            return@flatMap emptyList()
-        }
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
         messages.entries.mapNotNull { message -> element.messageTextFinding(message) }
     }

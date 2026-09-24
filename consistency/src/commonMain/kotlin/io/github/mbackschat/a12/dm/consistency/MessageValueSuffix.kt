@@ -28,13 +28,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
  * form never reaches.
  */
 internal fun TrackedFactBase.messageValueSuffixFindings(): List<Finding> {
-    val unsound = declarationsWithUnsoundDsl()
     val membership = entitiesReadByDeclaration()
     return declarations().filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
-        if (element.path in unsound) {
-            return@flatMap emptyList()
-        }
         val read = membership[element.path] ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val starredOnly = pathsReadThroughAStarAlone(element, group)

@@ -59,15 +59,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
  * the `RuleGroup` locus by a12-kernel-lean and is not measured here.
  */
 internal fun TrackedFactBase.messageGroupParameterFindings(): List<Finding> {
-    val unsound = declarationsWithUnsoundDsl()
     // The model's ROOT GROUPS, so [TrackedFactBase.allDeclarations]: the walk below narrows to one rule,
     // and a scoped `declarations()` here would offer that rule's own path as the only root.
     val roots = allDeclarations().filter { it.path.count { c -> c == '/' } == 1 }.map { it.path }.toSet()
     return declarations().filter { it.kind == "Rule" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
-        if (element.path in unsound) {
-            return@flatMap emptyList()
-        }
         val ruleGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
         messages.entries.flatMap { message ->

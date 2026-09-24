@@ -1237,13 +1237,17 @@ private fun List<Finding>.withoutPostParseClassesBehindAPositionedDefect(): List
  * "sound" is not "resolves and parses": a refused star, a missing one, a slot gate and the post-parse
  * unreferenced-target class each withhold both message verdicts, on either carrier, while a class about the
  * NAME or the ERROR CODE leaves them standing beside it ([KERNEL-FINDINGS KF338],
- * `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`). The families' own
- * [declarationsWithUnsoundDsl] gate covers only an unresolved name and an unbalanced delimiter, so this is
- * where the law is whole.
+ * `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`). This is the one site that applies
+ * the law; the message families judge their member as if the DSL beside it were sound.
  *
  * It reads the findings for the reason [withoutPostParseClassesBehindAPositionedDefect] does: whether the DSL
  * drew a class is what the other families already said. Only a verdict that justifies rejection triggers it,
  * because every measured trigger is one and a warning does not make the member unsound.
+ *
+ * **That one trigger also covers the DSL A12 cannot resolve or parse**, because such a member draws a
+ * rejecting finding of its own: an unresolved name, an unbalanced text, a reference an earlier segment's
+ * gate answers for. `UnsoundDslDrawsARejectionTest` locks that over the shapes the retired per-family gate
+ * named, so a syntax family falling silent on one fails there rather than leaking a message class here.
  */
 private fun List<Finding>.withoutMessageVerdictsBehindARefusedDsl(
     messageVerdicts: Set<Finding>,

@@ -28,12 +28,8 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 internal fun TrackedFactBase.errorTextCategorySuffixFindings(): List<Finding> {
     val readBy = entitiesReadByDeclaration()
-    val unsound = declarationsWithUnsoundDsl()
     return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
-        if (element.path in unsound) {
-            return@flatMap emptyList()
-        }
         val membership = readBy[element.path] ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()

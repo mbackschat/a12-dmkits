@@ -39,12 +39,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  */
 internal fun TrackedFactBase.errorTextSemanticIndexFindings(): List<Finding> {
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
-    val unsound = declarationsWithUnsoundDsl()
     return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
-        if (element.path in unsound) {
-            return@flatMap emptyList()
-        }
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
         val written = conditionTexts(element.kind, body)

@@ -6,10 +6,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.delimitersBalanced
  * The declarations whose DSL cannot be trusted at all — a condition naming something that does not resolve, or
  * a text whose delimiters do not balance.
  *
- * **It gates a whole CLASS of families rather than one finding, which is why it is ONE expression of the
- * decision and must stay one.** Ten families ask it whether a declaration's DSL says anything before they say
- * anything themselves, so two copies of this could diverge without a single test noticing — each family's own
- * tests would pass against whichever copy it happened to call.
+ * **It gates a whole CLASS of findings rather than one, which is why it is ONE expression of the decision and
+ * must stay one.** Report assembly asks it before keeping any message family's verdict, and two other
+ * families ask it before they say anything themselves, so two copies of this could diverge without a single
+ * test noticing — each caller's own tests would pass against whichever copy it happened to call.
  *
  * Every declaration's body is read, and that is the charge these families' cells are keyed on: a cursor's
  * shape members are free and only `body` records, so the walk charges the set shape once plus one

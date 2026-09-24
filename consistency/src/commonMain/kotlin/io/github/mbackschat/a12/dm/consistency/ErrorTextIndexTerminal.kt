@@ -49,12 +49,8 @@ internal fun TrackedFactBase.errorTextIndexTerminalFindings(): List<Finding> {
     val targets = declaredReferences()
         .filter { it.role == ReferenceRole.ERROR_TARGET }
         .associate { it.declaredAt to (it.target as? Reference.Resolved)?.path }
-    val unsound = declarationsWithUnsoundDsl()
     return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
-        if (element.path in unsound) {
-            return@flatMap emptyList()
-        }
         val errorTarget = targets[element.path] ?: return@flatMap emptyList()
         val reachable = indexFieldsOnThePathTo(errorTarget)
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
