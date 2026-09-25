@@ -29,6 +29,7 @@ import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumen
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
@@ -1096,6 +1097,9 @@ public final class KernelAdapter {
         }
         if (!computation.errorCodesToSuppress().isEmpty()) {
             text.append("\nerrorCodesToSuppress=").append(computation.errorCodesToSuppress());
+        }
+        if (computation.roundingMode() != RoundingMode.EXACT) {
+            text.append("\nroundingMode=").append(computation.roundingMode().wire());
         }
         return text.toString();
     }

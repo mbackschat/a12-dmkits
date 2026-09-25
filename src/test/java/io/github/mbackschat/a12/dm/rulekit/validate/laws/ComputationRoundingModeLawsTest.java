@@ -17,13 +17,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
- * A computation's {@code roundingMode} — a stored member no lock covered, the portable checker never read, and
- * our own draft cannot author.
+ * A computation's {@code roundingMode}: which spellings A12 reads, and which pairings with an alternative's
+ * tolerance band it refuses.
  *
  * <p><b>It is a plain String in the stored model and an ENUM one layer down, and the join between them is one
  * of this family's two laws.</b> {@code Computation.roundingMode} is declared {@code String} with no binding
@@ -99,11 +100,11 @@ class ComputationRoundingModeLawsTest {
     @Test
     void aRoundingModeIsOnlyWrongAgainstAStrictInequality() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("!= · Exact", verdict(null, "\"Exact\""));
-        actual.put("!= · RoundUp", verdict(null, "\"RoundUp\""));
-        actual.put("tolerance 1 · Exact", verdict(ToleranceBand.TR1, "\"Exact\""));
-        actual.put("tolerance 1 · RoundUp", verdict(ToleranceBand.TR1, "\"RoundUp\""));
-        actual.put("tolerance 10 · RoundDown", verdict(ToleranceBand.TR10, "\"RoundDown\""));
+        actual.put("!= · Exact", verdict(null, RoundingMode.EXACT));
+        actual.put("!= · RoundUp", verdict(null, RoundingMode.ROUND_UP));
+        actual.put("tolerance 1 · Exact", verdict(ToleranceBand.TR1, RoundingMode.EXACT));
+        actual.put("tolerance 1 · RoundUp", verdict(ToleranceBand.TR1, RoundingMode.ROUND_UP));
+        actual.put("tolerance 10 · RoundDown", verdict(ToleranceBand.TR10, RoundingMode.ROUND_DOWN));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("!= · Exact", KernelLaws.ADMITTED);
@@ -130,10 +131,12 @@ class ComputationRoundingModeLawsTest {
     @Test
     void everyAlternativeIsJudgedAgainstTheModeSeparately() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("both banded · RoundUp", verdictOfTwo(ToleranceBand.TR1, ToleranceBand.TR2, "\"RoundUp\""));
-        actual.put("banded then != · RoundUp", verdictOfTwo(ToleranceBand.TR1, null, "\"RoundUp\""));
-        actual.put("!= then banded · RoundUp", verdictOfTwo(null, ToleranceBand.TR1, "\"RoundUp\""));
-        actual.put("banded then != · Exact — the liveness control", verdictOfTwo(ToleranceBand.TR1, null, "\"Exact\""));
+        actual.put("both banded · RoundUp",
+                verdictOfTwo(ToleranceBand.TR1, ToleranceBand.TR2, RoundingMode.ROUND_UP));
+        actual.put("banded then != · RoundUp", verdictOfTwo(ToleranceBand.TR1, null, RoundingMode.ROUND_UP));
+        actual.put("!= then banded · RoundUp", verdictOfTwo(null, ToleranceBand.TR1, RoundingMode.ROUND_UP));
+        actual.put("banded then != · Exact — the liveness control",
+                verdictOfTwo(ToleranceBand.TR1, null, RoundingMode.EXACT));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("both banded · RoundUp", KernelLaws.ADMITTED);
@@ -216,12 +219,13 @@ class ComputationRoundingModeLawsTest {
 
     /** What A12 says about the probe model with `roundingMode` set to [rawJson], or absent when null. */
     private static String verdict(String rawJson) {
-        return verdict(null, rawJson);
+        return KernelLaws.verdictOf(probe(RoundingMode.EXACT, rawJson,
+                new DraftComputation.Alternative(null, OPERATION, null)));
     }
 
     /** The same, for the first alternative's `toleranceRangeOp` — the slot the typed band writes. */
     private static String bandVerdict(String rawJson) {
-        String model = probe(null, new DraftComputation.Alternative(null, OPERATION, null));
+        String model = probe(RoundingMode.EXACT, null, new DraftComputation.Alternative(null, OPERATION, null));
         try {
             ObjectNode root = (ObjectNode) MAPPER.readTree(model);
             ObjectNode alternative = (ObjectNode) computationBody(root)
@@ -235,32 +239,29 @@ class ComputationRoundingModeLawsTest {
         }
     }
 
-    private static String verdict(ToleranceBand band, String rawJson) {
-        return KernelLaws.verdictOf(probe(rawJson,
-                new DraftComputation.Alternative(null, OPERATION, band)));
+    /** The pair grid is authored through the typed draft: every mode it asks about is one the draft spells. */
+    private static String verdict(ToleranceBand band, RoundingMode mode) {
+        return KernelLaws.verdictOf(probe(mode, null, new DraftComputation.Alternative(null, OPERATION, band)));
     }
 
     /**
      * Two alternatives, each with its own band — and each with a precondition, which the kernel requires as
      * soon as a computation has more than one ({@code MVK_ERROR_EMPTY_PRECONDITION}).
      */
-    private static String verdictOfTwo(ToleranceBand first, ToleranceBand second, String rawJson) {
-        return KernelLaws.verdictOf(probe(rawJson,
+    private static String verdictOfTwo(ToleranceBand first, ToleranceBand second, RoundingMode mode) {
+        return KernelLaws.verdictOf(probe(mode, null,
                 new DraftComputation.Alternative("FieldFilled(InvoiceEmail)", OPERATION, first),
                 new DraftComputation.Alternative("FieldNotFilled(InvoiceEmail)", OPERATION, second)));
     }
 
     /**
-     * The probe model, built through the typed draft and then given the one member the draft cannot express.
-     *
-     * <p>{@code roundingMode} is absent from our whole main source, so there is no typed way to set it; the
-     * raw substitution is what lets the kernel be asked at all about a member only a hand-written or
-     * foreign-authored model carries.
+     * The probe model, built through the typed draft with [mode], and then — when [rawJson] is not null — given
+     * a stored spelling the draft cannot express, since only a hand-written or foreign model carries one.
      */
-    private static String probe(String rawJson, DraftComputation.Alternative... alternatives) {
+    private static String probe(RoundingMode mode, String rawJson, DraftComputation.Alternative... alternatives) {
         DraftComputation draft = DraftComputation.builder()
                 .groupPath(GROUP).name("RoundingProbe").computedFieldRelPath("../EffectiveFee")
-                .alternatives(List.of(alternatives))
+                .alternatives(List.of(alternatives)).roundingMode(mode)
                 .messages(List.of(en("x"), de("y")))
                 .build();
         String written = ModelWriter.addComputation(Fixtures.subscriptionJson(), draft,

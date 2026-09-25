@@ -45,8 +45,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
  * computed field's kind, except the kernel-defined numeric role of polymorphic {@code BaseYear}
  * (e.g. a string operation into a number field —
  * {@code MVK_INVALID_COMPARE_TO_ENUM_OR_STRING}); error text is required
- * ({@code MVK_ERROR_MESSAGE_MISSING}). Scale beyond the kind check is the kernel's call (D13).
- * Mutual exclusivity of preconditions is semantic — only the kernel/runtime can judge it.
+ * ({@code MVK_ERROR_MESSAGE_MISSING}); a non-{@code EXACT} {@link RoundingMode} needs a tolerance band on every
+ * alternative ({@code MVK_ERROR_WRONG_ROUNDING_MODE}, KF297). Scale beyond the kind check is the kernel's call
+ * (D13). Mutual exclusivity of preconditions is semantic — only the kernel/runtime can judge it.
  */
 public record Computation(
         String groupPath,
@@ -56,7 +57,8 @@ public record Computation(
         List<Alternative> alternatives,
         List<LocalizedText> messages,
         Comments comments,
-        List<String> errorCodesToSuppress) {
+        List<String> errorCodesToSuppress,
+        RoundingMode roundingMode) {
 
     private static final Set<String> SUPPORTED_ERROR_CODES_TO_SUPPRESS =
             Set.of(KernelCode.MVK_INVALID_COMPARE_DEC_PLACES.name());
@@ -71,13 +73,7 @@ public record Computation(
         alternatives = List.copyOf(alternatives);
         messages = List.copyOf(messages);
         errorCodesToSuppress = List.copyOf(errorCodesToSuppress);
-    }
-
-    /** No suppressions — keeps pre-{@code errorCodesToSuppress} construction sites source-compatible. */
-    public Computation(String groupPath, String name, FieldRef computedField,
-            Optional<Condition> commonPrecondition, List<Alternative> alternatives,
-            List<LocalizedText> messages, Comments comments) {
-        this(groupPath, name, computedField, commonPrecondition, alternatives, messages, comments, List.of());
+        roundingMode = roundingMode == null ? RoundingMode.EXACT : roundingMode;
     }
 
     public record Alternative(
@@ -133,7 +129,7 @@ public record Computation(
                                 renderer.render(a.operation(), comments),
                                 a.toleranceRangeOp().orElse(null)))
                         .toList())
-                .errorCodesToSuppress(errorCodesToSuppress).messages(messages).build();
+                .errorCodesToSuppress(errorCodesToSuppress).roundingMode(roundingMode).messages(messages).build();
     }
 
     public static final class Builder {
@@ -155,6 +151,7 @@ public record Computation(
         private final List<Alternative> alternatives = new ArrayList<>();
         private final List<LocalizedText> messages = new ArrayList<>();
         private final List<String> errorCodesToSuppress = new ArrayList<>();
+        private RoundingMode roundingMode = RoundingMode.EXACT;
         private Comments comments = Comments.none();
         private String rootComment;
 
@@ -259,6 +256,17 @@ public record Computation(
         }
 
         /**
+         * Round the computed value up or down instead of assigning it exactly — A12's
+         * {@code Computation.roundingMode}. A non-{@code EXACT} mode is legal only when every alternative
+         * carries a {@link ToleranceBand}, which {@link #build()} checks (KF297); {@code null} leaves the
+         * default {@code EXACT}.
+         */
+        public Builder roundingMode(RoundingMode roundingMode) {
+            this.roundingMode = roundingMode == null ? RoundingMode.EXACT : roundingMode;
+            return this;
+        }
+
+        /**
          * Attach a {@code ;;} comment to the whole computation — rendered as a leading line ahead of its
          * <em>first operation</em> (the "what it computes"). The kernel tolerates the comment as concrete
          * syntax; it survives the write. To comment a specific operation or precondition, use the
@@ -319,6 +327,14 @@ public record Computation(
                 require(operationMatchesComputedKind(a.operation()),
                         assignmentMismatchMessage(a.operation(), computedPath));
             }
+            // A12 asks `cmpOp == NE && roundingMode != EXACT` of each alternative, and an alternative's band is
+            // what chooses a tolerance comparison over `!=` (NormalisierteBerechnungsFormHelper:326; measured in
+            // either position on a two-alternative carrier, validate.laws.ComputationRoundingModeLawsTest).
+            require(roundingMode == RoundingMode.EXACT
+                            || alternatives.stream().allMatch(a -> a.toleranceRangeOp().isPresent()),
+                    KernelCode.MVK_ERROR_WRONG_ROUNDING_MODE, "rounding mode " + roundingMode.wire()
+                            + " needs a tolerance band on every alternative — the kernel compares an unbanded"
+                            + " alternative exactly; add a ToleranceBand to calc(...) or keep the mode EXACT");
             requireNoSelfReference(strongestSelfRead(computedPath), computedPath);
             for (Alternative a : alternatives) {
                 a.precondition().ifPresent(this::requireNoCustomCondition);
@@ -334,7 +350,7 @@ public record Computation(
                     : comments.before(alternatives.get(0).operation(), rootComment);
             return new Computation(groupPath, name, computedField,
                     Optional.ofNullable(commonPrecondition), alternatives, messages, finalComments,
-                    errorCodesToSuppress);
+                    errorCodesToSuppress, roundingMode);
         }
 
         /** One slot's reading of the computed field, kept with the slot so a rejection can name it. */

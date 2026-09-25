@@ -16,6 +16,7 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
@@ -232,6 +233,10 @@ public final class ReadPayloads {
                 DraftComputation draft = comp.draft();
                 if (draft.commonPrecondition() != null) {
                     data.put("commonPrecondition", draft.commonPrecondition());
+                }
+                // Absent means Exact, as in the stored model: A12's serializer never writes Exact.
+                if (draft.roundingMode() != RoundingMode.EXACT) {
+                    data.put("roundingMode", draft.roundingMode().wire());
                 }
                 ArrayNode alternatives = data.putArray("alternatives");
                 for (DraftComputation.Alternative alt : draft.alternatives()) {

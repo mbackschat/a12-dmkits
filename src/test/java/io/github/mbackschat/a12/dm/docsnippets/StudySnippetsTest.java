@@ -43,6 +43,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 
 /**
@@ -232,6 +233,7 @@ class StudySnippetsTest {
                 .when(base.ge(100)).calc(base.value(), ToleranceBand.TR1)  // the selected tier keeps its own
                 .when(base.lt(100)).calc(NumberLiteral.of("0.00"),         // implicit-validation tolerance;
                                          ToleranceBand.TR2)                 // absent means strict inequality
+                .roundingMode(RoundingMode.ROUND_DOWN)                     // legal only because every tier is banded
                 .message(en("EffectiveFee follows the fee tiers."),
                          de("EffectiveFee folgt den Gebührenstufen."))   // a message per declared locale (the locale law)
                 .build();

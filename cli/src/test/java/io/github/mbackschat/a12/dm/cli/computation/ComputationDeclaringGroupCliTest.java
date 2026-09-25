@@ -328,23 +328,19 @@ class ComputationDeclaringGroupCliTest {
      * The declaring group is reported for an OPAQUE read too — the claim the payload's own comment makes, and
      * the one a Converted-only test cannot see.
      *
-     * <p>The Opaque trigger is a non-{@code EXACT} rounding mode ({@code RoundUp}): rulekit models exact
-     * computations only, so the converter refuses it and the read degrades tolerantly. That branch produces no
-     * typed {@code Computation} at all, which is exactly why {@code group} is derived structurally from the
-     * full name rather than from the converted object.
-     *
-     * <p>The tolerance band is load-bearing, not decoration: the kernel refuses a non-exact rounding mode on an
-     * EXACT comparison ({@code MVK_ERROR_WRONG_ROUNDING_MODE}), so without it the fixture is an unloadable
-     * model rather than an Opaque computation — measured, on the first attempt at this test.
+     * <p>The Opaque trigger is a braced operand ({@code {-1}}): the kernel drops the group on a simple operand,
+     * so the converted rendering would carry one group fewer than the stored text and the read degrades
+     * tolerantly rather than publish a different operation ({@code KernelAdapter.readOne}). That branch
+     * produces no typed {@code Computation} at all, which is exactly why {@code group} is derived structurally
+     * from the full name rather than from the converted object.
      */
     @Test
     void theDeclaringGroupIsReportedForAnOpaqueReadToo(@TempDir Path dir) throws Exception {
         Path model = probeModel(dir, "Probe_DM.json");
-        String withTolerance = CROSS_GROUP_SPEC.replace("{ \"operation\": \"-1\" }",
-                "{ \"operation\": \"-1\", \"toleranceRangeOp\": \"DiffersWithToleranceRange1\" }");
-        CliTestSupport.run("-m", model.toString(), "computation", "add",
-                write(dir, "comp.json", withTolerance).toString());
-        makeRoundingNonExact(model, CROSS_GROUP_COMPUTATION);
+        String braced = CROSS_GROUP_SPEC.replace("{ \"operation\": \"-1\" }", "{ \"operation\": \"{-1}\" }");
+        CliTestSupport.Result add = CliTestSupport.run("-m", model.toString(), "computation", "add",
+                write(dir, "comp.json", braced).toString());
+        assertEquals(0, add.code(), () -> add.err() + add.out());
 
         CliTestSupport.Result read = CliTestSupport.run(
                 "-m", model.toString(), "computation", "read", CROSS_GROUP_COMPUTATION);
@@ -357,16 +353,6 @@ class ComputationDeclaringGroupCliTest {
         assertTrue(data.path("calculatedField").isMissingNode(),
                 () -> "an Opaque read carries no typed target — `group` is the only placement it can report: "
                         + read.out());
-    }
-
-    /** Rewrite one persisted computation's rounding mode to {@code RoundUp}, which rulekit does not model. */
-    private static void makeRoundingNonExact(Path model, String computationFullName) throws Exception {
-        JsonNode root = MAPPER.readTree(Files.readString(model));
-        JsonNode element = findElement(root.path("content").path("modelRoot").path("rootGroups"),
-                computationFullName);
-        ((com.fasterxml.jackson.databind.node.ObjectNode) element.path("Computation"))
-                .put("roundingMode", "RoundUp");
-        Files.writeString(model, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root));
     }
 
     /**

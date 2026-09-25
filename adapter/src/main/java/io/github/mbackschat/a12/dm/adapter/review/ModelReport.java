@@ -21,6 +21,7 @@ import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
 /**
@@ -320,6 +321,14 @@ public final class ModelReport {
             return switch (explanation) {
                 case ExplainedComputation explained -> explained.draft().alternatives();
                 case OpaqueExplanation ignored -> List.of();
+            };
+        }
+
+        /** The explained computation's rounding mode, or {@code null} when the formula is Opaque. */
+        public RoundingMode roundingMode() {
+            return switch (explanation) {
+                case ExplainedComputation explained -> explained.draft().roundingMode();
+                case OpaqueExplanation ignored -> null;
             };
         }
 

@@ -361,7 +361,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome
   public static io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome[] values()
 
 public record io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation
-  public ComputationExplanation(java.lang.String, java.lang.String, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation>, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Alternative>, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Message>, java.lang.String)
+  public ComputationExplanation(java.lang.String, java.lang.String, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation>, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Alternative>, io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Message>, java.lang.String)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Alternative> alternatives()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation> commonPrecondition()
   public java.lang.String computedField()
@@ -370,6 +370,7 @@ public record io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation
   public java.lang.String gloss()
   public final int hashCode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Message> messages()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode roundingMode()
   public java.lang.String toJson()
   public final java.lang.String toString()
 
@@ -737,8 +738,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition implem
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.Computation
-  public Computation(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
-  public Computation(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments, java.util.List<java.lang.String>)
+  public Computation(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments, java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative> alternatives()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Comments comments()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition> commonPrecondition()
@@ -752,6 +752,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.Computation
   public final int hashCode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
   public java.lang.String name()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode roundingMode()
   public static java.util.Set<java.lang.String> supportedErrorCodesToSuppress()
   public final java.lang.String toString()
 
@@ -785,6 +786,7 @@ public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Bu
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder group(io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder message(io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder name(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder roundingMode(io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.AlternativeBuilder when(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
@@ -2339,6 +2341,15 @@ public static enum io.github.mbackschat.a12.dm.rulekit.dsl.Rounding.Mode
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Rounding.Mode valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Rounding.Mode[] values()
 
+public enum io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode EXACT
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode ROUND_DOWN
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode ROUND_UP
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode fromWire(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode[] values()
+  public java.lang.String wire()
+
 public record io.github.mbackschat.a12.dm.rulekit.dsl.Rule
   public Rule(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Severity, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
   public java.lang.String code()
@@ -2787,7 +2798,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource
 public record io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
   public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>)
   public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>, java.util.List<java.lang.String>)
-  public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>, java.util.List<java.lang.String>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
+  public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>, java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative> alternatives()
   public static io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder builder()
   public java.lang.String commonPrecondition()
@@ -2798,6 +2809,7 @@ public record io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
   public final int hashCode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
   public java.lang.String name()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode roundingMode()
   public final java.lang.String toString()
 
 public static record io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative
@@ -2825,6 +2837,7 @@ public static final class io.github.mbackschat.a12.dm.rulekit.validate.DraftComp
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder groupPath(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder messages(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder name(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder roundingMode(io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode)
 
 public record io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
   public DraftRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String)

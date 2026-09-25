@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 
 /**
@@ -22,6 +23,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
  *   <li>{@code alternatives} — each {@code (precondition?, operation)} tier: the precondition explained like a
  *       rule (absent for the single unconditional alternative) and the {@code operation} as a formula
  *       projection (rendered text + operator glossary + referenced fields).</li>
+ *   <li>{@code roundingMode} — how the computed value is rounded; absent from the JSON when {@code Exact},
+ *       as A12 itself stores it.</li>
  *   <li>{@code messages} — the self-validation error texts (the kernel requires them), by locale.</li>
  *   <li>{@code gloss} — a one-line natural-language summary.</li>
  * </ul>
@@ -31,6 +34,7 @@ public record ComputationExplanation(
         String computedFieldKind,
         Optional<RuleExplanation> commonPrecondition,
         List<Alternative> alternatives,
+        RoundingMode roundingMode,
         List<Message> messages,
         String gloss) {
 
@@ -39,6 +43,7 @@ public record ComputationExplanation(
     public ComputationExplanation {
         commonPrecondition = commonPrecondition == null ? Optional.empty() : commonPrecondition;
         alternatives = List.copyOf(alternatives);
+        roundingMode = roundingMode == null ? RoundingMode.EXACT : roundingMode;
         messages = List.copyOf(messages);
     }
 
@@ -88,6 +93,9 @@ public record ComputationExplanation(
             a.precondition().ifPresent(p -> node.set("precondition", ruleJson(p)));
             node.set("operation", operationJson(a.operation()));
             a.toleranceRangeOp().ifPresent(tolerance -> node.put("toleranceRangeOp", tolerance.wire()));
+        }
+        if (roundingMode != RoundingMode.EXACT) {
+            root.put("roundingMode", roundingMode.wire());
         }
 
         ArrayNode msgs = root.putArray("messages");

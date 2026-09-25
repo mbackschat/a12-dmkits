@@ -35,6 +35,11 @@
       "items": { "type": "string", "enum": ["MVK_INVALID_COMPARE_DEC_PLACES"] },
       "description": "A12 IComputation.errorCodesToSuppress, serialized unchanged as an array. The kernel currently accepts only MVK_INVALID_COMPARE_DEC_PLACES; use it when a numeric operation is intentionally valid despite the static assignment-scale gate. Omit (or pass []) for no suppression."
     },
+    "roundingMode": {
+      "type": "string",
+      "enum": ["Exact", "RoundUp", "RoundDown"],
+      "description": "A12 Computation.roundingMode, spelled exactly as A12 stores it (case matters; ROUND_UP is not a spelling). Omit for Exact, which is never stored. RoundUp/RoundDown need a toleranceRangeOp on EVERY alternative: the kernel compares an unbanded alternative exactly and refuses the pair with MVK_ERROR_WRONG_ROUNDING_MODE."
+    },
     "messages": {
       "type": "array",
       "description": "≥1 localized self-validation message; cover every locale the model declares",
@@ -71,6 +76,18 @@
       "messages": [
         { "locale": "en_US", "text": "Effective fee follows the subscription-level fee policy." },
         { "locale": "de_DE", "text": "Die Effektivgebühr folgt der Gebührenrichtlinie des Abonnements." }
+      ]
+    },
+    {
+      "computedField": "/Subscription/Billing/EffectiveFee",
+      "name": "RoundedFee",
+      "alternatives": [
+        { "operation": "[/Subscription/Billing/BaseFee]", "toleranceRangeOp": "DiffersWithToleranceRange1" }
+      ],
+      "roundingMode": "RoundUp",
+      "messages": [
+        { "locale": "en_US", "text": "Effective fee is the base fee, rounded up." },
+        { "locale": "de_DE", "text": "Die Effektivgebühr ist die aufgerundete Basisgebühr." }
       ]
     }
   ]

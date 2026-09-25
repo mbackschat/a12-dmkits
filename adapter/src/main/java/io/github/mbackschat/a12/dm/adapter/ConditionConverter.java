@@ -140,8 +140,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
 
 import org.apache.commons.lang3.tuple.Pair;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.serviceparams.ICalculationInfo;
-import com.mgmtp.a12.kernel.core.tool.a12internal.api.services.IBaseCalculationService.RoundingMode;
+import com.mgmtp.a12.kernel.core.tool.a12internal.api.services.IBaseCalculationService;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 
@@ -3038,15 +3039,10 @@ final class ConditionConverter {
     /**
      * Assemble a rulekit {@link Computation} from the kernel's extracted {@link ICalculationInfo}
      * (calculated field + common precondition + {@code (precondition, operation)} alternatives) plus the
-     * computation's recovered error {@code messages}. Non-{@code EXACT} rounding is unmodeled — rulekit
-     * authors exact computations only — so it raises the strict signal (→ {@link ReadComputation.Opaque}).
+     * computation's recovered error {@code messages}, and its rounding mode.
      */
     Computation convertComputation(ICalculationInfo info, List<LocalizedText> messages,
             List<String> errorCodesToSuppress) {
-        if (info.getRoundingMode() != RoundingMode.EXACT) {
-            throw unsupported("computation with non-EXACT rounding (" + info.getRoundingMode()
-                    + ") — rulekit models exact computations only", info.getCalculatedField());
-        }
         String computedPath = info.getCalculatedField().getFullName();
         FieldRef computed = model.field(computedPath);
         ValueKind kind = computed.kind();
@@ -3072,7 +3068,15 @@ final class ConditionConverter {
         // a read computation carries no comments on the AST (concrete syntax stays in the stored slot
         // texts); authoring/preservation populate the side-channel, not the converter.
         return new Computation(groupPath, name, computed, common, alternatives, messages, Comments.none(),
-                errorCodesToSuppress);
+                errorCodesToSuppress, roundingMode(info.getRoundingMode()));
+    }
+
+    private static RoundingMode roundingMode(IBaseCalculationService.RoundingMode mode) {
+        return switch (mode) {
+            case EXACT -> RoundingMode.EXACT;
+            case ROUND_UP -> RoundingMode.ROUND_UP;
+            case ROUND_DOWN -> RoundingMode.ROUND_DOWN;
+        };
     }
 
     private static UnsupportedConstructException unsupported(String what, Object node) {

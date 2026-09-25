@@ -250,7 +250,7 @@ final class PatternsCommand extends BaseCommand {
         DraftComputation draft = DraftComputation.builder().groupPath(built.groupPath()).name(compName)
                 .computedFieldRelPath(built.computedFieldRelPath()).commonPrecondition(built.commonPrecondition())
                 .alternatives(built.alternatives()).errorCodesToSuppress(built.errorCodesToSuppress())
-                .messages(msgs).build();
+                .roundingMode(built.roundingMode()).messages(msgs).build();
 
         ValidationResult check = new RuleValidator().check(modelJson, draft, resolver);
 

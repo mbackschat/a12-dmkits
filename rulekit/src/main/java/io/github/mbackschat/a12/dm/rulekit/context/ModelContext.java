@@ -97,7 +97,8 @@ public final class ModelContext {
                 .map(t -> new ComputationExplanation.Message(t.locale(), t.text()))
                 .toList();
 
-        return new ComputationExplanation(field, kind, commonPrecondition, alternatives, messages,
+        return new ComputationExplanation(field, kind, commonPrecondition, alternatives,
+                computation.roundingMode(), messages,
                 computationGloss(field, commonPrecondition, alternatives));
     }
 

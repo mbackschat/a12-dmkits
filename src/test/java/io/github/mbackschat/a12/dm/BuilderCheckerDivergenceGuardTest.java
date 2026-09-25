@@ -338,6 +338,12 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_ERROR_INVALID_LANGUAGE_FEATURE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_ERROR_EMPTY_PRECONDITION", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // Computation.Builder refuses a non-EXACT RoundingMode beside any alternative whose Optional band is
+            // empty; `computationRoundingFindings` asks the same of every stored alternative, after binding the
+            // two String members to A12's spellings — a step the typed enums make unnecessary. Same measured
+            // pair (validate.laws.ComputationRoundingModeLawsTest), two carriers with no shared reader.
+            Map.entry("MVK_ERROR_WRONG_ROUNDING_MODE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
             // The builders require a non-empty typed message list. The checker models what A12 actually
             // collects — declared locales only, a later entry replacing an earlier one, blank text counting
             // as none — which a typed list cannot express. The builder is the weaker claim, so it can only

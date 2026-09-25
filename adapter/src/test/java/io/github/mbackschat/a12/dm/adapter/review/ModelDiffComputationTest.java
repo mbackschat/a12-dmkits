@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 
@@ -183,6 +184,24 @@ class ModelDiffComputationTest {
         assertEquals(ToleranceBand.TR1.wire(), delta(changed, "alternative[0].tolerance").before());
         assertEquals(ToleranceBand.TR5.wire(), delta(changed, "alternative[0].tolerance").after());
         assertEquals("MVK_INVALID_COMPARE_DEC_PLACES", delta(changed, "errorCodesToSuppress").after());
+    }
+
+    /** A mode-only change is a semantic change, and an Exact side carries no aspect, as A12 stores none. */
+    @Test
+    void detectsARoundingModeChange() {
+        String up = withComputation(model -> computation(model, TOTAL, "Total.", builder -> builder
+                .calc(model.num(PRICE).value(), ToleranceBand.TR1).roundingMode(RoundingMode.ROUND_UP)));
+        String down = withComputation(model -> computation(model, TOTAL, "Total.", builder -> builder
+                .calc(model.num(PRICE).value(), ToleranceBand.TR1).roundingMode(RoundingMode.ROUND_DOWN)));
+        String exact = withComputation(model -> computation(model, TOTAL, "Total.", builder -> builder
+                .calc(model.num(PRICE).value(), ToleranceBand.TR1)));
+
+        ModelDiff.Delta changed = delta(change(ModelDiff.between(up, down)), "roundingMode");
+        assertEquals("RoundUp", changed.before());
+        assertEquals("RoundDown", changed.after());
+        ModelDiff.Delta removed = delta(change(ModelDiff.between(up, exact)), "roundingMode");
+        assertEquals("RoundUp", removed.before());
+        assertEquals(null, removed.after());
     }
 
     @Test

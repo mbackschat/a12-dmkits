@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.Notification;
@@ -338,6 +339,10 @@ public final class RuleValidator {
 
         ObjectNode body = node.putObject("Computation");
         body.put("computedFieldRelPath", computation.computedFieldRelPath());
+        // Right after the target and only when not Exact — where and when A12's ComputationSerializer writes it.
+        if (computation.roundingMode() != RoundingMode.EXACT) {
+            body.put("roundingMode", computation.roundingMode().wire());
+        }
         if (!computation.errorCodesToSuppress().isEmpty()) {
             ArrayNode suppress = body.putArray("errorCodesToSuppress");
             computation.errorCodesToSuppress().forEach(suppress::add);

@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
@@ -32,6 +33,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
  *       "toleranceRangeOp": "DiffersWithToleranceRange1" }, // optional per tier
  *     { "operation": "&lt;DSL&gt;" } ],                          // OR one unconditional
  *   "errorCodesToSuppress": ["MVK_INVALID_COMPARE_DEC_PLACES"], // optional A12 owner-shaped list
+ *   "roundingMode": "RoundUp",                   // optional — Exact (the default), RoundUp or RoundDown
  *   "messages": [ {"locale":"en_US","text":"…"} ] }          // required, non-empty
  * </pre>
  *
@@ -47,7 +49,7 @@ public final class ComputationSpec {
     /** The exact top-level computation-spec keys, shared with {@code apply}'s flat op gate. */
     public static final Set<String> KEYS = Set.of(
             "computedField", "group", "alternatives", "commonPrecondition", "comment", "name", "messages",
-            "errorCodesToSuppress");
+            "errorCodesToSuppress", "roundingMode");
 
     private ComputationSpec() {
     }
@@ -157,13 +159,22 @@ public final class ComputationSpec {
         for (JsonNode code : spec.path("errorCodesToSuppress")) {
             errorCodesToSuppress.add(code.asText());
         }
+        RoundingMode roundingMode = RoundingMode.EXACT;
+        if (spec.hasNonNull("roundingMode")) {
+            try {
+                roundingMode = RoundingMode.fromWire(spec.get("roundingMode").asText());
+            } catch (IllegalArgumentException e) {
+                return invalidValue(e.getMessage(), "roundingMode");
+            }
+        }
         // Relative to the computation ELEMENT (group + name), so it stays "../<Field>" when the element sits
         // beside its field and becomes a walk out and back down when `group` put it elsewhere.
         String computedFieldRelPath =
                 EntityPath.of(groupPath + "/" + name).relativize(EntityPath.of(computedField));
         DraftComputation draft = DraftComputation.builder().groupPath(groupPath).name(name)
                 .computedFieldRelPath(computedFieldRelPath).commonPrecondition(text(spec, "commonPrecondition"))
-                .alternatives(alternatives).errorCodesToSuppress(errorCodesToSuppress).messages(messages).build();
+                .alternatives(alternatives).errorCodesToSuppress(errorCodesToSuppress).roundingMode(roundingMode)
+                .messages(messages).build();
         return new Parsed(draft, messages, null);
     }
 

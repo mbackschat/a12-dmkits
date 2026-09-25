@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 
 /**
@@ -208,45 +209,76 @@ class RuleComputationEditorTest {
      *
      * <p>The element-level fix above carried `annotations`/`internalDescription` across because
      * {@code computationNode} reconstructs only `type`/`id`/`name`/`Computation`. The body it reconstructs is
-     * partial in exactly the same way: A12 declares {@code roundingMode} and {@code variantFilter} on
-     * {@code md.model.a12internal.Computation} beside the five members the writer emits, so a modify used to
-     * drop both. That is silent SEMANTIC loss rather than lost metadata — a computation that rounded up came
-     * back rounding exactly — and it is the sibling site the element-level fix left live.
+     * partial in the same way: A12 declares {@code variantFilter} on {@code md.model.a12internal.Computation}
+     * beside the members the writer emits, so a modify used to drop it — silent SEMANTIC loss, since the
+     * computation would join every variant rather than the ones it was filtered to.
      *
-     * <p>`roundingMode` has no typed surface at all, so the probe injects it and re-reads. The band on the
-     * alternative is what makes `RoundUp` legal here ({@code KERNEL-FINDINGS KF297}): the pair is judged
-     * together, so a model that kept the mode and lost the band would be refused rather than silently
-     * changed — which is why the re-expression below restates the band through the typed builder.
+     * <p>`variantFilter` has no typed surface, so the probe injects it and re-reads. {@code ALL_EXCEPT} keeps
+     * the computation in the default variant, which the session validates.
      */
     @Test
     void preservesAComputationsBodyMembersTheRebuildDoesNotWrite() {
+        String stored = injectIntoComputationBody(roundedFee(null),
+                "\"variantFilter\" : {\"filterType\" : \"ALL_EXCEPT\", \"variants\" : [\"legacy\"]}");
+        assertTrue(stored.contains("ALL_EXCEPT"), "the probe must actually carry the member it is about");
+
+        String json = reExpressed(stored, null);
+        assertTrue(json.contains("9.99"), "the new formula is applied");
+        assertTrue(json.contains("\"variantFilter\"") && json.contains("ALL_EXCEPT"),
+                () -> "the variantFilter survives the computation modify: " + json);
+    }
+
+    /**
+     * A member the typed builder DOES express is the re-expression's to state, as {@code errorCodesToSuppress}
+     * and {@code commonPrecondition} are: carrying the old value over would make removing it impossible. So a
+     * restated mode survives, a changed one replaces it, and an unstated one is {@code Exact}, which A12 never
+     * stores.
+     */
+    @Test
+    void aTypedReExpressionIsAuthoritativeForTheRoundingMode() {
+        String stored = roundedFee(RoundingMode.ROUND_UP);
+        assertTrue(stored.contains("\"roundingMode\" : \"RoundUp\""), () -> "the probe carries the mode: " + stored);
+
+        assertTrue(reExpressed(stored, RoundingMode.ROUND_UP).contains("\"roundingMode\" : \"RoundUp\""),
+                "a restated mode survives");
+        String down = reExpressed(stored, RoundingMode.ROUND_DOWN);
+        assertTrue(down.contains("\"roundingMode\" : \"RoundDown\"") && !down.contains("RoundUp"),
+                () -> "a changed mode replaces the old one: " + down);
+        String exact = reExpressed(stored, null);
+        assertFalse(exact.contains("roundingMode"), () -> "an unstated mode is Exact, never stored: " + exact);
+    }
+
+    /** The subscription model with a banded {@code RoundedFee} computation, rounded by [mode] when not null. */
+    private static String roundedFee(RoundingMode mode) {
         EditSession authored = EditSession.read(Fixtures.subscriptionJson());
         GroupEditor billing = authored.group("/Subscription/Billing");
         NumberRef baseFee = billing.num("BaseFee");
         NumberRef effectiveFee = billing.num("EffectiveFee");
         billing.addComputation(effectiveFee, c -> c.name("RoundedFee")
-                .calc(baseFee.value(), ToleranceBand.TR1)
+                .calc(baseFee.value(), ToleranceBand.TR1).roundingMode(mode)
                 .message(Dsl.en("rounded"), Dsl.de("gerundet")).build());
         authored.validate();
-        String stored = authored.toJson().replace("\"computedFieldRelPath\" : \"../EffectiveFee\"",
-                "\"roundingMode\" : \"RoundUp\", \"computedFieldRelPath\" : \"../EffectiveFee\"");
-        assertTrue(stored.contains("RoundUp"), "the probe must actually carry the member it is about");
+        return authored.toJson();
+    }
 
+    /** [stored] with [member] added to the {@code RoundedFee} body, as a model from elsewhere would carry it. */
+    private static String injectIntoComputationBody(String stored, String member) {
+        String anchor = "\"computedFieldRelPath\" : \"../EffectiveFee\"";
+        assertTrue(stored.contains(anchor), "the probe's anchor must be where the writer puts it");
+        return stored.replace(anchor, member + ", " + anchor);
+    }
+
+    /** [stored] after a typed re-expression of {@code RoundedFee} to a flat fee, rounded by [mode]. */
+    private static String reExpressed(String stored, RoundingMode mode) {
         EditSession s = EditSession.read(stored);
         s.validate();
         s.computation("/Subscription/Billing/RoundedFee")
                 .modify(m -> m.computation(m.num("/Subscription/Billing/EffectiveFee"))
                         .name("RoundedFee")
-                        .calc(NumberLiteral.of("9.99"), ToleranceBand.TR1)
+                        .calc(NumberLiteral.of("9.99"), ToleranceBand.TR1).roundingMode(mode)
                         .message(Dsl.en("flat"), Dsl.de("pauschal")).build());
         s.validate();
-
-        String json = s.toJson();
-        assertTrue(json.contains("9.99"), "the new formula is applied");
-        assertTrue(json.contains("\"roundingMode\""),
-                () -> "the roundingMode survives the computation modify: " + json);
-        assertTrue(json.contains("RoundUp"),
-                () -> "…and keeps its value rather than being reset to the default: " + json);
+        return s.toJson();
     }
 
     @Test

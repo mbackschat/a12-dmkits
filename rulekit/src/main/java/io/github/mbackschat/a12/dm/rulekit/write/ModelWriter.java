@@ -27,6 +27,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
@@ -335,16 +336,17 @@ public final class ModelWriter {
     /**
      * The same, one level deeper: the {@code Computation} BODY members {@link #computationNode} reconstructs.
      *
-     * <p>A12 declares two more on {@code md.model.a12internal.Computation} — {@code roundingMode} and
-     * {@code variantFilter} — which no draft here can express, so the rebuild would drop them and a modify
-     * would silently change what the computation MEANS rather than merely losing metadata.
+     * <p>A12 declares one more on {@code md.model.a12internal.Computation} — {@code variantFilter} — which no
+     * draft here can express, so the rebuild would drop it and a modify would silently change which variants
+     * the computation belongs to rather than merely losing metadata.
      *
      * <p><b>The conditionally-written members are why this is a name set rather than a presence test.</b>
-     * {@code commonPrecondition} and {@code errorCodesToSuppress} are emitted only when the draft carries
-     * them, so carrying over whatever the old element had would make removing either impossible.
+     * {@code commonPrecondition}, {@code errorCodesToSuppress} and {@code roundingMode} are emitted only when
+     * the draft carries a non-default value, so carrying over whatever the old element had would make
+     * removing any of them impossible.
      */
     private static final Set<String> REBUILT_COMPUTATION_BODY_SLOTS = Set.of(
-            "computedFieldRelPath", "errorCodesToSuppress", "commonPrecondition",
+            "computedFieldRelPath", "roundingMode", "errorCodesToSuppress", "commonPrecondition",
             "computationAlternatives", "errorMessage");
 
     /**
@@ -442,6 +444,10 @@ public final class ModelWriter {
 
         ObjectNode body = node.putObject("Computation");
         body.put("computedFieldRelPath", c.computedFieldRelPath());
+        // Right after the target and only when not Exact — where and when A12's ComputationSerializer writes it.
+        if (c.roundingMode() != RoundingMode.EXACT) {
+            body.put("roundingMode", c.roundingMode().wire());
+        }
         if (!c.errorCodesToSuppress().isEmpty()) {
             ArrayNode suppress = body.putArray("errorCodesToSuppress");
             c.errorCodesToSuppress().forEach(suppress::add);

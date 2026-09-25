@@ -8,6 +8,7 @@ import java.util.Set;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
@@ -69,6 +70,9 @@ final class ComputationDiffProjector {
         DraftComputation draft = computation.draft();
         Map<String, String> aspects = new LinkedHashMap<>();
         aspects.put("target", computation.computedField().path().value());
+        if (draft.roundingMode() != RoundingMode.EXACT) {
+            aspects.put("roundingMode", draft.roundingMode().wire());
+        }
         putIfPresent(aspects, "commonPrecondition", draft.commonPrecondition());
         for (int i = 0; i < draft.alternatives().size(); i++) {
             DraftComputation.Alternative alternative = draft.alternatives().get(i);
