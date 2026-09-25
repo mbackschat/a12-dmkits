@@ -58,24 +58,39 @@ class KeyedParallelGroupOperandTest {
     }
 
     /**
-     * With one index name and type the walk admits, so no carrier may draw a class A12 did not name. A12 names
-     * each carrier's own gate there, and the checker is silent on those six: an under-report, which this row
-     * does not lock.
+     * With one index name and type the walk admits the parallel level, and each carrier's own gate answers as
+     * it does on a level the error field sits in — so a family that treated the joint level as unaddressed fell
+     * silent on all six, and one that refused it would reject a model A12 admits on the rest.
      */
     @Test
-    fun aLegalParallelIterationDrawsNoClassA12DidNotName() {
-        val kernel = CARRIERS.associateWith { emptyList<String>() } + mapOf(
+    fun aLegalParallelIterationLeavesEachCarriersOwnGateToAnswer() {
+        val expected = CARRIERS.associateWith { emptyList<String>() } + mapOf(
             "FieldFilled(Claims)" to listOf("MVK_NO_GROUPS_ALLOWED"),
             "FieldNotFilled(Claims)" to listOf("MVK_NO_GROUPS_ALLOWED"),
             "NumberOfFilledGroups(Claims) > 0" to listOf("MVK_PARAMSIZE_INVALIDGN"),
             "Sum(Claims, Insured) > 0" to listOf("MVK_NO_NUMBER"),
-            "FirstFilledValue(Claims, Insured) > 0" to listOf("MVK_VARYING_TYPES_NOT_ALLOWED"),
+            // A12 draws MVK_VARYING_TYPES_NOT_ALLOWED here as it does on a group that does not repeat. Type
+            // matching is the under-report `fieldListOperationOperandFindings` discloses, not this walk's.
+            "FirstFilledValue(Claims, Insured) > 0" to emptyList(),
             "NumberOfValueInFields(0 In Claims) > 0" to listOf("MVK_NO_NUMBER"),
         )
-        val overReported = verdicts(RecoveriesIndex.CLAIM_REF)
-            .mapValues { (carrier, codes) -> codes - kernel.getValue(carrier).toSet() }
-            .filterValues { it.isNotEmpty() }
-        assertEquals(emptyMap(), overReported, "one index name and type")
+        assertEquals(expected, verdicts(RecoveriesIndex.CLAIM_REF), "one index name and type")
+    }
+
+    /** `KeyedParallelGroupOperandLawsTest.anOperandOnTheJointLevelMeetsItsScalarSlotsOwnGate`. */
+    @Test
+    fun anOperandOnTheJointLevelMeetsItsScalarSlotsOwnGate() {
+        val expected = mapOf(
+            "0 < RoundUpValue(Claims/Amount, 2)" to emptyList(),
+            "0 < RoundUpValue(Claims/Remark, 2)" to listOf("MVK_NO_NUMBER"),
+            "0 < RoundUpValue(Insured/Remark, 2)" to listOf("MVK_NO_NUMBER"),
+            "DifferenceInDays(Claims/Remark, Insured/Remark) > 0" to listOf("MVK_NO_DATE"),
+            // Escaped once for the fixture's JSON.
+            "FieldValueIncludedInValueList(Claims/Remark, \\\"x\\\")" to emptyList(),
+            "FieldValueIncludedInValueList(Claims, \\\"x\\\")" to listOf("MVK_NO_GROUPS_ALLOWED"),
+        )
+        assertEquals(expected, verdicts(RecoveriesIndex.CLAIM_REF, expected.keys.toList()),
+            "an operand on the jointly iterated level")
     }
 
     private companion object {

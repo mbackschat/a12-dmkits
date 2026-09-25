@@ -68,6 +68,28 @@ class KeyedParallelGroupOperandLawsTest {
     }
 
     /**
+     * An operand on the same jointly iterated level meets its SCALAR slot's own gate too, as it would on a level
+     * the error field sits in: a text field in a numeric rounding slot or a date slot is refused as it is from
+     * the fixed {@code Insured}, and a group in a value-list subject is refused as a group. Each refusal sits
+     * beside the admitted read of the same slot, the control that the joint read itself passes.
+     */
+    @Test
+    void anOperandOnTheJointLevelMeetsItsScalarSlotsOwnGate() {
+        String model = PolicyPathFixture.keyedClaimsBesideRecoveries(RecoveriesIndex.CLAIM_REF);
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("0 < RoundUpValue(Claims/Amount, 2)", "admitted");
+        expected.put("0 < RoundUpValue(Claims/Remark, 2)", "MVK_NO_NUMBER");
+        expected.put("0 < RoundUpValue(Insured/Remark, 2)", "MVK_NO_NUMBER");
+        expected.put("DifferenceInDays(Claims/Remark, Insured/Remark) > 0", "MVK_NO_DATE");
+        expected.put("FieldValueIncludedInValueList(Claims/Remark, \"x\")", "admitted");
+        expected.put("FieldValueIncludedInValueList(Claims, \"x\")", "MVK_NO_GROUPS_ALLOWED");
+        Map<String, String> actual = new LinkedHashMap<>();
+        expected.keySet().forEach(carrier -> actual.put(carrier,
+                GroupOperandRepetitionScopeLawsTest.verdict(model, "/Policy", ERROR_FIELD, carrier)));
+        assertEquals(expected, actual, "an operand on the jointly iterated level");
+    }
+
+    /**
      * The same index pairs on the keyed level ABOVE a starred group, the other position a group operand's walk
      * reaches: {@code Claims} is crossed unstarred on the way to its starred {@code Parts}, and draws the class
      * its own level draws above. A model that adds {@code Parts} is a different model, so the admitted pair is

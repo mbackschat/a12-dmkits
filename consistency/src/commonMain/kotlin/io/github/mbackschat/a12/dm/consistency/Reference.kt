@@ -401,6 +401,41 @@ internal fun TrackedFactBase.unstarredRepeatableLevels(
     return iteratedLevels(path).filterNot { it in starred }
 }
 
+/**
+ * [unstarredRepeatableLevels] less those A12 iterates jointly with [element]'s target ([iteratesJointly]) —
+ * the levels a SCALAR slot's read crosses that nothing addresses, so that its own gate is not A12's to ask.
+ */
+internal fun TrackedFactBase.unaddressedRepeatableLevels(
+    written: String,
+    path: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): List<String>? = unstarredRepeatableLevels(written, path, declaringGroup, element)
+    ?.filterNot { iteratesJointly(it, element) }
+
+/**
+ * Whether A12 iterates [level] JOINTLY with [element]'s target: a parallel level both branches key by one index
+ * field of one name and type ([parallelVerdictOf]).
+ *
+ * The walk admits such a level exactly as it admits the one the target sits in, and the carrier's own gate
+ * answers next — measured on the six group carriers that have one and on a rounding, a date and a value-list
+ * slot (`rulekit.validate.laws.KeyedParallelGroupOperandLawsTest`), and ASSUMED for the other operand gates,
+ * which read their operand after the same walk. A target outside the declaring group is never joint here,
+ * because `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` answers ahead of the walk ([operandRepetitionScopeFindings]).
+ */
+internal fun TrackedFactBase.iteratesJointly(level: String, element: TrackedDeclaration): Boolean {
+    val targetGroup = iterationGroupOf(element) ?: return false
+    val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    val parallel = !targetGroup.isAtOrBelow(level) && !level.isAtOrBelow(targetGroup)
+    if (!parallel || !targetGroup.isAtOrBelow(declaringGroup)) {
+        return false
+    }
+    val declared = declarationAt(level) ?: return false
+    return parallelVerdictOf(declared, targetGroup) == ParallelVerdict.Joint
+}
+
+private fun String.isAtOrBelow(ancestor: String): Boolean = this == ancestor || startsWith("$ancestor/")
+
 private inline fun starredLevelsIn(
     written: String,
     resolve: (String) -> Reference,
@@ -627,26 +662,13 @@ internal fun TrackedFactBase.addressedTargetOf(
     val starred = starredLevelsOf(reference, declaringGroup, element) ?: return null
     val levels = iteratedLevels(target)
     val pinned = if (indexSelected && levels.size == 1) levels.toSet() else emptySet()
-    return addressedTargetIn(
-        target,
-        starred + pinned,
-        iterationGroupOf(element) ?: declaringGroup,
-        levels,
-    )
-}
-
-/**
- * @param iterated the TARGET's own group, not the DECLARING one: A12 asks whether the target's coordinates
- *     address the level, and a rule's error field can reach into a repetition the rule is not declared in.
- *     Keying this on the declaring group made every family behind it yield on an operand A12 admits there.
- */
-private fun addressedTargetIn(
-    target: String,
-    starred: Set<String>,
-    iterated: String,
-    levels: List<String>,
-): String? {
-    val unaddressed = levels.any { it !in starred && !(iterated == it || iterated.startsWith("$it/")) }
+    // The TARGET's own group, not the DECLARING one: A12 asks whether the target's coordinates address the
+    // level, and a rule's error field can reach into a repetition the rule is not declared in. Keying this on
+    // the declaring group made every family behind it yield on an operand A12 admits there.
+    val iterated = iterationGroupOf(element) ?: declaringGroup
+    val unaddressed = levels.any {
+        it !in starred + pinned && !iterated.isAtOrBelow(it) && !iteratesJointly(it, element)
+    }
     return if (unaddressed) null else target
 }
 

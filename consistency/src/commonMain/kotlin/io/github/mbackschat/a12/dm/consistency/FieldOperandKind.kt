@@ -71,7 +71,7 @@ private fun TrackedFactBase.operandFinding(
         resolves = { prefix -> resolveEntity(declaringGroup, prefix, element.origin) },
         isRepeatableGroup = { declarationAt(it)?.isRepeatableGroup == true },
     )
-    if (gate != null || unstarredRepeatableLevels(path, resolved.path, declaringGroup, element)?.isEmpty() != true) {
+    if (gate != null || unaddressedRepeatableLevels(path, resolved.path, declaringGroup, element)?.isEmpty() != true) {
         return null
     }
     val target = declarationAt(resolved.path, DeclaredKind.GROUP)

@@ -134,7 +134,7 @@ private fun TrackedFactBase.slotDefect(
     }
     val written = operand.path ?: return null
     val target = declaredTargetOf(written, declaringGroup, element) ?: return null
-    if (unstarredRepeatableLevels(written, target.path, declaringGroup, element)?.isEmpty() != true) {
+    if (unaddressedRepeatableLevels(written, target.path, declaringGroup, element)?.isEmpty() != true) {
         return null
     }
     if (target.declaredKind == DeclaredKind.GROUP) {

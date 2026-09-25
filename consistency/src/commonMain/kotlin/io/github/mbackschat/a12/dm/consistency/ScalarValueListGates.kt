@@ -126,7 +126,7 @@ private fun TrackedFactBase.gateFindings(
     val entries = call.operands.drop(1).takeIf { it.isNotEmpty() } ?: return null
     val subject = declaredTargetOf(subjectOperand.text, declaringGroup, element) ?: return null
     val written = referencesIn(subjectOperand.text, conditionLanguage).singleOrNull() ?: return null
-    if (unstarredRepeatableLevels(written, subject.path, declaringGroup, element)?.isEmpty() != true) {
+    if (unaddressedRepeatableLevels(written, subject.path, declaringGroup, element)?.isEmpty() != true) {
         return null
     }
 
