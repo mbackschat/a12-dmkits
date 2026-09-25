@@ -27,9 +27,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * the lowest level" shape its name suggests: a plainly missing star is answered by the reference reader with
  * `MVK_NO_WILDCARD` long before this operator's own gates run.
  *
- * **Silent unless the reference reader is demonstrably silent.** Each operand must resolve to a FIELD inside
- * the declaring group and star exactly the repeatable levels between the two, or A12's answer is
- * `MVK_NO_WILDCARD` / `MVK_INVALID_WILDCARD` / `MVK_INVALID_ENTITY` and belongs to another family. Silent
+ * **Silent unless the reference reader is demonstrably silent.** Each operand must resolve to a FIELD, star
+ * no level that does not repeat, and star every repeatable level on its path that the declaring group does
+ * not bind, or A12's answer is `MVK_NO_WILDCARD` / `MVK_INVALID_WILDCARD` / `MVK_INVALID_ENTITY`, or
+ * containment, and belongs to another family. The field may lie outside the declaring group, and a star on a
+ * level the group binds is no reader error: the gates count it ([KERNEL-FINDINGS KF470],
+ * `rulekit.validate.laws.SumOfProductsOperandReachLawsTest`). Silent
  * too on an identical starless pair and on a starred filter, which A12 answers with `MVK_DUPLICATE_PARAM1`
  * and `MVK_NO_WILDCARDS_ALLOWED` — measured, both ahead of every gate here.
  */
@@ -62,11 +65,11 @@ private class ParallelOperand(val owningGroup: String, val stars: Int, val filte
 /**
  * Reads one operand, returning null on every shape whose verdict is another gate's.
  *
- * The star COUNT has to match the repeatable levels between the declaring group and the field exactly: one
- * too few and A12 answers `MVK_NO_WILDCARD`, one too many and it answers `MVK_INVALID_WILDCARD`, and both
- * run in the reference reader ahead of this operator. Levels are counted from the declaring group rather
- * than from the model root, because the rule's own context binds everything at or above it — the fixture
- * that made this concrete has a REPEATABLE root group, where root-relative counting refuses a legal pair.
+ * An unbound repeatable level left unstarred is read one row at a time, which the reference reader answers
+ * with `MVK_NO_WILDCARD`, or containment does where the target lies outside the declaring group, ahead of
+ * this operator. A level at or above the declaring group is bound by the rule's own context, so it may go
+ * unstarred — the fixture that made this concrete has a REPEATABLE root group, where demanding its star
+ * refuses a legal pair — and a star on it is counted like any other.
  */
 private fun TrackedFactBase.readOperand(
     operand: CallOperand,
@@ -83,29 +86,19 @@ private fun TrackedFactBase.readOperand(
         as? Reference.Resolved ?: return null
     val field = declarationAt(resolved.path, DeclaredKind.FIELD)
         ?: return null
-    if (!field.path.startsWith("$declaringGroup/")) {
-        return null
-    }
     // A star on a level that does not repeat is `MVK_INVALID_WILDCARD`, which A12 answers before comparing
-    // the pair (`rulekit.validate.laws.SumOfProductsLawsTest`), and it would still count below.
-    starredLevelsOf(written, declaringGroup, element) ?: return null
-    val stars = written.count { it == '*' }
-    if (stars != repeatableLevelsBetween(declaringGroup, field.path)) {
+    // the pair (`rulekit.validate.laws.SumOfProductsLawsTest`).
+    val starred = starredLevelsOf(written, declaringGroup, element) ?: return null
+    if (iteratedLevels(field.path).any { it !in starred && !declaringGroup.isAtOrBelow(it) }) {
         return null
     }
     return ParallelOperand(
         field.path.substringBeforeLast('/'),
-        stars,
+        starred.size,
         filters.isNotEmpty(),
         field.path,
     )
 }
-
-/** The repeatable groups strictly between [declaringGroup] and [fieldPath] — one star each is what A12 wants. */
-private fun TrackedFactBase.repeatableLevelsBetween(declaringGroup: String, fieldPath: String): Int =
-    repeatableGroups().count {
-        it.path.startsWith("$declaringGroup/") && fieldPath.startsWith("${it.path}/")
-    }
 
 /** A12's class for this pair, in its own gate order, or null when the pair is legal. */
 private fun classOf(left: ParallelOperand, right: ParallelOperand): String? = when {

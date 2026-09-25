@@ -434,7 +434,7 @@ internal fun TrackedFactBase.iteratesJointly(level: String, element: TrackedDecl
     return parallelVerdictOf(declared, targetGroup) == ParallelVerdict.Joint
 }
 
-private fun String.isAtOrBelow(ancestor: String): Boolean = this == ancestor || startsWith("$ancestor/")
+internal fun String.isAtOrBelow(ancestor: String): Boolean = this == ancestor || startsWith("$ancestor/")
 
 private inline fun starredLevelsIn(
     written: String,
