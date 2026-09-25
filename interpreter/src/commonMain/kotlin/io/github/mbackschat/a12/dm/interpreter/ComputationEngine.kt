@@ -473,7 +473,7 @@ internal class ComputationEngine(
                 // has to reach the store canonicalized, or the target's own format cannot render it. The format
                 // rides along because a YEARLESS literal needs a reference year only when the target renders one.
                 return Selection(true, interp.evalExpression(
-                    alt.operation, model.kinds[targetPath], model.dateFormats[targetPath]))
+                    alt.written, model.kinds[targetPath], model.dateFormats[targetPath]))
             }
         }
         return Selection.NONE

@@ -3,8 +3,10 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.RoundingMode
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand
 import io.github.mbackschat.a12.dm.interpreter.parse.RefResolver
@@ -16,7 +18,14 @@ import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
  *  precondition holds (null precondition = unconditional); a present common precondition gates them all. */
 internal class ParsedComputation(val commonPrecondition: Cond?, val alternatives: List<ParsedAlternative>)
 
-internal class ParsedAlternative(val precondition: Cond?, val operation: Expr, val tolerance: ToleranceBand?)
+/** One parsed alternative. [operation] is the operation as authored, which the implicit validation compares
+ *  against; [written] is what the computation stores, the two differing only under a rounding (IF341). */
+internal class ParsedAlternative(
+    val precondition: Cond?,
+    val operation: Expr,
+    val tolerance: ToleranceBand?,
+    val written: Expr,
+)
 
 /**
  * The parse-once caches + the implicit computation-validation rules — a call-invariant collaborator of the
@@ -90,13 +99,36 @@ internal class ParsedModel(
     private fun parseComputation(c: ComputationDef): ParsedComputation = ParsedComputation(
         c.commonPrecondition?.let { parseCondition(it, c.group, refResolver, model.conditionLanguage) },
         c.alternatives.map {
+            val operation = parseExpression(it.operation, c.group, refResolver, model.conditionLanguage)
             ParsedAlternative(
                 it.precondition?.let { p -> parseCondition(p, c.group, refResolver, model.conditionLanguage) },
-                parseExpression(it.operation, c.group, refResolver, model.conditionLanguage),
+                operation,
                 it.tolerance,
+                written(c, operation, it.tolerance),
             )
         },
     )
+
+    /**
+     * What an alternative stores, which A12 derives from the operation apart from what the implicit validation
+     * compares (IF341, measured by `ComputationRoundingModeDiffTest`). A non-`Exact` mode rounds to zero places in
+     * its own direction — codegen wraps every alternative's operation (`CalculationCodeGenUtilities
+     * .prefixRoundingOperation`). An `Exact` alternative beside a band rounds DOWN to the target's declared digits
+     * (`NormalisierteBerechnungsFormHelper.extractBerechnungsFeldOp`), which is what lets a suppressed scale gate
+     * store a finer operation instead of erroring. The wrap reuses the interpreter's own `RoundUp`/`RoundDown`, so
+     * the stored value takes the same pre-round and direction as the authored operator.
+     */
+    private fun written(c: ComputationDef, operation: Expr, tolerance: ToleranceBand?): Expr = when (c.roundingMode) {
+        RoundingMode.ROUND_UP -> rounded(FunctionOp.ROUND_UP, operation, 0)
+        RoundingMode.ROUND_DOWN -> rounded(FunctionOp.ROUND_DOWN, operation, 0)
+        RoundingMode.EXACT -> if (tolerance == null) operation else rounded(FunctionOp.ROUND_DOWN, operation,
+            // A12 casts the target's type to a number type here, and a band beside any other target never
+            // reaches it: the band's own comparison is numeric.
+            checkNotNull(model.scaleOf(c.targetPath)) { "a tolerance band computes a NUMBER target: ${c.targetPath}" })
+    }
+
+    private fun rounded(op: FunctionOp, operation: Expr, places: Int): Expr =
+        Expr.Func(op.kernelName, listOf(operation, Expr.NumLit(dec(places.toString()))))
 
     /** The parsed condition AST for [rule] — cached for a model rule or an implicit computation-validation rule;
      *  a one-off parse for an ad-hoc candidate. */

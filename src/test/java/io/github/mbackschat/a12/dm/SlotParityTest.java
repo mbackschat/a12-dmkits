@@ -34,8 +34,8 @@ class SlotParityTest {
             "getComputationAlternatives", "SUPPORTED: when/calc alternatives",
             "getCommonPrecondition", "SUPPORTED: Computation.commonPrecondition",
             "getErrorMessage", "SUPPORTED: Computation.messages (locale-law checked)",
-            "getErrorCodesToSuppress", "DEFERRED: suppression surface not built (only DEC_PLACES is suppressible)",
-            "getRoundingMode", "DEFERRED: gap found by this sweep 2026-06-04 — schedule with the rounding operators",
+            "getErrorCodesToSuppress", "SUPPORTED: Computation.Builder.errorCodesToSuppress (only DEC_PLACES is suppressible)",
+            "getRoundingMode", "SUPPORTED: Computation.Builder.roundingMode, judged with each alternative's band (KF297)",
             "getVariantFilter", "DEFERRED: rides variant support");
 
     @Test

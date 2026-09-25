@@ -57,11 +57,9 @@ class InterpreterModelElementParityTest {
         modeled("ICalculationInfo.getPartialCalculations", "ComputationDef.alternatives (precondition?, operation) — IF21");
         modeled("ICalculationInfo.getCommonPrecondition", "ComputationDef.commonPrecondition — IF21");
         modeled("ICalculationInfo.getName", "the computation's name — carried on the element, not eval-relevant; the targetPath identifies it");
-        outOfScope("ICalculationInfo.getRoundingMode",
-                "INERT for a valid computation: EXACT is the default, and a non-EXACT mode does NOT relax the scale gate "
-                        + "(probe 2026-06-26: RoundUp/RoundDown still draw MVK_INVALID_COMPARE_DEC_PLACES), so the operation "
-                        + "must already match the target scale → nothing to round. The adapter refuses non-EXACT "
-                        + "(ConditionConverter); the interpreter safely ignores it — no divergence.");
+        modeled("ICalculationInfo.getRoundingMode",
+                "ComputationDef.roundingMode — beside a band it rounds the written value, and EXACT floors it to the "
+                        + "target's digits (IF341, KF474)");
 
         // ── IGroup ──
         modeled("IGroup.getIndexFieldNames", "ModelDef.indexFields (the repetition row-key; arms uniqueIndex + parallel iteration)");

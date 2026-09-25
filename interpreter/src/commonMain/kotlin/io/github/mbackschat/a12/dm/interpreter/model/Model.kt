@@ -334,6 +334,28 @@ enum class ToleranceBand(val wire: String, val amount: Int) {
 }
 
 /**
+ * A computation's `roundingMode` — how A12 rounds what the computation WRITES (IF341). A non-[EXACT] mode is legal
+ * only beside a tolerance band (KERNEL-FINDINGS KF297), and it rounds the written value to a whole number in its
+ * direction; the implicit validation compares against the operation as authored, whichever the mode.
+ */
+enum class RoundingMode(val wire: String) {
+    EXACT("Exact"),
+    ROUND_UP("RoundUp"),
+    ROUND_DOWN("RoundDown");
+
+    companion object {
+        /** Map a DM-JSON `roundingMode` value to its mode. Absent means [EXACT], which A12's serializer never
+         *  writes; every present string outside the closed set is rejected loudly. */
+        fun ofWire(wire: String?): RoundingMode {
+            if (wire == null) return EXACT
+            return entries.firstOrNull { it.wire == wire }
+                ?: throw IllegalArgumentException(
+                    "unknown roundingMode '$wire' — expected one of ${entries.map { it.wire }}")
+        }
+    }
+}
+
+/**
  * One TIERED alternative of a [ComputationDef]: an optional [precondition] (DSL condition text) gating an
  * [operation] (DSL value-expression text), with an optional [tolerance] band. The kernel selects the first
  * alternative whose precondition holds (a null precondition always applies — the unconditional default),
@@ -435,6 +457,8 @@ data class ComputationDef(
      *  renders. Every computation must declare one (`MVK_ERROR_MESSAGE_MISSING`), so an empty map here means
      *  a hand-built [ComputationDef], never a model read from DM-JSON (IF324). */
     val messages: Map<String, String> = emptyMap(),
+    /** How the written value is rounded ([RoundingMode]); [RoundingMode.EXACT] unless the model states otherwise. */
+    val roundingMode: RoundingMode = RoundingMode.EXACT,
 ) {
     /** Sugar for the common single-unconditional-operation computation (no precondition, no common guard). */
     constructor(targetPath: String, group: String, expressionText: String) :

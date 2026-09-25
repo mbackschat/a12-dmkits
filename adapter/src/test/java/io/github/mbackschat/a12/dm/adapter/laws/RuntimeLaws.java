@@ -87,6 +87,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 
 /**
@@ -344,7 +345,7 @@ public final class RuntimeLaws {
                 .map(a -> new CompAlt(a.precondition(), a.operation(), toleranceText(a.toleranceRangeOp())))
                 .toList();
         return withTieredComputation(modelJson, draft.groupPath(), draft.name(), draft.computedFieldRelPath(),
-                draft.commonPrecondition(), alts);
+                draft.commonPrecondition(), alts, draft.errorCodesToSuppress(), draft.roundingMode());
     }
 
     /**
@@ -371,6 +372,19 @@ public final class RuntimeLaws {
      */
     public static String withTieredComputation(String modelJson, String groupId, String name,
             String computedFieldRelPath, String commonPrecondition, List<CompAlt> alternatives) {
+        return withTieredComputation(modelJson, groupId, name, computedFieldRelPath, commonPrecondition, alternatives,
+                List.of(), RoundingMode.EXACT);
+    }
+
+    /**
+     * As the six-argument form, carrying the two owner-level members as well. The typed splice used to reach the
+     * six-argument form and silently drop both, so a banded rounding computation was measured as {@code Exact}. Each
+     * member is written only when it is not its default, where A12's {@code ComputationSerializer} writes it, so every
+     * caller that has neither keeps its bytes.
+     */
+    public static String withTieredComputation(String modelJson, String groupId, String name,
+            String computedFieldRelPath, String commonPrecondition, List<CompAlt> alternatives,
+            List<String> errorCodesToSuppress, RoundingMode roundingMode) {
         StringBuilder alts = new StringBuilder();
         for (int i = 0; i < alternatives.size(); i++) {
             CompAlt a = alternatives.get(i);
@@ -388,9 +402,13 @@ public final class RuntimeLaws {
         }
         String common = commonPrecondition == null ? ""
                 : " \"commonPrecondition\": \"" + esc(commonPrecondition) + "\",";
+        String mode = roundingMode == RoundingMode.EXACT ? "" : " \"roundingMode\": \"" + roundingMode.wire() + "\",";
+        String suppress = errorCodesToSuppress.isEmpty() ? ""
+                : " \"errorCodesToSuppress\": [ " + errorCodesToSuppress.stream()
+                        .map(c -> "\"" + c + "\"").collect(Collectors.joining(", ")) + " ],";
         String comp = "{ \"type\": \"Computation\", \"id\": \"" + groupId + "/" + name + "\", \"name\": \"" + name + "\","
-                + " \"Computation\": { \"computedFieldRelPath\": \"" + computedFieldRelPath + "\"," + common
-                + " \"computationAlternatives\": [ " + alts + " ],"
+                + " \"Computation\": { \"computedFieldRelPath\": \"" + computedFieldRelPath + "\"," + mode + common
+                + " \"computationAlternatives\": [ " + alts + " ]," + suppress
                 + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n";
         int g = modelJson.indexOf("\"id\": \"" + groupId + "\"");
         if (g < 0) {

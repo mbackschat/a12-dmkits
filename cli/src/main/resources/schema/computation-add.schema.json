@@ -38,7 +38,7 @@
     "roundingMode": {
       "type": "string",
       "enum": ["Exact", "RoundUp", "RoundDown"],
-      "description": "A12 Computation.roundingMode, spelled exactly as A12 stores it (case matters; ROUND_UP is not a spelling). Omit for Exact, which is never stored. RoundUp/RoundDown need a toleranceRangeOp on EVERY alternative: the kernel compares an unbanded alternative exactly and refuses the pair with MVK_ERROR_WRONG_ROUNDING_MODE."
+      "description": "A12 Computation.roundingMode, spelled exactly as A12 stores it (case matters; ROUND_UP is not a spelling). Omit for Exact, which is never stored. RoundUp/RoundDown need a toleranceRangeOp on EVERY alternative: the kernel compares an unbanded alternative exactly and refuses the pair with MVK_ERROR_WRONG_ROUNDING_MODE. The mode rounds the computed value to a WHOLE number, not to the field's digits (RoundUp toward +infinity, RoundDown toward -infinity: RoundUp writes 2 for 1.25); the computation's validation still compares the unrounded operation."
     },
     "messages": {
       "type": "array",

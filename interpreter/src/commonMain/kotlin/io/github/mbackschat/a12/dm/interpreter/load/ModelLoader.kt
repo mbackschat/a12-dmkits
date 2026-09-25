@@ -13,6 +13,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 import io.github.mbackschat.a12.dm.interpreter.model.RangeYearInterpretation
+import io.github.mbackschat.a12.dm.interpreter.model.RoundingMode
 import io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
@@ -346,7 +347,7 @@ object ModelLoader {
                     sink.comps.add(
                         ComputationDef(
                             target, parent(id), alternatives, common, structure.name,
-                            localizedTexts(body.path("errorMessage")),
+                            localizedTexts(body.path("errorMessage")), roundingModeOf(body),
                         ),
                     )
                 }
@@ -660,6 +661,14 @@ object ModelLoader {
             "toleranceRangeOp must be a string equal to one of ${ToleranceBand.entries.map { it.wire }}"
         }
         return ToleranceBand.ofWire(value.asText())
+    }
+
+    /** Missing/null means [RoundingMode.EXACT]; any present non-string or string outside the closed set fails loud. */
+    private fun roundingModeOf(body: JsonElement): RoundingMode {
+        val value = (body as? JsonObject)?.get("roundingMode") ?: return RoundingMode.EXACT
+        if (value is JsonNull) return RoundingMode.EXACT
+        require(value.isTextual()) { "roundingMode must be a string equal to one of ${RoundingMode.entries.map { it.wire }}" }
+        return RoundingMode.ofWire(value.asText())
     }
 
     /** Resolve a relpath against the NODE's own id (`../F` pops the node name, then appends). */

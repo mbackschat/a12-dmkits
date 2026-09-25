@@ -2047,7 +2047,7 @@ Two facts the one-probe reading could not see. **Sharing a starred group is not 
 - A wrong-kind operation (string expression into a number computed field) is **`MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`**.
 - Computations require error text like rules do (`MVK_ERROR_MESSAGE_MISSING`).
 - **Runtime evaluation (RT-semantics drain, overlap corrected IF175; division corrected IF177):** with **overlapping preconditions, the first declared alternative wins** the computed value, but the generated implicit validation keeps every holding alternative's mismatch. A legal `RoundAccounting(div, 2)` division by zero has no public value — fresh delta absent, stale value CLEARED — yet the numeric invalid sentinel survives `Abs`, `Min`/`Max`, and rounding, marks the target with `berechnungsWertFehler`, and poisons a dependent read. Arithmetic evaluates the one-pass lowered tree left-to-right: domain failure does not skip a later operand, while a thrown read poison aborts before it. A date shift intentionally maps an invalid numeric amount to a valueless date without that formal calculation error. A bare **division has unknown scale** and cannot assign to a scaled computed field (`MVK_INVALID_COMPARE_DEC_PLACES`, rhs "?") — wrap it in explicit rounding. *(Locked: `ComputationOverlapValidationDiffTest`; `DivisionDomainFailureComputationDiffTest` differentially locks the runtime projections and domain-left/right-poison separator, refutes use of the public formal-error inventory as a first-read trace, and locks generated-Java source order/catch; JVM+Node `DivisionDomainFailureComputationTest` observes the interpreter's selected poison; the earlier delta-only observation remains in `ComputationEvaluationLawsTest`.)*
-- **`ICalculationInfo.getRoundingMode` is INERT in 30.8.1** (source-swept + probe 2026-06-26, INTERPRETER-FINDINGS IF22): the slot exists (EXACT / RoundUp / RoundDown) but no runtime or codegen consumer reads it, and a non-EXACT mode does **not** relax the assignment scale gate (an unrounded division into a scaled field still draws `MVK_INVALID_COMPARE_DEC_PLACES`) — an explicit `Round*` in the operation is the real mechanism.
+- **A non-EXACT `roundingMode` does not relax the assignment scale gate** (probe 2026-06-26, INTERPRETER-FINDINGS IF22): an unrounded division into a scaled field still draws `MVK_INVALID_COMPARE_DEC_PLACES`, so an explicit `Round*` in the operation is how a computation fits its target. **Corrected 2026-09-25:** this bullet called the mode INERT, saying no runtime or codegen consumer reads it. Both halves were wrong: codegen reads it, and beside a tolerance band, the only place [KF297](#kf297) admits it, it rounds what the computation writes ([KF474](#kf474)). The 2026-06-26 probe had no band.
 
 *(Locked: `ComputationAuthoringTest`; the BA-doc worked-example shapes — concat, tiered+rounding, division/grouping, common-precondition concat, current-repetition, parallel-iteration — transferred to own domains in `adapter.BaComputationCorpusTest`.)*
 
@@ -5825,6 +5825,8 @@ Two stored members that look independent and are the two conjuncts of one kernel
 **The tier is NOT [KF259](#kf259)'s untyped raise, and the layer that decides that is ours.** Both throws escape every typed kernel channel exactly as the source reads, and `adapter.KernelModelPreparation.notifications()` catches them around `checkConsistency` and re-raises a codeless consistency exception — KF259's fix doing its job. Worth stating because a source read of the kernel alone predicts `RAISED (untyped)` and is wrong about where the value lands: the composition, not the read, settles the tier.
 
 **Consequence for the MVK ledger.** `MVK_ERROR_WRONG_ROUNDING_MODE` was bucketed `erased` on the reason "kernel-generated, unreachable from rulekit". The bucket survives — no `roundingMode` exists anywhere in the Java authoring surface, so the typed API genuinely cannot express it — but the reason was a mechanism claim and it is wrong: the mode is an AUTHORED member of the stored model, and the comparison the kernel generates is generated *from* the authored band. This is the failure mode [KF182](#kf182) named, an unrepresentability argument identifying the wrong shape, and it is the second row of the `erased` bucket to fall to the systematic pass the ledger says is still owed. **Corrected 2026-09-25:** the bucket no longer survives either. `Computation.Builder.roundingMode` now authors the member, and `build()` refuses exactly this finding's refused cell with this code, so the row is `pre-checked` ([API-FINDINGS AF170](API-FINDINGS.md#af170)).
+
+What the admitted pair does at run time is [KF474](#kf474).
 
 *(Locked: `rulekit.validate.laws.ComputationRoundingModeLawsTest` — the two spelling tables, the 2×2 pair grid, and the two-alternative carrier. The checker's own family is `CheckFamily.COMPUTATION_ROUNDING`.)*
 
@@ -10941,3 +10943,36 @@ A12 never parses a computation's members one by one. `ComputationAlternativesJoi
 **The filter body's star class ([KF97](#kf97)'s table) is explained by this gate.** Every row there is a bracketed read, and a starred bracket draws the same class outside any filter. Whether a filter adds a star gate of its own shows only on a star outside a bracket, such as a nested aggregate's argument, and no row measures that.
 
 **The portable checker had no family for the bracket.** With it disabled, the checker is silent on every star row outside a filter's body and on every group, value-validation and partial-date row above, and draws `MVK_NO_ITERATION_FOR_WILDCARD` on the group read in a filter's body; the starred bracket in a body was already `FILTER_WILDCARD`'s. `CheckFamily.FIELD_VALUE_READ_OPERAND` now asks the four gates at the bracket's span, on a spec the reader passes. It leaves the star in a filter's body to `FILTER_WILDCARD`. `consistency.FieldValueReadOperandTest` answers every row with its complete class list. Its scalar value-list family had asked value validation of the entries itself, after their duplicates and base types, and had expanded a group entry to its fields. It now judges only lists of field entries and leaves each entry's own gates to the bracket (`consistency.ScalarValueListGatesTest`).
+
+## §11 supplement — a banded computation's `roundingMode` rounds what it WRITES to a whole number, and its implicit validation compares the operation as authored (differential, both strategies, 2026-09-25) <a id="kf474"></a>
+
+> Fold: pending — belongs in [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §11 beside the tolerance band.
+
+[KF297](#kf297) admits a non-`Exact` mode only beside a tolerance band; this is what the admitted pair then does. Carrier: `ChargedPremium` (two fraction digits) computed from `[BasePremium]` (two digits) or from `[FineBase]` (three digits, `MVK_INVALID_COMPARE_DEC_PLACES` suppressed), band `DiffersWithToleranceRange1`. Dynamic Groovy and generated Java agree on every row.
+
+| mode | operand | written |
+|---|---|---|
+| `Exact` | 1.25 | 1.25 |
+| `RoundUp` | 1.25 · 1.75 · −1.25 · 3.00 | 2 · 2 · −1 · 3 |
+| `RoundDown` | 1.25 · 1.75 · −1.25 | 1 · 1 · −2 |
+| `Exact`, finer operand | 1.255 · −1.255 | 1.25 · −1.26 |
+| `Exact`, finer operand, the same model without its band | 1.255 | errored |
+| `RoundUp` · `RoundDown`, finer operand | 1.255 | 2 · 1 |
+| `Exact` · `RoundUp`, operand empty | — | 0 · 0 |
+| `RoundUp`, two guarded banded alternatives | 7.25 (first selected) · 1.25 (second) | 8 · 2 |
+
+| entered, beside the operand | `Exact` | `RoundUp` | `RoundDown` |
+|---|---|---|---|
+| 0.30 beside 1.25 | silent | silent | silent |
+| 2.20 beside 1.25 | silent | silent | silent |
+| 0.25 beside the finer 1.259 | fires | fires | fires |
+
+Three facts, each with the row that separates it from its rival:
+
+- **The mode rounds to ZERO places, in the rounding operators' own directions.** The same-scale 1.25 → 2 row is the discriminator: rounding to the target's two digits would change nothing. `RoundUp` goes toward +∞ and `RoundDown` toward −∞ (−1.25 → −1 and −2), the directions §4 measured for the operators, not rounding away from or toward zero.
+- **`Exact` beside a band rounds DOWN to the target's declared digits.** So a suppressed scale gate stores the finer operation instead of erroring. The −1.255 → −1.26 row separates that floor from truncation toward zero, and the unbanded control, one builder call away, shows the band is what does it.
+- **The implicit validation compares the entered value with the operation as authored**, neither rounded nor truncated. Comparing with the rounded operation would fire `RoundUp` at 0.30 (|0.30 − 2| > 1) and `RoundDown` at 2.20 (|2.20 − 1| > 1), and would silence `RoundDown` on the finer row (|0.25 − 1| ≤ 1). Comparing with the floored `Exact` operation would silence the finer `Exact` row (|0.25 − 1.25| ≤ 1). All three fire as authored: |0.25 − 1.259| > 1.
+
+**Source account (read in `kernel-core-codegen-condition` and `kernel-core-calc`; every row above agrees with it, but none discriminates the WHERE from a rival).** Codegen wraps each alternative's calculation operation in the mode's operator at zero places: `CodeGenParseTreeHelper.expandAndTransformAlternative` → `CalculationCodeGenUtilities.prefixRoundingOperation` → `RoundUp`/`RoundDown(op, 0)`. The `Exact` floor is `NormalisierteBerechnungsFormHelper.extractBerechnungsFeldOp`, which builds `CalcOperationRoundDownWithCompOp(op, maxFractionalDigits)` whenever the comparison is a band. Both act on the calculation info. The validation keeps the operation as authored, which `getOriginalOperation` also returns.
+
+*(Locked: `adapter.laws.ComputationRoundingModeDiffTest`, both kernel strategies against the interpreter; kernel-free JVM + Node `interpreter.ComputationRoundingModeTest`. Interpreter treatment: [IF341](INTERPRETER-FINDINGS.md#if341).)*
