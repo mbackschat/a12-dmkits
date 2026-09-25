@@ -116,8 +116,8 @@ private fun TrackedFactBase.agreementFinding(
     if (comparison.operator != EQUAL && comparison.operator != NOT_EQUAL) {
         return null
     }
-    val left = sideOf(comparison.left, declaringGroup, element, comparison.filteredBy) ?: return null
-    val right = sideOf(comparison.right, declaringGroup, element, comparison.filteredBy) ?: return null
+    val left = sideOf(comparison.left, declaringGroup, element, comparison.inAFilterBody) ?: return null
+    val right = sideOf(comparison.right, declaringGroup, element, comparison.inAFilterBody) ?: return null
     if (left.written && right.written) {
         return null
     }
@@ -175,7 +175,7 @@ private fun TrackedFactBase.sideOf(
     side: String,
     declaringGroup: String,
     element: TrackedDeclaration,
-    filteredBy: String?,
+    inAFilterBody: Boolean,
 ): TextSide? {
     val tokens = tokenize(side)
     if (isNumberLiteral(tokens)) {
@@ -184,7 +184,7 @@ private fun TrackedFactBase.sideOf(
     tokens.singleOrNull()?.takeIf { it.kind == TokenKind.STRING }?.let {
         return TextSide.TextConstant(it.text.removeSurrounding("\"").replace("\"\"", "\""))
     }
-    val declared = bareReferenceField(side, declaringGroup, element, filteredBy) ?: return null
+    val declared = bareReferenceField(side, declaringGroup, element, inAFilterBody) ?: return null
     return when (declared.declaredFieldType()) {
         FieldType.STRING -> TextSide.TextField
         FieldType.NUMBER -> TextSide.NumberField

@@ -1331,8 +1331,8 @@ private fun List<Finding>.withoutDefectsBehindAnEarlierOne(
  *
  * A PARSER class ([PARSER_CONDITION_CODES]) is raised at the token the parser cannot use, so at its span's
  * start. Every other class is raised once what its span covers has been read — a reference once resolved, a
- * filtered operand once its whole spec, body included, is read, an operator's gate once the production that
- * owns it is — so at its span's end. On one offset the
+ * filtered operand's kind once its `Having` keyword is and its walk once the whole spec, body included, is, an
+ * operator's gate once the production that owns it is — so at its span's end. On one offset the
  * non-parser class comes first, because a reference the parser took is resolved before the parser asks for
  * what follows it. Both halves of that tie are measured: `FieldFilled(NoSuchField` is `MVK_INVALID_ENTITY`,
  * while `FieldFilled(Reference) NoSuchField` is `MVK_UNEXPECTED_TOKEN`, the name never being taken into a

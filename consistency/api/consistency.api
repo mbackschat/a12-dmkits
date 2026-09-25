@@ -871,21 +871,21 @@ public final class io/github/mbackschat/a12/dm/consistency/syntax/ConditionCalls
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IILjava/lang/String;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IILjava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IIZ)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IIZILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()I
 	public final fun component4 ()Ljava/lang/String;
 	public final fun component5 ()I
 	public final fun component6 ()I
-	public final fun component7 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IILjava/lang/String;)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IILjava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;
+	public final fun component7 ()Z
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IIZ)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IIZILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAt ()I
 	public final fun getEnd ()I
-	public final fun getFilteredBy ()Ljava/lang/String;
+	public final fun getInAFilterBody ()Z
 	public final fun getLeft ()Ljava/lang/String;
 	public final fun getOperator ()Ljava/lang/String;
 	public final fun getRight ()Ljava/lang/String;

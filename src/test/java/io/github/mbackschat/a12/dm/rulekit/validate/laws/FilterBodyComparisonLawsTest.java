@@ -43,7 +43,21 @@ class FilterBodyComparisonLawsTest {
                             .dateField("Reported", d -> d.format("dd.MM.yyyy"))
                             .dateField("Anniversary", d -> d.format("MM-dd"))
                             .dateRangeField("Window", d -> d.format("dd.MM.yyyy").separator("-"))
-                            .dateRangeField("MonthWindow", d -> d.format("MM").separator("/"))))
+                            .dateRangeField("MonthWindow", d -> d.format("MM").separator("/")))
+                    .group("Insured", insured -> insured
+                            .stringField("Name", f -> { })
+                            .numberField("Count", n -> n.fractionDigits(0)))
+                    .group("Parties", parties -> parties.repeatable(4)
+                            .stringField("Name", f -> { })
+                            .numberField("Count", n -> n.fractionDigits(0)))
+                    .group("Orders", orders -> orders.repeatable(3).indexField("OrderNo")
+                            .stringField("OrderNo", f -> { })
+                            .stringField("Note", f -> { })
+                            .numberField("Units", n -> n.fractionDigits(0))
+                            .group("Lines", lines -> lines.repeatable(3)
+                                    .numberField("Amount", n -> n.fractionDigits(2))
+                                    .stringField("Memo", f -> { })
+                                    .numberField("Qty", n -> n.fractionDigits(0)))))
             .build().toJson();
 
     private static String filtered(String comparison) {
@@ -111,4 +125,50 @@ class FilterBodyComparisonLawsTest {
         rows.keySet().forEach(condition -> actual.put(condition, verdict(condition)));
         assertEquals(rows, actual, "a filter body's comparison beside the filtered spec's own class");
     }
+
+    /**
+     * Where the filter's OWN chain is raised around its body. The kind of the filtered entity is asked as the
+     * parser reads the {@code Having} keyword ({@code initFilterCondition}), so a group is refused ahead of
+     * anything its body holds, a refused comparison, a name resolving to nothing and a broken token alike.
+     * Everything else the chain asks — the repetitions the body reads, the key's star, the key's own wildcard —
+     * is asked once the whole spec is read, so the body's comparison is named first; each of those has a sound
+     * body beside it, which names the chain's own class.
+     */
+    @Test
+    void whereTheFilterChainRaisesAroundItsBody() {
+        Map<String, String> rows = new LinkedHashMap<>();
+        rows.put("NumberOfFilledGroups(Claims* Having [Claims/Notes] < [Claims/Units]) > 0", NO_GROUPS);
+        rows.put("NumberOfFilledGroups(Claims* Having [NoSuchField] == \"x\") > 0", NO_GROUPS);
+        rows.put("NumberOfFilledGroups(Claims* Having [Claims/Units] + ) > 0", NO_GROUPS);
+        rows.put("Sum(Claims*/Paid For Insured Having [Insured/Name] < [Insured/Count]) > 0", NO_GROUPS);
+        rows.put("Sum(Claims*/Paid Having [Parties/Name] == \"x\") > 0", "MVK_INVALID_ITERATION_IN_FILTER_CONDITION");
+        rows.put("Sum(Claims*/Paid Having [Parties/Name] < [Parties/Count]) > 0", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        rows.put("Sum(Claims*/Paid Having [Parties/Name] == [Parties/Count]) > 0",
+                "MVK_INVALID_COMPARE_TO_ENUM_OR_STRING");
+        rows.put("Sum(Claims*/Paid Having [Parties/Count] == [Claims/Paid]) > 0", "MVK_INVALID_COMPARE_DEC_PLACES");
+        rows.put("Sum(Orders*/Units For Parties*/Name Having [Parties/Name] == \"x\") > 0",
+                "MVK_SEMANTIC_INDEX_WITH_WILDCARD");
+        rows.put("Sum(Orders*/Units For Parties*/Name Having [Parties/Name] < [Parties/Count]) > 0",
+                "MVK_INVALID_TYPE_FOR_COMPARISON");
+        rows.put("Sum(Orders*/Units For Parties*/Name Having [Orders/Note] == \"x\") > 0",
+                "MVK_INVALID_ITERATION_IN_FILTER_CONDITION");
+        rows.put("Sum(Orders*/Units For Parties*/Name Having [Orders/Note] < [Orders/Units]) > 0",
+                "MVK_INVALID_TYPE_FOR_COMPARISON");
+        rows.put("Sum(Orders*/Units For Reference Having [Orders/Note] == \"x\") > 0", "MVK_WILDCARDS_REQUIRED");
+        rows.put("Sum(Orders*/Units For Reference Having [Orders/Note] < [Orders/Units]) > 0",
+                "MVK_INVALID_TYPE_FOR_COMPARISON");
+        // Two nested filters over two levels, each way round: the comparison is typed whichever level it reads.
+        rows.put("Sum(Orders*/Lines*/Amount Having Sum(Orders*/Units Having [Orders/Lines/Memo] < "
+                + "[Orders/Lines/Qty]) > 0) > 0", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        rows.put("Sum(Orders*/Units Having Sum(Orders*/Lines*/Amount Having [Orders/Lines/Memo] < "
+                + "[Orders/Lines/Qty]) > 0) > 0", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        // An aggregate in a body with no filter of its own, which the construct gate does not reach.
+        rows.put("Sum(Claims*/Paid Having Sum(Claims*/Units) > 0) > 0", "MVK_NO_ITERATION_FOR_WILDCARD");
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        rows.keySet().forEach(condition -> actual.put(condition, verdict(condition)));
+        assertEquals(rows, actual, "where the filter chain is raised around its body");
+    }
+
+    private static final String NO_GROUPS = "MVK_NO_GROUPS_ALLOWED";
 }

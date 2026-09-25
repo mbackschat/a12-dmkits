@@ -511,14 +511,14 @@ final class io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall { // io
 }
 
 final class io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison { // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison|null[0]
-    constructor <init>(kotlin/String, kotlin/String, kotlin/Int, kotlin/String, kotlin/Int, kotlin/Int, kotlin/String? = ...) // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.<init>|<init>(kotlin.String;kotlin.String;kotlin.Int;kotlin.String;kotlin.Int;kotlin.Int;kotlin.String?){}[0]
+    constructor <init>(kotlin/String, kotlin/String, kotlin/Int, kotlin/String, kotlin/Int, kotlin/Int, kotlin/Boolean = ...) // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.<init>|<init>(kotlin.String;kotlin.String;kotlin.Int;kotlin.String;kotlin.Int;kotlin.Int;kotlin.Boolean){}[0]
 
     final val at // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.at|{}at[0]
         final fun <get-at>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.at.<get-at>|<get-at>(){}[0]
     final val end // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.end|{}end[0]
         final fun <get-end>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.end.<get-end>|<get-end>(){}[0]
-    final val filteredBy // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.filteredBy|{}filteredBy[0]
-        final fun <get-filteredBy>(): kotlin/String? // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.filteredBy.<get-filteredBy>|<get-filteredBy>(){}[0]
+    final val inAFilterBody // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.inAFilterBody|{}inAFilterBody[0]
+        final fun <get-inAFilterBody>(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.inAFilterBody.<get-inAFilterBody>|<get-inAFilterBody>(){}[0]
     final val left // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.left|{}left[0]
         final fun <get-left>(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.left.<get-left>|<get-left>(){}[0]
     final val operator // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.operator|{}operator[0]
@@ -534,8 +534,8 @@ final class io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison {
     final fun component4(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.component4|component4(){}[0]
     final fun component5(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.component5|component5(){}[0]
     final fun component6(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.component6|component6(){}[0]
-    final fun component7(): kotlin/String? // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.component7|component7(){}[0]
-    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/Int = ..., kotlin/String = ..., kotlin/Int = ..., kotlin/Int = ..., kotlin/String? = ...): io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.copy|copy(kotlin.String;kotlin.String;kotlin.Int;kotlin.String;kotlin.Int;kotlin.Int;kotlin.String?){}[0]
+    final fun component7(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.component7|component7(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/Int = ..., kotlin/String = ..., kotlin/Int = ..., kotlin/Int = ..., kotlin/Boolean = ...): io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.copy|copy(kotlin.String;kotlin.String;kotlin.Int;kotlin.String;kotlin.Int;kotlin.Int;kotlin.Boolean){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison.toString|toString(){}[0]

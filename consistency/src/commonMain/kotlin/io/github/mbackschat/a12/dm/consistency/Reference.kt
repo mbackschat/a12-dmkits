@@ -589,35 +589,12 @@ internal fun TrackedFactBase.bareReferenceField(
     text: String,
     declaringGroup: String,
     element: TrackedDeclaration,
-    filteredBy: String? = null,
+    inAFilterBody: Boolean = false,
 ): TrackedDeclaration? {
     val reference = bareReferenceIn(text, conditionLanguage) ?: return null
-    val filtered = filteredBy?.let { filteredLevelsOf(it, declaringGroup, element) ?: return null }.orEmpty()
-    val target = addressedTargetOf(reference, declaringGroup, element, filtered = filtered) ?: return null
+    val target = addressedTargetOf(reference, declaringGroup, element, everyLevelAddressed = inAFilterBody)
+        ?: return null
     return declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
-}
-
-/**
- * The repeatable levels a `Having` filter's [spec] iterates, whose one row its body reads, or null when the
- * spec resolves to nothing.
- *
- * Every level, not only the starred ones. An unstarred filtered operand is refused by the filter's own chain,
- * which A12 runs once the whole spec is read, body included, so a comparison in the body is raised first
- * and is judged over that row regardless; the same holds for a nested aggregate's filter and the construct
- * gate refusing it (`rulekit.validate.laws.FilterBodyComparisonLawsTest
- * .aFilterBodysComparisonOutranksTheFilteredSpecsOwnClass`). A misplaced star in the spec needs no check
- * here: A12 refuses it with `MVK_INVALID_WILDCARD` as the spec's path is read, ahead of the body, and report
- * assembly names that finding alone (the same test's star rows).
- */
-private fun TrackedFactBase.filteredLevelsOf(
-    spec: String,
-    declaringGroup: String,
-    element: TrackedDeclaration,
-): Set<String>? {
-    val reference = referencesIn(spec, conditionLanguage).singleOrNull() ?: return null
-    val path = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin) as? Reference.Resolved)
-        ?.path ?: return null
-    return iteratedLevels(path).toSet()
 }
 
 /** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
@@ -675,18 +652,21 @@ internal fun isBareEntitySpec(text: String): Boolean {
  *     measured shape there is no second level for a key to reach and no verdict to be wrong about. An
  *     UNINDEXED outer level is the shape that would separate "the level it selects" from "every level it
  *     crosses", and it is unmeasured, so this yields there rather than choosing one.
- * @param filtered the levels a `Having` filter enclosing the read iterates: its body reads the filtered row,
- *     so those levels are addressed there ([ConditionComparison.filteredBy]).
+ * @param everyLevelAddressed whether the read sits in a `Having` body, where the repetitions it crosses are the
+ *     filter chain's question, asked after everything in the body ([ConditionComparison.inAFilterBody]).
  */
 internal fun TrackedFactBase.addressedTargetOf(
     reference: String,
     declaringGroup: String,
     element: TrackedDeclaration,
     indexSelected: Boolean = false,
-    filtered: Set<String> = emptySet(),
+    everyLevelAddressed: Boolean = false,
 ): String? {
     val target = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
         as? Reference.Resolved)?.path ?: return null
+    if (everyLevelAddressed) {
+        return target
+    }
     val starred = starredLevelsOf(reference, declaringGroup, element) ?: return null
     val levels = iteratedLevels(target)
     val pinned = if (indexSelected && levels.size == 1) levels.toSet() else emptySet()
@@ -695,7 +675,7 @@ internal fun TrackedFactBase.addressedTargetOf(
     // the declaring group made every family behind it yield on an operand A12 admits there.
     val iterated = iterationGroupOf(element) ?: declaringGroup
     val unaddressed = levels.any {
-        it !in starred + pinned + filtered && !iterated.isAtOrBelow(it) && !iteratesJointly(it, element)
+        it !in starred + pinned && !iterated.isAtOrBelow(it) && !iteratesJointly(it, element)
     }
     return if (unaddressed) null else target
 }

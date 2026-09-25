@@ -89,8 +89,8 @@ private fun TrackedFactBase.patternFinding(
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
-    val left = sideOf(comparison.left, declaringGroup, element, comparison.filteredBy) ?: return null
-    val right = sideOf(comparison.right, declaringGroup, element, comparison.filteredBy) ?: return null
+    val left = sideOf(comparison.left, declaringGroup, element, comparison.inAFilterBody) ?: return null
+    val right = sideOf(comparison.right, declaringGroup, element, comparison.inAFilterBody) ?: return null
     // Two written-out values are the constant gate's, which is asked ahead of this whole arm.
     if (left is PatternSide.Written && right is PatternSide.Written) {
         return null
@@ -164,7 +164,7 @@ private fun TrackedFactBase.sideOf(
     side: String,
     declaringGroup: String,
     element: TrackedDeclaration,
-    filteredBy: String?,
+    inAFilterBody: Boolean,
 ): PatternSide? {
     val tokens = tokenize(side)
     val single = tokens.singleOrNull()
@@ -180,7 +180,7 @@ private fun TrackedFactBase.sideOf(
     if (tokens.isEmpty() || outsideASpec) {
         return PatternSide.Expression
     }
-    val declared = bareReferenceField(side, declaringGroup, element, filteredBy) ?: return null
+    val declared = bareReferenceField(side, declaringGroup, element, inAFilterBody) ?: return null
     val type = declared.declaredFieldType() ?: return null
     return if (type in UNMEASURED_TYPES) null else PatternSide.Declared(declared.path, type)
 }

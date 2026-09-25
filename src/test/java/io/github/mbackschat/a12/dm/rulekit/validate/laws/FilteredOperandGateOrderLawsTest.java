@@ -128,8 +128,8 @@ class FilteredOperandGateOrderLawsTest {
         // The string key's production is its literal, so its gate is raised there, ahead of the body.
         expected.put("a string key, starred operand, a bad name in the filter", "MVK_SEMANTIC_INDEX_AND_WILDCARD");
         expected.put("a string key on a GROUP operand", "MVK_NO_GROUPS_ALLOWED");
-        // An entity key takes it: a group key fails the chain's kind gate, and a starred key passes the
-        // chain, which leaves the index gate on the starred key to answer, as it does unfiltered.
+        // An entity key takes it: a group key draws the kind class, asked as `Having` is read, and a starred
+        // key passes the chain, which leaves the index gate on the starred key to answer, as it does unfiltered.
         expected.put("a group key", "MVK_NO_GROUPS_ALLOWED");
         expected.put("a starred key", "MVK_SEMANTIC_INDEX_WITH_WILDCARD");
         expected.put("a starred key, no filter — its control", "MVK_SEMANTIC_INDEX_WITH_WILDCARD");

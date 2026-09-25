@@ -102,8 +102,8 @@ private fun TrackedFactBase.operandFinding(
     ) {
         return null
     }
-    val left = sideKindOf(comparison.left, booleans, declaringGroup, element, comparison.filteredBy) ?: return null
-    val right = sideKindOf(comparison.right, booleans, declaringGroup, element, comparison.filteredBy) ?: return null
+    val left = sideKindOf(comparison.left, booleans, declaringGroup, element, comparison.inAFilterBody) ?: return null
+    val right = sideKindOf(comparison.right, booleans, declaringGroup, element, comparison.inAFilterBody) ?: return null
     val code = when {
         left in CONSTANTS && right in CONSTANTS -> TWO_CONSTANTS
         comparison.operator in tolerance && !(left in NUMBER_LIKE && right in NUMBER_LIKE) -> TOLERANCE_KIND
@@ -152,7 +152,7 @@ private fun TrackedFactBase.sideKindOf(
     booleans: Set<String>,
     declaringGroup: String,
     element: TrackedDeclaration,
-    filteredBy: String?,
+    inAFilterBody: Boolean,
 ): SideKind? {
     val tokens = tokenize(side)
     if (isNumberLiteral(tokens)) {
@@ -162,7 +162,7 @@ private fun TrackedFactBase.sideKindOf(
     if (single != null && (single.kind == TokenKind.STRING || single.text in booleans)) {
         return SideKind.OTHER_CONSTANT
     }
-    val declared = bareReferenceField(side, declaringGroup, element, filteredBy) ?: return null
+    val declared = bareReferenceField(side, declaringGroup, element, inAFilterBody) ?: return null
     return when (declared.baseTypeClass()) {
         BaseTypeClass.NUMBER -> SideKind.NUMBER_FIELD
         BaseTypeClass.DATE -> SideKind.DATE_FIELD

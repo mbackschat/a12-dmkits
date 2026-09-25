@@ -109,8 +109,8 @@ class WhereAConditionMayStandTest {
         )
         val expected = linkedMapOf(
             "a text ordered against a number — the control" to listOf("MVK_INVALID_TYPE_FOR_COMPARISON"),
-            // Typed through the filtered row: the body reads the one repetition the filter decides, so the
-            // unstarred `Claims` is addressed there.
+            // Typed whatever repetition it crosses: what a body reads is the filter chain's question, asked
+            // only once the whole spec is read.
             "the same inside a filter body" to listOf("MVK_INVALID_TYPE_FOR_COMPARISON"),
             // Raised at the comparison, ahead of the iteration class the sound twin draws at the call's end.
             "the same over a field outside the filtered group" to listOf("MVK_INVALID_TYPE_FOR_COMPARISON"),

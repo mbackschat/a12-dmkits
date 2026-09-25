@@ -389,9 +389,7 @@ private fun infixAt(text: String, keyword: String): Pair<Int, Int>? {
  */
 fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionComparison> {
     val filter = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
-    val bodies = clausedOperandsIn(text, language).flatMap { operand ->
-        operand.clauses.filter { it.keyword == filter }.map { body -> body to (body.filtersKey?.path ?: operand.base) }
-    }
+    val bodies = clausedOperandsIn(text, language).flatMap { operand -> operand.clauses.filter { it.keyword == filter } }
     return comparisonShapes(text, language, entry).map { shape ->
         val start = shape.left.first().start
         val end = shape.right.last().end
@@ -402,11 +400,7 @@ fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry)
             runText(shape.right, text),
             start = start,
             end = end,
-            // The innermost filter whose body holds the comparison. Which row a nested body reads where two
-            // filters iterate different levels is unmeasured; the innermost spec's levels are a subset of the
-            // enclosing specs' levels together, so the choice can only leave a side untyped.
-            filteredBy = bodies.filter { (body, _) -> body.at <= start && end <= body.at + body.text.length }
-                .minByOrNull { (body, _) -> body.text.length }?.second,
+            inAFilterBody = bodies.any { body -> body.at <= start && end <= body.at + body.text.length },
         )
     }
 }
@@ -421,11 +415,11 @@ fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry)
  * @param right the text right of the operator, by the same rule as [left].
  * @param start the offset of the left side's first token, and [end] the offset just past the right side's
  *     last: where the comparison has been read, which is where A12 runs `checkVergleichsBedingung`.
- * @param filteredBy the spec whose `Having` body holds the comparison, the innermost where filters nest — the
- *     filtered operand, or the index key a filter after `For` belongs to ([OperandClause.filtersKey]) — as
- *     written, star kept; null outside every filter. A12 judges the comparison there exactly as outside one, reading the FILTERED row
- *     (`rulekit.validate.laws.FilterBodyComparisonLawsTest`), so a reader typing a side counts the levels the
- *     spec iterates as addressed. Absent when the spec reduces to no path.
+ * @param inAFilterBody whether a `Having` body holds the comparison, at any depth. A12 judges it there as
+ *     outside one, and before it asks which repetitions the body reads: that is the filter chain's question,
+ *     raised once the whole spec is read, so a side crossing a level no star addresses is still typed — the
+ *     filtered level or any other, the enclosing filter's or a nested one's
+ *     (`rulekit.validate.laws.FilterBodyComparisonLawsTest`).
  */
 data class ConditionComparison(
     val left: String,
@@ -434,7 +428,7 @@ data class ConditionComparison(
     val right: String,
     val start: Int,
     val end: Int,
-    val filteredBy: String? = null,
+    val inAFilterBody: Boolean = false,
 )
 
 private fun runText(run: List<Token>, source: String): String =

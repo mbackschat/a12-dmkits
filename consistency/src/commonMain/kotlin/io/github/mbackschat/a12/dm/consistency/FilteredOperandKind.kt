@@ -1,19 +1,23 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
+import io.github.mbackschat.a12.dm.consistency.syntax.ClausedOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.OperandClause
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.clausedOperandsIn
 
 /**
  * What a `Having` filter's OWN operand may be — a field, starred, with no semantic index on it.
  *
- * `CheckEntitySpecImpl.checkFilterCondition` carries the whole chain in one method, which is why this is one
- * family rather than two: the operand must be a field (`MVK_NO_GROUPS_ALLOWED`), then must carry a wildcard
- * (`MVK_WILDCARDS_REQUIRED`), then must carry no semantic index, and only then is the filter BODY judged —
- * the body being [filterWildcardFindings]' subject, so the two families partition the construct.
+ * The operand must be a field (`MVK_NO_GROUPS_ALLOWED`), then must carry a wildcard (`MVK_WILDCARDS_REQUIRED`),
+ * then must carry no semantic index, and the filter BODY is [filterWildcardFindings]' subject, so the two
+ * families partition the construct. **The two classes here are raised at two different points.** The kind is
+ * asked by the parser as it reads the `Having` keyword (`initFilterCondition`, the grammar's action on
+ * `'Mit'` in `GrammarOnly_ConditionParser.g4`), so a group draws it ahead of anything its body holds; the
+ * wildcard by `CheckEntitySpecImpl.checkFilterCondition` once the whole spec, body included, is read, so a
+ * class the body draws is raised first (`rulekit.validate.laws.FilterBodyComparisonLawsTest
+ * .whereTheFilterChainRaisesAroundItsBody`).
  *
  * **Which spec a filter belongs to is the grammar's, and it is not always the operand.** A12's semantic-index
  * key is an `entitySpec` of its own, which takes a `Having`, so a filter written after an entity key filters
@@ -21,8 +25,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * and a group key draws the kind class. A string key is no spec and takes no filter, so a
  * `Having` after one filters the indexed operand, where the index gate on a starred operand is raised first
  * and an unstarred one draws this chain's wildcard class ([KERNEL-FINDINGS KF358],
- * `rulekit.validate.laws.FilteredOperandGateOrderLawsTest`, measured 2026-09-25). The chain then runs in its
- * written order: kind, then the wildcard.
+ * `rulekit.validate.laws.FilteredOperandGateOrderLawsTest`, measured 2026-09-25).
  *
  * **The star is not a variable on the kind defect, which the code's own name argues against.** A group
  * operand draws the kind class starred or not.
@@ -51,11 +54,12 @@ internal fun TrackedFactBase.filteredOperandKindFindings(): List<Finding> {
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .flatMap { call -> call.operands }
+            // By delimiters rather than by a parse, because the kind is asked as `Having` is read: a text that
+            // breaks later in the body still draws it.
+            clausedOperandsIn(text, conditionLanguage)
                 .flatMap { operand ->
                     operand.clauses.filter { it.keyword == filterKeyword }.map { filter ->
-                        filteredSpecOf(operand, filter, indexKeyword, member)
+                        filteredSpecOf(operand, filter, indexKeyword, text, member)
                     }
                 }
                 .mapNotNull { spec ->
@@ -67,25 +71,43 @@ internal fun TrackedFactBase.filteredOperandKindFindings(): List<Finding> {
 
 /**
  * The spec one `Having` filters: the path it names, whether a semantic index of its own sits between it and
- * the filter, whether it is an index KEY, and the characters of its production.
+ * the filter, whether it is an index KEY, and the characters of its two productions.
  *
- * `checkFilterCondition` is `checkEntitySpec`'s, raised once the whole spec, filter included, is read; a
- * key's spec opens at the key, so its span nests inside the index it keys and report assembly places the
- * key's class first where the two end together.
+ * [kindSpan] ends at the `Having` keyword, where the parser asks the kind. [span] is `checkEntitySpec`'s,
+ * raised once the whole spec, filter included, is read; a key's spec opens at the key, so its span nests inside
+ * the index it keys and report assembly places the key's class first where the two end together.
  */
-private class FilteredSpec(val path: String?, val indexed: Boolean, val key: Boolean, val span: TextSpan)
+private class FilteredSpec(
+    val path: String?,
+    val indexed: Boolean,
+    val key: Boolean,
+    val kindSpan: TextSpan,
+    val span: TextSpan,
+)
 
-private fun filteredSpecOf(operand: CallOperand, filter: OperandClause, indexKeyword: String?, member: String):
-    FilteredSpec {
+private fun filteredSpecOf(
+    operand: ClausedOperand,
+    filter: OperandClause,
+    indexKeyword: String?,
+    text: String,
+    member: String,
+): FilteredSpec {
     val key = filter.filtersKey
     val owned = operand.clauses.subList(key?.let { operand.clauses.indexOf(it) + 1 } ?: 0,
         operand.clauses.indexOf(filter))
     val indexed = owned.any { it.keyword == indexKeyword }
+    val kindSpan = TextSpan(member, key?.at ?: operand.at, keywordEndOf(filter, text))
     return if (key == null) {
-        FilteredSpec(operand.base, indexed, key = false, operand.spanIn(member))
+        FilteredSpec(operand.base, indexed, key = false, kindSpan, TextSpan(member, operand.at, operand.end))
     } else {
-        FilteredSpec(key.path, indexed, key = true, TextSpan(member, key.at, filter.at + filter.text.length))
+        FilteredSpec(key.path, indexed, key = true, kindSpan, TextSpan(member, key.at, filter.at + filter.text.length))
     }
+}
+
+/** Just past [filter]'s keyword in [text]: its last spelling before the body the clause reads. */
+private fun keywordEndOf(filter: OperandClause, text: String): Int {
+    val keywordAt = text.lastIndexOf(filter.keyword, startIndex = filter.at)
+    return if (keywordAt < 0) filter.at else keywordAt + filter.keyword.length
 }
 
 /**
@@ -127,7 +149,7 @@ private fun TrackedFactBase.specFinding(
             "in `$member`: `Having` filters $whose, which is the group `${resolved.path}` — the filter " +
                 "selects rows by a FIELD of the repetition, so name a field of that group instead",
             element.path,
-            spec.span,
+            spec.kindSpan,
         )
     }
     if (OUTER_MARKER in path || '*' in path || !isFieldPath(resolved.path)) {
