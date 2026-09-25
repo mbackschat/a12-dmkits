@@ -195,6 +195,20 @@ class ComputedTargetProjectedReadLawsTest {
     }
 
     /**
+     * The calculation module draws this class only once the computation PARSED, so a parse-time class or an
+     * unresolvable name in a precondition withholds it — the sibling of the plain class's rows in
+     * {@code ComputationMemberVerdictLawsTest}, measured here because the two are drawn at different sites.
+     */
+    @Test
+    void aParseTimeClassInAPreconditionWithholdsTheProjectedClass() {
+        String keyedByTheTarget = "[/Routing/Legs/LegRef For /Routing/PlannedLeg]";
+        assertEquals(List.of("MVK_NO_NUMBER"), codes("/Routing", "../PlannedLeg", keyedByTheTarget,
+                "RoundUpValue(/Routing/PreferredLeg, 2) > 0"));
+        assertEquals(List.of("MVK_INVALID_ENTITY"), codes("/Routing", "../PlannedLeg", keyedByTheTarget,
+                "FieldFilled(NoSuchField)"));
+    }
+
+    /**
      * The join with KF181 (see {@code ComputedTargetScaleLawsTest}): the implicit target-scale comparison is
      * decided ahead of this class as well, so the projected class is not the first rejection unconditionally.
      * Distance is scale 0, so the {@code 1.5} factor is the only thing that changed from the row above.

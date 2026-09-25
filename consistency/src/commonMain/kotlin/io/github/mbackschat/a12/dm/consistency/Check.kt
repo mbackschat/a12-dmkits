@@ -1462,7 +1462,18 @@ private val BESIDE_THE_DSL_FAMILIES = MESSAGE_MEMBER_FAMILIES + setOf(
  * Listed as the codes that TAKE PART rather than as the codes exempt, the mirror of [ERROR_TARGET_CODES]:
  * a code left out is neither withheld behind an earlier defect nor placed, so its class co-fires beside the
  * one A12 names — an over-report of the class set on a model both sides refuse, where the other listing would
- * silently drop a class A12 does name. Many operand-gate codes are still left out ([DEV-API-GAPS DG84]).
+ * silently drop a class A12 does name. `rulekit` `CheckerConditionCodePhaseGuardTest` therefore refuses a
+ * reported code that neither this set, [POST_PARSE_CONDITION_CODES] nor its own list of classes outside the
+ * texts' order accounts for.
+ *
+ * **The operand gates are here by where A12 raises them, swept 2026-09-25.** Each code's raise sites in the
+ * sibling kernel's `kernel-core-parser` are the operators' `Check…Impl` classes and the `check.util` helpers
+ * they call, which the condition grammar runs as parser actions, so each is drawn DURING the parse. Five of
+ * them are measured to order like the classes above — alone, standing ahead of a later bad name, withheld
+ * behind an earlier one, and withholding the unreferenced-target class — one per operator family
+ * (`rulekit.validate.laws.ConditionClassWithholdingLawsTest.theOperatorGatesOrderLikeTheOtherOperandClasses`);
+ * the rest are ASSUMED to, on that shared raise phase. None of them carries a span, so each stands beside a
+ * later spanned class and is withheld behind any bad name wherever it sits ([DEV-API-GAPS DG84]).
  */
 private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_INCOMPLETE_INPUT", "MVK_EXPECTED_TOKEN_NOT_FOUND", "MVK_UNEXPECTED_TOKEN",
@@ -1476,6 +1487,48 @@ private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_DATEFORMATS_NOT_COMPATIBLE", "MVK_PARTIAL_DATE_NOT_ALLOWED",
     "MVK_ERROR_FIELD_INVALID_INDEX", "MVK_ERROR_FIELD_INVALID_INDEX_TYPE",
     "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
+    // Arity, duplicates and the group-list pre-gates.
+    "MVK_PARAMSIZE_INVALID1", "MVK_PARAMSIZE_INVALID2", "MVK_PARAMSIZE_INVALID_2", "MVK_PARAMSIZE_INVALIDFN",
+    "MVK_PARAMSIZE_INVALIDGN", "MVK_PARAMSIZE_INVALIDN", "MVK_DUPLICATE_PARAM2",
+    "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS", "MVK_ROOT_GROUP_IS_EMPTY", "MVK_DIFFERENT_GROUPS",
+    // Operand kinds: groups, stars, categories, and what a slot's type admits.
+    "MVK_NO_GROUPS_ALLOWED", "MVK_NO_WILDCARDS_ALLOWED", "MVK_NO_WILDCARDS_G_ALLOWED", "MVK_WILDCARDS_REQUIRED",
+    "MVK_CATEGORY_NOT_ALLOWED", "MVK_CATEGORY_UNKOWN", "MVK_NO_ENUMERATION", "MVK_TABLE_ENUM_EXPECTED",
+    "MVK_INVALID_RAW_TYPE", "MVK_INVALID_TYPE", "MVK_INVALID_INTERVAL", "MVK_NO_NUMBER", "MVK_NO_STRING",
+    "MVK_NO_STRING_OR_ENUM", "MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM", "MVK_NO_TYPEYESNO", "MVK_NO_TYPE_YES_OR_YESNO",
+    "MVK_NO_BOOLY_ALLOWED", "MVK_NO_CONVERT_IN_NUMBER", "MVK_NOT_SORTABLE", "MVK_NO_EMPTY",
+    "MVK_ONLY_CONSTANTS_USED", "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED",
+    "MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED", "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED",
+    "MVK_NUMBER_AND_NON_NUMBER", "MVK_STRING_ENUM_AND_NON_STRING_ENUM", "MVK_VARYING_TYPES_NOT_ALLOWED",
+    "MVK_DATE_AND_NONDATE", "MVK_REPEATABLE_GROUP_MISSING", "MVK_REPEATABLE_LEVEL_REQUIRED",
+    "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED", "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED", "MVK_GROUP_NOT_REPEATABLE",
+    "MVK_INVALID_WILDCARD_FOR_RULEGROUP", "MVK_INVALID_WILDCARD_REL", "MVK_INVALID_OUTER_ITERATION",
+    "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION", "MVK_ERROR_FIELD_NOT_IN_RULEGROUP",
+    "MVK_POINT_IN_A12_MODEL", "MVK_INVALID_ROOT_GROUP_CONSTR",
+    // Constants and arithmetic.
+    "MVK_INVALID_CONST", "MVK_NO_CONST", "MVK_INVALID_DIGIT_FOR_ROUNDING", "MVK_NO_NUMBER_FOR_CALC",
+    "MVK_NO_STRING_OR_NUMBER_FOR_ADD", "MVK_INVALID_NUMBER_FOR_EXP", "MVK_TOO_MANY_DIV_FOR_CALC",
+    "MVK_TOO_MANY_POW_FOR_CALC", "MVK_TOO_MANY_CONST_FOR_CALC_OP",
+    // Comparisons and patterns.
+    "MVK_INVALID_TYPE_FOR_COMPARISON", "MVK_INVALID_TYPES_FOR_COMPARISON", "MVK_INVALID_TYPE_FOR_TOLERANCE_OP",
+    "MVK_INVALID_COMPARE_TO_CONST", "MVK_INVALID_COMPARE_TO_YES", "MVK_INVALID_COMPARE_TO_YESNO",
+    "MVK_INVALID_COMPARE_TO_ENUM_OR_STRING", "MVK_INVALID_COMPARE_ENUM_TO_ENUM", "MVK_INVALID_COMPARE_ENUM_TO_STRING",
+    "MVK_INVALID_COMPARE_TO_DATE", "MVK_INVALID_COMPARE_TO_DATE_RANGE", "MVK_INCONSISTENT_TYPES_COMPARED",
+    "MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON", "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION",
+    "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_CATEGORY",
+    "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY", "MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON",
+    "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON", "MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON",
+    "MVK_INVALID_PATTERN", "MVK_MISSING_CONST_IN_PATTERN_COMP",
+    // Dates and times.
+    "MVK_NO_DATE", "MVK_NO_DATE_CONSTANT", "MVK_NO_DATE_RANGE", "MVK_INVALID_DATE_FOR_OP", "MVK_INVALID_DATE_STRING",
+    "MVK_INVALID_DATE_TYPE", "MVK_INVALID_DATE_TYPE_FOR_OP", "MVK_INVALID_DATE_RANGE_FORMAT",
+    "MVK_DATE_WITH_AND_WITHOUT_YEAR", "MVK_INVALID_TIME", "MVK_NON_NUMERIC", "MVK_MISSING_YEAR",
+    "MVK_NO_BASE_YEAR", "MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS",
+    // A semantic index's own structure.
+    "MVK_NO_INDEX_FIELD", "MVK_INDEX_TYPE_INCONSISTENT", "MVK_INDEX_VALUE_INVALID", "MVK_SEMANTIC_INDEX_NO_FIELD",
+    "MVK_SEMANTIC_INDEX_INVALID_ITER", "MVK_SEMANTIC_INDEX_AND_WILDCARD", "MVK_SEMANTIC_INDEX_BELOW_WILDCARD",
+    "MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX", "MVK_SEMANTIC_INDEX_WITH_CATEGORY",
+    "MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX", "MVK_SEMANTIC_INDEX_WITH_WILDCARD",
 )
 
 /**
@@ -1512,8 +1565,18 @@ private val POSITIONED_CONDITION_CODES = setOf(
  * throws during the parse and so erases the whole-rule branch of the same name
  * ([KERNEL-FINDINGS KF377]); it is therefore POSITIONED here. A code is not owned by the phase that happens
  * to name it — a second site of the same class can sit in the other phase and win every race. **Both sets
- * were swept for that on 2026-09-14 and it is the only split class**: every other member of this set throws
- * only from the post-parse phase, and no member of [POSITIONED_CONDITION_CODES] throws from it.
+ * were swept for that on 2026-09-14, and again on 2026-09-25 once they grew, and it is the only split
+ * class**: no member of [POSITIONED_CONDITION_CODES] throws from the post-parse phase.
+ *
+ * **Four members joined on 2026-09-25 from outside that method.** The calculation module's three classes
+ * about what the texts READ — a read of the computed field, plain or projected, and a source an enumeration
+ * target cannot take — are drawn only once the computation parsed, and each is measured withheld behind a
+ * parse-time class in either member and behind a name that resolves to nothing
+ * (`rulekit.validate.laws.ComputationMemberVerdictLawsTest`, `…ComputedTargetProjectedReadLawsTest`). The
+ * raw-type length's `MVK_INTERNAL_ERROR` is read by `AnalyseService.extractConstant` only past the
+ * post-parse shape gate, which answers first when both fail (`RawTypeLength`); it is the one member listed
+ * from that order rather than measured against a parse-time class. The calculation module's classes about a
+ * computation's other members are not text classes and stay out ([DEV-API-GAPS DG86]).
  *
  * Measured: `MVK_PARALLEL_ITERATION_NOT_ALLOWED` and `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` both
  * vanish behind a containment class on one model (`RepetitionNotUniqueFromScopeLawsTest`, whose verdict is
@@ -1528,6 +1591,9 @@ private val POST_PARSE_CONDITION_CODES = setOf(
     "MVK_ERROR_FIELDGROUP_ITERATION4_INVALID", "MVK_ERROR_FIELDGROUP_ITERATION5_INVALID",
     "MVK_ERROR_FIELD_AND_ITERATION_INVALID", "MVK_ITERATION_RESTRICTION_IN_A12_MODEL",
     "MVK_NEG_CONDITION_IN_ITERATION",
+    // The calculation module's reads of the texts, and the raw-type length constant read past the shape gate.
+    "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD", "MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD",
+    "MVK_ERROR_INVALID_ENUM_CALCULATION", "MVK_INTERNAL_ERROR",
 )
 
 /**

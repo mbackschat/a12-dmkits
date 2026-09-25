@@ -97,6 +97,23 @@ class ComputationSelfReadTest {
         assertEquals(expected, actual, "the scale gate's bound and the projected half")
     }
 
+    /**
+     * The projected class is the calculation module's, drawn once the computation parsed, so a precondition
+     * that does not parse or resolve withholds it — `rulekit.validate.laws.ComputedTargetProjectedReadLawsTest
+     * .aParseTimeClassInAPreconditionWithholdsTheProjectedClass`. Read off the whole declaration, because the
+     * class that stands is another family's.
+     */
+    @Test
+    fun aParseTimeClassInAPreconditionWithholdsTheProjectedClass() {
+        val keyedByTheTarget = "[/Routing/Legs/LegRef For /Routing/PlannedLeg]"
+        fun declared(precondition: String) =
+            check(ModelSource(inRouting("../PlannedLeg", keyedByTheTarget, precondition))).findings
+                .filter { it.category == FindingCategory.A12_CONSTRAINT && it.at == "/Routing/LegComp" }
+                .map { it.code }
+        assertEquals(listOf("MVK_NO_NUMBER"), declared("RoundUpValue(/Routing/PreferredLeg, 2) > 0"))
+        assertEquals(listOf("MVK_INVALID_ENTITY"), declared("FieldFilled(NoSuchField)"))
+    }
+
     private fun codes(source: String): List<String> =
         check(ModelSource(source)).findings.filter { it.code in setOf(selfRead, projected) }.map { it.code }
 

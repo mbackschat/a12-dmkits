@@ -263,9 +263,9 @@ class ConditionMultipleDefectTest {
             "a starred filtered base, misplaced star inside its body" to listOf("MVK_INVALID_WILDCARD"),
             "a name after a complete condition" to listOf("MVK_UNEXPECTED_TOKEN"),
             "a bad name, then a bracket never closed" to listOf("MVK_INVALID_ENTITY"),
-            // Divergence locks, DEV-API-GAPS DG84: A12 draws the first class alone, and MVK_NO_GROUPS_ALLOWED is
-            // outside the positioned codes, so it neither withholds the post-parse class nor is placed.
-            "a group filtered in a count" to listOf("MVK_ERROR_FIELD_NOT_REFERENCED", "MVK_NO_GROUPS_ALLOWED"),
+            "a group filtered in a count" to listOf("MVK_NO_GROUPS_ALLOWED"),
+            // Divergence lock, DEV-API-GAPS DG84: A12 draws the walk's class alone, and MVK_NO_GROUPS_ALLOWED
+            // carries no span, so it cannot be placed behind the walk's and stands beside it.
             "the same group read unfiltered first" to listOf("MVK_NO_GROUPS_ALLOWED", "MVK_NO_WILDCARD"),
         )
         assertEquals(expected, actual, "where a filtered operand's defects fall in text order")

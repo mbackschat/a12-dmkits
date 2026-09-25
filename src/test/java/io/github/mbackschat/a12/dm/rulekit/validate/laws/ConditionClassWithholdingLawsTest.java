@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -260,6 +261,38 @@ class ConditionClassWithholdingLawsTest {
         expected.put("a group filtered in a count", "MVK_NO_GROUPS_ALLOWED");
         expected.put("the same group read unfiltered first", "MVK_NO_WILDCARD");
         assertEquals(expected, actual, "where a filtered operand's defects fall in text order");
+    }
+
+    /**
+     * The operand gates beyond the four above, one per operator family: each is raised by the operator's own
+     * check, which the condition grammar runs as a parser action once the call is read, so each should order
+     * like the measured operand classes and should withhold the unreferenced-target class as they do.
+     */
+    @Test
+    void theOperatorGatesOrderLikeTheOtherOperandClasses() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        measure(actual, expected, "text in a rounding slot", "0 < RoundUpValue(Reference, 2)", "MVK_NO_NUMBER");
+        measure(actual, expected, "an argument too many", "FieldFilled(Reference, Score)", "MVK_PARAMSIZE_INVALID1");
+        measure(actual, expected, "a filtered group in a count",
+                "NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0", "MVK_NO_GROUPS_ALLOWED");
+        measure(actual, expected, "text in a date slot", "DifferenceInDays(Reference, Reference) > 0",
+                "MVK_NO_DATE");
+        measure(actual, expected, "text ordered against a number", "[Reference] > 5",
+                "MVK_INVALID_TYPE_FOR_COMPARISON");
+        // No gate text names Assessment/Notes, so the class it withholds is live on every row: the control.
+        String unnamed = "../Assessment/Notes";
+        actual.put("a sound condition, error field unreferenced", targetedVerdict("FieldFilled(Reference)", unnamed));
+        expected.put("a sound condition, error field unreferenced", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        for (String gate : List.of("0 < RoundUpValue(Reference, 2)", "FieldFilled(Reference, Score)",
+                "DifferenceInDays(Reference, Reference) > 0", "[Reference] > 5")) {
+            actual.put(gate + ", error field unreferenced", targetedVerdict(gate, unnamed));
+        }
+        expected.put("0 < RoundUpValue(Reference, 2), error field unreferenced", "MVK_NO_NUMBER");
+        expected.put("FieldFilled(Reference, Score), error field unreferenced", "MVK_PARAMSIZE_INVALID1");
+        expected.put("DifferenceInDays(Reference, Reference) > 0, error field unreferenced", "MVK_NO_DATE");
+        expected.put("[Reference] > 5, error field unreferenced", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        assertEquals(expected, actual, "the operator gates against a bad name and an unreferenced target");
     }
 
     /** One class in three rows: alone, with the bad name after it, and with the bad name ahead of it. */
