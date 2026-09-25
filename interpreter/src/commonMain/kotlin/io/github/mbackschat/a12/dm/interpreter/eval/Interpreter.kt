@@ -792,13 +792,12 @@ class Interpreter(
      * check-relevant** (present but formally invalid — a malformed value, or a duplicate index) is **UNKNOWN**,
      * NOT a plain TRUE; an empty (check-relevant but unfilled) field is FALSE; a valid present value is TRUE. So
      * `FieldFilled(malformedQty) And …` does NOT fire (the And goes UNKNOWN), matching the kernel — a presence
-     * check on a malformed field is not-check-relevant even though it reads no value. (KERNEL-FINDINGS §3.)
+     * check on a malformed field is not-check-relevant even though it reads no value. (KERNEL-FINDINGS §3.) In a
+     * computation the [invalid] gate throws instead, so the presence check of such a cell is the poisoning read
+     * (IF85), and a cascade-poisoned computed cell throws already at [EvalContext.filled].
      */
     internal fun filledTri(c: EvalContext, path: String): Tri = when {
         c.presenceUnknown(path) -> Tri.UNKNOWN   // presence itself is 3VL (invalid parallel index) — before filled
-        // COMPUTE mode: a presence check READS the cell — an invalid one poisons (IF85), row-correct via the
-        // context's own cellState (a `Having` filter row judges ITS row's cell, not the computation's).
-        computeMode && c.cellState(path) == CellState.INVALID -> throw PoisonedReadException(path)
         // PARTIAL validation: a non-relevant cell is unavailable in BOTH directions — the kernel's
         // `isWertAngegeben` decides relevance before the value read, so an EMPTY non-relevant operand
         // is not an empty witness (`NoFieldFilled`/`NotAllGroupsFilled`/… stay silent over it). Checked

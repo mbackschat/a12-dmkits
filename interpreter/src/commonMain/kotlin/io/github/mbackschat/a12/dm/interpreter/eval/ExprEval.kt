@@ -272,12 +272,11 @@ private fun Interpreter.evalExprNode(e: Expr): Val = when (e) {
     is Expr.NumLit -> e.asVal
     is Expr.StrLit -> e.asVal
     is Expr.BoolLit -> e.asVal
-    // COMPUTE mode: a value read of a formally-invalid cell poisons (IF85) — row-correct via the resolving
-    // context's own cellState (a `Having` filter row reads ITS row's cell, where the parent-row [invalid]
-    // gate cannot judge it).
+    // A value read of a cell that is not check-relevant is unavailable in validation, and in a computation the
+    // gate throws, which IS the poisoning read (IF85). It is judged in the reading context, so a `Having` filter
+    // row judges ITS row's cell (IF319).
     is Expr.Field -> when {
         outerUnknown(e) -> Val.Unknown
-        computeMode && ctxOf(e).cellState(e.path) == CellState.INVALID -> throw PoisonedReadException(e.path)
         invalid(ctxOf(e), e.path) -> Val.Unknown
         else -> ctxOf(e).field(e.path)
     }
@@ -286,12 +285,11 @@ private fun Interpreter.evalExprNode(e: Expr): Val = when (e) {
     is Expr.Arith -> evalArith(e)
     is Expr.Const -> evalConst(e.name)
     is Expr.SemanticIndex -> evalSemanticIndex(e)
-    // A category read `[Plan -> Tier]` reads the same cell, so it poisons exactly like the value read above
-    // (IF338).
+    // A category read `[Plan -> Tier]` reads the same cell, so it takes the value read's gate: a duplicated or
+    // missing index key and a row above capacity make it unavailable, not only a malformed value (IF338, IF341).
     is Expr.EnumCategory -> when {
         outerUnknown(e) -> Val.Unknown
-        computeMode && ctxOf(e).cellState(e.path) == CellState.INVALID -> throw PoisonedReadException(e.path)
-        outsideCoverage(e.path, ctxOf(e).repsOf(e.path)) -> Val.Unknown
+        invalid(ctxOf(e), e.path) -> Val.Unknown
         else -> ctxOf(e).enumCategory(e.path, e.category)
     }
     is Expr.EntitySpec -> evalEntitySpec(e)
@@ -549,9 +547,9 @@ private sealed interface KeyRead {
  * The lookup key of a [Expr.SemanticIndex]: the string literal, or the CURRENT value of the key field
  * ([Expr.SemanticIndex.indexFieldPath]) for the field-keyed `[F For keyField]` form.
  *
- * The key field is an operand like any other, so it is read through the same two gates as a plain field value
- * ([evalExprNode]'s field arm): computation poisons on an invalid cell, and validation answers [KeyRead.Unusable]
- * for one that is not check-relevant. This is the only place a key field is read, so every keyed consumer — a
+ * The key field is an operand like any other, so it is read through the same gate as a plain field value
+ * ([evalExprNode]'s field arm): validation answers [KeyRead.Unusable] for a cell that is not check-relevant, and
+ * in computation that gate throws, which poisons. This is the only place a key field is read, so every keyed consumer — a
  * keyed field's value and presence, a keyed group's selection, `FirstFilledValue` — inherits the same answer.
  * Measured on both kernel strategies: over a malformed key, validation is silent on every consumer and
  * computation poisons every one (`adapter.laws.MalformedIndexKeyDiffTest`, 2026-09-23).
@@ -561,7 +559,6 @@ private fun Interpreter.resolveIndexKey(e: Expr.SemanticIndex): KeyRead {
     val keyField = e.indexFieldPath ?: return KeyRead.None
     val c = indexKeyCtx(e)
     return when {
-        computeMode && c.cellState(keyField) == CellState.INVALID -> throw PoisonedReadException(keyField)
         invalid(c, keyField) -> KeyRead.Unusable
         else -> c.displayValue(keyField)?.takeIf { it.isNotEmpty() }?.let(KeyRead::Of) ?: KeyRead.None
     }
@@ -1190,7 +1187,6 @@ private fun Interpreter.fieldValueAsString(arg: Expr): Val = when (arg) {
     else -> {
         val path = pathOf(arg)
         when {
-            computeMode && ctxOf(arg).cellState(path) == CellState.INVALID -> throw PoisonedReadException(path)
             invalid(ctxOf(arg), path) -> Val.Unknown
             // `ctxOf`, not the ambient `ctx`: a `$`-marked operand resolves in the OUTER context, and the
             // gate on the line above already does — the sibling [fieldValueAsNumber] pairs them correctly.
@@ -1210,7 +1206,6 @@ private fun Interpreter.fieldValueAsNumber(source: Expr): Val {
             "unsupported operand ${source::class.simpleName} in FieldValueAsNumber",
         )
     }
-    if (computeMode && ctxOf(source).cellState(path) == CellState.INVALID) throw PoisonedReadException(path)
     if (invalid(ctxOf(source), path)) return Val.Unknown
     if (!ctxOf(source).filled(path)) return Val.Num(DEC_ZERO)
     val selected = when (source) {
