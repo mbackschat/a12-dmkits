@@ -117,6 +117,22 @@ class SemanticIndexPinnedLevelTest {
         assertEquals<Map<String, List<String>>>(expected, actual, "which class a text holding a key names first")
     }
 
+    @Test
+    fun aKeyedGroupOperandIsReadBeforeTheOperatorsOwnGates() {
+        val key = "For \\\"X\\\""
+        val actual = linkedMapOf(
+            "a duplicate the key leaves an unindexed repetition above, from the root" to
+                codes(ROOT, "../Reference", "AtLeastOneGroupFilled(Riders/Legs $key, Riders/Legs $key)"),
+            "the same duplicate from a rule the unindexed repetition iterates" to
+                codes(RIDERS, "../RiderRef", "AtLeastOneGroupFilled(Legs $key, Legs $key)"),
+        )
+        val expected = linkedMapOf(
+            "a duplicate the key leaves an unindexed repetition above, from the root" to listOf("MVK_NO_WILDCARD"),
+            "the same duplicate from a rule the unindexed repetition iterates" to listOf("MVK_DUPLICATE_PARAM1"),
+        )
+        assertEquals<Map<String, List<String>>>(expected, actual, "which class a keyed group-list operand names first")
+    }
+
     private fun sum(operand: String): String = "Sum($operand) > 0"
 
     private companion object {

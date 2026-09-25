@@ -113,6 +113,27 @@ class SemanticIndexPinnedLevelLawsTest {
         assertEquals(expected, actual, "which class a text holding a key names first");
     }
 
+    /**
+     * A keyed GROUP operand of a group-list quantifier meets the same walk. The duplicate pair is the operator's
+     * own class, which A12 asks only once the operands are read: from the root the key addresses `Legs` and
+     * leaves `Riders` unaddressed, and from a rule the unindexed repetition iterates it leaves nothing.
+     */
+    @Test
+    void aKeyedGroupOperandIsReadBeforeTheOperatorsOwnGates() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a duplicate the key leaves an unindexed repetition above, from the root",
+                KernelLaws.verdictModel(POLICY, "/Policy", "../Reference", "FieldFilled(Reference) And "
+                        + "AtLeastOneGroupFilled(Riders/Legs For \"X\", Riders/Legs For \"X\")"));
+        actual.put("the same duplicate from a rule the unindexed repetition iterates",
+                KernelLaws.verdictModel(POLICY, "/Policy/Riders", "../RiderRef", "FieldFilled(RiderRef) And "
+                        + "AtLeastOneGroupFilled(Legs For \"X\", Legs For \"X\")"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a duplicate the key leaves an unindexed repetition above, from the root", "MVK_NO_WILDCARD");
+        expected.put("the same duplicate from a rule the unindexed repetition iterates", "MVK_DUPLICATE_PARAM1");
+        assertEquals(expected, actual, "which class a keyed group-list operand names first");
+    }
+
     /** [model] with the group at [path] (the root when empty) declaring [indexField] its index field. */
     private static String withIndexField(String model, String... pathThenField) {
         try {

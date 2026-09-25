@@ -147,6 +147,8 @@ class CheckerKeyedOperandAgreementTest {
             "a starred read of a covering category" to Triple("/Policy", "../Status", "[Claims*/Banded -> Band]"),
             "a starred read of a wider category" to Triple("/Policy", "../Status", "[Claims*/Banded -> Wide]"),
             "a starred read of the wider field itself" to Triple("/Policy", "../Status", "[Claims*/Banded]"),
+            // The category's own gates run before the bracket's star gate, so an undeclared category answers.
+            "a starred read of an undeclared category" to Triple("/Policy", "../Status", "[Claims*/Banded -> Nope]"),
             "a climbing read of a covering category" to
                 Triple("/Policy/Claims/Review", "../Outcome", "[../Banded -> Band]"),
             "a climbing read of a wider category" to
@@ -208,6 +210,7 @@ class CheckerKeyedOperandAgreementTest {
         /** The kernel grid's carriers, each probed on a field its own gate refuses. */
         val PROBES = linkedMapOf(
             "arity" to Probe("Sum(%s) > 0", "Amount"),
+            "field-operand kind" to Probe("FieldFilled(%s)", "Review"),
             "field-list all numbers" to Probe("Sum(%s, %s) > 0", "Memo", "Amount"),
             "value-in-fields constant kind" to Probe("NumberOfValueInFields(5 In %s, %s) > 0", "Memo", "ClaimRef"),
             "range operand" to Probe("RangeAsString(%s, 1, 2) == \"a\"", "Amount"),
@@ -289,5 +292,6 @@ class CheckerKeyedOperandAgreementTest {
             .dateField("Filed") { it.format("yyyy-MM-dd") }
             .booleanField("Settled") { }
             .enumField("Status") { e -> e.value("OPEN").value("CLOSED") }
+            .group("Review") { r -> r.stringField("Note") { } }
     }
 }

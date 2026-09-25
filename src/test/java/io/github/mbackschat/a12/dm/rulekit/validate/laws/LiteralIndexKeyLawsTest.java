@@ -46,7 +46,10 @@ class LiteralIndexKeyLawsTest {
                                     .value("OPEN", l -> l.label("en_US", "Open endorsement"))
                                     .value("CLOSED", l -> l.label("en_US", "Closed endorsement")))
                             .numberField("Amount", f -> f.fractionDigits(2)))
-                    .group("Riders", g -> g.repeatable(5).stringField("RiderRef", f -> { })))
+                    .group("Riders", g -> g.repeatable(5).stringField("RiderRef", f -> { }))
+                    .group("Instalments", g -> g.repeatable(5).indexField("Seq")
+                            .numberField("Seq", f -> f.fractionDigits(0))
+                            .numberField("Amount", f -> f.fractionDigits(2))))
             .build().toJson();
 
     /** The same model, its conditions read in German. */
@@ -97,6 +100,8 @@ class LiteralIndexKeyLawsTest {
         actual.put("several digits", verdict(sum("Claims/Amount For 12")));
         actual.put("a leading zero", verdict(sum("Claims/Amount For 05")));
         actual.put("over an enumeration index", verdict(sum("Endorsements/Amount For 5")));
+        actual.put("over a Number index", verdict(sum("Instalments/Amount For 5")));
+        actual.put("quoted, over a Number index — the control", verdict(sum("Instalments/Amount For \"5\"")));
         actual.put("ahead of an unaddressed read", verdict(sum("Claims/Amount For 5") + " And " + UNADDRESSED));
         actual.put("behind an unaddressed read", verdict(UNADDRESSED + " And " + sum("Claims/Amount For 5")));
         actual.put("a decimal, which is no digit sequence", verdict(sum("Claims/Amount For 5.5")));
@@ -106,6 +111,8 @@ class LiteralIndexKeyLawsTest {
         expected.put("several digits", "MVK_INVALID_ENTITY");
         expected.put("a leading zero", "MVK_INVALID_ENTITY");
         expected.put("over an enumeration index", "MVK_INVALID_ENTITY");
+        expected.put("over a Number index", "MVK_INVALID_ENTITY");
+        expected.put("quoted, over a Number index — the control", "MVK_PARAMSIZE_INVALIDN");
         expected.put("ahead of an unaddressed read", "MVK_INVALID_ENTITY");
         expected.put("behind an unaddressed read", "MVK_NO_WILDCARD");
         // Not an entity name at all: the grammar's key takes an entity spec or a string, and a decimal is neither.

@@ -128,8 +128,12 @@ private fun TrackedFactBase.operandFinding(
         // A12 ADMITS. Comparing it would refuse that model.
         if (path == null || operand.path?.contains('*') == true) null else path
     }
+    // A keyed operand is its path AND its key (kf439), so the same group under the same key repeats: `Legs For
+    // "X"` twice is `MVK_DUPLICATE_PARAM1` (`rulekit.validate.laws.SemanticIndexPinnedLevelLawsTest`). How keyed
+    // operands overlap is unmeasured, so they meet only the exact comparison.
+    val keyed = call.operands.mapNotNull { keyedIdentityOf(it, declaringGroup, element) }
     // The exact duplicate wins over an overlap in the same call whatever the authored order, as A12 does.
-    exactDuplicate(comparable)?.let { repeated ->
+    exactDuplicate(comparable + keyed)?.let { repeated ->
         return finding(
             "MVK_DUPLICATE_PARAM1",
             "this $member names `$repeated` twice in one `${call.operator}` — A12 refuses a group list that " +
@@ -223,6 +227,19 @@ private fun CallOperand.resolvedBy(
     declaringGroup: String,
     origin: DeclarationOrigin,
 ): Reference? = path?.let { model.resolveEntity(declaringGroup, it, origin) }
+
+/** The group [operand] reads under a key the index chain admits, spelled with that key, or null. */
+private fun TrackedFactBase.keyedIdentityOf(
+    operand: CallOperand,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): String? {
+    val read = operandReferenceIn(operand.text, declaringGroup, element) { null }?.takeIf { it.indexSelected }
+        ?: return null
+    val path = (resolveEntity(declaringGroup, read.reference, element.origin) as? Reference.Resolved)?.path
+        ?: return null
+    return "$path For ${read.key}"
+}
 
 /** Every gate here is the operator's own, raised once its call is read, so each spans the call. */
 private fun finding(code: String, explain: String, at: String, span: TextSpan) =

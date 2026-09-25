@@ -131,8 +131,8 @@ private fun TrackedFactBase.classOf(
         KeyVerdict.PLAIN -> Unit
     }
     // A12 walks from the value up and refuses a second indexed group on the way, in the same walk that finds the
-    // index group (`CheckEntityUtils.getIndexGroup`), measured on the twenty-six operand gates of
-    // `adapter.laws.CheckerKeyedOperandAgreementTest` ([KERNEL-FINDINGS KF478]).
+    // index group (`CheckEntityUtils.getIndexGroup`), measured on every operand gate
+    // `adapter.laws.CheckerKeyedOperandAgreementTest` carries ([KERNEL-FINDINGS KF478]).
     if (indexedGroupsAbove(indexed).size > 1) {
         return IndexVerdict.Reported("MVK_MULTIPLE_INDEX_FIELDS")
     }

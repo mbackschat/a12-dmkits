@@ -77,12 +77,6 @@ private fun TrackedFactBase.sourceDefect(
             readDefect(operand, admitted, target, declaringGroup, element)
         }
     }
-    // A starred read is refused by its own bracket, during the parse, and this gate runs in the CALC module
-    // after it: `[Claims*/Banded -> Wide]` draws `MVK_NO_WILDCARDS_ALLOWED` and no enumeration class
-    // (`adapter.laws.CheckerKeyedOperandAgreementTest`), which [fieldValueReadOperandFindings] names.
-    if (soleFieldValueReadIn(operation, conditionLanguage)?.path?.contains('*') == true) {
-        return null
-    }
     return readDefect(operation, admitted, target, declaringGroup, element)
 }
 
