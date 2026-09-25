@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -143,9 +144,8 @@ class FindingSpanTest {
         val report = checkDraft(ModelSource(model()), "/Order/CodeRequired", "errorCondition",
             "FieldFilled(Code) And FieldFilled(Typo)")
 
-        val finding = report.introduced.single()
-        assertEquals("Typo", "FieldFilled(Code) And FieldFilled(Typo)"
-            .substring(finding.span!!.start, finding.span!!.end))
+        val span = assertNotNull(report.introduced.single().span)
+        assertEquals("Typo", "FieldFilled(Code) And FieldFilled(Typo)".substring(span.start, span.end))
     }
 
     private fun single(condition: String): Finding {
