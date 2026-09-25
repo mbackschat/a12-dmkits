@@ -123,12 +123,13 @@ fun admit(source: ModelSource): Admission {
             notWellFormed.message ?: "the source is not well-formed JSON",
         )
     }
-    val modelId = ((parsed as? JsonObject)?.get("header") as? JsonObject)
+    val root = parsed as? JsonObject
+    val modelId = (root?.get("header") as? JsonObject)
         ?.get("id")?.let { (it as? JsonPrimitive)?.contentOrNull }
     if (modelId.isNullOrBlank()) {
         return source.rejected(DiagnosticCode.SOURCE_HAS_NO_IDENTITY, "the source declares no `header.id`")
     }
-    if ((parsed as? JsonObject)?.get("content") !is JsonObject) {
+    if (root["content"] !is JsonObject) {
         return source.rejected(
             DiagnosticCode.SOURCE_HAS_NO_MODEL_CONTENT,
             "the source declares no `content` object, so it is not a DocumentModel A12 could read",

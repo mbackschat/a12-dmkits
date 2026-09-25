@@ -638,7 +638,7 @@ private class Collector(
             return
         }
         when (declared) {
-            DeclaredKind.GROUP -> descendGroup(envelope as? JsonObject, path, scope)
+            DeclaredKind.GROUP -> descendGroup(envelope, path, scope)
             // An unrecognized `type` makes the whole source unreadable to the Kernel, so it is reported here
             // rather than passing as an inert declaration this build merely does not handle.
             null -> malformed(path, "`$kind` is not an A12 element type", scope)
