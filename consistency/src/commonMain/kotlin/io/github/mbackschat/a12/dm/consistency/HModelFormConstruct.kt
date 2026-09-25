@@ -1,8 +1,14 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.FORM_CONSTRUCTS
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.Token
+import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.connectiveSpellingsOf
+import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
  * The legacy FORM constructs, which an A12 model reaches and is refused by name for using.
@@ -37,8 +43,16 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * **The count operation inside a rule CONDITION is read, but not as A12 reads it.** `conditionPart` treats
  * an UNCATALOGED call as a complete condition, so the `> 0` after `AnzahlAngegebenerVordrucke(X)` is a
  * token the shared shape reader cannot use. The call is still read to its end first, so this class is
- * reported and the grammar class behind it withheld. A construct whose own call a parse failure cuts short
- * is not read at all, and is published as a [CoverageGap] instead.
+ * reported and the grammar class behind it withheld.
+ *
+ * **A form CONDITION needs no call at all**, because its class is raised before its argument list is read:
+ * with no parentheses, unterminated, or cut short by a grammar error inside them, A12 names the construct
+ * (`rulekit.validate.laws.HModelFormConditionReachabilityLawsTest`
+ * `.aFormConditionIsRaisedOnItsNameBeforeItsArgumentsAreRead`).
+ * So its name is read off the tokens, where it opens a condition — the text's start, after a connective or
+ * a filter keyword, or inside a grouping parenthesis; elsewhere the parser refuses the keyword itself. Only
+ * the count operation, whose class needs its call, is published as a [CoverageGap] when a parse failure cuts
+ * that call short.
  */
 internal fun TrackedFactBase.hModelFormConstructFindings(): List<Finding> {
     if (conditionLanguage != ConditionLanguage.DE) {
@@ -47,24 +61,47 @@ internal fun TrackedFactBase.hModelFormConstructFindings(): List<Finding> {
     return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .firstOrNull { it.operator in FORM_CONSTRUCTS }
-                ?.let { call ->
-                    Finding(
-                        FindingCategory.A12_CONSTRAINT,
-                        FindingSeverity.ERROR,
-                        "MVK_INVALID_ROOT_GROUP_CONSTR",
-                        "in `$member`: `${call.operator}` is an H-model form construct and A12 refuses it by " +
-                            "name in an A12 model — use the corresponding group construct instead",
-                        element.path,
-                        if (call.operator == COUNT_CONSTRUCT) {
-                            call.spanIn(member)
-                        } else {
-                            TextSpan(member, call.at, call.at + call.operator.length)
-                        },
-                    )
-                }
+            val counted = callsIn(text, conditionLanguage, syntaxEntryOf(member))
+                .filter { it.operator == COUNT_CONSTRUCT }
+                .map { call -> call.operator to call.spanIn(member) }
+            val named = formConditionNamesIn(text).map { name -> name.text to name.spanIn(member) }
+            (counted + named).minByOrNull { (_, span) -> span.start }?.let { (construct, span) ->
+                Finding(
+                    FindingCategory.A12_CONSTRAINT,
+                    FindingSeverity.ERROR,
+                    "MVK_INVALID_ROOT_GROUP_CONSTR",
+                    "in `$member`: `$construct` is an H-model form construct and A12 refuses it by name in an " +
+                        "A12 model — use the corresponding group construct instead",
+                    element.path,
+                    span,
+                )
+            }
         }
+    }
+}
+
+/**
+ * The form-condition keywords in [text] that open a condition, in text order: A12's action on the name raises
+ * the class there, before the argument list is read, so no call has to be.
+ */
+private fun TrackedFactBase.formConditionNamesIn(text: String): List<Token> {
+    val openers = connectiveSpellingsOf(conditionLanguage) +
+        setOfNotNull(CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(HAVING))
+    val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
+    return tokens.filterIndexed { at, token ->
+        token.kind == TokenKind.NAME && token.text in FORM_CONSTRUCTS && token.text != COUNT_CONSTRUCT &&
+            tokens.opensACondition(at, openers)
+    }
+}
+
+/** Whether the token at [at] stands where a condition begins, which is where the grammar reads the construct. */
+private fun List<Token>.opensACondition(at: Int, openers: Set<String>): Boolean {
+    val before = getOrNull(at - 1) ?: return true
+    return when {
+        before.kind == TokenKind.NAME -> before.text in openers
+        // A grouping parenthesis, and not a call's: a call's opens behind the name it calls.
+        before.text == "(" -> getOrNull(at - 2)?.kind != TokenKind.NAME
+        else -> false
     }
 }
 
@@ -87,7 +124,9 @@ internal fun TrackedFactBase.hModelFormConstructGaps(): List<CoverageGap> {
         val body = element.body ?: return@mapNotNull null
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
             val named = FORM_CONSTRUCTS.firstOrNull { text.namesWholeWord(it) } ?: return@firstNotNullOfOrNull null
-            if (callsIn(text, conditionLanguage, syntaxEntryOf(member)).any { it.operator in FORM_CONSTRUCTS }) {
+            if (callsIn(text, conditionLanguage, syntaxEntryOf(member)).any { it.operator in FORM_CONSTRUCTS } ||
+                formConditionNamesIn(text).isNotEmpty()
+            ) {
                 return@firstNotNullOfOrNull null
             }
             CoverageGap(

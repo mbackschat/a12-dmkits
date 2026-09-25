@@ -53,33 +53,36 @@ class HModelFormConstructTest {
      *
      * `conditionPart` consumes an UNCATALOGED call as a whole condition, so the `> 0` after it is a token the
      * shape reader cannot use and draws the grammar class; the call is read to its end before that, and its
-     * class is raised there, so the grammar class stands behind it. A construct whose own call the parse cuts
-     * short is not read, and is disclosed; a condition naming no construct discloses nothing.
+     * class is raised there, so the grammar class stands behind it. A count operation whose own call the parse
+     * cuts short is not read, and is disclosed; a form CONDITION needs no call, and a condition naming no
+     * construct discloses nothing.
      */
     @Test
-    fun theCountOperationInAConditionIsReportedAndAConstructCutShortIsDisclosed() {
+    fun theCountOperationInAConditionIsReportedAndOneCutShortIsDisclosed() {
         val counted = check(ModelSource(germanRule("AnzahlAngegebenerVordrucke(Bestellung) > 0")))
         assertEquals(listOf(refused),
             counted.findings.filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code })
         assertEquals(emptyList(), counted.gaps.filter { it.reason.contains("H-model form construct") })
-        val cutShort = check(ModelSource(germanRule("VordruckAngegeben(Bestellung Oder FeldAngegeben(Kennzeichen))")))
+        val cutShort = check(ModelSource(germanRule(
+            "AnzahlAngegebenerVordrucke(Bestellung Oder FeldAngegeben(Kennzeichen)) > 0")))
         assertEquals(listOf<String?>("/Bestellung/Probe"),
-            cutShort.gaps.filter { it.reason.contains("VordruckAngegeben") }.map { it.at })
+            cutShort.gaps.filter { it.reason.contains("AnzahlAngegebenerVordrucke") }.map { it.at })
         // A call read ahead of the construct is not the construct: the disclosure asks about the construct.
         val behindACall = check(ModelSource(germanRule(
-            "FeldAngegeben(Kennzeichen) Und VordruckAngegeben(Bestellung Oder FeldAngegeben(Kennzeichen))")))
+            "FeldAngegeben(Kennzeichen) Und AnzahlAngegebenerVordrucke(Bestellung Oder) > 0")))
         assertEquals(listOf<String?>("/Bestellung/Probe"),
-            behindACall.gaps.filter { it.reason.contains("VordruckAngegeben") }.map { it.at })
+            behindACall.gaps.filter { it.reason.contains("AnzahlAngegebenerVordrucke") }.map { it.at })
+        val condition = check(ModelSource(germanRule("VordruckAngegeben(Bestellung Oder FeldAngegeben(Kennzeichen))")))
+        assertEquals(emptyList(), condition.gaps.filter { it.reason.contains("H-model form construct") })
         assertEquals(emptyList(), check(ModelSource(germanRule("FeldAngegeben(Kennzeichen)")))
             .gaps.filter { it.reason.contains("H-model form construct") }.map { it.at })
     }
 
     /**
      * Where the construct's class stands against the rest of the text, row for row
-     * `rulekit.validate.laws.HModelFormConditionReachabilityLawsTest
-     * .theConstructsClassOrdersLikeTheOtherParseTimeClasses` in this sheet's own names. The one divergence is a construct whose own call a grammar error inside its
-     * parentheses cuts short: A12 raises the class on the construct's name, and this reader reads no call
-     * there (`DEV-API-GAPS` DG84).
+     * `rulekit.validate.laws.HModelFormConditionReachabilityLawsTest` in this sheet's own names: its
+     * `theConstructsClassOrdersLikeTheOtherParseTimeClasses` and
+     * `aFormConditionIsRaisedOnItsNameBeforeItsArgumentsAreRead`.
      */
     @Test
     fun theConstructsClassOrdersLikeTheOtherParseTimeClasses() {
@@ -93,6 +96,14 @@ class HModelFormConstructTest {
             "FeldAngegeben(Kennzeichen) Und AnzahlAngegebenerVordrucke(Bestellung) > 0",
             "AktuelleVordruckNummer(Kennzeichen) > 0",
             "MaximalAngegebenerZeilenindex(Kennzeichen) > 0",
+            "VordruckAngegeben Oder FeldAngegeben(Kennzeichen)",
+            "VordruckAngegeben(",
+            "VordruckAngegeben(Bestellung",
+            "VordruckAngegeben(Oder)",
+            "FeldAngegeben(Kennzeichen) Und VordruckAngegeben(Bestellung Oder)",
+            "Oder VordruckAngegeben(Bestellung)",
+            "FeldAngegeben(Kennzeichen) VordruckAngegeben(Bestellung)",
+            "FeldAngegeben(VordruckAngegeben(Bestellung))",
         )
         val actual = rows.associateWith { condition ->
             check(ModelSource(germanRule(condition))).findings
@@ -100,8 +111,14 @@ class HModelFormConstructTest {
         }
         val expected = rows.associateWith { listOf(refused) }.toMutableMap()
         expected["FeldAngegeben(NoSuchField) Oder VordruckAngegeben(Bestellung)"] = listOf("MVK_INVALID_ENTITY")
-        // Divergence lock, DEV-API-GAPS DG84: A12 names the construct, raised on its name.
-        expected["VordruckAngegeben(Bestellung Oder FeldAngegeben(Kennzeichen))"] = listOf("MVK_UNEXPECTED_TOKEN")
+        // The parse fails ahead of the construct's name, so the grammar's class answers.
+        expected["Oder VordruckAngegeben(Bestellung)"] = listOf("MVK_UNEXPECTED_TOKEN")
+        // Where no condition opens, the parser refuses the keyword itself.
+        expected["FeldAngegeben(Kennzeichen) VordruckAngegeben(Bestellung)"] = listOf("MVK_UNEXPECTED_TOKEN")
+        // Divergence, asserted rather than hidden: this checker's grammar reads a nested call as the field
+        // operand, where A12's refuses the keyword there (KERNEL-FINDINGS KF467, the operator's own argument
+        // shape left to the Kernel). Silent, rather than naming the construct's class A12 does not draw.
+        expected["FeldAngegeben(VordruckAngegeben(Bestellung))"] = emptyList()
         expected["AktuelleVordruckNummer(Kennzeichen) > 0"] = listOf("MVK_UNEXPECTED_TOKEN")
         expected["MaximalAngegebenerZeilenindex(Kennzeichen) > 0"] = listOf("MVK_UNEXPECTED_TOKEN")
         assertEquals(expected, actual, "where a form construct's class stands in a German A12 model")

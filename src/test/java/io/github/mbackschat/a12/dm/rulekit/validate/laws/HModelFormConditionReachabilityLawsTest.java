@@ -150,6 +150,39 @@ class HModelFormConditionReachabilityLawsTest {
         assertEquals(expected, actual, "where a form construct's class stands in a German A12 model");
     }
 
+    /**
+     * A form condition's class is raised by the action on its NAME, so before its argument list is read:
+     * whatever that list holds, and whether it is there at all. The control fails the parse ahead of the
+     * name, where the grammar's class answers instead.
+     */
+    @Test
+    void aFormConditionIsRaisedOnItsNameBeforeItsArgumentsAreRead() {
+        Map<String, List<String>> actual = new LinkedHashMap<>();
+        for (String condition : List.of(
+                "VordruckAngegeben Oder FeldAngegeben(Code)",
+                "VordruckAngegeben(",
+                "VordruckAngegeben(Order",
+                "VordruckAngegeben(Oder)",
+                "FeldAngegeben(Code) Und VordruckAngegeben(Order Oder)",
+                "Oder VordruckAngegeben(Order)",
+                "FeldAngegeben(Code) VordruckAngegeben(Order)",
+                "FeldAngegeben(VordruckAngegeben(Order))")) {
+            actual.put(condition, codes(condition));
+        }
+        List<String> construct = List.of("MVK_INVALID_ROOT_GROUP_CONSTR");
+        Map<String, List<String>> expected = new LinkedHashMap<>();
+        expected.put("VordruckAngegeben Oder FeldAngegeben(Code)", construct);
+        expected.put("VordruckAngegeben(", construct);
+        expected.put("VordruckAngegeben(Order", construct);
+        expected.put("VordruckAngegeben(Oder)", construct);
+        expected.put("FeldAngegeben(Code) Und VordruckAngegeben(Order Oder)", construct);
+        expected.put("Oder VordruckAngegeben(Order)", List.of("MVK_UNEXPECTED_TOKEN"));
+        // Where no condition opens, the parser refuses the keyword itself.
+        expected.put("FeldAngegeben(Code) VordruckAngegeben(Order)", List.of("MVK_UNEXPECTED_TOKEN"));
+        expected.put("FeldAngegeben(VordruckAngegeben(Order))", List.of("MVK_UNEXPECTED_TOKEN"));
+        assertEquals(expected, actual, "a form condition's class against what its argument list holds");
+    }
+
     private static List<String> codes(String condition) {
         ValidationResult result = new RuleValidator().check(ORDERS_DE,
                 new DraftRule("/Order", "ProbeRule", "../Code", condition, "PROBE", "ERROR"));

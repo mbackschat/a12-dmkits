@@ -140,6 +140,9 @@ private val CONNECTIVES: Map<ConditionLanguage, Map<String, Connective>> = mapOf
     ConditionLanguage.DE to spellingsOf(ConditionLanguage.DE, "Und" to Connective.AND, "Oder" to Connective.OR),
 )
 
+/** Every spelling of `And` and `Or` the lexer resolves in [language]. */
+internal fun connectiveSpellingsOf(language: ConditionLanguage): Set<String> = CONNECTIVES.getValue(language).keys
+
 private fun spellingsOf(
     language: ConditionLanguage,
     vararg canonical: Pair<String, Connective>,
