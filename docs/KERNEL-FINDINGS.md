@@ -11059,7 +11059,7 @@ The portable checker read a keyed operand in the entity-list pre-gates alone and
 
 So a refused constant answers before the filter on the same operand. A string key takes no filter of its own, so that `Having` belongs to the operand and demands its star. And A12 names whichever read it meets first, as [KF478](#kf478) found for the arity gate. What a literal key is: [KF479](#kf479).
 
-The checker names A12's class on every row of the grid, and on a twenty-seventh family, the field-operand kind gate reading the group `Review` through `FieldFilled`, whose codes are locked by agreement rather than listed here. The differential now fails on a silent row too, where it had tolerated silence on a key defect; the only rows it lists are [DEV-API-GAPS](DEV-API-GAPS.md) DG96's.
+The checker names A12's class on every row of the grid, and on a twenty-seventh family, the field-operand kind gate reading the group `Review` through `FieldFilled`. There A12 names `MVK_NO_GROUPS_ALLOWED` on every row a sound key addresses, a string key followed by a filter on the operand included, and the key's own class on every defect row, `MVK_MULTIPLE_INDEX_FIELDS` included, so a keyed group value meets the same key chain as a field (measured 2026-09-26 through a throwaway copy of the differential; locked by the two engines' agreement). The differential now fails on a silent row too, where it had tolerated silence on a key defect; the only rows it lists are [DEV-API-GAPS](DEV-API-GAPS.md) DG96's.
 
 *Locked by:* `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`; the checker against A12 on the same model: `adapter.laws.CheckerKeyedOperandAgreementTest`.
 
