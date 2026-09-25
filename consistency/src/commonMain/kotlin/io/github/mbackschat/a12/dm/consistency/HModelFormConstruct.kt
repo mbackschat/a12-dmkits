@@ -99,8 +99,9 @@ private fun List<Token>.opensACondition(at: Int, openers: Set<String>): Boolean 
     val before = getOrNull(at - 1) ?: return true
     return when {
         before.kind == TokenKind.NAME -> before.text in openers
-        // A grouping parenthesis, and not a call's: a call's opens behind the name it calls.
-        before.text == "(" -> getOrNull(at - 2)?.kind != TokenKind.NAME
+        // A grouping parenthesis, and not a call's: a call's opens behind the name it calls, while a connective
+        // or a filter keyword is spelled as a name too and opens a condition, a grouping one included.
+        before.text == "(" -> getOrNull(at - 2)?.let { it.kind == TokenKind.NAME && it.text !in openers } != true
         else -> false
     }
 }

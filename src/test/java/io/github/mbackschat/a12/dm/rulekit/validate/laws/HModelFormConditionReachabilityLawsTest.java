@@ -166,7 +166,12 @@ class HModelFormConditionReachabilityLawsTest {
                 "FeldAngegeben(Code) Und VordruckAngegeben(Order Oder)",
                 "Oder VordruckAngegeben(Order)",
                 "FeldAngegeben(Code) VordruckAngegeben(Order)",
-                "FeldAngegeben(VordruckAngegeben(Order))")) {
+                "FeldAngegeben(VordruckAngegeben(Order))",
+                "(VordruckAngegeben(Order))",
+                "((VordruckAngegeben(Order)))",
+                "FeldAngegeben(Code) Oder (VordruckAngegeben(Order))",
+                "FeldAngegeben(Code) Und (VordruckAngegeben(Order) Oder FeldAngegeben(Code))",
+                "FeldAngegeben(Code) Oder (VordruckAngegeben(Order Oder))")) {
             actual.put(condition, codes(condition));
         }
         List<String> construct = List.of("MVK_INVALID_ROOT_GROUP_CONSTR");
@@ -180,6 +185,12 @@ class HModelFormConditionReachabilityLawsTest {
         // Where no condition opens, the parser refuses the keyword itself.
         expected.put("FeldAngegeben(Code) VordruckAngegeben(Order)", List.of("MVK_UNEXPECTED_TOKEN"));
         expected.put("FeldAngegeben(VordruckAngegeben(Order))", List.of("MVK_UNEXPECTED_TOKEN"));
+        // A grouping parenthesis opens a condition, at the start or after a connective alike.
+        expected.put("(VordruckAngegeben(Order))", construct);
+        expected.put("((VordruckAngegeben(Order)))", construct);
+        expected.put("FeldAngegeben(Code) Oder (VordruckAngegeben(Order))", construct);
+        expected.put("FeldAngegeben(Code) Und (VordruckAngegeben(Order) Oder FeldAngegeben(Code))", construct);
+        expected.put("FeldAngegeben(Code) Oder (VordruckAngegeben(Order Oder))", construct);
         assertEquals(expected, actual, "a form condition's class against what its argument list holds");
     }
 

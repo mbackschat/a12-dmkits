@@ -104,6 +104,11 @@ class HModelFormConstructTest {
             "Oder VordruckAngegeben(Bestellung)",
             "FeldAngegeben(Kennzeichen) VordruckAngegeben(Bestellung)",
             "FeldAngegeben(VordruckAngegeben(Bestellung))",
+            "(VordruckAngegeben(Bestellung))",
+            "((VordruckAngegeben(Bestellung)))",
+            "FeldAngegeben(Kennzeichen) Oder (VordruckAngegeben(Bestellung))",
+            "FeldAngegeben(Kennzeichen) Und (VordruckAngegeben(Bestellung) Oder FeldAngegeben(Kennzeichen))",
+            "FeldAngegeben(Kennzeichen) Oder (VordruckAngegeben(Bestellung Oder))",
         )
         val actual = rows.associateWith { condition ->
             check(ModelSource(germanRule(condition))).findings
