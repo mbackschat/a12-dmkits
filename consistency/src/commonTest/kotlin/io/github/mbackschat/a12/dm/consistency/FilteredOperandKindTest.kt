@@ -119,6 +119,11 @@ class FilteredOperandKindTest {
             filtered("Sum(Claims*/Amount For Insured Having [Insured/InsuredName] == \\\"X\\\") > 0")
         actual["a starred key"] =
             filtered("Sum(Claims*/Amount For Claims*/ClaimRef Having [Claims/ClaimRef] == \\\"X\\\") > 0")
+        actual["an entity key, starred operand, no filter — its control"] =
+            filtered("Sum(Claims*/Amount For Reference) > 0")
+        actual["a string key, unstarred operand, no filter — its control"] =
+            filtered("Sum(Claims/Amount For \\\"X\\\") > 0")
+        actual["a starred key, no filter — its control"] = filtered("Sum(Claims*/Amount For Claims*/ClaimRef) > 0")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["an entity key, starred operand"] = listOf(starRequired)
@@ -134,6 +139,13 @@ class FilteredOperandKindTest {
         expected["a group key"] = listOf(noGroups)
         // The key's filter passes the chain, so the index gate on the starred key is what answers.
         expected["a starred key"] = listOf("MVK_SEMANTIC_INDEX_WITH_WILDCARD")
+        // Unfiltered, each index draws its own class, which is what shows the filtered rows above answer the filter.
+        expected["an entity key, starred operand, no filter — its control"] =
+            listOf("MVK_SEMANTIC_INDEX_AND_WILDCARD")
+        // DIVERGENCE (DEV-API-GAPS DG92): A12 reaches the aggregate's arity gate, `MVK_PARAMSIZE_INVALIDN`; the
+        // arity family reads the operand without its key, takes `Claims` for unaddressed and stands down.
+        expected["a string key, unstarred operand, no filter — its control"] = emptyList()
+        expected["a starred key, no filter — its control"] = listOf("MVK_SEMANTIC_INDEX_WITH_WILDCARD")
         assertEquals(expected, actual, "whose filter a Having after an index key is")
     }
 

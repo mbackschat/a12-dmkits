@@ -8604,7 +8604,8 @@ The portable checker listed only the phase members it had measured, so 106 repor
 | an arity gate or a name resolving to nothing in the SAME computation's precondition, a rounding gate or such a name in its operation | the defect's class alone | the defect's class alone |
 | the arity gate or the bad name in ANOTHER computation | both classes | the defect's class alone |
 | another computation's rounding or mixed-alternatives class | — | that class alone |
-| a rule's arity gate or bad name | both classes (rounding measured) | the rule's class alone |
+| a rule's arity gate | both classes (rounding measured) | the rule's class alone |
+| a rule's bad name | not measured | the rule's class alone |
 | a structural class, a hyphenated field name no text reads (`MVK_PATH_INVALID`) | both classes (rounding measured) | `MVK_PATH_INVALID` alone |
 
 So a text defect of the computation itself withholds all three, and the cycle is withheld wherever any other class is drawn. *Corrected 2026-09-25:* this sentence first said the three are withheld "exactly where their own computation's texts are refused", which was broader than its rows — an independent review found the calculation module's OWN classes do not all withhold each other. The module asks its questions in stages, each returning as soon as it fails (`CalculationService.checkCalculationRule`, then `testRuleStructure`, then `NormalisierteBerechnungsFormHelper.checkNormalisierteForm`, and `extractCalculationInfo` only once all of those passed; source-read at 30.8.1). Measured on the same checkout, complete class sets:
