@@ -55,6 +55,7 @@ class WhereAConditionMayStandLawsTest {
         actual.put("a comparison in an operation argument", verdict(READS_IT + "Max([Score] > 1, 2) > 0"));
         actual.put("a predicate call in an operation argument", verdict(READS_IT + "Abs(FieldFilled(Score)) > 0"));
         actual.put("a parenthesised field operand", verdict(READS_IT + "Sum((Claims*/Amount)) > 0"));
+        actual.put("a parenthesised condition as an argument", verdict(READS_IT + "Max(([Score] > 1), 2) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("an operation argument — the control", KernelLaws.ADMITTED);
@@ -64,6 +65,7 @@ class WhereAConditionMayStandLawsTest {
         expected.put("a comparison in an operation argument", UNEXPECTED);
         expected.put("a predicate call in an operation argument", UNEXPECTED);
         expected.put("a parenthesised field operand", UNEXPECTED);
+        expected.put("a parenthesised condition as an argument", UNEXPECTED);
         assertEquals(expected, actual, "what an operator's argument may be");
     }
 
@@ -73,6 +75,7 @@ class WhereAConditionMayStandLawsTest {
         actual.put("a braced operation — the control", verdict(READS_IT + "[Score] > {[Score] + 1}"));
         actual.put("a comparison in braces", verdict(READS_IT + "[Score] > {[Score] > 1}"));
         actual.put("a parenthesised operation as a side", verdict(READS_IT + "[Score] > ([Score] + 1)"));
+        actual.put("a parenthesised condition as a side", verdict(READS_IT + "[Score] > ([Score] > 1)"));
         actual.put("a predicate call as a side", verdict(READS_IT + "[Score] > FieldFilled(Score)"));
         actual.put("a parenthesised condition — the control", verdict(READS_IT + "([Score] > 1 Or [Score] < 0)"));
         actual.put("a parenthesised operation leading a comparison", verdict(READS_IT + "([Score] + 1) > 3"));
@@ -85,6 +88,7 @@ class WhereAConditionMayStandLawsTest {
         expected.put("a braced operation — the control", KernelLaws.ADMITTED);
         expected.put("a comparison in braces", UNEXPECTED);
         expected.put("a parenthesised operation as a side", UNEXPECTED);
+        expected.put("a parenthesised condition as a side", UNEXPECTED);
         expected.put("a predicate call as a side", UNEXPECTED);
         expected.put("a parenthesised condition — the control", KernelLaws.ADMITTED);
         expected.put("a parenthesised operation leading a comparison", UNEXPECTED);
@@ -123,6 +127,30 @@ class WhereAConditionMayStandLawsTest {
         expected.put("a scope — the control", KernelLaws.ADMITTED);
         expected.put("a comparison in a scope", UNEXPECTED);
         assertEquals(expected, actual, "which clause takes a condition");
+    }
+
+    /**
+     * A filter body is a condition like any other, so A12 judges its comparisons as it judges one outside a
+     * filter. The portable checker does not yet read them there ({@code DEV-API-GAPS} DG87), which is why its
+     * mirror of the second row is a divergence lock.
+     */
+    @Test
+    void aFilterBodysComparisonIsJudgedThereToo() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a text ordered against a number — the control", verdict(READS_IT + "[Reference] > 5"));
+        actual.put("the same inside a filter body",
+                verdict(READS_IT + "Sum(Claims*/Amount Having [Claims/ClaimNo] > 5) > 0"));
+        actual.put("the same over a field outside the filtered group",
+                verdict(READS_IT + "Sum(Claims*/Amount Having [Reference] > 5) > 0"));
+        actual.put("its sound twin", verdict(READS_IT + "Sum(Claims*/Amount Having [Reference] == \"x\") > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a text ordered against a number — the control", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        expected.put("the same inside a filter body", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        expected.put("the same over a field outside the filtered group", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        // A body naming nothing the filter iterates has its own class, which the comparison class withholds.
+        expected.put("its sound twin", "MVK_NO_ITERATION_FOR_WILDCARD");
+        assertEquals(expected, actual, "where a comparison is judged");
     }
 
     private static String verdict(String condition) {

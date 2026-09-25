@@ -22,6 +22,7 @@ class WhereAConditionMayStandTest {
             "a comparison in an operation argument" to rule(READS_IT + "Max([Score] > 1, 2) > 0"),
             "a predicate call in an operation argument" to rule(READS_IT + "Abs(FieldFilled(Score)) > 0"),
             "a parenthesised field operand" to rule(READS_IT + "Sum((Claims*/Amount)) > 0"),
+            "a parenthesised condition as an argument" to rule(READS_IT + "Max(([Score] > 1), 2) > 0"),
         )
         val expected = linkedMapOf(
             "an operation argument — the control" to ADMITTED,
@@ -31,6 +32,7 @@ class WhereAConditionMayStandTest {
             "a comparison in an operation argument" to UNEXPECTED,
             "a predicate call in an operation argument" to UNEXPECTED,
             "a parenthesised field operand" to UNEXPECTED,
+            "a parenthesised condition as an argument" to UNEXPECTED,
         )
         assertEquals(expected, actual, "what an operator's argument may be")
     }
@@ -41,6 +43,7 @@ class WhereAConditionMayStandTest {
             "a braced operation — the control" to rule(READS_IT + "[Score] > {[Score] + 1}"),
             "a comparison in braces" to rule(READS_IT + "[Score] > {[Score] > 1}"),
             "a parenthesised operation as a side" to rule(READS_IT + "[Score] > ([Score] + 1)"),
+            "a parenthesised condition as a side" to rule(READS_IT + "[Score] > ([Score] > 1)"),
             "a predicate call as a side" to rule(READS_IT + "[Score] > FieldFilled(Score)"),
             "a parenthesised condition — the control" to rule(READS_IT + "([Score] > 1 Or [Score] < 0)"),
             "a parenthesised operation leading a comparison" to rule(READS_IT + "([Score] + 1) > 3"),
@@ -53,6 +56,7 @@ class WhereAConditionMayStandTest {
             "a braced operation — the control" to ADMITTED,
             "a comparison in braces" to UNEXPECTED,
             "a parenthesised operation as a side" to UNEXPECTED,
+            "a parenthesised condition as a side" to UNEXPECTED,
             "a predicate call as a side" to UNEXPECTED,
             "a parenthesised condition — the control" to ADMITTED,
             "a parenthesised operation leading a comparison" to UNEXPECTED,
@@ -90,6 +94,28 @@ class WhereAConditionMayStandTest {
             "a comparison in a scope" to UNEXPECTED,
         )
         assertEquals(expected, actual, "which clause takes a condition")
+    }
+
+    @Test
+    fun aFilterBodysComparisonIsJudgedThereToo() {
+        val actual = linkedMapOf(
+            "a text ordered against a number — the control" to rule(READS_IT + "[Reference] > 5"),
+            "the same inside a filter body" to rule(READS_IT + "Sum(Claims*/Amount Having [Claims/ClaimNo] > 5) > 0"),
+            "the same over a field outside the filtered group" to
+                rule(READS_IT + "Sum(Claims*/Amount Having [Reference] > 5) > 0"),
+            "its sound twin" to rule(READS_IT + "Sum(Claims*/Amount Having [Reference] == $X) > 0"),
+        )
+        val expected = linkedMapOf(
+            "a text ordered against a number — the control" to listOf("MVK_INVALID_TYPE_FOR_COMPARISON"),
+            // Divergence locks, DEV-API-GAPS DG87: A12 draws the control's class on both, and the comparison
+            // families are not yet handed a comparison inside a filter body. The first is silence, since the
+            // family declines to type a read through the unstarred `Claims` wherever it stands; the second is a
+            // substitution, the class A12 draws on the sound twin standing in for the one it withholds.
+            "the same inside a filter body" to ADMITTED,
+            "the same over a field outside the filtered group" to listOf("MVK_NO_ITERATION_FOR_WILDCARD"),
+            "its sound twin" to listOf("MVK_NO_ITERATION_FOR_WILDCARD"),
+        )
+        assertEquals(expected, actual, "where a comparison is judged")
     }
 
     private fun rule(condition: String, errorTarget: String = "../Reference"): List<String> = codes(
@@ -136,6 +162,8 @@ class WhereAConditionMayStandTest {
 
         /** A key as the model text carries it: the condition is interpolated into JSON as written. */
         const val P1 = "\\\"P1\\\""
+
+        const val X = "\\\"x\\\""
 
         val ADMITTED = listOf<String>()
         val UNEXPECTED = listOf("MVK_UNEXPECTED_TOKEN")
