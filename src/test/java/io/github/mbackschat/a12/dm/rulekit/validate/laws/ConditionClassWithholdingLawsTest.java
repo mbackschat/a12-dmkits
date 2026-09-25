@@ -54,7 +54,11 @@ class ConditionClassWithholdingLawsTest {
                     .group("Assessment", assessment -> assessment.stringField("Notes", f -> { }))
                     .group("Archive", archive -> { })
                     // A repeatable group, so an unstarred read of it has a position to compete for.
-                    .group("Claims", claims -> claims.repeatable(5).numberField("Amount", f -> { })))
+                    .group("Claims", claims -> claims.repeatable(5).numberField("Amount", f -> { }))
+                    // Keyed where Claims is not, so a read of it from inside Claims is a parallel level the
+                    // walk refuses with an INDEX class rather than the wildcard one.
+                    .group("Payouts", payouts -> payouts.repeatable(5).indexField("PayoutNo")
+                            .stringField("PayoutNo", f -> { }).numberField("Total", f -> { })))
             .rootGroup("Registry", registry -> registry.stringField("Code", f -> { }))
             .build().toJson();
 
@@ -103,6 +107,19 @@ class ConditionClassWithholdingLawsTest {
         // than by another phase.
         measure(actual, expected, "a path climbing above the root", "FieldFilled(../../Reference)",
                 "MVK_TOO_MANY_PARENT_GROUPS");
+        // The walk's INDEX class, on a rule iterating Claims: the same walk as MVK_NO_WILDCARD's, measured
+        // rather than transferred.
+        String parallel = "FieldFilled(/Policy/Claims/Amount) And FieldFilled(/Policy/Payouts/Total)";
+        actual.put("a parallel level with no index on the target's side",
+                targetedVerdict(parallel, "../Claims/Amount"));
+        expected.put("a parallel level with no index on the target's side", "MVK_ERROR_FIELD_NO_INDEX");
+        actual.put("a parallel level with no index on the target's side, bad name after",
+                targetedVerdict(parallel + AND_A_BAD_NAME, "../Claims/Amount"));
+        expected.put("a parallel level with no index on the target's side, bad name after",
+                "MVK_ERROR_FIELD_NO_INDEX");
+        actual.put("a parallel level with no index on the target's side, bad name BEFORE",
+                targetedVerdict(badNameBefore(parallel), "../Claims/Amount"));
+        expected.put("a parallel level with no index on the target's side, bad name BEFORE", "MVK_INVALID_ENTITY");
 
         // The reversal for the classes ConditionMultipleDefectLawsTest could only ask one way round.
         // MVK_INCOMPLETE_INPUT gets no row at all: the class says the text ended early, so no second defect

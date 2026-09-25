@@ -142,10 +142,10 @@ class ConditionMultipleDefectTest {
     fun aClassCarryingItsSpanIsPlacedAgainstTheBadName() {
         val actual = mutableMapOf<String, List<String>>()
         val expected = mutableMapOf<String, List<String>>()
-        fun ordered(row: String, condition: String, alone: String) {
-            actual["$row, bad name after"] = codes("$condition And FieldFilled(NoSuchField)")
+        fun ordered(row: String, condition: String, alone: String, errorTarget: String = "../Reference") {
+            actual["$row, bad name after"] = codes("$condition And FieldFilled(NoSuchField)", errorTarget)
             expected["$row, bad name after"] = listOf(alone)
-            actual["$row, bad name BEFORE"] = codes("FieldFilled(NoSuchField) And $condition")
+            actual["$row, bad name BEFORE"] = codes("FieldFilled(NoSuchField) And $condition", errorTarget)
             expected["$row, bad name BEFORE"] = listOf("MVK_INVALID_ENTITY")
         }
         ordered("a star on a fixed group", "GroupFilled(/Policy/Assessment*)", "MVK_INVALID_WILDCARD")
@@ -155,6 +155,9 @@ class ConditionMultipleDefectTest {
         ordered("a stray connective", "FieldFilled(Reference) And And FieldFilled(Reference)",
             "MVK_UNEXPECTED_TOKEN")
         ordered("a path climbing above the root", "FieldFilled(../../Reference)", "MVK_TOO_MANY_PARENT_GROUPS")
+        ordered("a parallel level with no index on the target's side",
+            "FieldFilled(/Policy/Claims/Amount) And FieldFilled(/Policy/Payouts/Total)", "MVK_ERROR_FIELD_NO_INDEX",
+            errorTarget = "../Claims/Amount")
 
         val stray = "FieldFilled(Reference) And And FieldFilled(Reference)"
         actual["a misplaced star, then a stray connective"] = codes("GroupFilled(/Policy/Assessment*) And $stray")
@@ -228,6 +231,11 @@ class ConditionMultipleDefectTest {
             {"type":"Group","id":"g2","name":"Archive","Group":{"elements":[]}},
             {"type":"Group","id":"g4","name":"Claims","Group":{"repeatability":5,"elements":[
               {"type":"Field","id":"f4","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}}
+            ]}},
+            {"type":"Group","id":"g5","name":"Payouts","Group":{"repeatability":5,"indexFieldName":"PayoutNo",
+              "elements":[
+              {"type":"Field","id":"f5","name":"PayoutNo","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f6","name":"Total","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
             $twin
             {"type":"Rule","id":"r0","name":"Probe","Rule":{

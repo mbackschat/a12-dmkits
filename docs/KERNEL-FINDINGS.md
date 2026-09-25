@@ -7182,9 +7182,10 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 | `FieldFilled(Claims/Amount)` — an unstarred repeatable read | `MVK_NO_WILDCARD` | `MVK_NO_WILDCARD` | **`MVK_INVALID_ENTITY`** |
 | `… And % …` — a character the lexer cannot take | `MVK_LEXER_STANDARD_ERROR` | `MVK_LEXER_STANDARD_ERROR` | **`MVK_INVALID_ENTITY`** |
 | `FieldFilled(../../Reference)` — a path climbing above the root | `MVK_TOO_MANY_PARENT_GROUPS` | `MVK_TOO_MANY_PARENT_GROUPS` | **`MVK_INVALID_ENTITY`** |
+| `FieldFilled(Payouts/Total)` from a rule iterating the unkeyed `Claims` — a keyed parallel level | `MVK_ERROR_FIELD_NO_INDEX` | `MVK_ERROR_FIELD_NO_INDEX` | **`MVK_INVALID_ENTITY`** |
 | `… And And …` — an unexpected token | `MVK_UNEXPECTED_TOKEN` | `MVK_UNEXPECTED_TOKEN` | **`MVK_INVALID_ENTITY`** (KF340) |
 
-**The middle column is the whole finding.** KF340 had no middle column, and without it "resolution runs first" was untestable. *(Extended 2026-09-25 by the three rows above the last: the above-root row is a second REFERENCE class, so the order holds between two classes drawn by the same resolution too.)*
+**The middle column is the whole finding.** KF340 had no middle column, and without it "resolution runs first" was untestable. *(Extended 2026-09-25 by the four rows above the last: the above-root row is a second REFERENCE class, so the order holds between two classes drawn by the same resolution too, and the index row is the operand-scope walk's other kind of class, measured rather than assumed from `MVK_NO_WILDCARD`'s.)*
 
 **Nor is a missing name needed on either side (measured 2026-09-25).** Each pair is one text read both ways round:
 
