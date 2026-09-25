@@ -199,37 +199,10 @@ private fun TrackedFactBase.element(path: String?): TrackedDeclaration? =
 private enum class KeyTypeVerdict { CONSISTENT, INCONSISTENT, UNSETTLED }
 
 private fun keyTypeVerdict(indexField: TrackedDeclaration, key: TrackedDeclaration): KeyTypeVerdict {
-    val expected = INDEX_KEY_CLASS_OF[indexField.declaredFieldType()] ?: return KeyTypeVerdict.UNSETTLED
-    val actual = INDEX_KEY_CLASS_OF[key.declaredFieldType()] ?: return KeyTypeVerdict.UNSETTLED
+    val expected = indexField.declaredFieldType()?.indexKeyClass ?: return KeyTypeVerdict.UNSETTLED
+    val actual = key.declaredFieldType()?.indexKeyClass ?: return KeyTypeVerdict.UNSETTLED
     return if (expected == actual) KeyTypeVerdict.CONSISTENT else KeyTypeVerdict.INCONSISTENT
 }
-
-/**
- * The classes A12's `IFieldType.matchBaseType` sorts a declaration into, as THIS gate reads them.
- *
- * Deliberately not [BaseTypeClass], which splits the temporal declarations: A12's model layer declares one
- * date interface, so a time, date-time, date-fragment or date-range declaration is compared against a date
- * one by an `instanceof` that cannot tell them apart — and calling such a pair inconsistent would refuse a
- * key A12 admits. They share a class here, so the family stays silent inside it and speaks only across
- * classes, where every pair is measured. Text and custom share one for the reason [BaseTypeClass] records,
- * measured on this carrier from both sides: a string-keyed group admits a custom key, an enumeration-keyed
- * one does not.
- */
-private enum class IndexKeyClass { TEXT, ENUMERATION, NUMBER, TEMPORAL, BOOLEAN, CONFIRM }
-
-private val INDEX_KEY_CLASS_OF = mapOf(
-    FieldType.STRING to IndexKeyClass.TEXT,
-    FieldType.CUSTOM_FIELD to IndexKeyClass.TEXT,
-    FieldType.ENUMERATION to IndexKeyClass.ENUMERATION,
-    FieldType.NUMBER to IndexKeyClass.NUMBER,
-    FieldType.DATE to IndexKeyClass.TEMPORAL,
-    FieldType.TIME to IndexKeyClass.TEMPORAL,
-    FieldType.DATE_TIME to IndexKeyClass.TEMPORAL,
-    FieldType.DATE_FRAGMENT to IndexKeyClass.TEMPORAL,
-    FieldType.DATE_RANGE to IndexKeyClass.TEMPORAL,
-    FieldType.BOOLEAN to IndexKeyClass.BOOLEAN,
-    FieldType.CONFIRM to IndexKeyClass.CONFIRM,
-)
 
 /** What the KEY half settles on its own: the wildcard class, nothing, or that this index is not ours. */
 private enum class KeyVerdict { STARRED, PLAIN, UNJUDGEABLE }

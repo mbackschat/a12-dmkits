@@ -282,9 +282,9 @@ internal fun TrackedFactBase.parallelVerdictOf(
     }
     val targetIndex = indexFieldAt(keyedForTheTarget.path, targetIndexName)
         ?: return ParallelVerdict.Unjudged
-    val operandFamily = baseFamilyOf(operandIndex.body) ?: return ParallelVerdict.Unjudged
-    val targetFamily = baseFamilyOf(targetIndex.body) ?: return ParallelVerdict.Unjudged
-    return if (operandFamily == targetFamily) {
+    val operandClass = operandIndex.declaredFieldType()?.indexKeyClass ?: return ParallelVerdict.Unjudged
+    val targetClass = targetIndex.declaredFieldType()?.indexKeyClass ?: return ParallelVerdict.Unjudged
+    return if (operandClass == targetClass) {
         ParallelVerdict.Joint
     } else {
         ParallelVerdict.Refused("MVK_ERROR_FIELD_INVALID_INDEX_TYPE")
@@ -300,26 +300,6 @@ private fun TrackedDeclaration.keysAGroupAtOrAbove(path: String): Boolean =
 
 private fun TrackedFactBase.indexFieldAt(group: String, name: String): TrackedDeclaration? =
     declarationAt("$group/$name")?.takeIf { it.declaredKind == DeclaredKind.FIELD }
-
-/**
- * The base type A12 compares two index fields by, or null for every declared type this has not read.
- *
- * `IFieldType.matchBaseType` is implemented per type interface, and the four below are the ones whose
- * implementation was read: each admits only its own interface, so a difference between two of them is a
- * mismatch on any reading. Every other declared type answers null and the type class is withheld — a
- * conservative silence, because `IStringType` also admits `IPredefinedType` and a base type shared across
- * two declared types would otherwise become an invented rejection.
- */
-private fun baseFamilyOf(body: JsonObject?): String? {
-    return BASE_FAMILIES[(body?.get("fieldType") as? JsonObject)?.namedFieldType()]
-}
-
-private val BASE_FAMILIES = mapOf(
-    FieldType.STRING to "string",
-    FieldType.NUMBER to "number",
-    FieldType.DATE to "date",
-    FieldType.ENUMERATION to "enumeration",
-)
 
 private fun scopeFinding(
     code: String,
