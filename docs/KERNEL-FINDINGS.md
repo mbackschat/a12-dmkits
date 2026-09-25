@@ -10976,3 +10976,24 @@ Three facts, each with the row that separates it from its rival:
 **Source account (read in `kernel-core-codegen-condition` and `kernel-core-calc`; every row above agrees with it, but none discriminates the WHERE from a rival).** Codegen wraps each alternative's calculation operation in the mode's operator at zero places: `CodeGenParseTreeHelper.expandAndTransformAlternative` → `CalculationCodeGenUtilities.prefixRoundingOperation` → `RoundUp`/`RoundDown(op, 0)`. The `Exact` floor is `NormalisierteBerechnungsFormHelper.extractBerechnungsFeldOp`, which builds `CalcOperationRoundDownWithCompOp(op, maxFractionalDigits)` whenever the comparison is a band. Both act on the calculation info. The validation keeps the operation as authored, which `getOriginalOperation` also returns.
 
 *(Locked: `adapter.laws.ComputationRoundingModeDiffTest`, both kernel strategies against the interpreter; kernel-free JVM + Node `interpreter.ComputationRoundingModeTest`. Interpreter treatment: [IF341](INTERPRETER-FINDINGS.md#if341).)*
+
+## §9 supplement — a keyed GROUP operand, where a field-fill quantifier or a field-list aggregate asks its cells, reads as the bare group inside the row its key selects (differential, both strategies, 2026-09-25) <a id="kf475"></a>
+
+> Fold: pending — extends §10's semantic-index read (what a keyed FIELD yields) to a keyed GROUP read by the quantifiers and aggregates [KF351](#kf351) admits.
+
+**The claim, both strategies agreeing on every row.** One fixture, an order whose repeatable `Packages` is keyed by `Code` and holds a `Carrier`, a fixed `Dims` {`Length`, `Width`} and a repeatable `Items` {`Sku`, `Weight`} of three: package rows keyed `P1` (a carrier, `Dims` 3×4, two of its three `Items` rows) and `P2` (its key alone), none keyed `P3`.
+
+| input | kernel |
+|---|---|
+| the selected row | its cells, with the repeatable `Items` level below the key free: `NumberOfFilledFields(Packages For "P1") == 8` holds, counting both item rows |
+| the declared range | `AllFieldsFilled(Packages For "P1")` does not fire with two of three item rows and fires with all three, so the declared tail of a level below the key is read |
+| a key no row carries | every cell empty: `NoFieldFilled(… For "P3")` fires OMISSION, `Sum(Dims For "P3") == 0` fires |
+| a key two rows carry | undecided: neither `NoFieldFilled` nor `AtLeastOneFieldFilled` fires on it, while a deciding sibling operand still fires |
+| a malformed cell in the selected row | `NumberOfFilledFields` and `NoFieldFilled` stay silent; in computation `NoFieldFilled(Dims For "P2")` poisons, while `AtLeastOneFieldFilled(Packages For "P2")` stops at the filled key and stores its alternative |
+| partial validation | a key no row carries decides nothing while the key column is outside the coverage; a selected row outside it is not filled for the rule |
+| an error field inside the keyed group, and no ordinary reference to it | the message attaches to the selected row, or to the unbound row `Packages[-5]/Carrier` for a key no row carries, as for the presence conditions ([IF331](INTERPRETER-FINDINGS.md#if331)) |
+| `Sum(Packages/Items For "P1")` | refused `MVK_NO_WILDCARD`: a repeatable group below the key must be starred, and the starred spelling is the key composed with a star |
+
+**Source account, consistent with every row and discriminated by the `Items` row only.** A12 expands the operand into its contained fields, each carrying the group's key (`ExpandService.expandEntityId` / `createEntityId`, `kernel-core-codegen-condition`). The rival, that a keyed group reads one row with every repeatable level below it collapsed to its first row, predicts `6` where A12 counts `8`.
+
+**Lock:** `adapter.laws.KeyedGroupFieldListDiffTest`, each row on dynamic Groovy, static Java and the interpreter, the refused row in `aRepeatableLevelBelowTheKeyMustBeStarred`. The interpreter's side is [IF340](INTERPRETER-FINDINGS.md#if340).

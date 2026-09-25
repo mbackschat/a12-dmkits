@@ -9,6 +9,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -178,6 +179,16 @@ class KeyedGroupFieldListDiffTest {
         // a keyed FIELD in the same positions, the class's sibling
         Row("Sum($WIDTH For \"P1\", $WIDTH For \"P2\") == 4", true),
         Row("NumberOfFilledFields($CARRIER For \"P1\", $CARRIER For \"P2\") == 1", true)))
+
+    /** The row the aggregate grid cannot carry: a repeatable level below the key must be starred, as it must be
+     *  without a key, so the kernel refuses the model before any engine could read it. */
+    @Test
+    fun aRepeatableLevelBelowTheKeyMustBeStarred() {
+        val kModel = RuntimeLaws.withRule(model, "/Order", "R", "../Reference", RULE_CODE,
+            "FieldFilled($REFERENCE) And Sum(/Order/Packages/Items For \"P1\") == 7")
+        val errors = RuntimeLaws.consistencyMessages(kModel).filter { it.startsWith("ERROR") }
+        assertTrue(errors.any { Regex("\\bMVK_NO_WILDCARD\\b").containsMatchIn(it) }, errors.toString())
+    }
 
     @Test
     fun aFieldFillQuantifierReadsTheCellsOfTheSelectedRow() = assertGrid(listOf(

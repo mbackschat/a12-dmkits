@@ -4256,20 +4256,9 @@ The absent instances are checked on one representative per class of indices rath
 
 **The gap.** The seven field-fill quantifiers, `NumberOfFilledFields`, `Sum`, `MaxValue` and `MinValue` over `Packages For "P1"` are kernel-admitted (`validate.laws.SemanticIndexGroupOperandCarrierLawsTest`), and the prepared-plan audit declined every one ([IG155](INTERPRETER-GAPS.md)). Declining was loud, so no verdict was wrong. A keyed FIELD beside a starred operand in a field-fill quantifier was declined too, at evaluation time rather than by the audit: the group-scope path took the list and threw on the keyed operand.
 
-**What the kernel does, both strategies agreeing on every row.** One fixture: package rows keyed `P1` (a carrier, `Dims` 3×4, two of its three `Items` rows) and `P2` (its key alone), none keyed `P3`.
+**What the kernel does** is [KF475](KERNEL-FINDINGS.md#kf475): the bare group read inside the row the key selects, with a repeatable level below the key free and its declared tail read, every cell empty for a key no row carries, and undecided for a key two rows carry.
 
-| input | kernel |
-|---|---|
-| the selected row | its cells, with the repeatable `Items` level below the key free: `NumberOfFilledFields(Packages For "P1") == 8` holds, counting both item rows |
-| the declared range | `AllFieldsFilled(Packages For "P1")` does not fire with two of three item rows and fires with all three, so the declared tail of a level below the key is read |
-| a key no row carries | every cell empty: `NoFieldFilled(… For "P3")` fires OMISSION, `Sum(Dims For "P3") == 0` fires |
-| a key two rows carry | undecided: neither `NoFieldFilled` nor `AtLeastOneFieldFilled` fires on it, while a deciding sibling operand still fires |
-| a malformed cell in the selected row | `NumberOfFilledFields` and `NoFieldFilled` stay silent; in computation `NoFieldFilled(Dims For "P2")` poisons, while `AtLeastOneFieldFilled(Packages For "P2")` stops at the filled key and stores its alternative |
-| partial validation | a key no row carries decides nothing while the key column is outside the coverage; a selected row outside it is not filled for the rule |
-| an error field inside the keyed group, and no ordinary reference to it | the message attaches to the selected row, or to the unbound row `Packages[-5]/Carrier` for a key no row carries, as for the presence conditions ([IF331](#if331)) |
-| `Sum(Packages/Items For "P1")` | refused `MVK_NO_WILDCARD`: a repeatable group below the key must be starred, which is the key composed with a star and still declined |
-
-**The mechanism.** A12 expands the operand into its contained fields, each carrying the group's key (`ExpandService`, source-read), and the grid above shows what that reads: the bare group inside the selected row. `KeyedGroupCells` resolves the operand through [IF331](#if331)'s `keyedGroupSelection` into `Selected`, an interpreter rooted at that row (`selectedRowInterp`) of which each consumer asks its own bare-group arm, `Empty` for a covered key no row carries, or `Undecided`. The field-fill tally, the compute scan, `NumberOfFilledFields`, the value-aggregate operand list and both polarity reads (`leafOmission`, `aggregateFillState`) each carry one arm over those three. Reading through the bare-group arm is what keeps `Items` free and the declared tail counted, without restating either rule. A keyed FIELD reads its one cell on each of those paths, which is how the plain-list tally already read it.
+**The mechanism.** `KeyedGroupCells` resolves the operand through [IF331](#if331)'s `keyedGroupSelection` into `Selected`, an interpreter rooted at that row (`selectedRowInterp`) of which each consumer asks its own bare-group arm, `Empty` for a covered key no row carries, or `Undecided`. The field-fill tally, the compute scan, `NumberOfFilledFields`, the value-aggregate operand list and both polarity reads (`leafOmission`, `aggregateFillState`) each carry one arm over those three. Reading through the bare-group arm is what keeps `Items` free and the declared tail counted, without restating either rule. A keyed FIELD reads its one cell on each of those paths, which is how the plain-list tally already read it.
 
 *Locked by:* `adapter.laws.KeyedGroupFieldListDiffTest`, on the `errorPath|type` signature or the computed outcome, against both kernel strategies. The quantifier, malformed-cell, partial and computation grids ran red first, every row UNSUPPORTED or, in computation, THREW; the aggregate grid first stopped at the refused `Sum(Packages/Items …)` row.
 
