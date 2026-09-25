@@ -90,8 +90,8 @@ private fun TrackedFactBase.scaleFinding(
     if (comparison.operator != EQUAL && comparison.operator != NOT_EQUAL) {
         return null
     }
-    val left = sideOf(comparison.left, declaringGroup, element) ?: return null
-    val right = sideOf(comparison.right, declaringGroup, element) ?: return null
+    val left = sideOf(comparison.left, declaringGroup, element, comparison.filteredBy) ?: return null
+    val right = sideOf(comparison.right, declaringGroup, element, comparison.filteredBy) ?: return null
     wrongTypeFinding(left, right, comparison, element, member)?.let { return it }
     if (suppressed) {
         return null
@@ -157,13 +157,14 @@ private fun TrackedFactBase.sideOf(
     side: String,
     declaringGroup: String,
     element: TrackedDeclaration,
+    filteredBy: String?,
 ): NumberSide? {
     val tokens = tokenize(side)
     numberLiteralScale(tokens)?.let { return NumberSide.Written(it) }
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]
     val spellings = BOOLEAN_CONSTANTS.mapNotNull { keywords?.get(it) }
     tokens.singleOrNull()?.takeIf { it.text in spellings }?.let { return NumberSide.BooleanConstant }
-    val declared = bareReferenceField(side, declaringGroup, element) ?: return null
+    val declared = bareReferenceField(side, declaringGroup, element, filteredBy) ?: return null
     if (declared.declaredFieldType() != FieldType.NUMBER) {
         return null
     }

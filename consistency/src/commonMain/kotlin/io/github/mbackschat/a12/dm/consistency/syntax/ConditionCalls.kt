@@ -387,17 +387,27 @@ private fun infixAt(text: String, keyword: String): Pair<Int, Int>? {
  * A text that does not parse yields the comparisons read to the end of their right side before the failure,
  * by the contract [callsIn] states.
  */
-fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionComparison> =
-    comparisonShapes(text, language, entry).map { shape ->
+fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionComparison> {
+    val filter = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
+    val bodies = clausedOperandsIn(text, language).flatMap { operand ->
+        operand.clauses.filter { it.keyword == filter }.map { body -> body to (body.filtersKey?.path ?: operand.base) }
+    }
+    return comparisonShapes(text, language, entry).map { shape ->
+        val start = shape.left.first().start
+        val end = shape.right.last().end
         ConditionComparison(
             runText(shape.left, text),
             shape.operator.text,
             shape.operator.start,
             runText(shape.right, text),
-            start = shape.left.first().start,
-            end = shape.right.last().end,
+            start = start,
+            end = end,
+            // The innermost filter whose body holds the comparison, since that filter's row is what it reads.
+            filteredBy = bodies.filter { (body, _) -> body.at <= start && end <= body.at + body.text.length }
+                .minByOrNull { (body, _) -> body.text.length }?.second,
         )
     }
+}
 
 /**
  * One comparison in authored order.
@@ -409,6 +419,11 @@ fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry)
  * @param right the text right of the operator, by the same rule as [left].
  * @param start the offset of the left side's first token, and [end] the offset just past the right side's
  *     last: where the comparison has been read, which is where A12 runs `checkVergleichsBedingung`.
+ * @param filteredBy the spec whose `Having` body holds the comparison — the filtered operand, or the index
+ *     key a filter after `For` belongs to ([OperandClause.filtersKey]) — as written, star kept; null outside
+ *     every filter. A12 judges the comparison there exactly as outside one, reading the FILTERED row
+ *     (`rulekit.validate.laws.FilterBodyComparisonLawsTest`), so a reader typing a side counts the spec's
+ *     starred levels as addressed. Absent when the spec reduces to no path.
  */
 data class ConditionComparison(
     val left: String,
@@ -417,6 +432,7 @@ data class ConditionComparison(
     val right: String,
     val start: Int,
     val end: Int,
+    val filteredBy: String? = null,
 )
 
 private fun runText(run: List<Token>, source: String): String =

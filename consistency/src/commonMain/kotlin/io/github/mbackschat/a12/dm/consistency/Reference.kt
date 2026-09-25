@@ -589,9 +589,11 @@ internal fun TrackedFactBase.bareReferenceField(
     text: String,
     declaringGroup: String,
     element: TrackedDeclaration,
+    filteredBy: String? = null,
 ): TrackedDeclaration? {
     val reference = bareReferenceIn(text, conditionLanguage) ?: return null
-    val target = addressedTargetOf(reference, declaringGroup, element) ?: return null
+    val filtered = filteredBy?.let { starredLevelsOf(it, declaringGroup, element) ?: return null }.orEmpty()
+    val target = addressedTargetOf(reference, declaringGroup, element, filtered = filtered) ?: return null
     return declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
 }
 
@@ -650,12 +652,15 @@ internal fun isBareEntitySpec(text: String): Boolean {
  *     measured shape there is no second level for a key to reach and no verdict to be wrong about. An
  *     UNINDEXED outer level is the shape that would separate "the level it selects" from "every level it
  *     crosses", and it is unmeasured, so this yields there rather than choosing one.
+ * @param filtered the levels a `Having` filter enclosing the read stars: its body reads the filtered row, so
+ *     those levels are addressed there ([ConditionComparison.filteredBy]).
  */
 internal fun TrackedFactBase.addressedTargetOf(
     reference: String,
     declaringGroup: String,
     element: TrackedDeclaration,
     indexSelected: Boolean = false,
+    filtered: Set<String> = emptySet(),
 ): String? {
     val target = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
         as? Reference.Resolved)?.path ?: return null
@@ -667,7 +672,7 @@ internal fun TrackedFactBase.addressedTargetOf(
     // the declaring group made every family behind it yield on an operand A12 admits there.
     val iterated = iterationGroupOf(element) ?: declaringGroup
     val unaddressed = levels.any {
-        it !in starred + pinned && !iterated.isAtOrBelow(it) && !iteratesJointly(it, element)
+        it !in starred + pinned + filtered && !iterated.isAtOrBelow(it) && !iteratesJointly(it, element)
     }
     return if (unaddressed) null else target
 }

@@ -172,14 +172,6 @@ private class ShapeParser(
 
     private var index = 0
 
-    /**
-     * How many filter bodies the cursor is inside. A comparison there is not handed to [comparisons]: the
-     * families reading them were measured on comparisons outside a filter, and inside one only on the type
-     * class, so handing them a filter body's comparison would refuse with no kernel basis for every other
-     * class they draw (`DEV-API-GAPS` DG87).
-     */
-    private var filterDepth = 0
-
     /** How many delimiters are open, so running out of text can be told from meeting the end of it. */
     private var open = 0
 
@@ -266,7 +258,9 @@ private class ShapeParser(
         comparisonOperator()?.let { return it }
         val rightFrom = index
         val failure = expression()
-        if (failure == null && filterDepth == 0) {
+        // A filter body's comparison is recorded like any other: A12 judges it exactly as one outside a
+        // filter (`rulekit.validate.laws.FilterBodyComparisonLawsTest`).
+        if (failure == null) {
             comparisons?.add(
                 ComparisonShape(
                     tokens.subList(from, operatorAt),
@@ -461,9 +455,7 @@ private class ShapeParser(
                 // keyword-plus-bare-name predicate, which A12 parses there and refuses from the filter's own
                 // last gate. A key is an `entitySpec` or a string, so it is read as an operand.
                 if (token.text == filterKeyword) {
-                    filterDepth++
                     condition()?.let { return it }
-                    filterDepth--
                 } else {
                     expression()?.let { return it }
                 }

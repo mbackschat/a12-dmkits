@@ -97,8 +97,8 @@ private fun TrackedFactBase.temporalFinding(
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
-    val left = sideOf(comparison.left, declaringGroup, element) ?: return null
-    val right = sideOf(comparison.right, declaringGroup, element) ?: return null
+    val left = sideOf(comparison.left, declaringGroup, element, comparison.filteredBy) ?: return null
+    val right = sideOf(comparison.right, declaringGroup, element, comparison.filteredBy) ?: return null
     val equality = comparison.operator == EQUAL || comparison.operator == NOT_EQUAL
     if (!equality) {
         // The tolerance and pattern arms RETURN before this walk, and an ordering comparison reaches it only
@@ -176,8 +176,9 @@ private fun TrackedFactBase.sideOf(
     side: String,
     declaringGroup: String,
     element: TrackedDeclaration,
+    filteredBy: String?,
 ): TemporalSide? {
-    val declared = bareReferenceField(side, declaringGroup, element) ?: return null
+    val declared = bareReferenceField(side, declaringGroup, element, filteredBy) ?: return null
     declaredTemporalFormatOf(declared)?.let {
         return TemporalSide.Date(declared.path, componentsOf(it))
     }

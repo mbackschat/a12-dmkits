@@ -99,8 +99,8 @@ private fun TrackedFactBase.agreementFinding(
     if (comparison.operator != EQUAL && comparison.operator != NOT_EQUAL) {
         return null
     }
-    val left = sideOf(comparison.left, spellings, declaringGroup, element) ?: return null
-    val right = sideOf(comparison.right, spellings, declaringGroup, element) ?: return null
+    val left = sideOf(comparison.left, spellings, declaringGroup, element, comparison.filteredBy) ?: return null
+    val right = sideOf(comparison.right, spellings, declaringGroup, element, comparison.filteredBy) ?: return null
     val equality = comparison.operator == EQUAL
     val code = when {
         left == BooleanSide.CONFIRM_FIELD || right == BooleanSide.CONFIRM_FIELD ->
@@ -167,6 +167,7 @@ private fun TrackedFactBase.sideOf(
     spellings: BooleanConstants,
     declaringGroup: String,
     element: TrackedDeclaration,
+    filteredBy: String?,
 ): BooleanSide? {
     val tokens = tokenize(side)
     val single = tokens.singleOrNull()
@@ -179,7 +180,7 @@ private fun TrackedFactBase.sideOf(
         single.kind == TokenKind.NAME && single.text in spellings.temporal ->
             return BooleanSide.OTHER_CONSTANT
     }
-    val declared = bareReferenceField(side, declaringGroup, element) ?: return null
+    val declared = bareReferenceField(side, declaringGroup, element, filteredBy) ?: return null
     return when (declared.baseTypeClass()) {
         BaseTypeClass.YES -> BooleanSide.CONFIRM_FIELD
         BaseTypeClass.YES_NO -> BooleanSide.BOOLEAN_FIELD

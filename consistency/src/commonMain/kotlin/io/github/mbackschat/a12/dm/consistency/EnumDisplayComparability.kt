@@ -75,8 +75,8 @@ private fun TrackedFactBase.displayFinding(
     if (comparison.operator != "==" && comparison.operator != "!=") {
         return null
     }
-    val left = displaySideOf(comparison.left, declaringGroup, element) ?: return null
-    val right = displaySideOf(comparison.right, declaringGroup, element) ?: return null
+    val left = displaySideOf(comparison.left, declaringGroup, element, comparison.filteredBy) ?: return null
+    val right = displaySideOf(comparison.right, declaringGroup, element, comparison.filteredBy) ?: return null
     val defect = when {
         left is DisplaySide.Enumeration && right is DisplaySide.Enumeration -> enumPairDefect(left, right)
         left is DisplaySide.Enumeration -> textPartnerDefect(left)
@@ -173,8 +173,9 @@ private fun TrackedFactBase.displaySideOf(
     side: String,
     declaringGroup: String,
     element: TrackedDeclaration,
+    filteredBy: String?,
 ): DisplaySide? {
-    val declared = bareReferenceField(side, declaringGroup, element) ?: return null
+    val declared = bareReferenceField(side, declaringGroup, element, filteredBy) ?: return null
     return when (declared.declaredFieldType()) {
         FieldType.STRING -> DisplaySide.TextField
         FieldType.ENUMERATION -> declaredLabels(declared)?.let { DisplaySide.Enumeration(declared.path, it) }

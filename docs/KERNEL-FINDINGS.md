@@ -10718,8 +10718,29 @@ Reconciles a12-kernel-lean `SPEC-2026-09-24-03` (their report, measured on their
 | a text ordered against a number inside a filter body, over the filtered group (`[Claims/ClaimNo] > 5`) or over a field outside it (`[Reference] > 5`), as outside a filter | `MVK_INVALID_TYPE_FOR_COMPARISON` |
 | the second body's sound twin, `Having [Reference] == "x"`, which names nothing the filter iterates | `MVK_NO_ITERATION_FOR_WILDCARD` |
 
-**The portable checker read a whole condition as any call's argument, inside braces and parentheses, and as every clause's operand**, so it drew nothing on sixteen of the eighteen token-error rows — all but the parenthesised operation leading a comparison and the computation's bare comparison, which the top-level parse already refused. Its shape parser now reads a condition only in A12's three places, a predicate's call only as a condition, and a parenthesis only as a condition's. Two things stay looser, both in the silent direction: an uncataloged keyword's call is still read as a call in an operand position, because the catalog cannot say which of the two it is, and each operator's own argument shape is still the Kernel's to judge. A comparison inside a filter body is parsed but not handed to the comparison families, of which only the type class above is measured there, so the checker is silent on the first filter row and names the sound twin's class on the second ([DEV-API-GAPS](DEV-API-GAPS.md) DG87).
+**The portable checker read a whole condition as any call's argument, inside braces and parentheses, and as every clause's operand**, so it drew nothing on sixteen of the eighteen token-error rows — all but the parenthesised operation leading a comparison and the computation's bare comparison, which the top-level parse already refused. Its shape parser now reads a condition only in A12's three places, a predicate's call only as a condition, and a parenthesis only as a condition's. Two things stay looser, both in the silent direction: an uncataloged keyword's call is still read as a call in an operand position, because the catalog cannot say which of the two it is, and each operator's own argument shape is still the Kernel's to judge. A comparison inside a filter body is judged there too, as the extension below measures for every comparison family.
+
+**Extended 2026-09-25 — every comparison family's refusal is drawn inside a filter body.** Each row writes one family's defining refusal as the body of `FieldFilled(Reference) And Sum(Claims*/Paid Having <comparison>) > 0`, over fields of the filtered repetition so the body reads only the row it filters, beside the admitted `[Claims/Units] == 1`. Each draws the class its own lock measures for the same comparison outside a filter:
+
+| the body's comparison | A12 |
+|---|---|
+| `[Claims/Notes] == [Claims/Units]` | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
+| `[Claims/Cause] == "SMOKE"` | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` |
+| `[Claims/Notes] == [Claims/Reported]` · `[Claims/Reported] == [Claims/Anniversary]` | `MVK_INVALID_COMPARE_TO_DATE` |
+| `[Claims/Cause] == [Claims/Urgent]` | `MVK_INVALID_COMPARE_TO_YESNO` |
+| `[Claims/Notes] < [Claims/Units]` | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+| `"a" == 1` | `MVK_INVALID_COMPARE_TO_CONST` |
+| `[Claims/Tier] == [Claims/Notes]` | `MVK_INVALID_COMPARE_ENUM_TO_STRING` |
+| `[Claims/Tier] == [Claims/TierConflict]`, one stored token under two labels | `MVK_INVALID_COMPARE_ENUM_TO_ENUM` |
+| `[Claims/Units] DiffersWithToleranceRange1 True` | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` |
+| `[Claims/Units] == True` | `MVK_INCONSISTENT_TYPES_COMPARED` |
+| `[Claims/Units] == [Claims/Paid]`, zero against two fraction digits | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `[Claims/Settled] == False` | `MVK_INVALID_COMPARE_TO_YES` |
+| `[Claims/Window] == [Claims/MonthWindow]` | `MVK_INVALID_COMPARE_TO_DATE_RANGE` |
+| `Length(Claims/Notes) PatternMatched "a+"` · `[Claims/Units] PatternMatched "a+"` · `[Claims/Notes] PatternMatched [Claims/ClaimNo]` · `[Claims/Notes] PatternMatched "a\\*+"` | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` · `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON` · `MVK_MISSING_CONST_IN_PATTERN_COMP` · `MVK_INVALID_PATTERN` |
+
+The checker had judged no comparison inside a filter body, so it was silent on the first two rows of the table above and substituted the sound twin's class on the third. It now hands each one to the seven comparison families and types a side through the filtered row: the body reads the one repetition the filter decides, so an unstarred step through the filtered level, `Claims` here, is addressed there. It answers every row of both tables as A12 does. A `$`-marked side reads the enclosing row rather than the filtered one and is not typed, which is silent rather than wrong.
 
 **Extended 2026-09-25 — a sign stands on a number literal alone.** The grammar has no unary minus: `-` is part of `commonKonstante : minus='-'? ZiffernFolge …`. So `[BaseFee] > -1` and `[BaseFee] - -1 > 1` are admitted, while `-[BaseFee] < 0`, `[BaseFee] > -[EffectiveFee]`, `[BaseFee] > -{[EffectiveFee] + 1}`, `[BaseFee] > -Abs([EffectiveFee])` and `[BaseFee] > --1` are each `MVK_UNEXPECTED_TOKEN`. The checker had signed any operand and admitted all five; it now signs a literal only. The same holds on the operation carrier and in an operation argument: into `EffectiveFee`, `-5`, `0 - [BaseFee]`, `[BaseFee] * -1` and `RoundUp(0 - [BaseFee], 2)` are admitted, while `-[BaseFee]`, `[BaseFee] * -[BaseFee]`, `{-[BaseFee]}` and `RoundUp(-[BaseFee], 2)` are each `MVK_UNEXPECTED_TOKEN`, as the checker also answers.
 
-*Locked by:* `rulekit.validate.laws.WhereAConditionMayStandLawsTest`, the connective rows of `…ConditionClassWithholdingLawsTest`, and `…ConditionArithmeticSymbolLawsTest` (both carriers); mirrored by `consistency.WhereAConditionMayStandTest`, `consistency.ConditionMultipleDefectTest` and `consistency.ConditionShapeTest`.
+*Locked by:* `rulekit.validate.laws.WhereAConditionMayStandLawsTest`, `…FilterBodyComparisonLawsTest`, the connective rows of `…ConditionClassWithholdingLawsTest`, and `…ConditionArithmeticSymbolLawsTest` (both carriers); mirrored by `consistency.WhereAConditionMayStandTest`, `consistency.FilterBodyComparisonTest`, `consistency.ConditionMultipleDefectTest` and `consistency.ConditionShapeTest`.

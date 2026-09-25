@@ -131,9 +131,8 @@ class WhereAConditionMayStandLawsTest {
 
     /**
      * A filter body is a condition like any other, so A12 judges its comparisons as it judges one outside a
-     * filter. The portable checker does not read them there ({@code DEV-API-GAPS} DG87), which is why its
-     * mirror of the second and third rows are divergence locks. The last row is the checker's control that a
-     * comparison AFTER a filter body is judged again.
+     * filter; {@link FilterBodyComparisonLawsTest} measures that for every comparison family. The last row is
+     * the control that a comparison AFTER a filter body is judged again.
      */
     @Test
     void aFilterBodysComparisonIsJudgedThereToo() {
