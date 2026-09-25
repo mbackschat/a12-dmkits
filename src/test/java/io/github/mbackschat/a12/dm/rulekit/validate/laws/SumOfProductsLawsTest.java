@@ -218,6 +218,7 @@ class SumOfProductsLawsTest {
         actual.put("a star on the field, not its level, AND different owning groups",
                 verdict("Lines/Qty*, Vouchers*/Amount"));
         actual.put("a star on a fixed group, one operand repeatable", verdict("Fees*/Handling, Vouchers*/Amount"));
+        actual.put("the same without the star — the twin", verdict("Fees/Handling, Vouchers*/Amount"));
 
         var expected = new LinkedHashMap<String, String>();
         expected.put("same owning group, both starred — the control", KernelLaws.ADMITTED);
@@ -237,8 +238,9 @@ class SumOfProductsLawsTest {
         expected.put("no repeatable level, DIFFERENT owning groups", "MVK_DIFFERENT_GROUPS");
         // The resolver's wildcard gate answers before the pair is compared at all.
         expected.put("a star on the field, not its level, AND different owning groups", "MVK_INVALID_WILDCARD");
-        // …and a star on a fixed group, where the twin without it is "one operand repeatable, one not".
+        // …and a star on a fixed group, whose twin without it is one operand repeatable and one not.
         expected.put("a star on a fixed group, one operand repeatable", "MVK_INVALID_WILDCARD");
+        expected.put("the same without the star — the twin", "MVK_DIFFERENT_GROUPS");
         assertEquals(expected, actual, "SumOfProducts operand-pair class precedence");
     }
 
