@@ -76,8 +76,8 @@ private fun TrackedFactBase.rangeDefect(
     if (call.operands.size != RANGE_ARITY) {
         return null
     }
-    val (written, category) = operandSpec(call.operands[0]) ?: return null
-    val target = addressedTargetOf(written, declaringGroup, element) ?: return null
+    val (written, keyed, category) = operandSpec(call.operands[0], declaringGroup, element) ?: return null
+    val target = addressedTargetOf(written, declaringGroup, element, keyed) ?: return null
     val declared = declarationAt(target) ?: return null
     val starred = '*' in written
     if (declared.declaredKind == DeclaredKind.GROUP) {
@@ -99,7 +99,9 @@ private fun TrackedFactBase.rangeDefect(
                 "the repeating group instead",
         )
     }
-    if (crossesARepetitionOutside(declaringGroup, target)) {
+    // A key addresses the one repetition it crosses, as the declaration's iteration would ([KERNEL-FINDINGS
+    // KF476]); [addressedTargetOf] has already refused a keyed read crossing any other.
+    if (!keyed && crossesARepetitionOutside(declaringGroup, target)) {
         return null
     }
     if (category != null) {

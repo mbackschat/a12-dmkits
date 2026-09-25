@@ -97,6 +97,19 @@ private fun TrackedFactBase.firstClassIn(
     return null
 }
 
+/**
+ * Whether A12 admits [use] on every gate of the semantic-index chain, as far as this reader can tell.
+ *
+ * True only where the chain reads CLEAN: an index this family would refuse, or one it cannot judge — a nested
+ * index, a group value or key, a constant the index field may refuse, a key whose declared type is unsettled —
+ * is not admitted, so a reader that honours a key on this answer honours only a key A12 does.
+ */
+internal fun TrackedFactBase.admitsSemanticIndex(
+    use: SemanticIndexUse,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): Boolean = !use.nested && classOf(use, declaringGroup, element) == IndexVerdict.Clean
+
 /** What one index settles: a class, nothing to say, or that nothing past it may be judged either. */
 private sealed interface IndexVerdict {
     data class Reported(val code: String) : IndexVerdict

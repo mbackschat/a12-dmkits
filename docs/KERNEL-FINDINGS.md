@@ -11015,3 +11015,28 @@ Three facts, each with the row that separates it from its rival:
 **Source account, consistent with every row and discriminated by the `Items` row only.** A12 expands the operand into its contained fields, each carrying the group's key (`ExpandService.expandEntityId` / `createEntityId`, `kernel-core-codegen-condition`). The rival, that a keyed group reads one row with every repeatable level below it collapsed to its first row, predicts `6` where A12 counts `8`.
 
 **Lock:** `adapter.laws.KeyedGroupFieldListDiffTest`, each row on dynamic Groovy, static Java and the interpreter, the refused row in `aRepeatableLevelBelowTheKeyMustBeStarred`. The interpreter's side is [IF340](INTERPRETER-FINDINGS.md#if340).
+
+## §9 supplement — a semantic-index key addresses the repetition it keys for every operand gate, and a defective key answers before that gate (kernel `checkConsistency`, 2026-09-25) <a id="kf476"></a>
+
+> Fold: not-foldable — a diagnostic-class law about which gate answers on a keyed operand, not an evaluation behaviour.
+
+[KF404](#kf404) measured the key's own chain and [KF351](#kf351) where a key may stand; neither asked what the OPERATOR does with an operand a sound key addresses across a repetition nothing else addresses. One fixture: `/Policy` holds a repeatable `Claims` keyed by the String `ClaimRef`, with fields of six kinds, a repeatable `Riders` declaring the same fields and no index field, and a repeatable `Endorsements` indexing them on the enumeration `Status`. Each row is one of twenty operand gates, probed on a field that gate refuses (arity, field-list, value-in-fields, duplicate, range, value-as-date, field-value, both rounding spellings, the date-argument slot, both date-arithmetic slots, date-range, and seven comparison gates).
+
+| read | class, in all twenty gates |
+|---|---|
+| `Claims/<field>` from a rule at `/Policy`, no key | `MVK_NO_WILDCARD` |
+| `Claims/<field> For "X"` and `Claims/<field> For Code` from that rule | the gate's own class |
+| `<field>` from a rule declared inside `Claims`, `Riders` or `Endorsements` | the same class |
+| `<field> For "X"` inside `Claims`, where the rule already iterates the level | the same class |
+| `Riders/<field> For "X"` | `MVK_NO_INDEX_FIELD` |
+| `Claims/<field> For Limit` (a Number key, String index) | `MVK_INDEX_TYPE_INCONSISTENT` |
+| `Endorsements/<field> For "PENDING"` (a constant the enumeration index does not declare) | `MVK_INDEX_VALUE_INVALID` |
+| `Claims/<field> For 5`, from the root or inside `Claims` | `MVK_INVALID_ENTITY` |
+| `Claims/<field> For Notes/Text` | `MVK_SEMANTIC_INDEX_INVALID_ITER` |
+| `Claims*/<field> For "X"` | `MVK_SEMANTIC_INDEX_AND_WILDCARD` |
+
+So a sound key addresses exactly as the declaration's own iteration does, and the unkeyed row is each gate's control that the rival, a keyed read left unaddressed, was observable. A key is judged ahead of the operator: each defect draws the key's class though the gate would refuse the operand too. `5` is an entity key rather than a constant of the wrong kind, because the grammar's entity name admits a bare digit sequence (`nameOhnePunkt: … | ZiffernFolge`, `GrammarOnly_ConditionParser.g4`), so it resolves nothing. Two further carriers hold the same way: inside a `Having` body on `NumberOfFilledFields(Notes*/Text Having …)` the unkeyed read, the keyed read and `For 5` give the comparison's class, its class and `MVK_INVALID_ENTITY` — where the body's comparison is itself refused its class answers, not the `MVK_SEMANTIC_INDEX_NOT_ALLOWED` an index draws in an otherwise legal body ([KF377](#kf377)) — and an enumeration-valued computation reading `[Claims/Memo For "X"]` draws `MVK_ERROR_INVALID_ENUM_CALCULATION` as the root's own text field does.
+
+The portable checker read a keyed operand in the entity-list pre-gates alone and stood down everywhere else; two gates read past the key, naming their own class where A12 names `MVK_INVALID_ENTITY`, and the pattern gate took a keyed side for an expression. It now reads every keyed operand through one reader that honours only a key the semantic-index chain admits.
+
+*Locked by:* `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`; the checker against A12 on the same model: `adapter.laws.CheckerKeyedOperandAgreementTest`.

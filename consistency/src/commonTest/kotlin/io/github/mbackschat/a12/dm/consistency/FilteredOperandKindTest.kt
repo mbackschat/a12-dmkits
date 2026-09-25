@@ -142,9 +142,9 @@ class FilteredOperandKindTest {
         // Unfiltered, each index draws its own class, which is what shows the filtered rows above answer the filter.
         expected["an entity key, starred operand, no filter — its control"] =
             listOf("MVK_SEMANTIC_INDEX_AND_WILDCARD")
-        // DIVERGENCE (DEV-API-GAPS DG92): A12 reaches the aggregate's arity gate, `MVK_PARAMSIZE_INVALIDN`; the
-        // arity family reads the operand without its key, takes `Claims` for unaddressed and stands down.
-        expected["a string key, unstarred operand, no filter — its control"] = emptyList()
+        // The key addresses the unstarred `Claims`, so the aggregate's own arity gate answers
+        // (`rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`).
+        expected["a string key, unstarred operand, no filter — its control"] = listOf("MVK_PARAMSIZE_INVALIDN")
         expected["a starred key, no filter — its control"] = listOf("MVK_SEMANTIC_INDEX_WITH_WILDCARD")
         assertEquals(expected, actual, "whose filter a Having after an index key is")
     }

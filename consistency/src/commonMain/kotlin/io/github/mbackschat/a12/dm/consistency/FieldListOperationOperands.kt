@@ -131,8 +131,14 @@ private fun TrackedFactBase.operandDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): FieldListDefect? {
-    val written = call.operands.map { operand -> operand.path ?: return null }
-    val targets = written.map { addressedTargetOf(it, declaringGroup, element) ?: return null }
+    val reads = call.operands.map { operand ->
+        operandReferenceIn(operand.text, declaringGroup, element) { operand.path?.let { OperandReference(it) } }
+            ?: return null
+    }
+    val written = reads.map { it.reference }
+    val targets = reads.map { read ->
+        addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected) ?: return null
+    }
     if (preEmptedBeforeTheSwitch(written, targets)) {
         return null
     }

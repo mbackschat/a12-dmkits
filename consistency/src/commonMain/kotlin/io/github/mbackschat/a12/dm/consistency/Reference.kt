@@ -1,11 +1,14 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -548,7 +551,7 @@ private val SPEC_PUNCTUATION = setOf("[", "]", "/", ".")
  * group's iteration addresses** is `MVK_NO_WILDCARD` or `MVK_WILDCARDS_REQUIRED` from the reference reader
  * before any later gate is asked — a family typing such a side would name its own class on a model A12
  * refuses for something else, which is the defect corpus mutation found in the arity gates
- * ([KERNEL-FINDINGS KF381]).
+ * ([KERNEL-FINDINGS KF381]). A soundly KEYED spec is one entity spec too, read through [operandReferenceIn].
  */
 internal fun TrackedFactBase.bareReferenceField(
     text: String,
@@ -556,10 +559,87 @@ internal fun TrackedFactBase.bareReferenceField(
     element: TrackedDeclaration,
     inAFilterBody: Boolean = false,
 ): TrackedDeclaration? {
-    val reference = bareReferenceIn(text, conditionLanguage) ?: return null
-    val target = addressedTargetOf(reference, declaringGroup, element, everyLevelAddressed = inAFilterBody)
-        ?: return null
+    val read = operandReferenceIn(text, declaringGroup, element) {
+        bareReferenceIn(text, conditionLanguage)?.let { OperandReference(it) }
+    } ?: return null
+    val target = addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected,
+        everyLevelAddressed = inAFilterBody) ?: return null
     return declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
+}
+
+/**
+ * A written operand reduced to the reference an operand gate reads.
+ *
+ * @param indexSelected whether a semantic-index key addresses the one repetition the reference crosses, which
+ *     is what [addressedTargetOf] asks.
+ * @param category the category a `->` projects the reference onto, where the reader keeps one.
+ */
+internal data class OperandReference(
+    val reference: String,
+    val indexSelected: Boolean = false,
+    val category: String? = null,
+)
+
+/**
+ * [text] reduced to the reference an operand gate reads, or null wherever this reader may not reduce it.
+ *
+ * A text that writes no semantic index is [plain]'s to reduce, so each family keeps the reduction it was
+ * measured with. One that writes an index is read HERE and nowhere else, because A12 judges the key before any
+ * operand gate: a defective key answers with its own class, and a sound one addresses the level it keys
+ * exactly as the declaration's iteration would, in every operand family measured
+ * ([KERNEL-FINDINGS KF476], `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`). So the key is honoured
+ * only where the whole text, brackets aside, is ONE index whose value is a bare spec, whose key is a bare spec
+ * or a string, and which the semantic-index chain admits ([admitsSemanticIndex]); every other index-carrying
+ * text yields. A family that dropped the key instead read the bare value, and on a level the rule iterates
+ * named its own class where A12 names the key's.
+ */
+internal fun TrackedFactBase.operandReferenceIn(
+    text: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+    plain: () -> OperandReference?,
+): OperandReference? {
+    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return plain()
+    val inner = text.withoutEnclosingBrackets()
+    val uses = semanticIndexUsesIn(inner, conditionLanguage, keyword)
+    if (uses.isEmpty()) {
+        return plain()
+    }
+    val use = uses.singleOrNull() ?: return null
+    val value = bareReferenceIn(inner.substring(0, use.keywordAt), conditionLanguage) ?: return null
+    val key = inner.substring(use.start, use.end)
+    val bareKey = if (use.keyLiteral != null) {
+        tokenize(key).size == 1
+    } else {
+        bareReferenceIn(key, conditionLanguage) != null
+    }
+    val sound = bareKey && tokenize(inner.substring(use.end)).isEmpty() &&
+        admitsSemanticIndex(use, declaringGroup, element)
+    return if (sound) OperandReference(value, indexSelected = true) else null
+}
+
+/** Whether [text] writes a semantic index anywhere, which is what routes it to [operandReferenceIn]. */
+internal fun TrackedFactBase.writesASemanticIndex(text: String): Boolean {
+    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return false
+    return semanticIndexUsesIn(text, conditionLanguage, keyword).isNotEmpty()
+}
+
+/** [this] inside the one bracket pair that encloses all of it, or unchanged where no pair does. */
+private fun String.withoutEnclosingBrackets(): String {
+    val tokens = tokenize(this)
+    val first = tokens.firstOrNull() ?: return this
+    val last = tokens.last()
+    if (first.text != "[" || last.text != "]" || tokens.size < 2) {
+        return this
+    }
+    var depth = 0
+    tokens.forEachIndexed { at, token ->
+        when (token.text) {
+            "[" -> depth++
+            "]" -> if (--depth == 0 && at != tokens.lastIndex) return this
+        }
+    }
+    return substring(first.end, last.start)
 }
 
 /** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
@@ -674,11 +754,28 @@ internal val PLAINLY_NON_DATE_TYPES = setOf(
     FieldType.CUSTOM_FIELD, FieldType.DATE_RANGE,
 )
 
-internal fun TrackedFactBase.operandSpec(operand: CallOperand): Pair<String, String?>? {
-    categoryAccessesIn(operand.text, conditionLanguage).singleOrNull()?.let { (path, category) ->
-        return path to category
-    }
-    return (operand.path ?: return null) to null
+/** The reference one call operand names, with its category, read through [operandReferenceIn]. */
+internal fun TrackedFactBase.operandSpec(
+    operand: CallOperand,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): OperandReference? = categorySpecIn(operand.text, declaringGroup, element) { operand.path }
+
+/**
+ * The reference [text] names, with the category a `->` projects it onto, read through [operandReferenceIn] — so a
+ * keyed text never reaches the category reader, which would read it with its key dropped.
+ *
+ * @param bare the reference a text writing neither an index nor a category names.
+ */
+internal fun TrackedFactBase.categorySpecIn(
+    text: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+    bare: () -> String? = { bareReferenceIn(text, conditionLanguage) },
+): OperandReference? = operandReferenceIn(text, declaringGroup, element) {
+    categoryAccessesIn(text, conditionLanguage).singleOrNull()
+        ?.let { (path, category) -> OperandReference(path, category = category) }
+        ?: bare()?.let { OperandReference(it) }
 }
 
 /**

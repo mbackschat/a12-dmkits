@@ -142,8 +142,15 @@ private fun TrackedFactBase.constantKindFinding(
         }
     val arm = armOf(constantText, spellings)
         ?: return unexpectedConstantToken(constantText, element, member, call.constantSlotIn(member))
-    val written = entities.map { referencesIn(it, conditionLanguage).singleOrNull() ?: return null }
-    val targets = written.map { addressedTargetOf(it, declaringGroup, element) ?: return null }
+    val reads = entities.map { text ->
+        operandReferenceIn(text, declaringGroup, element) {
+            referencesIn(text, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
+        } ?: return null
+    }
+    val written = reads.map { it.reference }
+    val targets = reads.map { read ->
+        addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected) ?: return null
+    }
     if (preEmptedBeforeTheSwitch(written, targets)) {
         return null
     }

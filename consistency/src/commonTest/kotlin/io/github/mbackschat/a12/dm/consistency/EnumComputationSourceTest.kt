@@ -59,6 +59,28 @@ class EnumComputationSourceTest {
         assertEquals(expected, actual, "what an enum-valued computation may compute from")
     }
 
+    /**
+     * A keyed text source is a text source: the key addresses the repetition it keys, and A12 refuses the read
+     * as it refuses the root's own text field (`rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`
+     * `.anEnumComputationSourceReadThroughAKey`). Unkeyed, the read is the reference family's `MVK_NO_WILDCARD`,
+     * and a defective key draws the key's own class, so neither is this gate's.
+     */
+    @Test
+    fun aKeyedTextSourceIsATextSource() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a string key"] = computing("""[Claims/Memo For \"X\"]""")
+        actual["a field key"] = computing("[Claims/Memo For Code]")
+        actual["no key"] = computing("[Claims/Memo]")
+        actual["a number literal key"] = computing("[Claims/Memo For 5]")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["a string key"] = listOf("MVK_ERROR_INVALID_ENUM_CALCULATION")
+        expected["a field key"] = listOf("MVK_ERROR_INVALID_ENUM_CALCULATION")
+        expected["no key"] = emptyList()
+        expected["a number literal key"] = emptyList()
+        assertEquals(expected, actual, "a keyed text source")
+    }
+
     /** The finding names the uncovered value, since widening the target or projecting the source is the fix. */
     @Test
     fun theFindingNamesTheUncoveredValue() {
@@ -98,6 +120,12 @@ class EnumComputationSourceTest {
               "categories":[
                 {"name":"Band","values":[{"value":"OPEN"},{"value":"CLOSED"},{"value":"OPEN"}]},
                 {"name":"Wide","values":[{"value":"OPEN"},{"value":"CLOSED"},{"value":"VOID"}]}]}}}},
+            {"type":"Field","id":"f9","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Group","id":"g1","name":"Claims","Group":{"repeatability":20,"indexFieldName":"ClaimRef",
+              "elements":[
+              {"type":"Field","id":"f10","name":"ClaimRef","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f11","name":"Memo","Field":{"fieldType":{"type":"StringType"}}}
+            ]}},
             {"type":"Computation","id":"c0","name":"DerivedStatus","Computation":{
               "computedFieldRelPath":"$target",
               "computationAlternatives":[{"operation":"$operation"}],

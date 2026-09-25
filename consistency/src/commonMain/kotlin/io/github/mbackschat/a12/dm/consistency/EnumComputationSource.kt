@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
-import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -104,10 +103,9 @@ private fun TrackedFactBase.readDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): String? {
-    val access = categoryAccessesIn(text, conditionLanguage).singleOrNull()
-    val written = access?.path ?: text
-    val category = access?.category
-    val source = bareReferenceField(written, declaringGroup, element) ?: return null
+    val (written, keyed, category) = categorySpecIn(text, declaringGroup, element) ?: return null
+    val addressed = addressedTargetOf(written, declaringGroup, element, keyed) ?: return null
+    val source = declarationAt(addressed)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null
     if (source.declaredFieldType() == FieldType.STRING) {
         return "reads `${source.path}`, which is a text field — A12 assigns an enumeration only from a " +
             "constant it declares, an enumeration it covers, or a `$FIRST_FILLED_VALUE` over those"

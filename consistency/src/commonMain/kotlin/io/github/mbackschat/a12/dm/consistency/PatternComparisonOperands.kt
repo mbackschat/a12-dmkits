@@ -174,7 +174,9 @@ private fun TrackedFactBase.sideOf(
     if (isNumberLiteral(tokens)) {
         return PatternSide.Written(null)
     }
-    val outsideASpec = tokens.any {
+    // A keyed read is ONE field read once A12 admits its key, which it judges before this walk, so its string
+    // or number key is no sign of an expression; the shared reader answers for it ([KERNEL-FINDINGS KF476]).
+    val outsideASpec = !writesASemanticIndex(side) && tokens.any {
         it.kind !in SPEC_TOKENS || (it.kind == TokenKind.PUNCTUATION && it.text !in SPEC_PUNCTUATION)
     }
     if (tokens.isEmpty() || outsideASpec) {

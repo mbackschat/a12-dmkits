@@ -141,9 +141,18 @@ private fun TrackedFactBase.arityFinding(
     }
     // `NumberOfValueInFields` puts its constant ahead of an infix `In`, so the entity list is what follows
     // it; every other carrier here lists its entities as the call's own operands.
-    val texts = call.splitAtIn()?.second ?: call.operands.map { it.base ?: it.text }
-    val written = texts.map { referencesIn(it, conditionLanguage).singleOrNull() ?: return null }
-    val targets = written.map { addressedTargetOf(it, declaringGroup, element) ?: return null }
+    // Each operand's whole text goes to the reader that judges a key; one writing none keeps the clause-stripped
+    // base this gate was measured with.
+    val spelled = call.splitAtIn()?.second?.map { it to it } ?: call.operands.map { it.text to (it.base ?: it.text) }
+    val reads = spelled.map { (text, base) ->
+        operandReferenceIn(text, declaringGroup, element) {
+            referencesIn(base, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
+        } ?: return null
+    }
+    val written = reads.map { it.reference }
+    val targets = reads.map { read ->
+        addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected) ?: return null
+    }
     if (entityListPreGateAnswers(written, targets)) {
         return null
     }

@@ -91,8 +91,10 @@ private fun TrackedFactBase.entitySpecDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): RoundingDefect? {
-    val written = rounded.path ?: return null
-    val target = addressedTargetOf(written, declaringGroup, element) ?: return null
+    val (written, keyed) = operandReferenceIn(rounded.text, declaringGroup, element) {
+        rounded.path?.let { OperandReference(it) }
+    } ?: return null
+    val target = addressedTargetOf(written, declaringGroup, element, keyed) ?: return null
     val declared = declarationAt(target) ?: return null
     if (declared.declaredKind == DeclaredKind.GROUP) {
         return RoundingDefect("MVK_NO_GROUPS_ALLOWED", "rounds `$target`, which is a group — round one field of it")

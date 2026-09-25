@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
@@ -139,7 +138,7 @@ private fun TrackedFactBase.preGateFinding(
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
-    val written = call.entityListOperands(conditionLanguage, infixCarrier, valueListCarriers) ?: return null
+    val written = entityListOperandsOf(call, infixCarrier, valueListCarriers, declaringGroup, element) ?: return null
     // ALL or nothing, and that is a measured rule rather than caution. One operand A12 cannot address makes
     // the per-reference wildcard bar answer for the whole call — `MVK_NO_WILDCARD`, in BOTH operand orders
     // (KERNEL-FINDINGS KF443, `validate.laws.DuplicateOverlapCarrierSweepLawsTest`) — so a duplicate sitting
@@ -217,34 +216,42 @@ private data class ListOperand(val spec: String, val key: String, val indexSelec
  * (`FieldListOperationOperandsTest` holds that row). The clause case was measured; this one was measured the
  * other way, and the two are not the same operand.
  */
-private fun ConditionCall.entityListOperands(
-    language: ConditionLanguage,
+private fun TrackedFactBase.entityListOperandsOf(
+    call: ConditionCall,
     infixCarrier: String?,
     valueListCarriers: Set<String>,
+    declaringGroup: String,
+    element: TrackedDeclaration,
 ): List<ListOperand>? {
-    val infixEntities = when (operator) {
-        infixCarrier -> splitAtIn()?.second ?: return null
-        in valueListCarriers -> splitAtIn()?.takeIf { it.second.isWrittenOutValueList() }?.first ?: return null
+    val infixEntities = when (call.operator) {
+        infixCarrier -> call.splitAtIn()?.second ?: return null
+        in valueListCarriers -> call.splitAtIn()?.takeIf { it.second.isWrittenOutValueList() }?.first ?: return null
         else -> null
     }
     if (infixEntities != null) {
         return infixEntities.map { text ->
             if (!isBareEntitySpec(text)) return null
-            referencesIn(text, language).singleOrNull()?.let { ListOperand(it, "") } ?: return null
+            referencesIn(text, conditionLanguage).singleOrNull()?.let { ListOperand(it, "") } ?: return null
         }
     }
     // By CATALOG ID, never by the literal: `For` is `Fuer` in German and a bare literal would read a German
     // model's field of that name as a key — the same reasoning `repetitionScopeGroupFindings` states for
     // `@From`, which is a PATH_OP alongside this one and means something else entirely.
-    val indexKeyword = CONDITION_OPERATOR_KEYWORDS[language]?.get(SEMANTIC_INDEX)
-    return operands.map { operand ->
+    val indexKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
+    return call.operands.map { operand ->
         if (operand.clauses.isEmpty()) {
             return@map ListOperand(operand.path ?: return null, "")
+        }
+        val keyed = operand.clauses.any { it.keyword == indexKeyword }
+        // A key A12 refuses answers ahead of every list gate, the duplicates included ([KERNEL-FINDINGS KF476]),
+        // so a list holding one is the key's to report; only a key the shared reader honours leaves them to answer.
+        if (keyed && operandReferenceIn(operand.text, declaringGroup, element) { null } == null) {
+            return null
         }
         ListOperand(
             operand.base ?: return null,
             operand.clauses.joinToString("|") { "${it.keyword} ${it.text}" },
-            indexSelected = operand.clauses.any { it.keyword == indexKeyword },
+            indexSelected = keyed,
         )
     }
 }
