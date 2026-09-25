@@ -53,6 +53,8 @@ class FilterBodyComparisonTest {
             "Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Units] > 5) > 0) > 0" to ADMITTED,
             "Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Notes] < [Claims/Units]) > 0) > 0" to
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
+            "Sum(Claims*/Paid* Having [Claims/Units] > 5) > 0" to "MVK_INVALID_WILDCARD",
+            "Sum(Claims*/Paid* Having [Claims/Notes] < [Claims/Units]) > 0" to "MVK_INVALID_WILDCARD",
         )
         val actual = rows.keys.associateWith { firstCode(it) }
         assertEquals(rows, actual, "a filter body's comparison beside the filtered spec's own class")

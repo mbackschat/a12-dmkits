@@ -10751,8 +10751,9 @@ The checker had judged no comparison inside a filter body, so it was silent on t
 | the same with `[Claims/Notes] < [Claims/Units]` or `[Reference] > 5` as the nested body | `MVK_INVALID_TYPE_FOR_COMPARISON` |
 | the nested operand unstarred, `… Having Sum(Claims/Units Having [Claims/Units] > 5) > 0) > 0` | `MVK_NO_WILDCARD` |
 | the same with `[Claims/Notes] < [Claims/Units]` as the nested body | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+| a star on the filtered field, `Sum(Claims*/Paid* Having …) > 0`, with either body | `MVK_INVALID_WILDCARD` |
 
-So the checker types a body's side through every level the innermost filtered spec iterates, starred or not. It is silent on the two nested controls, whose classes belong to a filter walk that declines a nested filter ([DEV-API-GAPS](DEV-API-GAPS.md) DG90).
+The misplaced star is the one class the body does not outrank, being refused as the spec's path is read. So the checker types a body's side through every level the innermost filtered spec iterates, starred or not. It is silent on the two nested controls, whose classes belong to a filter walk that declines a nested filter ([DEV-API-GAPS](DEV-API-GAPS.md) DG90).
 
 **Extended 2026-09-25 — a sign stands on a number literal alone.** The grammar has no unary minus: `-` is part of `commonKonstante : minus='-'? ZiffernFolge …`. So `[BaseFee] > -1` and `[BaseFee] - -1 > 1` are admitted, while `-[BaseFee] < 0`, `[BaseFee] > -[EffectiveFee]`, `[BaseFee] > -{[EffectiveFee] + 1}`, `[BaseFee] > -Abs([EffectiveFee])` and `[BaseFee] > --1` are each `MVK_UNEXPECTED_TOKEN`. The checker had signed any operand and admitted all five; it now signs a literal only. The same holds on the operation carrier and in an operation argument: into `EffectiveFee`, `-5`, `0 - [BaseFee]`, `[BaseFee] * -1` and `RoundUp(0 - [BaseFee], 2)` are admitted, while `-[BaseFee]`, `[BaseFee] * -[BaseFee]`, `{-[BaseFee]}` and `RoundUp(-[BaseFee], 2)` are each `MVK_UNEXPECTED_TOKEN`, as the checker also answers.
 

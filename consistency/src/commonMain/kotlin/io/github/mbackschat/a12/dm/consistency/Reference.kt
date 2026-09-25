@@ -599,14 +599,15 @@ internal fun TrackedFactBase.bareReferenceField(
 
 /**
  * The repeatable levels a `Having` filter's [spec] iterates, whose one row its body reads, or null when the
- * spec resolves to nothing or stars a level that does not repeat.
+ * spec resolves to nothing.
  *
  * Every level, not only the starred ones. An unstarred filtered operand is refused by the filter's own chain,
  * which A12 runs once the whole spec is read, body included, so a comparison in the body is raised first
  * and is judged over that row regardless; the same holds for a nested aggregate's filter and the construct
  * gate refusing it (`rulekit.validate.laws.FilterBodyComparisonLawsTest
- * .aFilterBodysComparisonOutranksTheFilteredSpecsOwnClass`). A misplaced star is `MVK_INVALID_WILDCARD`,
- * which A12 answers alone ([KF328]), so that spec types nothing.
+ * .aFilterBodysComparisonOutranksTheFilteredSpecsOwnClass`). A misplaced star in the spec needs no check
+ * here: A12 refuses it with `MVK_INVALID_WILDCARD` as the spec's path is read, ahead of the body, and report
+ * assembly names that finding alone (the same test's star rows).
  */
 private fun TrackedFactBase.filteredLevelsOf(
     spec: String,
@@ -614,7 +615,6 @@ private fun TrackedFactBase.filteredLevelsOf(
     element: TrackedDeclaration,
 ): Set<String>? {
     val reference = referencesIn(spec, conditionLanguage).singleOrNull() ?: return null
-    starredLevelsOf(reference, declaringGroup, element) ?: return null
     val path = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin) as? Reference.Resolved)
         ?.path ?: return null
     return iteratedLevels(path).toSet()

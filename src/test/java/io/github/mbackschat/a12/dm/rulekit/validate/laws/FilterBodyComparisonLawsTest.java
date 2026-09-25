@@ -87,7 +87,8 @@ class FilterBodyComparisonLawsTest {
      * The body reads the filtered row even where the filtered operand is itself refused, because the filter's
      * own chain answers once the whole spec is read — body included — and the body's comparison is raised as
      * soon as it is read. Each refused shape has its sound-body control beside it, so the class that loses to
-     * the comparison is measured rather than assumed.
+     * the comparison is measured rather than assumed. A star on the filtered FIELD is the one that does not
+     * lose: it is refused as the spec's path is read, ahead of the body.
      */
     @Test
     void aFilterBodysComparisonOutranksTheFilteredSpecsOwnClass() {
@@ -103,6 +104,8 @@ class FilterBodyComparisonLawsTest {
         rows.put("Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Units] > 5) > 0) > 0", "MVK_NO_WILDCARD");
         rows.put("Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Notes] < [Claims/Units]) > 0) > 0",
                 "MVK_INVALID_TYPE_FOR_COMPARISON");
+        rows.put("Sum(Claims*/Paid* Having [Claims/Units] > 5) > 0", "MVK_INVALID_WILDCARD");
+        rows.put("Sum(Claims*/Paid* Having [Claims/Notes] < [Claims/Units]) > 0", "MVK_INVALID_WILDCARD");
 
         Map<String, String> actual = new LinkedHashMap<>();
         rows.keySet().forEach(condition -> actual.put(condition, verdict(condition)));
