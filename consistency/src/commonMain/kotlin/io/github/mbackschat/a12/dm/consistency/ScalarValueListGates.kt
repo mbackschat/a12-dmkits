@@ -87,10 +87,10 @@ private val SCALAR_VALUE_LISTS = setOf("FieldValueIncludedInValueList", "FieldVa
 
 /** The declarations the subject gate admits — A12 asks three POSITIVE predicates and this is their union. */
 private val SUBJECT_TYPES =
-    setOf("StringType", "CustomFieldType", "EnumerationType", "NumberType")
+    setOf(FieldType.STRING, FieldType.CUSTOM_FIELD, FieldType.ENUMERATION, FieldType.NUMBER)
 
 /** The declarations whose effective type this reader does not resolve, so no gate here may judge them. */
-private val UNRESOLVED_TYPES = setOf("TypeDefType", "UnspecifiedType")
+private val UNRESOLVED_TYPES = setOf(FieldType.TYPE_DEF, FieldType.UNSPECIFIED)
 
 private const val NO_GROUPS = "MVK_NO_GROUPS_ALLOWED"
 
@@ -216,7 +216,7 @@ private fun TrackedFactBase.constantListFindings(
     if (!numberList && !stringList) {
         return null
     }
-    if ((subject.declaredFieldType() == "NumberType") != numberList) {
+    if ((subject.declaredFieldType() == FieldType.NUMBER) != numberList) {
         return listOf(gate(INVALID_TYPES_FOR_COMPARISON, call.operator, subject, member, element))
     }
     val body = subject.enumerationBody() ?: return null
@@ -264,7 +264,7 @@ private fun JsonObject.lookupDomain(category: String?): List<String>? {
  * [baseTypeClass], whose other consumers ask the same question on carriers where the grouping is unmeasured.
  */
 private fun TrackedDeclaration.listBaseType(): BaseTypeClass? =
-    if (declaredFieldType() == "CustomFieldType") BaseTypeClass.TEXT else baseTypeClass()
+    if (declaredFieldType() == FieldType.CUSTOM_FIELD) BaseTypeClass.TEXT else baseTypeClass()
 
 /** Whether this operand is the list's `[entity]` spelling rather than a constant. */
 private fun CallOperand.namesAFieldEntry(): Boolean =

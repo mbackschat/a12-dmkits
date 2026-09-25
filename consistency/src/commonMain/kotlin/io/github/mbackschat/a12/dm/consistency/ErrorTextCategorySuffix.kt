@@ -58,8 +58,6 @@ private const val ARROW = "->"
  */
 private const val INDEX_TERMINAL = "index("
 
-private const val ENUMERATION = "EnumerationType"
-
 /** The class this parameter's suffix draws, or null where it carries none and where this may not judge. */
 private fun TrackedFactBase.suffixDefect(
     parameter: String,
@@ -83,7 +81,7 @@ private fun TrackedFactBase.suffixDefect(
         // The arrow with nothing after it, which is the one defect A12 answers before it looks at the field.
         return if (parameter.trimEnd().endsWith(ARROW)) "NO_CATEGORY" else null
     }
-    if (field.declaredFieldType() != ENUMERATION) {
+    if (field.declaredFieldType() != FieldType.ENUMERATION) {
         return "FIELD_NO_ENUM"
     }
     val declared = field.enumerationBody()?.categoryNames() ?: return null

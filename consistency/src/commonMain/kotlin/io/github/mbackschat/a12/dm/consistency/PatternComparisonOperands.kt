@@ -77,7 +77,7 @@ private sealed interface PatternSide {
     data object Expression : PatternSide
 
     /** A declaration, at the `fieldType` discriminator it names. */
-    data class Declared(val path: String, val type: String) : PatternSide
+    data class Declared(val path: String, val type: FieldType) : PatternSide
 }
 
 /** The class this comparison fails on, the side that fails it, and why — where the class carries a why. */
@@ -130,11 +130,11 @@ private fun defectOf(
     if (left !is PatternSide.Declared) {
         return PatternDefect(SHAPE, comparison.left)
     }
-    if (left.type != TEXT_TYPE) {
+    if (left.type != FieldType.STRING) {
         return PatternDefect(KIND, comparison.left)
     }
     val written = when (right) {
-        is PatternSide.Declared -> if (right.type != TEXT_TYPE) {
+        is PatternSide.Declared -> if (right.type != FieldType.STRING) {
             return PatternDefect(KIND, comparison.right)
         } else {
             return PatternDefect(NOT_CONSTANT, comparison.right)
@@ -145,8 +145,6 @@ private fun defectOf(
     val listed = kernelPatternBlacklist(written) ?: return null
     return PatternDefect(BAD_PATTERN, comparison.right, listed)
 }
-
-private const val TEXT_TYPE = "StringType"
 
 /** The token kinds one entity spec may be made of; anything else makes the side an expression. */
 private val SPEC_TOKENS = setOf(TokenKind.NAME, TokenKind.QUOTED_NAME, TokenKind.PUNCTUATION)
@@ -186,4 +184,4 @@ private fun TrackedFactBase.sideOf(
 }
 
 /** The declarations whose base type this reader does not know on this carrier, so no question judges them. */
-private val UNMEASURED_TYPES = setOf("CustomFieldType", "TypeDefType", "UnspecifiedType")
+private val UNMEASURED_TYPES = setOf(FieldType.CUSTOM_FIELD, FieldType.TYPE_DEF, FieldType.UNSPECIFIED)

@@ -185,7 +185,7 @@ private fun TrackedFactBase.sideOf(
     }
     // A declaration whose kind this reader knows and that carries no temporal format is an ordinary
     // partner; one whose temporal body it cannot read is not, and leaves the comparison unjudged.
-    if (declared.declaredFieldType() == "NumberType") {
+    if (declared.declaredFieldType() == FieldType.NUMBER) {
         return TemporalSide.Number(declared.path)
     }
     return if (declared.declaredFieldType() in DATED_TYPES) null else TemporalSide.Other(declared.path)
@@ -193,4 +193,4 @@ private fun TrackedFactBase.sideOf(
 
 /** The kinds whose format member decides the arm; an unreadable body among them means "cannot say". */
 private val DATED_TYPES =
-    setOf("DateType", "TimeType", "DateTimeType", "DateFragmentType", "DateRangeType")
+    setOf(FieldType.DATE, FieldType.TIME, FieldType.DATE_TIME, FieldType.DATE_FRAGMENT, FieldType.DATE_RANGE)

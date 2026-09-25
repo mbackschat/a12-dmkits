@@ -412,11 +412,11 @@ private fun Slot.entityDefect(
         return null
     }
     val declared = (field.body?.get("fieldType") as? JsonObject) ?: return null
-    val discriminator = (declared["type"] as? JsonPrimitive)?.contentOrNull ?: return null
+    val discriminator = declared.namedFieldType() ?: return null
     return when (discriminator) {
-        "StringType" -> stringDefect(declared["StringType"] as? JsonObject ?: return null, written)
-        "NumberType" -> numberDefect(declared["NumberType"] as? JsonObject ?: return null, written)
-        "DateType" -> dateDefect(declared["DateType"] as? JsonObject ?: return null, written)
+        FieldType.STRING -> stringDefect(FieldType.STRING.bodyIn(declared) ?: return null, written)
+        FieldType.NUMBER -> numberDefect(FieldType.NUMBER.bodyIn(declared) ?: return null, written)
+        FieldType.DATE -> dateDefect(FieldType.DATE.bodyIn(declared) ?: return null, written)
         else -> null
     }
 }

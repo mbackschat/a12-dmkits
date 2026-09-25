@@ -110,19 +110,16 @@ private val ARM_OF = mapOf(
     "NumberOfDifferentValues" to FieldListArm.DISTINCT,
 )
 
-private const val CONFIRM_TYPE = "ConfirmType"
-
-private const val NUMBER_TYPE = "NumberType"
 
 /** The declarations `NumberOfDifferentValues`' leader sends down the string arm, which folds all three. */
-private val STRING_LIKE_LEADERS = setOf("StringType", "CustomFieldType", "EnumerationType")
+private val STRING_LIKE_LEADERS = setOf(FieldType.STRING, FieldType.CUSTOM_FIELD, FieldType.ENUMERATION)
 
 /** The leaders NO arm claims, each measured: the else branch has a class of its own. */
-private val UNCLAIMED_LEADERS = setOf("BooleanType", "ConfirmType", "DateRangeType")
+private val UNCLAIMED_LEADERS = setOf(FieldType.BOOLEAN, FieldType.CONFIRM, FieldType.DATE_RANGE)
 
 /** The declarations this reader is CERTAIN `isLikeString || isEnum` refuses, every member measured. */
 private val PLAINLY_NON_STRING_LIKE_TYPES =
-    setOf(NUMBER_TYPE, "BooleanType", "ConfirmType", "DateRangeType") + TEMPORAL_DECLARED_TYPES
+    setOf(FieldType.NUMBER, FieldType.BOOLEAN, FieldType.CONFIRM, FieldType.DATE_RANGE) + TEMPORAL_DECLARED_TYPES
 
 /** What one arm's walk landed on: the class, the field that drew it, and what the operator wanted. */
 private class FieldListDefect(val code: String, val demand: String, val field: TrackedDeclaration)
@@ -147,7 +144,7 @@ private fun TrackedFactBase.operandDefect(
         return null
     }
     return when (arm) {
-        FieldListArm.NO_CONFIRM -> fields.firstOrNull { it.declaredFieldType() == CONFIRM_TYPE }
+        FieldListArm.NO_CONFIRM -> fields.firstOrNull { it.declaredFieldType() == FieldType.CONFIRM }
             ?.let { FieldListDefect("MVK_NO_BOOLY_ALLOWED", "takes no confirm declaration in its list", it) }
         FieldListArm.ALL_NUMBERS -> fields.firstOrNull { it.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES }
             ?.let {
@@ -199,7 +196,7 @@ private fun distinctDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
                     it,
                 )
             }
-        leader == NUMBER_TYPE -> fields.firstOrNull { it.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES }
+        leader == FieldType.NUMBER -> fields.firstOrNull { it.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES }
             ?.let {
                 FieldListDefect(
                     "MVK_NUMBER_AND_NON_NUMBER",

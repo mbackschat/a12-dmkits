@@ -39,17 +39,17 @@ internal fun supplemented(components: Set<Component>, hasBaseYear: Boolean): Set
  * its own refusal class, so a family that folded it in here would name the date arm's class on it.
  */
 private val TEMPORAL_FORMAT_MEMBERS = mapOf(
-    "DateType" to "format",
-    "TimeType" to "format",
-    "DateTimeType" to "format",
-    "DateFragmentType" to "formatOfFragment",
+    FieldType.DATE to "format",
+    FieldType.TIME to "format",
+    FieldType.DATE_TIME to "format",
+    FieldType.DATE_FRAGMENT to "formatOfFragment",
 )
 
 /**
  * The declared types A12 reads as the DATETIME operand base type — `IDateType` and the three kinds that
  * carry it — for a family that needs the membership rather than the format.
  */
-internal val TEMPORAL_DECLARED_TYPES: Set<String> = TEMPORAL_FORMAT_MEMBERS.keys
+internal val TEMPORAL_DECLARED_TYPES: Set<FieldType> = TEMPORAL_FORMAT_MEMBERS.keys
 
 /**
  * The format this field declares as a temporal one, or null when it declares none.
@@ -69,16 +69,16 @@ internal fun declaredTemporalFormatOf(field: TrackedDeclaration): String? =
  * reader does not resolve — and refusing on those would be an over-rejection on a model A12 may admit.
  */
 internal val PLAINLY_NON_TEMPORAL_TYPES = setOf(
-    "StringType",
-    "NumberType",
-    "BooleanType",
-    "ConfirmType",
-    "EnumerationType",
+    FieldType.STRING,
+    FieldType.NUMBER,
+    FieldType.BOOLEAN,
+    FieldType.CONFIRM,
+    FieldType.ENUMERATION,
 )
 
 /** The format a `DateRangeType` declares, or null when this field is not one. */
 internal fun declaredDateRangeFormatOf(field: TrackedDeclaration): String? =
-    field.declaredFormat(mapOf("DateRangeType" to "format"))
+    field.declaredFormat(mapOf(FieldType.DATE_RANGE to "format"))
 
 /**
  * The `interpretationOfYear` a `DateRangeType` declares, or null where it declares none.
@@ -87,13 +87,13 @@ internal fun declaredDateRangeFormatOf(field: TrackedDeclaration): String? =
  * the declaration expresses the default by omitting the property.
  */
 internal fun declaredRangeYearInterpretationOf(field: TrackedDeclaration): String? =
-    field.declaredFormat(mapOf("DateRangeType" to "interpretationOfYear"))
+    field.declaredFormat(mapOf(FieldType.DATE_RANGE to "interpretationOfYear"))
 
-private fun TrackedDeclaration.declaredFormat(members: Map<String, String>): String? {
+private fun TrackedDeclaration.declaredFormat(members: Map<FieldType, String>): String? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
-    val type = (declared["type"] as? JsonPrimitive)?.contentOrNull ?: return null
+    val type = declared.namedFieldType() ?: return null
     val member = members[type] ?: return null
-    val carrier = declared[type] as? JsonObject ?: return null
+    val carrier = type.bodyIn(declared) ?: return null
     return (carrier[member] as? JsonPrimitive)?.takeIf { it.isString }?.content
 }
 
@@ -108,7 +108,7 @@ internal fun declaresAPartialPrecision(field: TrackedDeclaration): Boolean =
 
 private fun declaresAPartialPrecisionIn(body: JsonObject?): Boolean {
     val declared = body?.get("fieldType") as? JsonObject ?: return false
-    val dateType = declared["DateType"] as? JsonObject ?: return false
+    val dateType = FieldType.DATE.bodyIn(declared) ?: return false
     return (dateType["datePrecision"] as? JsonPrimitive)?.contentOrNull in PARTIAL_PRECISIONS
 }
 

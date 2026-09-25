@@ -176,8 +176,8 @@ private fun TrackedFactBase.displaySideOf(
 ): DisplaySide? {
     val declared = bareReferenceField(side, declaringGroup, element) ?: return null
     return when (declared.declaredFieldType()) {
-        "StringType" -> DisplaySide.TextField
-        "EnumerationType" -> declaredLabels(declared)?.let { DisplaySide.Enumeration(declared.path, it) }
+        FieldType.STRING -> DisplaySide.TextField
+        FieldType.ENUMERATION -> declaredLabels(declared)?.let { DisplaySide.Enumeration(declared.path, it) }
         else -> null
     }
 }

@@ -104,7 +104,7 @@ private fun TrackedFactBase.rangeListDefect(
 
     // A12 sweeps every expanded field for both per-member gates before it asks about agreement at all.
     fields.forEach { field ->
-        if (field.declaredFieldType() != DATE_RANGE_TYPE) {
+        if (field.declaredFieldType() != FieldType.DATE_RANGE) {
             return RangeDefect(
                 "MVK_NO_DATE_RANGE", field.path,
                 "is declared `${field.declaredFieldType()}`, and overlapping ranges needs a date range",
@@ -238,8 +238,6 @@ private fun TrackedFactBase.resolvedTarget(
     val path = (resolved as? Reference.Resolved)?.path ?: return null
     return declarationAt(path)
 }
-
-private const val DATE_RANGE_TYPE = "DateRangeType"
 
 private fun finding(
     defect: RangeDefect,

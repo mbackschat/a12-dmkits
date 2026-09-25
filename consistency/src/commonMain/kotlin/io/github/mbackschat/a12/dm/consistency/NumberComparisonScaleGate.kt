@@ -162,7 +162,7 @@ private fun TrackedFactBase.sideOf(
     val spellings = BOOLEAN_CONSTANTS.mapNotNull { keywords?.get(it) }
     tokens.singleOrNull()?.takeIf { it.text in spellings }?.let { return NumberSide.BooleanConstant }
     val declared = bareReferenceField(side, declaringGroup, element) ?: return null
-    if (declared.declaredFieldType() != "NumberType") {
+    if (declared.declaredFieldType() != FieldType.NUMBER) {
         return null
     }
     return NumberSide.Declared(declared.path, declared.declaredScale())
@@ -170,5 +170,5 @@ private fun TrackedFactBase.sideOf(
 
 /** The fractional digits this declaration carries; an omitted member is zero, measured rather than assumed. */
 private fun TrackedDeclaration.declaredScale(): Int =
-    (((body?.get("fieldType") as? JsonObject)?.get("NumberType") as? JsonObject)
+    ((FieldType.NUMBER.bodyIn(body?.get("fieldType") as? JsonObject))
         ?.get("maxFractionalDigits") as? JsonPrimitive)?.intOrNull ?: 0

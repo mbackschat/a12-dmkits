@@ -87,14 +87,12 @@ private fun TrackedFactBase.scaleGateStandsAside(target: String, element: Tracke
     val field = declarationAt(target, DeclaredKind.FIELD)
         ?: return false
     val declaredType = field.declaredFieldType() ?: return false
-    if (declaredType != NUMBER_TYPE) {
+    if (declaredType != FieldType.NUMBER) {
         return true
     }
     val suppressed = element.body?.get("errorCodesToSuppress") as? JsonArray ?: return false
     return suppressed.any { (it as? JsonPrimitive)?.content == SUPPRESSIBLE }
 }
-
-private const val NUMBER_TYPE = "NumberType"
 
 /** Whether [written] names the computed field or a group that contains it. */
 private fun TrackedFactBase.readsTheTarget(

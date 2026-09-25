@@ -63,10 +63,10 @@ internal fun TrackedFactBase.enumCategoryGaps(): List<CoverageGap> =
 /** The `EnumerationType` body this field declares, or null when it declares another kind or none at all. */
 internal fun TrackedDeclaration.enumerationBody(): JsonObject? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
-    if ((declared["type"] as? JsonPrimitive)?.content != "EnumerationType") {
+    if (declared.namedFieldType() != FieldType.ENUMERATION) {
         return null
     }
-    return declared["EnumerationType"] as? JsonObject
+    return FieldType.ENUMERATION.bodyIn(declared)
 }
 
 /**

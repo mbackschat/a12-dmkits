@@ -54,9 +54,6 @@ private const val FIELD_VALUES_NOT_UNIQUE = "FieldValuesNotUnique"
 
 private const val KIND_REFUSED = "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED"
 
-/** The one declared type measured as refused by this gate; every other refusal belongs to a later one. */
-private const val DATE_RANGE = "DateRangeType"
-
 private fun TrackedFactBase.operandKindFinding(
     call: ConditionCall,
     declaringGroup: String,
@@ -72,7 +69,8 @@ private fun TrackedFactBase.operandKindFinding(
     }
     var spelling: Pair<String, String>? = null
     fields.forEach { field ->
-        if (field.declaredFieldType() == DATE_RANGE) {
+        // The one declared type measured as refused by this gate; every other refusal belongs to a later one.
+        if (field.declaredFieldType() == FieldType.DATE_RANGE) {
             return finding(
                 "in `$member`: `$FIELD_VALUES_NOT_UNIQUE` compares stored values, and `${field.path}` is a " +
                     "date RANGE — list the range's own fields, or compare a field of another kind",

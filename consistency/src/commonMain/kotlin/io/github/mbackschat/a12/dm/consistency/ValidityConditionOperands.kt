@@ -76,10 +76,10 @@ internal fun TrackedFactBase.validityConditionOperandFindings(): List<Finding> {
 private val VALIDITY_CONDITIONS = listOf("ValidType", "InvalidType")
 
 /** The two declarations `isStringEnumOrExtensibleEnum` admits — the third disjunct is a string-type FLAG. */
-private val CODE_BEARING_TYPES = setOf("StringType", "EnumerationType")
+private val CODE_BEARING_TYPES = setOf(FieldType.STRING, FieldType.ENUMERATION)
 
 /** The declarations whose effective type this reader does not resolve, so the kind gate may not judge them. */
-private val UNRESOLVED_TYPES = setOf("TypeDefType", "UnspecifiedType")
+private val UNRESOLVED_TYPES = setOf(FieldType.TYPE_DEF, FieldType.UNSPECIFIED)
 
 /** What a BARE path may carry besides names; a star, an arrow or a filter each brings another family's gate. */
 private val SUBJECT_PATH_PUNCTUATION = setOf("/", "..")

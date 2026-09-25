@@ -42,7 +42,7 @@ internal fun TrackedFactBase.enumComputationSourceFindings(): List<Finding> = de
     .flatMap { declared ->
         val targetPath = (declared.target as? Reference.Resolved)?.path ?: return@flatMap emptyList()
         val target = declarationAt(targetPath) ?: return@flatMap emptyList()
-        if (target.declaredFieldType() != ENUMERATION) {
+        if (target.declaredFieldType() != FieldType.ENUMERATION) {
             return@flatMap emptyList()
         }
         val admitted = target.enumerationBody()?.declaredEnumValues()?.toSet() ?: return@flatMap emptyList()
@@ -56,8 +56,6 @@ internal fun TrackedFactBase.enumComputationSourceFindings(): List<Finding> = de
                     ?.let { finding(it, member, element) }
             }
     }
-
-private const val ENUMERATION = "EnumerationType"
 
 private const val FIRST_FILLED_VALUE = "FirstFilledValue"
 
@@ -108,11 +106,11 @@ private fun TrackedFactBase.readDefect(
 ): String? {
     val (written, category) = categoryAccessesIn(text, conditionLanguage).singleOrNull() ?: (text to null)
     val source = bareReferenceField(written, declaringGroup, element) ?: return null
-    if (source.declaredFieldType() == "StringType") {
+    if (source.declaredFieldType() == FieldType.STRING) {
         return "reads `${source.path}`, which is a text field — A12 assigns an enumeration only from a " +
             "constant it declares, an enumeration it covers, or a `$FIRST_FILLED_VALUE` over those"
     }
-    if (source.declaredFieldType() != ENUMERATION) {
+    if (source.declaredFieldType() != FieldType.ENUMERATION) {
         return null
     }
     val body = source.enumerationBody() ?: return null

@@ -18,9 +18,9 @@ import kotlinx.serialization.json.JsonPrimitive
  * **The admitted vocabulary is DERIVED, which is what makes reporting an unknown name safe.** A checker that
  * refuses a spelling it does not recognise is claiming to know the complete set, and a hand-assembled set
  * that is short by one member turns every field using that member into a false rejection — the direction
- * this checker must never take. [DECLARED_FIELD_TYPES] is not assembled: it is the case list of the single
- * `switch` in `FieldtypeDeserializer.deriveFieldtype`, whose `default` raises, so the thirteen names are the
- * vocabulary by construction rather than by survey.
+ * this checker must never take. [FieldType] is not assembled: it is the case list of the single `switch` in
+ * `FieldtypeDeserializer.deriveFieldtype`, whose `default` raises, so the thirteen names are the vocabulary
+ * by construction rather than by survey.
  *
  * **TWO tiers, and the family owns both, because they are one member's law.** A shape A12's reader refuses
  * never loads; a field with NO `fieldType` at all, and one whose body lacks the member its type constructs
@@ -55,10 +55,10 @@ internal fun TrackedFactBase.fieldTypeBindingFindings(): List<Finding> =
 internal fun TrackedFactBase.fieldTypeBindingGaps(): List<CoverageGap> =
     declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
         val declared = field.body?.get("fieldType") as? JsonObject ?: return@mapNotNull null
-        if ((declared["type"] as? JsonPrimitive)?.content != "DateRangeType") {
+        if (declared.namedFieldType() != FieldType.DATE_RANGE) {
             return@mapNotNull null
         }
-        val body = declared["DateRangeType"] as? JsonObject ?: return@mapNotNull null
+        val body = FieldType.DATE_RANGE.bodyIn(declared) ?: return@mapNotNull null
         val unmeasured = body.unmeasuredRangePair() ?: return@mapNotNull null
         CoverageGap(field.path, "this range's (format, separator) pair was left to A12: $unmeasured")
     }
@@ -84,29 +84,20 @@ private fun JsonObject.unmeasuredRangePair(): String? {
 }
 
 /**
- * The thirteen names `FieldtypeDeserializer.deriveFieldtype` switches on, paired with whether that case
- * guards a missing body.
+ * Whether `FieldtypeDeserializer.deriveFieldtype`'s case for this type guards a missing body.
  *
  * `true` means the case reads `if (typeNode == null) …builder().build()` and binds without the body; `false`
  * means it dereferences the body behind a `// typeNode is never null` comment, which is a claim rather than
  * a guard — and the measurement confirms all eight of those refuse the reader when the body is absent.
  * Source-read of kernel `30.8.1`, 2026-09-13; the split is measured row by row against its control grid.
  */
-private val DECLARED_FIELD_TYPES = mapOf(
-    "StringType" to true,
-    "NumberType" to true,
-    "ConfirmType" to true,
-    "BooleanType" to true,
-    "UnspecifiedType" to true,
-    "DateType" to false,
-    "DateTimeType" to false,
-    "DateRangeType" to false,
-    "DateFragmentType" to false,
-    "EnumerationType" to false,
-    "TimeType" to false,
-    "TypeDefType" to false,
-    "CustomFieldType" to false,
-)
+private val FieldType.guardsItsBody: Boolean
+    get() = when (this) {
+        FieldType.STRING, FieldType.NUMBER, FieldType.CONFIRM, FieldType.BOOLEAN, FieldType.UNSPECIFIED -> true
+        FieldType.DATE, FieldType.DATE_TIME, FieldType.DATE_RANGE, FieldType.DATE_FRAGMENT, FieldType.ENUMERATION,
+        FieldType.TIME, FieldType.TYPE_DEF, FieldType.CUSTOM_FIELD,
+        -> false
+    }
 
 /**
  * One field's `fieldType`, judged as A12's reader binds it.
@@ -130,28 +121,28 @@ private fun unbindableFieldType(
     }
     val discriminator = declared["type"]?.asBoundText()
         ?: return unbindable(field, "`fieldType` names no `type`, so A12 binds nothing and refuses the null")
-    val guardsItsBody = DECLARED_FIELD_TYPES[discriminator]
+    val type = FieldType.of(discriminator)
         ?: return unbindable(
             field,
             "`fieldType` names the type `$discriminator`, which A12 does not declare — the vocabulary is " +
-                "case-sensitive and holds exactly: ${DECLARED_FIELD_TYPES.keys.sorted().joinToString(", ")}",
+                "case-sensitive and holds exactly: ${FieldType.entries.map { it.wire }.sorted().joinToString(", ")}",
         )
     val body = declared[discriminator]
-    if (!guardsItsBody && body == null) {
+    if (!type.guardsItsBody && body == null) {
         return unbindable(
             field,
             "`fieldType` names `$discriminator` but carries no `$discriminator` body, which that type " +
                 "reads without checking",
         )
     }
-    if (discriminator == "TypeDefType") {
+    if (type == FieldType.TYPE_DEF) {
         return unresolvedTypeDefinition(field, declaredTypeDefinitionIds)
     }
     // The one type refused for BEING itself: it binds like any other and A12 then has no code to generate
     // for it, in both body spellings, on a root and a nested field, and once per declaration rather than
     // once for the model (`FieldTypeBindingLawsTest`). So the verdict is the type's, not the body's, and
     // nothing about the body can lift it.
-    if (discriminator == "UnspecifiedType") {
+    if (type == FieldType.UNSPECIFIED) {
         return Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
@@ -166,17 +157,17 @@ private fun unbindableFieldType(
     // the body merely weighed, so a body carrying its optional members and not the one A12 builds from is
     // caught — which an emptiness test missed. Absence only: a member present but null is a shape nobody has
     // run, and leaving it to A12 under-reports where guessing could refuse a model A12 takes.
-    val required = REQUIRED_BODY_MEMBER[discriminator]
+    val required = REQUIRED_BODY_MEMBER[type]
     if (required != null && body is JsonObject && body.lacks(required)) {
         val explain = "`fieldType` names `$discriminator` without the `$required` A12 constructs that " +
             "type from"
         // The custom type is the one of the four that reaches a VERDICT rather than dying silently at the
         // build tier, so it carries A12's own class and the others carry this checker's.
-        return VERDICT_FOR_ABSENT_MEMBER[discriminator]
+        return VERDICT_FOR_ABSENT_MEMBER[type]
             ?.let { Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, it, explain, field.path) }
             ?: unbuildable(field, explain)
     }
-    if (discriminator == "DateRangeType" && body is JsonObject) {
+    if (type == FieldType.DATE_RANGE && body is JsonObject) {
         return inadmissibleRangePair(field, body)
     }
     return null
@@ -279,10 +270,10 @@ internal fun DeclaredElement.boundTypeDefinitionId(): String? = boundTypeDefinit
 
 private fun boundTypeDefinitionIdIn(body: JsonObject?): String? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
-    if ((declared["type"] as? JsonPrimitive)?.content != "TypeDefType") {
+    if (declared.namedFieldType() != FieldType.TYPE_DEF) {
         return null
     }
-    val typeDef = declared["TypeDefType"] as? JsonObject ?: return null
+    val typeDef = FieldType.TYPE_DEF.bodyIn(declared) ?: return null
     return (typeDef["typeDefinitionId"] as? JsonPrimitive)?.takeIf { it.isString }?.content
 }
 
@@ -311,10 +302,10 @@ private fun boundTypeDefinitionIdIn(body: JsonObject?): String? {
  * [unresolvedTypeDefinition] resolves rather than merely finds.
  */
 private val REQUIRED_BODY_MEMBER = mapOf(
-    "DateRangeType" to "format",
-    "DateFragmentType" to "formatOfFragment",
-    "EnumerationType" to "values",
-    "CustomFieldType" to "name",
+    FieldType.DATE_RANGE to "format",
+    FieldType.DATE_FRAGMENT to "formatOfFragment",
+    FieldType.ENUMERATION to "values",
+    FieldType.CUSTOM_FIELD to "name",
 )
 
 /**
@@ -325,7 +316,7 @@ private val REQUIRED_BODY_MEMBER = mapOf(
  * at all. The other three are absent on purpose: reporting A12's class where A12 issues none would put a
  * label on a refusal it did not make.
  */
-private val VERDICT_FOR_ABSENT_MEMBER = mapOf("CustomFieldType" to "CUSTOM_FIELD_TYPE_CODENAME_MISSING")
+private val VERDICT_FOR_ABSENT_MEMBER = mapOf(FieldType.CUSTOM_FIELD to "CUSTOM_FIELD_TYPE_CODENAME_MISSING")
 
 /**
  * Whether this body leaves the member A12 builds from unusable, which is not the same as absent.
@@ -436,8 +427,8 @@ private fun finding(field: TrackedDeclaration, explain: String) = Finding(
  */
 internal fun TrackedDeclaration.stringTypeBody(): JsonObject? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
-    if (declared.string("type") != "StringType") {
+    if (declared.namedFieldType() != FieldType.STRING) {
         return null
     }
-    return declared["StringType"] as? JsonObject
+    return FieldType.STRING.bodyIn(declared)
 }

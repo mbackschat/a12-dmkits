@@ -473,14 +473,14 @@ internal fun indexFieldNameOf(group: TrackedDeclaration): String? = indexFieldNa
 private fun indexFieldNameIn(body: JsonObject?): String? =
     (body?.get("indexFieldName") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
 
-/** The `fieldType.type` discriminator a field declares, or null where it declares none this reader can see. */
-internal fun DeclaredElement.declaredFieldType(): String? = declaredFieldTypeIn(body)
+/** The type a field declares, or null where it declares none A12 does. */
+internal fun DeclaredElement.declaredFieldType(): FieldType? = declaredFieldTypeIn(body)
 
 /** The same reading through the read barrier, sharing one implementation so the two cannot drift. */
-internal fun TrackedDeclaration.declaredFieldType(): String? = declaredFieldTypeIn(body)
+internal fun TrackedDeclaration.declaredFieldType(): FieldType? = declaredFieldTypeIn(body)
 
-private fun declaredFieldTypeIn(body: JsonObject?): String? =
-    ((body?.get("fieldType") as? JsonObject)?.get("type") as? JsonPrimitive)?.contentOrNull
+private fun declaredFieldTypeIn(body: JsonObject?): FieldType? =
+    (body?.get("fieldType") as? JsonObject)?.namedFieldType()
 
 /**
  * The base-type classes `IFieldType.matchBaseType` sorts declarations into.
@@ -507,14 +507,14 @@ internal enum class BaseTypeClass(val spoken: String) {
  * model carries, so the silence held by accident; leaving it out states it.
  */
 private val BASE_TYPE_OF = mapOf(
-    "StringType" to BaseTypeClass.TEXT,
-    "NumberType" to BaseTypeClass.NUMBER,
-    "EnumerationType" to BaseTypeClass.ENUMERATION,
-    "DateType" to BaseTypeClass.DATE,
-    "ConfirmType" to BaseTypeClass.YES,
-    "BooleanType" to BaseTypeClass.YES_NO,
-    "DateRangeType" to BaseTypeClass.DATE_RANGE,
-    "DateFragmentType" to BaseTypeClass.DATE_FRAGMENT,
+    FieldType.STRING to BaseTypeClass.TEXT,
+    FieldType.NUMBER to BaseTypeClass.NUMBER,
+    FieldType.ENUMERATION to BaseTypeClass.ENUMERATION,
+    FieldType.DATE to BaseTypeClass.DATE,
+    FieldType.CONFIRM to BaseTypeClass.YES,
+    FieldType.BOOLEAN to BaseTypeClass.YES_NO,
+    FieldType.DATE_RANGE to BaseTypeClass.DATE_RANGE,
+    FieldType.DATE_FRAGMENT to BaseTypeClass.DATE_FRAGMENT,
 )
 
 /**
@@ -544,12 +544,12 @@ internal fun TrackedDeclaration.baseTypeClass(): BaseTypeClass? = BASE_TYPE_OF[d
  * custom declaration (`CheckerFieldTypeTokenGuardTest` now derives the legal spellings).
  */
 internal val PLAINLY_NON_NUMBER_TYPES = setOf(
-    "StringType",
-    "BooleanType",
-    "ConfirmType",
-    "EnumerationType",
-    "CustomFieldType",
-    "DateRangeType",
+    FieldType.STRING,
+    FieldType.BOOLEAN,
+    FieldType.CONFIRM,
+    FieldType.ENUMERATION,
+    FieldType.CUSTOM_FIELD,
+    FieldType.DATE_RANGE,
 ) + TEMPORAL_DECLARED_TYPES
 
 /** The token kinds one entity spec may be made of; anything else makes the text an expression. */
@@ -680,11 +680,11 @@ internal fun TrackedFactBase.addressedTargetOf(
  * it of two different kernel methods that each call that one predicate.
  */
 internal val PLAINLY_NON_STRING_TYPES = setOf(
-    "NumberType",
-    "BooleanType",
-    "ConfirmType",
-    "EnumerationType",
-    "DateRangeType",
+    FieldType.NUMBER,
+    FieldType.BOOLEAN,
+    FieldType.CONFIRM,
+    FieldType.ENUMERATION,
+    FieldType.DATE_RANGE,
 ) + TEMPORAL_DECLARED_TYPES
 
 /**
@@ -697,8 +697,8 @@ internal val PLAINLY_NON_STRING_TYPES = setOf(
  * its own gate wants one precision rather than one interface.
  */
 internal val PLAINLY_NON_DATE_TYPES = setOf(
-    "StringType", "NumberType", "BooleanType", "ConfirmType", "EnumerationType",
-    "CustomFieldType", "DateRangeType",
+    FieldType.STRING, FieldType.NUMBER, FieldType.BOOLEAN, FieldType.CONFIRM, FieldType.ENUMERATION,
+    FieldType.CUSTOM_FIELD, FieldType.DATE_RANGE,
 )
 
 internal fun TrackedFactBase.operandSpec(operand: CallOperand): Pair<String, String?>? {
@@ -742,10 +742,10 @@ internal fun TrackedDeclaration.waivesValueValidation(): Boolean = waivesValueVa
 
 private fun waivesValueValidationIn(body: JsonObject?): Boolean {
     val declared = body?.get("fieldType") as? JsonObject ?: return false
-    if ((declared["type"] as? JsonPrimitive)?.contentOrNull != "StringType") {
+    if (declared.namedFieldType() != FieldType.STRING) {
         return false
     }
-    val string = declared["StringType"] as? JsonObject ?: return false
+    val string = FieldType.STRING.bodyIn(declared) ?: return false
     return (string["noValueValidation"] as? JsonPrimitive)?.booleanOrNull == true
 }
 

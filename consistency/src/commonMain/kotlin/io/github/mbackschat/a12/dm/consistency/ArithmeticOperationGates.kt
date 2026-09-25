@@ -282,17 +282,17 @@ private fun TrackedFactBase.operandType(
     }
     val field = operand.path?.let { declaredFieldAt(it, group, element) } ?: return null
     return when (val declared = field.declaredFieldType()) {
-        "NumberType" -> OperandBaseType.NUMBER
-        "StringType", "CustomFieldType" -> OperandBaseType.TEXT
-        "EnumerationType" ->
+        FieldType.NUMBER -> OperandBaseType.NUMBER
+        FieldType.STRING, FieldType.CUSTOM_FIELD -> OperandBaseType.TEXT
+        FieldType.ENUMERATION ->
             if (field.carriesDisplayLabels()) OperandBaseType.LABELLED_ENUM else OperandBaseType.TEXT
-        "TypeDefType", "UnspecifiedType", null -> null
+        FieldType.TYPE_DEF, FieldType.UNSPECIFIED, null -> null
         else -> if (declared in DECLARED_OTHER_BASE_TYPES) OperandBaseType.OTHER else null
     }
 }
 
 /** The declarations whose base type this reader knows to be neither number-like nor string-like. */
-private val DECLARED_OTHER_BASE_TYPES = setOf("BooleanType", "ConfirmType", "DateRangeType") +
+private val DECLARED_OTHER_BASE_TYPES = setOf(FieldType.BOOLEAN, FieldType.CONFIRM, FieldType.DATE_RANGE) +
     TEMPORAL_DECLARED_TYPES
 
 /** Whether any of this enumeration's values carries a display label, which is what `+` refuses. */
@@ -379,7 +379,7 @@ private fun TrackedFactBase.declaredScaleOf(
 ): Int? {
     val field = declaredFieldAt(path, group, element) ?: return null
     val type = (field.body?.get("fieldType") as? JsonObject) ?: return null
-    val number = (type["NumberType"] as? JsonObject) ?: return null
+    val number = (FieldType.NUMBER.bodyIn(type)) ?: return null
     return (number["maxFractionalDigits"] as? JsonPrimitive)?.intOrNull
 }
 

@@ -94,11 +94,11 @@ private const val DIGIT_PATTERN = "[0-9]+"
  * effective type, so it leaves them to A12.
  */
 private val PLAINLY_UNCONVERTIBLE_TYPES = setOf(
-    "NumberType",
-    "BooleanType",
-    "ConfirmType",
-    "CustomFieldType",
-    "DateRangeType",
+    FieldType.NUMBER,
+    FieldType.BOOLEAN,
+    FieldType.CONFIRM,
+    FieldType.CUSTOM_FIELD,
+    FieldType.DATE_RANGE,
 ) + TEMPORAL_DECLARED_TYPES
 
 private class ValueOperandDefect(val code: String, val detail: String)
@@ -159,15 +159,15 @@ private fun TrackedFactBase.valueOperandDefect(
 /** The conversion arm's three branches, in the order `checkIsConvertableToNumber` takes them. */
 private fun conversionDefect(
     declared: TrackedDeclaration,
-    type: String,
+    type: FieldType,
     category: String?,
     target: String,
 ): ValueOperandDefect? {
     fun refuse(because: String) =
         ValueOperandDefect("MVK_NO_CONVERT_IN_NUMBER", "reads `$target`, which $because")
     return when (type) {
-        "StringType" -> {
-            val body = (declared.body?.get("fieldType") as? JsonObject)?.get("StringType") as? JsonObject
+        FieldType.STRING -> {
+            val body = FieldType.STRING.bodyIn(declared.body?.get("fieldType") as? JsonObject)
             val maxLength = (body?.get("maxLength") as? JsonPrimitive)?.intOrNull
             val pattern = (body?.get("pattern") as? JsonPrimitive)?.contentOrNull
             when {
@@ -181,7 +181,7 @@ private fun conversionDefect(
                 else -> null
             }
         }
-        "EnumerationType" -> {
+        FieldType.ENUMERATION -> {
             val values = declared.convertibleValues(category) ?: return null
             val offending = values.firstOrNull { !it.readsAsANumber() } ?: return null
             refuse("declares the value `$offending`, which is not a number this conversion can read")

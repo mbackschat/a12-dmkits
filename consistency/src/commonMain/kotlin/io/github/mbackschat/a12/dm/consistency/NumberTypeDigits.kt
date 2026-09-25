@@ -236,10 +236,10 @@ private fun JsonObject.declaredLength(member: String): Int? =
 /** The `NumberType` body this field declares, or null when it declares another type or none. */
 private fun TrackedDeclaration.numberTypeBody(): JsonObject? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
-    if (declared.string("type") != "NumberType") {
+    if (declared.namedFieldType() != FieldType.NUMBER) {
         return null
     }
-    return declared["NumberType"] as? JsonObject
+    return FieldType.NUMBER.bodyIn(declared)
 }
 
 private fun JsonObject.int(member: String): Int? = (this[member] as? JsonPrimitive)?.intOrNull

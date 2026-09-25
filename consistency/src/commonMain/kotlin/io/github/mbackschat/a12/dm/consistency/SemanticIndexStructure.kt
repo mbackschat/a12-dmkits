@@ -175,10 +175,10 @@ private fun TrackedFactBase.keyClassOf(
  * a declaration carrying no type body at all declares none of the three.
  */
 private fun TrackedDeclaration.admitsEveryConstant(): Boolean {
-    if (declaredFieldType() != "StringType") {
+    if (declaredFieldType() != FieldType.STRING) {
         return false
     }
-    val string = (body?.get("fieldType") as? JsonObject)?.get("StringType") as? JsonObject ?: return true
+    val string = FieldType.STRING.bodyIn(body?.get("fieldType") as? JsonObject) ?: return true
     return LENGTH_MEMBERS.none { member -> ((string[member] as? JsonPrimitive)?.intOrNull ?: 0) > 0 } &&
         (string["pattern"] as? JsonPrimitive)?.contentOrNull.isNullOrEmpty()
 }
@@ -218,17 +218,17 @@ private fun keyTypeVerdict(indexField: TrackedDeclaration, key: TrackedDeclarati
 private enum class IndexKeyClass { TEXT, ENUMERATION, NUMBER, TEMPORAL, BOOLEAN, CONFIRM }
 
 private val INDEX_KEY_CLASS_OF = mapOf(
-    "StringType" to IndexKeyClass.TEXT,
-    "CustomFieldType" to IndexKeyClass.TEXT,
-    "EnumerationType" to IndexKeyClass.ENUMERATION,
-    "NumberType" to IndexKeyClass.NUMBER,
-    "DateType" to IndexKeyClass.TEMPORAL,
-    "TimeType" to IndexKeyClass.TEMPORAL,
-    "DateTimeType" to IndexKeyClass.TEMPORAL,
-    "DateFragmentType" to IndexKeyClass.TEMPORAL,
-    "DateRangeType" to IndexKeyClass.TEMPORAL,
-    "BooleanType" to IndexKeyClass.BOOLEAN,
-    "ConfirmType" to IndexKeyClass.CONFIRM,
+    FieldType.STRING to IndexKeyClass.TEXT,
+    FieldType.CUSTOM_FIELD to IndexKeyClass.TEXT,
+    FieldType.ENUMERATION to IndexKeyClass.ENUMERATION,
+    FieldType.NUMBER to IndexKeyClass.NUMBER,
+    FieldType.DATE to IndexKeyClass.TEMPORAL,
+    FieldType.TIME to IndexKeyClass.TEMPORAL,
+    FieldType.DATE_TIME to IndexKeyClass.TEMPORAL,
+    FieldType.DATE_FRAGMENT to IndexKeyClass.TEMPORAL,
+    FieldType.DATE_RANGE to IndexKeyClass.TEMPORAL,
+    FieldType.BOOLEAN to IndexKeyClass.BOOLEAN,
+    FieldType.CONFIRM to IndexKeyClass.CONFIRM,
 )
 
 /** What the KEY half settles on its own: the wildcard class, nothing, or that this index is not ours. */

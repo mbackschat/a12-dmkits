@@ -50,13 +50,18 @@ private fun TrackedFactBase.categoryFinding(
     }
     val target = declarationAt(resolved.path)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
         ?: return null
-    val declaredType = ((target.body?.get("fieldType") as? JsonObject)?.get("type") as? JsonPrimitive)
-        ?.contentOrNull ?: return null
-    if (declaredType == TYPE_DEF) {
+    val declaredType = target.declaredFieldType() ?: return null
+    // A field typed by REFERENCE to a type definition, whose body this checker never reads. Preparation keeps
+    // type definitions' IDS alone, which `Check.kt` already declares as a coverage gap — so such a field may
+    // well BE an Enumeration with the category named, and judging it from the reference would refuse what A12
+    // admits. It did: the reference corpus reports a date `format` field typed through `DATE_FORMAT_1`, and
+    // `[format->containsYear]` is legal there (caught by `adapter.laws.CheckerSilenceOnCleanModelsTest`,
+    // 2026-09-14, before this family landed).
+    if (declaredType == FieldType.TYPE_DEF) {
         return null
     }
     val enumeration = target.enumerationBody()
-        ?: return if (declaredType == ENUMERATION) {
+        ?: return if (declaredType == FieldType.ENUMERATION) {
             null
         } else {
             finding(
@@ -93,19 +98,6 @@ private fun JsonObject.declaredCategoryNames(): Set<String>? {
         (declared["name"] as? JsonPrimitive)?.contentOrNull ?: return null
     }.toSet()
 }
-
-/**
- * A field typed by REFERENCE to a type definition, whose body this checker never reads.
- *
- * Preparation keeps type definitions' IDS alone, which `Check.kt` already declares as a coverage gap — so a
- * `TypeDefType` field may well BE an Enumeration with the category named, and judging it from the reference
- * would refuse what A12 admits. It did: the reference corpus reports a date `format` field typed through
- * `DATE_FORMAT_1`, and `[format->containsYear]` is legal there (caught by
- * `adapter.laws.CheckerSilenceOnCleanModelsTest`, 2026-09-14, before this family landed).
- */
-private const val TYPE_DEF = "TypeDefType"
-
-private const val ENUMERATION = "EnumerationType"
 
 private fun finding(code: String, explain: String, at: String): Finding =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)

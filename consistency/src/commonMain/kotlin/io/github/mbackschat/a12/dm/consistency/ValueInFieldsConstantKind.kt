@@ -105,11 +105,11 @@ private const val NOW_CONSTANT = "Now"
 private data class ConstantSpellings(val yes: String?, val no: String?, val pointsInTime: List<String>)
 
 /** One arm of A12's switch on the constant: which declarations it admits, and what it refuses with. */
-private enum class ConstantArm(val code: String, val admitted: Set<String>) {
-    YES("MVK_NO_TYPE_YES_OR_YESNO", setOf("BooleanType", "ConfirmType")),
-    YES_NO("MVK_NO_TYPEYESNO", setOf("BooleanType")),
-    TEXT("MVK_NO_STRING_OR_ENUM", setOf("StringType", "CustomFieldType", "EnumerationType")),
-    NUMBER("MVK_NO_NUMBER", setOf("NumberType")),
+private enum class ConstantArm(val code: String, val admitted: Set<FieldType>) {
+    YES("MVK_NO_TYPE_YES_OR_YESNO", setOf(FieldType.BOOLEAN, FieldType.CONFIRM)),
+    YES_NO("MVK_NO_TYPEYESNO", setOf(FieldType.BOOLEAN)),
+    TEXT("MVK_NO_STRING_OR_ENUM", setOf(FieldType.STRING, FieldType.CUSTOM_FIELD, FieldType.ENUMERATION)),
+    NUMBER("MVK_NO_NUMBER", setOf(FieldType.NUMBER)),
 
     /**
      * The FALL-THROUGH: a constant the switch tests for none of the four arms above.
@@ -122,7 +122,7 @@ private enum class ConstantArm(val code: String, val admitted: Set<String>) {
 }
 
 /** The declarations whose effective type this reader does not resolve, so no arm may judge them. */
-private val UNRESOLVED_TYPES = setOf("TypeDefType", "UnspecifiedType")
+private val UNRESOLVED_TYPES = setOf(FieldType.TYPE_DEF, FieldType.UNSPECIFIED)
 
 private fun TrackedFactBase.constantKindFinding(
     call: ConditionCall,
@@ -255,7 +255,7 @@ private fun typeWalkVerdict(
         if (type in UNRESOLVED_TYPES) {
             return ListVerdict.Opaque
         }
-        if (arm == ConstantArm.TEXT && type == "EnumerationType") {
+        if (arm == ConstantArm.TEXT && type == FieldType.ENUMERATION) {
             val domain = field.enumerationBody()?.declaredEnumValues()?.toSet() ?: return ListVerdict.Opaque
             if (stringConstantOf(constantText) !in domain) {
                 return ListVerdict.Opaque

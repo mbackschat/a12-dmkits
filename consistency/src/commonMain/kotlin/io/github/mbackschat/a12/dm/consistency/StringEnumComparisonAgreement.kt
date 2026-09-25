@@ -183,9 +183,9 @@ private fun TrackedFactBase.sideOf(
     }
     val declared = bareReferenceField(side, declaringGroup, element) ?: return null
     return when (declared.declaredFieldType()) {
-        "StringType" -> TextSide.TextField
-        "NumberType" -> TextSide.NumberField
-        "EnumerationType" -> declared.enumerationBody()?.declaredEnumValues()
+        FieldType.STRING -> TextSide.TextField
+        FieldType.NUMBER -> TextSide.NumberField
+        FieldType.ENUMERATION -> declared.enumerationBody()?.declaredEnumValues()
             ?.let { TextSide.EnumField(declared.path, it) }
         else -> null
     }

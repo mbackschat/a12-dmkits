@@ -60,8 +60,6 @@ private const val VALUE_AS_DATE_ARITY = 2
 
 private class PartialDateDefect(val code: String, val detail: String)
 
-private const val DATE_TYPE = "DateType"
-
 /**
  * The declarations this reader is CERTAIN A12's kind gate refuses, all eleven measured.
  *
@@ -122,13 +120,13 @@ private fun TrackedFactBase.valueAsDateDefect(
 /** The kind gate's own verdict: A12's `isDatePartialKnown`, read off the stored declaration. */
 private fun partialDateDefect(declared: TrackedDeclaration, target: String): PartialDateDefect? {
     val type = declared.declaredFieldType() ?: return null
-    if (type == DATE_TYPE && declaresAPartialPrecision(declared)) {
+    if (type == FieldType.DATE && declaresAPartialPrecision(declared)) {
         return null
     }
     if (type !in PLAINLY_NOT_A_PARTIAL_DATE) {
         return null
     }
-    val because = if (type == DATE_TYPE) {
+    val because = if (type == FieldType.DATE) {
         "declared `$type` at the FULL default precision — the operator exists to resolve a date whose parts " +
             "may be unknown, so declare `datePrecision` DAY_OPTIONAL, MONTH_OPTIONAL or YEAR_OPTIONAL on it, " +
             "or compare the field directly"

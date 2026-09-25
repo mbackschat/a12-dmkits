@@ -70,7 +70,7 @@ internal fun TrackedFactBase.parallelIterationUniquenessFindings(): List<Finding
 }
 
 /** A repeatable group that declares an index field, with the field's short name and declared type. */
-private data class KeyedGroup(val path: String, val indexField: String, val indexType: String)
+private data class KeyedGroup(val path: String, val indexField: String, val indexType: FieldType)
 
 /** The nearest index-keyed repeatable group at or above [path], or null when nothing above it is keyed. */
 private fun TrackedFactBase.keyedGroupOver(path: String): KeyedGroup? = repeatableGroups()
@@ -84,7 +84,7 @@ private fun TrackedFactBase.keyedGroupOver(path: String): KeyedGroup? = repeatab
     }
 
 /** The `fieldType.type` a field declares, or null when it declares none this reader can see. */
-private fun TrackedFactBase.declaredTypeOf(path: String): String? = declarationAt(path, DeclaredKind.FIELD)
+private fun TrackedFactBase.declaredTypeOf(path: String): FieldType? = declarationAt(path, DeclaredKind.FIELD)
     ?.declaredFieldType()
 
 /**

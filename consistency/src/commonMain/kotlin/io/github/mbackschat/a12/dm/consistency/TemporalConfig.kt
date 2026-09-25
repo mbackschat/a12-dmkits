@@ -37,16 +37,16 @@ internal fun TrackedFactBase.temporalConfigFindings(field: TrackedDeclaration): 
         return emptyList()
     }
     val declared = field.body?.get("fieldType") as? JsonObject ?: return emptyList()
-    val type = (declared["type"] as? JsonPrimitive)?.content ?: return emptyList()
-    val body = declared[type] as? JsonObject ?: return emptyList()
+    val type = declared.namedFieldType() ?: return emptyList()
+    val body = type.bodyIn(declared) ?: return emptyList()
     return when (type) {
-        "DateType" -> listOfNotNull(
+        FieldType.DATE -> listOfNotNull(
             pre1900Finding(field, body, body.declaredFormat("format")),
             partialPrecisionFinding(field, body, body.declaredFormat("format")),
         )
         // The fragment carrier spells its format under its own member and takes only the first gate,
         // having no precision of its own.
-        "DateFragmentType" -> listOfNotNull(
+        FieldType.DATE_FRAGMENT -> listOfNotNull(
             pre1900Finding(field, body, body.declaredFormat("formatOfFragment")),
         )
         else -> emptyList()

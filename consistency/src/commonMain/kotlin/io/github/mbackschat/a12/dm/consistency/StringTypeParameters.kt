@@ -128,10 +128,10 @@ private const val MIN_ABOVE_MAX_ON_A_CUSTOM_TYPE = "MIN_LENGTH_BIGGER_MAX_LENGTH
 /** The custom type's body, or null when this field declares another type. */
 private fun TrackedDeclaration.customTypeBody(): JsonObject? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
-    if ((declared["type"] as? JsonPrimitive)?.content != "CustomFieldType") {
+    if (declared.namedFieldType() != FieldType.CUSTOM_FIELD) {
         return null
     }
-    return declared["CustomFieldType"] as? JsonObject
+    return FieldType.CUSTOM_FIELD.bodyIn(declared)
 }
 
 /** Whether the member is declared as something A12 reads as set — the sentinel counts as unset. */

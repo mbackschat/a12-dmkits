@@ -311,15 +311,14 @@ private fun TrackedFactBase.indexFieldAt(group: String, name: String): TrackedDe
  * two declared types would otherwise become an invented rejection.
  */
 private fun baseFamilyOf(body: JsonObject?): String? {
-    val declared = (body?.get("fieldType") as? JsonObject)?.get("type") as? JsonPrimitive
-    return BASE_FAMILIES[declared?.contentOrNull]
+    return BASE_FAMILIES[(body?.get("fieldType") as? JsonObject)?.namedFieldType()]
 }
 
 private val BASE_FAMILIES = mapOf(
-    "StringType" to "string",
-    "NumberType" to "number",
-    "DateType" to "date",
-    "EnumerationType" to "enumeration",
+    FieldType.STRING to "string",
+    FieldType.NUMBER to "number",
+    FieldType.DATE to "date",
+    FieldType.ENUMERATION to "enumeration",
 )
 
 private fun scopeFinding(

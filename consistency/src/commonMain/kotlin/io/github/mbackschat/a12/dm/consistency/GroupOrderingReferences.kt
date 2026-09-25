@@ -225,7 +225,7 @@ private fun JsonPrimitive.setsTheFlag(): Boolean {
  * saying so is [fieldTypeBindingFindings]'s business rather than a second opinion from this family.
  */
 private fun noValueValidationFinding(field: TrackedDeclaration, member: String, code: String): Finding? {
-    val string = (field.body?.get("fieldType") as? JsonObject)?.get("StringType") as? JsonObject
+    val string = FieldType.STRING.bodyIn(field.body?.get("fieldType") as? JsonObject)
         ?: return null
     if ((string["noValueValidation"] as? JsonPrimitive)?.setsTheFlag() != true) {
         return null

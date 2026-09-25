@@ -14,12 +14,13 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
 /**
- * Every {@code fieldType} discriminator the portable checker MATCHES ON is one A12 actually stores.
+ * The portable checker spells {@code fieldType} discriminators only in its {@code FieldType} enum.
  *
  * <p><b>The defect this exists to stop, measured 2026-09-14.</b> Four of the checker's type sets spelled the
  * custom field type {@code CustomType}, while A12's stored discriminator is {@code CustomFieldType} — a
@@ -30,31 +31,32 @@ import org.junit.jupiter.api.Test;
  * listed the custom type among the declarations it ADMITS, so the dead token turned an admission into an
  * over-rejection, the one direction this project forbids.
  *
- * <p><b>Why a scan rather than a shared constant.</b> A shared constant only helps the sites that reach for
- * it; the ones that bite are the literal sets a new family writes out, and there were seven such sets when
- * this was written. The scan needs no cooperation from a new family at all — it reads the sets as source
- * text, which is the only denominator that cannot go stale.
+ * <p><b>Why the enum AND a scan.</b> The enum's readers return the type, so comparing one to a literal no
+ * longer compiles. What the type system cannot see is a family that reads the raw {@code type} member and
+ * writes its own set, which is how all four dead tokens were written. So outside the enum, any capitalized
+ * {@code …Type} literal is refused, legal or not: a misspelled one is dead code, and a correct one is the
+ * second copy the misspelled ones used to be. Comments are exempt, since prose names types as a model does.
  *
- * <p><b>Both sides are derived.</b> The legal spellings come from {@code FieldTypeBinding.kt}'s own
- * {@code DECLARED_FIELD_TYPES}, the table that mirrors A12's deserializer switch, so a kernel upgrade that
- * adds a field type widens this guard by editing the checker rather than this test. The scanned side is every
- * checker source outside the {@code syntax} package — excluded because its subject is the CONDITION
+ * <p><b>Both sides are derived.</b> The vocabulary is read off the enum, the case list of A12's deserializer
+ * switch, so a kernel upgrade that adds a field type widens this guard by editing the checker rather than
+ * this test. The scanned side is every checker source outside the {@code syntax} package — excluded because
+ * its subject is the CONDITION
  * vocabulary, where {@code ValidType} and {@code InvalidType} are operator ids and name no declaration at
  * all; no file there mentions a field-type discriminator (verified by this test). A family OUTSIDE that
  * package may legitimately name such an id too — one carries {@code "ValidType"} to look its keyword up —
  * so the operator ids themselves are subtracted, read from the vocabulary's own table rather than listed
  * here, and a positive control keeps that subtraction from quietly emptying the scan.
  *
- * <p><b>What it proves, and what it does not.</b> It proves that a token a family matches on CAN match a
- * stored model — never that matching it is the right law. A discriminator listed in the wrong set passes
- * here, which is the laws grid's job.
+ * <p><b>What it proves, and what it does not.</b> It proves that every type a family matches on is one A12
+ * stores — never that matching it is the right law. A type listed in the wrong set passes here, which is the
+ * laws grid's job.
  */
 class CheckerFieldTypeTokenGuardTest {
 
     private static final Path CHECKER = Path.of(
             "consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency");
 
-    private static final Path BINDER = CHECKER.resolve("FieldTypeBinding.kt");
+    private static final Path OWNER = CHECKER.resolve("FieldType.kt");
 
     /** The condition vocabulary, whose operator ids look like type names and are not declarations. */
     private static final String SYNTAX_PACKAGE = "syntax";
@@ -62,7 +64,8 @@ class CheckerFieldTypeTokenGuardTest {
     /** A capitalized identifier ending in {@code Type}, which is the shape of every stored discriminator. */
     private static final Pattern TYPE_LITERAL = Pattern.compile("\"([A-Z][A-Za-z]*Type)\"");
 
-    private static final Pattern DECLARED_ENTRY = Pattern.compile("\"([A-Za-z]+)\" to ");
+    /** An enum entry, {@code NAME("Wire"),}, whose argument is A12's stored spelling. */
+    private static final Pattern ENTRY = Pattern.compile("(?m)^    [A-Z_]+\\(\"([A-Za-z]+)\"\\),$");
 
     /** The condition vocabulary's own table, the only authority on which capitalized names are operator ids. */
     private static final Path VOCABULARY = CHECKER.resolve(SYNTAX_PACKAGE).resolve("ConditionKeywords.kt");
@@ -71,23 +74,26 @@ class CheckerFieldTypeTokenGuardTest {
     private static final Pattern OPERATOR_ID = Pattern.compile("\"([A-Z][A-Za-z]*)\" to \"");
 
     @Test
-    void everyFieldTypeTokenTheCheckerMatchesIsOneA12Stores() {
+    void noFieldTypeIsSpelledOutsideTheEnum() {
         Set<String> declared = declaredFieldTypes();
         Set<String> operatorIds = operatorIds();
-        Map<String, Set<String>> undeclared = new TreeMap<>();
+        Map<String, Set<String>> spelled = new TreeMap<>();
         for (Path source : checkerSources()) {
-            Matcher m = TYPE_LITERAL.matcher(read(source));
+            if (source.equals(OWNER)) {
+                continue;
+            }
+            Matcher m = TYPE_LITERAL.matcher(withoutComments(read(source)));
             while (m.find()) {
-                if (!declared.contains(m.group(1)) && !operatorIds.contains(m.group(1))) {
-                    undeclared.computeIfAbsent(CHECKER.relativize(source).toString(), k -> new TreeSet<>())
+                if (!operatorIds.contains(m.group(1))) {
+                    spelled.computeIfAbsent(CHECKER.relativize(source).toString(), k -> new TreeSet<>())
                             .add(m.group(1));
                 }
             }
         }
-        assertEquals(Map.of(), undeclared,
-                "these files match a `fieldType` discriminator A12 never stores, so the match is dead code "
-                        + "and the law behind it is unenforced; the stored spellings are "
-                        + declared + " (FieldTypeBinding.kt's DECLARED_FIELD_TYPES)");
+        assertEquals(Map.of(), spelled,
+                "compare against FieldType instead: read a declaration through declaredFieldType() or "
+                        + "JsonObject.namedFieldType(), and a type's body through FieldType.bodyIn. A12 stores "
+                        + "exactly " + declared + ", so a spelling outside that set is also dead code");
     }
 
     /**
@@ -97,14 +103,14 @@ class CheckerFieldTypeTokenGuardTest {
     @Test
     void bothDenominatorsAreNonEmpty() {
         Set<String> declared = declaredFieldTypes();
-        assertTrue(declared.size() >= 13 && declared.contains("StringType")
-                        && declared.contains("CustomFieldType"),
-                "DECLARED_FIELD_TYPES no longer parses into the discriminator set this guard reads: " + declared);
-        long literals = checkerSources().stream()
-                .flatMap(source -> TYPE_LITERAL.matcher(read(source)).results())
-                .count();
-        assertTrue(literals > 50, "the scan found only " + literals + " type literals, so it is not reading "
-                + "the checker's type sets any more");
+        assertTrue(declared.size() == 13 && declared.contains("StringType") && declared.contains("CustomFieldType"),
+                "FieldType no longer parses into the thirteen discriminators A12's switch has: " + declared);
+        Set<String> seen = TYPE_LITERAL.matcher(withoutComments(read(OWNER))).results()
+                .map(m -> m.group(1)).collect(Collectors.toSet());
+        assertEquals(declared, seen, "the scan must see every literal of the enum itself, or it would pass on any "
+                + "file");
+        assertTrue(!TYPE_LITERAL.matcher(withoutComments("// \"NumberType\"\n/* \"DateType\" */")).find(),
+                "comments must stay exempt");
         Set<String> operatorIds = operatorIds();
         assertTrue(operatorIds.size() > 50 && operatorIds.contains("ValidType")
                         && !operatorIds.contains("StringType"),
@@ -134,16 +140,17 @@ class CheckerFieldTypeTokenGuardTest {
     }
 
     private static Set<String> declaredFieldTypes() {
-        String binder = read(BINDER);
-        int from = binder.indexOf("DECLARED_FIELD_TYPES = mapOf(");
-        assertTrue(from >= 0, "FieldTypeBinding.kt no longer declares DECLARED_FIELD_TYPES");
-        String block = binder.substring(from, binder.indexOf("\n)", from));
         Set<String> declared = new TreeSet<>();
-        Matcher m = DECLARED_ENTRY.matcher(block);
+        Matcher m = ENTRY.matcher(read(OWNER));
         while (m.find()) {
             declared.add(m.group(1));
         }
         return declared;
+    }
+
+    /** Comments blanked, so prose naming a type is not read as a spelling. */
+    private static String withoutComments(String text) {
+        return Pattern.compile("/\\*.*?\\*/|//[^\\n]*", Pattern.DOTALL).matcher(text).replaceAll(" ");
     }
 
     /** Every catalog operator id the condition vocabulary spells, whatever language column it appears in. */
