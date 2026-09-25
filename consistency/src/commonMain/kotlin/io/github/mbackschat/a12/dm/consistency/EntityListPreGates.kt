@@ -121,8 +121,8 @@ private val ROOT_GROUP_GATE_OF = mapOf(
     "RepetitionNotUnique" to RootGroupGate.NONE,
 )
 
-private fun finding(code: String, explain: String, at: String): Finding =
-    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)
+private fun finding(code: String, explain: String, at: String, span: TextSpan): Finding =
+    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at, span)
 
 private const val DIRECT_DUPLICATE = "MVK_DUPLICATE_PARAM1"
 
@@ -153,6 +153,7 @@ private fun TrackedFactBase.preGateFinding(
             "in `$member`: `${call.operator}` names `${written[direct].spec}` twice — one entity counts " +
                 "once however often it is listed, so drop the repeat",
             element.path,
+            call.spanIn(member),
         )
     }
     val nested = targets.firstNestedEntity(written)
@@ -162,6 +163,7 @@ private fun TrackedFactBase.preGateFinding(
             "in `$member`: `${call.operator}` names `${written[nested].spec}` and a group that already " +
                 "contains it — drop whichever of the two you did not mean",
             element.path,
+            call.spanIn(member),
         )
     }
     val rootGroup = targets.indexOfFirst { it.isRootGroup() }.takeIf { it >= 0 } ?: return null
@@ -174,6 +176,7 @@ private fun TrackedFactBase.preGateFinding(
         "in `$member`: `${call.operator}` names the root group `${written[rootGroup]}` — name the fields " +
             "or groups you mean instead",
         element.path,
+        call.spanIn(member),
     )
 }
 

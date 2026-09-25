@@ -99,19 +99,21 @@ class ErrorTargetContainmentTest {
      * model that never parsed.
      */
     @Test
-    fun anUnreachedTargetIsStillJudgedAndAnUnresolvableOneIsNot() {
+    fun anUnreachedTargetIsJudgedAndPlacedAgainstAnUnresolvableName() {
         val actual = mutableMapOf<String, List<String>>()
         actual["no reach, per-row read, uncontained target"] =
             codes(rule("/Returns/Claims", "../../TotalRefund", "[Amount] > 0"))
-        actual["an unresolvable name beside the iterating read"] =
+        actual["an unresolvable name after the iterating read"] =
             allCodes(rule("/Returns/Claims", "../../TotalRefund", "[Amount] > 0 And FieldFilled(NoSuchField)"))
+        actual["an unresolvable name before the iterating read"] =
+            allCodes(rule("/Returns/Claims", "../../TotalRefund", "FieldFilled(NoSuchField) And [Amount] > 0"))
 
         val expected = mutableMapOf<String, List<String>>()
         expected["no reach, per-row read, uncontained target"] = listOf(notInRuleGroup)
-        // A12's verdict on an unresolvable reference beside this shape is UNMEASURED, and an unresolvable
-        // name is the one thing every gate downstream of the parse depends on — so the family stands down
-        // and the reference family's own class is what an author sees. Under-reporting, deliberately.
-        expected["an unresolvable name beside the iterating read"] = listOf("MVK_INVALID_ENTITY")
+        // A12 raises the class at the per-row read, so whichever of the two is written first answers
+        // (`rulekit.validate.laws.ConditionClassWithholdingLawsTest.aGateIsRaisedWhereItsOwnProductionEnds`).
+        expected["an unresolvable name after the iterating read"] = listOf(notInRuleGroup)
+        expected["an unresolvable name before the iterating read"] = listOf("MVK_INVALID_ENTITY")
         assertEquals(expected, actual, "containment against referenced-ness")
     }
 

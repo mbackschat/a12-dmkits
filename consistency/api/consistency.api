@@ -930,14 +930,16 @@ public final class io/github/mbackschat/a12/dm/consistency/syntax/ConnectiveAgre
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/syntax/ConnectiveDisagreement {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;I)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;II)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()I
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;I)Lio/github/mbackschat/a12/dm/consistency/syntax/ConnectiveDisagreement;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/ConnectiveDisagreement;Ljava/lang/String;Ljava/lang/String;IILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/ConnectiveDisagreement;
+	public final fun component4 ()I
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;II)Lio/github/mbackschat/a12/dm/consistency/syntax/ConnectiveDisagreement;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/ConnectiveDisagreement;Ljava/lang/String;Ljava/lang/String;IIILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/ConnectiveDisagreement;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAt ()I
+	public final fun getEnd ()I
 	public final fun getFirst ()Ljava/lang/String;
 	public final fun getSecond ()Ljava/lang/String;
 	public fun hashCode ()I

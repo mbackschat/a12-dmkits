@@ -25,7 +25,8 @@ fun connectiveDisagreement(text: String, language: ConditionLanguage): Connectiv
     val connectives = CONNECTIVES.getValue(language)
     val frames = ArrayDeque<Frame>()
     frames.addLast(Frame(filter = false))
-    for (token in tokenize(text)) {
+    val tokens = tokenize(text)
+    for ((index, token) in tokens.withIndex()) {
         when (token.kind) {
             TokenKind.NAME -> {
                 val connective = connectives[token.text]
@@ -36,7 +37,8 @@ fun connectiveDisagreement(text: String, language: ConditionLanguage): Connectiv
                         frame.connective = connective
                         frame.spelling = token.text
                     } else if (first != connective) {
-                        return ConnectiveDisagreement(frame.spelling!!, token.text, token.start)
+                        val end = tokens.partEndAfter(index, connectives, FILTER_KEYWORDS[language])
+                        return ConnectiveDisagreement(frame.spelling!!, token.text, token.start, end)
                     }
                 } else if (FILTER_KEYWORDS[language] == token.text) {
                     // The filter's condition is a `bedingung` of its own and carries no delimiter, so nothing
@@ -58,6 +60,41 @@ fun connectiveDisagreement(text: String, language: ConditionLanguage): Connectiv
     }
     return null
 }
+
+/**
+ * Where the part after the connective at [at] ends: before the next connective of its own level, the
+ * delimiter that closes that level, or a comma, which ends a filter's condition.
+ *
+ * That end is where A12 raises the class, because `checkBedingung` runs once the part after each further
+ * connective is read (`bedingung` in the kernel's `GrammarOnly_ConditionParser.g4`). A filter opened inside
+ * the part owns every connective up to its own end, so none of them ends the part.
+ */
+private fun List<Token>.partEndAfter(at: Int, connectives: Map<String, Connective>, filterKeyword: String?): Int {
+    var depth = 0
+    var inAFilter = false
+    var last = at
+    for (index in at + 1 until size) {
+        val token = this[index]
+        val endsThePart = depth == 0 && when {
+            token.text in CLOSING || token.text == "," -> true
+            else -> !inAFilter && token.kind == TokenKind.NAME && token.text in connectives
+        }
+        if (endsThePart) {
+            return this[last].end
+        }
+        when {
+            token.kind == TokenKind.PUNCTUATION && token.text in OPENING -> depth++
+            token.kind == TokenKind.PUNCTUATION && token.text in CLOSING -> depth--
+            depth == 0 && token.kind == TokenKind.NAME && token.text == filterKeyword -> inAFilter = true
+        }
+        last = index
+    }
+    return this[last].end
+}
+
+private val OPENING = setOf("(", "[")
+
+private val CLOSING = setOf(")", "]")
 
 /**
  * Pop every filter frame at the top, which the enclosing closing delimiter ends.
@@ -120,9 +157,9 @@ private val FILTER_KEYWORDS: Map<ConditionLanguage, String> = mapOf(
 )
 
 /**
- * The two connectives found at one level, and where the SECOND one sits.
+ * The two connectives found at one level, where the SECOND one sits, and where the part after it ends.
  *
  * Both spellings are carried because the author wrote them in their own condition language, and because the
  * fix is to bracket one of the two — naming only the offset would leave them counting parentheses.
  */
-data class ConnectiveDisagreement(val first: String, val second: String, val at: Int)
+data class ConnectiveDisagreement(val first: String, val second: String, val at: Int, val end: Int)

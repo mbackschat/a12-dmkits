@@ -53,6 +53,8 @@ class TableEnumConditionLawsTest {
                 verdict("ValueNotConsistent(/Order/ShippingAddress To \"HIGH\")"));
         actual.put("a repetition-list SELECTOR as the first operand",
                 verdict("ValueNotConsistent(/Order/Items*/Sku To \"HIGH\")"));
+        actual.put("an unstarred REPEATABLE group as the first operand",
+                verdict("ValueNotConsistent(/Order/Items To \"HIGH\")"));
         actual.put("an ordinary enum with TWO value-list members",
                 verdict("ValueNotConsistent(/Order/Priority To \"HIGH\", \"LOW\")"));
         actual.put("an ordinary enum with a FIELD as the value-list member",
@@ -72,6 +74,9 @@ class TableEnumConditionLawsTest {
         // `checkIsField` / `checkNoWildCards` / `checkEnumWithTableReference` is measured rather than read.
         expected.put("a GROUP as the first operand", "MVK_NO_GROUPS_ALLOWED");
         expected.put("a repetition-list SELECTOR as the first operand", "MVK_NO_WILDCARDS_ALLOWED");
+        // A group that repeats is read one row at a time from the rule's own group, so the reference's walk
+        // refuses it once the reference is read — ahead of the operator's own chain, which runs at `)`.
+        expected.put("an unstarred REPEATABLE group as the first operand", "MVK_NO_WILDCARD");
         // The arity and member-kind laws sit BEHIND the gate, so neither a wrong member count nor a
         // non-enum member can be seen here — the table-enum demand answers first in both.
         expected.put("an ordinary enum with TWO value-list members", "MVK_TABLE_ENUM_EXPECTED");

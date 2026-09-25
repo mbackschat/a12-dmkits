@@ -177,4 +177,5 @@ private fun operandFinding(
             "formats that name the same ones"
     },
     element.path,
+    call.spanIn(member),
 )

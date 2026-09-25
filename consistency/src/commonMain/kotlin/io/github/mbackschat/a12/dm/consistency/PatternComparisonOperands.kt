@@ -118,6 +118,7 @@ private fun TrackedFactBase.patternFinding(
                     "expression it spells, so escaping the character does not exempt it"
         },
         element.path,
+        comparison.spanIn(member),
     )
 }
 

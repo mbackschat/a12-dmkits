@@ -74,6 +74,8 @@ private fun noWorkFindings(element: TrackedDeclaration): List<Finding> = listOf(
         "this computation declares no alternative, so it has nothing to compute — A12 refuses it, and an " +
             "empty `computationAlternatives` counts as none at all",
         element.path,
+        // No alternative, so no text of this computation's to place it in.
+        span = null,
     ),
     Finding(
         FindingCategory.A12_CONSTRAINT,
@@ -101,6 +103,10 @@ private fun alternativeFindings(element: TrackedDeclaration, alternatives: JsonA
                 "alternative ${index + 1} of this computation carries no operation — A12 refuses it, and a " +
                     "blank or `null` `operation` counts as none at all",
                 element.path,
+                endOfBlankText(
+                    "computationAlternatives[$index].operation",
+                    (alternative["operation"] as? JsonPrimitive)?.takeIf { it.isString }?.content.orEmpty(),
+                ),
             )
         }
     }

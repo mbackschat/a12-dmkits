@@ -31,18 +31,19 @@ internal fun TrackedFactBase.operandListConstantFindings(element: TrackedDeclara
     return conditionTexts(element.kind, body).flatMap { (member, text) ->
         callsIn(text, conditionLanguage, syntaxEntryOf(member))
             .filter { it.operator in carriers && it.operands.count { operand -> operand.constant } > 1 }
-            .map { call -> budgetFinding(call.operator, element, member) }
+            .map { call -> budgetFinding(call.operator, element, member, call.spanIn(member)) }
     }
 }
 
 /** The two operand-list selectors, named by their catalog ids; the aggregates `MinValue`/`MaxValue` differ. */
 private val OPERAND_LIST_MATH = listOf("Min", "Max")
 
-private fun budgetFinding(operator: String, element: TrackedDeclaration, member: String): Finding = Finding(
+private fun budgetFinding(operator: String, element: TrackedDeclaration, member: String, span: TextSpan): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_TOO_MANY_CONST_FOR_CALC_OP",
     "in `$member`: one `$operator` call takes at most one literal and this one lists several — fold them " +
         "into a single literal, or nest a second `$operator` call, which carries its own budget",
     element.path,
+    span,
 )

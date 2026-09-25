@@ -32,9 +32,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
  * unlike [errorTargetIterationFindings] it needs no reaching reference, and unlike the operand families it
  * does not care whether the extent that is read declares an index field.
  *
- * **Silent on an unresolvable reference.** A12's verdict there is unmeasured, and every gate past the parse
- * depends on resolution, so the reference family's own class is what an author sees. Under-reporting is the
- * safe direction; naming a second fix for one typo is not.
+ * **Beside an unresolvable name, placed rather than silent — where it has a read to be placed at.** A12
+ * raises the class at the per-row read, so an unresolvable name after that read loses to it and one before it
+ * wins, measured both ways (`rulekit.validate.laws.ConditionClassWithholdingLawsTest
+ * .aGateIsRaisedWhereItsOwnProductionEnds`); the finding carries the read's span and report assembly does the
+ * ordering. With no read — a computed field that iterates on its own — there is no place in a text to raise it
+ * from and A12's verdict beside a bad name is unmeasured, so that arm stays silent: under-reporting is the
+ * safe direction, naming a second fix for one typo is not.
  *
  * The shape reaches a checker only as stored DM-JSON: `Rule.Builder.build()` refuses an uncontained error
  * field outright, on a check measured OVER-REJECTING and kept deliberately (MVK-LEDGER, FEATURE-GAPS §4).
@@ -52,18 +56,15 @@ internal fun TrackedFactBase.errorTargetContainmentFindings(): List<Finding> {
                 return@mapNotNull null
             }
             val texts = named[declared.declaredAt].orEmpty()
-            if (texts.any { it.target !is Reference.Resolved }) {
-                return@mapNotNull null
-            }
             val element = declarationAt(declared.declaredAt) ?: return@mapNotNull null
             val ownReads = spellingsThatCanReadARow(element)
             val perRowRead = texts.firstOrNull { it.written in ownReads && readsOneRowAtATime(it, group, element) }
             val writtenIterates =
                 declared.role == ReferenceRole.COMPUTED_TARGET && repeatingLevelsOnThePathTo(written) > 0
-            if (perRowRead == null && !writtenIterates) {
+            if (perRowRead == null && (!writtenIterates || texts.any { it.target !is Reference.Resolved })) {
                 return@mapNotNull null
             }
-            containmentFinding(declared, written, group, perRowRead?.written)
+            containmentFinding(declared, written, group, perRowRead)
         }
 }
 
@@ -107,16 +108,18 @@ private fun TrackedFactBase.spellingsThatCanReadARow(element: TrackedDeclaration
 }
 
 /**
- * @param read the authored spelling of the per-row reference, absent when the computed field's own scope is
- *     what iterates — the two have different repairs, so the explain names which one A12 is answering.
+ * @param read the per-row reference, absent when the computed field's own scope is what iterates — the two
+ *     have different repairs, so the explain names which one A12 is answering. A12 raises the class while it
+ *     checks that reference's indices, so the finding takes its span; with no such read there is no place in
+ *     a text to give it.
  */
 private fun containmentFinding(
     declared: DeclaredReference,
     written: String,
     group: String,
-    read: String?,
+    read: ConditionReference?,
 ): Finding {
-    val because = read?.let { "its condition reads `$it` one row at a time" }
+    val because = read?.let { "its condition reads `${it.written}` one row at a time" }
         ?: "`$written` itself repeats, so writing it means writing one row"
     return Finding(
         FindingCategory.A12_CONSTRAINT,
@@ -126,5 +129,6 @@ private fun containmentFinding(
             "A12 cannot then say which repetition the result belongs to. Declare it in a group that " +
             "CONTAINS `$written` (an ancestor will do), or write into a field under `$group`",
         declared.declaredAt,
+        span = read?.span,
     )
 }

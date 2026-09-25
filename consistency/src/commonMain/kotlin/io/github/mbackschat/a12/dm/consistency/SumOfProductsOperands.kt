@@ -48,7 +48,7 @@ internal fun TrackedFactBase.sumOfProductsOperandFindings(): List<Finding> {
                     if (pair.size != 2 || pair.any { it == null }) {
                         return@mapNotNull null
                     }
-                    classOf(pair[0]!!, pair[1]!!)?.let { finding(it, element, member) }
+                    classOf(pair[0]!!, pair[1]!!)?.let { finding(it, element, member, call.spanIn(member)) }
                 }
         }
     }
@@ -117,7 +117,7 @@ private fun classOf(left: ParallelOperand, right: ParallelOperand): String? = wh
     else -> null
 }
 
-private fun finding(code: String, element: TrackedDeclaration, member: String): Finding = Finding(
+private fun finding(code: String, element: TrackedDeclaration, member: String, span: TextSpan): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,
@@ -125,6 +125,7 @@ private fun finding(code: String, element: TrackedDeclaration, member: String): 
         "fields of ONE group and each must star that group's lowest repeatable level — " +
         ADVICE.getValue(code),
     element.path,
+    span,
 )
 
 /** What the author has to change, which differs per class though the shape is one pair. */

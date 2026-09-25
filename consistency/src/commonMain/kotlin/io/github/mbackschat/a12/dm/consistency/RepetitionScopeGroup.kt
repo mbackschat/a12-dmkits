@@ -42,12 +42,16 @@ internal fun TrackedFactBase.repetitionScopeGroupFindings(): List<Finding> {
         conditionTexts(element.kind, body).flatMap { (member, text) ->
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
                 .filter { it.operator == spelling }
-                .flatMap { call -> call.operands }
-                .mapNotNull { operand ->
-                    operand.clauses.firstOrNull { it.keyword == scopeKeyword }?.path
+                .flatMap { call ->
+                    call.operands.mapNotNull { operand ->
+                        operand.clauses.firstOrNull { it.keyword == scopeKeyword }?.path?.let { it to call }
+                    }
                 }
-                .distinct()
-                .mapNotNull { scope -> scopeFinding(scope, declaringGroup, element, member) }
+                .distinctBy { (scope, _) -> scope }
+                // The operator's own check refuses the scope, so the class is raised at the call's `)`.
+                .mapNotNull { (scope, call) ->
+                    scopeFinding(scope, declaringGroup, element, member, call.spanIn(member))
+                }
         }
     }
 }
@@ -65,6 +69,7 @@ private fun TrackedFactBase.scopeFinding(
     declaringGroup: String,
     element: TrackedDeclaration,
     member: String,
+    span: TextSpan,
 ): Finding? {
     val resolved = resolveEntity(declaringGroup, scope, element.origin) as? Reference.Resolved
         ?: return null
@@ -81,5 +86,6 @@ private fun TrackedFactBase.scopeFinding(
             "operator compares one repetition of the scope against another, so the scope has to be a " +
             "repeatable group",
         element.path,
+        span,
     )
 }

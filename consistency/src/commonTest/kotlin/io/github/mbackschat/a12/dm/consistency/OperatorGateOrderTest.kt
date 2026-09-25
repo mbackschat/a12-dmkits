@@ -78,11 +78,46 @@ class OperatorGateOrderTest {
         actual["a comparison's gate, with a bad name on its right side"] = codes("[Reference] > [NoSuchField]")
         actual["a gated call inside a call that then fails to parse"] =
             codes("Abs(RoundUpValue(Reference, 2) > 1) > 0")
+        val mixed = "FieldFilled(Reference) And FieldFilled(Score) Or "
+        actual["a mixed connective, with a bad name in the part after it"] = codes(mixed + "FieldFilled(NoSuchField)")
+        actual["a mixed connective, with a bad name in a later part"] =
+            codes(mixed + "FieldFilled(Premium) And FieldFilled(NoSuchField)")
+        actual["an operand gate of arithmetic, with a bad name later in its chain"] =
+            codes("[Reference] * [NoSuchField] > 0")
+        actual["an operand gate of arithmetic, with a bad name past its chain"] =
+            codes("[Reference] * [Score] > [NoSuchField]")
+        actual["a star in an aggregate's filter body"] = codes("Sum(Claims*/Amount Having [Claims*/Amount] > 1) > 0")
+        actual["a star in an aggregate's filter body, with a bad name after it in the body"] =
+            codes("Sum(Claims*/Amount Having [Claims*/Amount] > [NoSuchField]) > 0")
+        actual["a per-row read beside an uncontained error field"] =
+            codes("FieldFilled(Claims/Amount)", "../../Registry/Code")
+        actual["a per-row read beside an uncontained error field, with a bad name after it"] =
+            codes("FieldFilled(Claims/Amount) And FieldFilled(NoSuchField)", "../../Registry/Code")
+        actual["a per-row read beside an uncontained error field, with a bad name BEFORE it"] =
+            codes("FieldFilled(NoSuchField) And FieldFilled(Claims/Amount)", "../../Registry/Code")
+        val yearless = "YearFromDate(Date(\"01\", \"02\")) > 2020"
+        val baseYear = "YearFromDate(BaseYear) > 2020"
+        actual["a year-less construction, then the base-year constant"] = codes("$yearless And $baseYear")
+        actual["the base-year constant, then a year-less construction"] = codes("$baseYear And $yearless")
         val expected = linkedMapOf<String, List<String>>()
         expected["a date-argument gate, then a bad name in the next argument"] = listOf("MVK_NO_DATE")
         expected["a call's arity gate, with a bad name in its extra argument"] = listOf("MVK_INVALID_ENTITY")
         expected["a comparison's gate, with a bad name on its right side"] = listOf("MVK_INVALID_ENTITY")
         expected["a gated call inside a call that then fails to parse"] = listOf("MVK_NO_NUMBER")
+        expected["a mixed connective, with a bad name in the part after it"] = listOf("MVK_INVALID_ENTITY")
+        expected["a mixed connective, with a bad name in a later part"] = listOf("MVK_BRACKET_MISSING")
+        expected["an operand gate of arithmetic, with a bad name later in its chain"] = listOf("MVK_INVALID_ENTITY")
+        expected["an operand gate of arithmetic, with a bad name past its chain"] = listOf("MVK_NO_NUMBER_FOR_CALC")
+        expected["a star in an aggregate's filter body"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
+        expected["a star in an aggregate's filter body, with a bad name after it in the body"] =
+            listOf("MVK_NO_WILDCARDS_ALLOWED")
+        expected["a per-row read beside an uncontained error field"] = listOf("MVK_ERROR_FIELD_NOT_IN_RULEGROUP")
+        expected["a per-row read beside an uncontained error field, with a bad name after it"] =
+            listOf("MVK_ERROR_FIELD_NOT_IN_RULEGROUP")
+        expected["a per-row read beside an uncontained error field, with a bad name BEFORE it"] =
+            listOf("MVK_INVALID_ENTITY")
+        expected["a year-less construction, then the base-year constant"] = listOf("MVK_MISSING_YEAR")
+        expected["the base-year constant, then a year-less construction"] = listOf("MVK_NO_BASE_YEAR")
         assertEquals(expected, actual, "where each gate's own production ends")
     }
 
@@ -107,8 +142,11 @@ class OperatorGateOrderTest {
               {"type":"Field","id":"f4","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
             {"type":"Rule","id":"r0","name":"Probe","Rule":{
-              "errorCondition":"$condition","errorEntityRelPath":"$errorTarget",
+              "errorCondition":"${condition.replace("\"", "\\\"")}","errorEntityRelPath":"$errorTarget",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"see it"}]}}
+          ]}},
+          {"type":"Group","id":"g9","name":"Registry","Group":{"elements":[
+            {"type":"Field","id":"f9","name":"Code","Field":{"fieldType":{"type":"StringType"}}}
           ]}}
          ]}}}
     """.trimIndent()

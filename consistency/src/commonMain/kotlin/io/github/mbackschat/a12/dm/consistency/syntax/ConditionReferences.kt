@@ -68,7 +68,8 @@ internal fun namesRuleContext(text: String, language: ConditionLanguage): Boolea
     tokenize(text).any { it.kind == TokenKind.NAME && isRuleContext(it.text, language) }
 
 /**
- * The references standing in the KEY position of a semantic index — the operand right after [keyword].
+ * The references standing in the KEY position of a semantic index — the operand right after [keyword] —
+ * each where it is written, in text order.
  *
  * [referencesIn] reports a key like any other name, which is right for binding and useless for a law about
  * the key POSITION: `[Coverages/Limit For Insured]` names two entities and only the second one is subject to
@@ -80,7 +81,7 @@ internal fun namesRuleContext(text: String, language: ConditionLanguage): Boolea
  * [keyword] arrives already resolved for the model's condition language, since `For` and `Fuer` are different
  * words and only the catalog knows which one this model speaks.
  */
-internal fun semanticIndexKeysIn(text: String, language: ConditionLanguage, keyword: String): List<String> =
+internal fun semanticIndexKeysIn(text: String, language: ConditionLanguage, keyword: String): List<ReferenceSpan> =
     ReferenceScan(
         tokenize(text),
         CONDITION_KEYWORDS.getValue(language),
@@ -99,7 +100,7 @@ internal fun semanticIndexKeysIn(text: String, language: ConditionLanguage, keyw
  * An arrow behind something this reader did not record as a reference yields nothing, which is the correct
  * answer rather than a gap: A12 answers such text with a class about the operand, never about the category.
  */
-internal fun categoryAccessesIn(text: String, language: ConditionLanguage): List<Pair<String, String>> =
+internal fun categoryAccessesIn(text: String, language: ConditionLanguage): List<CategoryAccess> =
     ReferenceScan(
         tokenize(text),
         CONDITION_KEYWORDS.getValue(language),
@@ -107,7 +108,14 @@ internal fun categoryAccessesIn(text: String, language: ConditionLanguage): List
     ).categoryAccesses()
 
 /**
- * Whether the text puts a repetition wildcard on the RULE-CONTEXT entity.
+ * One `->` category access: the reference it hangs off, the name behind the arrow, and where the pair is
+ * written — from the reference's first character to the category name's last.
+ */
+internal data class CategoryAccess(val path: String, val category: String, val start: Int, val end: Int)
+
+/**
+ * The first place the text puts a repetition wildcard on the RULE-CONTEXT entity — the keyword and its star —
+ * or null when it puts none.
  *
  * A12 refuses that with a class of its own, `MVK_INVALID_WILDCARD_FOR_RULEGROUP`
  * (`rulekit.validate.laws.StarredNonRepeatableReachLawsTest`). It needs its own question for the same reason
@@ -117,12 +125,13 @@ internal fun categoryAccessesIn(text: String, language: ConditionLanguage): List
  * The test is on the TOKEN, so a QUOTED `'RuleGroup'` is correctly not this: quoting is A12's escape for a
  * name that collides with a keyword, so it names a declared group and is judged as one.
  */
-internal fun starsRuleContext(text: String, language: ConditionLanguage): Boolean {
+internal fun starredRuleContextIn(text: String, language: ConditionLanguage): ReferenceSpan? {
     val tokens = tokenize(text)
-    return tokens.indices.any { at ->
+    val at = tokens.indices.firstOrNull { at ->
         tokens[at].kind == TokenKind.NAME && isRuleContext(tokens[at].text, language) &&
             tokens.getOrNull(at + 1)?.text == "*"
-    }
+    } ?: return null
+    return ReferenceSpan("${tokens[at].text}*", tokens[at].start, tokens[at + 1].end)
 }
 
 /**
@@ -159,16 +168,16 @@ private class ReferenceScan(
     private var at = 0
     private val found = LinkedHashSet<String>()
     private val spans = mutableListOf<ReferenceSpan>()
-    private val keys = LinkedHashSet<String>()
-    private val categories = mutableListOf<Pair<String, String>>()
+    private val keys = mutableListOf<ReferenceSpan>()
+    private val categories = mutableListOf<CategoryAccess>()
 
     /** The reference the scan read most recently — what an arrow immediately after it hangs off. */
-    private var lastPath: String? = null
+    private var lastReference: ReferenceSpan? = null
 
     /** Where a reference would have to begin to be a semantic-index key: right after the last such keyword. */
     private var keyBegins = -1
 
-    fun semanticIndexKeys(): List<String> {
+    fun semanticIndexKeys(): List<ReferenceSpan> {
         references()
         return keys.toList()
     }
@@ -179,7 +188,7 @@ private class ReferenceScan(
         return spans.toList()
     }
 
-    fun categoryAccesses(): List<Pair<String, String>> {
+    fun categoryAccesses(): List<CategoryAccess> {
         references()
         return categories.toList()
     }
@@ -270,7 +279,7 @@ private class ReferenceScan(
     private fun skipCategoryName() {
         at++
         if (at < tokens.size && tokens[at].isName()) {
-            lastPath?.let { categories += it to tokens[at].text }
+            lastReference?.let { categories += CategoryAccess(it.written, tokens[at].text, it.start, tokens[at].end) }
             at++
         }
     }
@@ -308,10 +317,11 @@ private class ReferenceScan(
         if (tokens.subList(begin, end).namesAnEntity()) {
             val path = normalizedPath(tokens.subList(begin, end))
             found += path
-            spans += ReferenceSpan(path, tokens[begin].start, tokens[end - 1].end)
-            lastPath = path
+            val span = ReferenceSpan(path, tokens[begin].start, tokens[end - 1].end)
+            spans += span
+            lastReference = span
             if (begin == keyBegins) {
-                keys += path
+                keys += span
             }
         }
         // Even a run that named nothing consumed its first token, so the scan always advances.

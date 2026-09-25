@@ -70,7 +70,7 @@ internal fun TrackedFactBase.dateConstructionSlotFindings(): List<Finding> {
                 .firstNotNullOfOrNull { shape ->
                     val construction = constructions[shape.operator] ?: return@firstNotNullOfOrNull null
                     construction.firstDefectiveSlot(this, element, shape.operands, extractOps)
-                        ?.let { slotFinding(it, shape.operator, element, member) }
+                        ?.let { slotFinding(it, shape.operator, element, member, shape.spanIn(member)) }
                 }
         }
     }
@@ -367,6 +367,7 @@ private fun slotFinding(
     construction: String,
     element: TrackedDeclaration,
     member: String,
+    span: TextSpan,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
@@ -374,6 +375,7 @@ private fun slotFinding(
     "in `$member`: the ${defect.slot} of `$construction` is written as `${defect.wrote}`, where A12 takes " +
         "${defect.expected}",
     element.path,
+    span,
 )
 
 /**

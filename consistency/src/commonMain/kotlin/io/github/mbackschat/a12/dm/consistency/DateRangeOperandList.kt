@@ -250,4 +250,5 @@ private fun finding(
     defect.code,
     "in `$member`: `${call.operator}` overlaps `${defect.at}`, which ${defect.because}",
     element.path,
+    call.spanIn(member),
 )

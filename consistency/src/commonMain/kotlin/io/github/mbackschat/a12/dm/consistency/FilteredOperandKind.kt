@@ -17,7 +17,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * ([KERNEL-FINDINGS KF358], `rulekit.validate.laws.FilteredOperandGateOrderLawsTest`). Source order puts the
  * kind gate first, so a group operand that ALSO carries a semantic index was predicted to draw the kind
  * class; A12 answers `MVK_WILDCARDS_REQUIRED`. Reading the chain and trusting its order would therefore have
- * named the wrong class on that shape, so the index test runs first here.
+ * named the wrong class on that shape, so the index test runs first here. *Withdrawn with the next paragraph's
+ * reading: the `Having` after an index key is the KEY's, whose spec is a field, so the written order holds
+ * ([KERNEL-FINDINGS KF358] corrected 2026-09-25, [DEV-API-GAPS DG89]).*
  *
  * **The star is not a variable on either defect, which the code's own name argues against.** A group operand
  * draws the kind class starred or not, and an indexed operand draws the wildcard class starred or not — in

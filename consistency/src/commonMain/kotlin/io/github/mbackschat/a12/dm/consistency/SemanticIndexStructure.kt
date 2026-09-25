@@ -57,13 +57,14 @@ internal fun TrackedFactBase.semanticIndexStructureFindings(): List<Finding> {
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).mapNotNull { (member, text) ->
             firstClassIn(semanticIndexUsesIn(text, conditionLanguage, keyword), group, element)
-                ?.let { code -> structureFinding(code, element, member) }
+                ?.let { (code, use) -> structureFinding(code, element, member, use.spanIn(member)) }
         }
     }
 }
 
 /**
- * The class the FIRST defective index in one text draws, or null when this family may not speak about it.
+ * The class the FIRST defective index in one text draws, with that index, or null when this family may not
+ * speak about it.
  *
  * A12 reports the first defect in a condition and nothing after it, so a text carrying two indices is not
  * two independent questions: a defect in the first withholds every class the second would have drawn. The
@@ -74,21 +75,21 @@ private fun TrackedFactBase.firstClassIn(
     uses: List<SemanticIndexUse>,
     declaringGroup: String,
     element: TrackedDeclaration,
-): String? {
-    // A NESTED index is answered before the walk, because the outer index of `[A For B For C]` is the one
-    // A12 judges and it stands LAST in the text — the walk would reach the inner one first and stop at its
+): Pair<String, SemanticIndexUse>? {
+    // A NESTED index is answered before the walk, because the index of `[A For B For C]` A12 judges is the
+    // one written LAST, on `B` — the walk would reach the index on `A` first and stop at its
     // key, which is read from inside a repetition and so looks opaque. Its own key gate still runs ahead of
     // the nesting check, which is the source's order and the one row where the two compete.
     uses.firstOrNull { it.nested }?.let { outer ->
         return when (keyVerdict(outer, declaringGroup, element)) {
-            KeyVerdict.STARRED -> "MVK_SEMANTIC_INDEX_WITH_WILDCARD"
+            KeyVerdict.STARRED -> "MVK_SEMANTIC_INDEX_WITH_WILDCARD" to outer
             KeyVerdict.UNJUDGEABLE -> null
-            KeyVerdict.PLAIN -> "MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX"
+            KeyVerdict.PLAIN -> "MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX" to outer
         }
     }
     uses.forEach { use ->
         when (val verdict = classOf(use, declaringGroup, element)) {
-            is IndexVerdict.Reported -> return verdict.code
+            is IndexVerdict.Reported -> return verdict.code to use
             IndexVerdict.Opaque -> return null
             IndexVerdict.Clean -> Unit
         }
@@ -270,12 +271,13 @@ private fun TrackedFactBase.starredPrefixesOf(
         .toSet()
 }
 
-private fun structureFinding(code: String, element: TrackedDeclaration, member: String): Finding = Finding(
+private fun structureFinding(code: String, element: TrackedDeclaration, member: String, span: TextSpan) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,
     "in `$member`: this semantic index ${ADVICE.getValue(code)}",
     element.path,
+    span,
 )
 
 /** What is wrong, per class — the same index shape reaches nine different repairs. */

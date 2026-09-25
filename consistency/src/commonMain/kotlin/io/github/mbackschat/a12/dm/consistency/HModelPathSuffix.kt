@@ -33,6 +33,9 @@ internal fun TrackedFactBase.hModelPathSuffixFindings(): List<Finding> = conditi
             "in `${reference.member}`: `${reference.written}` carries the `$SUFFIX` repetition suffix, " +
                 "which is H-model spelling — an A12 model stars the segment instead, `*`",
             reference.declaredAt,
+            // Raised on the segment (`CheckIdNameRefImpl`); the reference's end stands for it, which only
+            // the same reference's later segments sit between.
+            reference.span,
         )
     }
 

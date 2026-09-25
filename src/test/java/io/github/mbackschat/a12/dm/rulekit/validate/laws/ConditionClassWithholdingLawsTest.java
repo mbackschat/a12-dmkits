@@ -370,11 +370,61 @@ class ConditionClassWithholdingLawsTest {
         actual.put("a comparison's gate, with a bad name on its right side", verdict("[Reference] > [NoSuchField]"));
         actual.put("a gated call inside a call that then fails to parse",
                 verdict("Abs(RoundUpValue(Reference, 2) > 1) > 0"));
+        String mixed = "FieldFilled(Reference) And FieldFilled(Score) Or ";
+        actual.put("a mixed connective, with a bad name in the part after it",
+                verdict(mixed + "FieldFilled(NoSuchField)"));
+        actual.put("a mixed connective, with a bad name in a later part",
+                verdict(mixed + "FieldFilled(Premium) And FieldFilled(NoSuchField)"));
+        actual.put("an operand gate of arithmetic, with a bad name later in its chain",
+                verdict("[Reference] * [NoSuchField] > 0"));
+        actual.put("an operand gate of arithmetic, with a bad name past its chain",
+                verdict("[Reference] * [Score] > [NoSuchField]"));
+        actual.put("a star in an aggregate's filter body",
+                verdict("Sum(Claims*/Amount Having [Claims*/Amount] > 1) > 0"));
+        actual.put("a star in an aggregate's filter body, with a bad name after it in the body",
+                verdict("Sum(Claims*/Amount Having [Claims*/Amount] > [NoSuchField]) > 0"));
+        actual.put("a per-row read beside an uncontained error field",
+                targetedVerdict("FieldFilled(Claims/Amount)", "../../Registry/Code"));
+        actual.put("a per-row read beside an uncontained error field, with a bad name after it",
+                targetedVerdict("FieldFilled(Claims/Amount)" + AND_A_BAD_NAME, "../../Registry/Code"));
+        actual.put("a per-row read beside an uncontained error field, with a bad name BEFORE it",
+                targetedVerdict(badNameBefore("FieldFilled(Claims/Amount)"), "../../Registry/Code"));
+        String yearless = "YearFromDate(Date(\"01\", \"02\")) > 2020";
+        String baseYear = "YearFromDate(BaseYear) > 2020";
+        actual.put("a year-less construction, then the base-year constant",
+                verdict(yearless + " And " + baseYear));
+        actual.put("the base-year constant, then a year-less construction",
+                verdict(baseYear + " And " + yearless));
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a date-argument gate, then a bad name in the next argument", "MVK_NO_DATE");
         expected.put("a call's arity gate, with a bad name in its extra argument", "MVK_INVALID_ENTITY");
         expected.put("a comparison's gate, with a bad name on its right side", "MVK_INVALID_ENTITY");
         expected.put("a gated call inside a call that then fails to parse", "MVK_NO_NUMBER");
+        // `checkBedingung` runs once the part after each further connective is read: not at the connective,
+        // which would name the bracket class in the first row, and not at the end, which would not in the
+        // second.
+        expected.put("a mixed connective, with a bad name in the part after it", "MVK_INVALID_ENTITY");
+        expected.put("a mixed connective, with a bad name in a later part", "MVK_BRACKET_MISSING");
+        // `checkOperation` runs once the chain is read, so a later operand of it resolves first, and a
+        // comparison's right side past it does not.
+        expected.put("an operand gate of arithmetic, with a bad name later in its chain", "MVK_INVALID_ENTITY");
+        expected.put("an operand gate of arithmetic, with a bad name past its chain", "MVK_NO_NUMBER_FOR_CALC");
+        // PREDICTED WRONG: the star is refused at the starred reference itself, ahead of a name later in the
+        // same body — which the row above it shows is resolved at its own end — so neither at the aggregate's
+        // `)` nor at the filtered spec's end, where `checkFilterCondition` runs.
+        expected.put("a star in an aggregate's filter body", "MVK_NO_WILDCARDS_ALLOWED");
+        expected.put("a star in an aggregate's filter body, with a bad name after it in the body",
+                "MVK_NO_WILDCARDS_ALLOWED");
+        // The containment gate runs while the per-row reference's indices are checked, so at that reference.
+        expected.put("a per-row read beside an uncontained error field", "MVK_ERROR_FIELD_NOT_IN_RULEGROUP");
+        expected.put("a per-row read beside an uncontained error field, with a bad name after it",
+                "MVK_ERROR_FIELD_NOT_IN_RULEGROUP");
+        expected.put("a per-row read beside an uncontained error field, with a bad name BEFORE it",
+                "MVK_INVALID_ENTITY");
+        // The constant is refused at its own token, the construction at its `)`, so whichever is written
+        // first answers.
+        expected.put("a year-less construction, then the base-year constant", "MVK_MISSING_YEAR");
+        expected.put("the base-year constant, then a year-less construction", "MVK_NO_BASE_YEAR");
         assertEquals(expected, actual, "where each gate's own production ends");
     }
 

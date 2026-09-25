@@ -136,12 +136,12 @@ private fun TrackedFactBase.constantKindFinding(
     // than reading as a shape this reader could not reduce.
     val constantText = constants.singleOrNull()
         ?: return if (constants.isEmpty()) {
-            unexpectedConstantToken("", declaringGroup, element, member)
+            unexpectedConstantToken("", element, member, call.constantSlotIn(member))
         } else {
             null
         }
     val arm = armOf(constantText, spellings)
-        ?: return unexpectedConstantToken(constantText, declaringGroup, element, member)
+        ?: return unexpectedConstantToken(constantText, element, member, call.constantSlotIn(member))
     val written = entities.map { referencesIn(it, conditionLanguage).singleOrNull() ?: return null }
     val targets = written.map { addressedTargetOf(it, declaringGroup, element) ?: return null }
     if (preEmptedBeforeTheSwitch(written, targets)) {
@@ -159,6 +159,7 @@ private fun TrackedFactBase.constantKindFinding(
                 "operator counts a number, a text or a boolean constant and nothing else, whatever the " +
                 "listed declarations are. Compare the date against a field instead of counting it",
             element.path,
+            call.spanIn(member),
         )
     }
     val fields = targets.flatMap { target ->
@@ -182,6 +183,7 @@ private fun TrackedFactBase.constantKindFinding(
         defect.code,
         "in `$member`: `$NUMBER_OF_VALUE_IN_FIELDS` ${defect.detail}",
         element.path,
+        call.spanIn(member),
     )
 }
 
@@ -304,34 +306,18 @@ private fun armOf(constantText: String, spellings: ConstantSpellings): ConstantA
  * [KERNEL-FINDINGS KF409]). That is what makes this a position a checker may refuse, rather than only the
  * four typed arms above.
  *
- * **Silent when the slot's own text carries a reference this model cannot ADDRESS.** A12 reports the first
- * defect in the text and nothing after it, and the reference families already speak about that token — so
- * reporting here as well would hand the author two classes where A12 draws one.
- *
- * Addressing is deliberately wider than resolution, and only the wider half is load-bearing: an UNRESOLVABLE
- * name is already withheld estate-wide by the gate `CONDITION_TEXT_CODES` drives, so standing down on it
- * restates that gate. What no other gate covers is a spec that RESOLVES and whose repetition is unaddressed —
- * an illegal star, or a repeating level neither starred nor iterated — because the declaration then carries
- * no unresolvable name at all. A12 answers the PARSE class there, ahead of every reference phase
- * (`rulekit.validate.laws.ValueInFieldsConstantKindLawsTest`, measured 2026-09-15), so the wildcard class
- * this estate draws instead is one class either way rather than two.
- *
- * The divergence that stands is the resolvable-name one, recorded in this family's mirror: on an UNDECLARED
- * name the author sees a resolution class where A12 reports the token. Closing it needs the reader to stop
- * resolving the slot at all, which needs offsets `ConditionCall` does not carry.
+ * **Placed at the slot's first token, and never silent on what the slot holds.** A12's parse stops in the
+ * slot ahead of every reference phase, so a name there — declared, undeclared, or a spec that resolves and
+ * whose star is illegal — draws this class and no resolution or wildcard class (measured 2026-09-15,
+ * `rulekit.validate.laws.ValueInFieldsConstantKindLawsTest`). Report assembly gives that answer once the
+ * finding carries the slot's span: a parser class is raised at its span's start, which stands ahead of the
+ * end every reference class inside the slot is raised at ([withoutDefectsBehindAnEarlierOne]), and ahead of
+ * the call's closing parenthesis, where the arity gate is raised. The refused token itself can sit one
+ * constant later — `1 + 2` is refused at the `+` — but what precedes it is then a constant this production
+ * admits, which carries no class to order against.
  */
-private fun TrackedFactBase.unexpectedConstantToken(
-    constantText: String,
-    declaringGroup: String,
-    element: TrackedDeclaration,
-    member: String,
-): Finding? {
-    val unresolvable = referencesIn(constantText, conditionLanguage)
-        .any { addressedTargetOf(it, declaringGroup, element) == null }
-    if (unresolvable) {
-        return null
-    }
-    return Finding(
+private fun unexpectedConstantToken(constantText: String, element: TrackedDeclaration, member: String, span: TextSpan) =
+    Finding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         "MVK_UNEXPECTED_TOKEN",
@@ -341,10 +327,12 @@ private fun TrackedFactBase.unexpectedConstantToken(
             ". That position takes a number, a text, `True`, `False` or a point in time, and nothing " +
             "assembled from them, so even parentheses around a legal constant are refused",
         element.path,
+        span,
     )
-}
 
-/** The string constant this text is, or null when it is anything else. */
+/** The constant slot: the call's first operand, which holds the `In` and everything ahead of it. */
+private fun ConditionCall.constantSlotIn(member: String): TextSpan = operands.first().spanIn(member)
+
 private fun stringConstantOf(constantText: String): String? {
     val token = tokenize(constantText).singleOrNull()?.takeIf { it.kind == TokenKind.STRING } ?: return null
     return token.text.removeSurrounding("\"").replace("\"\"", "\"")

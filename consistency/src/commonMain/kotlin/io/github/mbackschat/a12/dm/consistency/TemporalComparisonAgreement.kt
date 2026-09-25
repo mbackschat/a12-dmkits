@@ -127,6 +127,7 @@ private fun TrackedFactBase.temporalFinding(
                 "either spells"
         },
         element.path,
+        comparison.spanIn(member),
     )
 }
 

@@ -82,27 +82,17 @@ class ValueInFieldsConstantKindTest {
         expected["a number over the same list"] = listOf("MVK_NO_NUMBER")
         expected["the same call fully admitted"] = emptyList()
         // The boundary, and the rows that keep this arm from being widened to "not one of the four": a bare
-        // NAME is no grammar alternative at all, so A12 answers `MVK_UNEXPECTED_TOKEN` to both of these —
-        // measured in the laws twin. Silence on the first is under-reporting, the safe direction.
+        // NAME is no grammar alternative at all, so A12 answers `MVK_UNEXPECTED_TOKEN` whatever the name is —
+        // declared, undeclared, or a spec that resolves and whose star is illegal — measured in the laws twin.
+        // The class is placed at the slot, ahead of the end every reference class inside it is raised at, so
+        // report assembly withholds the resolution and wildcard classes this reader would otherwise also hand
+        // the author.
         expected["a field NAME in the constant slot"] = listOf("MVK_UNEXPECTED_TOKEN")
-        // The second is a DIVERGENCE and is asserted rather than hidden: this checker's reader resolves the
-        // token as an entity where A12's grammar never reaches one, so the author is handed a resolution
-        // class for a token defect — the right location and the wrong gate. It belongs to the condition
-        // families that would have to refuse the position, not to this arm, which is why the row records it
-        // instead of this family suppressing a class it does not own.
-        expected["an undeclared name in the constant slot"] = listOf("MVK_INVALID_ENTITY")
-        // The row that makes the slot's stand-down load-bearing rather than a restatement of the global
-        // withholding gate: this spec RESOLVES, so that gate — which keys on an unresolvable name — leaves
-        // the declaration alone, and only the family's own refusal to speak keeps the wildcard class alone
-        // where A12 draws one class. Drop it and the author is handed two.
-        expected["a resolvable spec with an ILLEGAL star in the constant slot"] =
-            listOf("MVK_INVALID_WILDCARD")
-        // The SECOND shape of the same divergence, asserted rather than hidden: A12's parse stops at the
-        // token, so the arity gate is never reached, while this checker's reader splits the call anyway and
-        // counts one field. Both classes compete for first place, and report assembly orders only POSITIONED
-        // classes that carry a span; the arity class is positioned but carries none (DEV-API-GAPS DG84) — so
-        // the right class arrives beside a wrong one instead of replacing it.
-        expected["an OPERATION in the slot"] = listOf("MVK_UNEXPECTED_TOKEN", "MVK_PARAMSIZE_INVALIDN")
+        expected["an undeclared name in the constant slot"] = listOf("MVK_UNEXPECTED_TOKEN")
+        expected["a resolvable spec with an ILLEGAL star in the constant slot"] = listOf("MVK_UNEXPECTED_TOKEN")
+        // A12's parse stops at the token, so the arity gate is never reached; this reader splits the call
+        // anyway and counts one field, and that class, raised at the call's `)`, stands behind the token.
+        expected["an OPERATION in the slot"] = listOf("MVK_UNEXPECTED_TOKEN")
         expected["a parenthesized number in the slot"] = listOf("MVK_UNEXPECTED_TOKEN")
         expected["an EMPTY slot"] = listOf("MVK_UNEXPECTED_TOKEN")
         // The two legal spellings most likely to be mis-read as "not a constant" by a token-counting

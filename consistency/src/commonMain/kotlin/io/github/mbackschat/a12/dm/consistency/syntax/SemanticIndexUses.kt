@@ -3,10 +3,9 @@ package io.github.mbackschat.a12.dm.consistency.syntax
 /**
  * One `[value For key]` semantic index, read as the PAIR its laws are about.
  *
- * [semanticIndexKeysIn] answers what stands in the key position and nothing else, which is all a law about
- * the key's KIND needs. Every other law of that construct compares the two halves — the key's type against
- * the indexed group's index field, the key's location against the indexed group — or asks what the key
- * CARRIES, so it needs them together and it needs the modifiers the reference scan deliberately steps over.
+ * Its laws compare the two halves — the key's type against the indexed group's index field, the key's
+ * location against the indexed group — or ask what the key CARRIES, so they need them together and they need
+ * the modifiers the reference scan deliberately steps over.
  *
  * @param valuePath the indexed reference, normalized and with any repetition wildcard kept; absent when the
  *     run before the keyword named nothing this reader could reduce.
@@ -14,8 +13,16 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * @param keyLiteral the string key with its quotes stripped and A12's doubled `""` collapsed — absent for
  *     an entity key. Exactly one of the two is present on a well-formed index.
  * @param keyCategory the name behind a `->` on the key, which is a value CATEGORY rather than an entity.
- * @param nested whether the INDEXED half is itself a semantic index, which is what `[A For B For C]` is:
- *     A12's grammar is left-recursive there, so the outer index's value spec is the inner index.
+ * @param nested whether this index sits inside another's key, which is what the second `For` of
+ *     `[A For B For C]` is: A12's grammar nests to the RIGHT, so `B For C` is the key of the index on `A`,
+ *     and the check of the index on `B` finds an index enclosing it (`CheckEntityUtils.isSemanticIndex`).
+ * @param start where the key begins, or where the keyword ends when no key follows it.
+ * @param end where the key's production ends, which is where A12 raises every class of this index. The key
+ *     is an `entitySpec`, and one that carries its own `For` takes the next index into itself, so every index
+ *     of a chain ends where the chain does — and a `Having` written after the key is the KEY's filter, the
+ *     optional clause being taken by the innermost spec that can take it (`semanticIndex` and `entitySpec` in
+ *     the kernel's `GrammarOnly_ConditionParser.g4`). So a filtered key ends where its filter does: at the
+ *     comma or closing delimiter that ends the filter's condition.
  */
 internal data class SemanticIndexUse(
     val valuePath: String?,
@@ -23,6 +30,8 @@ internal data class SemanticIndexUse(
     val keyLiteral: String?,
     val keyCategory: String?,
     val nested: Boolean,
+    val start: Int,
+    val end: Int,
 )
 
 /**
@@ -40,13 +49,14 @@ internal fun semanticIndexUsesIn(
 ): List<SemanticIndexUse> {
     val tokens = tokenize(text)
     val keywords = CONDITION_KEYWORDS.getValue(language)
+    val filter = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
     val found = mutableListOf<RawUse>()
     tokens.indices.forEach { at ->
         if (tokens[at].kind != TokenKind.NAME || tokens[at].text != keyword) {
             return@forEach
         }
         val value = tokens.pathEndingBefore(at, keywords)
-        val key = tokens.keyStartingAfter(at, keywords)
+        val key = tokens.keyStartingAfter(at, keywords, filter)
         found += RawUse(value, key)
     }
     return found.map { use ->
@@ -56,6 +66,8 @@ internal fun semanticIndexUsesIn(
             use.key.literal,
             use.key.category,
             nested = found.any { other -> other !== use && other.key.begin == use.value.begin },
+            start = if (use.key.begin < 0) tokens[use.key.end - 1].end else tokens[use.key.begin].start,
+            end = tokens[found.chainEndOf(use)].end,
         )
     }
 }
@@ -63,11 +75,23 @@ internal fun semanticIndexUsesIn(
 /** A use before the nesting question is answered, which needs every use's token spans. */
 private class RawUse(val value: PathRun, val key: KeyRun)
 
+/** The last token of the chain [use]'s key opens: its own, or that of the index nested on it. */
+private tailrec fun List<RawUse>.chainEndOf(use: RawUse): Int {
+    val nested = firstOrNull { other -> other !== use && use.key.begin >= 0 && other.value.begin == use.key.begin }
+        ?: return use.key.end - 1
+    return chainEndOf(nested)
+}
+
 /** Where a path run sits and what it reduces to; [begin] is -1 when it named nothing. */
 private class PathRun(val path: String?, val begin: Int)
 
-/** The key half: exactly one of [path] and [literal], plus what the key carries. */
-private class KeyRun(val path: String?, val literal: String?, val category: String?, val begin: Int)
+/**
+ * The key half: exactly one of [path] and [literal], plus what the key carries.
+ *
+ * [begin] is -1 when no key follows the keyword; [end] is exclusive and counts a category access, and it is
+ * the token after the keyword when no key follows.
+ */
+private class KeyRun(val path: String?, val literal: String?, val category: String?, val begin: Int, val end: Int)
 
 /**
  * The path run ENDING immediately before [at] — the indexed half, which stands to the left of the keyword.
@@ -89,11 +113,13 @@ private fun List<Token>.pathEndingBefore(at: Int, keywords: Map<String, KeywordK
 }
 
 /** The key run starting immediately after [at], with the modifiers a reference scan steps over. */
-private fun List<Token>.keyStartingAfter(at: Int, keywords: Map<String, KeywordKind>): KeyRun {
-    val first = getOrNull(at + 1) ?: return KeyRun(null, null, null, -1)
+private fun List<Token>.keyStartingAfter(at: Int, keywords: Map<String, KeywordKind>, filter: String?): KeyRun {
+    val first = getOrNull(at + 1) ?: return KeyRun(null, null, null, -1, at + 1)
     if (first.kind == TokenKind.STRING) {
         val literal = first.text.removeSurrounding("\"").replace("\"\"", "\"")
-        return KeyRun(null, literal, categoryAt(at + 2), at + 1)
+        val category = categoryAt(at + 2)
+        val keyEnd = filterEndFrom(if (category == null) at + 2 else at + 4, filter)
+        return KeyRun(null, literal, category, at + 1, keyEnd)
     }
     var end = at + 1
     while (end < size && this[end].isPathToken(keywords)) {
@@ -104,10 +130,38 @@ private fun List<Token>.keyStartingAfter(at: Int, keywords: Map<String, KeywordK
     }
     val run = subList(at + 1, end)
     if (!run.any { it.isName() }) {
-        return KeyRun(null, null, null, -1)
+        return KeyRun(null, null, null, -1, at + 1)
     }
-    return KeyRun(normalizedPath(run), null, categoryAt(end), at + 1)
+    val category = categoryAt(end)
+    val keyEnd = filterEndFrom(if (category == null) end else end + 2, filter)
+    return KeyRun(normalizedPath(run), null, category, at + 1, keyEnd)
 }
+
+/**
+ * Where a key ending before [at] ends once a `Having` standing at [at] is counted: the token after the last
+ * one its condition takes, which a comma or an unmatched closing delimiter ends. [at] itself when no filter
+ * stands there.
+ */
+private fun List<Token>.filterEndFrom(at: Int, filter: String?): Int {
+    if (filter == null || getOrNull(at)?.let { it.kind == TokenKind.NAME && it.text == filter } != true) {
+        return at
+    }
+    var depth = 0
+    for (index in at + 1 until size) {
+        val text = this[index].text
+        when {
+            this[index].kind != TokenKind.PUNCTUATION -> Unit
+            text in OPENING -> depth++
+            text in CLOSING -> if (depth == 0) return index else depth--
+            text == "," && depth == 0 -> return index
+        }
+    }
+    return size
+}
+
+private val OPENING = setOf("(", "[", "{")
+
+private val CLOSING = setOf(")", "]", "}")
 
 /** The category name behind a `->` at [at], or null when there is no arrow there. */
 private fun List<Token>.categoryAt(at: Int): String? {

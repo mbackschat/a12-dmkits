@@ -192,4 +192,5 @@ private fun containmentFinding(
             "— every key has to sit inside the group that bounds the comparison"
     },
     element.path,
+    call.spanIn(member),
 )

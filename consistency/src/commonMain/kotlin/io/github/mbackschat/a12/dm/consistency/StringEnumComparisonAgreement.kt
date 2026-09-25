@@ -135,6 +135,7 @@ private fun TrackedFactBase.agreementFinding(
             ", and `${constant.value}` is none of them — compare against a declared value; a label an " +
             "Enumeration shows for a value is not one of them",
         element.path,
+        comparison.spanIn(member),
     )
 }
 
@@ -165,6 +166,7 @@ private fun wrongKindFinding(
             "enumeration too — `$wrote` is a number; compare a number against a number, or put the " +
             "number's own field on both sides",
         element.path,
+        comparison.spanIn(member),
     )
 }
 

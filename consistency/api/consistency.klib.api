@@ -539,10 +539,12 @@ final class io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison {
 }
 
 final class io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement { // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement|null[0]
-    constructor <init>(kotlin/String, kotlin/String, kotlin/Int) // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.<init>|<init>(kotlin.String;kotlin.String;kotlin.Int){}[0]
+    constructor <init>(kotlin/String, kotlin/String, kotlin/Int, kotlin/Int) // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.<init>|<init>(kotlin.String;kotlin.String;kotlin.Int;kotlin.Int){}[0]
 
     final val at // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.at|{}at[0]
         final fun <get-at>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.at.<get-at>|<get-at>(){}[0]
+    final val end // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.end|{}end[0]
+        final fun <get-end>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.end.<get-end>|<get-end>(){}[0]
     final val first // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.first|{}first[0]
         final fun <get-first>(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.first.<get-first>|<get-first>(){}[0]
     final val second // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.second|{}second[0]
@@ -551,7 +553,8 @@ final class io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreemen
     final fun component1(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.component1|component1(){}[0]
     final fun component2(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.component2|component2(){}[0]
     final fun component3(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.component3|component3(){}[0]
-    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/Int = ...): io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.copy|copy(kotlin.String;kotlin.String;kotlin.Int){}[0]
+    final fun component4(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.component4|component4(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/Int = ..., kotlin/Int = ...): io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.copy|copy(kotlin.String;kotlin.String;kotlin.Int;kotlin.Int){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.toString|toString(){}[0]

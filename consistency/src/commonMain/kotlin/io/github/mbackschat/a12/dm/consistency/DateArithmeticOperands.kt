@@ -135,4 +135,5 @@ private fun finding(
     defect.code,
     "in `$member`: `${call.operator}` shifts `${defect.at}`, which ${defect.because}",
     element.path,
+    call.spanIn(member),
 )

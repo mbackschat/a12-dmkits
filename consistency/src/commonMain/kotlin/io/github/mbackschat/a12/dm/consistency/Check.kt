@@ -1304,7 +1304,8 @@ private fun List<Finding>.withoutTheTextsBehindARefusedPreamble(
  *
  * **Only a finding that can be PLACED takes part** ([placedIn]). A positioned class with no span is neither
  * dropped nor drops, because placing it would be a guess, so it and a later spanned class both stand where
- * A12 names one ([DEV-API-GAPS DG84]). **A repeat of one code is kept**, as the reference family has always
+ * A12 names one; every family stating a positioned class publishes a span (`rulekit`
+ * `CheckerGateSpanGuardTest`), so this is left to a class A12 raises from no place in a text. **A repeat of one code is kept**, as the reference family has always
  * reported every name that does not resolve: it adds no class A12 withholds, and it shows the author each
  * place to fix.
  */
@@ -1474,10 +1475,10 @@ private val BESIDE_THE_DSL_FAMILIES = MESSAGE_MEMBER_FAMILIES + setOf(
  * behind an earlier one, and withholding the unreferenced-target class — one per operator family, and the
  * comparison's scale gate beside its type gate
  * (`rulekit.validate.laws.ConditionClassWithholdingLawsTest.theOperatorGatesOrderLikeTheOtherOperandClasses`);
- * the rest are ASSUMED to, on that shared raise phase. A gate whose family publishes the span of the
- * production A12 raises it from ([spanIn]) is placed like the classes above, ahead of a later grammar error
- * included; one whose family publishes none stands beside a later spanned class and is withheld behind any bad
- * name wherever it sits ([DEV-API-GAPS DG84]).
+ * the rest are ASSUMED to, on that shared raise phase. Each gate's family publishes the span of the
+ * production A12 raises it from ([spanIn], `rulekit` `CheckerGateSpanGuardTest`), so it is placed like the
+ * classes above, ahead of a later grammar error included
+ * (`…ConditionClassWithholdingLawsTest.aGateIsRaisedWhereItsOwnProductionEnds`).
  */
 private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_INCOMPLETE_INPUT", "MVK_EXPECTED_TOKEN_NOT_FOUND", "MVK_UNEXPECTED_TOKEN",
@@ -1605,13 +1606,12 @@ private val POST_PARSE_CONDITION_CODES = setOf(
  *
  * **A class that can be placed is ordered against the names; one that cannot is withheld position-BLIND,
  * and the price there is a SUBSTITUTION, not an under-report.** The reference, lexer, completeness, grammar
- * and repetition-wildcard families and the operand-scope walk publish a span, so for their positioned classes
- * the faithful rule holds — withheld only behind a name raised first ([withoutDefectsBehindAnEarlierOne]). The
- * other families carry no offset into the text, and for them dropping unconditionally matches A12 exactly when
- * the bad name comes first; when it does not we name the bad name where A12 names the other defect: one class
- * either way, both true of the text, and the author reaches the same fixed condition. What it never does is
- * reject a model A12 admits. It can report two classes where A12 reports one: a span-less class stands beside
- * a later spanned one ([DEV-API-GAPS DG84]).
+ * and repetition-wildcard families, the operand-scope walk and every operator gate publish a span, so for
+ * their positioned classes the faithful rule holds — withheld only behind a name raised first
+ * ([withoutDefectsBehindAnEarlierOne]). A class with no offset into the text is dropped unconditionally, which
+ * matches A12 exactly when the bad name comes first; when it does not we name the bad name where A12 names the
+ * other defect: one class either way, both true of the text, and the author reaches the same fixed condition.
+ * What it never does is reject a model A12 admits.
  *
  * **Within one path the order is known without an offset**, because A12 walks the path segment by segment: a
  * reference whose earlier segment's gate answers never reaches its miss, so it is not an unresolvable name

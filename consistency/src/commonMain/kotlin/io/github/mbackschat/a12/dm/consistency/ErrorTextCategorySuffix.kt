@@ -69,7 +69,7 @@ private fun TrackedFactBase.suffixDefect(
         return null
     }
     val access = categoryAccessesIn(parameter, conditionLanguage).singleOrNull()
-    val written = access?.first ?: parameter.substringBefore(ARROW).trim().takeIf { it.isNotEmpty() }
+    val written = access?.path ?: parameter.substringBefore(ARROW).trim().takeIf { it.isNotEmpty() }
         ?: return null
     val field = (resolveEntity(declaringGroup, written, element.origin) as? Reference.Resolved)
         ?.let { resolved -> declarationAt(resolved.path) }
@@ -85,7 +85,7 @@ private fun TrackedFactBase.suffixDefect(
         return "FIELD_NO_ENUM"
     }
     val declared = field.enumerationBody()?.categoryNames() ?: return null
-    return if (access.second in declared) null else "INVALID_CATEGORY"
+    return if (access.category in declared) null else "INVALID_CATEGORY"
 }
 
 /** The category names this enumeration declares — empty where it declares none, which is not a failure to read. */

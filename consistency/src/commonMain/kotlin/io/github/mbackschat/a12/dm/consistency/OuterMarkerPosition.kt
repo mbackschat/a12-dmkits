@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
@@ -42,9 +43,10 @@ internal fun TrackedFactBase.outerMarkerPositionFindings(): List<Finding> {
             if (OUTER_MARKER !in text) {
                 return@flatMap emptyList()
             }
+            // `checkOuter` runs in the marked spec's own `checkEntitySpec`, once the spec is read.
             markedPathsOutsideAFilter(text)
-                .filter { written -> resolveEntity(group, written, element.origin) is Reference.Resolved }
-                .map { written -> finding(written, member, element) }
+                .filter { marked -> resolveEntity(group, marked.written, element.origin) is Reference.Resolved }
+                .map { marked -> finding(marked.written, member, element, TextSpan(member, marked.start, marked.end)) }
         }
     }
 }
@@ -56,7 +58,7 @@ internal fun TrackedFactBase.outerMarkerPositionFindings(): List<Finding> {
  * region A12 parses with `isInFilterCondition` false — a conjunct that happens to spell a body is outside it
  * and keeps its marker, as A12 reads it (`rulekit.validate.laws.FilterBodyTextRepeatedOutsideLawsTest`).
  */
-private fun TrackedFactBase.markedPathsOutsideAFilter(text: String): List<String> {
+private fun TrackedFactBase.markedPathsOutsideAFilter(text: String): List<ReferenceSpan> {
     val outside = withoutFilterBodies(text, conditionLanguage)
     if (OUTER_MARKER !in outside) {
         return emptyList()
@@ -64,17 +66,20 @@ private fun TrackedFactBase.markedPathsOutsideAFilter(text: String): List<String
     val tokens = tokenize(outside).filter { it.kind != TokenKind.COMMENT }
     return tokens.indices
         .filter { tokens[it].text == OUTER_MARKER }
-        .mapNotNull { at -> pathRunAt(tokens, at + 1) }
+        .mapNotNull { at ->
+            pathRunAt(tokens, at + 1)?.let { (path, end) -> ReferenceSpan(path, tokens[at].start, end) }
+        }
 }
 
 /**
- * The path written by the run of tokens beginning at [from], or null where none begins there.
+ * The path written by the run of tokens beginning at [from], with the offset just past it, or null where none
+ * begins there.
  *
  * Whitespace is insignificant between path tokens ([KERNEL-FINDINGS KF76]), so the run is rebuilt from the
  * token texts rather than sliced out of the source — a marker written `$ /Claim/Excess` names the same path
  * as one written tight against it.
  */
-private fun pathRunAt(tokens: List<Token>, from: Int): String? {
+private fun pathRunAt(tokens: List<Token>, from: Int): Pair<String, Int>? {
     val run = StringBuilder()
     var at = from
     while (at < tokens.size) {
@@ -87,11 +92,12 @@ private fun pathRunAt(tokens: List<Token>, from: Int): String? {
         at++
     }
     return run.toString().takeIf { it.isNotEmpty() && it.any { c -> c.isLetterOrDigit() } }
+        ?.let { it to tokens[at - 1].end }
 }
 
 private val PATH_STEPS = setOf("/", "..", ".", "*")
 
-private fun finding(written: String, member: String, element: TrackedDeclaration): Finding = Finding(
+private fun finding(written: String, member: String, element: TrackedDeclaration, span: TextSpan) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_INVALID_OUTER_ITERATION",
@@ -99,4 +105,5 @@ private fun finding(written: String, member: String, element: TrackedDeclaration
         "marker reaches from a filter body back into the enclosing rule, so it means nothing where there " +
         "is no filter to reach out of; drop the marker or move the read into a filter",
     element.path,
+    span,
 )

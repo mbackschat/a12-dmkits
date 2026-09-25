@@ -49,6 +49,8 @@ class FilteredOperandGateOrderLawsTest {
                 filtered("Sum(Claims*/Amount For Reference Having [Claims/ClaimRef] == \"X\") > 0"));
         actual.put("a semantic index with NO star",
                 filtered("Sum(Claims/Amount For Reference Having [Claims/ClaimRef] == \"X\") > 0"));
+        actual.put("the indexed operand with NO filter — the control for whose filter it is",
+                filtered("Sum(Claims*/Amount For Reference) > 0"));
         actual.put("a GROUP operand with no star either",
                 filtered("NumberOfFilledGroups(Claims Having [Claims/ClaimRef] == \"X\") > 0"));
         actual.put("BOTH defects at once — a group operand carrying a semantic index",
@@ -67,15 +69,20 @@ class FilteredOperandGateOrderLawsTest {
         // `checkIsField` runs first in the chain and the star is not a variable for it: both rows agree.
         expected.put("a starred GROUP operand", "MVK_NO_GROUPS_ALLOWED");
         expected.put("a GROUP operand with no star either", "MVK_NO_GROUPS_ALLOWED");
-        // The one shape that DOES reach `checkHasWildCards` and fails it. The starred row is the
-        // discriminating one: a `*` is present in the text and `hasWildCards()` is still false, so the
-        // semantic-index spelling consumes it — the unstarred row alone would not have shown that.
+        // Both draw the class `checkHasWildCards` raises — for the filtered entity the control below
+        // identifies as the key, not the indexed field.
         expected.put("an operand carrying a SEMANTIC INDEX", "MVK_WILDCARDS_REQUIRED");
         expected.put("a semantic index with NO star", "MVK_WILDCARDS_REQUIRED");
-        // PREDICTED WRONG from source order, which puts `checkIsField` ahead of `checkHasWildCards`: with
-        // both defects present A12 answers with the WILDCARD class, so the semantic index moves the verdict
-        // rather than merely riding along. A checker that took the chain's written order on trust would name
-        // the wrong class on this shape; the row exists because the prediction was cheap to falsify.
+        // What makes the indexed rows above a statement about WHOSE filter it is. Without the filter the
+        // index draws its own class, raised once the key is read. A filter belonging to the value would be
+        // read only after that key, so it could not move the verdict; the filtered rows answering the
+        // filter's class instead means the key took the `Having` — the grammar's key is an `entitySpec`,
+        // which takes one — and the filtered entity is the unstarred key `Reference`.
+        expected.put("the indexed operand with NO filter — the control for whose filter it is",
+                "MVK_SEMANTIC_INDEX_AND_WILDCARD");
+        // Predicted from source order as the kind class, `checkIsField` preceding `checkHasWildCards`. The
+        // prediction took the GROUP for the filtered entity; the filtered entity is the key `Reference`, a
+        // field, so the written order holds and the wildcard class is its answer.
         expected.put("BOTH defects at once — a group operand carrying a semantic index", "MVK_WILDCARDS_REQUIRED");
         expected.put("a disallowed construct in the filter BODY", "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
         // The conjunct only helps the iteration gate before it, so the construct class survives it — the row

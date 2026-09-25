@@ -95,7 +95,7 @@ internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> {
                 .firstNotNullOfOrNull { operand ->
                     filterDefectOf(operand, filterKeyword, indexKeyword, clauseKeywords, callable,
                         keywords, group, element)
-                        ?.let { filterFinding(it, element, member) }
+                        ?.let { filterFinding(it, element, member, operand.spanIn(member)) }
                 }
         }
     }
@@ -212,7 +212,8 @@ private const val INDEX_NOT_ALLOWED = "MVK_SEMANTIC_INDEX_NOT_ALLOWED"
 
 private const val DISALLOWED_CONSTRUCT = "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
 
-private fun filterFinding(defect: FilterDefect, element: TrackedDeclaration, member: String): Finding = Finding(
+/** Every gate here runs in the filtered operand's `checkEntitySpec`, once its whole spec is read. */
+private fun filterFinding(defect: FilterDefect, element: TrackedDeclaration, member: String, span: TextSpan) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     defect.code,
@@ -232,4 +233,5 @@ private fun filterFinding(defect: FilterDefect, element: TrackedDeclaration, mem
                 "declaration already iterates that level"
     },
     element.path,
+    span,
 )

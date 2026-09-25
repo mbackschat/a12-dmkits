@@ -207,4 +207,5 @@ private fun finding(
     defect.code,
     "in `$member`: `${shape.operator}` judges `${defect.at}`, which ${defect.because}",
     element.path,
+    shape.spanIn(member),
 )

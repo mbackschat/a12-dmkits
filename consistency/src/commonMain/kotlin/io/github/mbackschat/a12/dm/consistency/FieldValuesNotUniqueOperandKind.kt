@@ -75,6 +75,7 @@ private fun TrackedFactBase.operandKindFinding(
                 "in `$member`: `$FIELD_VALUES_NOT_UNIQUE` compares stored values, and `${field.path}` is a " +
                     "date RANGE — list the range's own fields, or compare a field of another kind",
                 element,
+                call.spanIn(member),
             )
         }
         val format = declaredTemporalFormatOf(field) ?: return@forEach
@@ -87,11 +88,12 @@ private fun TrackedFactBase.operandKindFinding(
                     "it lists must be spelled alike — `${first.first}` declares `${first.second}` and " +
                     "`${field.path}` declares `$format`",
                 element,
+                call.spanIn(member),
             )
         }
     }
     return null
 }
 
-private fun finding(explain: String, element: TrackedDeclaration): Finding =
-    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, KIND_REFUSED, explain, element.path)
+private fun finding(explain: String, element: TrackedDeclaration, span: TextSpan): Finding =
+    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, KIND_REFUSED, explain, element.path, span)

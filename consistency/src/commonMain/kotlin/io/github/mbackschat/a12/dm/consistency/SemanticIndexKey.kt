@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexKeysIn
+import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 
 /**
  * What a semantic index's KEY has to be: a field, never a group — and a read that does not ITERATE.
@@ -51,10 +52,14 @@ internal fun TrackedFactBase.semanticIndexKeyFindings(): List<Finding> {
             ?.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
             val filtered = keysInsideAFilter(text, member, filterKeyword, keyword)
+            val productionEnds = semanticIndexUsesIn(text, conditionLanguage, keyword).associate { it.start to it.end }
             semanticIndexKeysIn(text, conditionLanguage, keyword)
-                .distinct()
+                .distinctBy { it.written }
                 .mapNotNull { key ->
-                    keyFinding(key, group, targetGroup, element, member, key in filtered)
+                    // A key's production ends where the index chain it opens does, which the uses reader
+                    // follows; an up-step key, which that reader does not take, ends with its own run.
+                    val span = TextSpan(member, key.start, productionEnds[key.start] ?: key.end)
+                    keyFinding(key.written, group, targetGroup, element, member, key.written in filtered, span)
                 }
         }
     }
@@ -81,7 +86,8 @@ private fun TrackedFactBase.keysInsideAFilter(
     return callsIn(text, conditionLanguage, syntaxEntryOf(member))
         .flatMap { it.operands }
         .flatMap { operand -> operand.clauses.filter { it.keyword == filterKeyword } }
-        .flatMapTo(mutableSetOf()) { semanticIndexKeysIn(it.text, conditionLanguage, indexKeyword) }
+        .flatMap { clause -> semanticIndexKeysIn(clause.text, conditionLanguage, indexKeyword) }
+        .mapTo(mutableSetOf()) { it.written }
 }
 
 /** The finding one key draws, in A12's order, or null for every shape it answers with another class. */
@@ -92,6 +98,7 @@ private fun TrackedFactBase.keyFinding(
     element: TrackedDeclaration,
     member: String,
     insideAFilter: Boolean,
+    span: TextSpan,
 ): Finding? {
     // A starred key is the structure family's wildcard class, and a star also ADDRESSES the level it sits
     // on, so leaving it here would ask the iteration question about a read that does not iterate.
@@ -108,6 +115,7 @@ private fun TrackedFactBase.keyFinding(
                 "`$level` while the error target sits outside it — the key names one value, so the read " +
                 "may not iterate; star the level on the target's side, or key on a field that does not repeat",
             element.path,
+            span,
         )
     }
     val named = declarationAt(resolved.path, DeclaredKind.GROUP)
@@ -122,6 +130,7 @@ private fun TrackedFactBase.keyFinding(
         "this $member keys a semantic index on `${named.path}`, which is a group — the key is compared " +
             "against the indexed group's index field, so it has to name a field",
         element.path,
+        span,
     )
 }
 

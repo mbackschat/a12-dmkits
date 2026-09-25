@@ -132,23 +132,23 @@ private fun TrackedFactBase.gateFindings(
 
     // The subject, judged completely before the list is looked at at all.
     if (subject.declaredKind == DeclaredKind.GROUP) {
-        return listOf(gate(NO_GROUPS, call.operator, subject, member, element))
+        return listOf(gate(NO_GROUPS, call.operator, subject, member, element, call.spanIn(member)))
     }
     if (subject.declaredKind != DeclaredKind.FIELD) {
         return null
     }
     if ('*' in subjectOperand.text) {
-        return listOf(gate(NO_WILDCARDS, call.operator, subject, member, element))
+        return listOf(gate(NO_WILDCARDS, call.operator, subject, member, element, call.spanIn(member)))
     }
     val declared = subject.declaredFieldType() ?: return null
     if (declared in UNRESOLVED_TYPES) {
         return null
     }
     if (declared !in SUBJECT_TYPES) {
-        return listOf(gate(ONLY_STRING_ENUM_NUMBER, call.operator, subject, member, element))
+        return listOf(gate(ONLY_STRING_ENUM_NUMBER, call.operator, subject, member, element, call.spanIn(member)))
     }
     if (subject.waivesValueValidation()) {
-        return listOf(gate(RAW_TYPE, call.operator, subject, member, element))
+        return listOf(gate(RAW_TYPE, call.operator, subject, member, element, call.spanIn(member)))
     }
 
     return if (entries.all { it.namesAFieldEntry() }) {
@@ -185,13 +185,13 @@ private fun TrackedFactBase.entryListFindings(
     fields.forEach { field ->
         val kind = field.listBaseType() ?: return null
         if (kind != expected) {
-            return listOf(gate(VARYING_TYPES, call.operator, field, member, element))
+            return listOf(gate(VARYING_TYPES, call.operator, field, member, element, call.spanIn(member)))
         }
         expected = kind
     }
     fields.forEach { field ->
         if (field.waivesValueValidation()) {
-            return listOf(gate(RAW_TYPE, call.operator, field, member, element))
+            return listOf(gate(RAW_TYPE, call.operator, field, member, element, call.spanIn(member)))
         }
     }
     return null
@@ -217,13 +217,13 @@ private fun TrackedFactBase.constantListFindings(
         return null
     }
     if ((subject.declaredFieldType() == FieldType.NUMBER) != numberList) {
-        return listOf(gate(INVALID_TYPES_FOR_COMPARISON, call.operator, subject, member, element))
+        return listOf(gate(INVALID_TYPES_FOR_COMPARISON, call.operator, subject, member, element, call.spanIn(member)))
     }
     val body = subject.enumerationBody() ?: return null
     if (body["tableName"] != null) {
         return null
     }
-    val category = categoryAccessesIn(subjectOperand.text, conditionLanguage).singleOrNull()?.second
+    val category = categoryAccessesIn(subjectOperand.text, conditionLanguage).singleOrNull()?.category
     val domain = body.lookupDomain(category)?.toSet() ?: return null
     val offending = entries.mapNotNull { it.literal }.filter { it !in domain }
     return offending.map { constant ->
@@ -240,6 +240,7 @@ private fun TrackedFactBase.constantListFindings(
                     "which are " + domain.joinToString { "`$it`" }
             },
             element.path,
+            call.spanIn(member),
         )
     }.ifEmpty { null }
 }
@@ -279,6 +280,7 @@ private fun gate(
     field: TrackedDeclaration,
     member: String,
     element: TrackedDeclaration,
+    span: TextSpan,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
@@ -302,4 +304,5 @@ private fun gate(
                 "against a list of another base type — every entry has to be declared like the subject"
     },
     element.path,
+    span,
 )

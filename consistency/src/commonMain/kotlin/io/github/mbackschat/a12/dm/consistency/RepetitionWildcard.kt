@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.firstReferenceSpansIn
-import io.github.mbackschat.a12.dm.consistency.syntax.starsRuleContext
+import io.github.mbackschat.a12.dm.consistency.syntax.starredRuleContextIn
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
@@ -44,8 +44,9 @@ internal fun TrackedFactBase.repetitionWildcardFindings(): List<Finding> = decla
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).flatMap { (member, text) ->
         // The rule-context entity is a KEYWORD, so a starred one never reaches the reference list at all and
-        // needs its own question — the same reason its reach needs one in the error-field family.
-        val onTheRulesOwnGroup = if (starsRuleContext(text, conditionLanguage)) {
+        // needs its own question — the same reason its reach needs one in the error-field family. Its class is
+        // raised once `regelKontextEntity`, the keyword and its star, is read.
+        val onTheRulesOwnGroup = starredRuleContextIn(text, conditionLanguage)?.let { starred ->
             listOf(
                 Finding(
                     FindingCategory.A12_CONSTRAINT,
@@ -54,11 +55,10 @@ internal fun TrackedFactBase.repetitionWildcardFindings(): List<Finding> = decla
                     "this $member puts a repetition wildcard on the rule's own group — a `*` belongs only " +
                         "on a repeatable group, and the rule context is not one",
                     element.path,
+                    TextSpan(member, starred.start, starred.end),
                 ),
             )
-        } else {
-            emptyList()
-        }
+        }.orEmpty()
         onTheRulesOwnGroup + firstReferenceSpansIn(text, conditionLanguage).mapNotNull { occurrence ->
             val written = occurrence.written
             val segments = written.split('/')

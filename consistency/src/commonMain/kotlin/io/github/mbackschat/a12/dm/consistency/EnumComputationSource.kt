@@ -104,7 +104,9 @@ private fun TrackedFactBase.readDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): String? {
-    val (written, category) = categoryAccessesIn(text, conditionLanguage).singleOrNull() ?: (text to null)
+    val access = categoryAccessesIn(text, conditionLanguage).singleOrNull()
+    val written = access?.path ?: text
+    val category = access?.category
     val source = bareReferenceField(written, declaringGroup, element) ?: return null
     if (source.declaredFieldType() == FieldType.STRING) {
         return "reads `${source.path}`, which is a text field — A12 assigns an enumeration only from a " +

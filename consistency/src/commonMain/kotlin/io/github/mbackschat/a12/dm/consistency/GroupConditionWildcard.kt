@@ -58,7 +58,7 @@ internal fun TrackedFactBase.groupConditionWildcardFindings(): List<Finding> {
                 }
                 val starred = call.operands.firstOrNull { starsARepetition(it.path, group, element) }
                     ?: return@mapNotNull null
-                wildcardFinding(arm, call.operator, starred.path.orEmpty(), element, member)
+                wildcardFinding(arm, call.operator, starred.path.orEmpty(), element, member, call.spanIn(member))
             }
         }
     }
@@ -134,6 +134,7 @@ private fun wildcardFinding(
     written: String,
     element: TrackedDeclaration,
     member: String,
+    span: TextSpan,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
@@ -141,4 +142,5 @@ private fun wildcardFinding(
     "in `$member`: `$operator` ${arm.because}, and this stars `$written` — drop the `*`, or count the " +
         "filled repetitions with `NumberOfFilledGroups`",
     element.path,
+    span,
 )

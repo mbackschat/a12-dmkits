@@ -44,7 +44,7 @@ internal fun TrackedFactBase.fieldOperandKindFindings(): List<Finding> {
                     // A12's arity gate answers ahead of the operand's, so a call with the wrong count is
                     // `EntityListArity`'s alone (`rulekit.validate.laws.EntityListArityLawsTest`).
                     call.operands.singleOrNull()?.let { operand ->
-                        operandFinding(operand.path, call.operator, group, element, member)
+                        operandFinding(operand.path, call.operator, group, element, member, call.spanIn(member))
                     }
                 }
         }
@@ -63,6 +63,7 @@ private fun TrackedFactBase.operandFinding(
     declaringGroup: String,
     element: TrackedDeclaration,
     member: String,
+    span: TextSpan,
 ): Finding? {
     val path = written ?: return null
     val resolved = resolveEntity(declaringGroup, path, element.origin) as? Reference.Resolved ?: return null
@@ -75,7 +76,7 @@ private fun TrackedFactBase.operandFinding(
         return null
     }
     val target = declarationAt(resolved.path, DeclaredKind.GROUP)
-        ?: return starredFieldFinding(path, resolved.path, operator, element, member)
+        ?: return starredFieldFinding(path, resolved.path, operator, element, member, span)
     if (target.path.isRootGroup()) {
         return null
     }
@@ -86,6 +87,7 @@ private fun TrackedFactBase.operandFinding(
         "in `$member`: `$operator` takes one field and this hands it the group `${target.path}` — name a " +
             "field inside it, or use a field-LIST operator, which quantifies over the group's fields",
         element.path,
+        span,
     )
 }
 
@@ -96,6 +98,7 @@ private fun TrackedFactBase.starredFieldFinding(
     operator: String,
     element: TrackedDeclaration,
     member: String,
+    span: TextSpan,
 ): Finding? {
     if ('*' !in written || declarationAt(field, DeclaredKind.FIELD) == null) {
         return null
@@ -107,5 +110,6 @@ private fun TrackedFactBase.starredFieldFinding(
         "in `$member`: `$operator` reads one addressed value and `$written` reaches `$field` through a " +
             "repetition star — drop the star to read the current repetition, or use a field-LIST operator",
         element.path,
+        span,
     )
 }

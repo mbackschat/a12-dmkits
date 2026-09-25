@@ -1,8 +1,12 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
+import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
+import io.github.mbackschat.a12.dm.consistency.syntax.CategoryAccess
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
+import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
+import io.github.mbackschat.a12.dm.consistency.syntax.Token
 
 /**
  * The span of an operator's gate: the characters of the grammar production whose action raises it.
@@ -23,3 +27,18 @@ internal fun CallOperand.spanIn(member: String) = TextSpan(member, at, end)
 
 /** A comparison, whose gates `checkVergleichsBedingung` raises once its right side is read. */
 internal fun ConditionComparison.spanIn(member: String) = TextSpan(member, start, end)
+
+/** A semantic index, whose classes `checkSemanticIndex` raises once its key's production is read. */
+internal fun SemanticIndexUse.spanIn(member: String) = TextSpan(member, start, end)
+
+/** A call read by the shape parser, whose gates its own production raises at the call's end. */
+internal fun CallShape.spanIn(member: String) = TextSpan(member, at, end)
+
+/** A `->` category access, whose classes the entity spec's check raises once the category name is read. */
+internal fun CategoryAccess.spanIn(member: String) = TextSpan(member, start, end)
+
+/** A production that is one token, which its check raises once that token is read. */
+internal fun Token.spanIn(member: String) = TextSpan(member, start, end)
+
+/** A blank text, whose class A12's parser raises where it runs out of input: at the text's end. */
+internal fun endOfBlankText(member: String, text: String) = TextSpan(member, text.length, text.length)

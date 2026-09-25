@@ -239,4 +239,5 @@ private fun finding(
         "`${defect.field.declaredFieldType()}` — drop that field from the list, or reach for an operator " +
         "whose list admits its kind",
     element.path,
+    call.spanIn(member),
 )

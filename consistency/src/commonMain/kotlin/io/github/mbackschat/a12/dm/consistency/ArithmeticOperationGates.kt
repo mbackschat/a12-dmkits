@@ -69,7 +69,11 @@ internal fun TrackedFactBase.arithmeticOperationGateFindings(): List<Finding> = 
     }
 }
 
-private data class OperationDefect(val code: String, val at: Int, val wrote: String)
+/** One gate a level fails: where it is written, and [end], where A12 raises it — the end of its chain. */
+private data class OperationDefect(val code: String, val at: Int, val wrote: String, val end: Int)
+
+/** A gate one level's walk finds, before the level knows where the chain holding it ends. */
+private data class Violation(val code: String, val at: Int, val wrote: String)
 
 private const val INVALID_EXPONENT = "MVK_INVALID_NUMBER_FOR_EXP"
 
@@ -119,12 +123,10 @@ private fun TrackedFactBase.walkOperation(
             walkOperation(operand.nested, group, element).also { defects += it.defects }.type
         }
     }
-    val kindDefects = mutableListOf<OperationDefect>()
+    val kindDefects = mutableListOf<Violation>()
     val resultType = typeWalk(terms, types, group, element, kindDefects)
-    defects += kindDefects
-    if (kindDefects.isEmpty()) {
-        defects += arityDefects(terms)
-    }
+    defects += kindDefects.ifEmpty { arityDefects(terms) }
+        .map { OperationDefect(it.code, it.at, it.wrote, terms.chainEndAt(it.at)) }
     return LevelResult(resultType, defects)
 }
 
@@ -138,7 +140,7 @@ private fun TrackedFactBase.typeWalk(
     types: List<OperandBaseType?>,
     group: String,
     element: TrackedDeclaration,
-    defects: MutableList<OperationDefect>,
+    defects: MutableList<Violation>,
 ): OperandBaseType? {
     multiplicativeDefects(terms, types, group, element, defects)
     return additiveType(terms, types, defects)
@@ -150,7 +152,7 @@ private fun TrackedFactBase.multiplicativeDefects(
     types: List<OperandBaseType?>,
     group: String,
     element: TrackedDeclaration,
-    defects: MutableList<OperationDefect>,
+    defects: MutableList<Violation>,
 ) {
     terms.forEachIndexed { position, term ->
         val symbol = (term as? Term.Op)?.symbol ?: return@forEachIndexed
@@ -160,7 +162,7 @@ private fun TrackedFactBase.multiplicativeDefects(
         listOf(position - 1, position + 1).forEach { side ->
             val operand = terms.getOrNull(side) as? Term.Operand ?: return@forEach
             if (types.getOrNull(side) != null && !types[side].isNumberLike()) {
-                defects += OperationDefect(NOT_A_NUMBER, operand.at, operand.wrote(symbol))
+                defects += Violation(NOT_A_NUMBER, operand.at, operand.wrote(symbol))
             }
         }
         if (symbol == "^") {
@@ -181,7 +183,7 @@ private val MULTIPLICATIVE = setOf("*", "/", "^")
 private fun additiveType(
     terms: List<Term>,
     types: List<OperandBaseType?>,
-    defects: MutableList<OperationDefect>,
+    defects: MutableList<Violation>,
 ): OperandBaseType? {
     val segments = additiveSegments(terms, types)
     if (segments.isEmpty()) {
@@ -199,9 +201,9 @@ private fun additiveType(
         when (segment.joinedBy) {
             "-" -> {
                 if (left != null && !left.isNumberLike()) {
-                    defects += OperationDefect(NOT_A_NUMBER, leftAt, "-")
+                    defects += Violation(NOT_A_NUMBER, leftAt, "-")
                 } else if (right != null && !right.isNumberLike()) {
-                    defects += OperationDefect(NOT_A_NUMBER, segment.at, "-")
+                    defects += Violation(NOT_A_NUMBER, segment.at, "-")
                 }
                 left = OperandBaseType.NUMBER
             }
@@ -210,12 +212,12 @@ private fun additiveType(
                 left.isStringLike() && right.isStringLike() -> {
                     val labelled = if (left == OperandBaseType.LABELLED_ENUM) leftAt else segment.at
                     if (left == OperandBaseType.LABELLED_ENUM || right == OperandBaseType.LABELLED_ENUM) {
-                        defects += OperationDefect(MIXED_ADD, labelled, "+")
+                        defects += Violation(MIXED_ADD, labelled, "+")
                     }
                     OperandBaseType.TEXT
                 }
                 left != null && right != null -> {
-                    defects += OperationDefect(MIXED_ADD, segment.at, "+")
+                    defects += Violation(MIXED_ADD, segment.at, "+")
                     null
                 }
                 else -> null
@@ -315,7 +317,7 @@ private fun TrackedFactBase.exponentDefect(
     at: Int,
     group: String,
     element: TrackedDeclaration,
-): OperationDefect? {
+): Violation? {
     val operand = term as? Term.Operand ?: return null
     if (type != null && !type.isNumberLike()) {
         return null
@@ -325,12 +327,12 @@ private fun TrackedFactBase.exponentDefect(
         operand.path != null -> declaredScaleOf(operand.path, group, element) ?: return null
         else -> return null
     }
-    return if (digits == 0) null else OperationDefect(INVALID_EXPONENT, at, operand.path ?: "$digits digits")
+    return if (digits == 0) null else Violation(INVALID_EXPONENT, at, operand.path ?: "$digits digits")
 }
 
 /** A12's `checkOnlyOneDiv` and `checkOnlyOnePow` over one level's chain. */
-private fun arityDefects(terms: List<Term>): List<OperationDefect> {
-    val defects = mutableListOf<OperationDefect>()
+private fun arityDefects(terms: List<Term>): List<Violation> {
+    val defects = mutableListOf<Violation>()
     var divisions = 0
     var powers = 0
     terms.forEach { term ->
@@ -346,13 +348,13 @@ private fun arityDefects(terms: List<Term>): List<OperationDefect> {
                     powers = 0
                     divisions++
                     if (divisions > 1) {
-                        defects += OperationDefect(TOO_MANY_DIV, term.at, "/")
+                        defects += Violation(TOO_MANY_DIV, term.at, "/")
                     }
                 }
                 "^" -> {
                     powers++
                     if (powers > 1) {
-                        defects += OperationDefect(TOO_MANY_POW, term.at, "^")
+                        defects += Violation(TOO_MANY_POW, term.at, "^")
                     }
                 }
             }
@@ -385,8 +387,13 @@ private fun TrackedFactBase.declaredScaleOf(
 
 private sealed interface Term {
 
+    val at: Int
+
+    /** Where the term's last token ends. */
+    val end: Int
+
     /** One arithmetic operator at this level. */
-    data class Op(val symbol: String, val at: Int) : Term
+    data class Op(val symbol: String, override val at: Int, override val end: Int) : Term
 
     /**
      * One operand, or a boundary this reader does not carry a chain across.
@@ -397,7 +404,8 @@ private sealed interface Term {
      * @param boundary whether it ends the current chain — a name, a comparison, a comma or a connective.
      */
     data class Operand(
-        val at: Int,
+        override val at: Int,
+        override val end: Int,
         val digits: Int? = null,
         val path: String? = null,
         val nested: List<Token>? = null,
@@ -427,24 +435,25 @@ private fun termsOf(tokens: List<Token>): List<Term> {
                     return terms
                 }
                 terms += if (token.text == "[") {
-                    Term.Operand(token.start, path = normalizedPath(tokens.subList(index + 1, end)))
+                    Term.Operand(token.start, tokens[end].end, path = normalizedPath(tokens.subList(index + 1, end)))
                 } else {
-                    Term.Operand(token.start, nested = tokens.subList(index + 1, end))
+                    Term.Operand(token.start, tokens[end].end, nested = tokens.subList(index + 1, end))
                 }
                 index = end + 1
             }
             token.kind == TokenKind.NUMBER -> {
                 val fraction = tokens.getOrNull(index + 1)?.takeIf { it.text == "." }
                     ?.let { tokens.getOrNull(index + 2) }?.takeIf { it.kind == TokenKind.NUMBER }
-                terms += Term.Operand(token.start, digits = fraction?.text?.length ?: 0)
+                val last = if (fraction == null) token else tokens[index + 2]
+                terms += Term.Operand(token.start, last.end, digits = fraction?.text?.length ?: 0)
                 index += if (fraction == null) 1 else 3
             }
             token.text in ARITHMETIC -> {
-                terms += Term.Op(token.text, token.start)
+                terms += Term.Op(token.text, token.start, token.end)
                 index++
             }
             else -> {
-                terms += Term.Operand(token.start, boundary = true)
+                terms += Term.Operand(token.start, token.end, boundary = true)
                 index++
             }
         }
@@ -453,6 +462,28 @@ private fun termsOf(tokens: List<Token>): List<Term> {
 }
 
 private val CLOSING_OF = mapOf("[" to "]", "{" to "}", "(" to ")")
+
+/**
+ * Where the chain holding the term written at [at] ends, which is where A12 raises the chain's gates:
+ * `checkOperation` runs once the operation context is read. A boundary ends a chain, as in [termsOf].
+ */
+private fun List<Term>.chainEndAt(at: Int): Int {
+    var chainEnd = -1
+    var holdsIt = false
+    forEach { term ->
+        if (term is Term.Operand && term.boundary) {
+            if (holdsIt) {
+                return chainEnd
+            }
+            chainEnd = -1
+        } else {
+            chainEnd = term.end
+            holdsIt = holdsIt || term.at == at
+        }
+    }
+    check(holdsIt) { "a violation at $at sits on no term of its level" }
+    return chainEnd
+}
 
 /** The index of [opening]'s partner, or null when the run does not balance. */
 private fun matchingDelimiter(tokens: List<Token>, from: Int, opening: String, closing: String): Int? {
@@ -496,4 +527,5 @@ private fun operationFinding(
             "in `$member`: a power directly under a power — A12 admits one, so brace the inner power"
     },
     element.path,
+    TextSpan(member, defect.at, defect.end),
 )

@@ -130,6 +130,7 @@ private fun TrackedFactBase.agreementFinding(
                     "`boolean` — `$partner` is ${(if (left == declared) right else left).spoken}"
         },
         element.path,
+        comparison.spanIn(member),
     )
 }
 

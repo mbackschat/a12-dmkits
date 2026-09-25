@@ -26,6 +26,7 @@ internal fun TrackedFactBase.connectiveAgreementFindings(element: TrackedDeclara
                     "${mixed.at} inside the same brackets. A12 gives the two no precedence and refuses to " +
                     "guess one, so the grouping has to be written: bracket whichever pair belongs together",
                 element.path,
+                TextSpan(member, mixed.at, mixed.end),
             )
         }
     }

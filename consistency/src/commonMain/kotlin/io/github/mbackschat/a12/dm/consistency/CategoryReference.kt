@@ -31,8 +31,9 @@ internal fun TrackedFactBase.categoryReferenceFindings(): List<Finding> = declar
     val body = element.body ?: return@flatMap emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).flatMap { (member, text) ->
-        categoryAccessesIn(text, conditionLanguage).mapNotNull { (path, category) ->
-            categoryFinding(path, category, group, element, member)
+        // Both classes are the entity spec's, which A12 checks once the name behind the arrow is read.
+        categoryAccessesIn(text, conditionLanguage).mapNotNull { access ->
+            categoryFinding(access.path, access.category, group, element, member, access.spanIn(member))
         }
     }
 }
@@ -43,6 +44,7 @@ private fun TrackedFactBase.categoryFinding(
     declaringGroup: String,
     element: TrackedDeclaration,
     member: String,
+    span: TextSpan,
 ): Finding? {
     val resolved = resolveEntity(declaringGroup, path.replace("*", ""), element.origin)
     if (resolved !is Reference.Resolved) {
@@ -69,6 +71,7 @@ private fun TrackedFactBase.categoryFinding(
                 "in `$member`: `->` reads a category attribute of an Enumeration, and `${target.path}` is " +
                     "not one — only an Enumeration declares categories",
                 element.path,
+                span,
             )
         }
     val declared = enumeration.declaredCategoryNames() ?: return null
@@ -80,6 +83,7 @@ private fun TrackedFactBase.categoryFinding(
         "in `$member`: `${target.path}` declares no category `$category`" +
             if (declared.isEmpty()) "" else " — it declares ${declared.joinToString { "`$it`" }}",
         element.path,
+        span,
     )
 }
 
@@ -99,5 +103,5 @@ private fun JsonObject.declaredCategoryNames(): Set<String>? {
     }.toSet()
 }
 
-private fun finding(code: String, explain: String, at: String): Finding =
-    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)
+private fun finding(code: String, explain: String, at: String, span: TextSpan): Finding =
+    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at, span)

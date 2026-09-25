@@ -141,7 +141,7 @@ private fun TrackedFactBase.gateFinding(
     // class the EXPANSION happens to draw — a domain class, a kind class or a varying-types class depending
     // on what the group holds — which is a wrong class rather than silence.
     groupUnderACategoryAccess(written + opposite, declaringGroup, element)
-        ?.let { return gate(NO_GROUPS, call.operator, it, member, element) }
+        ?.let { return gate(NO_GROUPS, call.operator, it, member, element, call.spanIn(member)) }
 
     // …and where the access names a FIELD it cannot ride, the class is the ACCESS's own
     // (`MVK_NO_ENUMERATION`, `MVK_CATEGORY_UNKOWN` — the kernel's spelling) and A12 reports nothing after
@@ -176,16 +176,16 @@ private fun TrackedFactBase.gateFinding(
     // The FIELD list's own two gates, both asked before the value list is looked at.
     fieldKinds.zipWithNext().forEachIndexed { at, (left, right) ->
         if (left != right) {
-            return gate(VARYING_TYPES, call.operator, fields[at + 1], member, element)
+            return gate(VARYING_TYPES, call.operator, fields[at + 1], member, element, call.spanIn(member))
         }
     }
     if (dateRange) {
         rangeShapeDefect(written, declaringGroup, element)
-            ?.let { return gate(BAD_RANGE_OPERAND, call.operator, it, member, element) }
+            ?.let { return gate(BAD_RANGE_OPERAND, call.operator, it, member, element, call.spanIn(member)) }
     } else {
         fields.forEachIndexed { at, field ->
             if (fieldKinds[at] !in LISTABLE_BASE_TYPES) {
-                return gate(ONLY_STRING_ENUM_NUMBER, call.operator, field, member, element)
+                return gate(ONLY_STRING_ENUM_NUMBER, call.operator, field, member, element, call.spanIn(member))
             }
         }
     }
@@ -195,17 +195,17 @@ private fun TrackedFactBase.gateFinding(
         val valueKinds = values.map { it.baseTypeClass() ?: return null }
         valueKinds.forEachIndexed { at, kind ->
             if (kind != fieldKinds.firstOrNull()) {
-                return gate(VARYING_TYPES, call.operator, values[at], member, element)
+                return gate(VARYING_TYPES, call.operator, values[at], member, element, call.spanIn(member))
             }
         }
         return null
     }
     if (dateRange) {
-        return gate(NO_CONST, call.operator, fields.firstOrNull() ?: return null, member, element)
+        return gate(NO_CONST, call.operator, fields.firstOrNull() ?: return null, member, element, call.spanIn(member))
     }
     return when (fieldKinds.firstOrNull()) {
         BaseTypeClass.NUMBER ->
-            gate(INVALID_TYPES_FOR_COMPARISON, call.operator, fields.first(), member, element)
+            gate(INVALID_TYPES_FOR_COMPARISON, call.operator, fields.first(), member, element, call.spanIn(member))
         BaseTypeClass.ENUMERATION -> constantDomainFinding(listed, opposite, call, member, element)
         else -> null
     }
@@ -256,6 +256,7 @@ private fun TrackedFactBase.constantDomainFinding(
             "declares — the domain is the union over the whole list, and a `->` category access " +
             "contributes that category's tokens INSTEAD of the enumeration's own values",
         element.path,
+        call.spanIn(member),
     )
 }
 
@@ -288,7 +289,7 @@ private fun TrackedFactBase.listedFields(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): List<ListedField>? = operands.flatMap { operand ->
-    val category = categoryAccessesIn(operand, conditionLanguage).singleOrNull()?.second
+    val category = categoryAccessesIn(operand, conditionLanguage).singleOrNull()?.category
     val declared = declaredTargetOf(operand, declaringGroup, element) ?: return null
     // The category rides the REFERENCE, so only an operand that IS a field carries one: the fields a group
     // expands into were never named, and A12 groups by the name it was given.
@@ -327,7 +328,7 @@ private fun TrackedFactBase.aCategoryAccessAnotherFamilyOwns(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): Boolean = operands.any { operand ->
-    val category = categoryAccessesIn(operand, conditionLanguage).singleOrNull()?.second ?: return@any false
+    val category = categoryAccessesIn(operand, conditionLanguage).singleOrNull()?.category ?: return@any false
     val target = declaredTargetOf(operand, declaringGroup, element) ?: return@any false
     target.declaredKind == DeclaredKind.FIELD && ListedField(target, category).contributedValues() == null
 }
@@ -353,6 +354,7 @@ private fun gate(
     field: TrackedDeclaration,
     member: String,
     element: TrackedDeclaration,
+    span: TextSpan,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
@@ -382,4 +384,5 @@ private fun gate(
                 "compare the value directly"
     },
     element.path,
+    span,
 )

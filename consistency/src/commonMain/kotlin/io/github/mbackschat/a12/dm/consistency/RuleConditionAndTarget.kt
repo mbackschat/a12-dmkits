@@ -83,7 +83,8 @@ private fun requiredTextFindings(
     declared: JsonElement?,
     required: RequiredMember,
 ): List<Finding> {
-    val blank = (declared as? JsonPrimitive)?.takeIf { it.isString }?.let { required.blankCodes(it.content) }
+    val text = (declared as? JsonPrimitive)?.takeIf { it.isString }?.content
+    val blank = text?.let(required.blankCodes)
     return when {
         declared == null || declared is JsonNull -> listOf(
             Finding(
@@ -103,6 +104,7 @@ private fun requiredTextFindings(
                 "this rule's `${required.member}` is blank, which A12 judges and refuses — unlike an OMITTED " +
                     "member, which it never gets far enough to judge",
                 element.path,
+                endOfBlankText(required.member, text.orEmpty()),
             )
         }
         // A non-string primitive is COERCED to the String member, as a rule's `errorCode` is, and a container

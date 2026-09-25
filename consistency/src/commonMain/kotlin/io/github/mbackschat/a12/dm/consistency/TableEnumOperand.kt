@@ -96,6 +96,7 @@ private fun TrackedFactBase.subjectDefect(
             "in `$member`: `${call.operator}` checks one field's value against a table, and `$written` " +
                 "names a group — name the field itself",
             element,
+            call.spanIn(member),
         )
     }
     if ('*' in reference) {
@@ -104,6 +105,7 @@ private fun TrackedFactBase.subjectDefect(
             "in `$member`: `${call.operator}` takes one field and not a repetition list, so `$written` " +
                 "may not carry a `*`",
             element,
+            call.spanIn(member),
         )
     }
     return finding(
@@ -112,8 +114,9 @@ private fun TrackedFactBase.subjectDefect(
             "and `$written` is not one — no model A12 can read declares a table-backed enumeration, so " +
             "this operator has no admissible subject; express the check another way",
         element,
+        call.spanIn(member),
     )
 }
 
-private fun finding(code: String, explain: String, element: TrackedDeclaration): Finding =
-    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, element.path)
+private fun finding(code: String, explain: String, element: TrackedDeclaration, span: TextSpan): Finding =
+    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, element.path, span)

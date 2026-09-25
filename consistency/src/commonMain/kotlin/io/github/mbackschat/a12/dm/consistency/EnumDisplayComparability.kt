@@ -84,7 +84,7 @@ private fun TrackedFactBase.displayFinding(
         else -> null
     } ?: return null
     return Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, defect.code,
-        "in `$member`: ${defect.because}", element.path)
+        "in `$member`: ${defect.because}", element.path, comparison.spanIn(member))
 }
 
 private class DisplayDefect(val code: String, val because: String)

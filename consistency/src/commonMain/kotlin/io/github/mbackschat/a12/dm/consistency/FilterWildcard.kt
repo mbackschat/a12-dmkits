@@ -2,7 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 
 /**
@@ -39,12 +41,18 @@ internal fun TrackedFactBase.filterWildcardFindings(): List<Finding> {
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
+            // Raised at the starred reference itself, ahead of what the body reads after it
+            // (`rulekit.validate.laws.ConditionClassWithholdingLawsTest.aGateIsRaisedWhereItsOwnProductionEnds`).
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
                 .flatMap { call -> call.operands }
                 .flatMap { operand -> operand.clauses.filter { it.keyword == filterKeyword } }
-                .flatMap { filter -> starredGroupsIn(filter.text, group, element, callable) }
-                .distinct()
-                .map { starred -> wildcardFinding(starred, element, member) }
+                .flatMap { filter ->
+                    starredGroupsIn(filter.text, group, element, callable).map { (starred, at) ->
+                        starred to TextSpan(member, filter.at + at.start, filter.at + at.end)
+                    }
+                }
+                .distinctBy { (starred, _) -> starred }
+                .map { (starred, span) -> wildcardFinding(starred, element, member, span) }
         }
     }
 }
@@ -62,15 +70,16 @@ private fun TrackedFactBase.starredGroupsIn(
     group: String,
     element: TrackedDeclaration,
     callable: Set<String>,
-): List<String> {
+): List<Pair<String, ReferenceSpan>> {
     if (callsIn(filter, conditionLanguage, syntaxEntryOf("errorCondition")).isNotEmpty() ||
         referencesIn(filter, conditionLanguage).any { it in callable }
     ) {
         return emptyList()
     }
-    return referencesIn(filter, conditionLanguage)
-        .filter { it.contains('*') }
-        .mapNotNull { reference ->
+    return referenceSpansIn(filter, conditionLanguage)
+        .filter { it.written.contains('*') }
+        .mapNotNull { occurrence ->
+            val reference = occurrence.written
             // The WHOLE reference has to resolve, not just the starred prefix. A12 answers an unresolvable
             // leaf with `MVK_INVALID_ENTITY` even though the star's own group is legal and repeatable —
             // measured, after the opposite was predicted from the non-repeatable landing site, where the
@@ -81,15 +90,16 @@ private fun TrackedFactBase.starredGroupsIn(
             val starred = reference.substringBefore('*')
             val resolved = resolveEntity(group, starred, element.origin) as? Reference.Resolved
                 ?: return@mapNotNull null
-            repeatableGroups().firstOrNull { it.path == resolved.path }?.path
+            repeatableGroups().firstOrNull { it.path == resolved.path }?.path?.let { it to occurrence }
         }
 }
 
-private fun wildcardFinding(starred: String, element: TrackedDeclaration, member: String): Finding = Finding(
+private fun wildcardFinding(starred: String, element: TrackedDeclaration, member: String, span: TextSpan) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_NO_WILDCARDS_ALLOWED",
     "this $member stars `$starred` inside a `$HAVING` filter — the filter decides one repetition at a " +
         "time, so it reads the current row and never the whole list; drop the `*`",
     element.path,
+    span,
 )
