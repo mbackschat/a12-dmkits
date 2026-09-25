@@ -32,7 +32,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
  *
  * **In a filter's body the star is [filterWildcardFindings]'**, whose reach there is measured on its own
  * conditions; this family asks the other three gates there. One gate split between two families is DG94 in
- * DEV-API-GAPS. That is what separates a GROUP read in a body,
+ * CONSISTENCY-GAPS. That is what separates a GROUP read in a body,
  * refused at its bracket, from the filter chain's `MVK_NO_ITERATION_FOR_WILDCARD`, raised only once the whole
  * filtered spec has been read.
  *

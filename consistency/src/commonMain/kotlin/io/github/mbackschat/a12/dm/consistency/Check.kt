@@ -1204,7 +1204,7 @@ private val UNREAD_MEMBERS = listOf(
             "per operator would be a second copy of the catalog, and every place the copy disagreed would " +
             "refuse a condition A12 admits. A12's illegal-CHARACTER class IS reported, derived from the " +
             "lexer's terminals. The message beside such a call is still judged, so a message class A12 " +
-            "withholds behind the refused condition can be reported in its place (DEV-API-GAPS DG83)",
+            "withholds behind the refused condition can be reported in its place (CONSISTENCY-GAPS DG83)",
     ),
     CoverageGap(
         at = null,

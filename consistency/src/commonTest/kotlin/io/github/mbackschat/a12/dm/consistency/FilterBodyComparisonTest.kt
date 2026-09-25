@@ -45,7 +45,7 @@ class FilterBodyComparisonTest {
         val rows = linkedMapOf(
             "Sum(Claims/Paid Having [Claims/Units] > 5) > 0" to "MVK_NO_WILDCARD",
             "Sum(Claims/Paid Having [Claims/Notes] < [Claims/Units]) > 0" to "MVK_INVALID_TYPE_FOR_COMPARISON",
-            // Divergence locks, DEV-API-GAPS DG90: A12 refuses a nested filter by the construct gate, and the
+            // Divergence locks, CONSISTENCY-GAPS DG90: A12 refuses a nested filter by the construct gate, and the
             // nested operand by its own chain; the checker's filter walk declines a nested filter outright.
             "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0" to ADMITTED,
             "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Notes] < [Claims/Units]) > 0) > 0" to
@@ -77,7 +77,7 @@ class FilterBodyComparisonTest {
                 "MVK_SEMANTIC_INDEX_WITH_WILDCARD",
             "Sum(Orders*/Units For Parties*/Name Having [Parties/Name] < [Parties/Count]) > 0" to
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
-            // Divergence lock, DEV-API-GAPS DG91: the body gates skip a filter an index key owns, so the key's
+            // Divergence lock, CONSISTENCY-GAPS DG91: the body gates skip a filter an index key owns, so the key's
             // own star class stands where A12 names the body's iteration.
             "Sum(Orders*/Units For Parties*/Name Having [Orders/Note] == \"x\") > 0" to
                 "MVK_SEMANTIC_INDEX_WITH_WILDCARD",
@@ -90,7 +90,7 @@ class FilterBodyComparisonTest {
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
             "Sum(Orders*/Units Having Sum(Orders*/Lines*/Amount Having $LINE_COMPARISON) > 0) > 0" to
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
-            // Divergence lock, DEV-API-GAPS DG90: A12 refuses an aggregate in a body by its own chain; the
+            // Divergence lock, CONSISTENCY-GAPS DG90: A12 refuses an aggregate in a body by its own chain; the
             // checker's filter walk declines an aggregate there.
             "Sum(Claims*/Paid Having Sum(Claims*/Units) > 0) > 0" to ADMITTED,
         )

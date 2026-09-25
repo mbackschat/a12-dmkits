@@ -68,7 +68,7 @@ class IndexFieldBaseTypeTest {
                 codes("Summary", "FieldFilled(Remark) And $returned > 0", "../Remark"),
         )
         val expected = linkedMapOf(
-            // Divergence locks, DEV-API-GAPS DG88: A12 walks a marked reference no iteration encloses as the
+            // Divergence locks, CONSISTENCY-GAPS DG88: A12 walks a marked reference no iteration encloses as the
             // rule's own read and draws that walk's class, and the checker sets every marked body aside.
             "marked, into the keyed Invoices" to ADMITTED,
             "marked, into the unkeyed filtered group" to ADMITTED,

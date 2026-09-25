@@ -263,7 +263,7 @@ class CheckerKeyedOperandAgreementTest {
         val ROWS_PER_FAMILY = 17 + 9
 
         /**
-         * The rows that still disagree, all from one family that is neither the key's nor the body's (DEV-API-GAPS
+         * The rows that still disagree, all from one family that is neither the key's nor the body's (CONSISTENCY-GAPS
          * DG96): it does not type a temporal comparison against a number constant, so its own local read is silent,
          * and so is every row where nothing else in the text draws a class; wherever the grid puts that comparison
          * beside another read, a class A12 raises later on the same text stands in its place — the filter walk's,

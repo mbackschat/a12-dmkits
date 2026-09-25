@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
  * **The gate is the field-value read's, not the filter's.** A body holds no bare reference outside an
  * operator's argument ([KF472]), so each starred reference measured there is a `[ … ]` read, and that
  * production refuses a star wherever it stands ([KF473], [fieldValueReadOperandFindings]). This family keeps
- * the filter arm of that gate, which the bracket family leaves to it; the split is DG94 in DEV-API-GAPS. That
+ * the filter arm of that gate, which the bracket family leaves to it; the split is DG94 in CONSISTENCY-GAPS. That
  * is also why it is not part of [repetitionWildcardFindings]: the same star is admitted in an aggregate's
  * operand and `MVK_NO_WILDCARDS_G_ALLOWED` in a quantifier's operand list, and the reference-level family
  * deliberately judges only stars that land on something non-repeatable.

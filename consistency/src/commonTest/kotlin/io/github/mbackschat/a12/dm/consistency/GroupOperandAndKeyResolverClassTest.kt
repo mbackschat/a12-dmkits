@@ -162,7 +162,7 @@ class GroupOperandAndKeyResolverClassTest {
             "../Claims/ClaimRef" to listOf("MVK_TOO_MANY_PARENT_GROUPS"),
             "Remark" to listOf("MVK_FIELDNAME_NOT_UNIQUE"),
             // A12 answers `MVK_NO_WILDCARDS_ALLOWED`. The checker does not carry the key list's own wildcard
-            // gate (DEV-API-GAPS DG80), so this row locks a disclosed under-report, never a wrong class.
+            // gate (CONSISTENCY-GAPS DG80), so this row locks a disclosed under-report, never a wrong class.
             "Claims*/ClaimRef" to emptyList(),
             "Insured*/Remark" to listOf("MVK_INVALID_WILDCARD"),
             "Insured*/Nope" to listOf("MVK_INVALID_WILDCARD"),

@@ -119,7 +119,7 @@ class LiteralIndexKeyTest {
             "over an enumeration index" to listOf("MVK_INVALID_ENTITY"),
             "over a Number index" to listOf("MVK_INVALID_ENTITY"),
             // A12 admits the key and names the arity class; the index chain judges a constant only against an
-            // enumeration and leaves this key unjudged, so every gate stands down (DEV-API-GAPS DG102).
+            // enumeration and leaves this key unjudged, so every gate stands down (CONSISTENCY-GAPS DG102).
             "quoted, over a Number index" to emptyList(),
             "ahead of an unaddressed read" to listOf("MVK_INVALID_ENTITY"),
             "behind an unaddressed read" to listOf("MVK_NO_WILDCARD"),

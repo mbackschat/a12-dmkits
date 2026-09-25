@@ -326,7 +326,7 @@ class MessageParameterConditionDependencyLawsTest {
         refused.put("an up-step after a named segment", "FieldFilled(Reference) And FieldFilled(Claims/../Reference)");
         refused.put("an unknown root group", "FieldFilled(Reference) And FieldFilled(/Nope/Reference)");
         // Two calls A12 refuses by operator — an argument too many, and a number where a date belongs, each
-        // drawing MVK_UNEXPECTED_TOKEN. The portable checker leaves both to A12 (DEV-API-GAPS DG83).
+        // drawing MVK_UNEXPECTED_TOKEN. The portable checker leaves both to A12 (CONSISTENCY-GAPS DG83).
         refused.put("an argument too many", "FieldFilled(Reference) And Abs([Premium], [Premium]) > 0");
         refused.put("a number where a date belongs", "FieldFilled(Reference) And AddDays([Premium], 1) > 0");
         // Three classes from three more operator gates: a presence test given two fields, one field listed twice,
