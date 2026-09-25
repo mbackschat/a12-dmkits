@@ -117,9 +117,11 @@ class CheckerKeyedOperandAgreementTest {
             "another key on the field" to "Sum(Claims For \"X\", Claims/Amount For \"Y\") > 0",
         )
         val actual = rows.mapValues { (_, probe) -> compare(AT_ROOT, probe).let { it.ours to it.a12 } }
-        val expected = actual.mapValues { (_, pair) -> pair.second to pair.second }
-        assertTrue(actual.values.all { it.second.isNotEmpty() }, "A12 refuses every row: $actual")
-        assertEquals(expected, actual, "a keyed group operand, as (ours, A12)")
+        val a12 = linkedMapOf(
+            "the same key on the group and its field" to setOf("MVK_DUPLICATE_PARAM2"),
+            "another key on the field" to setOf("MVK_NO_NUMBER"),
+        )
+        assertEquals(a12.mapValues { (_, codes) -> codes to codes }, actual, "a keyed group operand, as (ours, A12)")
     }
 
     /** A desk whose repeatable `Claims` carries an enumeration projected through a covering and a wider category. */
@@ -167,8 +169,19 @@ class CheckerKeyedOperandAgreementTest {
                 .filter { it.justifiesRejection }.map { it.code }.toSet()
             ours to a12
         }
-        assertTrue(actual.getValue(rows.keys.first()).second.isNotEmpty(), "A12 refuses the control: $actual")
-        assertEquals(actual.mapValues { (_, pair) -> pair.second to pair.second }, actual,
+        val invalid = setOf("MVK_ERROR_INVALID_ENUM_CALCULATION")
+        val starred = setOf("MVK_NO_WILDCARDS_ALLOWED")
+        val a12 = linkedMapOf(
+            "the local read of a wider category — the control" to invalid,
+            "a starred read of a covering category" to starred,
+            "a starred read of a wider category" to starred,
+            "a starred read of the wider field itself" to starred,
+            "a starred read of an undeclared category" to setOf("MVK_CATEGORY_UNKOWN"),
+            "a climbing read of a covering category" to emptySet(),
+            "a climbing read of a wider category" to invalid,
+            "a climbing read of the wider field itself" to invalid,
+        )
+        assertEquals(a12.mapValues { (_, codes) -> codes to codes }, actual,
             "an enumeration computation's source, as (ours, A12)")
     }
 

@@ -29,6 +29,8 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
  *
  * <p>{@code Riders} declares the fields of {@code Claims} and no index field, and {@code Endorsements} indexes
  * them on the enumeration {@code Status}, so each keyed read differs from a sound one in that declaration alone.
+ * One family reads the group {@code Review} rather than a field, so the key chain is measured on a group value
+ * too.
  *
  * <p>The probes are text because several deliberately carry a key the typed builders refuse.
  *
@@ -61,8 +63,26 @@ class KeyedOperandFamilyGateLawsTest {
                 .stringField("Memo", f -> { })
                 .dateField("Filed", f -> f.format("yyyy-MM-dd"))
                 .booleanField("Settled", f -> { })
-                .enumField("Status", f -> f.value("OPEN").value("CLOSED"));
+                .enumField("Status", f -> f.value("OPEN").value("CLOSED"))
+                .group("Review", r -> r.stringField("Note", f -> { }));
     }
+
+    /** The same model with the root also declaring an index, so every keyed read has a second indexed ancestor. */
+    private static final String ROOT_INDEXED = rootIndexed();
+
+    private static String rootIndexed() {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(POLICY);
+            ((ObjectNode) root.path("content").path("modelRoot").path("rootGroups").get(0).path("Group"))
+                    .put("indexFieldName", "Reference");
+            return root.toString();
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture must parse", unreadable);
+        }
+    }
+
+    /** A read of the unstarred, unindexed `Riders` from the root, unaddressed in every family. */
+    private static final String UNADDRESSED = "[Riders/Memo] == \"a\"";
 
     /** Each family's probe, with `%s` where the operand stands. */
     private static final Map<String, String> PROBES = new LinkedHashMap<>();
@@ -88,6 +108,13 @@ class KeyedOperandFamilyGateLawsTest {
         PROBES.put("date arithmetic amount", "AddDays(Opened, [%s]) < Today");
         PROBES.put("date arithmetic precision", "[Opened] < AddHours(%s, 1)");
         PROBES.put("entity-list duplicate", "Sum(%s, %s) > 0");
+        PROBES.put("field-operand kind", "FieldFilled(%s)");
+        PROBES.put("value-list condition", "AtLeastOneFieldValueIncludedInValueList(%s In \"a\")");
+        PROBES.put("table enumeration operand", "ValueNotConsistent(%s To \"HIGH\")");
+        PROBES.put("rounding digits", "RoundUpValue(%s, 15) > 0");
+        PROBES.put("arithmetic under a pattern", "[%s] + 1 PatternMatched \"a+\"");
+        PROBES.put("date construction slot", "Date(%s, \"02\", \"2020\") < Today");
+        PROBES.put("date-range value list", "AtLeastOneDateRangeOverlaps(%s In Code)");
     }
 
     /** The field each family's probe reads — the one its own gate refuses. */
@@ -114,10 +141,21 @@ class KeyedOperandFamilyGateLawsTest {
         FIELDS.put("date arithmetic amount", new String[] {"Memo"});
         FIELDS.put("date arithmetic precision", new String[] {"Filed"});
         FIELDS.put("entity-list duplicate", new String[] {"Amount", "Amount"});
+        FIELDS.put("field-operand kind", new String[] {"Review"});
+        FIELDS.put("value-list condition", new String[] {"Amount"});
+        FIELDS.put("table enumeration operand", new String[] {"Amount"});
+        FIELDS.put("rounding digits", new String[] {"Amount"});
+        FIELDS.put("arithmetic under a pattern", new String[] {"Memo"});
+        FIELDS.put("date construction slot", new String[] {"Memo"});
+        FIELDS.put("date-range value list", new String[] {"Memo"});
     }
 
     private static String keyed(String probe) {
-        return KernelLaws.verdictModel(POLICY, "/Policy", "../Reference", "FieldFilled(Reference) And " + probe);
+        return keyed(POLICY, probe);
+    }
+
+    private static String keyed(String model, String probe) {
+        return KernelLaws.verdictModel(model, "/Policy", "../Reference", "FieldFilled(Reference) And " + probe);
     }
 
     private static String local(String probe) {
@@ -165,6 +203,13 @@ class KeyedOperandFamilyGateLawsTest {
         CLASS.put("date arithmetic amount", "MVK_NON_NUMERIC");
         CLASS.put("date arithmetic precision", "MVK_WRONG_DATE_FORMAT_FOR_OP");
         CLASS.put("entity-list duplicate", "MVK_DUPLICATE_PARAM1");
+        CLASS.put("field-operand kind", "MVK_NO_GROUPS_ALLOWED");
+        CLASS.put("value-list condition", "MVK_INVALID_TYPES_FOR_COMPARISON");
+        CLASS.put("table enumeration operand", "MVK_TABLE_ENUM_EXPECTED");
+        CLASS.put("rounding digits", "MVK_INVALID_DIGIT_FOR_ROUNDING");
+        CLASS.put("arithmetic under a pattern", "MVK_NO_STRING_OR_NUMBER_FOR_ADD");
+        CLASS.put("date construction slot", "MVK_NO_DIGIT_PATTERN");
+        CLASS.put("date-range value list", "MVK_NO_DATE_RANGE");
     }
 
     /**
@@ -179,7 +224,9 @@ class KeyedOperandFamilyGateLawsTest {
             actual.put(family + " — local", local(probe(family, operands(family, "%s"))));
             actual.put(family + " — string key", keyed(probe(family, operands(family, "Claims/%s For \"X\""))));
             actual.put(family + " — field key", keyed(probe(family, operands(family, "Claims/%s For Code"))));
-            for (String read : new String[] {" — local", " — string key", " — field key"}) {
+            actual.put(family + " — a declared enumeration token", keyed(probe(family,
+                    operands(family, "Endorsements/%s For \"OPEN\""))));
+            for (String read : new String[] {" — local", " — string key", " — field key", " — a declared enumeration token"}) {
                 expected.put(family + read, CLASS.get(family));
             }
         }
@@ -210,6 +257,11 @@ class KeyedOperandFamilyGateLawsTest {
         DEFECTS.put("an iterating key", new String[] {"Claims/%s For Notes/Text", "MVK_SEMANTIC_INDEX_INVALID_ITER"});
         DEFECTS.put("a key beside a star", new String[] {"Claims*/%s For \"X\"", "MVK_SEMANTIC_INDEX_AND_WILDCARD"});
         DEFECTS.put("a constant the enumeration index refuses", new String[] {"Endorsements/%s For \"PENDING\"", "MVK_INDEX_VALUE_INVALID"});
+        DEFECTS.put("a declared token in another case", new String[] {"Endorsements/%s For \"open\"", "MVK_INDEX_VALUE_INVALID"});
+        // The refused constant answers before the operand's filter.
+        DEFECTS.put("a refused constant and a filter on the operand", new String[] {
+                "Endorsements/%s For \"PENDING\" Having [Endorsements/ClaimRef] == \"a\"", "MVK_INDEX_VALUE_INVALID"});
+        DEFECTS.put("a second indexed ancestor", new String[] {"Claims/%s For \"X\"", "MVK_MULTIPLE_INDEX_FIELDS"});
     }
 
     /**
@@ -226,7 +278,8 @@ class KeyedOperandFamilyGateLawsTest {
                 expected.put(family + " — " + group + " local", CLASS.get(family));
             }
             DEFECTS.forEach((defect, formAndClass) -> {
-                actual.put(family + " — " + defect, keyed(probe(family, operands(family, formAndClass[0]))));
+                String model = defect.equals("a second indexed ancestor") ? ROOT_INDEXED : POLICY;
+                actual.put(family + " — " + defect, keyed(model, probe(family, operands(family, formAndClass[0]))));
                 expected.put(family + " — " + defect, formAndClass[1]);
             });
         }
@@ -265,11 +318,54 @@ class KeyedOperandFamilyGateLawsTest {
                         + probe(family, operands(family, form)) + ") > 0"));
                 expected.put(family + " — " + form, form.endsWith("5") ? "MVK_INVALID_ENTITY" : CLASS.get(family));
             }
-            actual.put(family + " — the filtered level's own body", keyed("NumberOfFilledFields(Claims*/Memo Having "
-                    + probe(family, operands(family, "Claims/%s")) + ") > 0"));
-            expected.put(family + " — the filtered level's own body", CLASS.get(family));
+            for (String form : new String[] {"Claims/%s", "Claims/%s For \"X\"", "Claims/%s For 5"}) {
+                actual.put(family + " — the filtered level's own body, " + form, keyed("NumberOfFilledFields("
+                        + "Claims*/Memo Having " + probe(family, operands(family, form)) + ") > 0"));
+                expected.put(family + " — the filtered level's own body, " + form,
+                        form.endsWith("5") ? "MVK_INVALID_ENTITY" : CLASS.get(family));
+            }
         }
         assertEquals(expected, actual, "a read inside a filter body");
+    }
+
+    /**
+     * A string key followed by a `Having` gives the operand a filter, since a string key takes none of its own:
+     * the filter then demands its star, and on the one gate that reads a group the group gate answers instead.
+     */
+    @Test
+    void aFilterAfterAStringKeyIsTheOperands() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String family : PROBES.keySet()) {
+            actual.put(family, keyed(probe(family,
+                    operands(family, "Claims/%s For \"X\" Having [Claims/ClaimRef] == \"a\""))));
+            expected.put(family, family.equals("field-operand kind") ? "MVK_NO_GROUPS_ALLOWED" : "MVK_WILDCARDS_REQUIRED");
+        }
+        assertEquals(expected, actual, "a filter written after a string key");
+    }
+
+    /**
+     * Beside an unaddressed read, A12 names whichever read comes first in the text, so each key class, and the
+     * family's own, is observable where it stands.
+     */
+    @Test
+    void theReadMetFirstInTheTextAnswers() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String family : PROBES.keySet()) {
+            String keyedRead = probe(family, operands(family, "Claims/%s For \"X\""));
+            actual.put(family + " — the unaddressed read first", keyed(UNADDRESSED + " And " + keyedRead));
+            expected.put(family + " — the unaddressed read first", "MVK_NO_WILDCARD");
+            actual.put(family + " — the keyed read first", keyed(keyedRead + " And " + UNADDRESSED));
+            expected.put(family + " — the keyed read first", CLASS.get(family));
+            actual.put(family + " — a declared token first", keyed(probe(family,
+                    operands(family, "Endorsements/%s For \"OPEN\"")) + " And " + UNADDRESSED));
+            expected.put(family + " — a declared token first", CLASS.get(family));
+            actual.put(family + " — a refused constant first", keyed(probe(family,
+                    operands(family, "Endorsements/%s For \"PENDING\"")) + " And " + UNADDRESSED));
+            expected.put(family + " — a refused constant first", "MVK_INDEX_VALUE_INVALID");
+        }
+        assertEquals(expected, actual, "which read answers, in text order");
     }
 
     /**
