@@ -5861,6 +5861,18 @@ The last two rows fix the order: the FIRST failure in the text answers, whether 
 
 **The two routes to this pragma are different carriers and only one was previously measured.** [DirectiveLawsTest](../src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/DirectiveLawsTest.java) locks the INLINE form written into a rule's condition text; this entry measures the STRUCTURED member on a computation, which A12 renders into the same directive. A ledger note saying rulekit never authors the directive is true of the inline text and not of the member.
 
+**Because the pragma is parsed with the condition, its class is the FIRST one in that text and withholds everything the computation's texts carry — the message included** (measured 2026-09-25, `MVK_TOTALLY_BOGUS` and the supported name twice, on one computation):
+
+| beside the suppression's class | A12 |
+|---|---|
+| sound texts — the control | the suppression's class |
+| a name that resolves to nothing, in the operation or in a precondition | the suppression's class only |
+| a parse-time gate in the operation (`RoundUpValue(Label, 2)` over a text) | the suppression's class only |
+| a read of the computed field (the calculation module's `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`) | the suppression's class only |
+| a TAB in the message, `INVALID_CHARACTERS` beside sound texts | the suppression's class only |
+
+So the member is not one that stands beside the DSL, which is where the portable checker had filed it by analogy with the name and error-code members; the last row is the discriminator, since a class beside the DSL leaves the message judged ([KF338](#kf338)). The checker now withholds every class of the texts behind a suppression's class and lets it withhold the message (`Check.kt`, `withoutTheTextsBehindARefusedPreamble`; `consistency.SuppressionPreambleWithholdingTest`). *(Locked: `rulekit.validate.laws.ComputationMemberVerdictLawsTest.whereASuppressionsClassStandsAgainstTheTexts`.)*
+
 **An explicit `null` refuses the READER**, where the rounding pair beside it takes `null` as absence ([KF297](#kf297)): this member is bound `@NonNull List<String>` rather than through an `Optional` accessor, so the tier is a property of the binding and not of DM-JSON. A bare string and an object are refused too; a numeric ELEMENT is coerced into the list and then fails in the pragma.
 
 *(Locked: `rulekit.validate.laws.ComputationSuppressionLawsTest`. The checker's own family is `CheckFamily.SUPPRESSED_WARNINGS`, whose rows are `consistency.SuppressedWarningsTest`; the builder's citations are `rulekit.dsl.ComputationSuppressionTest`.)*

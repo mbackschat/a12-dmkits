@@ -1016,7 +1016,9 @@ internal fun checkRun(
         .flatMapTo(mutableSetOf()) { cells.getValue(it.key).findings }
     val dslVerdicts = scheduled.filter { it.key.producer.completes.none { f -> f in BESIDE_THE_DSL_FAMILIES } }
         .flatMap { cells.getValue(it.key).findings }
-    val aboutTheDsl = (conditionReferences + dslVerdicts).toSet()
+    val preamble = scheduled.filter { it.key.producer.completes == setOf(CheckFamily.SUPPRESSED_WARNINGS) }
+        .flatMapTo(mutableSetOf()) { cells.getValue(it.key).findings }
+    val aboutTheDsl = (conditionReferences + dslVerdicts).toSet() - preamble
     // A reference's own class is what withholds the text classes, so it is never withheld behind itself —
     // which matters because a misplaced up-step's class is a token error, spelled like one of those it withholds.
     val textClasses = scheduled.flatMap { cells.getValue(it.key).findings }
@@ -1026,6 +1028,7 @@ internal fun checkRun(
         }
     val judged = (references + textClasses)
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
+        .withoutTheTextsBehindARefusedPreamble(preamble, aboutTheDsl, twinned)
         .withoutDefectsBehindAnEarlierOne(placedReferences, twinned)
         .withoutPostParseClassesBehindAPositionedDefect(aboutTheDsl)
         .withoutMessageVerdictsBehindARefusedDsl(messageVerdicts, dslVerdicts = references + dslVerdicts)
@@ -1265,6 +1268,27 @@ private fun Finding.placedIn(conditionReferences: Set<Finding>, twinned: Set<Str
 }
 
 /**
+ * Drops every class of a computation's texts when its suppression PREAMBLE draws one.
+ *
+ * A12 renders `errorCodesToSuppress` as an `@SuppressWarning(…)` line in front of the condition it generates
+ * from the computation and parses the two as one text, so the preamble's class is the first defect in it:
+ * measured beside a name that resolves to nothing in either member, a parse-time gate, and the calculation
+ * module's self-read class, each withheld (`rulekit.validate.laws.ComputationMemberVerdictLawsTest
+ * .whereASuppressionsClassStandsAgainstTheTexts`). The preamble is therefore not placed in the texts'
+ * order at all ([preamble] is kept out of [aboutTheDsl]) — nothing in them can stand ahead of it — and it
+ * withholds the message like any DSL class does, by the message law. Two declarations at one path stand down
+ * ([twinned]), since a path does not say whose texts a class came from.
+ */
+private fun List<Finding>.withoutTheTextsBehindARefusedPreamble(
+    preamble: Set<Finding>,
+    aboutTheDsl: Set<Finding>,
+    twinned: Set<String>,
+): List<Finding> {
+    val refused = preamble.filter { it.justifiesRejection }.mapNotNullTo(mutableSetOf()) { it.at } - twinned
+    return filterNot { it.at in refused && it in aboutTheDsl }
+}
+
+/**
  * Drops a finding that an EARLIER defect in the same DSL member stands ahead of: A12 names the first defect in
  * a text and nothing after it.
  *
@@ -1419,11 +1443,14 @@ internal val MESSAGE_MEMBER_FAMILIES = setOf(
  * Listed as the families that do NOT withhold, for the reason [POSITIONED_CONDITION_CODES] is a drop-list: a
  * family added later is far more likely to read the condition text, and it then withholds without an edit
  * here. The name and error-code rows are measured; the name's uniqueness and alphabet, the presentation
- * members, the suppressions and the variant filter are the same member kinds and are assumed alike.
+ * members and the variant filter are the same member kinds and are assumed alike. **The suppressions were
+ * assumed alike too, and are not**: A12 parses them as the preamble of the condition it generates, so their
+ * class is a DSL class and withholds the message ([withoutTheTextsBehindARefusedPreamble], measured
+ * 2026-09-25).
  */
 private val BESIDE_THE_DSL_FAMILIES = MESSAGE_MEMBER_FAMILIES + setOf(
     CheckFamily.DECLARATION_SLOTS, CheckFamily.ELEMENT_NAME_UNIQUENESS, CheckFamily.ELEMENT_NAME_ALPHABET,
-    CheckFamily.RULE_PRESENTATION_MEMBERS, CheckFamily.SUPPRESSED_WARNINGS, CheckFamily.VARIANT_FILTER,
+    CheckFamily.RULE_PRESENTATION_MEMBERS, CheckFamily.VARIANT_FILTER,
 )
 
 /**
