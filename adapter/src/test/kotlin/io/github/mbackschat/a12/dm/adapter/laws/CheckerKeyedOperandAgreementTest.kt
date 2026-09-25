@@ -72,6 +72,7 @@ class CheckerKeyedOperandAgreementTest {
             }
             val keyed = probe.with("Claims/%s For \"X\"")
             val rows = linkedMapOf(
+                "unkeyed from the root" to compare(AT_ROOT, probe.with("Claims/%s")),
                 "string key" to compare(AT_ROOT, keyed),
                 "enumeration constant key" to compare(AT_ROOT, probe.with("Endorsements/%s For \"OPEN\"")),
                 "field key" to compare(AT_ROOT, probe.with("Claims/%s For Code")),
@@ -83,6 +84,10 @@ class CheckerKeyedOperandAgreementTest {
                     "Having ${probe.with("Claims/%s")}) > 0"),
                 "keyed in a filter body" to compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text Having " +
                     "${probe.with("Claims/%s For \"X\"")}) > 0"),
+                "keyed in the filtered level's own body" to compare(AT_ROOT, "NumberOfFilledFields(Claims*/Memo " +
+                    "Having ${probe.with("Claims/%s For \"X\"")}) > 0"),
+                "number literal key in the filtered level's own body" to compare(AT_ROOT,
+                    "NumberOfFilledFields(Claims*/Memo Having ${probe.with("Claims/%s For 5")}) > 0"),
                 "number literal key in a filter body" to compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text " +
                     "Having ${probe.with("Claims/%s For 5")}) > 0"),
                 "an unaddressed read ahead of the keyed read" to compare(AT_ROOT, "$UNADDRESSED And $keyed"),
@@ -255,7 +260,7 @@ class CheckerKeyedOperandAgreementTest {
         const val UNADDRESSED = "[Riders/Memo] == \"a\""
 
         /** The rows each family is compared on: the named ones in the loop, then one per key defect. */
-        val ROWS_PER_FAMILY = 14 + 9
+        val ROWS_PER_FAMILY = 17 + 9
 
         /**
          * The rows that still disagree, all from one family that is neither the key's nor the body's (DEV-API-GAPS
@@ -277,6 +282,8 @@ class CheckerKeyedOperandAgreementTest {
                 "A12 [MVK_INVALID_COMPARE_TO_DATE]",
             "comparison against a constant — keyed in a filter body: WRONG-CLASS [MVK_SEMANTIC_INDEX_NOT_ALLOWED] " +
                 "A12 [MVK_INVALID_COMPARE_TO_DATE]",
+            "comparison against a constant — keyed in the filtered level's own body: WRONG-CLASS " +
+                "[MVK_SEMANTIC_INDEX_NOT_ALLOWED] A12 [MVK_INVALID_COMPARE_TO_DATE]",
             "comparison against a constant — the keyed read ahead of an unaddressed read: WRONG-CLASS " +
                 "[MVK_NO_WILDCARD] A12 [MVK_INVALID_COMPARE_TO_DATE]",
             "comparison against a constant — an enumeration constant key ahead of an unaddressed read: WRONG-CLASS " +
