@@ -93,6 +93,9 @@ class TemporalComparisonAgreementLawsTest {
         actual.put("against a date fragment of DIFFERENT components", verdict("[Start] == [BirthMonth]"));
         actual.put("a number on the LEFT of a date", verdict("[Premium] == [Start]"));
         actual.put("a date ORDERED against a number", verdict("[Start] < [Premium]"));
+        actual.put("a number ORDERED against a date", verdict("[Premium] < [Start]"));
+        actual.put("a number CONSTANT ordered against a date", verdict("1 < [Start]"));
+        actual.put("a date ordered against a number constant", verdict("[Start] < 1"));
         actual.put("a date ordered against a text", verdict("[Start] < [Reference]"));
         actual.put("a date within a TOLERANCE of a number",
                 verdict("[Premium] DiffersWithToleranceRange10 [Start]"));
@@ -107,6 +110,10 @@ class TemporalComparisonAgreementLawsTest {
         // Ordering admits numbers and dates, so both sides clear the operator gate and the date arm still
         // refuses the pair — the one shape where this class answers a non-equality comparison.
         expected.put("a date ORDERED against a number", DATE);
+        // The arm reads the PAIR, so the date's side does not matter, and a constant partner is no exception.
+        expected.put("a number ORDERED against a date", DATE);
+        expected.put("a number CONSTANT ordered against a date", DATE);
+        expected.put("a date ordered against a number constant", DATE);
         // …and where the partner is not orderable at all, the operator gate answers instead.
         expected.put("a date ordered against a text", "MVK_INVALID_TYPE_FOR_COMPARISON");
         // The tolerance arm RETURNS once it has refused, so the date arm never runs on this pair.

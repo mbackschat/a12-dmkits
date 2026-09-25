@@ -27,10 +27,12 @@ import kotlinx.serialization.json.contentOrNull
  * | the FIELD list's entries do not all share a base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
  * | `AtLeastOneDateRangeOverlaps`: the field list is not exactly one plain field | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` |
  * | the other three: an entry is neither text, enumeration nor number | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
+ * | a field-list entry waives value validation | `MVK_INVALID_RAW_TYPE` |
  * | `AtLeastOneDateRangeOverlaps` against a WRITTEN-OUT list | `MVK_NO_CONST` |
  * | a written-out list against a NUMBER field list | `MVK_INVALID_TYPES_FOR_COMPARISON` |
  * | a written-out value outside the enumeration's domain | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` |
  * | an ENTITY value list of another base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+ * | an entity value list entry waives value validation | `MVK_INVALID_RAW_TYPE` |
  *
  * **The FIELD list is judged before the value list's type is looked at**, which a reader merging the two
  * into one same-type walk gets wrong: a date-range field list against a text one is the field list's own
@@ -48,10 +50,13 @@ import kotlinx.serialization.json.contentOrNull
  * `-> Band` contributes its category's tokens and stops contributing its own values, so the enumeration's
  * own value is then refused. One enumeration, two accesses, two verdicts.
  *
- * **A repeated entity pre-empts every one of them**, the duplicate walk running while the reference list is
- * built, and it spans BOTH lists: a field named again among the values is `MVK_DUPLICATE_PARAM1` just as a
- * field named twice among the fields is. Measured, and the reason this family leaves such a call unjudged
- * rather than naming a class on a model A12 refuses for a different reason.
+ * **A repeat is asked at three positions, and silences only the gates behind it.** `getRefList` refuses a
+ * repeat as it builds each list: the FIELD list ahead of every gate above, the value list only after the
+ * field list's type and validation gates. A repeat ACROSS the two is asked later still, after the value
+ * list's base type and ahead of its validation. So `Reference, Quantity In Reference` is the field list's
+ * `MVK_VARYING_TYPES_NOT_ALLOWED` and `Reference In Reference, InternalMemo` is `MVK_DUPLICATE_PARAM1`
+ * (KERNEL-FINDINGS KF380, measured on the rows that repeat and fail a gate at once). A12's duplicate classes
+ * are not this family's to name, so a repeat makes it silent from its own position on.
  *
  * **The category access is asked FIRST, and its other arms belong to another family.** An access demands an
  * enumeration declaring the named category; a GROUP under one is this construct's share of that law
@@ -63,9 +68,7 @@ import kotlinx.serialization.json.contentOrNull
  * its own lists would draw.
  *
  * **Silent on a `TypeDefType` or `UnspecifiedType` declaration**, whose effective type this reader does not
- * resolve; on the `noValueValidation` gate that runs between the field gates and the value list
- * (`MVK_INVALID_RAW_TYPE`), a value-position law shared with several other constructs; on the date-range
- * arm's two format-and-year walks, which run after everything here and belong to
+ * resolve; on the date-range arm's two format-and-year walks, which run after everything here and belong to
  * [dateRangeOperandListFindings]; and on an enumeration declaring a `tableName`, which A12 exempts from the
  * domain check and which makes a model unreadable here anyway.
  */
@@ -121,6 +124,8 @@ private const val BAD_CONSTANT = "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR
 
 private const val NO_GROUPS = "MVK_NO_GROUPS_ALLOWED"
 
+private const val RAW = "MVK_INVALID_RAW_TYPE"
+
 /** One entry of the field list: the declaration it reaches, and the category it reads it through. */
 private class ListedField(val field: TrackedDeclaration, val category: String?)
 
@@ -168,7 +173,8 @@ private fun TrackedFactBase.gateFinding(
     } else {
         expandedFields(opposite, declaringGroup, element) ?: return null
     }
-    if (repeated(fields + values)) {
+    // A12 refuses a repeat as it BUILDS each list, and builds the field list ahead of every gate below.
+    if (repeated(fields)) {
         return null
     }
     val fieldKinds = fields.map { it.baseTypeClass() ?: return null }
@@ -190,14 +196,27 @@ private fun TrackedFactBase.gateFinding(
         }
     }
 
+    fields.firstOrNull { it.waivesValueValidation() }
+        ?.let { return gate(RAW, call.operator, it, member, element, call.spanIn(member)) }
+
     // …then the value list, which is a different question on each of its two spellings.
     if (!literalList) {
+        // The value list is built only now, so its own repeat answers here, behind the field list's gates.
+        if (repeated(values)) {
+            return null
+        }
         val valueKinds = values.map { it.baseTypeClass() ?: return null }
         valueKinds.forEachIndexed { at, kind ->
             if (kind != fieldKinds.firstOrNull()) {
                 return gate(VARYING_TYPES, call.operator, values[at], member, element, call.spanIn(member))
             }
         }
+        // A repeat ACROSS the two lists is asked after the value list's base type and ahead of its validation.
+        if (repeated(fields + values)) {
+            return null
+        }
+        values.firstOrNull { it.waivesValueValidation() }
+            ?.let { return gate(RAW, call.operator, it, member, element, call.spanIn(member)) }
         return null
     }
     if (dateRange) {
@@ -344,7 +363,7 @@ private fun TrackedFactBase.expandedFields(
 internal fun List<String>.isWrittenOutValueList(): Boolean =
     all { tokenize(it).singleOrNull()?.kind == TokenKind.STRING }
 
-/** Whether any field is named twice across the two lists, which A12 answers as a duplicate parameter. */
+/** Whether any field is named twice among [fields], which A12 answers as a duplicate parameter. */
 private fun repeated(fields: List<TrackedDeclaration>): Boolean =
     fields.map { it.path }.distinct().size != fields.size
 
@@ -378,6 +397,10 @@ private fun gate(
         NO_CONST ->
             "in `$member`: `$operator` overlaps date RANGES, so the right-hand side names declarations " +
                 "rather than written-out values"
+        RAW ->
+            "in `$member`: `$operator` compares stored values, and `${field.path}` waives value validation, " +
+                "so its value is never checked against its type — compare a validated field instead, or drop " +
+                "`noValueValidation` from it"
         else ->
             "in `$member`: `$operator` compares `${field.path}`, a number declaration, against written-out " +
                 "values — a literal list is read as text, so name number fields on the other side too, or " +

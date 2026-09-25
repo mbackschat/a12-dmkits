@@ -447,9 +447,9 @@ enum class CheckFamily {
 
     /**
      * What a value-list quantifier's field list may carry, and what may stand opposite it. One constant for
-     * the three classes because `CheckFeldListeUndWerteListenBedingungImpl.check` asks them in a fixed
-     * order over the same two lists, so which answers depends on where the walk stops rather than on a
-     * property a family could split by.
+     * every class it names because `CheckFeldListeUndWerteListenBedingungImpl.check` asks them in a fixed
+     * order over the same two lists, value validation and each list's repeat included, so which answers
+     * depends on where the walk stops rather than on a property a family could split by.
      */
     VALUE_LIST_CONDITION_GATES,
 

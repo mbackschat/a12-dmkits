@@ -46,6 +46,11 @@ class ValueListConditionGatesTest {
                     "type":"EnumerationType","EnumerationType":{"values":[{"value":"WEB"},{"value":"STORE"}],
                     "categories":[{"name":"Band","values":["X","Y"]}]}}}}
                 ]}},
+                {"type":"Field","id":"f15","name":"InternalMemo","Field":{"fieldType":{"type":"StringType",
+                  "StringType":{"lineBreaksPermitted":true,"noValueValidation":true}}}},
+                {"type":"Group","id":"g3","name":"Recipient","Group":{"elements":[
+                  {"type":"Field","id":"f16","name":"RecipientName","Field":{"fieldType":{"type":"StringType"}}}
+                ]}},
                 {"type":"Group","id":"g1","name":"Broker","Group":{"elements":[
                   {"type":"Field","id":"f13","name":"BrokerWindow","Field":{"fieldType":{
                     "type":"DateRangeType","DateRangeType":{"format":"yyyy-MM-dd","rangeSeparator":"/"}}}}
@@ -131,6 +136,34 @@ class ValueListConditionGatesTest {
         expected["the date-range quantifier over the same mixed list"] =
             listOf("MVK_VARYING_TYPES_NOT_ALLOWED")
         assertEquals(expected, actual, "the shapes it deliberately does not report")
+    }
+
+    /**
+     * Where a repeat is asked, and where value validation is.
+     *
+     * A12 builds the field list first and refuses a repeat in it ahead of every gate; it builds the value list
+     * only after the field list's type and validation gates, and asks a repeat ACROSS the two after the value
+     * list's own base type and ahead of its validation. So a repeat silences exactly the gates behind it, and
+     * the rows that repeat and fail a gate at once are the ones that separate the positions. The silent rows
+     * are A12's duplicate classes, which this family does not name — never a class A12 does not give.
+     */
+    @Test
+    fun whereARepeatIsAskedAndWhereValueValidationIs() {
+        val rows = linkedMapOf(
+            "Reference, Reference, Quantity In \\\"x\\\"" to listOf("MVK_DUPLICATE_PARAM1"),
+            "Reference In Quantity, Quantity" to emptyList(),
+            "Reference, Quantity In Reference" to listOf("MVK_VARYING_TYPES_NOT_ALLOWED"),
+            "Reference In Reference, Quantity" to listOf("MVK_VARYING_TYPES_NOT_ALLOWED"),
+            "PlacedOn In PlacedOn" to listOf("MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED"),
+            "InternalMemo In InternalMemo" to listOf("MVK_INVALID_RAW_TYPE"),
+            "Reference In Reference, InternalMemo" to emptyList(),
+            "InternalMemo In Quantity" to listOf("MVK_INVALID_RAW_TYPE"),
+            "Reference In InternalMemo" to listOf("MVK_INVALID_RAW_TYPE"),
+            "InternalMemo In \\\"x\\\"" to listOf("MVK_INVALID_RAW_TYPE"),
+            "Recipient In Recipient/RecipientName" to emptyList(),
+        )
+        val actual = rows.keys.associateWith { quantifier("AtLeastOneFieldValueIncludedInValueList($it)") }
+        assertEquals<Map<String, List<String>>>(rows, actual, "where a repeat is asked, and where value validation is")
     }
 
     /** The finding names the offending field and its declared type, since the fix is to split the list. */

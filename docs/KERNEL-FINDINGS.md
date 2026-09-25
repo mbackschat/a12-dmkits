@@ -8271,7 +8271,7 @@ Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the ca
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
 
-`CheckVergleichsBedingungImpl.checkDateType` and `checkDateRangeType` run back to back, ahead of the text, enumeration and number arms. Locked: `rulekit.validate.laws.TemporalComparisonAgreementLawsTest` (23 rows), mirrored by `consistency.TemporalComparisonAgreementTest`.
+`CheckVergleichsBedingungImpl.checkDateType` and `checkDateRangeType` run back to back, ahead of the text, enumeration and number arms. Locked: `rulekit.validate.laws.TemporalComparisonAgreementLawsTest`, mirrored by `consistency.TemporalComparisonAgreementTest`.
 
 | the question | class |
 |---|---|
@@ -8280,7 +8280,7 @@ Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the ca
 
 **The date arm never compares the format STRINGS, only three questions about their components.** `dd.MM.yyyy` against `yyyy-MM` is ADMITTED though the precisions differ, because both carry a year and both carry a calendar component — A12's own comment calls this the weaker condition and wonders whether it is intended. The clock question is asked of `==` / `!=` alone: a date against a date-and-time is refused under equality and admitted under ordering, measured in both as the control that attributes the refusal to the operator.
 
-**A date's partner of ANOTHER KIND lands on the date arm**, whichever arm would otherwise own it — a number, a text and a date range each draw `MVK_INVALID_COMPARE_TO_DATE` rather than that partner's own class, measured in both operand orders. *Corrected 2026-09-25:* every arm asked AFTER it, not every arm. The boolean arm is asked first, so a confirm or boolean partner draws `MVK_INVALID_COMPARE_TO_YES` or `…_YESNO` and the date arm is never reached ([KF469](#kf469)). A DATE FRAGMENT is a date carrier here too: matching components admitted, differing ones refused.
+**A date's partner of ANOTHER KIND lands on the date arm**, whichever arm would otherwise own it — a number, a text and a date range each draw `MVK_INVALID_COMPARE_TO_DATE` rather than that partner's own class, measured in both operand orders. *Corrected 2026-09-25:* every arm asked AFTER it, not every arm. The boolean arm is asked first, so a confirm or boolean partner draws `MVK_INVALID_COMPARE_TO_YES` or `…_YESNO` and the date arm is never reached ([KF469](#kf469)). A DATE FRAGMENT is a date carrier here too: matching components admitted, differing ones refused. **Under ordering the arm reads the pair as well** (measured 2026-09-25, confirming a12-kernel-lean's report `SPEC-2026-09-25-07`): `[Premium] < [Start]`, `1 < [Start]` and `[Start] < 1` each draw `MVK_INVALID_COMPARE_TO_DATE`, so neither the date's side nor a written-out number partner changes the class. The checker leaves the two constant rows unjudged.
 
 **The date-range arm demands EXACT component agreement and ignores both the format string and the separator.** Two ranges spelled `dd.MM.yyyy`/`-` and `yyyy-MM-dd`/`/` are ADMITTED; `dd.MM.yyyy` against `MM` is refused. A12 passes `false` for the base year in this arm alone, where the date arm supplements.
 
@@ -8404,7 +8404,7 @@ Every entity-list operator calls exactly one arity gate from `CheckEntityListenU
 
 > Fold: not-foldable — a diagnostic-class law about operand typing, not an evaluation behaviour.
 
-`CheckFeldListeUndWerteListenBedingungImpl.check` walks the FIELD list twice before it ever looks at the values: first that every expanded field shares a base type, then that each is a text, enumeration or number declaration. Locked: `rulekit.validate.laws.ValueListQuantifierOperandKindLawsTest` (11 rows), mirrored by `consistency.ValueListQuantifierOperandKindTest`.
+`CheckFeldListeUndWerteListenBedingungImpl.check` walks the FIELD list twice before it ever looks at the values: first that every expanded field shares a base type, then that each is a text, enumeration or number declaration. Locked: `rulekit.validate.laws.ValueListQuantifierOperandKindLawsTest`, mirrored by `consistency.ValueListQuantifierOperandKindTest`.
 
 | what fails | class |
 |---|---|
@@ -8416,7 +8416,20 @@ Every entity-list operator calls exactly one arity gate from `CheckEntityListenU
 
 **The VALUE list is judged against the FIRST field's type, not against itself.** `matchBaseType` seeds the expected type from the field list and then walks the values, so an entity value list of another kind draws the same `MVK_VARYING_TYPES_NOT_ALLOWED` the field list would — measured, with an entity value list of the matching kind as the control.
 
-**A repeated entity pre-empts all three, and the duplicate walk spans BOTH lists**: a field named again among the values is `MVK_DUPLICATE_PARAM1` exactly as a field named twice among the fields is. Measured.
+**A repeat is asked at three positions, and pre-empts only the gates behind it.** *Corrected 2026-09-25: this paragraph said a repeated entity "pre-empts all three" and that "the duplicate walk spans BOTH lists"; every repeat row it rested on failed no other gate, so the rows could not tell a pre-empting walk from a late one. a12-kernel-lean's report (their `SPEC-2026-09-25-08`) supplied the rows that repeat and fail a type gate at once, and ours confirm them.* `getRefList` refuses a repeat as it BUILDS each list, and the method builds them at different points: the field list ahead of every gate, the value list only after the field list's base-type, kind and value-validation gates. A repeat ACROSS the lists is `checkParamsReferencedOnlyOnce` over both, asked after the value list's base type and ahead of its value validation. Our Order fixture:
+
+| the call (`AtLeastOneFieldValueIncludedInValueList`) | A12 | a pre-empting repeat predicts |
+|---|---|---|
+| `Reference, Reference, Quantity In "x"` | `MVK_DUPLICATE_PARAM1` | the same |
+| `Reference In Quantity, Quantity` | `MVK_DUPLICATE_PARAM1` | the same |
+| `Reference, Quantity In Reference` · `Reference In Reference, Quantity` | `MVK_VARYING_TYPES_NOT_ALLOWED` | `MVK_DUPLICATE_PARAM1` |
+| `PlacedOn In PlacedOn` (two Dates) | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | `MVK_DUPLICATE_PARAM1` |
+| `InternalMemo In InternalMemo` (a String waiving value validation) | `MVK_INVALID_RAW_TYPE` | `MVK_DUPLICATE_PARAM1` |
+| `Reference In Reference, InternalMemo` | `MVK_DUPLICATE_PARAM1` | the same; a late validation gate predicts `MVK_INVALID_RAW_TYPE` |
+| `InternalMemo In Quantity` · `Reference In InternalMemo` · `InternalMemo In "x"` | `MVK_INVALID_RAW_TYPE` | — |
+| `Recipient In Recipient/RecipientName` (a group and its own field) | `MVK_DUPLICATE_PARAM2` | the same |
+
+The value-validation gate is a fourth question the table above leaves out, asked of the field list after its kind gate and of an entity value list last. Locked: `rulekit.validate.laws.ValueListQuantifierOperandKindLawsTest.whatTheValueListMayCarryAndWhereARepeatIsAsked`, mirrored by `consistency.ValueListConditionGatesTest.whereARepeatIsAskedAndWhereValueValidationIs`, where the checker names every class above except the duplicate ones, which it leaves unreported.
 
 **These shapes are unauthorable through the typed surface**, which is why they are `erased` in the ledger and still worth a checker: the typed quantifiers are kind-typed (`StringRef`, `EnumRef`, `GroupListRef` overloads), so a mixed-kind list cannot be built at all and the shapes reach a checker only as stored DM-JSON. The grid keeps one row on the typed path so the admitted control does not rest on hand-written text.
 
@@ -10914,7 +10927,7 @@ A12 never parses a computation's members one by one. `ComputationAlternativesJoi
 
 > Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §11's operator material.
 
-`feldWertOp: '[' entitySpec ']'` is the grammar's only bracket production, and it stands in exactly two places in `GrammarOnly_ConditionParser.g4`: as an operation, and as each entry of the scalar value list's `feldWertOpListe`. Its parser action, `CheckFeldWertOpImpl.check` (kernel-core-parser, the runtime class), asks four gates in order, each of them throwing: `checkIsField` (`MVK_NO_GROUPS_ALLOWED`), `checkNoWildCards` (`MVK_NO_WILDCARDS_ALLOWED`), `checkIsValueValidation` (`MVK_INVALID_RAW_TYPE`, skipped only by a lenient parser) and `FieldUtils.isDatePartialKnown` (`MVK_INVALID_DATE_TYPE`). On the basket (`/Basket`, error field `Total`, each condition after `FieldFilled(Total) And`) and a fulfilment sheet (repeating `Shipments` and `Parcels`, rules writing `Summary/Result`); locked by `rulekit.validate.laws.FieldValueReadOperandLawsTest`:
+`feldWertOp: '[' entitySpec ']'` is the grammar's only bracket production, and it stands in exactly two places in `GrammarOnly_ConditionParser.g4`: as an operation, and as each entry of the scalar value list's `feldWertOpListe`. Its parser action, `CheckFeldWertOpImpl.check` (kernel-core-parser, the runtime class), asks four gates in order, each of them throwing: `checkIsField` (`MVK_NO_GROUPS_ALLOWED`), `checkNoWildCards` (`MVK_NO_WILDCARDS_ALLOWED`), `checkIsValueValidation` (`MVK_INVALID_RAW_TYPE`, skipped only by a lenient parser) and `FieldUtils.isDatePartialKnown` (`MVK_INVALID_DATE_TYPE`). On the basket (`/Basket`, error field `Total`, each condition after `FieldFilled(Total) And`) and a fulfilment sheet (repeating `Shipments` and `Parcels` and a repeatable `Returns`, rules writing `Summary/Result`, computations declared in `Summary`); locked by `rulekit.validate.laws.FieldValueReadOperandLawsTest`:
 
 | declared in · the read | A12 |
 |---|---|
@@ -10928,7 +10941,11 @@ A12 never parses a computation's members one by one. `ComputationAlternativesJoi
 | Ledger · `[/Fulfilment/Shipments/Parcels*/Weight]`; Shipments · `[Parcels*/Weight]` | `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` |
 | Summary · `[Note] == [every/Label]` / `[every/Label] == [Note]` / `[Due] == [every/Label]` | `MVK_INVALID_RAW_TYPE` / `MVK_NO_WILDCARDS_ALLOWED` / `MVK_NO_WILDCARDS_ALLOWED` |
 | Summary · in a filter's body, a starred bracket; the group `[/Fulfilment/Ledger]` | `MVK_NO_WILDCARDS_ALLOWED`; `MVK_NO_GROUPS_ALLOWED` |
-| the controls: `[Total] == Sum(Lines*/Qty)`, `[/Fulfilment/Ledger/Total] > 0`, `[/Fulfilment/Ledger/Due] == [/Fulfilment/Ledger/Due]` | ADMITTED |
+| Summary · `[/Fulfilment] > 0`, the root group | `MVK_NO_GROUPS_ALLOWED` |
+| Summary · in a filter's body over `every`, the group `[/Fulfilment/Shipments/Parcels]` it iterates, and a repeatable `[/Fulfilment/Returns]` it does not | `MVK_NO_GROUPS_ALLOWED` |
+| Summary · `[/Fulfilment/Ledger/Partial] < Today`; `FieldValueIncludedInValueList(/Fulfilment/Summary/Memo, [/Fulfilment/Ledger/Partial])` | `MVK_INVALID_DATE_TYPE` |
+| Summary · a computation copying `[…/Partial]` into a Date, `[…/Note]` into a String, `[/Fulfilment/Ledger]` into a Number | `MVK_INVALID_DATE_TYPE`; `MVK_INVALID_RAW_TYPE`; `MVK_NO_GROUPS_ALLOWED` |
+| the controls: `[Total] == Sum(Lines*/Qty)`, `[/Fulfilment/Ledger/Total] > 0`, `[/Fulfilment/Ledger/Due] == [/Fulfilment/Ledger/Due]`, `[/Fulfilment/Ledger/Due] < Today`, copying `[…/Due]` and `[/Fulfilment/Ledger/Total]` | ADMITTED |
 
 (`every` abbreviates `/Fulfilment/Shipments*/Parcels*`.) What the rows separate:
 
@@ -10937,12 +10954,13 @@ A12 never parses a computation's members one by one. `ComputationAlternativesJoi
 - **Each bracket is checked as it closes.** Of two reads in one comparison, the LEFT one's class is named whichever gate it fails, so the order is textual, not the gate order across both.
 - **The reader and containment answer first.** An unresolvable name, a star on a level that does not repeat, an unstarred repeatable level, and a target outside the declaring group are refused while the spec is read, before the bracket closes. The `Shipments` row is the discriminating one: the declaring group binds `Shipments`, yet the rule writes into `Summary`, so containment answers and the star gate never runs.
 - **In a filter's body the bracket still answers first.** The group read there is refused at its bracket, ahead of the filter chain's `MVK_NO_ITERATION_FOR_WILDCARD`, which waits for the whole filtered spec.
+- **The root gate and a repetition's binding come after the bracket.** `[/Fulfilment]` draws the bracket's group class rather than `MVK_ROOT_GROUP_REFERENCED`. In a body no unstarred level stops the read, the filter's own or another repeatable group, so the group class answers where outside a body `[Lines]` draws `MVK_NO_WILDCARD`. The carriers in the last five rows are a12-kernel-lean's report (`SPEC-2026-09-25-06`) re-measured here, plus `Returns`, which their limit had left open (added 2026-09-25, `…LawsTest.theGatesReachEveryCarrierOfTheRead`).
 
 **A scalar value list's `[field]` entries are the same production, so their gates run during the parse — ahead of the whole predicate, the subject's gates included.** Measured in `rulekit.validate.laws.ScalarValueListGateLawsTest.whatAListOfFieldEntriesMustBe`: an entry waiving value validation draws `MVK_INVALID_RAW_TYPE` after an entry of another base type, after a duplicate, and under a boolean subject the head gate refuses. A group entry draws `MVK_NO_GROUPS_ALLOWED`, also under that subject, and a starred entry `MVK_NO_WILDCARDS_ALLOWED`. The rival order — the subject first, then duplicates, base types and value validation, which is how [KF398](#kf398)'s table read — predicts `MVK_VARYING_TYPES_NOT_ALLOWED`, `MVK_DUPLICATE_PARAM1` and `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` on those rows, and an admitted group entry expanded to its fields.
 
 **The filter body's star class ([KF97](#kf97)'s table) is explained by this gate.** Every row there is a bracketed read, and a starred bracket draws the same class outside any filter. Whether a filter adds a star gate of its own shows only on a star outside a bracket, such as a nested aggregate's argument, and no row measures that.
 
-**The portable checker had no family for the bracket.** With it disabled, the checker is silent on every star row outside a filter's body and on every group, value-validation and partial-date row above, and draws `MVK_NO_ITERATION_FOR_WILDCARD` on the group read in a filter's body; the starred bracket in a body was already `FILTER_WILDCARD`'s. `CheckFamily.FIELD_VALUE_READ_OPERAND` now asks the four gates at the bracket's span, on a spec the reader passes. It leaves the star in a filter's body to `FILTER_WILDCARD`. `consistency.FieldValueReadOperandTest` answers every row with its complete class list. Its scalar value-list family had asked value validation of the entries itself, after their duplicates and base types, and had expanded a group entry to its fields. It now judges only lists of field entries and leaves each entry's own gates to the bracket (`consistency.ScalarValueListGatesTest`).
+**The portable checker had no family for the bracket.** With it disabled, the checker is silent on every star row outside a filter's body and on every group, value-validation and partial-date row above, and draws `MVK_NO_ITERATION_FOR_WILDCARD` on the group read in a filter's body; the starred bracket in a body was already `FILTER_WILDCARD`'s. `CheckFamily.FIELD_VALUE_READ_OPERAND` now asks the four gates at the bracket's span, on a spec the reader passes. It leaves the star in a filter's body to `FILTER_WILDCARD`. Until 2026-09-25 it also stayed silent on a body read that left a repetition unbound, which lost the two body rows above that name a repeatable group; in a body it now skips that test, as the rows require. `consistency.FieldValueReadOperandTest` answers every row with its complete class list. Its scalar value-list family had asked value validation of the entries itself, after their duplicates and base types, and had expanded a group entry to its fields. It now judges only lists of field entries and leaves each entry's own gates to the bracket (`consistency.ScalarValueListGatesTest`).
 
 ## §11 supplement — a banded computation's `roundingMode` rounds what it WRITES to a whole number, and its implicit validation compares the operation as authored (differential, both strategies, 2026-09-25) <a id="kf474"></a>
 

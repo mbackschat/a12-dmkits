@@ -80,6 +80,9 @@ class TemporalComparisonAgreementTest {
         actual["against a date RANGE"] = comparison("[Start] == [Window]")
         actual["a number on the LEFT of a date"] = comparison("[Premium] == [Start]")
         actual["a date ORDERED against a number"] = comparison("[Start] < [Premium]")
+        actual["a number ORDERED against a date"] = comparison("[Premium] < [Start]")
+        actual["a number CONSTANT ordered against a date"] = comparison("1 < [Start]")
+        actual["a date ordered against a number constant"] = comparison("[Start] < 1")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["against a number"] = date
@@ -87,6 +90,11 @@ class TemporalComparisonAgreementTest {
         expected["against a date RANGE"] = date
         expected["a number on the LEFT of a date"] = date
         expected["a date ORDERED against a number"] = date
+        expected["a number ORDERED against a date"] = date
+        // A12 draws the date class on both constant rows too (the laws twin); a written-out value is left
+        // unjudged here, since A12 types some constants by their own spelling, so these two are an under-report.
+        expected["a number CONSTANT ordered against a date"] = emptyList()
+        expected["a date ordered against a number constant"] = emptyList()
         assertEquals(expected, actual, "what a date partner of another kind draws")
     }
 

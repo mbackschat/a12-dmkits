@@ -26,7 +26,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
  * repeat, and leaves unstarred only repeatable levels that both the declaring group and the rule's iteration
  * bind. Every other spec meets the reader's own class first — `MVK_INVALID_ENTITY`, `MVK_INVALID_WILDCARD`,
  * `MVK_NO_WILDCARD`, or `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` where the target lies outside the declaring group.
- * A star on a level the rule binds still counts, because `hasWildCards` asks the spelling.
+ * A star on a level the rule binds still counts, because `hasWildCards` asks the spelling. **A filter's body
+ * is the exception**: there no unstarred level stops the read, the filter's own level or any other, since the
+ * filter chain asks about repetitions only once the whole body has been read.
  *
  * **In a filter's body the star is [filterWildcardFindings]'**, whose reach there is measured on its own
  * conditions; this family asks the other three gates there. One gate split between two families is DG94 in
@@ -62,7 +64,10 @@ private fun TrackedFactBase.readDefect(
     val starred = starredLevelsOf(written, declaringGroup, element) ?: return null
     val iterated = iterationGroupOf(element) ?: declaringGroup
     val bound = { level: String -> declaringGroup.isAtOrBelow(level) && iterated.isAtOrBelow(level) }
-    if (iteratedLevels(target.path).any { it !in starred && !bound(it) }) {
+    // In a filter's body the levels a read crosses are the filter chain's question, asked only after the body
+    // has been read, so a group there meets its bracket first — whether or not the filter iterates it
+    // (`rulekit.validate.laws.FieldValueReadOperandLawsTest.theGatesReachEveryCarrierOfTheRead`).
+    if (!read.inAFilterBody && iteratedLevels(target.path).any { it !in starred && !bound(it) }) {
         return null
     }
     when (target.declaredKind) {

@@ -52,6 +52,8 @@ class ValueListQuantifierOperandKindLawsTest {
                     e.value("WEB");
                     e.value("PARTNER");
                 });
+                g.stringField("InternalMemo", f -> f.lineBreaks().noValueValidation());
+                g.group("Recipient", r -> r.stringField("RecipientName", f -> { }));
             }).build().toJson();
 
     private static final BoundModel ORDER = BoundModel.ofJson(ORDER_JSON);
@@ -99,9 +101,17 @@ class ValueListQuantifierOperandKindLawsTest {
         assertEquals(expected, actual, "what the field list may carry");
     }
 
-    /** The VALUE list is measured against the first field's type, and a repeat pre-empts every gate. */
+    /**
+     * The VALUE list is measured against the first field's type, and a repeat is asked where its list is built.
+     *
+     * <p>{@code getRefList} refuses a repeat while it builds each list, and the two lists are built at
+     * different points: the FIELD list first, ahead of every gate, and the value list only after the field
+     * list's base-type, kind and value-validation gates. A repeat ACROSS the lists is asked later still, after
+     * the value list's own base type and before its value validation. So a repeat decides the class only when
+     * nothing ahead of it fails, which is what the rows that repeat and fail a type gate at once separate.
+     */
     @Test
-    void whatTheValueListMayCarryAndWhatPreEmptsTheWholeWalk() {
+    void whatTheValueListMayCarryAndWhereARepeatIsAsked() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("an entity value list of the same base type",
                 verdict("AtLeastOneFieldValueIncludedInValueList(GiftNote In Reference)"));
@@ -111,12 +121,49 @@ class ValueListQuantifierOperandKindLawsTest {
                 verdict("AtLeastOneFieldValueIncludedInValueList(GiftNote, GiftNote In \"A\")"));
         actual.put("a declaration repeated across the field and value lists",
                 verdict("AtLeastOneFieldValueIncludedInValueList(GiftNote In GiftNote)"));
+        actual.put("a field-list repeat beside a base-type fault in that list",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Reference, Reference, Quantity In \"x\")"));
+        actual.put("a value-list repeat beside a base-type fault against the fields",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Reference In Quantity, Quantity)"));
+        actual.put("a cross-list repeat beside a base-type fault in the field list",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Reference, Quantity In Reference)"));
+        actual.put("a cross-list repeat beside a base-type fault in the value list",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Reference In Reference, Quantity)"));
+        actual.put("a cross-list repeat of a kind the field list refuses",
+                verdict("AtLeastOneFieldValueIncludedInValueList(PlacedOn In PlacedOn)"));
+        actual.put("a cross-list repeat of a field waiving value validation",
+                verdict("AtLeastOneFieldValueIncludedInValueList(InternalMemo In InternalMemo)"));
+        actual.put("a cross-list repeat beside a value waiving value validation",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Reference In Reference, InternalMemo)"));
+        actual.put("a field waiving value validation against a value list of another base type",
+                verdict("AtLeastOneFieldValueIncludedInValueList(InternalMemo In Quantity)"));
+        actual.put("a value waiving value validation, alone",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Reference In InternalMemo)"));
+        actual.put("a field waiving value validation against a written-out list",
+                verdict("AtLeastOneFieldValueIncludedInValueList(InternalMemo In \"x\")"));
+        actual.put("a group in the field list and its field in the value list",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Recipient In Recipient/RecipientName)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("an entity value list of the same base type", KernelLaws.ADMITTED);
         expected.put("an entity value list of a different base type", "MVK_VARYING_TYPES_NOT_ALLOWED");
         expected.put("the same declaration listed twice in the field list", "MVK_DUPLICATE_PARAM1");
         expected.put("a declaration repeated across the field and value lists", "MVK_DUPLICATE_PARAM1");
-        assertEquals(expected, actual, "what the value list may carry, and what pre-empts the walk");
+        // Each list's own repeat is asked as that list is built, so it answers ahead of that list's gates…
+        expected.put("a field-list repeat beside a base-type fault in that list", "MVK_DUPLICATE_PARAM1");
+        expected.put("a value-list repeat beside a base-type fault against the fields", "MVK_DUPLICATE_PARAM1");
+        // …while a repeat across the two is asked after both lists' type gates and the field list's validation…
+        expected.put("a cross-list repeat beside a base-type fault in the field list", "MVK_VARYING_TYPES_NOT_ALLOWED");
+        expected.put("a cross-list repeat beside a base-type fault in the value list", "MVK_VARYING_TYPES_NOT_ALLOWED");
+        expected.put("a cross-list repeat of a kind the field list refuses", "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED");
+        expected.put("a cross-list repeat of a field waiving value validation", "MVK_INVALID_RAW_TYPE");
+        // …and ahead of the value list's own validation.
+        expected.put("a cross-list repeat beside a value waiving value validation", "MVK_DUPLICATE_PARAM1");
+        expected.put("a field waiving value validation against a value list of another base type",
+                "MVK_INVALID_RAW_TYPE");
+        expected.put("a value waiving value validation, alone", "MVK_INVALID_RAW_TYPE");
+        expected.put("a field waiving value validation against a written-out list", "MVK_INVALID_RAW_TYPE");
+        expected.put("a group in the field list and its field in the value list", "MVK_DUPLICATE_PARAM2");
+        assertEquals(expected, actual, "what the value list may carry, and where a repeat is asked");
     }
 }

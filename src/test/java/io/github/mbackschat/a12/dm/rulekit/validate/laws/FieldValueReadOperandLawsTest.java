@@ -43,7 +43,9 @@ class FieldValueReadOperandLawsTest {
 
     private static final String SHEET = DocumentModelDraft.named("fulfilment-values").locale("en_US")
             .rootGroup("Fulfilment", f -> f
-                    .group("Summary", s -> s.numberField("Result", n -> n.fractionDigits(0)))
+                    .group("Summary", s -> s.numberField("Result", n -> n.fractionDigits(0))
+                            .stringField("Memo", t -> { })
+                            .dateField("Settled", d -> d.format("yyyy-MM-dd")))
                     .group("Ledger", l -> l.numberField("Total", n -> n.fractionDigits(0))
                             .stringField("Note", t -> t.lineBreaks().noValueValidation())
                             .dateField("Partial", d -> d.format("yyyy-MM-dd").datePrecision(DatePrecision.DAY_OPTIONAL))
@@ -52,7 +54,8 @@ class FieldValueReadOperandLawsTest {
                             .group("Parcels", p -> p.repeatable(2)
                                     .numberField("Weight", n -> n.fractionDigits(0))
                                     .numberField("Quantity", n -> n.fractionDigits(0))
-                                    .stringField("Label", t -> { }))))
+                                    .stringField("Label", t -> { })))
+                    .group("Returns", r -> r.repeatable(2).stringField("Reason", t -> { })))
             .build().toJson();
 
     private static final String EVERY = "/Fulfilment/Shipments*/Parcels*";
@@ -141,6 +144,62 @@ class FieldValueReadOperandLawsTest {
         expected.put("Summary | Sum(" + EVERY + "/Weight Having [/Fulfilment/Ledger] > 0) > 0",
                 "MVK_NO_GROUPS_ALLOWED");
         assertEquals(expected, actual, "which class a field-value read draws, and in which order");
+    }
+
+    /**
+     * The same gates on the carriers the first two tests leave out: the root group, the level a filter
+     * iterates, a {@code Today} comparison, a scalar value list's member, and a computation's copied operand.
+     *
+     * <p>Each row is chosen so that a gate owned by its carrier would predict another class: the root gate's
+     * {@code MVK_ROOT_GROUP_REFERENCED}, the unstarred-repeatable {@code MVK_NO_WILDCARD} a group read draws
+     * outside a filter, the value list's base-type class against a String subject, or admission beside
+     * {@code Today}. A12 names the read's own class on every one.
+     */
+    @Test
+    void theGatesReachEveryCarrierOfTheRead() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (String read : List.of(
+                "[/Fulfilment] > 0",
+                "Sum(" + EVERY + "/Weight Having [/Fulfilment/Shipments/Parcels] > 0) > 0",
+                "Sum(" + EVERY + "/Weight Having [/Fulfilment/Returns] > 0) > 0",
+                "[/Fulfilment/Ledger/Partial] < Today",
+                "[/Fulfilment/Ledger/Due] < Today",
+                "FieldValueIncludedInValueList(/Fulfilment/Summary/Memo, [/Fulfilment/Ledger/Partial])")) {
+            actual.put(read, KernelLaws.verdictModel(SHEET, "/Fulfilment/Summary", "../../Summary/Result",
+                    "FieldFilled(/Fulfilment/Summary/Result) And " + read));
+        }
+        actual.put("Settled := [Partial]", sheetComputation("../Settled", "[/Fulfilment/Ledger/Partial]"));
+        actual.put("Settled := [Due]", sheetComputation("../Settled", "[/Fulfilment/Ledger/Due]"));
+        actual.put("Memo := [Note]", sheetComputation("../Memo", "[/Fulfilment/Ledger/Note]"));
+        actual.put("Result := [Ledger]", sheetComputation("../Result", "[/Fulfilment/Ledger]"));
+        actual.put("Result := [Ledger/Total]", sheetComputation("../Result", "[/Fulfilment/Ledger/Total]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("[/Fulfilment] > 0", "MVK_NO_GROUPS_ALLOWED");
+        expected.put("Sum(" + EVERY + "/Weight Having [/Fulfilment/Shipments/Parcels] > 0) > 0",
+                "MVK_NO_GROUPS_ALLOWED");
+        // A repeatable group the filter does NOT iterate is refused at its bracket too: in a body the levels a
+        // read crosses are the filter chain's question, asked only after the body has been read.
+        expected.put("Sum(" + EVERY + "/Weight Having [/Fulfilment/Returns] > 0) > 0", "MVK_NO_GROUPS_ALLOWED");
+        expected.put("[/Fulfilment/Ledger/Partial] < Today", "MVK_INVALID_DATE_TYPE");
+        expected.put("[/Fulfilment/Ledger/Due] < Today", KernelLaws.ADMITTED);
+        expected.put("FieldValueIncludedInValueList(/Fulfilment/Summary/Memo, [/Fulfilment/Ledger/Partial])",
+                "MVK_INVALID_DATE_TYPE");
+        expected.put("Settled := [Partial]", "MVK_INVALID_DATE_TYPE");
+        expected.put("Settled := [Due]", KernelLaws.ADMITTED);
+        expected.put("Memo := [Note]", "MVK_INVALID_RAW_TYPE");
+        expected.put("Result := [Ledger]", "MVK_NO_GROUPS_ALLOWED");
+        expected.put("Result := [Ledger/Total]", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "the read's class on every carrier");
+    }
+
+    private static String sheetComputation(String target, String operation) {
+        DraftComputation draft = DraftComputation.builder()
+                .groupPath("/Fulfilment/Summary").name("Copy").computedFieldRelPath(target)
+                .alternatives(List.of(new Alternative(null, operation)))
+                .messages(List.of(en("x")))
+                .build();
+        return KernelLaws.computationVerdict(SHEET, draft);
     }
 
     private static String computation(String operation) {

@@ -78,6 +78,44 @@ class FieldValueReadOperandTest {
         )
     }
 
+    /** Mirrors the laws twin's `theGatesReachEveryCarrierOfTheRead`, one row each. */
+    @Test
+    fun theGatesReachEveryCarrierOfTheRead() {
+        val rows = linkedMapOf(
+            "[/Fulfilment] > 0" to "MVK_NO_GROUPS_ALLOWED",
+            "Sum($every/Weight Having [/Fulfilment/Shipments/Parcels] > 0) > 0" to "MVK_NO_GROUPS_ALLOWED",
+            "Sum($every/Weight Having [/Fulfilment/Returns] > 0) > 0" to "MVK_NO_GROUPS_ALLOWED",
+            "[/Fulfilment/Ledger/Partial] < Today" to "MVK_INVALID_DATE_TYPE",
+            "[/Fulfilment/Ledger/Due] < Today" to null,
+            "FieldValueIncludedInValueList(/Fulfilment/Summary/Memo, [/Fulfilment/Ledger/Partial])" to
+                "MVK_INVALID_DATE_TYPE",
+        )
+        val copies = linkedMapOf(
+            "../Settled := [/Fulfilment/Ledger/Partial]" to "MVK_INVALID_DATE_TYPE",
+            "../Settled := [/Fulfilment/Ledger/Due]" to null,
+            "../Memo := [/Fulfilment/Ledger/Note]" to "MVK_INVALID_RAW_TYPE",
+            "../Result := [/Fulfilment/Ledger]" to "MVK_NO_GROUPS_ALLOWED",
+            "../Result := [/Fulfilment/Ledger/Total]" to null,
+        )
+        val actual = rows.keys.associateWith { read ->
+            codes(sheet("Summary", rule("FieldFilled(/Fulfilment/Summary/Result) And $read", "../../Summary/Result")))
+        } + copies.keys.associateWith { copy ->
+            val (target, operation) = copy.split(" := ", limit = 2)
+            codes(sheet("Summary", copyInto(target, operation)))
+        }
+        assertEquals<Map<String, List<String>>>(
+            (rows + copies).mapValues { (_, code) -> listOfNotNull(code) },
+            actual,
+            "the read's class on every carrier",
+        )
+    }
+
+    private fun copyInto(target: String, operation: String) = """
+        ,{"type":"Computation","id":"c0","name":"Copy","Computation":{"computedFieldRelPath":"$target",
+          "computationAlternatives":[{"operation":"$operation"}],
+          "errorMessage":[{"locale":"en_US","text":"x"}]}}
+    """.trimIndent()
+
     private fun rule(condition: String, errorField: String) = """
         ,{"type":"Rule","id":"r0","name":"Probe","Rule":{"errorCondition":"$condition",
           "errorEntityRelPath":"$errorField","errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
@@ -100,7 +138,10 @@ class FieldValueReadOperandTest {
              "content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Fulfilment","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Summary","Group":{"elements":[
-                  ${number("f0", "Result")}${inside("Summary")}]}},
+                  ${number("f0", "Result")},
+                  {"type":"Field","id":"f8","name":"Memo","Field":{"fieldType":{"type":"StringType"}}},
+                  {"type":"Field","id":"f9","name":"Settled","Field":{"fieldType":{"type":"DateType",
+                    "DateType":{"format":"yyyy-MM-dd"}}}}${inside("Summary")}]}},
                 {"type":"Group","id":"g2","name":"Ledger","Group":{"elements":[
                   ${number("f1", "Total")},
                   {"type":"Field","id":"f5","name":"Note","Field":{"fieldType":{"type":"StringType",
@@ -113,7 +154,9 @@ class FieldValueReadOperandTest {
                   {"type":"Group","id":"g4","name":"Parcels","Group":{"repeatability":2,"elements":[
                     ${number("f2", "Weight")}, ${number("f3", "Quantity")},
                     {"type":"Field","id":"f4","name":"Label","Field":{"fieldType":{"type":"StringType"}}}
-                  ]}}${inside("Shipments")}]}}
+                  ]}}${inside("Shipments")}]}},
+                {"type":"Group","id":"g5","name":"Returns","Group":{"repeatability":2,"elements":[
+                  {"type":"Field","id":"f10","name":"Reason","Field":{"fieldType":{"type":"StringType"}}}]}}
               ]}}
              ]}}}
             """.trimIndent(),
