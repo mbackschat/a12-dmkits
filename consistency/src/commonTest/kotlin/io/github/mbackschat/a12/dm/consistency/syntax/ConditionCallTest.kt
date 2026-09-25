@@ -108,15 +108,52 @@ class ConditionCallTest {
     }
 
     /**
-     * Text that does not parse yields NO calls, not the calls that completed before the failure.
+     * Text that does not parse yields the calls read to their closing parenthesis before the failure, and
+     * never a call the failure cut short.
      *
-     * A half-read argument list is a SHORTER list, which is the shape that makes an operand law look
-     * satisfied — so the choice is stated here rather than left to whatever the parser happened to collect.
+     * A12 runs a call's own check once the call is read, whatever follows it, an inner call inside an outer
+     * one that then fails included (`rulekit.validate.laws.ConditionClassWithholdingLawsTest
+     * .aGateIsRaisedWhereItsOwnProductionEnds`), so those calls are what an operand law must still judge. A
+     * call the failure cut short is left out: its argument list would be SHORTER, the shape that makes an
+     * operand law look satisfied.
      */
     @Test
-    fun textThatDoesNotParseYieldsNoCalls() {
-        assertEquals(emptyList(), calls("AllGroupsFilled(Garage, Garage))"))
-        assertEquals(emptyList(), calls("AllGroupsFilled(Garage, Garage"))
+    fun textThatDoesNotParseYieldsTheCallsReadToTheirEnd() {
+        val actual = mutableMapOf<String, List<Pair<String, List<String?>>>>()
+        actual["a complete call, then a stray parenthesis"] = operands("AllGroupsFilled(Garage, Garage))")
+        actual["a call cut short"] = operands("AllGroupsFilled(Garage, Garage")
+        actual["an inner call read to its end, the outer cut short"] =
+            operands("Abs(RoundUpValue(Reference, 2) > 1) > 0")
+        actual["a call, then a stray connective, then a call"] =
+            operands("FieldFilled(Garage) And And FieldFilled(Coverage)")
+        val expected = mutableMapOf<String, List<Pair<String, List<String?>>>>()
+        expected["a complete call, then a stray parenthesis"] =
+            listOf("AllGroupsFilled" to listOf("Garage", "Garage"))
+        expected["a call cut short"] = emptyList()
+        expected["an inner call read to its end, the outer cut short"] =
+            listOf("RoundUpValue" to listOf("Reference", null))
+        expected["a call, then a stray connective, then a call"] = listOf("FieldFilled" to listOf("Garage"))
+        assertEquals(expected, actual, "the calls a failed parse read to their end")
+    }
+
+    /**
+     * A call spans its name through its closing parenthesis, and each argument its own tokens: the extents
+     * of the two productions an operator's gate can belong to (`Check…Impl` at the call's end, a date slot's
+     * check at its argument's end).
+     */
+    @Test
+    fun aCallAndEachOfItsArgumentsCarryTheirExtent() {
+        val text = "DifferenceInDays(AddDays(Start, 1), End) > 0"
+        val actual = calls(text).map { call ->
+            text.substring(call.at, call.end) to call.operands.map { text.substring(it.at, it.end) }
+        }
+        assertEquals(
+            listOf(
+                "AddDays(Start, 1)" to listOf("Start", "1"),
+                "DifferenceInDays(AddDays(Start, 1), End)" to listOf("AddDays(Start, 1)", "End"),
+            ),
+            actual,
+        )
     }
 
     /**

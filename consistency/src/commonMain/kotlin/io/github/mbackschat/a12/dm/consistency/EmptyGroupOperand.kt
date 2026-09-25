@@ -36,6 +36,8 @@ internal fun TrackedFactBase.emptyGroupOperandFindings(): List<Finding> = condit
             "the declaration and refuses every condition that names it, so either populate the group or " +
             "name one that carries something",
         reference.declaredAt,
+        // Raised while the reference resolves, as a name that resolves to nothing is.
+        reference.span,
     )
 }
 

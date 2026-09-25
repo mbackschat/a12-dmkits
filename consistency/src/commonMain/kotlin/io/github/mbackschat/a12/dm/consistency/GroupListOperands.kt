@@ -135,6 +135,7 @@ private fun TrackedFactBase.operandFinding(
             "this $member names `$repeated` twice in one `${call.operator}` — A12 refuses a group list that " +
                 "repeats an operand, whichever way each occurrence is spelled",
             element.path,
+            call.spanIn(member),
         )
     }
     overlap(comparable)?.let { (outer, inner) ->
@@ -143,6 +144,7 @@ private fun TrackedFactBase.operandFinding(
             "this $member names `$outer` and `$inner` in one `${call.operator}`, and the second lies under " +
                 "the first — A12 refuses a group list whose operands contain one another",
             element.path,
+            call.spanIn(member),
         )
     }
     // The root law runs after both duplicate classes because they pre-empt it, measured on a root beside its
@@ -171,6 +173,7 @@ private fun TrackedFactBase.kindFinding(
         "this $member hands the field `$field` to `${call.operator}`, which takes groups — name the group " +
             "it sits in, or use the field-shaped operator instead",
         at,
+        call.spanIn(member),
     )
 }
 
@@ -194,12 +197,14 @@ private fun TrackedFactBase.rootFinding(
             "this $member names the root group `$root` beside another operand in one `${call.operator}` — " +
                 "A12 admits a root there only as the list's sole operand",
             at,
+            call.spanIn(member),
         )
         else -> finding(
             "MVK_ROOT_GROUP_REFERENCED",
             "this $member names the root group `$root` in one `${call.operator}`, which takes no root " +
                 "operand at all — name the groups beneath it instead",
             at,
+            call.spanIn(member),
         )
     }
 }
@@ -219,8 +224,9 @@ private fun CallOperand.resolvedBy(
     origin: DeclarationOrigin,
 ): Reference? = path?.let { model.resolveEntity(declaringGroup, it, origin) }
 
-private fun finding(code: String, explain: String, at: String) =
-    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)
+/** Every gate here is the operator's own, raised once its call is read, so each spans the call. */
+private fun finding(code: String, explain: String, at: String, span: TextSpan) =
+    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at, span)
 
 /** The element the list names twice, in authored order — one name, since both occurrences resolve to it. */
 private fun exactDuplicate(paths: List<String>): String? = paths.firstPair { a, b -> a == b }?.first

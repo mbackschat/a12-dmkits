@@ -117,6 +117,7 @@ private fun TrackedFactBase.scaleFinding(
             "for digit — round one side to the other's scale, or compare with `<` / `>`, which needs no " +
             "common scale",
         element.path,
+        comparison.spanIn(member),
     )
 }
 
@@ -142,6 +143,7 @@ private fun wrongTypeFinding(
             "have no common value to compare — compare the number against a number, or test the boolean " +
             "declaration this constant belongs to",
         element.path,
+        comparison.spanIn(member),
     )
 }
 

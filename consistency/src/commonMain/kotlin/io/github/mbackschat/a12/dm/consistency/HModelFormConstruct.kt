@@ -29,11 +29,16 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * **Both carriers.** A computation's operation parses through a different entry rule than a rule's condition
  * and agrees, measured; this family reads whichever member its element declares.
  *
- * **One measured shape is not reported, and is published as a [CoverageGap] instead.** The count operation
- * inside a rule CONDITION — `AnzahlAngegebenerVordrucke(X) > 0` — is invisible to the shared shape reader:
- * `conditionPart` treats any UNCATALOGED call as a complete condition, so the comparison after it is leftover
- * and the whole text yields no calls at all. Widening that predicate would change what every call-reading
- * family sees and is its own slice; naming the shape here costs nothing and keeps the silence disclosed.
+ * **Where the class is raised.** A form condition's is raised by `checkFormularBedingungName`, the action on
+ * the construct's NAME, so ahead of anything in its argument list; the count operation's by its own check,
+ * once its call is read. Each finding spans exactly that much, which is what orders it against the rest of
+ * the text.
+ *
+ * **The count operation inside a rule CONDITION is read, but not as A12 reads it.** `conditionPart` treats
+ * an UNCATALOGED call as a complete condition, so the `> 0` after `AnzahlAngegebenerVordrucke(X)` is a
+ * token the shared shape reader cannot use. The call is still read to its end first, so this class is
+ * reported and the grammar class behind it withheld. A construct whose own call a parse failure cuts short
+ * is not read at all, and is published as a [CoverageGap] instead.
  */
 internal fun TrackedFactBase.hModelFormConstructFindings(): List<Finding> {
     if (conditionLanguage != ConditionLanguage.DE) {
@@ -52,14 +57,22 @@ internal fun TrackedFactBase.hModelFormConstructFindings(): List<Finding> {
                         "in `$member`: `${call.operator}` is an H-model form construct and A12 refuses it by " +
                             "name in an A12 model — use the corresponding group construct instead",
                         element.path,
+                        if (call.operator == COUNT_CONSTRUCT) {
+                            call.spanIn(member)
+                        } else {
+                            TextSpan(member, call.at, call.at + call.operator.length)
+                        },
                     )
                 }
         }
     }
 }
 
+/** The one construct that is an operation, whose class its own check raises once the call is read. */
+private const val COUNT_CONSTRUCT = "AnzahlAngegebenerVordrucke"
+
 /**
- * The declarations whose text names a form construct this reader could not parse into calls.
+ * The declarations whose text names a form construct this reader could not parse into a call.
  *
  * Per DECLARATION, because that is what a consumer needs. The text test is a whole-word scan and would be
  * the wrong instrument for a FINDING — it cannot tell a keyword from the same letters inside a string — but
@@ -74,7 +87,7 @@ internal fun TrackedFactBase.hModelFormConstructGaps(): List<CoverageGap> {
         val body = element.body ?: return@mapNotNull null
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
             val named = FORM_CONSTRUCTS.firstOrNull { text.namesWholeWord(it) } ?: return@firstNotNullOfOrNull null
-            if (callsIn(text, conditionLanguage, syntaxEntryOf(member)).isNotEmpty()) {
+            if (callsIn(text, conditionLanguage, syntaxEntryOf(member)).any { it.operator in FORM_CONSTRUCTS }) {
                 return@firstNotNullOfOrNull null
             }
             CoverageGap(

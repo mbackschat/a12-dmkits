@@ -129,6 +129,7 @@ private fun TrackedFactBase.operandFinding(
                     "or `!=` instead"
         },
         element.path,
+        comparison.spanIn(member),
     )
 }
 

@@ -177,4 +177,5 @@ private fun finding(
     defect.code,
     "in `$member`: `${call.operator}` ${defect.detail}",
     element.path,
+    call.spanIn(member),
 )

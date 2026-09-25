@@ -52,7 +52,9 @@ internal fun TrackedFactBase.filteredOperandKindFindings(): List<Finding> {
                 .filter { operand -> operand.clauses.any { it.keyword == filterKeyword } }
                 .mapNotNull { operand ->
                     operandFinding(operand.base, operand.clauses.any { it.keyword == indexKeyword },
-                        group, iterationScopeOf(targets[element.path], group), element, member)
+                        group, iterationScopeOf(targets[element.path], group), element, member,
+                        // `checkFilterCondition` is `checkEntitySpec`'s, raised once the whole spec is read.
+                        operand.spanIn(member))
                 }
         }
     }
@@ -81,6 +83,7 @@ private fun TrackedFactBase.operandFinding(
     targetGroup: String?,
     element: TrackedDeclaration,
     member: String,
+    span: TextSpan,
 ): Finding? {
     if (indexed) {
         return finding(
@@ -88,6 +91,7 @@ private fun TrackedFactBase.operandFinding(
             "in `$member`: the filtered operand carries a semantic index — a `Having` filter selects rows " +
                 "of a starred list, and an indexed reference names one value instead",
             element.path,
+            span,
         )
     }
     val path = base ?: return null
@@ -101,6 +105,7 @@ private fun TrackedFactBase.operandFinding(
             "in `$member`: `Having` filters the group `${resolved.path}` — the filter selects rows by a " +
                 "FIELD of the repetition, so name a field of that group instead",
             element.path,
+            span,
         )
     }
     if (OUTER_MARKER in path || '*' in path || !isFieldPath(resolved.path) || targetGroup == null) {
@@ -117,6 +122,7 @@ private fun TrackedFactBase.operandFinding(
         "in `$member`: `Having` filters `$path`, which reads a single value — a filter selects ROWS, so " +
             "star the repetition you mean to filter",
         element.path,
+        span,
     )
 }
 
@@ -126,5 +132,5 @@ private fun TrackedFactBase.isGroupPath(path: String): Boolean =
 private fun TrackedFactBase.isFieldPath(path: String): Boolean =
     declarationAt(path, DeclaredKind.FIELD) != null
 
-private fun finding(code: String, explain: String, at: String): Finding =
-    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)
+private fun finding(code: String, explain: String, at: String, span: TextSpan): Finding =
+    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at, span)

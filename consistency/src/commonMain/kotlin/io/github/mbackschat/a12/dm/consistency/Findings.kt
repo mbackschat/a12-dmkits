@@ -95,7 +95,8 @@ data class Finding(
  * published only where the family that judged the text reads the offset exactly — an unresolved reference,
  * unreadable characters, half-typed input, a shape the grammar refuses, a reference whose repetition
  * wildcard is misplaced or missing or whose repetition the target does not address (to the end of the operand
- * when it carries a `Having` filter, which is when A12 asks). A finding about a declaration's STRUCTURE has no
+ * when it carries a `Having` filter, which is when A12 asks), and an operator's gate over the call, comparison
+ * or argument whose production raises it ([spanIn]). A finding about a declaration's STRUCTURE has no
  * characters to point at, and a family that cannot read an offset exactly publishes none rather than an
  * approximate one: an editor underlining the wrong words is worse than one underlining nothing.
  */

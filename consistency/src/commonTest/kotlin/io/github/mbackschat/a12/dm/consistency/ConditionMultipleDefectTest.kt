@@ -134,9 +134,8 @@ class ConditionMultipleDefectTest {
     }
 
     /**
-     * The classes that carry their span, placed against the bad name in both orders — and the one kind that
-     * cannot be placed, a class with no span, which stands beside a later spanned one where A12 names only
-     * the first (`DEV-API-GAPS` DG84). Every row is `rulekit.validate.laws.ConditionClassWithholdingLawsTest`'s.
+     * The classes that carry their span, placed against the bad name and against each other in both orders.
+     * Every row is `rulekit.validate.laws.ConditionClassWithholdingLawsTest`'s.
      */
     @Test
     fun aClassCarryingItsSpanIsPlacedAgainstTheBadName() {
@@ -165,18 +164,15 @@ class ConditionMultipleDefectTest {
         actual["a stray connective, then a misplaced star"] = codes("$stray And GroupFilled(/Policy/Assessment*)")
         expected["a stray connective, then a misplaced star"] = listOf("MVK_UNEXPECTED_TOKEN")
 
-        // A12 names the first of these two, in either order. The empty-group class carries no span, so
-        // neither can be placed and both stand: the residual this checker discloses rather than guesses at.
+        // A12 names the first of these two, in either order, and names the empty group ahead of a bad name.
         actual["an empty group, then a misplaced star"] =
             codes("GroupFilled(/Policy/Archive) And GroupFilled(/Policy/Assessment*)")
-        expected["an empty group, then a misplaced star"] = listOf("MVK_GROUP_IS_EMPTY", "MVK_INVALID_WILDCARD")
+        expected["an empty group, then a misplaced star"] = listOf("MVK_GROUP_IS_EMPTY")
         actual["a misplaced star, then an empty group"] =
             codes("GroupFilled(/Policy/Assessment*) And GroupFilled(/Policy/Archive)")
-        expected["a misplaced star, then an empty group"] = listOf("MVK_GROUP_IS_EMPTY", "MVK_INVALID_WILDCARD")
-        // …and ahead of a bad name the same span-less class is withheld by position-blind rule, where A12 names
-        // it: a substitution, DEV-API-GAPS DG84.
+        expected["a misplaced star, then an empty group"] = listOf("MVK_INVALID_WILDCARD")
         actual["an empty group, then a bad name"] = codes("GroupFilled(/Policy/Archive) And FieldFilled(NoSuchField)")
-        expected["an empty group, then a bad name"] = listOf("MVK_INVALID_ENTITY")
+        expected["an empty group, then a bad name"] = listOf("MVK_GROUP_IS_EMPTY")
         // A field operand's argument is not a condition, so the parse stops at its `And`, ahead of the bad name.
         actual["an unclosed bracket, bad name after"] = codes("FieldFilled(Reference And FieldFilled(NoSuchField)")
         expected["an unclosed bracket, bad name after"] = listOf("MVK_UNEXPECTED_TOKEN")
@@ -263,9 +259,7 @@ class ConditionMultipleDefectTest {
             "a name after a complete condition" to listOf("MVK_UNEXPECTED_TOKEN"),
             "a bad name, then a bracket never closed" to listOf("MVK_INVALID_ENTITY"),
             "a group filtered in a count" to listOf("MVK_NO_GROUPS_ALLOWED"),
-            // Divergence lock, DEV-API-GAPS DG84: A12 draws the walk's class alone, and MVK_NO_GROUPS_ALLOWED
-            // carries no span, so it cannot be placed behind the walk's and stands beside it.
-            "the same group read unfiltered first" to listOf("MVK_NO_GROUPS_ALLOWED", "MVK_NO_WILDCARD"),
+            "the same group read unfiltered first" to listOf("MVK_NO_WILDCARD"),
         )
         assertEquals(expected, actual, "where a filtered operand's defects fall in text order")
     }

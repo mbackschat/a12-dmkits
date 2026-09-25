@@ -115,25 +115,22 @@ class GroupListOperandsTest {
     }
 
     /**
-     * A text this checker's PARSER refuses yields no operand list, so the duplicate in it is not reported.
-     *
-     * A12 does report it — the duplicate gate pre-empts both syntax phases there, measured — so this is a
-     * stated UNDER-report and the only one the parse-based recovery costs. It is bounded: the author is
-     * already told about the syntax defect by the two families that own it, and the duplicate surfaces as
-     * soon as that is fixed. Reporting it instead would mean reading an argument list out of text whose
-     * tokens are not the ones A12's own lexer saw.
+     * A call read to its end ahead of a syntax defect keeps its duplicate gate, which A12 names in place of
+     * the syntax class (`rulekit.validate.laws.GroupListDuplicateReachLawsTest
+     * .theSyntaxPhasesDoNotPreEmptTheDuplicateGate`): the gate is raised at the call's closing parenthesis,
+     * before the parser meets the stray one or the lexer the unterminated quote.
      */
     @Test
-    fun aDuplicateInsideTextTheParserRefusesIsNotReported() {
+    fun aDuplicateAheadOfASyntaxDefectIsTheClassReported() {
         val actual = mutableMapOf<String, List<String>>()
         actual["an UNGRAMMATICAL condition with a duplicate"] = codes("AllGroupsFilled(Garage, Garage))")
         actual["an UNLEXABLE condition with a duplicate"] =
             codes("""AllGroupsFilled(Garage, Garage) And FieldFilled(\"GarageName)""")
 
         val expected = mutableMapOf<String, List<String>>()
-        expected["an UNGRAMMATICAL condition with a duplicate"] = listOf("MVK_UNEXPECTED_TOKEN")
-        expected["an UNLEXABLE condition with a duplicate"] = listOf("MVK_LEXER_STANDARD_ERROR")
-        assertEquals(expected, actual, "a duplicate inside text the parser refuses is not reported")
+        expected["an UNGRAMMATICAL condition with a duplicate"] = listOf("MVK_DUPLICATE_PARAM1")
+        expected["an UNLEXABLE condition with a duplicate"] = listOf("MVK_DUPLICATE_PARAM1")
+        assertEquals(expected, actual, "a duplicate ahead of a syntax defect is the class reported")
     }
 
     /** The gates hold on every carrier that takes a group list, including the count's `> 0` tail. */
@@ -158,24 +155,24 @@ class GroupListOperandsTest {
     }
 
     /**
-     * Within one call the exact duplicate wins, and each violating call is reported.
-     *
-     * A12 stops at the first violation it meets in the whole condition, so the second call's duplicate is
-     * absent from its code list. It is a real violation all the same — fixing the first makes A12 report it —
-     * so reporting both is telling the truth about the model rather than diverging from A12.
+     * Within one call the exact duplicate wins, and across calls the first violation answers, as in A12
+     * (`rulekit.validate.laws.GroupListDuplicateReachLawsTest.theGateReadsOneCallsOperandList`). A second call
+     * drawing the SAME class is reported too, the repeat report assembly keeps so each place to fix is shown.
      */
     @Test
-    fun exactWinsInsideACallAndEveryViolatingCallIsReported() {
-        assertEquals(
-            listOf(exact),
-            codes("AllGroupsFilled(Coverage, Coverage/Vehicle, Garage, Garage)"),
-            "the exact duplicate wins inside one call, whatever the authored order",
-        )
-        assertEquals(
-            listOf(overlap, exact),
-            codes("AllGroupsFilled(Coverage, Coverage/Vehicle) And AllGroupsFilled(Garage, Garage)"),
-            "each violating call is reported, where A12 stops at the first",
-        )
+    fun exactWinsInsideACallAndTheFirstViolatingCallAnswers() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["an exact duplicate and an overlap in ONE call"] =
+            codes("AllGroupsFilled(Coverage, Coverage/Vehicle, Garage, Garage)")
+        actual["an overlap in one call and an exact duplicate in another"] =
+            codes("AllGroupsFilled(Coverage, Coverage/Vehicle) And AllGroupsFilled(Garage, Garage)")
+        actual["an exact duplicate in each of two calls"] =
+            codes("AllGroupsFilled(Garage, Garage) And AllGroupsFilled(Coverage, Coverage)")
+        val expected = mutableMapOf<String, List<String>>()
+        expected["an exact duplicate and an overlap in ONE call"] = listOf(exact)
+        expected["an overlap in one call and an exact duplicate in another"] = listOf(overlap)
+        expected["an exact duplicate in each of two calls"] = listOf(exact, exact)
+        assertEquals(expected, actual, "which violating calls are reported")
     }
 
     /**

@@ -1328,7 +1328,8 @@ private fun List<Finding>.withoutDefectsBehindAnEarlierOne(
  *
  * A PARSER class ([PARSER_CONDITION_CODES]) is raised at the token the parser cannot use, so at its span's
  * start. Every other class is raised once what its span covers has been read — a reference once resolved, a
- * filtered operand once its whole spec, body included, is read — so at its span's end. On one offset the
+ * filtered operand once its whole spec, body included, is read, an operator's gate once the production that
+ * owns it is — so at its span's end. On one offset the
  * non-parser class comes first, because a reference the parser took is resolved before the parser asks for
  * what follows it. Both halves of that tie are measured: `FieldFilled(NoSuchField` is `MVK_INVALID_ENTITY`,
  * while `FieldFilled(Reference) NoSuchField` is `MVK_UNEXPECTED_TOKEN`, the name never being taken into a
@@ -1473,8 +1474,10 @@ private val BESIDE_THE_DSL_FAMILIES = MESSAGE_MEMBER_FAMILIES + setOf(
  * behind an earlier one, and withholding the unreferenced-target class — one per operator family, and the
  * comparison's scale gate beside its type gate
  * (`rulekit.validate.laws.ConditionClassWithholdingLawsTest.theOperatorGatesOrderLikeTheOtherOperandClasses`);
- * the rest are ASSUMED to, on that shared raise phase. None of them carries a span, so each stands beside a
- * later spanned class and is withheld behind any bad name wherever it sits ([DEV-API-GAPS DG84]).
+ * the rest are ASSUMED to, on that shared raise phase. A gate whose family publishes the span of the
+ * production A12 raises it from ([spanIn]) is placed like the classes above, ahead of a later grammar error
+ * included; one whose family publishes none stands beside a later spanned class and is withheld behind any bad
+ * name wherever it sits ([DEV-API-GAPS DG84]).
  */
 private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_INCOMPLETE_INPUT", "MVK_EXPECTED_TOKEN_NOT_FOUND", "MVK_UNEXPECTED_TOKEN",

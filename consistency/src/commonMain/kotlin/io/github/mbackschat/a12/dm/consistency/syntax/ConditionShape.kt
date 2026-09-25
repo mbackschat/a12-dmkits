@@ -92,8 +92,9 @@ data class ShapeFailure(val at: Int, val ranOutWithDelimiterOpen: Boolean, val f
  * entity. Nested calls are recorded too, each with its own arguments, innermost first.
  *
  * @param at the offset of the operator name, so a finding can point at the call rather than at the rule.
+ * @param end the offset just past its closing parenthesis, where A12 runs the operator's own check.
  */
-internal data class CallShape(val operator: String, val at: Int, val operands: List<List<Token>>)
+internal data class CallShape(val operator: String, val at: Int, val end: Int, val operands: List<List<Token>>)
 
 /**
  * One comparison: the token runs on either side of an infix comparison operator, and the operator itself.
@@ -109,7 +110,7 @@ internal data class ComparisonShape(
     val right: List<Token>,
 )
 
-/** Every comparison in [text], or none when the text does not parse — the [callShapes] contract. */
+/** Every comparison in [text] read to the end of its right side, a failed parse included: [callShapes]' contract. */
 internal fun comparisonShapes(
     text: String,
     language: ConditionLanguage,
@@ -121,28 +122,31 @@ internal fun comparisonShapes(
         language,
         comparisons = comparisons,
     )
-    val failure = when (entry) {
+    when (entry) {
         SyntaxEntry.CONDITION -> parser.parseCondition()
         SyntaxEntry.OPERATION -> parser.parseOperation()
     }
-    return if (failure == null) comparisons else emptyList()
+    return comparisons
 }
 
 /**
- * Every call in [text], or none when the text does not parse.
+ * Every call in [text] read to its closing parenthesis, including those a failed parse read before failing.
  *
- * Nothing partial is returned: a text the grammar family is already reporting has no argument list worth
- * reading, and a half-read list would be a shorter list, which is exactly the shape that makes an operand
- * law look satisfied.
+ * A12 runs an operator's check once its call is read, whatever follows it, so a call the parser completed
+ * ahead of the defect that ends the parse is one whose gate A12 raises
+ * (`rulekit.validate.laws.ConditionClassWithholdingLawsTest.aGateAnswersAheadOfALaterGrammarError`). Nothing
+ * partial is returned: a call the failure cut short has a half-read argument list, which is a SHORTER list,
+ * exactly the shape that makes an operand law look satisfied. The parser never backtracks over a call it
+ * recorded, so every one returned is a call A12's parser read too.
  */
 internal fun callShapes(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<CallShape> {
     val calls = mutableListOf<CallShape>()
     val parser = ShapeParser(tokenize(text).filter { it.kind != TokenKind.COMMENT }, language, calls)
-    val failure = when (entry) {
+    when (entry) {
         SyntaxEntry.CONDITION -> parser.parseCondition()
         SyntaxEntry.OPERATION -> parser.parseOperation()
     }
-    return if (failure == null) calls else emptyList()
+    return calls
 }
 
 /**
@@ -399,7 +403,7 @@ private class ShapeParser(
         val failure = grouped { arguments(operands) }
         // Recorded only on success, so a caller never reads an argument list the parser abandoned half-way.
         if (failure == null) {
-            calls?.add(CallShape(operator.text, operator.start, operands))
+            calls?.add(CallShape(operator.text, operator.start, tokens[index - 1].end, operands))
         }
         return failure
     }

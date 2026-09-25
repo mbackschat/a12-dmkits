@@ -352,6 +352,32 @@ class ConditionClassWithholdingLawsTest {
         assertEquals(expected, actual, "a gate against a later grammar error");
     }
 
+    /**
+     * A gate is raised where the grammar production whose action draws it ENDS, which is not always the call.
+     *
+     * <p>The date slot's gate belongs to the date argument ({@code datumAngabe}), so it is raised before the next
+     * argument is read; the arity gate belongs to the call, so a bad name in a later argument is resolved ahead
+     * of it. The two rows differ only in which of those productions owns the gate, and the nested row asks
+     * whether an inner call read to its end keeps its gate when the call around it then fails to parse.
+     */
+    @Test
+    void aGateIsRaisedWhereItsOwnProductionEnds() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a date-argument gate, then a bad name in the next argument",
+                verdict("DifferenceInDays(Reference, NoSuchField) > 0"));
+        actual.put("a call's arity gate, with a bad name in its extra argument",
+                verdict("FieldFilled(Reference, NoSuchField)"));
+        actual.put("a comparison's gate, with a bad name on its right side", verdict("[Reference] > [NoSuchField]"));
+        actual.put("a gated call inside a call that then fails to parse",
+                verdict("Abs(RoundUpValue(Reference, 2) > 1) > 0"));
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a date-argument gate, then a bad name in the next argument", "MVK_NO_DATE");
+        expected.put("a call's arity gate, with a bad name in its extra argument", "MVK_INVALID_ENTITY");
+        expected.put("a comparison's gate, with a bad name on its right side", "MVK_INVALID_ENTITY");
+        expected.put("a gated call inside a call that then fails to parse", "MVK_NO_NUMBER");
+        assertEquals(expected, actual, "where each gate's own production ends");
+    }
+
     /** One class in three rows: alone, with the bad name after it, and with the bad name ahead of it. */
     private static void measure(Map<String, String> actual, Map<String, String> expected, String row,
             String condition, String alone) {

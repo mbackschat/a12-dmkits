@@ -172,5 +172,6 @@ private fun TrackedFactBase.arityFinding(
         "in `$member`: `${call.operator}` takes ${law.wants} and this call lists " +
             "${written.size} — ${written.joinToString { "`$it`" }}",
         element.path,
+        call.spanIn(member),
     )
 }

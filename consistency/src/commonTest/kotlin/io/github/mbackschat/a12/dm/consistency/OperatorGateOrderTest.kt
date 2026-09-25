@@ -6,44 +6,84 @@ import kotlin.test.assertEquals
 /**
  * The checker's half of "an operator's gate is a parse-time class and orders like the other operand classes".
  *
- * Mirrors `rulekit.validate.laws.ConditionClassWithholdingLawsTest.theOperatorGatesOrderLikeTheOtherOperandClasses`
- * row for row, one gate per operator family and the comparison's scale gate beside its type gate. The gates
- * publish no span, so the row with the bad name AFTER the gate is a disclosed substitution rather than a
- * match: A12 names the gate, and this checker withholds a span-less class behind any bad name in the text and
- * names the bad name (`DEV-API-GAPS` DG84). Every other row matches, the unreferenced-target ones included,
- * which is what listing the codes as positioned bought.
+ * Mirrors `rulekit.validate.laws.ConditionClassWithholdingLawsTest` row for row: the operator gates against a
+ * bad name and an unreferenced target, against a later grammar error, and where each gate's own production
+ * ends. Each gate carries the span of the production A12 raises it from, which is what places it against the
+ * rest of the text.
  */
 class OperatorGateOrderTest {
 
     @Test
     fun theOperatorGatesOrderLikeTheOtherOperandClasses() {
-        val gates = linkedMapOf(
-            "text in a rounding slot" to ("0 < RoundUpValue(Reference, 2)" to "MVK_NO_NUMBER"),
-            "an argument too many" to ("FieldFilled(Reference, Score)" to "MVK_PARAMSIZE_INVALID1"),
-            "a filtered group in a count" to
-                ("NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0" to "MVK_NO_GROUPS_ALLOWED"),
-            "text in a date slot" to ("DifferenceInDays(Reference, Reference) > 0" to "MVK_NO_DATE"),
-            "text ordered against a number" to ("[Reference] > 5" to "MVK_INVALID_TYPE_FOR_COMPARISON"),
-            "two scales held equal" to ("[Premium] == [Score]" to "MVK_INVALID_COMPARE_DEC_PLACES"),
-        )
         val actual = linkedMapOf<String, List<String>>()
         val expected = linkedMapOf<String, List<String>>()
-        gates.forEach { (row, gate) ->
+        GATES.forEach { (row, gate) ->
             val (condition, alone) = gate
             actual[row] = codes(condition)
             expected[row] = listOf(alone)
             actual["$row, bad name after"] = codes("$condition And FieldFilled(NoSuchField)")
-            expected["$row, bad name after"] = listOf("MVK_INVALID_ENTITY")
+            expected["$row, bad name after"] = listOf(alone)
             actual["$row, bad name BEFORE"] = codes("FieldFilled(NoSuchField) And $condition")
             expected["$row, bad name BEFORE"] = listOf("MVK_INVALID_ENTITY")
         }
         actual["a sound condition, error field unreferenced"] = codes("FieldFilled(Reference)", UNNAMED)
         expected["a sound condition, error field unreferenced"] = listOf("MVK_ERROR_FIELD_NOT_REFERENCED")
-        gates.values.filter { it.second != "MVK_NO_GROUPS_ALLOWED" }.forEach { (condition, alone) ->
+        GATES.values.filter { it.second != "MVK_NO_GROUPS_ALLOWED" }.forEach { (condition, alone) ->
             actual["$condition, error field unreferenced"] = codes(condition, UNNAMED)
             expected["$condition, error field unreferenced"] = listOf(alone)
         }
         assertEquals(expected, actual, "the operator gates against a bad name and an unreferenced target")
+    }
+
+    @Test
+    fun aGateAnswersAheadOfALaterGrammarError() {
+        val stray = " And And FieldFilled(Reference)"
+        val actual = linkedMapOf<String, List<String>>()
+        val expected = linkedMapOf<String, List<String>>()
+        GATES.values.forEach { (gate, alone) ->
+            actual["$gate, then a stray connective"] = codes(gate + stray)
+            expected["$gate, then a stray connective"] = listOf(alone)
+        }
+        actual["a gate, then a dangling connective"] = codes("0 < RoundUpValue(Reference, 2) And")
+        expected["a gate, then a dangling connective"] = listOf("MVK_NO_NUMBER")
+        actual["a gate, then a comparison as a field operand"] = codes("[Reference] > 5 And FieldFilled(Score > 3)")
+        expected["a gate, then a comparison as a field operand"] = listOf("MVK_INVALID_TYPE_FOR_COMPARISON")
+        actual["a gate, then a signed reference"] = codes("0 < RoundUpValue(Reference, 2) And [Score] > -[Score]")
+        expected["a gate, then a signed reference"] = listOf("MVK_NO_NUMBER")
+        actual["a gate, then a parenthesised operation"] =
+            codes("0 < RoundUpValue(Reference, 2) And ([Score] + 1) > 0")
+        expected["a gate, then a parenthesised operation"] = listOf("MVK_NO_NUMBER")
+        actual["a gate, a bad name, then a stray connective"] =
+            codes("[Reference] > 5 And FieldFilled(NoSuchField)$stray")
+        expected["a gate, a bad name, then a stray connective"] = listOf("MVK_INVALID_TYPE_FOR_COMPARISON")
+        actual["a stray connective, then a gate — the reverse"] =
+            codes("FieldFilled(Reference)$stray And [Reference] > 5")
+        expected["a stray connective, then a gate — the reverse"] = listOf("MVK_UNEXPECTED_TOKEN")
+        actual["a gated call that cannot become a comparison"] =
+            codes("RoundUpValue(Reference, 2) And FieldFilled(Reference)")
+        expected["a gated call that cannot become a comparison"] = listOf("MVK_NO_NUMBER")
+        actual["a gated call before a comparison operator, a defect after it"] =
+            codes("RoundUpValue(Reference, 2) > -[Score]")
+        expected["a gated call before a comparison operator, a defect after it"] = listOf("MVK_NO_NUMBER")
+        assertEquals(expected, actual, "a gate against a later grammar error")
+    }
+
+    @Test
+    fun aGateIsRaisedWhereItsOwnProductionEnds() {
+        val actual = linkedMapOf<String, List<String>>()
+        actual["a date-argument gate, then a bad name in the next argument"] =
+            codes("DifferenceInDays(Reference, NoSuchField) > 0")
+        actual["a call's arity gate, with a bad name in its extra argument"] =
+            codes("FieldFilled(Reference, NoSuchField)")
+        actual["a comparison's gate, with a bad name on its right side"] = codes("[Reference] > [NoSuchField]")
+        actual["a gated call inside a call that then fails to parse"] =
+            codes("Abs(RoundUpValue(Reference, 2) > 1) > 0")
+        val expected = linkedMapOf<String, List<String>>()
+        expected["a date-argument gate, then a bad name in the next argument"] = listOf("MVK_NO_DATE")
+        expected["a call's arity gate, with a bad name in its extra argument"] = listOf("MVK_INVALID_ENTITY")
+        expected["a comparison's gate, with a bad name on its right side"] = listOf("MVK_INVALID_ENTITY")
+        expected["a gated call inside a call that then fails to parse"] = listOf("MVK_NO_NUMBER")
+        assertEquals(expected, actual, "where each gate's own production ends")
     }
 
     private fun codes(condition: String, errorTarget: String = "../Reference"): List<String> =
@@ -76,5 +116,16 @@ class OperatorGateOrderTest {
     private companion object {
         /** No gate text names `Assessment/Notes`, so the class this target draws is live on every row. */
         const val UNNAMED = "../Assessment/Notes"
+
+        /** One gate per operator family and the comparison's scale gate: each text, and the class it draws alone. */
+        val GATES = linkedMapOf(
+            "text in a rounding slot" to ("0 < RoundUpValue(Reference, 2)" to "MVK_NO_NUMBER"),
+            "an argument too many" to ("FieldFilled(Reference, Score)" to "MVK_PARAMSIZE_INVALID1"),
+            "a filtered group in a count" to
+                ("NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0" to "MVK_NO_GROUPS_ALLOWED"),
+            "text in a date slot" to ("DifferenceInDays(Reference, Reference) > 0" to "MVK_NO_DATE"),
+            "text ordered against a number" to ("[Reference] > 5" to "MVK_INVALID_TYPE_FOR_COMPARISON"),
+            "two scales held equal" to ("[Premium] == [Score]" to "MVK_INVALID_COMPARE_DEC_PLACES"),
+        )
     }
 }

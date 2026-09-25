@@ -173,8 +173,7 @@ class GroupListDuplicateReachLawsTest {
         // written first here and A12 still names the exact class.
         expected.put("an exact duplicate and an overlap in ONE call", EXACT);
         // ACROSS calls A12 stops at the first violation, so the second call's exact duplicate is not in
-        // the code list. It is a real violation all the same — fixing the first makes A12 report it — so a
-        // checker reporting BOTH is telling the truth about the model rather than diverging from it.
+        // the code list, though fixing the first makes A12 report it.
         expected.put("an overlap in one call and an exact duplicate in another", OVERLAP);
         assertEquals(expected, actual, "the gate reads one call's operand list");
     }

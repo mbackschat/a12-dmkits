@@ -821,20 +821,24 @@ public final class io/github/mbackschat/a12/dm/consistency/UnexpandedMount {
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/syntax/CallOperand {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZLjava/lang/String;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZLjava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZLjava/lang/String;II)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZLjava/lang/String;IIILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()Ljava/util/List;
 	public final fun component4 ()Ljava/lang/String;
 	public final fun component5 ()Z
 	public final fun component6 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZLjava/lang/String;)Lio/github/mbackschat/a12/dm/consistency/syntax/CallOperand;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/CallOperand;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZLjava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/CallOperand;
+	public final fun component7 ()I
+	public final fun component8 ()I
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZLjava/lang/String;II)Lio/github/mbackschat/a12/dm/consistency/syntax/CallOperand;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/CallOperand;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZLjava/lang/String;IIILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/CallOperand;
 	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAt ()I
 	public final fun getBase ()Ljava/lang/String;
 	public final fun getClauses ()Ljava/util/List;
 	public final fun getConstant ()Z
+	public final fun getEnd ()I
 	public final fun getLiteral ()Ljava/lang/String;
 	public final fun getPath ()Ljava/lang/String;
 	public final fun getText ()Ljava/lang/String;
@@ -843,14 +847,16 @@ public final class io/github/mbackschat/a12/dm/consistency/syntax/CallOperand {
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/syntax/ConditionCall {
-	public fun <init> (Ljava/lang/String;ILjava/util/List;)V
+	public fun <init> (Ljava/lang/String;ILjava/util/List;I)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()I
 	public final fun component3 ()Ljava/util/List;
-	public final fun copy (Ljava/lang/String;ILjava/util/List;)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionCall;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionCall;Ljava/lang/String;ILjava/util/List;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionCall;
+	public final fun component4 ()I
+	public final fun copy (Ljava/lang/String;ILjava/util/List;I)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionCall;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionCall;Ljava/lang/String;ILjava/util/List;IILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionCall;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAt ()I
+	public final fun getEnd ()I
 	public final fun getOperands ()Ljava/util/List;
 	public final fun getOperator ()Ljava/lang/String;
 	public fun hashCode ()I
@@ -865,18 +871,22 @@ public final class io/github/mbackschat/a12/dm/consistency/syntax/ConditionCalls
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;II)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()I
 	public final fun component4 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;
+	public final fun component5 ()I
+	public final fun component6 ()I
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;II)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IIILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionComparison;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAt ()I
+	public final fun getEnd ()I
 	public final fun getLeft ()Ljava/lang/String;
 	public final fun getOperator ()Ljava/lang/String;
 	public final fun getRight ()Ljava/lang/String;
+	public final fun getStart ()I
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }

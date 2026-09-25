@@ -72,7 +72,7 @@ internal fun TrackedFactBase.dateArgumentSlotFindings(): List<Finding> {
                 slots.mapNotNull { slot ->
                     val operand = call.operands.getOrNull(slot) ?: return@mapNotNull null
                     slotDefect(operand, numericExtractors, group, element)
-                        ?.let { finding(it, call, element, member) }
+                        ?.let { finding(it, call, operand, element, member) }
                 }
             }
         }
@@ -166,6 +166,7 @@ private fun TrackedFactBase.slotDefect(
 private fun finding(
     defect: DateArgumentDefect,
     call: ConditionCall,
+    operand: CallOperand,
     element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
@@ -174,4 +175,6 @@ private fun finding(
     defect.code,
     "in `$member`: `${call.operator}`'s date argument ${defect.said}",
     element.path,
+    // Its gates are `checkDatumAngabe`'s, raised once this argument is read rather than the whole call.
+    operand.spanIn(member),
 )

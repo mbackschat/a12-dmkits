@@ -9,14 +9,16 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * the second (`rulekit.validate.laws.GroupListDuplicateReachLawsTest`). No scan over a flat set of names can
  * tell those apart, which is why this parses.
  *
- * A text that does not parse yields no calls at all rather than the calls it managed to read. The grammar
- * family already reports such a text, and a truncated argument list is a SHORTER list — the shape that makes
- * an operand law look satisfied.
+ * A text that does not parse yields the calls read to their closing parenthesis before the failure, and
+ * never one the failure cut short: A12 raises the gate of a call it has read, whatever follows it, while a
+ * truncated argument list is a SHORTER list — the shape that makes an operand law look satisfied. So a law
+ * that asks what the WHOLE text does or does not contain cannot read this on a failed parse; its class is a
+ * post-parse one, withheld there by report assembly.
  */
 fun callsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionCall> {
     val keywords = CONDITION_KEYWORDS.getValue(language)
     return callShapes(text, language, entry).map { shape ->
-        ConditionCall(shape.operator, shape.at, shape.operands.map { it.asOperand(keywords, text) })
+        ConditionCall(shape.operator, shape.at, shape.operands.map { it.asOperand(keywords, text) }, shape.end)
     }
 }
 
@@ -27,8 +29,10 @@ fun callsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List
  * operator resolves its id through [CONDITION_OPERATOR_KEYWORDS] for the model's own language.
  *
  * @param at the offset of the operator name.
+ * @param end the offset just past the closing parenthesis: where the call has been read, which is where A12
+ *     runs the operator's own check.
  */
-data class ConditionCall(val operator: String, val at: Int, val operands: List<CallOperand>)
+data class ConditionCall(val operator: String, val at: Int, val operands: List<CallOperand>, val end: Int)
 
 /**
  * One top-level argument.
@@ -54,6 +58,9 @@ data class ConditionCall(val operator: String, val at: Int, val operands: List<C
  *     literal is recognized, so a temporal constant reads as false and a law counting constants under-reports
  *     rather than refusing a call A12 admits. Distinct from [literal], which answers WHICH string it is and
  *     is absent for a number.
+ * @param at the offset of the operand's first token, and [end] the offset just past its last: where the
+ *     argument has been read, which is where A12 runs a check owned by the argument's own production (a date
+ *     slot's `checkDatumAngabe`, an entity spec's `checkEntitySpec`) rather than by the call.
  */
 data class CallOperand(
     val path: String?,
@@ -62,6 +69,8 @@ data class CallOperand(
     val literal: String? = null,
     val constant: Boolean = false,
     val text: String = "",
+    val at: Int,
+    val end: Int,
 )
 
 /**
@@ -95,9 +104,13 @@ private fun List<Token>.asOperand(
     source: String,
     cuts: List<ClauseCut> = clauseCuts(keywords),
 ): CallOperand {
-    val text = if (isEmpty()) "" else source.substring(first().start, last().end)
+    // An argument is recorded only once it parsed, and every argument the grammar reads takes a token.
+    val at = first().start
+    val end = last().end
+    val text = source.substring(at, end)
     if (cuts.isEmpty()) {
-        return CallOperand(asPath(keywords), literal = asLiteral(), constant = isConstant(), text = text)
+        return CallOperand(asPath(keywords), literal = asLiteral(), constant = isConstant(), text = text, at = at,
+            end = end)
     }
     val clauses = cuts.mapIndexed { position, cut ->
         val body = subList(cut.at + cut.width, cuts.getOrNull(position + 1)?.at ?: size)
@@ -111,7 +124,7 @@ private fun List<Token>.asOperand(
     }
     // `path` keeps its narrower contract deliberately: it has always meant "a bare spec and nothing else",
     // and widening it here would silently change every family already reading it.
-    return CallOperand(null, subList(0, cuts.first().at).asPath(keywords), clauses, text = text)
+    return CallOperand(null, subList(0, cuts.first().at).asPath(keywords), clauses, text = text, at = at, end = end)
 }
 
 /**
@@ -346,7 +359,8 @@ private fun infixAt(text: String, keyword: String): Pair<Int, Int>? {
  * IS, and a reduction that answered "a path" for a bare reference and null for everything else would erase
  * the distinction between a literal, arithmetic and a nested call, which those laws turn on.
  *
- * A text that does not parse yields no comparisons at all, for the reason [callsIn] gives.
+ * A text that does not parse yields the comparisons read to the end of their right side before the failure,
+ * by the contract [callsIn] states.
  */
 fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionComparison> =
     comparisonShapes(text, language, entry).map { shape ->
@@ -355,6 +369,8 @@ fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry)
             shape.operator.text,
             shape.operator.start,
             runText(shape.right, text),
+            start = shape.left.first().start,
+            end = shape.right.last().end,
         )
     }
 
@@ -366,12 +382,16 @@ fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry)
  *     [CONDITION_OPERATOR_KEYWORDS] for the model's own language.
  * @param at the offset of the operator, so a finding can point at the comparison rather than at the rule.
  * @param right the text right of the operator, by the same rule as [left].
+ * @param start the offset of the left side's first token, and [end] the offset just past the right side's
+ *     last: where the comparison has been read, which is where A12 runs `checkVergleichsBedingung`.
  */
 data class ConditionComparison(
     val left: String,
     val operator: String,
     val at: Int,
     val right: String,
+    val start: Int,
+    val end: Int,
 )
 
 private fun runText(run: List<Token>, source: String): String =

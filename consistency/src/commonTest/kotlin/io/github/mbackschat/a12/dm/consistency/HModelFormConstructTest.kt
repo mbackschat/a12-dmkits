@@ -48,22 +48,58 @@ class HModelFormConstructTest {
     }
 
     /**
-     * The count operation in a rule CONDITION is the one measured shape this reader cannot see, disclosed.
+     * The count operation in a rule CONDITION draws this class ALONE, as in A12
+     * (`rulekit.validate.laws.HModelFormConditionReachabilityLawsTest`).
      *
-     * `conditionPart` consumes an UNCATALOGED call as a whole condition, so the `> 0` after it is leftover
-     * and the text yields no calls — the family is silent and says so. The control is the same operator in a
-     * COMPUTATION, where the operation entry rule reads it and the finding is reported normally.
+     * `conditionPart` consumes an UNCATALOGED call as a whole condition, so the `> 0` after it is a token the
+     * shape reader cannot use and draws the grammar class; the call is read to its end before that, and its
+     * class is raised there, so the grammar class stands behind it. A construct whose own call the parse cuts
+     * short is not read, and is disclosed; a condition naming no construct discloses nothing.
      */
     @Test
-    fun theCountOperationInAConditionIsDisclosedRatherThanReported() {
-        val report = check(ModelSource(germanRule("AnzahlAngegebenerVordrucke(Bestellung) > 0")))
-        assertEquals(emptyList(), report.findings.filter { it.code == refused }.map { it.code })
-        assertEquals(
-            listOf<String?>("/Bestellung/Probe"),
-            report.gaps.filter { it.reason.contains("AnzahlAngegebenerVordrucke") }.map { it.at },
-        )
+    fun theCountOperationInAConditionIsReportedAndAConstructCutShortIsDisclosed() {
+        val counted = check(ModelSource(germanRule("AnzahlAngegebenerVordrucke(Bestellung) > 0")))
+        assertEquals(listOf(refused),
+            counted.findings.filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code })
+        assertEquals(emptyList(), counted.gaps.filter { it.reason.contains("H-model form construct") })
+        val cutShort = check(ModelSource(germanRule("VordruckAngegeben(Bestellung Oder FeldAngegeben(Kennzeichen))")))
+        assertEquals(listOf<String?>("/Bestellung/Probe"),
+            cutShort.gaps.filter { it.reason.contains("VordruckAngegeben") }.map { it.at })
         assertEquals(emptyList(), check(ModelSource(germanRule("FeldAngegeben(Kennzeichen)")))
             .gaps.filter { it.reason.contains("H-model form construct") }.map { it.at })
+    }
+
+    /**
+     * Where the construct's class stands against the rest of the text, row for row
+     * `rulekit.validate.laws.HModelFormConditionReachabilityLawsTest
+     * .theConstructsClassOrdersLikeTheOtherParseTimeClasses` in this sheet's own names. The one divergence is a construct whose own call a grammar error inside its
+     * parentheses cuts short: A12 raises the class on the construct's name, and this reader reads no call
+     * there (`DEV-API-GAPS` DG84).
+     */
+    @Test
+    fun theConstructsClassOrdersLikeTheOtherParseTimeClasses() {
+        val rows = listOf(
+            "VordruckAngegeben(Bestellung) Oder FeldAngegeben(NoSuchField)",
+            "FeldAngegeben(NoSuchField) Oder VordruckAngegeben(Bestellung)",
+            "VordruckAngegeben(Bestellung Oder FeldAngegeben(Kennzeichen))",
+            "VordruckAngegeben(Bestellung) Oder Oder FeldAngegeben(Kennzeichen)",
+            "AnzahlAngegebenerVordrucke(Bestellung) > 0",
+            "AnzahlAngegebenerVordrucke(Bestellung) > 0 Oder FeldAngegeben(NoSuchField)",
+            "FeldAngegeben(Kennzeichen) Und AnzahlAngegebenerVordrucke(Bestellung) > 0",
+            "AktuelleVordruckNummer(Kennzeichen) > 0",
+            "MaximalAngegebenerZeilenindex(Kennzeichen) > 0",
+        )
+        val actual = rows.associateWith { condition ->
+            check(ModelSource(germanRule(condition))).findings
+                .filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }
+        }
+        val expected = rows.associateWith { listOf(refused) }.toMutableMap()
+        expected["FeldAngegeben(NoSuchField) Oder VordruckAngegeben(Bestellung)"] = listOf("MVK_INVALID_ENTITY")
+        // Divergence lock, DEV-API-GAPS DG84: A12 names the construct, raised on its name.
+        expected["VordruckAngegeben(Bestellung Oder FeldAngegeben(Kennzeichen))"] = listOf("MVK_UNEXPECTED_TOKEN")
+        expected["AktuelleVordruckNummer(Kennzeichen) > 0"] = listOf("MVK_UNEXPECTED_TOKEN")
+        expected["MaximalAngegebenerZeilenindex(Kennzeichen) > 0"] = listOf("MVK_UNEXPECTED_TOKEN")
+        assertEquals(expected, actual, "where a form construct's class stands in a German A12 model")
     }
 
     @Test
