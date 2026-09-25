@@ -107,6 +107,10 @@ class FilteredOperandGateOrderLawsTest {
                 filtered("Sum(Claims/Amount For \"X\" Having [Claims/ClaimRef] == \"X\") > 0"));
         actual.put("a string key, unstarred operand, no filter — its control",
                 filtered("Sum(Claims/Amount For \"X\") > 0"));
+        actual.put("a string key, starred operand, a bad name in the filter",
+                filtered("Sum(Claims*/Amount For \"X\" Having [NoSuchField] == \"X\") > 0"));
+        actual.put("a string key on a GROUP operand",
+                filtered("NumberOfFilledGroups(Claims For \"X\" Having [Claims/ClaimRef] == \"X\") > 0"));
         actual.put("a group key",
                 filtered("Sum(Claims*/Amount For Insured Having [Insured/InsuredName] == \"X\") > 0"));
         actual.put("a starred key",
@@ -121,6 +125,9 @@ class FilteredOperandGateOrderLawsTest {
         expected.put("a string key, starred operand", "MVK_SEMANTIC_INDEX_AND_WILDCARD");
         expected.put("a string key, unstarred operand", "MVK_WILDCARDS_REQUIRED");
         expected.put("a string key, unstarred operand, no filter — its control", "MVK_PARAMSIZE_INVALIDN");
+        // The string key's production is its literal, so its gate is raised there, ahead of the body.
+        expected.put("a string key, starred operand, a bad name in the filter", "MVK_SEMANTIC_INDEX_AND_WILDCARD");
+        expected.put("a string key on a GROUP operand", "MVK_NO_GROUPS_ALLOWED");
         // An entity key takes it: a group key fails the chain's kind gate, and a starred key passes the
         // chain, which leaves the index gate on the starred key to answer, as it does unfiltered.
         expected.put("a group key", "MVK_NO_GROUPS_ALLOWED");

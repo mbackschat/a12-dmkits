@@ -9052,10 +9052,12 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 |---|---|---|
 | a STRING key on a starred field, `Claims*/Amount For "X"` | `MVK_SEMANTIC_INDEX_AND_WILDCARD` | — |
 | a string key on an UNSTARRED field | `MVK_WILDCARDS_REQUIRED` | `MVK_PARAMSIZE_INVALIDN` |
+| the starred string-key row with a bad name in the filter body | `MVK_SEMANTIC_INDEX_AND_WILDCARD` | — |
+| a string key on a GROUP, `NumberOfFilledGroups(Claims For "X" Having …)` | `MVK_NO_GROUPS_ALLOWED` | — |
 | a GROUP key, `For Insured` | `MVK_NO_GROUPS_ALLOWED` | — |
 | a STARRED key, `For Claims*/ClaimRef` | `MVK_SEMANTIC_INDEX_WITH_WILDCARD` | `MVK_SEMANTIC_INDEX_WITH_WILDCARD` |
 
-A string key is no spec and takes no filter, so its `Having` is the operand's: the index gate on a starred operand is raised at the key, ahead of the filter, and an unstarred one fails the chain — which the control shows is the filter's doing, the bare operand reaching the aggregate's arity gate instead. A group key fails the chain's kind gate; a starred key passes the chain and leaves the index gate to answer, exactly as without the filter. Reported by the portable checker, whose reader marks the spec each `Having` filters (`OperandClause.filtersKey`) so the families judging the filtered ENTITY read the key where A12 does; the families judging what a filter's BODY holds read every body alike.
+A string key is no spec and takes no filter, so its `Having` is the operand's: the index gate on a starred operand is raised at the key, ahead of the filter and of any name the body reads, and an unstarred field or a group fails the chain — which the control shows is the filter's doing, the bare operand reaching the aggregate's arity gate instead. A group key fails the chain's kind gate; a starred key passes the chain and leaves the index gate to answer, exactly as without the filter. Reported by the portable checker, whose reader marks the spec each `Having` filters (`OperandClause.filtersKey`) so the families judging the filtered ENTITY read the key where A12 does; the families judging what a filter's BODY holds read every body alike.
 
 **The star is not a variable on either defect**, which is what the two paired rows establish: a group operand answers the same starred or not, and an indexed operand likewise. So a family keyed on the wildcard would be wrong in both directions.
 

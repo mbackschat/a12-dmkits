@@ -111,6 +111,10 @@ class FilteredOperandKindTest {
             filtered("Sum(Claims*/Amount For \\\"X\\\" Having [Claims/ClaimRef] == \\\"X\\\") > 0")
         actual["a string key, unstarred operand"] =
             filtered("Sum(Claims/Amount For \\\"X\\\" Having [Claims/ClaimRef] == \\\"X\\\") > 0")
+        actual["a string key, starred operand, a bad name in the filter"] =
+            filtered("Sum(Claims*/Amount For \\\"X\\\" Having [NoSuchField] == \\\"X\\\") > 0")
+        actual["a string key on a group operand"] =
+            filtered("NumberOfFilledGroups(Claims For \\\"X\\\" Having [Claims/ClaimRef] == \\\"X\\\") > 0")
         actual["a group key"] =
             filtered("Sum(Claims*/Amount For Insured Having [Insured/InsuredName] == \\\"X\\\") > 0")
         actual["a starred key"] =
@@ -123,6 +127,10 @@ class FilteredOperandKindTest {
         // The key's own gate is raised at the key's end, ahead of the filter the operand then carries.
         expected["a string key, starred operand"] = listOf("MVK_SEMANTIC_INDEX_AND_WILDCARD")
         expected["a string key, unstarred operand"] = listOf(starRequired)
+        // The string key's production is its literal, so its gate stands ahead of the filter body.
+        expected["a string key, starred operand, a bad name in the filter"] =
+            listOf("MVK_SEMANTIC_INDEX_AND_WILDCARD")
+        expected["a string key on a group operand"] = listOf(noGroups)
         expected["a group key"] = listOf(noGroups)
         // The key's filter passes the chain, so the index gate on the starred key is what answers.
         expected["a starred key"] = listOf("MVK_SEMANTIC_INDEX_WITH_WILDCARD")

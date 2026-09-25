@@ -116,9 +116,8 @@ private fun TrackedFactBase.specFinding(
     if (resolved !is Reference.Resolved) {
         return null
     }
-    // Filtered after its own string key, a spec is measured only as an unstarred FIELD: a starred one draws
-    // the index gate first, and a group is a cell no row covers.
-    if (spec.indexed && ('*' in path || !isFieldPath(resolved.path))) {
+    // Filtered after its own string key, a starred spec draws the index gate first, raised at the key.
+    if (spec.indexed && '*' in path) {
         return null
     }
     val whose = if (spec.key) "the index key `$path` — a `Having` after `For` filters the key" else "`$path`"
