@@ -65,6 +65,11 @@ class HModelFormConstructTest {
         val cutShort = check(ModelSource(germanRule("VordruckAngegeben(Bestellung Oder FeldAngegeben(Kennzeichen))")))
         assertEquals(listOf<String?>("/Bestellung/Probe"),
             cutShort.gaps.filter { it.reason.contains("VordruckAngegeben") }.map { it.at })
+        // A call read ahead of the construct is not the construct: the disclosure asks about the construct.
+        val behindACall = check(ModelSource(germanRule(
+            "FeldAngegeben(Kennzeichen) Und VordruckAngegeben(Bestellung Oder FeldAngegeben(Kennzeichen))")))
+        assertEquals(listOf<String?>("/Bestellung/Probe"),
+            behindACall.gaps.filter { it.reason.contains("VordruckAngegeben") }.map { it.at })
         assertEquals(emptyList(), check(ModelSource(germanRule("FeldAngegeben(Kennzeichen)")))
             .gaps.filter { it.reason.contains("H-model form construct") }.map { it.at })
     }
