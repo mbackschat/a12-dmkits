@@ -140,6 +140,7 @@ class ComputationRoundingTest {
         val actual = mutableMapOf<String, List<String>>()
         actual["strict · Exact"] = codesFor(""""Exact"""", "[$strict]")
         actual["strict · RoundUp"] = codesFor(""""RoundUp"""", "[$strict]")
+        actual["strict · RoundDown"] = codesFor(""""RoundDown"""", "[$strict]")
         actual["banded · Exact"] = codesFor(""""Exact"""", "[${banded()}]")
         actual["banded · RoundUp"] = codesFor(""""RoundUp"""", "[${banded()}]")
         actual["banded · RoundDown"] = codesFor(""""RoundDown"""", "[${banded()}]")
@@ -148,6 +149,7 @@ class ComputationRoundingTest {
         val expected = mutableMapOf<String, List<String>>()
         expected["strict · Exact"] = emptyList()
         expected["strict · RoundUp"] = listOf("MVK_ERROR_WRONG_ROUNDING_MODE")
+        expected["strict · RoundDown"] = listOf("MVK_ERROR_WRONG_ROUNDING_MODE")
         expected["banded · Exact"] = emptyList()
         // The discriminating cells: the mode refused above is silent here.
         expected["banded · RoundUp"] = emptyList()

@@ -93,24 +93,26 @@ class ComputationRoundingModeLawsTest {
      * absent gives {@code !=} and a band gives the tolerance operator
      * ({@code ComputationAlternativesJoiner.createComparison}). The kernel's gate is
      * {@code cmpOp == NE && roundingMode != EXACT}
-     * ({@code core.calc.internal.util.NormalisierteBerechnungsFormHelper:326}) — both conjuncts, so exactly
-     * one cell of this grid may be refused. The same model is built four times differing in one builder call,
-     * so no second variable can ride along.
+     * ({@code core.calc.internal.util.NormalisierteBerechnungsFormHelper:326}) — both conjuncts, so only the
+     * cells pairing {@code !=} with a mode other than {@code Exact} may be refused. The same model is built once
+     * per cell, differing in one builder call, so no second variable can ride along.
      */
     @Test
     void aRoundingModeIsOnlyWrongAgainstAStrictInequality() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("!= · Exact", verdict(null, RoundingMode.EXACT));
         actual.put("!= · RoundUp", verdict(null, RoundingMode.ROUND_UP));
+        actual.put("!= · RoundDown", verdict(null, RoundingMode.ROUND_DOWN));
         actual.put("tolerance 1 · Exact", verdict(ToleranceBand.TR1, RoundingMode.EXACT));
         actual.put("tolerance 1 · RoundUp", verdict(ToleranceBand.TR1, RoundingMode.ROUND_UP));
         actual.put("tolerance 10 · RoundDown", verdict(ToleranceBand.TR10, RoundingMode.ROUND_DOWN));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("!= · Exact", KernelLaws.ADMITTED);
-        // The one refused cell — and its message says why: "When using exact calculation comparisons only the
+        // The refused cells — and the message says why: "When using exact calculation comparisons only the
         // rounding mode 'exact' is allowed" (kernel-core-calc error_messages_en.properties:23).
         expected.put("!= · RoundUp", "MVK_ERROR_WRONG_ROUNDING_MODE");
+        expected.put("!= · RoundDown", "MVK_ERROR_WRONG_ROUNDING_MODE");
         expected.put("tolerance 1 · Exact", KernelLaws.ADMITTED);
         // The discriminating cell: the SAME mode that is refused above is admitted here, so the refusal
         // cannot be attributed to the mode. A checker that rejected `RoundUp` on sight would reject this.
