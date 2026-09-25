@@ -1,7 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.OperandClause
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
@@ -13,17 +15,17 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * (`MVK_WILDCARDS_REQUIRED`), then must carry no semantic index, and only then is the filter BODY judged —
  * the body being [filterWildcardFindings]' subject, so the two families partition the construct.
  *
- * **The order this family applies is MEASURED and is not the chain's written order**
- * ([KERNEL-FINDINGS KF358], `rulekit.validate.laws.FilteredOperandGateOrderLawsTest`). Source order puts the
- * kind gate first, so a group operand that ALSO carries a semantic index was predicted to draw the kind
- * class; A12 answers `MVK_WILDCARDS_REQUIRED`. Reading the chain and trusting its order would therefore have
- * named the wrong class on that shape, so the index test runs first here. *Withdrawn with the next paragraph's
- * reading: the `Having` after an index key is the KEY's, whose spec is a field, so the written order holds
- * ([KERNEL-FINDINGS KF358] corrected 2026-09-25, [DEV-API-GAPS DG89]).*
+ * **Which spec a filter belongs to is the grammar's, and it is not always the operand.** A12's semantic-index
+ * key is an `entitySpec` of its own, which takes a `Having`, so a filter written after an entity key filters
+ * the KEY and the chain judges the key — a `Having` after `For Reference` refuses the unstarred `Reference`,
+ * and a group key draws the kind class. A string key is no spec and takes no filter, so a
+ * `Having` after one filters the indexed operand, where the index gate on a starred operand is raised first
+ * and an unstarred one draws this chain's wildcard class ([KERNEL-FINDINGS KF358],
+ * `rulekit.validate.laws.FilteredOperandGateOrderLawsTest`, measured 2026-09-25). The chain then runs in its
+ * written order: kind, then the wildcard.
  *
- * **The star is not a variable on either defect, which the code's own name argues against.** A group operand
- * draws the kind class starred or not, and an indexed operand draws the wildcard class starred or not — in
- * the latter case with a `*` present in the text, so the semantic-index spelling consumes it.
+ * **The star is not a variable on the kind defect, which the code's own name argues against.** A group
+ * operand draws the kind class starred or not.
  *
  * **An unstarred FIELD operand draws this class exactly when the ITERATION gate has nothing to say.** The
  * first measurement of it was taken on a rule that does not iterate, where A12's iteration gate outruns the
@@ -51,14 +53,38 @@ internal fun TrackedFactBase.filteredOperandKindFindings(): List<Finding> {
         conditionTexts(element.kind, body).flatMap { (member, text) ->
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
                 .flatMap { call -> call.operands }
-                .filter { operand -> operand.clauses.any { it.keyword == filterKeyword } }
-                .mapNotNull { operand ->
-                    operandFinding(operand.base, operand.clauses.any { it.keyword == indexKeyword },
-                        group, iterationScopeOf(targets[element.path], group), element, member,
-                        // `checkFilterCondition` is `checkEntitySpec`'s, raised once the whole spec is read.
-                        operand.spanIn(member))
+                .flatMap { operand ->
+                    operand.clauses.filter { it.keyword == filterKeyword }.map { filter ->
+                        filteredSpecOf(operand, filter, indexKeyword, member)
+                    }
+                }
+                .mapNotNull { spec ->
+                    specFinding(spec, group, iterationScopeOf(targets[element.path], group), element, member)
                 }
         }
+    }
+}
+
+/**
+ * The spec one `Having` filters: the path it names, whether a semantic index of its own sits between it and
+ * the filter, whether it is an index KEY, and the characters of its production.
+ *
+ * `checkFilterCondition` is `checkEntitySpec`'s, raised once the whole spec, filter included, is read; a
+ * key's spec opens at the key, so its span nests inside the index it keys and report assembly places the
+ * key's class first where the two end together.
+ */
+private class FilteredSpec(val path: String?, val indexed: Boolean, val key: Boolean, val span: TextSpan)
+
+private fun filteredSpecOf(operand: CallOperand, filter: OperandClause, indexKeyword: String?, member: String):
+    FilteredSpec {
+    val key = filter.filtersKey
+    val owned = operand.clauses.subList(key?.let { operand.clauses.indexOf(it) + 1 } ?: 0,
+        operand.clauses.indexOf(filter))
+    val indexed = owned.any { it.keyword == indexKeyword }
+    return if (key == null) {
+        FilteredSpec(operand.base, indexed, key = false, operand.spanIn(member))
+    } else {
+        FilteredSpec(key.path, indexed, key = true, TextSpan(member, key.at, filter.at + filter.text.length))
     }
 }
 
@@ -78,53 +104,53 @@ private fun TrackedFactBase.iterationScopeOf(declared: DeclaredReference?, decla
     return groupOfTargetField(target)
 }
 
-private fun TrackedFactBase.operandFinding(
-    base: String?,
-    indexed: Boolean,
+private fun TrackedFactBase.specFinding(
+    spec: FilteredSpec,
     declaringGroup: String,
     targetGroup: String?,
     element: TrackedDeclaration,
     member: String,
-    span: TextSpan,
 ): Finding? {
-    if (indexed) {
-        return finding(
-            "MVK_WILDCARDS_REQUIRED",
-            "in `$member`: the filtered operand carries a semantic index — a `Having` filter selects rows " +
-                "of a starred list, and an indexed reference names one value instead",
-            element.path,
-            span,
-        )
-    }
-    val path = base ?: return null
+    val path = spec.path ?: return null
     val resolved = resolveEntity(declaringGroup, path.replace("*", ""), element.origin)
     if (resolved !is Reference.Resolved) {
         return null
     }
+    // Filtered after its own string key, a spec is measured only as an unstarred FIELD: a starred one draws
+    // the index gate first, and a group is a cell no row covers.
+    if (spec.indexed && ('*' in path || !isFieldPath(resolved.path))) {
+        return null
+    }
+    val whose = if (spec.key) "the index key `$path` — a `Having` after `For` filters the key" else "`$path`"
     if (isGroupPath(resolved.path)) {
         return finding(
             "MVK_NO_GROUPS_ALLOWED",
-            "in `$member`: `Having` filters the group `${resolved.path}` — the filter selects rows by a " +
-                "FIELD of the repetition, so name a field of that group instead",
+            "in `$member`: `Having` filters $whose, which is the group `${resolved.path}` — the filter " +
+                "selects rows by a FIELD of the repetition, so name a field of that group instead",
             element.path,
-            span,
+            spec.span,
         )
     }
-    if (OUTER_MARKER in path || '*' in path || !isFieldPath(resolved.path) || targetGroup == null) {
+    if (OUTER_MARKER in path || '*' in path || !isFieldPath(resolved.path)) {
         return null
     }
     // The iteration gate runs at the top of the same method and answers for the whole reference, so this
     // gate is only reached where that walk has nothing to say — the condition measured on all three
-    // iteration carriers rather than read off the chain's written order.
-    if (levelClassOf(path, declaringGroup, targetGroup, element) != null) {
+    // iteration carriers rather than read off the chain's written order. An index addresses one row, so an
+    // indexed spec leaves that walk nothing to say (measured on the string-key row).
+    if (targetGroup == null || (!spec.indexed && levelClassOf(path, declaringGroup, targetGroup, element) != null)) {
         return null
+    }
+    val repair = if (spec.key) {
+        "a semantic index names one row and a filter selects several, so keep the one you mean"
+    } else {
+        "star the repetition you mean to filter"
     }
     return finding(
         "MVK_WILDCARDS_REQUIRED",
-        "in `$member`: `Having` filters `$path`, which reads a single value — a filter selects ROWS, so " +
-            "star the repetition you mean to filter",
+        "in `$member`: `Having` filters $whose, which reads a single value — a filter selects ROWS; $repair",
         element.path,
-        span,
+        spec.span,
     )
 }
 

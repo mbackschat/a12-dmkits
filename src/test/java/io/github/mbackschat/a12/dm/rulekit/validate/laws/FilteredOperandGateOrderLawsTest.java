@@ -93,4 +93,39 @@ class FilteredOperandGateOrderLawsTest {
 
         assertEquals(expected, actual);
     }
+
+    /**
+     * Whose filter a `Having` written after a semantic-index key is. The grammar's key is an {@code entitySpec}
+     * or a string literal, and only the first takes a filter of its own, so each key kind is its own row.
+     */
+    @Test
+    void whoseFilterAHavingAfterAnIndexKeyIs() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a string key, starred operand",
+                filtered("Sum(Claims*/Amount For \"X\" Having [Claims/ClaimRef] == \"X\") > 0"));
+        actual.put("a string key, unstarred operand",
+                filtered("Sum(Claims/Amount For \"X\" Having [Claims/ClaimRef] == \"X\") > 0"));
+        actual.put("a string key, unstarred operand, no filter — its control",
+                filtered("Sum(Claims/Amount For \"X\") > 0"));
+        actual.put("a group key",
+                filtered("Sum(Claims*/Amount For Insured Having [Insured/InsuredName] == \"X\") > 0"));
+        actual.put("a starred key",
+                filtered("Sum(Claims*/Amount For Claims*/ClaimRef Having [Claims/ClaimRef] == \"X\") > 0"));
+        actual.put("a starred key, no filter — its control",
+                filtered("Sum(Claims*/Amount For Claims*/ClaimRef) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        // A string key takes no filter, so the operand does: starred, the index gate is raised at the key,
+        // ahead of the filter; unstarred, the filter's chain refuses it — and without the filter the same
+        // operand reaches the aggregate's arity gate instead, so it is the filter that answers.
+        expected.put("a string key, starred operand", "MVK_SEMANTIC_INDEX_AND_WILDCARD");
+        expected.put("a string key, unstarred operand", "MVK_WILDCARDS_REQUIRED");
+        expected.put("a string key, unstarred operand, no filter — its control", "MVK_PARAMSIZE_INVALIDN");
+        // An entity key takes it: a group key fails the chain's kind gate, and a starred key passes the
+        // chain, which leaves the index gate on the starred key to answer, as it does unfiltered.
+        expected.put("a group key", "MVK_NO_GROUPS_ALLOWED");
+        expected.put("a starred key", "MVK_SEMANTIC_INDEX_WITH_WILDCARD");
+        expected.put("a starred key, no filter — its control", "MVK_SEMANTIC_INDEX_WITH_WILDCARD");
+        assertEquals(expected, actual, "whose filter a Having after an index key is");
+    }
 }

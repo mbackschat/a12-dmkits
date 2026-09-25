@@ -52,13 +52,13 @@ internal fun TrackedFactBase.semanticIndexKeyFindings(): List<Finding> {
             ?.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
             val filtered = keysInsideAFilter(text, member, filterKeyword, keyword)
-            val productionEnds = semanticIndexUsesIn(text, conditionLanguage, keyword).associate { it.start to it.end }
+            val uses = semanticIndexUsesIn(text, conditionLanguage, keyword).associateBy { it.start }
             semanticIndexKeysIn(text, conditionLanguage, keyword)
                 .distinctBy { it.written }
                 .mapNotNull { key ->
                     // A key's production ends where the index chain it opens does, which the uses reader
                     // follows; an up-step key, which that reader does not take, ends with its own run.
-                    val span = TextSpan(member, key.start, productionEnds[key.start] ?: key.end)
+                    val span = uses[key.start]?.spanIn(member) ?: TextSpan(member, key.start, key.end)
                     keyFinding(key.written, group, targetGroup, element, member, key.written in filtered, span)
                 }
         }

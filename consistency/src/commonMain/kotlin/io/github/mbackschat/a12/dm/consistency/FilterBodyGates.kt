@@ -121,7 +121,9 @@ private fun TrackedFactBase.filterDefectOf(
     group: String,
     element: TrackedDeclaration,
 ): FilterDefect? {
-    val filter = operand.clauses.firstOrNull { it.keyword == filterKeyword } ?: return null
+    // A filter written after an index key filters the KEY ([OperandClause.filtersKey]), which this walk over
+    // the operand's own starred levels has no cell for.
+    val filter = operand.clauses.firstOrNull { it.keyword == filterKeyword && it.filtersKey == null } ?: return null
     val written = operand.base ?: return null
     // A nested clause, the rule-context keyword, and the outer marker each put a shape in the body that this
     // walk has no measured cell for — the first two because they carry indices A12 reads and no path this

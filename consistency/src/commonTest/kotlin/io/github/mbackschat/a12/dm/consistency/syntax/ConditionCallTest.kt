@@ -208,6 +208,34 @@ class ConditionCallTest {
         assertEquals(listOf("Having"), operand.clauses.map { it.keyword })
     }
 
+    /**
+     * A `Having` after an ENTITY index key filters that key, the innermost spec that can take one; after a
+     * string key, or with no key, it filters the operand. The kernel rows are
+     * `rulekit.validate.laws.FilteredOperandGateOrderLawsTest.whoseFilterAHavingAfterAnIndexKeyIs`.
+     */
+    @Test
+    fun aFilterAfterAnEntityKeyFiltersTheKey() {
+        fun owner(text: String): String? {
+            val clauses = calls(text).first().operands.single().clauses
+            return clauses.single { it.keyword == "Having" }.filtersKey?.text
+        }
+        val actual = mapOf(
+            "an entity key" to owner("Sum(Items*/Count For Reference Having [Items/Sku] == \"X\") > 0"),
+            "a string key" to owner("Sum(Items/Count For \"K-1\" Having [Items/Sku] == \"X\") > 0"),
+            "no key" to owner("Sum(Items*/Count Having [Items/Sku] == \"X\") > 0"),
+            "an entity key keyed by a string" to
+                owner("Sum(Items/Count For Lines/Sku For \"K-1\" Having [Items/Sku] == \"X\") > 0"),
+        )
+        val expected = mapOf(
+            "an entity key" to "Reference",
+            "a string key" to null,
+            "no key" to null,
+            // The index on `Lines/Sku` is the first key's own, so the filter is taken by that key's spec.
+            "an entity key keyed by a string" to "Lines/Sku",
+        )
+        assertEquals(expected, actual)
+    }
+
     /** An operation's entry rule reads the same calls — a computation's text is not a second dialect. */
     @Test
     fun anOperationsCallsAreReadTheSameWay() {

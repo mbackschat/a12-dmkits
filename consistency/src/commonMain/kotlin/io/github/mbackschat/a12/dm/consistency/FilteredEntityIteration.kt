@@ -113,9 +113,12 @@ private fun TrackedFactBase.markedFilteredOperand(
     if (!parallelIterates(text, filtered, filterKeyword, declaringGroup, targetGroup, element)) {
         return null
     }
+    // The filtered ENTITY is the operand only where the filter is its own: one written after an index key
+    // filters the key ([OperandClause.filtersKey]), which this reading of the operand's levels does not judge.
     return filtered.firstOrNull { operand ->
         val written = operand.base ?: return@firstOrNull false
-        markedLevelsOf(written, declaringGroup, targetGroup, element)?.marked?.isNotEmpty() == true
+        operand.clauses.any { it.keyword == filterKeyword && it.filtersKey == null } &&
+            markedLevelsOf(written, declaringGroup, targetGroup, element)?.marked?.isNotEmpty() == true
     }?.base
 }
 

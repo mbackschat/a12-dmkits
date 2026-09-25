@@ -1305,9 +1305,9 @@ private fun List<Finding>.withoutTheTextsBehindARefusedPreamble(
  * **Only a finding that can be PLACED takes part** ([placedIn]). A positioned class with no span is neither
  * dropped nor drops, because placing it would be a guess, so it and a later spanned class both stand where
  * A12 names one; every family stating a positioned class publishes a span (`rulekit`
- * `CheckerGateSpanGuardTest`), so this is left to a class A12 raises from no place in a text. **A repeat of one code is kept**, as the reference family has always
- * reported every name that does not resolve: it adds no class A12 withholds, and it shows the author each
- * place to fix.
+ * `CheckerGateSpanGuardTest`), so this is left to a class A12 raises from no place in a text. **A repeat of
+ * one code is kept**, as the reference family has always reported every name that does not resolve: it adds
+ * no class A12 withholds, and it shows the author each place to fix.
  */
 private fun List<Finding>.withoutDefectsBehindAnEarlierOne(
     conditionReferences: Set<Finding>,
@@ -1335,16 +1335,23 @@ private fun List<Finding>.withoutDefectsBehindAnEarlierOne(
  * what follows it. Both halves of that tie are measured: `FieldFilled(NoSuchField` is `MVK_INVALID_ENTITY`,
  * while `FieldFilled(Reference) NoSuchField` is `MVK_UNEXPECTED_TOKEN`, the name never being taken into a
  * reference at all (`rulekit.validate.laws.ConditionClassWithholdingLawsTest`).
+ *
+ * **Two classes raised at one character come in the order their productions close**, inner first, because
+ * a production's action runs once its last child's has. Two spans ending together are nested, and the one
+ * opening LATER is the inner: a filtered index key's own chain is raised ahead of the index it keys, which
+ * ends on the same character (`…FilteredOperandGateOrderLawsTest.whoseFilterAHavingAfterAnIndexKeyIs`).
+ * Spans that coincide exactly stay a tie, and both findings stand.
  */
-private data class RaisePoint(val offset: Int, val byTheParser: Boolean) : Comparable<RaisePoint> {
-    override fun compareTo(other: RaisePoint): Int = compareValuesBy(this, other, { it.offset }, { it.byTheParser })
+private data class RaisePoint(val offset: Int, val byTheParser: Boolean, val opensAt: Int) : Comparable<RaisePoint> {
+    override fun compareTo(other: RaisePoint): Int =
+        compareValuesBy(this, other, { it.offset }, { it.byTheParser }, { -it.opensAt })
 }
 
 private fun Finding.raisePoint(span: TextSpan, conditionReferences: Set<Finding>): RaisePoint =
     if (code in PARSER_CONDITION_CODES && this !in conditionReferences) {
-        RaisePoint(span.start, byTheParser = true)
+        RaisePoint(span.start, byTheParser = true, span.start)
     } else {
-        RaisePoint(span.end, byTheParser = false)
+        RaisePoint(span.end, byTheParser = false, span.start)
     }
 
 /**
@@ -1516,7 +1523,8 @@ private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_TOO_MANY_POW_FOR_CALC", "MVK_TOO_MANY_CONST_FOR_CALC_OP",
     // Comparisons and patterns.
     "MVK_INVALID_TYPE_FOR_COMPARISON", "MVK_INVALID_TYPES_FOR_COMPARISON", "MVK_INVALID_TYPE_FOR_TOLERANCE_OP",
-    "MVK_INVALID_COMPARE_DEC_PLACES", "MVK_INVALID_COMPARE_TO_CONST", "MVK_INVALID_COMPARE_TO_YES", "MVK_INVALID_COMPARE_TO_YESNO",
+    "MVK_INVALID_COMPARE_DEC_PLACES", "MVK_INVALID_COMPARE_TO_CONST", "MVK_INVALID_COMPARE_TO_YES",
+    "MVK_INVALID_COMPARE_TO_YESNO",
     "MVK_INVALID_COMPARE_TO_ENUM_OR_STRING", "MVK_INVALID_COMPARE_ENUM_TO_ENUM", "MVK_INVALID_COMPARE_ENUM_TO_STRING",
     "MVK_INVALID_COMPARE_TO_DATE", "MVK_INVALID_COMPARE_TO_DATE_RANGE", "MVK_INCONSISTENT_TYPES_COMPARED",
     "MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON", "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION",

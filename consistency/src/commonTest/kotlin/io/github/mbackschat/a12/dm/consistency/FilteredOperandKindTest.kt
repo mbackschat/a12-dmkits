@@ -8,8 +8,8 @@ import kotlin.test.assertEquals
  *
  * Every row mirrors one measured against the real kernel by
  * `rulekit.validate.laws.FilteredOperandGateOrderLawsTest`. Two rows carry the risk: the unstarred field
- * operand, which the code's NAME says is `MVK_WILDCARDS_REQUIRED` and A12 answers `MVK_NO_WILDCARD`; and the
- * doubly-defective operand, where A12's answer is the opposite of what the chain's source order predicts.
+ * operand, which the code's NAME says is `MVK_WILDCARDS_REQUIRED` and A12 answers `MVK_NO_WILDCARD`; and a
+ * `Having` after an index key, which filters the KEY rather than the operand it is written on.
  */
 class FilteredOperandKindTest {
 
@@ -24,6 +24,9 @@ class FilteredOperandKindTest {
              "content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Group","id":"g1","name":"Insured","Group":{"elements":[
+                  {"type":"Field","id":"f1","name":"InsuredName","Field":{"fieldType":{"type":"StringType"}}}
+                ]}},
                 {"type":"Group","id":"g2","name":"Claims","Group":{"repeatability":20,
                   "indexFieldName":"ClaimRef","elements":[
                   {"type":"Field","id":"f2","name":"ClaimRef","Field":{"fieldType":{"type":"StringType"}}},
@@ -36,7 +39,7 @@ class FilteredOperandKindTest {
              ]}}}
             """.trimIndent().replace("CONDITION_HERE", condition),
         ),
-    ).findings.map { it.code }
+    ).findings.filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }
 
     private fun filtered(probe: String): List<String> = codes("FieldFilled(Reference) And $probe")
 
@@ -77,18 +80,53 @@ class FilteredOperandKindTest {
     }
 
     /**
-     * With BOTH defects present A12 answers with the WILDCARD class, not the kind class.
-     *
-     * That is the opposite of what `checkFilterCondition`'s source order predicts, and the reason this
-     * family tests the semantic index before the operand's kind rather than in the chain's written order.
+     * A group operand carrying an index draws the WILDCARD class, not the kind class, because the filter is
+     * the key's: the key `Reference` is a field and unstarred, so the chain passes its kind gate and fails the
+     * next one in its written order.
      */
     @Test
-    fun theIndexClassOutrunsTheKindClass() {
+    fun aKeyFilteredOnAGroupOperandIsJudgedAsTheKey() {
         assertEquals(
             listOf(starRequired),
             report(filtered(
                 "NumberOfFilledGroups(Claims* For Reference Having [Claims/ClaimRef] == \\\"X\\\") > 0")),
         )
+    }
+
+    /**
+     * A `Having` after an index key filters the KEY when the key is an entity, and the operand when it is a
+     * string literal, which has no spec to take one. Asserted over every A12 class, since the index family
+     * answers the same text.
+     */
+    @Test
+    fun aHavingAfterAnIndexKeyFiltersTheKeyUnlessTheKeyIsALiteral() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["an entity key, starred operand"] =
+            filtered("Sum(Claims*/Amount For Reference Having [Claims/ClaimRef] == \\\"X\\\") > 0")
+        actual["an entity key, unstarred operand"] =
+            filtered("Sum(Claims/Amount For Reference Having [Claims/ClaimRef] == \\\"X\\\") > 0")
+        actual["an entity key on a group operand"] =
+            filtered("NumberOfFilledGroups(Claims* For Reference Having [Claims/ClaimRef] == \\\"X\\\") > 0")
+        actual["a string key, starred operand"] =
+            filtered("Sum(Claims*/Amount For \\\"X\\\" Having [Claims/ClaimRef] == \\\"X\\\") > 0")
+        actual["a string key, unstarred operand"] =
+            filtered("Sum(Claims/Amount For \\\"X\\\" Having [Claims/ClaimRef] == \\\"X\\\") > 0")
+        actual["a group key"] =
+            filtered("Sum(Claims*/Amount For Insured Having [Insured/InsuredName] == \\\"X\\\") > 0")
+        actual["a starred key"] =
+            filtered("Sum(Claims*/Amount For Claims*/ClaimRef Having [Claims/ClaimRef] == \\\"X\\\") > 0")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["an entity key, starred operand"] = listOf(starRequired)
+        expected["an entity key, unstarred operand"] = listOf(starRequired)
+        expected["an entity key on a group operand"] = listOf(starRequired)
+        // The key's own gate is raised at the key's end, ahead of the filter the operand then carries.
+        expected["a string key, starred operand"] = listOf("MVK_SEMANTIC_INDEX_AND_WILDCARD")
+        expected["a string key, unstarred operand"] = listOf(starRequired)
+        expected["a group key"] = listOf(noGroups)
+        // The key's filter passes the chain, so the index gate on the starred key is what answers.
+        expected["a starred key"] = listOf("MVK_SEMANTIC_INDEX_WITH_WILDCARD")
+        assertEquals(expected, actual, "whose filter a Having after an index key is")
     }
 
     /** Only this family's two classes, so a co-firing family cannot make a row read green. */

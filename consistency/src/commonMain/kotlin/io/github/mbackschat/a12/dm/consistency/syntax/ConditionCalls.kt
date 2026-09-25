@@ -18,7 +18,8 @@ package io.github.mbackschat.a12.dm.consistency.syntax
 fun callsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionCall> {
     val keywords = CONDITION_KEYWORDS.getValue(language)
     return callShapes(text, language, entry).map { shape ->
-        ConditionCall(shape.operator, shape.at, shape.operands.map { it.asOperand(keywords, text) }, shape.end)
+        ConditionCall(shape.operator, shape.at, shape.operands.map { it.asOperand(keywords, language, text) },
+            shape.end)
     }
 }
 
@@ -89,8 +90,21 @@ data class CallOperand(
  * @param at the offset of [text] in the text the operand was read from, so a consumer can set exactly these
  *     characters aside; an EMPTY body sits just after its keyword. Matching [text] instead finds every run
  *     that spells it, including one outside the clause.
+ * @param filtersKey for a `Having`, the semantic-index clause whose KEY it filters, or null when it filters
+ *     the operand itself. A12's key is an `entitySpec`, which takes a filter of its own, so a `Having`
+ *     written after an entity key is the key's — the innermost spec that can take it — while a string key has
+ *     no spec to take one (`semanticIndex` and `entitySpec` in `GrammarOnly_ConditionParser.g4`; measured,
+ *     `rulekit.validate.laws.FilteredOperandGateOrderLawsTest.whoseFilterAHavingAfterAnIndexKeyIs`). A
+ *     family judging what a filter's BODY holds reads every `Having` alike; one judging the filtered ENTITY
+ *     reads this first.
  */
-data class OperandClause(val keyword: String, val path: String?, val text: String, val at: Int)
+data class OperandClause(
+    val keyword: String,
+    val path: String?,
+    val text: String,
+    val at: Int,
+    val filtersKey: OperandClause? = null,
+)
 
 /**
  * The operand this token run describes, split at its top-level clause keywords.
@@ -101,6 +115,7 @@ data class OperandClause(val keyword: String, val path: String?, val text: Strin
  */
 private fun List<Token>.asOperand(
     keywords: Map<String, KeywordKind>,
+    language: ConditionLanguage,
     source: String,
     cuts: List<ClauseCut> = clauseCuts(keywords),
 ): CallOperand {
@@ -112,15 +127,25 @@ private fun List<Token>.asOperand(
         return CallOperand(asPath(keywords), literal = asLiteral(), constant = isConstant(), text = text, at = at,
             end = end)
     }
+    val operators = CONDITION_OPERATOR_KEYWORDS.getValue(language)
+    val bodies = cuts.mapIndexed { position, cut ->
+        subList(cut.at + cut.width, cuts.getOrNull(position + 1)?.at ?: size)
+    }
+    var entityKey: OperandClause? = null
     val clauses = cuts.mapIndexed { position, cut ->
-        val body = subList(cut.at + cut.width, cuts.getOrNull(position + 1)?.at ?: size)
-        OperandClause(
+        val body = bodies[position]
+        val clause = OperandClause(
             cut.keyword,
             body.asPath(keywords),
             if (body.isEmpty()) "" else source.substring(body.first().start, body.last().end),
             // An empty body has no first token, so its offset is where one would begin: after the keyword.
             body.firstOrNull()?.start ?: this[cut.at + cut.width - 1].end,
+            filtersKey = entityKey.takeIf { cut.keyword == operators[HAVING] },
         )
+        if (cut.keyword == operators[SEMANTIC_INDEX] && body.singleOrNull()?.kind != TokenKind.STRING) {
+            entityKey = clause
+        }
+        clause
     }
     // `path` keeps its narrower contract deliberately: it has always meant "a bare spec and nothing else",
     // and widening it here would silently change every family already reading it.
@@ -166,7 +191,7 @@ internal fun clausedOperandsIn(text: String, language: ConditionLanguage): List<
         }
         val run = tokens.subList(from, until)
         val cuts = run.clauseCuts(keywords).ifEmpty { return }
-        val operand = run.asOperand(keywords, text, cuts)
+        val operand = run.asOperand(keywords, language, text, cuts)
         operands += ClausedOperand(operand.base, run.first().start, run[cuts.first().at].start, run.last().end,
             operand.clauses)
     }
