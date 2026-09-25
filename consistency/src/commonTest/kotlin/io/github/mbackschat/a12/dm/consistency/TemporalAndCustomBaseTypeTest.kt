@@ -42,6 +42,10 @@ class TemporalAndCustomBaseTypeTest {
                   "CustomFieldType":{"name":"TrackingCode"}}}},
                 {"type":"Field","id":"f12","name":"Insured","Field":{"fieldType":{"type":"BooleanType"}}},
                 {"type":"Field","id":"f13","name":"Signed","Field":{"fieldType":{"type":"ConfirmType"}}},
+                {"type":"Field","id":"f14","name":"Priority","Field":{"fieldType":{"type":"EnumerationType",
+                  "EnumerationType":{"values":[{"value":"STANDARD"},{"value":"EXPRESS"}]}}}},
+                {"type":"Field","id":"f15","name":"Window","Field":{"fieldType":{"type":"DateRangeType",
+                  "DateRangeType":{"format":"dd.MM.yyyy","rangeSeparator":"-"}}}},
                 {"type":"Rule","id":"r0","name":"Probe","Rule":{
                   "errorCondition":"FieldFilled(Reference) And CONDITION_HERE","errorEntityRelPath":"../Reference",
                   "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
@@ -79,6 +83,22 @@ class TemporalAndCustomBaseTypeTest {
             "FieldValueIncludedInValueList(Carrier, [PickupTime])" to "MVK_VARYING_TYPES_NOT_ALLOWED",
         ),
     )
+
+    @Test
+    fun theValueListQuantifiersBaseTypeGateKeepsEveryTwoClassesApart() {
+        val rows = linkedMapOf<String, String?>()
+        listOf(
+            "Priority, Carrier", "Carrier, Priority", "Insured, Signed", "Signed, Insured", "Weight, ShipDate",
+            "Weight, Carrier", "Window, Carrier", "Insured, ShipDate",
+        ).forEach {
+            rows["AtLeastOneFieldValueIncludedInValueList($it In \\\"x\\\")"] = "MVK_VARYING_TYPES_NOT_ALLOWED"
+        }
+        listOf("Carrier In Priority", "Priority In Carrier", "Priority In Weight", "Weight In Carrier")
+            .forEach { rows["AtLeastOneFieldValueIncludedInValueList($it)"] = "MVK_VARYING_TYPES_NOT_ALLOWED" }
+        rows["AtLeastOneFieldValueIncludedInValueList(Carrier, Service In \\\"x\\\")"] = null
+        rows["AtLeastOneFieldValueIncludedInValueList(Carrier In Service)"] = null
+        measured(rows)
+    }
 
     @Test
     fun eachArmAReclassifiedKindReachesIsMeasuredOnTheKindItself() = measured(

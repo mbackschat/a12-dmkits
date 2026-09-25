@@ -10823,7 +10823,17 @@ The key rows order two spec-end classes as well: on one key spec, the body's ite
 
 **The value-list rows are what separate a class from a kind.** The quantifiers ask the base-type gate ahead of their kind gate, so a date beside a fragment, and a time beside a date-time, pass the first and are refused by the second, exactly as two dates are (`ValueListQuantifierOperandKindLawsTest`); a time beside a text is refused by the first. A second test measures each arm a reclassified kind reaches on the kind itself, rather than carrying the date's or the text's row over: `[ShipDate] < "x"`, `[PickupTime] < "x"` and `[DispatchMonth] < "x"` are each `MVK_INVALID_TYPE_FOR_COMPARISON`. The index-key gate had already measured the same partition on its own carriers ([KF353](#kf353)).
 
-**The portable checker kept a second table for these gates**, which gave the date fragment a class of its own and left the time, date-time and custom kinds out, and one gate special-cased the custom kind to text. It now reads the one table the index-key gate already held (`BaseTypeClass`) and answers every row of both tests as A12 does (`consistency.TemporalAndCustomBaseTypeTest`, which asserts each row's complete class set). The type definition and the unspecified kind stay unclassified, because their effective type is a definition body this checker does not read.
+**Every two classes stay apart at that gate, whichever comes first and on either side of the `In`.** Measured 2026-09-25 on the same model, extended by an enumeration `Priority` and a date range `Window`, after a12-kernel-lean reported the same pairs on its own model (their `SPEC-2026-09-25-05`); a third test in the same class locks them:
+
+| `FieldFilled(Reference) And AtLeastOneFieldValueIncludedInValueList(…)` | A12 |
+|---|---|
+| against a literal: `Priority, Carrier` · `Carrier, Priority` · `Insured, Signed` · `Signed, Insured` · `Weight, ShipDate` · `Weight, Carrier` · `Window, Carrier` · `Insured, ShipDate`, each `In "x"` | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+| against a field: `Carrier In Priority` · `Priority In Carrier` · `Priority In Weight` · `Weight In Carrier` | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+| the controls, two text fields in both shapes: `Carrier, Service In "x"` · `Carrier In Service` | admitted |
+
+The two token families (text and enumeration) are not merged here, and neither are the two boolean kinds. The kind gate is not asked first either: a boolean or a date range beside a text would otherwise draw `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED`.
+
+**The portable checker kept a second table for these gates**, which gave the date fragment a class of its own and left the time, date-time and custom kinds out, and one gate special-cased the custom kind to text. It now reads the one table the index-key gate already held (`BaseTypeClass`) and answers every row of the three tests as A12 does (`consistency.TemporalAndCustomBaseTypeTest`, which asserts each row's complete class set). The type definition and the unspecified kind stay unclassified, because their effective type is a definition body this checker does not read.
 
 ## §1 supplement — a comparison's agreement arms answer in a fixed order, and only the arm asked first draws a class (source-read + measured, 2026-09-25) <a id="kf469"></a>
 

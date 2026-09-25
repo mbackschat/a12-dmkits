@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,9 @@ class TemporalAndCustomBaseTypeLawsTest {
                     .dateTimeField("DeliveredAt", d -> d.format("yyyy-MM-dd'T'HH:mm:ss"))
                     .customField("Tracking", f -> f.type("TrackingCode"))
                     .field("Insured", FieldKind.BOOLEAN)
-                    .field("Signed", FieldKind.CONFIRM))
+                    .field("Signed", FieldKind.CONFIRM)
+                    .enumField("Priority", e -> e.value("STANDARD").value("EXPRESS"))
+                    .dateRangeField("Window", d -> d.format("dd.MM.yyyy").separator("-")))
             .build().toJson();
 
     /** Names the error field, so an admitted row is admitted rather than refused for not reading it. */
@@ -77,6 +80,35 @@ class TemporalAndCustomBaseTypeLawsTest {
         Map<String, String> actual = new LinkedHashMap<>();
         rows.keySet().forEach(condition -> actual.put(condition, verdict(condition)));
         assertEquals(rows, actual, "the base-type class of each temporal and custom kind");
+    }
+
+    /**
+     * The value-list quantifier's base-type gate keeps every two classes apart, whichever comes first and on
+     * either side of the {@code In}: the two token families (text and enumeration), the two boolean kinds, and a
+     * number, a date or a date range beside another class. Rows a12-kernel-lean measured on its own model
+     * ({@code SPEC-2026-09-25-05}), taken here on ours; the rival readings — the token families or the boolean
+     * kinds merged, or the kind gate asked first — predict an admission or
+     * {@code MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED} on these rows. The two controls hold two text fields in the
+     * same two shapes.
+     */
+    @Test
+    void theValueListQuantifiersBaseTypeGateKeepsEveryTwoClassesApart() {
+        Map<String, String> rows = new LinkedHashMap<>();
+        for (String pair : List.of("Priority, Carrier", "Carrier, Priority", "Insured, Signed", "Signed, Insured",
+                "Weight, ShipDate", "Weight, Carrier", "Window, Carrier", "Insured, ShipDate")) {
+            rows.put("AtLeastOneFieldValueIncludedInValueList(" + pair + " In \"x\")",
+                    "MVK_VARYING_TYPES_NOT_ALLOWED");
+        }
+        for (String pair : List.of("Carrier In Priority", "Priority In Carrier", "Priority In Weight",
+                "Weight In Carrier")) {
+            rows.put("AtLeastOneFieldValueIncludedInValueList(" + pair + ")", "MVK_VARYING_TYPES_NOT_ALLOWED");
+        }
+        rows.put("AtLeastOneFieldValueIncludedInValueList(Carrier, Service In \"x\")", KernelLaws.ADMITTED);
+        rows.put("AtLeastOneFieldValueIncludedInValueList(Carrier In Service)", KernelLaws.ADMITTED);
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        rows.keySet().forEach(condition -> actual.put(condition, verdict(condition)));
+        assertEquals(rows, actual, "which pairs the value-list quantifier's base-type gate keeps apart");
     }
 
     /**
