@@ -156,21 +156,25 @@ class ConsistencySnapshot private constructor(
         // Named as locals so the reuse below is a comparison rather than a claim: an implementation that
         // re-prepared or re-checked to answer a draft would bind different objects here and say so.
         val baseline = report
-        val run = when (val drafted = base.draftedWith(at, member, text)) {
+        val drafted = when (val outcome = base.draftedWith(at, member, text)) {
             // A refused draft never reaches a check, so there is no family work to report either way — and
             // `NONE` is the honest reading of a path with nothing to count, exactly as the two structural
             // source counts below are.
             is Drafted.Refused -> return DraftResult(
-                refusedDraft(baseline, drafted.gap),
+                refusedDraft(baseline, outcome.gap),
                 reuseOf(base, baseline, FamilyReuse.NONE),
             )
-            // The cells this snapshot holds are what make a keystroke cheap: the draft changes one
-            // declaration's text, so every family that never read it answers from the baseline's verdict.
-            is Drafted.Applied -> checkRun(drafted.prepared, baseline.modelId, emptyList(), cells, DRAFT_RETENTION)
+            is Drafted.Applied -> outcome
         }
+        // The cells this snapshot holds are what make a keystroke cheap: the draft changes one declaration's
+        // text, so every family that never read it answers from the baseline's verdict.
+        val run = checkRun(drafted.prepared, baseline.modelId, emptyList(), cells, DRAFT_RETENTION)
         // The same draft reading the stateless call applies — incompleteness reported, not condemning. Both
         // arms route through one function so this contract cannot hold on one and lapse on the other.
-        return DraftResult(asDraftVerdict(attribute(baseline, run.report)), reuseOf(base, baseline, run.families))
+        return DraftResult(
+            asDraftVerdict(attribute(baseline, run.report), drafted),
+            reuseOf(base, baseline, run.families),
+        )
     }
 
     /**

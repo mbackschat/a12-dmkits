@@ -21,6 +21,9 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
  * <p><b>The head gates run on BOTH list forms</b>, which is what separates this method from a reader that
  * treats the constant list and the field-entry list as two constructs.
  *
+ * <p><b>…yet a {@code [field]} entry is judged before the LEFT field.</b> Each entry is a field-value read,
+ * whose own gates run as its bracket closes, during the parse and so ahead of this whole method (KF473).
+ *
  * <p>Own domain (an insurance policy).
  */
 class ScalarValueListGateLawsTest {
@@ -140,7 +143,7 @@ class ScalarValueListGateLawsTest {
         assertEquals(expected, actual, "what the written-out list must be");
     }
 
-    /** The other list form — `[field]` entries — and the two things it is checked for. */
+    /** The other list form — {@code [field]} entries — and what the method and each entry's bracket check. */
     @Test
     void whatAListOfFieldEntriesMustBe() {
         Map<String, String> actual = new LinkedHashMap<>();
@@ -161,6 +164,16 @@ class ScalarValueListGateLawsTest {
         actual.put("a subject the head gate refuses", verdict("FieldValueIncludedInValueList(Renewed, [Tier])"));
         actual.put("an entry waiving value validation",
                 verdict("FieldValueIncludedInValueList(Holder, [FreeNote])"));
+        actual.put("an entry waiving value validation after one of another base type",
+                verdict("FieldValueIncludedInValueList(Holder, [Premium], [FreeNote])"));
+        actual.put("an entry waiving value validation after a duplicate",
+                verdict("FieldValueIncludedInValueList(Holder, [Reference], [Reference], [FreeNote])"));
+        actual.put("an entry waiving value validation under a subject the head gate refuses",
+                verdict("FieldValueIncludedInValueList(Renewed, [FreeNote])"));
+        actual.put("a group entry", verdict("FieldValueIncludedInValueList(Holder, [Broker])"));
+        actual.put("a starred entry", verdict("FieldValueIncludedInValueList(Holder, [Items*/ItemCode])"));
+        actual.put("a group entry under a subject the head gate refuses",
+                verdict("FieldValueIncludedInValueList(Renewed, [Broker])"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("another string field", KernelLaws.ADMITTED);
@@ -178,6 +191,14 @@ class ScalarValueListGateLawsTest {
         // The head gate runs on this list form too, which is the row that makes the two forms one method.
         expected.put("a subject the head gate refuses", ONLY_THREE_KINDS);
         expected.put("an entry waiving value validation", RAW_TYPE);
+        // Each entry is a field-value read, whose own gates run as its bracket closes — during the parse, so
+        // ahead of every gate of the predicate, the subject's included (KF473).
+        expected.put("an entry waiving value validation after one of another base type", RAW_TYPE);
+        expected.put("an entry waiving value validation after a duplicate", RAW_TYPE);
+        expected.put("an entry waiving value validation under a subject the head gate refuses", RAW_TYPE);
+        expected.put("a group entry", "MVK_NO_GROUPS_ALLOWED");
+        expected.put("a starred entry", "MVK_NO_WILDCARDS_ALLOWED");
+        expected.put("a group entry under a subject the head gate refuses", "MVK_NO_GROUPS_ALLOWED");
         assertEquals(expected, actual, "what a list of field entries must be");
     }
 }

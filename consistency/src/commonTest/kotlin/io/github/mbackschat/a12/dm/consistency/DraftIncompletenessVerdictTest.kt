@@ -77,6 +77,43 @@ class DraftIncompletenessVerdictTest {
     }
 
     /**
+     * A computation member that runs out draws A12's TOKEN class, and is still only unfinished.
+     *
+     * A12 parses a precondition inside the one condition it generates for the computation, so half-typed text
+     * there meets the `)` A12 added instead of the end of its input ([KERNEL-FINDINGS KF471]). Keying the
+     * demotion on `MVK_INCOMPLETE_INPUT` alone condemned every keystroke of it; the control row is a wrong
+     * token the author did type, which sits inside the text and still condemns the draft. Both arms, for the
+     * reason the class states.
+     */
+    @Test
+    fun aComputationMemberThatRunsOutIsUnfinishedAndAWrongTokenInItIsNot() {
+        val held = snapshotOf(listOf(ModelSource(COMPUTING)), COMPUTING_ID)
+        for ((text, unfinished) in listOf("FieldFilled(Holder) And" to true, "FieldFilled(Holder) ]" to false)) {
+            val stateless = checkDraft(ModelSource(COMPUTING), COMPUTATION, PRECONDITION, text)
+            assertEquals(
+                listOf("MVK_UNEXPECTED_TOKEN"),
+                stateless.introduced.map { it.code },
+                "`$text` must reach the token class, or this row locks nothing: ${stateless.introduced}",
+            )
+            assertEquals(
+                if (unfinished) ConsistencyStatus.Inconclusive else ConsistencyStatus.Invalid,
+                stateless.status,
+                "`$text` is ${if (unfinished) "unfinished" else "wrong"}",
+            )
+            assertEquals(
+                !unfinished,
+                stateless.introduced.single().justifiesRejection,
+                "and the flag a consumer reads says the same for `$text`",
+            )
+            assertEquals(
+                stateless.introduced,
+                held.draft(COMPUTATION, PRECONDITION, text).edit.introduced,
+                "the snapshot arm must attribute `$text` identically, severity included",
+            )
+        }
+    }
+
+    /**
      * A SAVED edit carrying the same text stays invalid — the mirror the demotion must not cross.
      *
      * The draft exception is about text that is not stored yet. A12 does reject a stored condition that ends
@@ -98,6 +135,25 @@ class DraftIncompletenessVerdictTest {
     }
 
     private companion object {
+        const val COMPUTING_ID = "computing-drafts"
+        const val COMPUTATION = "/Policy/PremiumCalc"
+        const val PRECONDITION = "computationAlternatives[0].precondition"
+
+        private val COMPUTING = """
+            {"header":{"id":"$COMPUTING_ID","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
+                {"type":"Field","id":"f0","name":"Holder","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType",
+                  "NumberType":{"maxFractionalDigits":2}}}},
+                {"type":"Computation","id":"c0","name":"PremiumCalc","Computation":{
+                  "computedFieldRelPath":"../Premium",
+                  "computationAlternatives":[{"precondition":"FieldFilled(Holder)","operation":"42.00"}],
+                  "errorCode":"premium.base","errorMessage":[{"locale":"en_US","text":"The base premium applies."}]}}
+              ]}}
+             ]}}}
+        """.trimIndent()
+
         const val MODEL_ID = "drafts"
         const val RULE = "/Policy/HolderRequired"
         const val LIVE_CONDITION = "FieldFilled(Holder)"

@@ -154,6 +154,16 @@ class ScalarValueListGatesTest {
         actual["a subject the head gate refuses"] = list("FieldValueIncludedInValueList(Renewed, [Tier])")
         actual["an entry waiving value validation"] =
             list("FieldValueIncludedInValueList(Holder, [FreeNote])")
+        actual["an entry waiving value validation after one of another base type"] =
+            list("FieldValueIncludedInValueList(Holder, [Premium], [FreeNote])")
+        actual["an entry waiving value validation after a duplicate"] =
+            list("FieldValueIncludedInValueList(Holder, [Reference], [Reference], [FreeNote])")
+        actual["an entry waiving value validation under a subject the head gate refuses"] =
+            list("FieldValueIncludedInValueList(Renewed, [FreeNote])")
+        actual["a group entry"] = list("FieldValueIncludedInValueList(Holder, [Broker])")
+        actual["a starred entry"] = list("FieldValueIncludedInValueList(Holder, [Items*/ItemCode])")
+        actual["a group entry under a subject the head gate refuses"] =
+            list("FieldValueIncludedInValueList(Renewed, [Broker])")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["another string field"] = emptyList()
@@ -170,6 +180,14 @@ class ScalarValueListGatesTest {
         // The subject gates run on this list form too, which is what makes the two spellings one method.
         expected["a subject the head gate refuses"] = listOf(onlyThreeKinds)
         expected["an entry waiving value validation"] = listOf(rawType)
+        // Each entry is a field-value read whose gates run as its bracket closes, ahead of this whole method —
+        // so the bracket's class is the one A12 names and the predicate's own is withheld behind it.
+        expected["an entry waiving value validation after one of another base type"] = listOf(rawType)
+        expected["an entry waiving value validation after a duplicate"] = listOf(rawType)
+        expected["an entry waiving value validation under a subject the head gate refuses"] = listOf(rawType)
+        expected["a group entry"] = listOf("MVK_NO_GROUPS_ALLOWED")
+        expected["a starred entry"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
+        expected["a group entry under a subject the head gate refuses"] = listOf("MVK_NO_GROUPS_ALLOWED")
         assertEquals(expected, actual, "what a list of field entries must be")
     }
 

@@ -388,8 +388,7 @@ private fun infixAt(text: String, keyword: String): Pair<Int, Int>? {
  * by the contract [callsIn] states.
  */
 fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionComparison> {
-    val filter = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
-    val bodies = clausedOperandsIn(text, language).flatMap { operand -> operand.clauses.filter { it.keyword == filter } }
+    val bodies = filterBodiesIn(text, language)
     return comparisonShapes(text, language, entry).map { shape ->
         val start = shape.left.first().start
         val end = shape.right.last().end
@@ -430,6 +429,58 @@ data class ConditionComparison(
     val end: Int,
     val inAFilterBody: Boolean = false,
 )
+
+/**
+ * Every field-value read a text makes: A12's `feldWertOp`, `'[' entitySpec ']'`, which is the grammar's only
+ * use of a square bracket (`GrammarOnly_ConditionParser.g4`), so every matched pair of brackets is one.
+ *
+ * A bracket A12 never closes is not read, since its production never ends and its gate is never asked; the
+ * text's own parse failure is another family's.
+ */
+internal fun fieldValueReadsIn(text: String, language: ConditionLanguage): List<FieldValueRead> {
+    val keywords = CONDITION_KEYWORDS.getValue(language)
+    val bodies = filterBodiesIn(text, language)
+    val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
+    val open = ArrayDeque<Int>()
+    val reads = mutableListOf<FieldValueRead>()
+    tokens.forEachIndexed { index, token ->
+        if (token.kind != TokenKind.PUNCTUATION) {
+            return@forEachIndexed
+        }
+        when (token.text) {
+            "[" -> open.addLast(index)
+            "]" -> {
+                val from = open.removeLastOrNull() ?: return@forEachIndexed
+                val at = tokens[from].start
+                reads += FieldValueRead(
+                    tokens.subList(from + 1, index).asPath(keywords),
+                    at,
+                    token.end,
+                    inAFilterBody = bodies.any { body -> body.at <= at && token.end <= body.at + body.text.length },
+                )
+            }
+        }
+    }
+    return reads
+}
+
+/**
+ * One field-value read.
+ *
+ * @param path the entity it names, in the normalized spelling [referencesIn] produces with any repetition
+ *     wildcard kept — absent when the spec is not one bare path: it carries a clause, a category, the `$`
+ *     outer marker or the rule-context keyword, each of which brings another gate ahead of this one.
+ * @param at the offset of the opening bracket, and [end] the offset just past the closing one: where A12 has
+ *     read the production and runs `CheckFeldWertOpImpl.check`.
+ * @param inAFilterBody whether a `Having` body holds the read, at any depth.
+ */
+internal data class FieldValueRead(val path: String?, val at: Int, val end: Int, val inAFilterBody: Boolean)
+
+/** Every `Having` body in [text], each placed by its own offset. */
+private fun filterBodiesIn(text: String, language: ConditionLanguage): List<OperandClause> {
+    val filter = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
+    return clausedOperandsIn(text, language).flatMap { operand -> operand.clauses.filter { it.keyword == filter } }
+}
 
 private fun runText(run: List<Token>, source: String): String =
     if (run.isEmpty()) "" else source.substring(run.first().start, run.last().end)

@@ -8,17 +8,16 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 
 /**
- * A repetition wildcard inside a `Having` filter, which reads ONE row and never the list.
- *
- * The filter decides whether the current repetition belongs in the aggregate, so a starred reference in it
- * has no row to be about and A12 refuses it with `MVK_NO_WILDCARDS_ALLOWED`
+ * A repetition wildcard inside a `Having` filter's body, which A12 refuses with `MVK_NO_WILDCARDS_ALLOWED`
  * ([KERNEL-FINDINGS KF97], `rulekit.validate.laws.AggregateSlotLawsTest.whichFilterGateReports`).
  *
- * **Its own family rather than part of [repetitionWildcardFindings], because the filter is a FOURTH position
- * and position is what picks the class there.** The same star on the same repeatable group is admitted in an
- * aggregate's operand, `MVK_NO_WILDCARDS_ALLOWED` in a scalar slot and `MVK_NO_WILDCARDS_G_ALLOWED` in a
- * quantifier's operand list — so nothing about this position could be inherited, and the reference-level
- * family deliberately judges only stars that land on something non-repeatable.
+ * **The gate is the field-value read's, not the filter's.** A body holds no bare reference outside an
+ * operator's argument ([KF472]), so each starred reference measured there is a `[ … ]` read, and that
+ * production refuses a star wherever it stands ([KF473], [fieldValueReadOperandFindings]). This family keeps
+ * the filter arm of that gate, which the bracket family leaves to it; the split is DG94 in DEV-API-GAPS. That
+ * is also why it is not part of [repetitionWildcardFindings]: the same star is admitted in an aggregate's
+ * operand and `MVK_NO_WILDCARDS_G_ALLOWED` in a quantifier's operand list, and the reference-level family
+ * deliberately judges only stars that land on something non-repeatable.
  *
  * **Which is also the one shape this family must leave alone.** A star on a NON-repeatable group inside a
  * filter draws the landing-site class `MVK_INVALID_WILDCARD` instead, measured, and that class outruns every

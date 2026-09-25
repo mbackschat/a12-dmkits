@@ -204,6 +204,27 @@ private fun alternativeMemberOf(member: String): Pair<Int, String>? {
 }
 
 /**
+ * Whether A12 reads more text after this member of [conditionTexts] — true for every computation member but
+ * the operation of a lone alternative.
+ *
+ * A12 does not parse a computation's members one by one. It joins them into ONE condition
+ * (`ComputationAlternativesJoiner`): `FieldFilled(<target>) And (<common>\n) And (<precondition>\n) And
+ * [<target>] != <operation>` for one alternative, and with two or more each alternative wrapped as
+ * `(<precondition>\n) And [<target>] != <operation>\n)` and the whole list closed by a final `\n)`. So a
+ * member that runs out of text is followed by a `)` A12 added, and the parser meets that token instead of the
+ * end of its input: the incompleteness class becomes the token class ([KERNEL-FINDINGS KF471],
+ * `rulekit.validate.laws.ComputationGeneratedTextLawsTest`). Only a lone alternative's operation ends the text.
+ * A rule's `errorCondition` is parsed as written.
+ */
+internal fun followedInGeneratedText(kind: String, body: JsonObject, member: String): Boolean {
+    if (kind != "Computation") {
+        return false
+    }
+    val alone = (body["computationAlternatives"] as? JsonArray)?.size == 1
+    return !(alone && member.endsWith("operation"))
+}
+
+/**
  * Which entry rule A12 parses a member of [conditionTexts] with.
  *
  * It sits beside that enumeration because it is the same knowledge — which member holds which kind of DSL

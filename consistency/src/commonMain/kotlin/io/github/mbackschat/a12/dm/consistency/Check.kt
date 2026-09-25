@@ -504,6 +504,13 @@ enum class CheckFamily {
     FIELD_VALUE_OPERATOR_OPERANDS,
 
     /**
+     * What the field-value read `[ … ]` demands of the one entity it names. One constant for the four classes
+     * because `CheckFeldWertOpImpl.check` asks them in a fixed order on one spec, so the first that fails is
+     * the one A12 names.
+     */
+    FIELD_VALUE_READ_OPERAND,
+
+    /**
      * What each comparison OPERATOR demands of the two sides it joins. One constant for the three classes
      * because `CheckVergleichsBedingungImpl.check` asks them in a fixed order ahead of every agreement
      * gate, so which answers depends on where that walk stops.

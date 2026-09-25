@@ -12,6 +12,12 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * wrong-arity call; the alternative cost was over-rejection, which is the one direction this checker may not
  * take.
  *
+ * **One thing every production shares IS checked: where a bare entity reference may stand.** No operation and
+ * no condition begins with a name that is not a keyword, so a bare entity stands only where an `entitySpec`
+ * does — an operator's argument, a clause's operand, a field-value bracket — and anywhere else it is a token
+ * the parser cannot use ([KERNEL-FINDINGS KF472]). That is grammar every operator shares, not one operator's
+ * argument shape, so it costs no over-rejection.
+ *
  * **What decides the code is where the parser stopped**, which is the one thing [KF300]'s two withdrawn
  * grammar-free rules could not know and a parser does:
  *
@@ -171,6 +177,13 @@ private class ShapeParser(
     private val filterKeyword: String? = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
 
     private var index = 0
+
+    /**
+     * Whether a bare entity reference may stand where the parser is: an operator's argument, a clause's operand
+     * or a field-value bracket, all `entitySpec` positions. An operation and a condition never begin with one
+     * ([KERNEL-FINDINGS KF472]), so it is false at the entry rules, inside `{ … }` and in a filter's body.
+     */
+    private var entitySpecStands = false
 
     /** How many delimiters are open, so running out of text can be told from meeting the end of it. */
     private var open = 0
@@ -339,9 +352,12 @@ private class ShapeParser(
      */
     private fun term(): ShapeFailure? {
         val token = peek() ?: return unexpected()
+        val bareName = token.kind == TokenKind.QUOTED_NAME || (token.kind == TokenKind.NAME && kindOf(token) == null)
         return when {
-            textIs("{") -> grouped("}") { expression() }
-            textIs("[") -> grouped("]") { entitySpecWithClauses() }
+            textIs("{") -> within(entitySpecs = false) { grouped("}") { expression() } }
+            textIs("[") -> within(entitySpecs = true) { grouped("]") { entitySpecWithClauses() } }
+            // A name that is no keyword begins no operation, so it can only be an entity spec.
+            bareName && !entitySpecStands -> unexpected()
             // A leading `-` is a sign, not a subtraction, and A12 signs a number literal alone
             // (`commonKonstante : minus='-'? ZiffernFolge …`; `ConditionArithmeticSymbolLawsTest`). The
             // tokenizer files it as punctuation because it is also a path step, so it is matched by text.
@@ -350,7 +366,7 @@ private class ShapeParser(
             token.kind == TokenKind.NAME || token.kind == TokenKind.QUOTED_NAME -> named()
             // A path may open with its own punctuation: root-anchored, a climb, or the `$` that pins a
             // reference to the outer iteration.
-            textIs("/") || textIs("..") || isOuterMarker() -> entitySpecWithClauses()
+            (textIs("/") || textIs("..") || isOuterMarker()) && entitySpecStands -> entitySpecWithClauses()
             else -> unexpected()
         }
     }
@@ -403,16 +419,16 @@ private class ShapeParser(
     }
 
     /** An empty argument list is legal for at least one operator (`Zeit()`), so it is not required here. */
-    private fun arguments(operands: MutableList<List<Token>>?): ShapeFailure? {
+    private fun arguments(operands: MutableList<List<Token>>?): ShapeFailure? = within(entitySpecs = true) {
         if (textIs(")")) {
-            return null
+            return@within null
         }
-        argument(operands)?.let { return it }
+        argument(operands)?.let { return@within it }
         while (textIs(",")) {
             take()
-            argument(operands)?.let { return it }
+            argument(operands)?.let { return@within it }
         }
-        return null
+        null
     }
 
     /** One argument, with the token run it spanned handed to [operands] once it parsed. */
@@ -455,16 +471,16 @@ private class ShapeParser(
                 // keyword-plus-bare-name predicate, which A12 parses there and refuses from the filter's own
                 // last gate. A key is an `entitySpec` or a string, so it is read as an operand.
                 if (token.text == filterKeyword) {
-                    condition()?.let { return it }
+                    within(entitySpecs = false) { condition() }?.let { return it }
                 } else {
-                    expression()?.let { return it }
+                    within(entitySpecs = true) { expression() }?.let { return it }
                 }
                 continue
             }
             if (isScopeMarker()) {
                 take()
                 take()
-                expression()?.let { return it }
+                within(entitySpecs = true) { expression() }?.let { return it }
                 continue
             }
             return null
@@ -599,6 +615,15 @@ private class ShapeParser(
     }
 
     // ── delimiters ───────────────────────────────────────────────────────────────────────────────────────
+
+    /** Runs [body] with [entitySpecStands] set to [entitySpecs], restoring it afterwards. */
+    private inline fun within(entitySpecs: Boolean, body: () -> ShapeFailure?): ShapeFailure? {
+        val outer = entitySpecStands
+        entitySpecStands = entitySpecs
+        val failure = body()
+        entitySpecStands = outer
+        return failure
+    }
 
     /** Run [body] inside a delimiter pair, tracking the depth that decides which code a failure draws. */
     private fun grouped(closing: String = ")", body: () -> ShapeFailure?): ShapeFailure? {

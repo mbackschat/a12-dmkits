@@ -350,6 +350,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclarationWalk(CheckFamily.DATE_ARITHMETIC_OPERANDS) { it.dateArithmeticOperandFindings() },
     perDeclarationWalk(CheckFamily.ROUNDING_OPERANDS) { it.roundingOperandFindings() },
     perDeclarationWalk(CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS) { it.fieldValueOperatorOperandFindings() },
+    perDeclarationWalk(CheckFamily.FIELD_VALUE_READ_OPERAND) { it.fieldValueReadOperandFindings() },
     perDeclarationWalk(CheckFamily.COMPARISON_OPERATOR_OPERANDS) { it.comparisonOperatorOperandFindings() },
     perDeclarationWalk(CheckFamily.BOOLEAN_COMPARISON_AGREEMENT) { it.booleanComparisonAgreementFindings() },
     perDeclarationWalk(CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT) { it.stringEnumComparisonAgreementFindings() },

@@ -5664,7 +5664,7 @@ The structure of a stored `computationAlternatives`, measured because `Computati
 |---|---|
 | one alternative, unguarded | ADMITTED |
 | the member ABSENT, or an EMPTY list | `MVK_INCOMPLETE_INPUT` **and** `MVK_CONDITION_MISSING` |
-| an alternative with no `operation`, or a blank/whitespace/explicit-`null` one | `MVK_INCOMPLETE_INPUT` alone |
+| an alternative with no `operation`, or a blank/whitespace/explicit-`null` one | `MVK_INCOMPLETE_INPUT` alone — **while it is the only alternative**; beside a sibling `MVK_UNEXPECTED_TOKEN` ([KF471](#kf471), corrected 2026-09-25) |
 | an alternative that is not an object, **or the member as an OBJECT, a scalar, or an explicit `null`** | **UNREADABLE** |
 | two alternatives, both guarded | ADMITTED |
 | two alternatives, ANY of them unguarded — first, last, or both | `MVK_ERROR_EMPTY_PRECONDITION` |
@@ -6212,11 +6212,11 @@ The last row generalizes the string-literal result above rather than repeating i
 | `errorCondition` | `MVK_CONDITION_MISSING` **and** `MVK_INCOMPLETE_INPUT` |
 | `commonPrecondition` | `MVK_UNEXPECTED_TOKEN` |
 | `computationAlternatives[].precondition` | `MVK_UNEXPECTED_TOKEN` |
-| `computationAlternatives[].operation` | `MVK_INCOMPLETE_INPUT` |
+| `computationAlternatives[].operation` | `MVK_INCOMPLETE_INPUT` on a lone alternative; `MVK_UNEXPECTED_TOKEN` beside a sibling ([KF471](#kf471)) |
 
 **The `commonPrecondition` row is the one that completes the set, and it was predicted wrong.** It had never been measured, and the prediction — that a blank common precondition is simply unset and therefore ADMITTED — is false: a declared common precondition is a condition slot like any other and a blank one fails in the parser. Each row carries a FILLED control of the same shape, so the code is attributable to the blank rather than to the fixture built to carry it.
 
-**Why this matters to a checker rather than being trivia.** A syntax layer reporting "a blank does not parse" under one code is right about one member and wrong about the rest, and the two that share `MVK_UNEXPECTED_TOKEN` are a condition member and a *common* condition member, while the operation — the one member that is an expression rather than a condition — is the one that parts. So the split follows the member's GRAMMAR ROLE and not its carrier, which is not what the names suggest.
+**Why this matters to a checker rather than being trivia.** A syntax layer reporting "a blank does not parse" under one code is right about one member and wrong about the rest. **Corrected 2026-09-25: the split follows what A12 writes AFTER the member, not its grammar role.** Reading it as the grammar role fitted every row here, because the operation was measured on one alternative only. A12 parses the members inside one generated condition, and a `)` it added follows every member except a lone alternative's operation. So a blank operation beside a sibling draws `MVK_UNEXPECTED_TOKEN` as well ([KF471](#kf471)).
 
 **Which text is blank takes two tests, and neither is "whitespace" as most platforms spell it (measured 2026-09-24).** The rows above use ASCII spaces. Six other spaces split the candidate definitions apart: the no-break family (U+00A0, U+2007, U+202F) and a vertical tab, an em space and an ideographic space (U+000B, U+2003, U+3000).
 
@@ -7935,12 +7935,13 @@ Reported by the portable checker (`CheckFamily.FIELD_LIST_OPERATION_OPERANDS`, w
 | the subject waives value validation | `MVK_INVALID_RAW_TYPE` |
 | `[field]` entries: one named twice, the subject included | `MVK_DUPLICATE_PARAM1` |
 | `[field]` entries: one of another base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
-| `[field]` entries: one waiving value validation | `MVK_INVALID_RAW_TYPE` |
 | a written-out list whose KIND is not the subject's | `MVK_INVALID_TYPES_FOR_COMPARISON` |
 | a written-out value outside a plain enumeration's domain | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` |
 | …outside the CATEGORY's classifications | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_CATEGORY` |
 
 **The subject gates run on BOTH list spellings**, which is what makes the two one construct rather than two: a boolean subject draws `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` whether the list is `"x"` or `[Other]`.
+
+*Corrected 2026-09-25:* the table carried a third entry gate, "one waiving value validation → `MVK_INVALID_RAW_TYPE`", ordered after the base types. Each `[field]` entry is a field-value read, whose own gates — a group, a star, a waived value validation, a partially known date — run as its bracket closes, during the parse and so ahead of this whole method, the subject's gates included ([KF473](#kf473)). The one row that measured the entry gate held it alone, so it could not show the order. So "judges the subject completely first" holds for this method's own gates and not for an entry's.
 
 **A CUSTOM declaration rides with text on both gates that group declarations, and its name says otherwise on each.** `isLikeString` admits `IPredefinedType` beside `IStringType`, so a custom subject passes a gate spelled `…STRING_ENUM_NUMBER…`; and `matchBaseType` gives the two the same base type, so a custom `[field]` entry matches a STRING subject where an enumeration entry does not. Both cells measured rather than transferred — the second is the one that would be got wrong in both directions by a reader expecting the gate's own name.
 
@@ -10856,3 +10857,77 @@ Four checks come earlier still: two constants, the tolerance and pattern operato
 **A star on a level the rule binds is no reader error, and the bar counts it**: from `Shipments`, `S*/P*` is two stars, as it is from anywhere else. A pair that leaves unstarred a level nothing binds reads one row at a time and meets that read first — the reader's missing star inside the error field's group, containment outside it — and where one operand reads a row while the other stars two levels, the read is raised first. From outside the declaring group the chain keeps its order: owning groups, then the filter, then the stars, the number question last.
 
 **The portable checker judged only pairs inside the declaring group whose star count equalled the levels between**, so it was silent on the six pairs of the first three rows, and on the `SumOfProducts` controls of [KF466](#kf466)'s kinds sheet. It now asks the reader's own condition: an operand reaches the gates when it resolves to a field, stars no level that does not repeat, and stars every repeatable level the declaring group does not bind, and the bar counts the levels it stars. `consistency.SumOfProductsOperandReachTest` answers every row with its complete class set, and answered the controls before the change as well.
+
+## §12 supplement — A12 parses a computation's members inside the one condition it generates from them, so a member that stops short meets a `)` A12 added (source-read + measured, 2026-09-25) <a id="kf471"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §12's syntax material, which reads each DSL member as the text it holds.
+
+A12 never parses a computation's members one by one. `ComputationAlternativesJoiner.join` (kernel-md-model) writes them into ONE condition: `FieldFilled(<target>) And (<common>\n) And (<precondition>\n) And [<target>] != <operation>` for a single alternative. With two or more it wraps each as `((<precondition>\n) And [<target>] != <operation>\n)`, joins them with ` Or\n`, and closes the list with a final `\n)`. So only a lone alternative's operation ends A12's input, and every other member is followed by a `)` that A12 added. On the subscription fixture (`G` = `FieldFilled(../Tier)`, operation `42.00`; locked by `rulekit.validate.laws.ComputationGeneratedTextLawsTest`):
+
+| the member that stops short | alone | beside a sibling alternative |
+|---|---|---|
+| a blank, whitespace or `null` operation | `MVK_INCOMPLETE_INPUT` | `MVK_UNEXPECTED_TOKEN`: first, middle or last, guarded or not |
+| an operation ending on `+` | `MVK_INCOMPLETE_INPUT` | `MVK_UNEXPECTED_TOKEN` |
+| an operation with `{` or `[` open | `MVK_EXPECTED_TOKEN_NOT_FOUND` | `MVK_UNEXPECTED_TOKEN` |
+| a precondition or common precondition ending on `And`, `Or` or a comma, or with `[` open | `MVK_UNEXPECTED_TOKEN` | `MVK_UNEXPECTED_TOKEN` |
+| a precondition with `FieldFilled(` open | `MVK_EXPECTED_TOKEN_NOT_FOUND` | — |
+
+**Every refused row but the last separates this from the rival reading, that each member is parsed as written.** [KF292](#kf292) and [KF310](#kf310) measured a blank operation on ONE alternative only, where both readings say `MVK_INCOMPLETE_INPUT`. The last row keeps its class for a reason the source also gives: the added `)` closes the open call, A12 reads on into the text it generated, and it runs out later with the precondition's own group still open.
+
+**Two more things ride on it.** A calculation-module class such as `MVK_ERROR_EMPTY_PRECONDITION` is not raised while the joined text fails to parse, so an unguarded alternative beside a blank operation draws the token class alone. And an EMPTY or `null` operation also draws A12's codeless `problem.document.basic.computationOperationEmpty` (`BasicConsistencyCheck.visitComputation`, keyed on `StringUtils.isEmpty`, so not on whitespace). That line carries no class for a checker to cite.
+
+**The portable checker parsed each member as written**, so it named `MVK_INCOMPLETE_INPUT` for the blank and trailing-operator rows beside a sibling or in a precondition. It also named `MVK_EXPECTED_TOKEN_NOT_FOUND` for an open `[` or `{` there. It now asks `followedInGeneratedText`. Where A12 reads on, text that ran out draws the token class, raised past the member's own text. That is unless the added `)` is a token the parser can take there, in which case the text's own verdict stands. The draft contract follows the same position: the token class raised past a draft's own end is half-typed text, and is demoted like the incompleteness class. `consistency.ComputationGeneratedTextTest` answers every row with its complete class set, and `DraftIncompletenessVerdictTest` locks the draft half on both arms.
+
+## §12 supplement — a bare entity reference is no operation and no condition: A12's grammar takes one only where an `entitySpec` stands (grammar-read + measured, 2026-09-25) <a id="kf472"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §12's syntax material.
+
+`einfacheOperation` and `einfacheBedingung` in `GrammarOnly_ConditionParser.g4` list no alternative that begins with a name that is not a keyword. A field's value is read through `feldWertOp`, `'[' entitySpec ']'`, and a bare `entitySpec` appears only as an operator's argument or a clause's operand — and only in an argument slot the grammar types as one. So a bare name in any operation or condition position is a token the parser cannot use, and so is one in a literal-only slot such as a rounding operator's digit count. On the basket (`/Basket`, error field `Total`, each condition after `FieldFilled(Total) And`; locked by `rulekit.validate.laws.BareEntityOperandLawsTest`):
+
+| where the bare name stands | A12 |
+|---|---|
+| a comparison side: `Total > 0`, `NoSuchField > 0`, `[Total] > Total`, `[Total] > NoSuchField`, `[Total] > /Basket/Total`, `[Total] > $Total`, `Lines*/Qty > 0`, `RoundUpValue(Total, 0) > Total` | `MVK_UNEXPECTED_TOKEN` |
+| an arithmetic term or a `{ … }` group: `[Total] > [Total] + Total`, `[Total] > {Total}` | `MVK_UNEXPECTED_TOKEN` |
+| inside `( … )`, and in a filter's body: `(Total > 0)`, `Sum(Lines*/Qty Having Lines/Qty > 0) > 0` | `MVK_UNEXPECTED_TOKEN` |
+| a name that is no keyword followed by `(`: `Foo(Total)`, `Foo (Total)`, `[Total] == Foo(1)` | `MVK_UNEXPECTED_TOKEN` |
+| a computation's operation: `Fees/Handling`, `[Fees/Handling] + Fees/Handling`, `NoSuchField`, `Foo([Total])` | `MVK_UNEXPECTED_TOKEN` |
+| a rounding operator's digit count: `RoundUpValue(Total, NoSuchField) > 0`, `RoundUpValue(Total, Total) > 0` | `MVK_UNEXPECTED_TOKEN` |
+| the controls: `RoundUpValue(Total, 0) > 0`, `[Total] == Sum(Lines*/Qty)`, `Sum(Lines*/Qty Having [Lines/Qty] > 0) > 0`, the operation `[Fees/Handling]` | ADMITTED |
+
+**The names that resolve to nothing are the discriminating rows.** If the parser took a bare name into a reference and resolved it, `NoSuchField > 0` would draw `MVK_INVALID_ENTITY`. A12 draws the token class, so the name is never read as a reference at all.
+
+**The portable checker's shape parser read any bare name as a reference.** A name that resolves drew nothing, and one that does not drew a reference class: `MVK_INVALID_ENTITY` for `NoSuchField` and for a `Foo(` call, `MVK_INVALID_OUTER_ITERATION` for `$Total`. It now reads a bare entity only in an `entitySpec` position: an argument, a clause's operand, or a field-value bracket. It is refused at the entry rules, inside `{ … }` and in a filter body. It still takes EVERY argument as such a position, so a name in the digit count is resolved: `MVK_INVALID_ENTITY` where it names nothing, silence where it names a field (divergence locks in the same test; the per-operator argument grammar is [DG93](DEV-API-GAPS.md)). `consistency.BareEntityOperandTest` answers every row with its complete class set. Three of the checker's own mirror fixtures had been written with bare operands that A12 refuses (`FilterBodyGatesTest`, `CheckFamilyWiringTest`, `ImpactTest`), and their kernel twins build the bracketed form, so they were corrected to the text A12 measured.
+
+## §11 supplement — the field-value read `[ … ]` asks four gates of the entity it names, as its bracket closes and wherever it stands (source-read + measured, 2026-09-25) <a id="kf473"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §11's operator material.
+
+`feldWertOp: '[' entitySpec ']'` is the grammar's only bracket production, and it stands in exactly two places in `GrammarOnly_ConditionParser.g4`: as an operation, and as each entry of the scalar value list's `feldWertOpListe`. Its parser action, `CheckFeldWertOpImpl.check` (kernel-core-parser, the runtime class), asks four gates in order, each of them throwing: `checkIsField` (`MVK_NO_GROUPS_ALLOWED`), `checkNoWildCards` (`MVK_NO_WILDCARDS_ALLOWED`), `checkIsValueValidation` (`MVK_INVALID_RAW_TYPE`, skipped only by a lenient parser) and `FieldUtils.isDatePartialKnown` (`MVK_INVALID_DATE_TYPE`). On the basket (`/Basket`, error field `Total`, each condition after `FieldFilled(Total) And`) and a fulfilment sheet (repeating `Shipments` and `Parcels`, rules writing `Summary/Result`); locked by `rulekit.validate.laws.FieldValueReadOperandLawsTest`:
+
+| declared in · the read | A12 |
+|---|---|
+| Basket · a starred read on either comparison side, inside `{ … }`, as an `Abs` argument, against `0` and against `"x"`, two levels deep; a computation's operation `[Lines*/Qty]` | `MVK_NO_WILDCARDS_ALLOWED` |
+| Lines · `[Qty] == [/Basket/Lines*/Qty]`, the star on the level the rule iterates | `MVK_NO_WILDCARDS_ALLOWED` |
+| Basket · `[Fees]`, and the starred group `[Lines*]` | `MVK_NO_GROUPS_ALLOWED` |
+| Basket · `[Lines]`, a repeatable group left unstarred | `MVK_NO_WILDCARD` |
+| Summary · `[/Fulfilment/Ledger/Note] == "x"`, a text waiving value validation | `MVK_INVALID_RAW_TYPE` |
+| Summary · `[/Fulfilment/Ledger/Partial] == [/Fulfilment/Ledger/Due]`, a partially known date | `MVK_INVALID_DATE_TYPE` |
+| Summary · `[…/NoSuch]`; `[/Fulfilment/Ledger*/Total]`, `[/Fulfilment/Ledger/Total*]` | `MVK_INVALID_ENTITY`; `MVK_INVALID_WILDCARD` |
+| Ledger · `[/Fulfilment/Shipments/Parcels*/Weight]`; Shipments · `[Parcels*/Weight]` | `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` |
+| Summary · `[Note] == [every/Label]` / `[every/Label] == [Note]` / `[Due] == [every/Label]` | `MVK_INVALID_RAW_TYPE` / `MVK_NO_WILDCARDS_ALLOWED` / `MVK_NO_WILDCARDS_ALLOWED` |
+| Summary · in a filter's body, a starred bracket; the group `[/Fulfilment/Ledger]` | `MVK_NO_WILDCARDS_ALLOWED`; `MVK_NO_GROUPS_ALLOWED` |
+| the controls: `[Total] == Sum(Lines*/Qty)`, `[/Fulfilment/Ledger/Total] > 0`, `[/Fulfilment/Ledger/Due] == [/Fulfilment/Ledger/Due]` | ADMITTED |
+
+(`every` abbreviates `/Fulfilment/Shipments*/Parcels*`.) What the rows separate:
+
+- **The gates are the bracket's, not the carrier's.** A star draws one class on every carrier, and draws it ahead of the kind gate against `"x"`. A carrier-owned gate would vary with the carrier.
+- **The star gate asks the spelling, not the binding.** The read from inside `Lines` stars the very level the rule iterates and is refused all the same.
+- **Each bracket is checked as it closes.** Of two reads in one comparison, the LEFT one's class is named whichever gate it fails, so the order is textual, not the gate order across both.
+- **The reader and containment answer first.** An unresolvable name, a star on a level that does not repeat, an unstarred repeatable level, and a target outside the declaring group are refused while the spec is read, before the bracket closes. The `Shipments` row is the discriminating one: the declaring group binds `Shipments`, yet the rule writes into `Summary`, so containment answers and the star gate never runs.
+- **In a filter's body the bracket still answers first.** The group read there is refused at its bracket, ahead of the filter chain's `MVK_NO_ITERATION_FOR_WILDCARD`, which waits for the whole filtered spec.
+
+**A scalar value list's `[field]` entries are the same production, so their gates run during the parse — ahead of the whole predicate, the subject's gates included.** Measured in `rulekit.validate.laws.ScalarValueListGateLawsTest.whatAListOfFieldEntriesMustBe`: an entry waiving value validation draws `MVK_INVALID_RAW_TYPE` after an entry of another base type, after a duplicate, and under a boolean subject the head gate refuses. A group entry draws `MVK_NO_GROUPS_ALLOWED`, also under that subject, and a starred entry `MVK_NO_WILDCARDS_ALLOWED`. The rival order — the subject first, then duplicates, base types and value validation, which is how [KF398](#kf398)'s table read — predicts `MVK_VARYING_TYPES_NOT_ALLOWED`, `MVK_DUPLICATE_PARAM1` and `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` on those rows, and an admitted group entry expanded to its fields.
+
+**The filter body's star class ([KF97](#kf97)'s table) is explained by this gate.** Every row there is a bracketed read, and a starred bracket draws the same class outside any filter. Whether a filter adds a star gate of its own shows only on a star outside a bracket, such as a nested aggregate's argument, and no row measures that.
+
+**The portable checker had no family for the bracket.** With it disabled, the checker is silent on every star row outside a filter's body and on every group, value-validation and partial-date row above, and draws `MVK_NO_ITERATION_FOR_WILDCARD` on the group read in a filter's body; the starred bracket in a body was already `FILTER_WILDCARD`'s. `CheckFamily.FIELD_VALUE_READ_OPERAND` now asks the four gates at the bracket's span, on a spec the reader passes. It leaves the star in a filter's body to `FILTER_WILDCARD`. `consistency.FieldValueReadOperandTest` answers every row with its complete class list. Its scalar value-list family had asked value validation of the entries itself, after their duplicates and base types, and had expanded a group entry to its fields. It now judges only lists of field entries and leaves each entry's own gates to the bracket (`consistency.ScalarValueListGatesTest`).

@@ -175,8 +175,9 @@ class ComputationAlternativeSlotLawsTest {
     /**
      * A BLANK slot on each DSL-bearing member of this carrier, which do NOT answer alike.
      *
-     * <p>An alternative's blank {@code precondition} draws {@code MVK_UNEXPECTED_TOKEN} and its blank
-     * {@code operation} draws {@code MVK_INCOMPLETE_INPUT} — measured above, in two tests written for other
+     * <p>An alternative's blank {@code precondition} draws {@code MVK_UNEXPECTED_TOKEN} and a lone alternative's
+     * blank {@code operation} draws {@code MVK_INCOMPLETE_INPUT} (beside a sibling it draws the token class too:
+     * {@link ComputationGeneratedTextLawsTest}) — measured above, in two tests written for other
      * questions, so the disagreement was never put side by side. It matters to a checker: a syntax layer
      * reporting "a blank does not parse" with one code would be right about one member and wrong about the
      * other, and the row that completes the set is the {@code commonPrecondition}, which nothing had

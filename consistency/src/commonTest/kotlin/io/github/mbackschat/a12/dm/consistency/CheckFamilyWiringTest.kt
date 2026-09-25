@@ -86,6 +86,9 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../NoSuchField",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r100","name":"ReadOfAnUnparsedText","Rule":{
+              "errorCondition":"FieldFilled(Price) And [Opaque] == \"X\"","errorEntityRelPath":"../Price",
+              "errorCode":"C100","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r99","name":"TableSubject","Rule":{
               "errorCondition":"ValueNotConsistent(Price To \"HIGH\")","errorEntityRelPath":"../Price",
               "errorCode":"C99","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -162,7 +165,7 @@ class CheckFamilyWiringTest {
               "errorEntityRelPath":"../Crates/CrateQty",
               "errorCode":"C41","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r40","name":"FilterOffTheOperandsPath","Rule":{
-              "errorCondition":"FieldFilled(Price) And NumberOfFilledFields(Pallets*/PalletNote Having Crates/CrateQty > 0) > 0",
+              "errorCondition":"FieldFilled(Price) And NumberOfFilledFields(Pallets*/PalletNote Having [Crates/CrateQty] > 0) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C40","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r38","name":"UnstarredRepetitionRead","Rule":{
@@ -601,6 +604,10 @@ class CheckFamilyWiringTest {
         // opposite of `FieldValueAsString`'s, so the row fails if the two arms are ever merged.
         CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS to
             ("MVK_NO_STRING" to "/Catalog/LengthOfANumber"),
+        // A field-value read of a text held unparsed — the one gate of the four no comparison family asks, so
+        // the row fails if the bracket's gates are ever folded into the comparison it stands in.
+        CheckFamily.FIELD_VALUE_READ_OPERAND to
+            ("MVK_INVALID_RAW_TYPE" to "/Catalog/ReadOfAnUnparsedText"),
         // A TEXT field in a date slot, beside a date one — so the slot's own kind gate is what answers and
         // the row fails if the family ever starts judging the carrier's format gate as well.
         CheckFamily.DATE_ARGUMENT_SLOT to

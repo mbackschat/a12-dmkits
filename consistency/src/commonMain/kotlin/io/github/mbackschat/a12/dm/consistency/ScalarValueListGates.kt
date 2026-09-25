@@ -30,13 +30,18 @@ import kotlinx.serialization.json.contentOrNull
  * | the subject waives value validation | `MVK_INVALID_RAW_TYPE` |
  * | `[field]` entries: one named twice, the subject included | `MVK_DUPLICATE_PARAM1` |
  * | `[field]` entries: one of another base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
- * | `[field]` entries: one waiving value validation | `MVK_INVALID_RAW_TYPE` |
  * | a written-out list whose KIND is not the subject's | `MVK_INVALID_TYPES_FOR_COMPARISON` |
  * | a written-out value outside a plain enumeration's domain | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` |
  * | …outside the CATEGORY's classifications | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_CATEGORY` |
  *
  * **The subject gates run on BOTH list forms**, which is what makes the two spellings one construct rather
  * than two: a boolean subject is refused with the same class whether the list is `"x"` or `[Other]`.
+ *
+ * **…yet a `[field]` entry is judged before the subject**, because each entry is a field-value read whose own
+ * gates — a group, a star, a waived value validation, a partially known date — run as its bracket closes,
+ * during the parse and so ahead of this whole method ([KF473], [fieldValueReadOperandFindings]). An entry
+ * waiving value validation under a subject the head gate refuses draws the entry's class. So this family asks
+ * nothing of an entry that the bracket asks, and judges a list of FIELD entries only.
  *
  * **A CUSTOM declaration rides with text on both gates that group them.** `isLikeString` admits
  * `IPredefinedType` beside `IStringType`, so the subject gate takes it; and `matchBaseType` gives the two
@@ -159,11 +164,12 @@ private fun TrackedFactBase.gateFindings(
 }
 
 /**
- * The `[field]`-entry list's three gates, in A12's order: duplicates, base types, value validation.
+ * The `[field]`-entry list's two gates, in A12's order: duplicates, then base types.
  *
  * The duplicate walk takes the SUBJECT together with the entries, so naming it inside its own list is a
  * duplicate parameter rather than a self-comparison — measured, and the reason this leaves such a call to
- * A12 rather than naming a type class on it.
+ * A12 rather than naming a type class on it. An entry naming a group is left to the bracket, which refuses
+ * it before this method runs.
  */
 private fun TrackedFactBase.entryListFindings(
     subject: TrackedDeclaration,
@@ -173,9 +179,9 @@ private fun TrackedFactBase.entryListFindings(
     element: TrackedDeclaration,
     member: String,
 ): List<Finding>? {
-    val fields = entries.flatMap { entry ->
-        val declared = declaredTargetOf(entry.text, declaringGroup, element) ?: return null
-        fieldsUnder(declared) ?: return null
+    val fields = entries.map { entry ->
+        declaredTargetOf(entry.text, declaringGroup, element)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
+            ?: return null
     }
     val walked = listOf(subject) + fields
     if (walked.map { it.path }.distinct().size != walked.size) {
@@ -188,11 +194,6 @@ private fun TrackedFactBase.entryListFindings(
             return listOf(gate(VARYING_TYPES, call.operator, field, member, element, call.spanIn(member)))
         }
         expected = kind
-    }
-    fields.forEach { field ->
-        if (field.waivesValueValidation()) {
-            return listOf(gate(RAW_TYPE, call.operator, field, member, element, call.spanIn(member)))
-        }
     }
     return null
 }
@@ -287,8 +288,8 @@ private fun gate(
                 "value list takes a text, custom, enumeration or number field; compare a boolean with " +
                 "`== True` and a date with a date comparison"
         RAW_TYPE ->
-            "in `$member`: `${field.path}` waives value validation, and `$operator` refuses every field in " +
-                "its call that does — drop `noValueValidation`, or compare the field another way"
+            "in `$member`: `${field.path}` waives value validation, and `$operator` refuses a subject that " +
+                "does — drop `noValueValidation`, or compare the field another way"
         else ->
             "in `$member`: `$operator` compares `${field.path}`, declared `${field.declaredFieldType()}`, " +
                 "against a list of another base type — every entry has to be declared like the subject"

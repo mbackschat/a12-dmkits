@@ -98,7 +98,7 @@ class ImpactTest {
      */
     @Test
     fun aBareNameTheChangeCouldREBINDIsReachedWithoutReferencingIt() {
-        // `LineLabel` sits in `Lines` and reads the bare name `Code`, which the declaring group does not
+        // `LineLabel` sits in `Lines` and reads the short name `Code`, which the declaring group does not
         // own — so the model-wide fallback is what binds it, to `/Order/Code`. Declaring a `Code` inside
         // `Lines` takes that reference over through the LOCAL tier, touching nothing it currently names.
         val report = impactOf(ModelSource(base), ModelSource(changed(
@@ -211,7 +211,7 @@ class ImpactTest {
                {"type":"Field","id":"f-fee","name":"Fee","Field":{"fieldType":{"type":"NumberType"}}},
                {"type":"Field","id":"f-label","name":"Label","Field":{"fieldType":{"type":"StringType"}}},
                {"type":"Computation","id":"c-label","name":"LineLabel","Computation":{
-                 "computedFieldRelPath":"../Label","computationAlternatives":[{"operation":"Code"}],
+                 "computedFieldRelPath":"../Label","computationAlternatives":[{"operation":"[Code]"}],
                  "errorMessage":[{"locale":"en_US","text":"the line label"}]}}
              ]}},
              {"type":"Rule","id":"r-code","name":"CodeRequired","Rule":{
@@ -224,7 +224,7 @@ class ImpactTest {
                "computedFieldRelPath":"../Net","computationAlternatives":[{"operation":"Sum(Lines*/Fee)"}],
                "errorMessage":[{"locale":"en_US","text":"the net total"}]}},
              {"type":"Computation","id":"c-total","name":"GrossTotal","Computation":{
-               "computedFieldRelPath":"../Total","computationAlternatives":[{"operation":"Net"}],
+               "computedFieldRelPath":"../Total","computationAlternatives":[{"operation":"[Net]"}],
                "errorMessage":[{"locale":"en_US","text":"the gross total"}]}}
            ]}}
           ]}}}

@@ -56,15 +56,16 @@ private fun alternativeFindings(element: TrackedDeclaration): List<Finding> {
         // deserializer iterates the node's elements and an object's elements are its values, and inferring
         // one list-shaped member's reader from the other's would have analysed a model A12 never loads.
         member !is JsonArray -> listOf(unreadable(element, "`computationAlternatives` is not a JSON array"))
-        else -> alternativeFindings(element, member)
+        else -> alternativeFindings(element, body, member)
     }
 }
 
 /**
  * A computation with no alternative at all carries TWO verdicts, and the second is the surprising one: with
  * no alternative there is no precondition slot either, so A12 reports the missing condition beside the
- * incompleteness. An alternative that merely lacks its operation draws the incompleteness alone, which is
- * what separates "nothing to compute" from "an alternative with no work in it".
+ * incompleteness. An alternative that merely lacks its operation draws one class alone — the incompleteness
+ * while it is the only alternative, the token class beside a sibling — which is what separates "nothing to
+ * compute" from "an alternative with no work in it".
  */
 private fun noWorkFindings(element: TrackedDeclaration): List<Finding> = listOf(
     Finding(
@@ -87,28 +88,30 @@ private fun noWorkFindings(element: TrackedDeclaration): List<Finding> = listOf(
     ),
 )
 
-private fun alternativeFindings(element: TrackedDeclaration, alternatives: JsonArray): List<Finding> {
+private fun alternativeFindings(element: TrackedDeclaration, body: JsonObject, alternatives: JsonArray): List<Finding> {
     val declared = alternatives.map {
         it as? JsonObject
             ?: return listOf(unreadable(element, "a `computationAlternatives` entry is not a JSON object"))
     }
     val missingWork = declared.mapIndexedNotNull { index, alternative ->
         if (alternative["operation"].isPresentText()) {
-            null
-        } else {
-            Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                "MVK_INCOMPLETE_INPUT",
-                "alternative ${index + 1} of this computation carries no operation — A12 refuses it, and a " +
-                    "blank or `null` `operation` counts as none at all",
-                element.path,
-                endOfBlankText(
-                    "computationAlternatives[$index].operation",
-                    (alternative["operation"] as? JsonPrimitive)?.takeIf { it.isString }?.content.orEmpty(),
-                ),
-            )
+            return@mapIndexedNotNull null
         }
+        val member = "computationAlternatives[$index].operation"
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            // A missing operation is read where A12's generated text puts it: at the end for a lone alternative,
+            // before an added `)` beside a sibling.
+            if (followedInGeneratedText(element.kind, body, member)) "MVK_UNEXPECTED_TOKEN" else "MVK_INCOMPLETE_INPUT",
+            "alternative ${index + 1} of this computation carries no operation — A12 refuses it, and a " +
+                "blank or `null` `operation` counts as none at all",
+            element.path,
+            endOfBlankText(
+                member,
+                (alternative["operation"] as? JsonPrimitive)?.takeIf { it.isString }?.content.orEmpty(),
+            ),
+        )
     }
     // A lone alternative owes no guard, so the demand exists only from two on — and then it is owed by each
     // of them, not by all but the last.

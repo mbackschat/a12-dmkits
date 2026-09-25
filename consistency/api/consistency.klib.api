@@ -131,6 +131,7 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
     enum entry FIELD_TYPE_BINDING // io.github.mbackschat.a12.dm.consistency/CheckFamily.FIELD_TYPE_BINDING|null[0]
     enum entry FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND // io.github.mbackschat.a12.dm.consistency/CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND|null[0]
     enum entry FIELD_VALUE_OPERATOR_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS|null[0]
+    enum entry FIELD_VALUE_READ_OPERAND // io.github.mbackschat.a12.dm.consistency/CheckFamily.FIELD_VALUE_READ_OPERAND|null[0]
     enum entry FILTERED_ENTITY_ITERATION // io.github.mbackschat.a12.dm.consistency/CheckFamily.FILTERED_ENTITY_ITERATION|null[0]
     enum entry FILTERED_OPERAND_KIND // io.github.mbackschat.a12.dm.consistency/CheckFamily.FILTERED_OPERAND_KIND|null[0]
     enum entry FILTER_BODY_GATES // io.github.mbackschat.a12.dm.consistency/CheckFamily.FILTER_BODY_GATES|null[0]

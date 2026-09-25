@@ -18,6 +18,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.lexicalFailure
  * with the wrong code sends an author to the wrong fix, and the report's gap already says the parser phases
  * are not covered.
  *
+ * **Only a text A12 reads to its END runs out.** Every computation member but a lone alternative's operation
+ * is followed by a `)` A12 adds when it joins the members into one condition ([followedInGeneratedText]), so
+ * the same unfinished text there draws `MVK_UNEXPECTED_TOKEN`, raised past the member's own text.
+ *
  * **A text the lexer already choked on is never this family's**, and the ordering needs no position
  * comparison: this phase fails at the LAST significant token, and a lexical failure further along would BE
  * that token — which is not an operator, so nothing fires. So whenever both can speak the lexical failure is
@@ -33,15 +37,30 @@ internal fun TrackedFactBase.conditionCompletenessFindings(element: TrackedDecla
             return@mapNotNull null
         }
         incompleteInput(text, conditionLanguage)?.let { incomplete ->
-            Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                "MVK_INCOMPLETE_INPUT",
-                "`$member` ends on `${incomplete.spelling}` at offset ${incomplete.at}, which still needs a " +
-                    "right-hand side — A12 runs out of input reading this text",
-                element.path,
-                TextSpan(member, incomplete.at, incomplete.at + incomplete.spelling.length),
-            )
+            if (followedInGeneratedText(element.kind, body, member)) {
+                // A12 reads the `)` it appended here instead of running out, so the class is the token one and
+                // it is raised past this member's own text.
+                Finding(
+                    FindingCategory.A12_CONSTRAINT,
+                    FindingSeverity.ERROR,
+                    "MVK_UNEXPECTED_TOKEN",
+                    "`$member` ends on `${incomplete.spelling}` at offset ${incomplete.at}, which still needs a " +
+                        "right-hand side — A12 parses this member inside the one condition it generates for the " +
+                        "computation, so the next token it meets is the `)` it adds after the member",
+                    element.path,
+                    TextSpan(member, text.length, text.length),
+                )
+            } else {
+                Finding(
+                    FindingCategory.A12_CONSTRAINT,
+                    FindingSeverity.ERROR,
+                    "MVK_INCOMPLETE_INPUT",
+                    "`$member` ends on `${incomplete.spelling}` at offset ${incomplete.at}, which still needs a " +
+                        "right-hand side — A12 runs out of input reading this text",
+                    element.path,
+                    TextSpan(member, incomplete.at, incomplete.at + incomplete.spelling.length),
+                )
+            }
         }
     }
 }

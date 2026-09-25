@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 import io.github.mbackschat.a12.dm.consistency.syntax.incompleteInput
 import io.github.mbackschat.a12.dm.consistency.syntax.lexicalFailure
 import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailure
@@ -46,7 +47,13 @@ internal fun TrackedFactBase.conditionGrammarFindings(element: TrackedDeclaratio
             if (text.isBlank()) {
                 return@mapNotNull blankSlotFinding(element, member, text)
             }
-            shapeFailure(text, conditionLanguage, entry) ?: return@mapNotNull null
+            val failure = shapeFailure(text, conditionLanguage, entry) ?: return@mapNotNull null
+            if (failure.found.isEmpty() && followedInGeneratedText(element.kind, body, member) &&
+                !takesTheAddedParenthesis(text, entry)
+            ) {
+                return@mapNotNull ranIntoTheAddedParenthesis(element, member, text)
+            }
+            failure
         }
         Finding(
             FindingCategory.A12_CONSTRAINT,
@@ -68,6 +75,31 @@ internal fun TrackedFactBase.conditionGrammarFindings(element: TrackedDeclaratio
 }
 
 /**
+ * Whether the `)` A12 adds after a member is a token the parser can take where [text] ran out.
+ *
+ * It can when the text stopped inside a parenthesis that is ready to close — `FieldFilled(Tier` — and A12
+ * then reads on past the member, so the text's own verdict stands. Anywhere else the added `)` is the token
+ * A12 cannot use (`FieldFilled([Tier`, `{42.00`, a clause keyword with no operand yet). The appended `\n` is
+ * A12's own: the joiner writes one before every `)`, which is what ends a trailing `;;` comment.
+ */
+private fun TrackedFactBase.takesTheAddedParenthesis(text: String, entry: SyntaxEntry): Boolean {
+    val continued = shapeFailure("$text\n)", conditionLanguage, entry) ?: return true
+    return continued.at != text.length + 1
+}
+
+/** The token class for a member that ran out where A12 reads its added `)`, raised past the member's text. */
+private fun ranIntoTheAddedParenthesis(element: TrackedDeclaration, member: String, text: String) = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    "MVK_UNEXPECTED_TOKEN",
+    "`$member` ends before it is complete, and A12 parses it inside the one condition it generates for the " +
+        "computation — so the next token it meets is the `)` it adds after the member, which it cannot use " +
+        "there",
+    element.path,
+    TextSpan(member, text.length, text.length),
+)
+
+/**
  * What A12 says about a DSL slot that is PRESENT and blank — three different answers on four members.
  *
  * A blank slot reaches A12's parser like any other text and fails there, so this is a parse verdict and not
@@ -76,27 +108,27 @@ internal fun TrackedFactBase.conditionGrammarFindings(element: TrackedDeclaratio
  * family could report until now is the parse verdict itself, because a blank text has no token to point at
  * and every shape check returned nothing.
  *
- * **The code is per MEMBER and could not be generalised.** Measured
- * (`rulekit.validate.laws.ComputationAlternativeSlotLawsTest.aBlankSlotAnswersDifferentlyOnEachMemberOfThisCarrier`
- * and `RuleConditionAndTargetSlotLawsTest`): a blank `commonPrecondition` and a blank alternative
- * `precondition` draw `MVK_UNEXPECTED_TOKEN`, a blank `operation` draws `MVK_INCOMPLETE_INPUT`, and a blank
- * `errorCondition` draws `MVK_CONDITION_MISSING` AND `MVK_INCOMPLETE_INPUT`. One rule for "a blank does not
- * parse" would be right about one member and wrong about the others.
+ * **The code follows what comes AFTER the member in the text A12 generates, not the member itself.**
+ * Measured (`rulekit.validate.laws.ComputationAlternativeSlotLawsTest.aBlankSlotAnswersDifferentlyOnEachMemberOfThisCarrier`,
+ * `…ComputationGeneratedTextLawsTest` and `RuleConditionAndTargetSlotLawsTest`): a blank `commonPrecondition`
+ * and a blank alternative `precondition` draw `MVK_UNEXPECTED_TOKEN`, because A12 adds a `)` after each
+ * ([followedInGeneratedText]); a blank `operation` draws `MVK_INCOMPLETE_INPUT` while it ends the text and the
+ * token class beside a sibling alternative; a blank `errorCondition` draws `MVK_CONDITION_MISSING` AND
+ * `MVK_INCOMPLETE_INPUT`.
  *
- * **`errorCondition` is deliberately not reported here.** Its own family already reports
- * `MVK_CONDITION_MISSING` for the same declaration, so adding the second code A12 gives would hand a consumer
- * two findings for one defect — a report-shape choice, not a coverage one: the defect is surfaced either way.
+ * **Two members are deliberately not reported here.** `errorCondition`'s own family already reports
+ * `MVK_CONDITION_MISSING` for the same declaration, and an `operation`'s missing work — blank, `null` or
+ * absent alike — is [computationAlternativeFindings]'. Adding either would hand a consumer two findings for
+ * one defect — a report-shape choice, not a coverage one: the defect is surfaced either way.
  */
 private fun blankSlotFinding(element: TrackedDeclaration, member: String, text: String): Finding? {
-    val code = when {
-        member == "errorCondition" -> return null
-        member.endsWith("operation") -> "MVK_INCOMPLETE_INPUT"
-        else -> "MVK_UNEXPECTED_TOKEN"
+    if (member == "errorCondition" || syntaxEntryOf(member) == SyntaxEntry.OPERATION) {
+        return null
     }
     return Finding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
-        code,
+        "MVK_UNEXPECTED_TOKEN",
         "`$member` is present but blank, and A12 parses it like any other text rather than treating it as " +
             "unset — so the slot fails in the parser instead of being skipped",
         element.path,

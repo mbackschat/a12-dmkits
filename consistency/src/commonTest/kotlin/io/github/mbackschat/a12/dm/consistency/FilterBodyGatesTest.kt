@@ -99,7 +99,7 @@ class FilterBodyGatesTest {
         actual["the same rule reporting INSIDE Parcels, a filter leaf off the operand's path"] =
             fromRootReportingInsideParcels("GroupFilled(/Shipment/Claims)")
         actual["the same, an in-scope filter leaf"] =
-            fromRootReportingInsideParcels("/Shipment/Parcels/Boxes/Volume > 0")
+            fromRootReportingInsideParcels("[/Shipment/Parcels/Boxes/Volume] > 0")
 
         val expected = mutableMapOf<String, List<String>>()
         // Parcels is bound by nothing, so the operand never reaches its filter and the scope family answers.
@@ -123,14 +123,14 @@ class FilterBodyGatesTest {
     @Test
     fun theConstructsAFilterBodyMayNotName() {
         val actual = mutableMapOf<String, List<String>>()
-        actual["an in-scope reference alone — the control"] = fromRoot("Parcels/Weight > 0")
+        actual["an in-scope reference alone — the control"] = fromRoot("[Parcels/Weight] > 0")
         actual["a CustomCondition beside an in-scope reference"] =
-            fromRoot("Parcels/Weight > 0 And CustomCondition SomeCheck")
+            fromRoot("[Parcels/Weight] > 0 And CustomCondition SomeCheck")
         actual["a RepetitionNotUnique beside an in-scope reference"] =
-            fromRoot("Parcels/Weight > 0 And RepetitionNotUnique(Parcels/Tracking)")
+            fromRoot("[Parcels/Weight] > 0 And RepetitionNotUnique(Parcels/Tracking)")
         actual["a CustomCondition ALONE"] = fromRoot("CustomCondition SomeCheck")
         actual["a CustomCondition beside a STARRED reference"] =
-            fromRoot("Parcels*/Weight > 0 And CustomCondition SomeCheck")
+            fromRoot("[Parcels*/Weight] > 0 And CustomCondition SomeCheck")
 
         val refused = listOf("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")
         val expected = mutableMapOf<String, List<String>>()
@@ -155,14 +155,14 @@ class FilterBodyGatesTest {
         actual["a repeatable sibling off the operand's path — sole"] =
             fromRoot("CurrentRepetition(Claims) > 0")
         actual["a repeatable sibling off the operand's path — beside an in-scope reference"] =
-            fromRoot("CurrentRepetition(Claims) > 0 And Parcels/Weight > 0")
+            fromRoot("CurrentRepetition(Claims) > 0 And [Parcels/Weight] > 0")
         actual["a NON-repeatable group — sole"] = fromRoot("CurrentRepetition(Carrier) > 0")
         actual["a NON-repeatable group — beside an in-scope reference"] =
-            fromRoot("CurrentRepetition(Carrier) > 0 And Parcels/Weight > 0")
+            fromRoot("CurrentRepetition(Carrier) > 0 And [Parcels/Weight] > 0")
         actual["that same sibling while the RULE iterates it — sole"] =
             fromClaims("CurrentRepetition(/Shipment/Claims) > 0")
         actual["that same sibling while the RULE iterates it — beside an in-scope reference"] =
-            fromClaims("CurrentRepetition(/Shipment/Claims) > 0 And /Shipment/Parcels/Weight > 0")
+            fromClaims("CurrentRepetition(/Shipment/Claims) > 0 And [/Shipment/Parcels/Weight] > 0")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["the level the operand's own star reopens — sole"] = emptyList()
@@ -188,13 +188,13 @@ class FilterBodyGatesTest {
         actual["an unstarred ancestor ON the operand's path, as a group — sole"] =
             codes(PARCELS, "Tracking", "Boxes*/Code", "CurrentRepetition(/Shipment/Parcels) > 0")
         actual["an unstarred ancestor ON the operand's path, as a field — sole"] =
-            codes(PARCELS, "Tracking", "Boxes*/Code", "Weight > 0")
+            codes(PARCELS, "Tracking", "Boxes*/Code", "[Weight] > 0")
         actual["the same beside a reference into the reopened level"] =
-            codes(PARCELS, "Tracking", "Boxes*/Code", "Weight > 0 And Boxes/Volume > 0")
+            codes(PARCELS, "Tracking", "Boxes*/Code", "[Weight] > 0 And [Boxes/Volume] > 0")
         actual["a field UNDER the reopened level, which rides both"] =
-            codes(PARCELS, "Tracking", "Boxes*/Code", "Boxes/Volume > 0")
+            codes(PARCELS, "Tracking", "Boxes*/Code", "[Boxes/Volume] > 0")
         actual["a repeatable level off the path, as a field — sole"] =
-            fromClaims("/Shipment/Claims/Amount > 0")
+            fromClaims("[/Shipment/Claims/Amount] > 0")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["an unstarred ancestor ON the operand's path, as a group — sole"] = listOf(noIteration)
@@ -220,9 +220,9 @@ class FilterBodyGatesTest {
         actual["the same operand with a filter"] =
             fromRootOverBoxes("CurrentRepetition(/Shipment/Parcels) > 0")
         actual["a star inside the filter body"] =
-            fromRoot("Parcels*/Weight > 0")
+            fromRoot("[Parcels*/Weight] > 0")
         actual["the `$` outer marker in the filter body"] =
-            fromClaims("/Shipment/Claims/Amount > 0 And \$/Shipment/Claims/Amount > 0")
+            fromClaims("[/Shipment/Claims/Amount] > 0 And [\$/Shipment/Claims/Amount] > 0")
         actual["an out-of-path filter on the same model — the positive control"] =
             fromRoot("CurrentRepetition(Claims) > 0")
 

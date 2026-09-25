@@ -16,8 +16,10 @@ import kotlinx.serialization.json.JsonObject
  * otherwise be told their draft is invalid, which is the over-rejection this module forbids. The neighbours'
  * findings ride along on [EditReport.baseline] as a disclosure.
  *
- * **Half-typed text is INCOMPLETE, not invalid**, and A12 has a code of its own for it — the state an editor
- * is in most of the time. Nothing here promotes that to a rejection.
+ * **Half-typed text is INCOMPLETE, not invalid** — the state an editor is in most of the time. Nothing here
+ * promotes that to a rejection. A12's class for it is `MVK_INCOMPLETE_INPUT` where the text ends A12's input,
+ * and `MVK_UNEXPECTED_TOKEN` raised past the typed text in a computation member A12 reads on after
+ * ([followedInGeneratedText]); both are demoted.
  *
  * One preparation serves both sides: the baseline and the drafted fact base are the same prepared model with
  * one declaration replaced, so a keystroke costs one admission and one preparation rather than two.
@@ -43,14 +45,16 @@ fun checkDraft(source: ModelSource, at: String, member: String, text: String): E
         is Drafted.Refused -> refusedDraft(baseline, drafted.gap)
         is Drafted.Applied -> asDraftVerdict(
             attribute(baseline, checkPrepared(drafted.prepared, admitted.modelId, inherited = emptyList())),
+            drafted,
         )
     }
 }
 
 /**
- * The code A12 gives text that simply ran out — the one class a DRAFT must not be condemned for.
+ * The code A12 gives text that simply ran out at the end of its input — one of the two classes a DRAFT must
+ * not be condemned for; [Drafted.Applied.ranOut] names the other.
  *
- * Deliberately this one code and no other. An unbalanced parenthesis is `MVK_EXPECTED_TOKEN_NOT_FOUND`, a
+ * Deliberately these and no others. An unbalanced parenthesis is `MVK_EXPECTED_TOKEN_NOT_FOUND`, a
  * separately measured class (the plan's 12-input parser probe), and widening this set to "anything that looks
  * unfinished" would be a refusal-shaped decision with no measured basis. If another code earns a place here
  * it arrives with its own measurement.
@@ -78,9 +82,9 @@ private const val INCOMPLETE_INPUT = "MVK_INCOMPLETE_INPUT"
  * [ConsistencySnapshot.draft] build their input differently and would otherwise be two arms of one contract,
  * which is how this estate's paired arms have diverged before.
  */
-internal fun asDraftVerdict(attributed: EditReport): EditReport {
+internal fun asDraftVerdict(attributed: EditReport, drafted: Drafted.Applied): EditReport {
     val introduced = attributed.introduced.map { finding ->
-        if (finding.code == INCOMPLETE_INPUT && finding.severity == FindingSeverity.ERROR) {
+        if (drafted.ranOut(finding) && finding.severity == FindingSeverity.ERROR) {
             finding.copy(severity = FindingSeverity.WARNING)
         } else {
             finding
@@ -94,7 +98,31 @@ internal fun asDraftVerdict(attributed: EditReport): EditReport {
 /** Either the fact base with the draft in it, or the reason the draft was not applied. */
 internal sealed interface Drafted {
 
-    data class Applied(val prepared: PreparedModel) : Drafted
+    /**
+     * @param followed whether A12 reads on past the drafted member ([followedInGeneratedText]), which decides
+     *     the class half-typed text draws there.
+     */
+    data class Applied(
+        val prepared: PreparedModel,
+        val member: String,
+        val text: String,
+        val followed: Boolean,
+    ) : Drafted {
+
+        /**
+         * Whether [finding] is A12's class for this draft simply running out.
+         *
+         * Where A12's input ends with the member that is `MVK_INCOMPLETE_INPUT`. Where A12 reads on, the same
+         * text meets the `)` A12 added and draws `MVK_UNEXPECTED_TOKEN` raised past everything typed
+         * ([KERNEL-FINDINGS KF471]) — so the token class counts only at or beyond the draft's own end, and a
+         * wrong token the author actually typed, which sits inside the text, is still condemned.
+         */
+        fun ranOut(finding: Finding): Boolean = when (finding.code) {
+            INCOMPLETE_INPUT -> true
+            UNEXPECTED_TOKEN -> followed && finding.span?.let { it.member == member && it.start >= text.length } == true
+            else -> false
+        }
+    }
 
     data class Refused(val gap: CoverageGap) : Drafted
 }
@@ -132,7 +160,12 @@ internal fun PreparedModel.draftedWith(at: String, member: String, text: String)
             "`$member` could not be replaced in this declaration, so the draft was not analysed",
         ))
     val redeclared = element.copy(declaration = JsonObject(element.declaration + (element.kind to drafted)))
-    return Drafted.Applied(copy(elements = elements.map { if (it.path == element.path) redeclared else it }))
+    return Drafted.Applied(
+        copy(elements = elements.map { if (it.path == element.path) redeclared else it }),
+        member,
+        text,
+        followedInGeneratedText(element.kind, drafted, member),
+    )
 }
 
 /**
