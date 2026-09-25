@@ -145,6 +145,14 @@ class ErrorTargetContainmentLawsTest {
         actual.put("rule | STAR aggregate over an extent, no per-row read",
                 rule("/Returns/Policy", "../../TotalRefund",
                         "FieldFilled(../TotalRefund) And Sum(/Returns/Claims*/Amount) > 0"));
+        // A FILTER body's read is not a per-row read of the rule's, so it derives no iteration — and the same
+        // characters OUTSIDE the filter are one, which is the row a reader cutting bodies by text gets wrong.
+        String filtered = "FieldFilled(../TotalRefund) And Sum(/Returns/Inspections*/Amount "
+                + "Having [/Returns/Inspections/Amount] > 0) > 0";
+        actual.put("rule | FILTERED star aggregate, its body the only unstarred read", rule("/Returns/Policy",
+                "../../TotalRefund", filtered));
+        actual.put("rule | the same, then its body's text outside the filter", rule("/Returns/Policy",
+                "../../TotalRefund", filtered + " And [/Returns/Inspections/Amount] > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("rule | read of the declaring group's own extent", NOT_IN_RULEGROUP);
@@ -158,6 +166,8 @@ class ErrorTargetContainmentLawsTest {
         expected.put("rule | per-row read of a NON-indexed extent from a fixed declaring group",
                 NOT_IN_RULEGROUP);
         expected.put("rule | STAR aggregate over an extent, no per-row read", KernelLaws.ADMITTED);
+        expected.put("rule | FILTERED star aggregate, its body the only unstarred read", KernelLaws.ADMITTED);
+        expected.put("rule | the same, then its body's text outside the filter", NOT_IN_RULEGROUP);
         assertEquals(expected, actual, "a fixed written field with the read as the only iteration source");
     }
 

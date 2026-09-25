@@ -1,11 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
+import io.github.mbackschat.a12.dm.consistency.syntax.withoutFilterBodies
 
 /**
  * Where the `$` outer marker may stand: inside a `Having` filter, and nowhere else.
@@ -33,7 +31,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * constructs outright, so a computation carrying a marker is left alone rather than judged on transfer.
  */
 internal fun TrackedFactBase.outerMarkerPositionFindings(): List<Finding> {
-    val filterKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(HAVING) ?: return emptyList()
     val unsound = declarationsWithUnsoundDsl()
     return declarations().filter { it.kind == "Rule" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
@@ -45,7 +42,7 @@ internal fun TrackedFactBase.outerMarkerPositionFindings(): List<Finding> {
             if (OUTER_MARKER !in text) {
                 return@flatMap emptyList()
             }
-            markedPathsOutsideAFilter(text, member, filterKeyword)
+            markedPathsOutsideAFilter(text)
                 .filter { written -> resolveEntity(group, written, element.origin) is Reference.Resolved }
                 .map { written -> finding(written, member, element) }
         }
@@ -55,18 +52,12 @@ internal fun TrackedFactBase.outerMarkerPositionFindings(): List<Finding> {
 /**
  * The paths of the `$`-marked references this text writes OUTSIDE every `Having` clause it carries.
  *
- * The clause bodies are cut from the text first, so what remains is the region A12 parses with
- * `isInFilterCondition` false. Cutting by the clause's own text removes every identical occurrence rather
- * than just the one, which can only drop a marker from consideration — the safe direction for a gate whose
- * wrong answer would be an over-rejection.
+ * The clause bodies are blanked by position first ([withoutFilterBodies]), so what remains is exactly the
+ * region A12 parses with `isInFilterCondition` false — a conjunct that happens to spell a body is outside it
+ * and keeps its marker, as A12 reads it (`rulekit.validate.laws.FilterBodyTextRepeatedOutsideLawsTest`).
  */
-private fun TrackedFactBase.markedPathsOutsideAFilter(
-    text: String,
-    member: String,
-    filterKeyword: String,
-): List<String> {
-    var outside = text
-    filterClauseTextsIn(text, member, filterKeyword).forEach { clause -> outside = outside.replace(clause, " ") }
+private fun TrackedFactBase.markedPathsOutsideAFilter(text: String): List<String> {
+    val outside = withoutFilterBodies(text, conditionLanguage)
     if (OUTER_MARKER !in outside) {
         return emptyList()
     }
@@ -75,18 +66,6 @@ private fun TrackedFactBase.markedPathsOutsideAFilter(
         .filter { tokens[it].text == OUTER_MARKER }
         .mapNotNull { at -> pathRunAt(tokens, at + 1) }
 }
-
-/** Every `Having` clause body this text carries, as the operand reader sees it. */
-private fun TrackedFactBase.filterClauseTextsIn(
-    text: String,
-    member: String,
-    filterKeyword: String,
-): List<String> =
-    callsIn(text, conditionLanguage, syntaxEntryOf(member))
-        .flatMap { call -> call.operands }
-        .flatMap { operand -> operand.clauses }
-        .filter { clause -> clause.keyword == filterKeyword }
-        .map { clause -> clause.text }
 
 /**
  * The path written by the run of tokens beginning at [from], or null where none begins there.

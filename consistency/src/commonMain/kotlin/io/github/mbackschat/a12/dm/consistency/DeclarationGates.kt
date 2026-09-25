@@ -63,8 +63,11 @@ internal fun PreparedModel.declarationsWithABrokenErrorTarget(
  *
  * [PreparedModel] builds a path from the parent and the NAME, with no kind in it, so a rule and a field — or
  * two rules — sharing a name in one group share a path. A model A12 refuses, and this checker reports, so the
- * shape is reachable. Every gate that reads two findings at one path as being about one declaration has to
- * stand down here (`CheckCellKeyTest.twoDeclarationsAtOnePathGetTwoCellsAndBothVerdictsReachTheReport`).
+ * shape is reachable. A gate that sets one finding's OFFSET against another's stands down here, since an
+ * offset indexes one declaration's text: the text-order placement and the broken-target stop do
+ * (`CheckCellKeyTest.twoDeclarationsAtOnePathGetTwoCellsAndBothVerdictsReachTheReport`). The gates keyed on
+ * the path alone — the post-parse, message-verdict and variant-filter withholdings, and the position-blind
+ * name gate — read the two as one declaration, which can withhold one twin's class behind the other's defect.
  */
 internal fun PreparedModel.pathsSharedByTwoDeclarations(): Set<String> =
     elements.groupingBy { it.path }.eachCount().filterValues { it > 1 }.keys

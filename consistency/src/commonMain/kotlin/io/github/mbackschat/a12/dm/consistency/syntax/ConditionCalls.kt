@@ -77,8 +77,9 @@ data class CallOperand(
  * @param path the clause's own operand reduced by the same bare-spec rule as [CallOperand.path] — present
  *     for a scope, absent for a filter, whose operand is a whole condition rather than a path.
  * @param text the authored text of the clause's operand, for a consumer that needs to read it further.
- * @param at the offset of [text] in the whole member text, so a consumer can set exactly these characters
- *     aside. Matching [text] instead finds every run that spells it, including one outside the clause.
+ * @param at the offset of [text] in the text the operand was read from, so a consumer can set exactly these
+ *     characters aside; an EMPTY body sits just after its keyword. Matching [text] instead finds every run
+ *     that spells it, including one outside the clause.
  */
 data class OperandClause(val keyword: String, val path: String?, val text: String, val at: Int)
 
@@ -89,8 +90,11 @@ data class OperandClause(val keyword: String, val path: String?, val text: Strin
  * its own clause, and cutting there would attribute an inner clause to the outer operand. So the scan cuts
  * only where no delimiter is open.
  */
-private fun List<Token>.asOperand(keywords: Map<String, KeywordKind>, source: String): CallOperand {
-    val cuts = clauseCuts(keywords)
+private fun List<Token>.asOperand(
+    keywords: Map<String, KeywordKind>,
+    source: String,
+    cuts: List<ClauseCut> = clauseCuts(keywords),
+): CallOperand {
     val text = if (isEmpty()) "" else source.substring(first().start, last().end)
     if (cuts.isEmpty()) {
         return CallOperand(asPath(keywords), literal = asLiteral(), constant = isConstant(), text = text)
@@ -108,6 +112,90 @@ private fun List<Token>.asOperand(keywords: Map<String, KeywordKind>, source: St
     // `path` keeps its narrower contract deliberately: it has always meant "a bare spec and nothing else",
     // and widening it here would silently change every family already reading it.
     return CallOperand(null, subList(0, cuts.first().at).asPath(keywords), clauses, text = text)
+}
+
+/**
+ * An operand carrying at least one clause, and where it sits in the member text.
+ *
+ * @param at the offset of its first token.
+ * @param baseEnd the offset of its first clause keyword, so the base is exactly what sits before it.
+ * @param end the offset just past its last token: where the whole entity spec, clauses included, has been
+ *     read — which is where A12 asks the operand's own repetition walk
+ *     (`rulekit.validate.laws.ConditionClassWithholdingLawsTest.aFilteredOperandsDefectsAnswerInTheOrderA12ReadsThem`).
+ */
+internal data class ClausedOperand(
+    val base: String?,
+    val at: Int,
+    val baseEnd: Int,
+    val end: Int,
+    val clauses: List<OperandClause>,
+)
+
+/**
+ * Every clause-carrying operand in [text], found by POSITION and without parsing the text as a whole.
+ *
+ * [callsIn] yields nothing for a text that does not parse, and deliberately so. A reader that has to set a
+ * clause body aside cannot wait for that: A12 still judges every read ahead of the defect that ends its
+ * parse, and a filter body's leaf is not one of them (the test named on [ClausedOperand.end]). So this reads
+ * each call's argument list off its delimiters alone: an operator name followed by `(` opens one, a `,` at
+ * the list's own depth ends an argument, and the matching `)` ends the list — or the end of the text, when
+ * the list is never closed. Each argument is then cut into base and clauses exactly as [callsIn] cuts it.
+ */
+internal fun clausedOperandsIn(text: String, language: ConditionLanguage): List<ClausedOperand> {
+    val keywords = CONDITION_KEYWORDS.getValue(language)
+    val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
+    val operands = mutableListOf<ClausedOperand>()
+    // One entry per open delimiter: where the current argument starts for a call's `(`, null for any other.
+    val open = mutableListOf<Int?>()
+    fun argument(from: Int?, until: Int) {
+        if (from == null || from >= until) {
+            return
+        }
+        val run = tokens.subList(from, until)
+        val cuts = run.clauseCuts(keywords).ifEmpty { return }
+        val operand = run.asOperand(keywords, text, cuts)
+        operands += ClausedOperand(operand.base, run.first().start, run[cuts.first().at].start, run.last().end,
+            operand.clauses)
+    }
+    tokens.forEachIndexed { index, token ->
+        if (token.kind != TokenKind.PUNCTUATION) {
+            return@forEachIndexed
+        }
+        when (token.text) {
+            in OPENING_DELIMITERS -> {
+                val operator = tokens.getOrNull(index - 1)
+                val call = token.text == "(" && operator != null && operator.kind == TokenKind.NAME &&
+                    operator.text in keywords
+                open += if (call) index + 1 else null
+            }
+            in CLOSING_DELIMITERS -> if (open.isNotEmpty()) argument(open.removeAt(open.lastIndex), index)
+            "," -> if (open.lastOrNull() != null) {
+                argument(open.last(), index)
+                open[open.lastIndex] = index + 1
+            }
+        }
+    }
+    open.asReversed().forEach { argument(it, tokens.size) }
+    return operands
+}
+
+/**
+ * [text] with every `Having` filter body blanked IN PLACE, one space per character.
+ *
+ * In place, so an offset into the result is an offset into [text] and a finding read off it points at the
+ * author's characters. By POSITION rather than by matching the body's text, which would also blank a
+ * conjunct that happens to spell it — a read A12 still judges
+ * (`rulekit.validate.laws.FilterBodyTextRepeatedOutsideLawsTest`). And found by [clausedOperandsIn], so a
+ * text that does not parse has its bodies set aside too.
+ */
+internal fun withoutFilterBodies(text: String, language: ConditionLanguage): String {
+    val filter = CONDITION_OPERATOR_KEYWORDS[language]?.get(HAVING) ?: return text
+    val blanked = text.toCharArray()
+    clausedOperandsIn(text, language)
+        .flatMap { operand -> operand.clauses }
+        .filter { it.keyword == filter }
+        .forEach { body -> blanked.fill(' ', body.at, body.at + body.text.length) }
+    return blanked.concatToString()
 }
 
 /**

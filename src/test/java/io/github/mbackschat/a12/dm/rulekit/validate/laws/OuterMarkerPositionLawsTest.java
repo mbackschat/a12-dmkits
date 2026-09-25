@@ -79,4 +79,23 @@ class OuterMarkerPositionLawsTest {
                 "MVK_INVALID_OUTER_ITERATION");
         assertEquals(expected, actual, "where the outer marker may stand, and what answers before it");
     }
+
+    /**
+     * A conjunct OUTSIDE the filter that spells the filter's body verbatim, marker first: A12 reads the
+     * position, so the marker outside is refused even though the same characters inside the filter are legal.
+     * The row a reader that cut bodies out by their text rather than their position gets wrong.
+     */
+    @Test
+    void aMarkerOutsideIsRefusedEvenWhereItsConjunctSpellsTheFilterBody() {
+        String body = "([$/Claim/ExcessDue] > 0 And [Assessments/Code] == \"X\")";
+        String filtered = "FieldFilled(Reference) And Sum(Assessments*/Amount Having " + body + ") > 0";
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the filter alone — the control", verdict(filtered));
+        actual.put("the filter, then its body's text outside it", verdict(filtered + " And " + body));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the filter alone — the control", KernelLaws.ADMITTED);
+        expected.put("the filter, then its body's text outside it", "MVK_INVALID_OUTER_ITERATION");
+        assertEquals(expected, actual, "a marker in a conjunct that spells the filter body");
+    }
 }

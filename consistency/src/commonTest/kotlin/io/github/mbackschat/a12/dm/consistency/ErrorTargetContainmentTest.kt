@@ -70,6 +70,12 @@ class ErrorTargetContainmentTest {
         actual["STAR aggregate over an extent, no per-row read"] =
             codes(rule("/Returns/Policy", "../../TotalRefund",
                 "FieldFilled(../TotalRefund) And Sum(/Returns/Claims*/Amount) > 0"))
+        val filtered = "FieldFilled(../TotalRefund) And Sum(/Returns/Inspections*/Amount " +
+            "Having [/Returns/Inspections/Amount] > 0) > 0"
+        actual["FILTERED star aggregate, its body the only unstarred read"] =
+            codes(rule("/Returns/Policy", "../../TotalRefund", filtered))
+        actual["the same, then its body's text outside the filter"] =
+            codes(rule("/Returns/Policy", "../../TotalRefund", "$filtered And [/Returns/Inspections/Amount] > 0"))
 
         val expected = mutableMapOf<String, List<String>>()
         expected["read of the declaring group's own extent"] = listOf(notInRuleGroup)
@@ -79,6 +85,9 @@ class ErrorTargetContainmentTest {
         expected["per-row read of an INDEXED extent from a fixed declaring group"] = listOf(notInRuleGroup)
         expected["per-row read of a NON-indexed extent from a fixed declaring group"] = listOf(notInRuleGroup)
         expected["STAR aggregate over an extent, no per-row read"] = emptyList()
+        // A body's read is not a per-row read of the rule's; the same characters outside the filter are one.
+        expected["FILTERED star aggregate, its body the only unstarred read"] = emptyList()
+        expected["the same, then its body's text outside the filter"] = listOf(notInRuleGroup)
         assertEquals(expected, actual, "a fixed written field with the read as the only iteration source")
     }
 

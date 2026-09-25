@@ -7179,10 +7179,10 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 | `AllGroupsFilled(/Registry, X)` — a root group | `MVK_ROOT_GROUP_REFERENCED` | `MVK_ROOT_GROUP_REFERENCED` | **`MVK_INVALID_ENTITY`** |
 | `GroupFilled(X/Notes)` — a field where a group belongs | `MVK_NO_FIELDS_ALLOWED` | `MVK_NO_FIELDS_ALLOWED` | **`MVK_INVALID_ENTITY`** |
 | `GroupFilled(X*)` — a star on a fixed group | `MVK_INVALID_WILDCARD` | `MVK_INVALID_WILDCARD` | **`MVK_INVALID_ENTITY`** |
-| `FieldFilled(Claims/Amount)` — an unstarred repeatable read | `MVK_NO_WILDCARD` | `MVK_NO_WILDCARD` | **`MVK_INVALID_ENTITY`** |
+| `FieldFilled(/Policy/Claims/Amount)` — an unstarred repeatable read | `MVK_NO_WILDCARD` | `MVK_NO_WILDCARD` | **`MVK_INVALID_ENTITY`** |
 | `… And % …` — a character the lexer cannot take | `MVK_LEXER_STANDARD_ERROR` | `MVK_LEXER_STANDARD_ERROR` | **`MVK_INVALID_ENTITY`** |
 | `FieldFilled(../../Reference)` — a path climbing above the root | `MVK_TOO_MANY_PARENT_GROUPS` | `MVK_TOO_MANY_PARENT_GROUPS` | **`MVK_INVALID_ENTITY`** |
-| `FieldFilled(Payouts/Total)` from a rule iterating the unkeyed `Claims` — a keyed parallel level | `MVK_ERROR_FIELD_NO_INDEX` | `MVK_ERROR_FIELD_NO_INDEX` | **`MVK_INVALID_ENTITY`** |
+| `FieldFilled(/Policy/Payouts/Total)` from a rule iterating the unkeyed `Claims` — a keyed parallel level | `MVK_ERROR_FIELD_NO_INDEX` | `MVK_ERROR_FIELD_NO_INDEX` | **`MVK_INVALID_ENTITY`** |
 | `… And And …` — an unexpected token | `MVK_UNEXPECTED_TOKEN` | `MVK_UNEXPECTED_TOKEN` | **`MVK_INVALID_ENTITY`** (KF340) |
 
 **The middle column is the whole finding.** KF340 had no middle column, and without it "resolution runs first" was untestable. *(Extended 2026-09-25 by the four rows above the last: the above-root row is a second REFERENCE class, so the order holds between two classes drawn by the same resolution too, and the index row is the operand-scope walk's other kind of class, measured rather than assumed from `MVK_NO_WILDCARD`'s.)*
@@ -7193,12 +7193,30 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 |---|---|---|
 | `GroupFilled(X*)` — a misplaced star | `… And And …` | `MVK_INVALID_WILDCARD` |
 | `… And And …` | `GroupFilled(X*)` | `MVK_UNEXPECTED_TOKEN` |
-| `FieldFilled(Claims/Amount)` — an unstarred repeatable read | `… And And …` | `MVK_NO_WILDCARD` |
-| `… And And …` | `FieldFilled(Claims/Amount)` | `MVK_UNEXPECTED_TOKEN` |
+| `FieldFilled(/Policy/Claims/Amount)` — an unstarred repeatable read | `… And And …` | `MVK_NO_WILDCARD` |
+| `… And And …` | `FieldFilled(/Policy/Claims/Amount)` | `MVK_UNEXPECTED_TOKEN` |
 | `GroupFilled(/Policy/Archive)` — an empty group | `GroupFilled(X*)` | `MVK_GROUP_IS_EMPTY` |
 | `GroupFilled(X*)` | `GroupFilled(/Policy/Archive)` | `MVK_INVALID_WILDCARD` |
 
-So a resolution class, a parser class and an operand class each answer only when they come first; the two wildcard classes against each other are [KF328](#kf328)'s.
+So a reference class, a parser class and an operand class each answer only when they come first; the two wildcard classes against each other are [KF328](#kf328)'s.
+
+**First means first RAISED, and a filtered operand is raised once its whole spec is read (measured 2026-09-25).** The A12-model arm of `entitySpec` in `GrammarOnly_ConditionParser.g4` runs `checkEntitySpec` — where the repetition walk lives — only after the `Having` body has been parsed (source-read), and these rows are the ones a "first by where the base is spelled" reading gets wrong. `F` is `Sum(Claims*/Amount Having [Claims/Amount] > 0) > 0`, `U` the same with `Claims` unstarred:
+
+| the text | A12 |
+|---|---|
+| `FieldFilled(Reference) And F` — the control | admitted |
+| …then `… And And …` | `MVK_UNEXPECTED_TOKEN` |
+| …then `FieldFilled(NoSuchField) And`, a bad name and a dangling connective | `MVK_INVALID_ENTITY` |
+| `U` | `MVK_NO_WILDCARD` |
+| `U`, then a bad name | `MVK_NO_WILDCARD` |
+| `U` with `[Claims/NoSuchField]` in its body | **`MVK_INVALID_ENTITY`** |
+| `U` with `… And And …` in its body | **`MVK_UNEXPECTED_TOKEN`** |
+| `U` with `GroupFilled(/Policy/Assessment*)` as its body | **`MVK_INVALID_WILDCARD`** |
+| `GroupFilled(Claims) And NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0` | `MVK_NO_WILDCARD` — the filtered count alone is `MVK_NO_GROUPS_ALLOWED` |
+
+The first three rows are the other half: a text that does not parse still has its filter body read as a body, so the body's leaf draws nothing and the later defect answers. And a body is set aside by POSITION: the same characters written as a conjunct outside the filter are an ordinary read — `MVK_NO_WILDCARD` for an unstarred one (`FilterBodyTextRepeatedOutsideLawsTest`), `MVK_INVALID_OUTER_ITERATION` for a `$` marker (`OuterMarkerPositionLawsTest`), and a per-row read that owes containment (`ErrorTargetContainmentLawsTest`).
+
+**Two ties on one offset, one each way.** `FieldFilled(Reference) NoSuchField` is `MVK_UNEXPECTED_TOKEN`: the parser never takes the name into a reference, so nothing resolves it. `FieldFilled(NoSuchField` is `MVK_INVALID_ENTITY`: the parser took the reference, and it is resolved before the parser asks for the bracket that should follow.
 
 **Two classes are not in that competition at all — they lose wherever the bad name sits:**
 
@@ -7211,7 +7229,7 @@ So a resolution class, a parser class and an operand class each answer only when
 
 **`MVK_INCOMPLETE_INPUT` has no reversed row and cannot have one**: the class says the text ended early, so no second defect can sit after it.
 
-Reported by the portable checker where the report is assembled. **A class whose family publishes its span is placed**: the reference, lexer, completeness and grammar families, the repetition-wildcard family and the operand-scope walk do, and in one member the earliest placed class stands while every placed class of another code behind it goes. **A class with no span cannot be placed**, so beside an unresolvable name it is dropped position-blind — a SUBSTITUTION where it came first, one class either way and both true of the text — and beside a later placed class both stand ([DG84](DEV-API-GAPS.md)). Nothing is placed across two members, nor at a path two declarations share. A class A12 did not draw is a divergence however true it is, which is why `consistency.RepetitionWildcardTest` stopped asserting both classes on `FieldFilled(Guest*/NoSuchField)`. The second gate drops the two relational codes wherever another family already reported on the same text, and reads the FINDINGS rather than the model, because the same unreferenced error target is reported on a sound condition and withheld on a defective one.
+Reported by the portable checker where the report is assembled. **A class is PLACED when it is one of the positioned codes and its family publishes a span** — the reference, lexer, completeness and grammar families, the repetition-wildcard family and the operand-scope walk — and in one member a placed class stands behind another code only if that one is raised earlier: a parser class at its token's start, every other class at its span's end, a filtered operand's walk at the end of its operand. Filter bodies are found by their delimiters, not by a parse. **A class with no span, or outside the positioned codes, cannot be placed**, so beside an unresolvable name a positioned one is dropped position-blind — a SUBSTITUTION where it came first — and beside a later placed class both stand; a code outside the positioned set is not withheld at all ([DG84](DEV-API-GAPS.md)). Where the checker's grammar is looser than A12's and misses the first defect, a later placed class stands in for it ([DG85](DEV-API-GAPS.md)). Nothing is placed across two members, nor at a path two declarations share. A class A12 did not draw is a divergence however true it is, which is why `consistency.RepetitionWildcardTest` stopped asserting both classes on `FieldFilled(Guest*/NoSuchField)`. The second gate drops the two relational codes wherever another family already reported on the same text, and reads the FINDINGS rather than the model, because the same unreferenced error target is reported on a sound condition and withheld on a defective one.
 
 *Locked by:* `rulekit.validate.laws.ConditionClassWithholdingLawsTest`, mirrored by `consistency … ConditionMultipleDefectTest`.
 

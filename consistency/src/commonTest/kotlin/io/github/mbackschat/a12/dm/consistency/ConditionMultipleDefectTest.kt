@@ -173,23 +173,102 @@ class ConditionMultipleDefectTest {
         actual["a misplaced star, then an empty group"] =
             codes("GroupFilled(/Policy/Assessment*) And GroupFilled(/Policy/Archive)")
         expected["a misplaced star, then an empty group"] = listOf("MVK_GROUP_IS_EMPTY", "MVK_INVALID_WILDCARD")
+        // …and ahead of a bad name the same span-less class is withheld by position-blind rule, where A12 names
+        // it: a substitution, DEV-API-GAPS DG84.
+        actual["an empty group, then a bad name"] = codes("GroupFilled(/Policy/Archive) And FieldFilled(NoSuchField)")
+        expected["an empty group, then a bad name"] = listOf("MVK_INVALID_ENTITY")
+        // Divergence locks, DEV-API-GAPS DG85: A12's parser stops at the `And` inside a field operand's brackets
+        // (MVK_UNEXPECTED_TOKEN on both), while this checker's grammar reads a condition there.
+        actual["an unclosed bracket, bad name after"] = codes("FieldFilled(Reference And FieldFilled(NoSuchField)")
+        expected["an unclosed bracket, bad name after"] = listOf("MVK_INVALID_ENTITY")
+        actual["a connective inside a field operand's brackets"] =
+            codes("FieldFilled(Reference And FieldFilled(Reference))")
+        expected["a connective inside a field operand's brackets"] = listOf()
         assertEquals(expected, actual, "which class a condition carrying a spanned class and a bad name reports")
     }
 
     /**
      * Two rules sharing one path are two texts under one `at`, so an offset in one says nothing about the
      * other. The wildcard class is EARLIER in its own text than the bad name is in its twin's, and a placement
-     * comparing the two would keep it; the position-blind withholding applies instead, the same under-report
-     * every span-less class takes (`Check.kt`, `pathsSharedByTwoDeclarations`).
+     * comparing the two would keep it; the position-blind withholding applies instead. That is an UNDER-report
+     * here, since A12 judges each rule's text on its own and names the wildcard class — the price of an `at`
+     * that cannot tell the two texts apart (`Check.kt`, `pathsSharedByTwoDeclarations`).
      */
     @Test
     fun twoRulesAtOnePathAreNeverPlacedAgainstEachOther() {
-        val reported = check(ModelSource(twins(
-            "FieldFilled(Reference) And FieldFilled(NoSuchField)", "GroupFilled(/Policy/Assessment*)",
-        ))).findings.filter { it.at == "/Policy/Probe" }.map { it.code }.toSet()
+        fun reported(first: String) = check(ModelSource(twins(first, "GroupFilled(/Policy/Assessment*)")))
+            .findings.filter { it.at == "/Policy/Probe" }.map { it.code }.toSet()
+        val control = reported("FieldFilled(Reference)")
+        val beside = reported("FieldFilled(Reference) And FieldFilled(NoSuchField)")
 
-        assertTrue("MVK_INVALID_ENTITY" in reported, "the bad name must be reported, or this row is vacuous")
-        assertFalse("MVK_INVALID_WILDCARD" in reported, "a twin's offset was compared with the other's: $reported")
+        assertTrue("MVK_INVALID_WILDCARD" in control, "the twin's class must fire alone, or this row is vacuous")
+        assertTrue("MVK_INVALID_ENTITY" in beside, "the bad name must be reported, or this row is vacuous")
+        assertFalse("MVK_INVALID_WILDCARD" in beside, "a twin's offset was compared with the other's: $beside")
+    }
+
+    /**
+     * A repeat of ONE code is kept, one finding per place: two names that do not resolve are two findings, so
+     * the author sees each place to fix. Counted rather than de-duplicated, which is what [codes] does.
+     */
+    @Test
+    fun aRepeatOfOneCodeIsKeptForEachPlaceToFix() {
+        val reported = check(ModelSource(model("FieldFilled(NoSuchField) And FieldFilled(NorThisOne)", "../Reference")))
+            .findings.filter { it.at == "/Policy/Probe" }.map { it.code }
+
+        assertEquals(listOf("MVK_INVALID_ENTITY", "MVK_INVALID_ENTITY"), reported)
+    }
+
+    /**
+     * A FILTERED operand's defects in the order A12 raises them: its `Having` body is read inside the entity
+     * spec, before the operand's own repetition walk, and a text that does not parse still has its filter
+     * bodies set aside. Mirrors `rulekit.validate.laws.ConditionClassWithholdingLawsTest
+     * .aFilteredOperandsDefectsAnswerInTheOrderA12ReadsThem` row for row, the unclosed-bracket tie included.
+     * The last row is the one a reader matching filtered bases by their SPELLING gets wrong: the unfiltered
+     * `Claims` ahead of the filtered one is still walked.
+     */
+    @Test
+    fun aFilteredOperandsDefectsAnswerInTheOrderA12ReadsThem() {
+        val filtered = "FieldFilled(Reference) And Sum(Claims*/Amount Having [Claims/Amount] > 0) > 0"
+        val unstarred = "Sum(Claims/Amount Having [Claims/Amount] > 0) > 0"
+        val actual = mapOf(
+            "a filtered sum — the control" to codes(filtered),
+            "…then a stray connective" to
+                codes("$filtered And FieldFilled(Reference) And And FieldFilled(Reference)"),
+            "…then a bad name and a dangling connective" to codes("$filtered And FieldFilled(NoSuchField) And"),
+            "an unstarred filtered base" to codes(unstarred),
+            "an unstarred filtered base, bad name after" to codes("$unstarred And FieldFilled(NoSuchField)"),
+            "an unstarred filtered base, bad name INSIDE its body" to
+                codes("Sum(Claims/Amount Having [Claims/NoSuchField] > 0) > 0"),
+            "an unstarred filtered base, stray connective INSIDE its body" to
+                codes("Sum(Claims/Amount Having [Claims/Amount] > 0 And And [Claims/Amount] > 1) > 0"),
+            "an unstarred filtered base, misplaced star INSIDE its body" to
+                codes("Sum(Claims/Amount Having GroupFilled(/Policy/Assessment*)) > 0"),
+            "a starred filtered base, misplaced star inside its body" to
+                codes("Sum(Claims*/Amount Having GroupFilled(/Policy/Assessment*)) > 0"),
+            "a name after a complete condition" to codes("FieldFilled(Reference) NoSuchField"),
+            "a bad name, then a bracket never closed" to codes("FieldFilled(NoSuchField"),
+            "a group filtered in a count" to codes("NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0"),
+            "the same group read unfiltered first" to
+                codes("GroupFilled(Claims) And NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0"),
+        )
+        val expected = mapOf(
+            "a filtered sum — the control" to listOf(),
+            "…then a stray connective" to listOf("MVK_UNEXPECTED_TOKEN"),
+            "…then a bad name and a dangling connective" to listOf("MVK_INVALID_ENTITY"),
+            "an unstarred filtered base" to listOf("MVK_NO_WILDCARD"),
+            "an unstarred filtered base, bad name after" to listOf("MVK_NO_WILDCARD"),
+            "an unstarred filtered base, bad name INSIDE its body" to listOf("MVK_INVALID_ENTITY"),
+            "an unstarred filtered base, stray connective INSIDE its body" to listOf("MVK_UNEXPECTED_TOKEN"),
+            "an unstarred filtered base, misplaced star INSIDE its body" to listOf("MVK_INVALID_WILDCARD"),
+            "a starred filtered base, misplaced star inside its body" to listOf("MVK_INVALID_WILDCARD"),
+            "a name after a complete condition" to listOf("MVK_UNEXPECTED_TOKEN"),
+            "a bad name, then a bracket never closed" to listOf("MVK_INVALID_ENTITY"),
+            // Divergence locks, DEV-API-GAPS DG84: A12 draws the first class alone, and MVK_NO_GROUPS_ALLOWED is
+            // outside the positioned codes, so it neither withholds the post-parse class nor is placed.
+            "a group filtered in a count" to listOf("MVK_ERROR_FIELD_NOT_REFERENCED", "MVK_NO_GROUPS_ALLOWED"),
+            "the same group read unfiltered first" to listOf("MVK_NO_GROUPS_ALLOWED", "MVK_NO_WILDCARD"),
+        )
+        assertEquals(expected, actual, "where a filtered operand's defects fall in text order")
     }
 
     /** [model] with a second rule of the SAME name carrying [second], so the two share one path. */

@@ -1011,11 +1011,13 @@ internal fun checkRun(
         it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
     }
     val references = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } + conditionReferences
+    val placedReferences = conditionReferences.toSet()
     // A reference's own class is what withholds the text classes, so it is never withheld behind itself —
     // which matters because a misplaced up-step's class is a token error, spelled like one of those it withholds.
     val textClasses = scheduled.flatMap { cells.getValue(it.key).findings }
         .filterNot {
-            it.code in CONDITION_TEXT_CODES && it.mayFollowAnUnresolvableName(unresolved[it.at], it.at in twinned)
+            it.code in CONDITION_TEXT_CODES &&
+                it.mayFollowAnUnresolvableName(unresolved[it.at], it.placedIn(placedReferences, twinned))
         }
     val messageVerdicts = scheduled.filter { it.key.producer.completes.all { f -> f in MESSAGE_MEMBER_FAMILIES } }
         .flatMapTo(mutableSetOf()) { cells.getValue(it.key).findings }
@@ -1023,7 +1025,7 @@ internal fun checkRun(
         .flatMap { cells.getValue(it.key).findings }
     val judged = (references + textClasses)
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
-        .withoutDefectsBehindAnEarlierOne(conditionReferences.toSet(), twinned)
+        .withoutDefectsBehindAnEarlierOne(placedReferences, twinned)
         .withoutPostParseClassesBehindAPositionedDefect()
         .withoutMessageVerdictsBehindARefusedDsl(messageVerdicts, dslVerdicts = references + dslVerdicts)
     val findings = judged.notSuppressedBy(tracked.variantFilterSuppressed())
@@ -1238,51 +1240,94 @@ private val ERROR_TARGET_CODES = setOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD,
 /**
  * Whether an unresolvable name in the same declaration may stand ahead of this finding, which withholds it.
  *
- * Only a positioned class carrying its own span can be placed, and only against a name in the SAME member:
+ * A [placed] finding answers to a name in its OWN member by position, which is
+ * [withoutDefectsBehindAnEarlierOne]'s to decide, so here it is withheld only by a name in another member:
  * across members the order is not measured, and a name in a precondition is measured withholding the
  * operation's class (`rulekit.validate.laws.ComputationMemberVerdictLawsTest`). Everything else answers yes
  * wherever the declaration has such a name — the position-blind substitution [CONDITION_TEXT_CODES] discloses.
- * So does a finding at a [twinned] path, whose spans may index another declaration's text.
  */
-private fun Finding.mayFollowAnUnresolvableName(unresolved: List<TextSpan>?, twinned: Boolean): Boolean {
+private fun Finding.mayFollowAnUnresolvableName(unresolved: List<TextSpan>?, placed: TextSpan?): Boolean {
     if (unresolved == null) {
         return false
     }
-    val own = span?.takeIf { !twinned && code in POSITIONED_CONDITION_CODES } ?: return true
-    return unresolved.any { it.member != own.member || it.start < own.end }
+    placed ?: return true
+    return unresolved.any { it.member != placed.member }
+}
+
+/**
+ * This finding's span when it can be PLACED in its text, or null: a positioned class carrying its span, or a
+ * condition reference's own class ([conditionReferences]), at a path only one declaration has ([twinned]),
+ * that justifies rejection. The one statement of which findings take part in the text order.
+ */
+private fun Finding.placedIn(conditionReferences: Set<Finding>, twinned: Set<String>): TextSpan? = span?.takeIf {
+    at !in twinned && justifiesRejection && (code in POSITIONED_CONDITION_CODES || this in conditionReferences)
 }
 
 /**
  * Drops a finding that an EARLIER defect in the same DSL member stands ahead of: A12 names the first defect in
  * a text and nothing after it.
  *
- * Measured in both orders on every pair of kinds this can see — two reference classes, a reference class and
- * a positioned one, a wildcard class and a parser class (`rulekit.validate.laws.ConditionClassWithholdingLawsTest`),
- * and the two wildcard classes in one call and across two
- * (`…StarredNonRepeatableReachLawsTest.aMisplacedStarAndAnUnstarredLevelAnswerInTextOrder`).
+ * **Earlier means RAISED earlier, which is not where a span starts** ([RaisePoint]). Measured in both orders
+ * on these pairs: two reference classes; a reference class against a lexer, grammar, wildcard, walk or
+ * operand class; a wildcard class against a grammar class and an operand class
+ * (`rulekit.validate.laws.ConditionClassWithholdingLawsTest`); the two wildcard classes in one call and across
+ * two (`…StarredNonRepeatableReachLawsTest.aMisplacedStarAndAnUnstarredLevelAnswerInTextOrder`); and a
+ * filtered operand's walk against the defects in its own body and after it
+ * (`…ConditionClassWithholdingLawsTest.aFilteredOperandsDefectsAnswerInTheOrderA12ReadsThem`). The walk's
+ * index classes are measured against a reference class only, and ASSUMED to order like its wildcard class
+ * against the rest, since one method raises all of them.
  *
- * **Only a finding that can be PLACED takes part**: a positioned class carrying its span, or a condition
- * reference's own class ([references]), at a path only one declaration has ([twinned]). A positioned class
- * with no span is neither dropped nor drops, because placing it would be a guess, so it and a later spanned
- * class both stand where A12 names one ([DEV-API-GAPS DG84]). **A repeat of one code is kept**, as the
- * reference family has always reported every name that does not resolve: it adds no class A12 withholds, and
- * it shows the author each place to fix.
+ * **Only a finding that can be PLACED takes part** ([placedIn]). A positioned class with no span is neither
+ * dropped nor drops, because placing it would be a guess, so it and a later spanned class both stand where
+ * A12 names one ([DEV-API-GAPS DG84]). **A repeat of one code is kept**, as the reference family has always
+ * reported every name that does not resolve: it adds no class A12 withholds, and it shows the author each
+ * place to fix.
  */
 private fun List<Finding>.withoutDefectsBehindAnEarlierOne(
-    references: Set<Finding>,
+    conditionReferences: Set<Finding>,
     twinned: Set<String>,
 ): List<Finding> {
-    fun Finding.placed(): TextSpan? = span?.takeIf {
-        at !in twinned && justifiesRejection && (code in POSITIONED_CONDITION_CODES || this in references)
-    }
-    val placedByMember = mapNotNull { finding -> finding.placed()?.let { finding to it } }
+    val placedByMember = mapNotNull { finding -> finding.placedIn(conditionReferences, twinned)?.let { finding to it } }
         .groupBy { (finding, span) -> finding.at to span.member }
     return filterNot { finding ->
-        val own = finding.placed() ?: return@filterNot false
-        placedByMember.getValue(finding.at to own.member)
-            .any { (earlier, span) -> earlier.code != finding.code && span.end <= own.start }
+        val own = finding.placedIn(conditionReferences, twinned) ?: return@filterNot false
+        val raised = finding.raisePoint(own, conditionReferences)
+        placedByMember.getValue(finding.at to own.member).any { (earlier, span) ->
+            earlier.code != finding.code && earlier.raisePoint(span, conditionReferences) < raised
+        }
     }
 }
+
+/**
+ * Where in its text A12 raises a placed finding, which orders two of them.
+ *
+ * A PARSER class ([PARSER_CONDITION_CODES]) is raised at the token the parser cannot use, so at its span's
+ * start. Every other class is raised once what its span covers has been read — a reference once resolved, a
+ * filtered operand once its whole spec, body included, is read — so at its span's end. On one offset the
+ * non-parser class comes first, because a reference the parser took is resolved before the parser asks for
+ * what follows it. Both halves of that tie are measured: `FieldFilled(NoSuchField` is `MVK_INVALID_ENTITY`,
+ * while `FieldFilled(Reference) NoSuchField` is `MVK_UNEXPECTED_TOKEN`, the name never being taken into a
+ * reference at all (`rulekit.validate.laws.ConditionClassWithholdingLawsTest`).
+ */
+private data class RaisePoint(val offset: Int, val byTheParser: Boolean) : Comparable<RaisePoint> {
+    override fun compareTo(other: RaisePoint): Int = compareValuesBy(this, other, { it.offset }, { it.byTheParser })
+}
+
+private fun Finding.raisePoint(span: TextSpan, conditionReferences: Set<Finding>): RaisePoint =
+    if (code in PARSER_CONDITION_CODES && this !in conditionReferences) {
+        RaisePoint(span.start, byTheParser = true)
+    } else {
+        RaisePoint(span.end, byTheParser = false)
+    }
+
+/**
+ * The classes A12's parser raises at a token it cannot use: the lexer's, the completeness phase's and the
+ * grammar's. A reference family finding spelled like one — a misplaced up-step's `MVK_UNEXPECTED_TOKEN` — is
+ * a reference's class, raised once the reference is read, and [raisePoint] tells the two apart by family.
+ */
+private val PARSER_CONDITION_CODES = setOf(
+    "MVK_LEXER_STANDARD_ERROR", "MVK_INCOMPLETE_INPUT", "MVK_EXPECTED_TOKEN_NOT_FOUND", "MVK_UNEXPECTED_TOKEN",
+)
 
 /**
  * Drops a POST-PARSE class at any declaration whose condition text already draws a positioned one.
@@ -1370,9 +1415,10 @@ private val BESIDE_THE_DSL_FAMILIES = MESSAGE_MEMBER_FAMILIES + setOf(
  * A12 reports the first defect in the text and nothing after it, so which of two survives depends on which
  * comes first (`ConditionClassWithholdingLawsTest`).
  *
- * Listed as the codes to DROP rather than as the codes to keep, the mirror of [ERROR_TARGET_CODES] and for
- * the opposite reason: a family added later that reads the condition text is an under-report until its code
- * is added here, where a keep-list would silently start dropping it.
+ * Listed as the codes that TAKE PART rather than as the codes exempt, the mirror of [ERROR_TARGET_CODES]:
+ * a code left out is neither withheld behind an earlier defect nor placed, so its class co-fires beside the
+ * one A12 names — an over-report of the class set on a model both sides refuse, where the other listing would
+ * silently drop a class A12 does name. Many operand-gate codes are still left out ([DEV-API-GAPS DG84]).
  */
 private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_INCOMPLETE_INPUT", "MVK_EXPECTED_TOKEN_NOT_FOUND", "MVK_UNEXPECTED_TOKEN",
@@ -1443,10 +1489,10 @@ private val POST_PARSE_CONDITION_CODES = setOf(
 /**
  * Every class read out of the condition text, all of which an unresolvable name in it can withhold.
  *
- * **A class that carries its span is placed against the names; one that does not is withheld position-BLIND,
+ * **A class that can be placed is ordered against the names; one that cannot is withheld position-BLIND,
  * and the price there is a SUBSTITUTION, not an under-report.** The reference, lexer, completeness, grammar
- * and repetition-wildcard families and the operand-scope walk publish a span, so for their classes the
- * faithful rule holds — withheld only behind a name that comes first ([mayFollowAnUnresolvableName]). The
+ * and repetition-wildcard families and the operand-scope walk publish a span, so for their positioned classes
+ * the faithful rule holds — withheld only behind a name raised first ([withoutDefectsBehindAnEarlierOne]). The
  * other families carry no offset into the text, and for them dropping unconditionally matches A12 exactly when
  * the bad name comes first; when it does not we name the bad name where A12 names the other defect: one class
  * either way, both true of the text, and the author reaches the same fixed condition. What it never does is

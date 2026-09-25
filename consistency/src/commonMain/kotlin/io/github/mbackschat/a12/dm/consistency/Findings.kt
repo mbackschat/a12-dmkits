@@ -92,12 +92,12 @@ data class Finding(
  * convention every editor API in reach already uses.
  *
  * **It is absent far more often than present, and absence is deliberate rather than pending.** A span is
- * published only where the family that judged the text already knew the offset — an unresolved reference,
+ * published only where the family that judged the text reads the offset exactly — an unresolved reference,
  * unreadable characters, half-typed input, a shape the grammar refuses, a reference whose repetition
- * wildcard is misplaced or missing or whose repetition the target does not address. A finding about a
- * declaration's STRUCTURE has no characters to point at, and a family that would have to re-derive an offset
- * publishes none rather than an approximate one: an editor underlining the wrong words is worse than one
- * underlining nothing.
+ * wildcard is misplaced or missing or whose repetition the target does not address (to the end of the operand
+ * when it carries a `Having` filter, which is when A12 asks). A finding about a declaration's STRUCTURE has no
+ * characters to point at, and a family that cannot read an offset exactly publishes none rather than an
+ * approximate one: an editor underlining the wrong words is worse than one underlining nothing.
  */
 data class TextSpan(val member: String, val start: Int, val end: Int)
 

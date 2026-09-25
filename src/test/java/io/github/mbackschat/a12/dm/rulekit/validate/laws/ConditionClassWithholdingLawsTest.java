@@ -172,8 +172,8 @@ class ConditionClassWithholdingLawsTest {
     }
 
     /**
-     * The same order law between two classes that are NOT a missing name: a repetition wildcard's, drawn while
-     * a reference is resolved, against the parser's own and an operand class. Each pair is one text read both
+     * The same order law between two classes that are NOT a missing name: a repetition wildcard's, drawn once
+     * a reference is read, against the parser's own and an operand class. Each pair is one text read both
      * ways round, so the only variable is which defect comes first.
      */
     @Test
@@ -201,6 +201,65 @@ class ConditionClassWithholdingLawsTest {
                 verdict("GroupFilled(/Policy/Assessment*) And GroupFilled(/Policy/Archive)"));
         expected.put("a misplaced star, then an empty group", "MVK_INVALID_WILDCARD");
         assertEquals(expected, actual, "a wildcard class and a parser or operand class answer in text order");
+    }
+
+    /**
+     * Where a FILTERED operand's defects fall in that order, and a text that does not parse at all.
+     *
+     * <p>A {@code Having} body is read inside its operand's entity spec, so what the body draws and what the
+     * operand's own repetition walk draws are ordered by when each is raised rather than by where the base is
+     * spelled. The rows vary one term each against the admitted control and against the unstarred base.
+     */
+    @Test
+    void aFilteredOperandsDefectsAnswerInTheOrderA12ReadsThem() {
+        // Names the error field too, so the control is admitted rather than MVK_ERROR_FIELD_NOT_REFERENCED.
+        String filtered = "FieldFilled(Reference) And Sum(Claims*/Amount Having [Claims/Amount] > 0) > 0";
+        String unstarred = "Sum(Claims/Amount Having [Claims/Amount] > 0) > 0";
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a filtered sum — the control", verdict(filtered));
+        actual.put("…then a stray connective", verdict(filtered + " And FieldFilled(Reference) And And "
+                + "FieldFilled(Reference)"));
+        actual.put("…then a bad name and a dangling connective", verdict(filtered + AND_A_BAD_NAME + " And"));
+        actual.put("an unstarred filtered base", verdict(unstarred));
+        actual.put("an unstarred filtered base, bad name after", verdict(unstarred + AND_A_BAD_NAME));
+        actual.put("an unstarred filtered base, bad name INSIDE its body",
+                verdict("Sum(Claims/Amount Having [Claims/NoSuchField] > 0) > 0"));
+        actual.put("an unstarred filtered base, stray connective INSIDE its body",
+                verdict("Sum(Claims/Amount Having [Claims/Amount] > 0 And And [Claims/Amount] > 1) > 0"));
+        actual.put("an unstarred filtered base, misplaced star INSIDE its body",
+                verdict("Sum(Claims/Amount Having GroupFilled(/Policy/Assessment*)) > 0"));
+        actual.put("a starred filtered base, misplaced star inside its body",
+                verdict("Sum(Claims*/Amount Having GroupFilled(/Policy/Assessment*)) > 0"));
+        actual.put("a name after a complete condition", verdict("FieldFilled(Reference) NoSuchField"));
+        actual.put("a bad name, then a bracket never closed", verdict("FieldFilled(NoSuchField"));
+        actual.put("a connective inside a field operand's brackets",
+                verdict("FieldFilled(Reference And FieldFilled(Reference))"));
+        actual.put("a group filtered in a count",
+                verdict("NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0"));
+        actual.put("the same group read unfiltered first",
+                verdict("GroupFilled(Claims) And NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a filtered sum — the control", KernelLaws.ADMITTED);
+        expected.put("…then a stray connective", "MVK_UNEXPECTED_TOKEN");
+        expected.put("…then a bad name and a dangling connective", "MVK_INVALID_ENTITY");
+        expected.put("an unstarred filtered base", "MVK_NO_WILDCARD");
+        expected.put("an unstarred filtered base, bad name after", "MVK_NO_WILDCARD");
+        expected.put("an unstarred filtered base, bad name INSIDE its body", "MVK_INVALID_ENTITY");
+        expected.put("an unstarred filtered base, stray connective INSIDE its body", "MVK_UNEXPECTED_TOKEN");
+        expected.put("an unstarred filtered base, misplaced star INSIDE its body", "MVK_INVALID_WILDCARD");
+        expected.put("a starred filtered base, misplaced star inside its body", "MVK_INVALID_WILDCARD");
+        // The two sides of one tie: a name the parser never takes into a reference is a token error, and a
+        // reference the parser did take is resolved before the parser looks for what follows it.
+        expected.put("a name after a complete condition", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a bad name, then a bracket never closed", "MVK_INVALID_ENTITY");
+        // A field operand's argument is not a condition, so the parser stops at the connective.
+        expected.put("a connective inside a field operand's brackets", "MVK_UNEXPECTED_TOKEN");
+        // A group handed to a filter is refused ahead of its walk, so the unfiltered read ahead of it is the
+        // row that asks whether that refusal is about the operand or about the group's spelling.
+        expected.put("a group filtered in a count", "MVK_NO_GROUPS_ALLOWED");
+        expected.put("the same group read unfiltered first", "MVK_NO_WILDCARD");
+        assertEquals(expected, actual, "where a filtered operand's defects fall in text order");
     }
 
     /** One class in three rows: alone, with the bad name after it, and with the bad name ahead of it. */

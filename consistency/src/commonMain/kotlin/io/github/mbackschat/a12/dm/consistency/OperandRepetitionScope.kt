@@ -2,14 +2,14 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.clausedOperandsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.firstReferenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.withoutFilterBodies
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -49,9 +49,12 @@ import kotlinx.serialization.json.contentOrNull
  *
  * **On a text carrying a `Having` filter this reads the operand BASES only.** A filter body's references are
  * judged against the FILTERED entity rather than the rule's target — that walk is [filterBodyGateFindings]' —
- * and the flat reference list cannot tell the two apart, so a filtered text is read through its calls
- * instead, where the base is exactly the operand without its clauses and is judged by this walk like any
- * other reference. Until 2026-09-15 the whole text was skipped, which threw the base away with the body and
+ * and the flat reference list cannot tell the two apart, so the bodies are set aside by position
+ * ([withoutFilterBodies]) and each base is judged by this walk like any other reference — found by delimiters
+ * rather than by a parse, because a text that fails to parse later still has its earlier reads judged. A
+ * filtered base answers once its whole spec is read, so a defect inside the body comes first (both measured,
+ * `rulekit.validate.laws.ConditionClassWithholdingLawsTest.aFilteredOperandsDefectsAnswerInTheOrderA12ReadsThem`).
+ * Until 2026-09-15 the whole text was skipped, which threw the base away with the body and
  * left an unkeyed parallel level under a filtered operand unnamed (measured 2026-09-14,
  * `rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`; the reach is
  * `rulekit.validate.laws.AggregateSlotLawsTest.whichClassAnUnstarredAggregateOperandDrawsOnEachIterationCarrier`).
@@ -81,17 +84,21 @@ internal fun TrackedFactBase.operandRepetitionScopeFindings(): List<Finding> {
             if (namesKeyword(text, unjudgeable) != null) {
                 return@firstNotNullOfOrNull null
             }
-            val own = withoutFilterBodies(text, member, filterKeyword, conditionLanguage)
+            val own = withoutFilterBodies(text, conditionLanguage)
             if (OUTER_MARKER in own) {
                 return@firstNotNullOfOrNull null
             }
-            val filtered = filteredBases(text, member, filterKeyword, conditionLanguage)
+            val filtered = clausedOperandsIn(text, conditionLanguage)
+                .filter { operand -> operand.clauses.any { it.keyword in filterKeyword } }
             firstReferenceSpansIn(own, conditionLanguage)
                 .filterNot { isRuleContext(it.written, conditionLanguage) }
                 .firstNotNullOfOrNull { occurrence ->
                     val written = occurrence.written
-                    val span = TextSpan(member, occurrence.start, occurrence.end)
-                    levelClassOf(written, declaringGroup, targetGroup, element, filtered = written in filtered)
+                    // A filtered base is asked once its whole spec is read, body included, so its span runs
+                    // to the operand's end and a defect inside the body is placed ahead of it.
+                    val filter = filtered.firstOrNull { it.at <= occurrence.start && occurrence.end <= it.baseEnd }
+                    val span = TextSpan(member, occurrence.start, filter?.end ?: occurrence.end)
+                    levelClassOf(written, declaringGroup, targetGroup, element, filtered = filter != null)
                         ?.let { scopeFinding(it, written, target, element, span) }
                 }
         }
@@ -99,51 +106,11 @@ internal fun TrackedFactBase.operandRepetitionScopeFindings(): List<Finding> {
 }
 
 internal fun TrackedFactBase.referencesOutsideFilterBodies(element: TrackedDeclaration): Set<String> {
-    val language = conditionLanguage
-    val keywords = CONDITION_OPERATOR_KEYWORDS[language] ?: return emptySet()
-    val filterKeyword = setOfNotNull(keywords[HAVING])
     val declared = element.body ?: return emptySet()
     return conditionTexts(element.kind, declared)
-        .flatMap { (member, text) ->
-            referencesIn(withoutFilterBodies(text, member, filterKeyword, language), language)
-        }
+        .flatMap { (_, text) -> referencesIn(withoutFilterBodies(text, conditionLanguage), conditionLanguage) }
         .toSet()
 }
-
-/**
- * [text] with every `Having` filter body blanked IN PLACE, one space per character.
- *
- * In place so that an offset into the result is an offset into [text], which is what lets a finding read off
- * it point at the author's characters. And by POSITION rather than by matching the body's text, which would
- * also blank a conjunct that happens to spell it — a read A12 still judges
- * (`rulekit.validate.laws.FilterBodyTextRepeatedOutsideLawsTest`).
- */
-private fun withoutFilterBodies(
-    text: String,
-    member: String,
-    filterKeyword: Set<String>,
-    conditionLanguage: ConditionLanguage,
-): String {
-    val blanked = text.toCharArray()
-    callsIn(text, conditionLanguage, syntaxEntryOf(member))
-        .flatMap { call -> call.operands }
-        .flatMap { operand -> operand.clauses }
-        .filter { it.keyword in filterKeyword }
-        .forEach { body -> blanked.fill(' ', body.at, body.at + body.text.length) }
-    return blanked.concatToString()
-}
-
-/** The operands [text] hands to a `Having` filter, by their base. */
-private fun filteredBases(
-    text: String,
-    member: String,
-    filterKeyword: Set<String>,
-    conditionLanguage: ConditionLanguage,
-): Set<String> = callsIn(text, conditionLanguage, syntaxEntryOf(member))
-    .flatMap { call -> call.operands }
-    .filter { operand -> operand.clauses.any { it.keyword in filterKeyword } }
-    .mapNotNull { it.base }
-    .toSet()
 
 /**
  * Whether A12 refuses one of [call]'s operands while READING it, so the operator's own gates never run.
