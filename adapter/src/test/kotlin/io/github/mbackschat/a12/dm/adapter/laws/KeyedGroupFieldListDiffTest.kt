@@ -44,6 +44,9 @@ class KeyedGroupFieldListDiffTest {
         /** Two rows share the key `P1`, so the index names no single row. */
         val duplicated = listOf(Pkg("P1", "DHL"), Pkg("P1"), Pkg("P2", "UPS"))
 
+        /** No row fills a `Width`, so a starred `Width` operand contributes no filled cell. */
+        val noWidths = listOf(Pkg("P1", "DHL"), Pkg("P2"))
+
         /** `P2`'s only content beside its key is a malformed `Length`. */
         val malformed = listOf(Pkg("P1", "DHL", "3", "4"), Pkg("P2", length = "abc"))
     }
@@ -201,8 +204,9 @@ class KeyedGroupFieldListDiffTest {
         // beside a starred operand, which takes the list onto the group-scope path
         Row("AtLeastOneFieldFilled(/Order/Packages For \"P3\", /Order/Packages*/Carrier)", true),
         Row("AtLeastOneFieldFilled($CARRIER For \"P3\", /Order/Packages*/Carrier)", true),
-        // P2's empty carrier is the only cell that keeps this from firing, every key being filled
-        Row("AllFieldsFilled($CARRIER For \"P2\", /Order/Packages*/Code)", false)))
+        // every Width is empty, so the keyed cell alone decides: P2's carrier is empty and P1's is not
+        Row("NoFieldFilled($CARRIER For \"P2\", /Order/Packages*/Dims/Width)", true, noWidths),
+        Row("NoFieldFilled($CARRIER For \"P1\", /Order/Packages*/Dims/Width)", false, noWidths)))
 
     @Test
     fun aMalformedCellInTheSelectedRowIsReadAsTheKernelReadsIt() = assertGrid(listOf(
