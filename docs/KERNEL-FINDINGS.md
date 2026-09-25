@@ -11010,7 +11010,7 @@ Three facts, each with the row that separates it from its rival:
 | a malformed cell in the selected row | `NumberOfFilledFields` and `NoFieldFilled` stay silent; in computation `NoFieldFilled(Dims For "P2")` poisons, while `AtLeastOneFieldFilled(Packages For "P2")` stops at the filled key and stores its alternative |
 | partial validation | a key no row carries decides nothing while the key column is outside the coverage; a selected row outside it is not filled for the rule |
 | an error field inside the keyed group, and no ordinary reference to it | the message attaches to the selected row, or to the unbound row `Packages[-5]/Carrier` for a key no row carries, as for the presence conditions ([IF331](INTERPRETER-FINDINGS.md#if331)) |
-| `Sum(Packages/Items For "P1")` | refused `MVK_NO_WILDCARD`: a repeatable group below the key must be starred. The starred spelling puts the star below the key, which A12 admits ([KF351](#kf351)); the interpreter declines it (IG155) |
+| `Sum(Packages/Items For "P1")` | refused `MVK_NO_WILDCARD`: a repeatable group below the key must be starred. Starred, `Sum(Packages/Items* For "P1")` is refused `MVK_NO_NUMBER`, since `Items` holds the String `Sku`; `Sum(Packages/Items*/Weight For "P1")`, a star below the key ([KF351](#kf351)), is admitted, and the interpreter declines it (IG155) |
 
 **Source account, consistent with every row and discriminated by the `Items` row only.** A12 expands the operand into its contained fields, each carrying the group's key (`ExpandService.expandEntityId` / `createEntityId`, `kernel-core-codegen-condition`). The rival, that a keyed group reads one row with every repeatable level below it collapsed to its first row, predicts `6` where A12 counts `8`.
 

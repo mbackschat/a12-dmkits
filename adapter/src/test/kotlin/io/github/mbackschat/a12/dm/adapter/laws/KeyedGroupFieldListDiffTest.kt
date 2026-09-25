@@ -181,13 +181,18 @@ class KeyedGroupFieldListDiffTest {
         Row("NumberOfFilledFields($CARRIER For \"P1\", $CARRIER For \"P2\") == 1", true)))
 
     /** The row the aggregate grid cannot carry: a repeatable level below the key must be starred, as it must be
-     *  without a key, so the kernel refuses the model before any engine could read it. */
+     *  without a key, so the kernel refuses the model before any engine could read it. Starred, the group still
+     *  fails `Sum`'s own number gate, since `Items` holds the String `Sku`; the star alone is admitted on its
+     *  number field, below the index group, which KF351 measured on other carriers. */
     @Test
     fun aRepeatableLevelBelowTheKeyMustBeStarred() {
-        val kModel = RuntimeLaws.withRule(model, "/Order", "R", "../Reference", RULE_CODE,
-            "FieldFilled($REFERENCE) And Sum(/Order/Packages/Items For \"P1\") == 7")
-        val errors = RuntimeLaws.consistencyMessages(kModel).filter { it.startsWith("ERROR") }
-        assertTrue(errors.any { Regex("\\bMVK_NO_WILDCARD\\b").containsMatchIn(it) }, errors.toString())
+        fun errors(sum: String) = RuntimeLaws.consistencyMessages(RuntimeLaws.withRule(model, "/Order", "R",
+            "../Reference", RULE_CODE, "FieldFilled($REFERENCE) And $sum == 7")).filter { it.startsWith("ERROR") }
+        val unstarred = errors("Sum(/Order/Packages/Items For \"P1\")")
+        assertTrue(unstarred.any { Regex("\\bMVK_NO_WILDCARD\\b").containsMatchIn(it) }, unstarred.toString())
+        val starredGroup = errors("Sum(/Order/Packages/Items* For \"P1\")")
+        assertTrue(starredGroup.any { Regex("\\bMVK_NO_NUMBER\\b").containsMatchIn(it) }, starredGroup.toString())
+        assertEquals(emptyList<String>(), errors("Sum(/Order/Packages/Items*/Weight For \"P1\")"), "the starred field")
     }
 
     @Test
