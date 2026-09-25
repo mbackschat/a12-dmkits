@@ -67,11 +67,11 @@ class IndexedGroupOperandDiffTest {
      * One grid row. [errorField] is where the rule attaches, because A12 re-anchors an error inside the indexed
      * group to the selected row. [guarded] conjoins `FieldFilled(errorField)`, an ordinary reference that makes
      * the rule iterate the error field's rows instead. [relevant] switches to partial validation over those
-     * `path` to `reps` entries, `0` wildcarding a level. [declined] expects the interpreter to refuse the rule.
+     * `path` to `reps` entries, `0` wildcarding a level.
      */
     private data class Row(val condition: String, val fires: Boolean, val packages: List<Pkg> = standard,
         val wanted: String? = "P3", val errorField: String = REFERENCE, val guarded: Boolean = true,
-        val relevant: Map<String, List<Int>>? = null, val declined: Boolean = false)
+        val relevant: Map<String, List<Int>>? = null)
 
     private fun build(b: Both, row: Row) {
         b.group("/Order", 1).field(REFERENCE, "ORD-1", 1, 1)
@@ -136,7 +136,7 @@ class IndexedGroupOperandDiffTest {
         val expected = rows.associate { r ->
             val a = actual.getValue(key(r))
             val groovy = a.substringAfter("groovy=").substringBefore(" java=")
-            key(r) to "fires=${r.fires} groovy=$groovy java=$groovy interpreter=${if (r.declined) "UNSUPPORTED" else groovy}"
+            key(r) to "fires=${r.fires} groovy=$groovy java=$groovy interpreter=$groovy"
         }
         assertEquals(expected, actual)
     }
@@ -247,21 +247,6 @@ class IndexedGroupOperandDiffTest {
     fun firstFilledValueWalksPastAKeyNoRowCarriesAsAFillableEmpty() = assertGrid(listOf(
         Row("FirstFilledValue(/Order/Packages/Dims For \"P3\", /Order/Packages/Dims For \"P1\") == 3", true),
         Row("FirstFilledValue(/Order/Packages/Dims For \"P2\", /Order/Packages/Dims For \"P1\") == 3", true)))
-
-    /**
-     * The field-fill quantifiers and the aggregates are kernel-admitted over a keyed group, and the interpreter
-     * refuses them rather than answer (INTERPRETER-GAPS IG155). Each row keeps the kernel's own verdict, so the
-     * row that stops declining has its expectation already measured.
-     */
-    @Test
-    fun aKeyedGroupInAFieldFillQuantifierOrAnAggregateIsDeclined() = assertGrid(listOf(
-        Row("NumberOfFilledFields(/Order/Packages For \"P1\") == 4", true, declined = true),
-        Row("NumberOfFilledFields(/Order/Packages For \"P2\") == 1", true, declined = true),
-        Row("Sum(/Order/Packages/Dims For \"P1\") == 7", true, declined = true),
-        Row("Sum(/Order/Packages/Dims For \"P2\") == 0", true, declined = true),
-        Row("NoFieldFilled(/Order/Packages For \"P3\")", true, declined = true),
-        Row("AllFieldsFilled(/Order/Packages For \"P1\", /Order/Reference)", true, declined = true),
-        Row("AllFieldsFilled(/Order/Packages For \"P2\", /Order/Reference)", false, declined = true)))
 
     /** Partial validation: the selected row's relevance, not the whole document's, decides the operand. */
     @Test

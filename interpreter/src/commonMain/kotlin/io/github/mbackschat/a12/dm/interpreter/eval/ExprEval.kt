@@ -188,7 +188,10 @@ internal fun Interpreter.expandGroupOperands(args: List<Expr>): List<Expr> {
  * The `Having`, `outer` and `bindDepth` of the authored operand ride each expanded field, exactly as
  * [starOperandVals] preserves them — the filter belongs to the operand, not to one of its expanded cells.
  */
-private fun Interpreter.filledFieldsValue(args: List<Expr>): Val {
+private fun Interpreter.filledFieldsValue(args: List<Expr>): Val = filledFieldsCount(args)?.let { Val.Num(dec(it)) } ?: Val.Unknown
+
+/** [filledFieldsValue]'s count, or null where the count is non-evaluable. */
+private fun Interpreter.filledFieldsCount(args: List<Expr>): Int? {
     var count = 0
     for (arg in expandGroupStars(args)) when (arg) {
         is Expr.Star -> {
@@ -206,7 +209,7 @@ private fun Interpreter.filledFieldsValue(args: List<Expr>): Val {
                     if (!rc.filled(arg.path)) continue
                     if (rc.field(arg.path) is Val.Unknown) {
                         if (computeMode) throw PoisonedReadException(arg.path)
-                        return Val.Unknown
+                        return null
                     }
                     count++
                 }
@@ -214,12 +217,28 @@ private fun Interpreter.filledFieldsValue(args: List<Expr>): Val {
                 val cells = ctx.star(arg.path, arg.bindDepth)   // filled cells in row order (empties dropped)
                 if (cells.any { it is Val.Unknown }) {          // a malformed cell → non-evaluable
                     if (computeMode) throw PoisonedReadException(arg.path)   // …and a POISON on the compute path (IF85)
-                    return Val.Unknown
+                    return null
                 }
                 // An index field's not-check-relevant cell (mandatory-empty / duplicated value) makes the count
                 // non-evaluable too — `anzahlAngegebenerFelder` returns NICHT_PRUEF_REL on the first UNKNOWN cell.
-                if (indexOperandNonEvaluable(ctx, arg.path, arg.bindDepth)) return Val.Unknown
+                if (indexOperandNonEvaluable(ctx, arg.path, arg.bindDepth)) return null
                 count += cells.size
+            }
+        }
+        // A keyed GROUP counts the selected row as the bare group arm below counts its instance (IF340); a keyed
+        // FIELD counts its one cell, and an undecided one makes the count non-evaluable like a malformed cell.
+        is Expr.SemanticIndex -> if (isKeyedGroup(arg)) {
+            when (val cells = keyedGroupCells(arg)) {
+                is KeyedGroupCells.Selected ->
+                    count += cells.interpreter.filledFieldsCount(listOf(Expr.Field(arg.path))) ?: return null
+                KeyedGroupCells.Empty -> {}
+                KeyedGroupCells.Undecided -> return null
+            }
+        } else {
+            when (presenceTri(arg)) {
+                Tri.TRUE -> count++
+                Tri.FALSE -> {}
+                Tri.UNKNOWN -> return null
             }
         }
         else -> {
@@ -228,18 +247,18 @@ private fun Interpreter.filledFieldsValue(args: List<Expr>): Val {
                 val fs = ctx.fillScope(path, isGroup = true)
                 if (fs.hasUnknownInst) {                       // a malformed descendant → non-evaluable
                     if (computeMode) throw PoisonedReadException(path)
-                    return Val.Unknown
+                    return null
                 }
                 count += fs.tInst
             } else {                                           // plain field
                 // `ctxOf`, not the ambient `ctx`: a `$`-marked operand resolves in the OUTER context, and asking
                 // the wrong one counts a different row's cell ([IF287]'s fourteenth/twenty-third instances).
-                if (ctxOf(arg).filled(path) && invalid(ctxOf(arg), path)) return Val.Unknown   // malformed → non-evaluable
+                if (ctxOf(arg).filled(path) && invalid(ctxOf(arg), path)) return null   // malformed → non-evaluable
                 if (ctxOf(arg).filled(path)) count++
             }
         }
     }
-    return Val.Num(dec(count))
+    return count
 }
 
 internal fun Interpreter.evalExpr(e: Expr): Val {
@@ -405,7 +424,8 @@ internal sealed interface KeyedGroupSelection {
  * keyed cell: validation resolves a clean-key match whatever the rest of the column holds and reads a
  * compromised no-match as [KeyedGroupSelection.Unavailable]; computation poisons on any invalid key cell
  * (IF107/IF115). Locked by `adapter.laws.FirstFilledValueEntitySpecDiffTest`,
- * `adapter.laws.IndexedGroupOperandDiffTest` and `adapter.laws.MalformedIndexKeyDiffTest`.
+ * `adapter.laws.IndexedGroupOperandDiffTest`, `adapter.laws.KeyedGroupFieldListDiffTest` and
+ * `adapter.laws.MalformedIndexKeyDiffTest`.
  */
 internal fun Interpreter.keyedGroupSelection(e: Expr.SemanticIndex): KeyedGroupSelection {
     val c = ctxOf(e)
@@ -431,6 +451,40 @@ internal fun Interpreter.keyedGroupSelection(e: Expr.SemanticIndex): KeyedGroupS
         })
     }
 }
+
+/** Whether [e] is a keyed GROUP operand (`Group For key`), which reads a row, rather than a keyed field. */
+internal fun Interpreter.isKeyedGroup(e: Expr): Boolean =
+    e is Expr.SemanticIndex && ctxOf(e).declaredKind(e.path) == null
+
+/**
+ * What a keyed GROUP operand's CELLS read as, for every consumer that expands a group into the fields below it:
+ * the field-fill quantifiers, `NumberOfFilledFields`, the value aggregates, and their polarity (IF340).
+ *
+ * A12 expands the operand into its contained fields, each carrying the group's key (`ExpandService`, source-read),
+ * and measured on both strategies that reads the selected row's cells with every repeatable level below the key
+ * free and its declared tail counted — which is the bare group read inside that row, so [Selected] asks the bare
+ * group's own arm of an interpreter rooted there. Resolved through [keyedGroupSelection], so these consumers and
+ * the presence ones cannot disagree on which row a key names.
+ */
+internal sealed interface KeyedGroupCells {
+    /** The selected row: ask the bare group's arm of [interpreter], which is rooted at that row. */
+    class Selected(val interpreter: Interpreter) : KeyedGroupCells
+
+    /** A key no row carries, with its unbound row inside the coverage: every contained field is empty. */
+    data object Empty : KeyedGroupCells
+
+    /** An undecidable key, or an unbound row outside the coverage: no cell is decided. */
+    data object Undecided : KeyedGroupCells
+}
+
+internal fun Interpreter.keyedGroupCells(e: Expr.SemanticIndex): KeyedGroupCells =
+    when (val selection = keyedGroupSelection(e)) {
+        is KeyedGroupSelection.Row -> KeyedGroupCells.Selected(selectedRowInterp(selection.ctx))
+        is KeyedGroupSelection.Absent ->
+            if (absentGroupPresence(e.path, selection.repetitions).relevance == GroupRelevance.FULL) KeyedGroupCells.Empty
+            else KeyedGroupCells.Undecided
+        KeyedGroupSelection.Unavailable -> KeyedGroupCells.Undecided
+    }
 
 /** Whether the index COLUMN of `[F For key]` carries ANY invalid cell — malformed, duplicated, or empty
  *  (the IndexFieldCache marking, IF107). Computation poisons every read; validation still resolves a clean
@@ -2146,6 +2200,17 @@ private fun Interpreter.starVals(f: Expr.Func): List<Val> = f.args.flatMap { agg
 
 private fun Interpreter.aggOperandVals(arg: Expr): List<Val> = when (arg) {
     is Expr.Star -> starOperandVals(arg)
+    // A keyed GROUP contributes the selected row's cells as the bare group arm below contributes its instance's
+    // (IF340); a keyed FIELD its one cell, dropped when empty like a plain field's.
+    is Expr.SemanticIndex -> if (isKeyedGroup(arg)) {
+        when (val cells = keyedGroupCells(arg)) {
+            is KeyedGroupCells.Selected -> cells.interpreter.aggOperandVals(Expr.Field(arg.path))
+            KeyedGroupCells.Empty -> emptyList()
+            KeyedGroupCells.Undecided -> listOf(Val.Unknown)
+        }
+    } else {
+        listOfNotNull(computeGuardedIndexCell(arg))
+    }
     else -> {
         val path = pathOf(arg)
         // A GROUP operand contributes its contained fields, exactly as [starOperandVals] does for the starred

@@ -262,6 +262,14 @@ class Interpreter(
             it.indexColumnMemo = indexColumnMemo
         }
 
+    /** A sub-interpreter rooted at the row [rc] a keyed group operand selects, carrying the SAME config, gates and
+     *  `$` environment, so a bare-group consumer arm asked of it reads that row (IF340). It leaves the aggregate
+     *  memo unset, which only costs a recomputation. */
+    internal fun selectedRowInterp(rc: EvalContext): Interpreter =
+        Interpreter(rc, config, customErrorField, invalid, outer, outerUnbound).also {
+            it.indexColumnMemo = indexColumnMemo
+        }
+
     /** A sub-interpreter for the overlap predicates' `Having` filter row [rc] — like [havingInterp] but with NO
      *  outer binding ([outerUnbound]): a plain boolean predicate's rep-list arg has no enclosing iteration, so
      *  the codegen makes a `$`-bearing comparison/predicate trivially TRUE (KERNEL-FINDINGS §6). */
@@ -512,10 +520,12 @@ class Interpreter(
     }
 
     /** A field-fill quantifier operand that needs the group/starred-scope treatment (IF49): a bare GROUP ref (a
-     *  `Field` whose path is not a declared field), or a starred field/group WITHOUT a `Having` (a Star with a
-     *  Having is the filtered-correlation path, handled by [starQuantTally]). A plain field list is not a scope. */
+     *  `Field` whose path is not a declared field), a keyed one (IF340), or a starred field/group WITHOUT a
+     *  `Having` (a Star with a Having is the filtered-correlation path, handled by [starQuantTally]). A plain field
+     *  list is not a scope. */
     internal fun hasFillScopeOperand(args: List<Expr>): Boolean = args.any {
-        (it is Expr.Star && it.having == null) || (it is Expr.Field && ctxOf(it).declaredKind(it.path) == null)
+        (it is Expr.Star && it.having == null) || (it is Expr.Field && ctxOf(it).declaredKind(it.path) == null) ||
+            isKeyedGroup(it)
     }
 
     /** Aggregate the [FillScope] tally across a fill quantifier's operands (a group scope expands to its
@@ -524,27 +534,55 @@ class Interpreter(
         var t = 0; var f = 0; var n = 0; var unknown = false
         var allFilled = true; var anyEmpty = false
         for (a in args) {
-            val path = scopePathOf(a)
-            val c = ctxOf(a)
-            // A starred index-field operand's instantiated tally is index-aware (mandatory-empty / duplicated
-            // cells are not-check-relevant → the UNKNOWN bucket), so a fill quantifier over an index field matches
-            // the kernel's `isWertAngegeben` (AtLeastOne stops firing on a fully-duplicated index; IF15/IF60).
-            val fs = when {
-                a is Expr.Star && a.having == null && a.path in indexFields -> indexStarFillScope(c, a.path)
-                // A FILTERED operand must be tallied through its filter even here. [EvalContext.fillScope] takes
-                // no `having` parameter at all, so before this branch the filter was silently dropped for every
-                // operand of a list that any OTHER operand had diverted onto this path — see [filteredFillScope].
-                a is Expr.Star && a.having != null -> filteredFillScope(c, a, a.having)
-                // A STARRED operand carries its own binding level; an unstarred one has none, and `-1` then
-                // means "cap at the operand's own path depth".
-                else -> c.fillScope(path, isGroup = c.declaredKind(path) == null,
-                    bindDepth = (a as? Expr.Star)?.bindDepth ?: -1)
-            }
+            val fs = if (a is Expr.SemanticIndex) keyedFillScope(a) else operandFillScope(a)
             t += fs.tInst; f += fs.fInst; n += fs.nInst; unknown = unknown || fs.hasUnknownInst
             allFilled = allFilled && fs.allFilledDeclared
             anyEmpty = anyEmpty || fs.anyEmptyDeclared
         }
         return FillScope(t, f, n, unknown, allFilled, anyEmpty)
+    }
+
+    /** The [FillScope] of one bare, starred or filtered operand of a fill quantifier's list. */
+    private fun operandFillScope(a: Expr): FillScope {
+        val path = scopePathOf(a)
+        val c = ctxOf(a)
+        return when {
+            // A starred index-field operand's instantiated tally is index-aware (mandatory-empty / duplicated
+            // cells are not-check-relevant → the UNKNOWN bucket), so a fill quantifier over an index field matches
+            // the kernel's `isWertAngegeben` (AtLeastOne stops firing on a fully-duplicated index; IF15/IF60).
+            a is Expr.Star && a.having == null && a.path in indexFields -> indexStarFillScope(c, a.path)
+            // A FILTERED operand must be tallied through its filter even here. [EvalContext.fillScope] takes
+            // no `having` parameter at all, so before this branch the filter was silently dropped for every
+            // operand of a list that any OTHER operand had diverted onto this path — see [filteredFillScope].
+            a is Expr.Star && a.having != null -> filteredFillScope(c, a, a.having)
+            // A STARRED operand carries its own binding level; an unstarred one has none, and `-1` then
+            // means "cap at the operand's own path depth".
+            else -> c.fillScope(path, isGroup = c.declaredKind(path) == null,
+                bindDepth = (a as? Expr.Star)?.bindDepth ?: -1)
+        }
+    }
+
+    /**
+     * A keyed operand's share of a fill scope. A keyed GROUP reads the cells of the row its key selects, through
+     * the bare group's own arm asked in that row ([keyedGroupCells], IF340); a key no row carries answers as one
+     * empty cell and an undecidable one as one undecided cell, which every tally reads as it reads the empty and
+     * the undecided group. A keyed FIELD is the one cell it reads, as the plain-list tally reads it: this path
+     * threw on it until a starred sibling first took such a list here (IF340's sibling row).
+     */
+    private fun keyedFillScope(e: Expr.SemanticIndex): FillScope =
+        if (!isKeyedGroup(e)) cellFillScope(presenceTri(e))
+        else when (val cells = keyedGroupCells(e)) {
+            is KeyedGroupCells.Selected -> cells.interpreter.fillScopeInfo(listOf(Expr.Field(e.path)))
+            KeyedGroupCells.Empty -> cellFillScope(Tri.FALSE)
+            KeyedGroupCells.Undecided -> cellFillScope(Tri.UNKNOWN)
+        }
+
+    /** One cell's share of a fill scope: filled, empty, or undecided — counted in neither bucket, like a malformed
+     *  cell, and neither completing the declared range nor leaving a gap in it. */
+    private fun cellFillScope(state: Tri): FillScope = when (state) {
+        Tri.TRUE -> FillScope(1, 0, 1, false, allFilledDeclared = true, anyEmptyDeclared = false)
+        Tri.FALSE -> FillScope(0, 1, 1, false, allFilledDeclared = false, anyEmptyDeclared = true)
+        Tri.UNKNOWN -> FillScope(0, 0, 1, true, allFilledDeclared = false, anyEmptyDeclared = false)
     }
 
     /**
@@ -674,6 +712,14 @@ class Interpreter(
                     if (!havingInterp(rc).fires(a.having!!)) continue
                     yield(filledOrPoison(scanCell(a.path, rc)))
                 }
+            }
+            // A keyed GROUP scans the selected row as the bare group arm below scans its instance (IF340). The
+            // selection itself poisons on a compromised key column; a key no row carries has only empty cells,
+            // read without a value read, so nothing past it can poison.
+            isKeyedGroup(a) -> when (val cells = keyedGroupCells(a as Expr.SemanticIndex)) {
+                is KeyedGroupCells.Selected ->
+                    yieldAll(cells.interpreter.scanFilled(listOf(Expr.Field(a.path)), declaredTail))
+                KeyedGroupCells.Empty, KeyedGroupCells.Undecided -> yield(false)
             }
             a is Expr.Field && ctxOf(a).declaredKind(a.path) == null -> {
                 // A GROUP scope: scan its contained fields in DECLARATION order, each a lazy filled/empty read that

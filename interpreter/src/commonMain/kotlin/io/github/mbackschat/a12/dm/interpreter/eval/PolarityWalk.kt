@@ -450,6 +450,25 @@ private data class AggregateFillState(
 
 /** Resolve one legal numeric aggregate operand to the presence/missingness of its declared contributors. */
 private fun Interpreter.aggregateFillState(arg: Expr): AggregateFillState? = when (arg) {
+    // A keyed GROUP's contributors are the selected row's, read as the bare group arm below reads an instance's
+    // (IF340); an absent row's are all missing. An undecided key leaves the aggregate non-evaluable, so no
+    // message carries this operand's polarity. A keyed FIELD is its one cell.
+    is Expr.SemanticIndex -> if (isKeyedGroup(arg)) {
+        when (val cells = keyedGroupCells(arg)) {
+            is KeyedGroupCells.Selected -> cells.interpreter.aggregateFillState(Expr.Field(arg.path))
+            KeyedGroupCells.Empty -> ctxOf(arg).let { c ->
+                val fields = c.containedFields(arg.path)
+                if (fields.isEmpty() || fields.any { c.declaredKind(it) != Kind.NUMBER }) null
+                else AggregateFillState(hasPresent = false, hasMissing = true, fields.any { c.signed(it) })
+            }
+            KeyedGroupCells.Undecided -> AggregateFillState.EMPTY
+        }
+    } else {
+        val c = ctxOf(arg)
+        if (c.declaredKind(arg.path) != Kind.NUMBER) null
+        else if (semanticIndexFilled(arg)) AggregateFillState(true, false, false)
+        else AggregateFillState(false, true, c.signed(arg.path))
+    }
     is Expr.Field -> {
         val c = ctxOf(arg)
         when {
@@ -692,8 +711,19 @@ private fun Interpreter.leafOmission(e: Expr): Boolean = when (e) {
     is Expr.Func -> if (FunctionOp.byName(e.name) == FunctionOp.FIRST_FILLED_VALUE)
         firstFilledScan(e).fill.let { it.canGrow || it.canShrink }
     else e.args.any { leafOmission(it) }
-    is Expr.SemanticIndex -> !semanticIndexFilled(e)
+    is Expr.SemanticIndex -> if (isKeyedGroup(e)) keyedGroupOmission(e) else !semanticIndexFilled(e)
     else -> false
+}
+
+/** Whether filling can still add to a keyed GROUP operand of a count: the selected row's expansion read as the
+ *  bare group's is (IF340), every field of an absent row, and nothing of an undecided one, which needs
+ *  correcting rather than filling. */
+private fun Interpreter.keyedGroupOmission(e: Expr.SemanticIndex): Boolean = when (val cells = keyedGroupCells(e)) {
+    is KeyedGroupCells.Selected -> with(cells.interpreter) {
+        expandGroupOperands(listOf(Expr.Field(e.path))).any { leafOmission(it) }
+    }
+    KeyedGroupCells.Empty -> true
+    KeyedGroupCells.Undecided -> false
 }
 
 /** The message polarity of a fired group/starred-scope fill quantifier — the kernel's fixed WF/AF per op

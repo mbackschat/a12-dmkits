@@ -153,11 +153,12 @@ internal class PreparedEvaluationPlan(
             is Cond.Pred -> {
                 val op = PredicateOp.byName(cond.name)
                     ?: throw UnsupportedConstructException("unsupported predicate ${cond.name}")
-                // a keyed group is a group operand wherever a group's presence is asked (IF331)
-                val groupPresenceOperator = op.countsGroups ||
-                    op == PredicateOp.GROUP_FILLED || op == PredicateOp.GROUP_NOT_FILLED
+                // a keyed group is a group operand wherever a group's presence is asked (IF331), and where a
+                // field-fill quantifier reads the cells inside it (IF340)
+                val keyedGroupOperator = op.countsGroups ||
+                    op == PredicateOp.GROUP_FILLED || op == PredicateOp.GROUP_NOT_FILLED || op in FIELD_FILL_QUANTIFIERS
                 cond.args.forEach {
-                    auditExpr(it, outerAllowed, starAllowed = true, groupSemanticIndexAllowed = groupPresenceOperator)
+                    auditExpr(it, outerAllowed, starAllowed = true, groupSemanticIndexAllowed = keyedGroupOperator)
                 }
                 if ((op == PredicateOp.VALID || op == PredicateOp.INVALID) && cond.args.size == 2) {
                     val typeName = (cond.args[1] as? Expr.StrLit)?.v
@@ -228,7 +229,7 @@ internal class PreparedEvaluationPlan(
                         argument,
                         outerAllowed,
                         starAllowed = true,
-                        groupSemanticIndexAllowed = op == FunctionOp.FIRST_FILLED_VALUE,
+                        groupSemanticIndexAllowed = op == FunctionOp.FIRST_FILLED_VALUE || op in KEYED_GROUP_AGGREGATES,
                     )
                 }
                 if (op == FunctionOp.SUM_OF_PRODUCTS &&
@@ -267,7 +268,8 @@ internal class PreparedEvaluationPlan(
                 val isField = expr.path in model.kinds
                 if (!isField && !groupSemanticIndexAllowed) {
                     throw UnsupportedConstructException(
-                        "a group semantic index is only an entity of FirstFilledValue or a group-presence condition")
+                        "a group semantic index is only an entity of FirstFilledValue, a group-presence condition, " +
+                            "a field-fill quantifier, NumberOfFilledFields, Sum, MaxValue or MinValue")
                 }
                 if (nearestIndexFieldOf(model.indexFields, expr.path) == null) {
                     throw UnsupportedConstructException(
@@ -312,6 +314,20 @@ internal class PreparedEvaluationPlan(
 
     private companion object {
         val DATE_LIKE = setOf(Kind.DATE, Kind.TIME, Kind.DATE_RANGE, Kind.DATE_TIME)
+
+        /** The quantifiers that read a keyed group's cells, each measured on `KeyedGroupFieldListDiffTest` (IF340). */
+        val FIELD_FILL_QUANTIFIERS = setOf(PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED,
+            PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.MORE_THAN_ONE_FIELD_FILLED,
+            PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED,
+            PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED)
+
+        /**
+         * The aggregates that read a keyed group's cells, each measured on `KeyedGroupFieldListDiffTest` (IF340).
+         * `NumberOfDifferentValues` and `NumberOfValueInFields` expand through other owners and have no row over
+         * an unstarred keyed group, so they stay declined (INTERPRETER-GAPS IG155).
+         */
+        val KEYED_GROUP_AGGREGATES = setOf(FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.SUM, FunctionOp.MAX_VALUE,
+            FunctionOp.MIN_VALUE)
         val VALUE_AS_DATE_BOUNDARIES = setOf("FirstDay", "LastDay")
     }
 }
