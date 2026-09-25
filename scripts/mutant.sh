@@ -33,6 +33,10 @@
 # EXIT: 0 = killed (the control fired). 1 = SURVIVED (report it). 2 = the mutant could not be applied.
 #
 set -euo pipefail
+# An abort `set -e` causes exits with the failing command's status, and 1 is SURVIVED, so an unplanned stop
+# read as a finding. Measured 2026-09-25: the red-control probe's `grep -l` found no failure, returned 1, and
+# every mutant against a green control "survived" without running. Every unplanned stop is no verdict.
+trap 'echo "mutant: stopped by a failing command at line $LINENO — no verdict" >&2; exit 2' ERR
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 [ $# -ge 4 ] || { sed -n '3,34p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
@@ -89,7 +93,9 @@ results=${lane_dir:+$lane_dir/}build/test-results/${LANE##*:}
 # A control that is ALREADY red reports every mutant killed, and the verdict reads as proof. Measured 2026-09-25:
 # a mirror test edited and not yet green "killed" a mutant that a green control later let survive. The kills
 # this script causes delete their own red XMLs (see restore), so a red one still here is the operator's last run.
-red=$(find "$results" -name "TEST-${FILTER}.xml" -exec grep -l -E 'failures="[1-9]|errors="[1-9]' {} + 2>/dev/null)
+# `grep -l` returns 1 on a GREEN file, which is the expected case, so its status is not the probe's answer.
+red=$(find "$results" -name "TEST-${FILTER}.xml" -exec grep -l -E 'failures="[1-9]|errors="[1-9]' {} + \
+  2>/dev/null || true)
 if [ -n "$red" ]; then
   echo "mutant: REFUSING — the control's last recorded run in $LANE is red, so any mutant would read killed:" >&2
   printf '%s\n' "$red" | sed 's/^/          /' >&2
