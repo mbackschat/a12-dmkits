@@ -1032,7 +1032,9 @@ internal fun checkRun(
         .withoutDefectsBehindAnEarlierOne(placedReferences, twinned)
         .withoutPostParseClassesBehindAPositionedDefect(aboutTheDsl)
         .withoutMessageVerdictsBehindARefusedDsl(messageVerdicts, dslVerdicts = references + dslVerdicts)
-    val findings = judged.notSuppressedBy(tracked.variantFilterSuppressed())
+        .withoutComputationMemberClassesBehindARefusedText(dslVerdicts = references + dslVerdicts)
+    // After the variant filter, because a declaration A12 never examines draws no class that could stop it.
+    val findings = judged.notSuppressedBy(tracked.variantFilterSuppressed()).withoutACycleBesideAnyOtherClass()
     return CheckRun(
         report = ConsistencyReport(
             modelId = modelId,
@@ -1426,6 +1428,42 @@ private fun List<Finding>.withoutMessageVerdictsBehindARefusedDsl(
 }
 
 /**
+ * Drops the calculation module's classes about ONE computation's other members where its own texts are refused.
+ *
+ * A12 judges a computation's rounding mode, its target and the shape of its alternatives only once both of its
+ * texts parsed and every name in them resolved: a parse-time class in either member, or a name that resolves
+ * to nothing, withholds all three, while a class in another declaration stands beside them
+ * (`rulekit.validate.laws.CalculationMemberWithholdingLawsTest`, [KERNEL-FINDINGS KF375]). Keyed by CODE, not
+ * by family, because the alternatives family draws text classes of its own beside its member class, and a
+ * member class never triggers the drop: two of them on one computation are unmeasured, so both stand.
+ */
+private fun List<Finding>.withoutComputationMemberClassesBehindARefusedText(
+    dslVerdicts: List<Finding>,
+): List<Finding> {
+    val refused = dslVerdicts.filter { it.justifiesRejection && it.code !in COMPUTATION_MEMBER_CODES }
+        .mapTo(mutableSetOf()) { it.at }
+    return filterNot { it.code in COMPUTATION_MEMBER_CODES && it.at in refused }
+}
+
+/**
+ * Drops the dependency cycle wherever any other class is drawn, anywhere in the model.
+ *
+ * A12's code generator draws the cycle (`CodeGenCalcBuilder`, kernel-core-codegen at 30.8.1), and every other
+ * class measured beside it withholds it: another computation's text or member class, a rule's text class and
+ * a structural class alike (`rulekit.validate.laws.CalculationMemberWithholdingLawsTest
+ * .aDefectElsewhereWithholdsOnlyTheCycle`). So the checker reports it only on a model it otherwise admits.
+ */
+private fun List<Finding>.withoutACycleBesideAnyOtherClass(): List<Finding> =
+    if (any { it.justifiesRejection && it.code != CALC_CYCLE }) filterNot { it.code == CALC_CYCLE } else this
+
+private const val CALC_CYCLE = "MVK_ERROR_CALC_CYCLE"
+
+/** The classes about one computation's members other than its texts, which its refused texts withhold. */
+private val COMPUTATION_MEMBER_CODES = setOf(
+    "MVK_ERROR_WRONG_ROUNDING_MODE", "MVK_ERROR_INDEX_AS_CALCULATED_FIELD", "MVK_ERROR_EMPTY_PRECONDITION",
+)
+
+/**
  * The families that report A12's ERROR-TEXT checker, whose verdicts A12 gives only beside a sound DSL.
  *
  * The split is by checker, not by spelling. `RuleInfoBuilder.getErrorTextParameters` skips
@@ -1589,7 +1627,8 @@ private val POSITIONED_CONDITION_CODES = setOf(
  * raw-type length's `MVK_INTERNAL_ERROR` is read by `AnalyseService.extractConstant` only past the
  * post-parse shape gate, which answers first when both fail (`RawTypeLength`); it is the one member listed
  * from that order rather than measured against a parse-time class. The calculation module's classes about a
- * computation's other members are not text classes and stay out ([DEV-API-GAPS DG86]).
+ * computation's other members are not text classes and stay out: their own two steps withhold them
+ * ([withoutComputationMemberClassesBehindARefusedText], [withoutACycleBesideAnyOtherClass]).
  *
  * Measured: `MVK_PARALLEL_ITERATION_NOT_ALLOWED` and `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` both
  * vanish behind a containment class on one model (`RepetitionNotUniqueFromScopeLawsTest`, whose verdict is

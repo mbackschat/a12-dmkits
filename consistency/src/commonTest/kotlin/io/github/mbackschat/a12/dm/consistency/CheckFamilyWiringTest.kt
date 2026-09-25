@@ -374,14 +374,6 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r23","name":"MessageCarriesATab","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
               "errorCode":"C23","errorMessage":[{"locale":"en_US","text":"see\u0009the price"}]}},
-            {"type":"Field","id":"f14","name":"Tare","Field":{"fieldType":{"type":"NumberType"}}},
-            {"type":"Field","id":"f15","name":"Gross","Field":{"fieldType":{"type":"NumberType"}}},
-            {"type":"Computation","id":"c7","name":"GrossCalc","Computation":{
-              "computedFieldRelPath":"../Gross",
-              "computationAlternatives":[{"operation":"[Tare] + 1"}]}},
-            {"type":"Computation","id":"c8","name":"TareCalc","Computation":{
-              "computedFieldRelPath":"../Tare",
-              "computationAlternatives":[{"operation":"[Gross] * 2"}]}},
             {"type":"Field","id":"f70","name":"Label","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Computation","id":"c70","name":"ReadsItsOwnTarget","Computation":{
               "computedFieldRelPath":"../Label",
@@ -502,9 +494,6 @@ class CheckFamilyWiringTest {
             ("MVK_ERROR_INDEX_AS_CALCULATED_FIELD" to "/Catalog/IntoAnIndex"),
         CheckFamily.COMPUTATION_PRECONDITION_FEATURES to
             ("MVK_ERROR_INVALID_LANGUAGE_FEATURE" to "/Catalog/GuardedByAnAppCondition"),
-        // The circle's report is anchored at the computation writing its smallest member, so the path here
-        // is `Gross`'s writer rather than either declaration's position in the file.
-        CheckFamily.COMPUTATION_CYCLE to ("MVK_ERROR_CALC_CYCLE" to "/Catalog/GrossCalc"),
         // A STRING target, so the scale gate this family stands aside for cannot be what decides the row.
         CheckFamily.COMPUTATION_SELF_READ to
             ("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD" to "/Catalog/ReadsItsOwnTarget"),
@@ -781,11 +770,50 @@ class CheckFamilyWiringTest {
             ("MVK_INVALID_ROOT_GROUP_CONSTR" to "/Bestellung/FormularRegel"),
     )
 
+    /**
+     * A model that draws NOTHING but a dependency cycle, because A12 draws the cycle only on a model it
+     * otherwise admits: its code generator raises it, and any other class withholds it
+     * (`rulekit.validate.laws.CalculationMemberWithholdingLawsTest`). The fixture above draws a class per
+     * family, so it can carry no cycle the report would show.
+     */
+    private val cycleSource = ModelSource(
+        """
+        {"header":{"id":"wiring-cycle","locales":[{"code":"en_US"}]},
+         "content":{"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"gc0","name":"Catalog","Group":{"elements":[
+            {"type":"Field","id":"fc0","name":"Tare","Field":{"fieldType":{"type":"NumberType"}}},
+            {"type":"Field","id":"fc1","name":"Gross","Field":{"fieldType":{"type":"NumberType"}}},
+            {"type":"Computation","id":"cc0","name":"GrossCalc","Computation":{
+              "computedFieldRelPath":"../Gross",
+              "computationAlternatives":[{"operation":"[Tare] + 1"}],
+              "errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Computation","id":"cc1","name":"TareCalc","Computation":{
+              "computedFieldRelPath":"../Tare",
+              "computationAlternatives":[{"operation":"[Gross] * 2"}],
+              "errorMessage":[{"locale":"en_US","text":"x"}]}}
+          ]}}
+         ]}}}
+        """.trimIndent(),
+    )
+
+    /**
+     * What the cycle model proves. The circle's report is anchored at the computation writing its smallest
+     * member, so the path is `Gross`'s writer rather than either declaration's position in the file.
+     */
+    private val cycleEvidence = mapOf(
+        CheckFamily.COMPUTATION_CYCLE to ("MVK_ERROR_CALC_CYCLE" to "/Catalog/GrossCalc"),
+    )
+
+    /** The models beside [source], each carrying the families only it can reach, with what each proves. */
+    private val sideModels = listOf(germanSource to germanEvidence, cycleSource to cycleEvidence)
+
     @Test
-    fun everyGermanOnlyFamilyReachesTheReport() {
-        val present = check(germanSource).findings.map { it.code to it.at }.toSet()
-        assertEquals(germanEvidence.mapValues { true }, germanEvidence.mapValues { (_, row) -> row in present },
-            "a German-only family reports nothing while checksCompleted still names it")
+    fun everySideModelFamilyReachesTheReport() {
+        sideModels.forEach { (model, rows) ->
+            val present = check(model).findings.map { it.code to it.at }.toSet()
+            assertEquals(rows.mapValues { true }, rows.mapValues { (_, row) -> row in present },
+                "a family only a side model reaches reports nothing while checksCompleted still names it")
+        }
     }
 
     @Test
@@ -811,7 +839,7 @@ class CheckFamilyWiringTest {
     @Test
     fun everyFamilyIsAccountedFor() {
         assertEquals(CheckFamily.entries.toSet(),
-            evidence.keys + germanEvidence.keys + CheckFamily.VARIANT_FILTER,
+            evidence.keys + sideModels.flatMap { (_, rows) -> rows.keys } + CheckFamily.VARIANT_FILTER,
             "a new CheckFamily constant needs a declaration here that triggers it, not only a call site")
     }
 
@@ -845,7 +873,7 @@ class CheckFamilyWiringTest {
     @Test
     fun eachRegistrationProducesExactlyTheFamiliesItClaims() {
         val misattributed = mutableListOf<String>()
-        listOf(source to evidence, germanSource to germanEvidence).forEach { (model, rows) ->
+        (listOf(source to evidence) + sideModels).forEach { (model, rows) ->
             val admitted = admit(model)
             assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")
             val tracked = TrackedFactBase(prepare(admitted), ReadTranscript())
@@ -878,7 +906,7 @@ class CheckFamilyWiringTest {
         val corpus = ParityCorpusJson.cases().flatMap { it.sources }.distinct()
             .map { ModelSource(ParityCorpusJson.source(it)) }
         var examined = 0
-        (listOf(source, germanSource) + corpus).forEach { model ->
+        (listOf(source) + sideModels.map { (model, _) -> model } + corpus).forEach { model ->
             if (admit(model) !is Admission.Admitted) return@forEach
             examined++
             // The comparison itself lives in [scopedWalkDivergences], shared with

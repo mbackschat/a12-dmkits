@@ -56,7 +56,7 @@ class CheckerConditionCodePhaseGuardTest {
         ERROR_TEXT,
         /** About a declaration member other than its texts: a name, the code, the locales, a message's presence. */
         DECLARATION_MEMBER,
-        /** The calculation module's classes about a computation's other members, unmeasured against a text (DG86). */
+        /** The calculation module's classes about a computation's other members, withheld by their own two steps. */
         CALCULATION_MEMBER,
         /** About a field type, an enumeration, a group, a name or a path, which carry no DSL text at all. */
         MODEL_STRUCTURE,
