@@ -40,7 +40,7 @@ import kotlinx.serialization.json.intOrNull
  * is the same family's, and on a value spec or key that does not resolve.
  *
  * **Silent where the key's DECLARED type is one A12's base-type comparison leaves unsettled here.** The
- * comparison is [IndexKeyClass], not name equality, and a declaration outside that table — a type definition
+ * comparison is [BaseTypeClass], not name equality, and a declaration outside that table — a type definition
  * or an unspecified field — leaves the whole index unjudged rather than guessing whether A12 calls it
  * consistent.
  *
@@ -200,8 +200,8 @@ private fun TrackedFactBase.element(path: String?): TrackedDeclaration? =
 private enum class KeyTypeVerdict { CONSISTENT, INCONSISTENT, UNSETTLED }
 
 private fun keyTypeVerdict(indexField: TrackedDeclaration, key: TrackedDeclaration): KeyTypeVerdict {
-    val expected = indexField.declaredFieldType()?.indexKeyClass ?: return KeyTypeVerdict.UNSETTLED
-    val actual = key.declaredFieldType()?.indexKeyClass ?: return KeyTypeVerdict.UNSETTLED
+    val expected = indexField.declaredFieldType()?.baseTypeClass ?: return KeyTypeVerdict.UNSETTLED
+    val actual = key.declaredFieldType()?.baseTypeClass ?: return KeyTypeVerdict.UNSETTLED
     return if (expected == actual) KeyTypeVerdict.CONSISTENT else KeyTypeVerdict.INCONSISTENT
 }
 

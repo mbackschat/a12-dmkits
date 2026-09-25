@@ -282,8 +282,8 @@ internal fun TrackedFactBase.parallelVerdictOf(
     }
     val targetIndex = indexFieldAt(keyedForTheTarget.path, targetIndexName)
         ?: return ParallelVerdict.Unjudged
-    val operandClass = operandIndex.declaredFieldType()?.indexKeyClass ?: return ParallelVerdict.Unjudged
-    val targetClass = targetIndex.declaredFieldType()?.indexKeyClass ?: return ParallelVerdict.Unjudged
+    val operandClass = operandIndex.declaredFieldType()?.baseTypeClass ?: return ParallelVerdict.Unjudged
+    val targetClass = targetIndex.declaredFieldType()?.baseTypeClass ?: return ParallelVerdict.Unjudged
     return if (operandClass == targetClass) {
         ParallelVerdict.Joint
     } else {

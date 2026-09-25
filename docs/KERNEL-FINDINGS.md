@@ -8277,7 +8277,7 @@ Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the ca
 
 **The date arm never compares the format STRINGS, only three questions about their components.** `dd.MM.yyyy` against `yyyy-MM` is ADMITTED though the precisions differ, because both carry a year and both carry a calendar component — A12's own comment calls this the weaker condition and wonders whether it is intended. The clock question is asked of `==` / `!=` alone: a date against a date-and-time is refused under equality and admitted under ordering, measured in both as the control that attributes the refusal to the operator.
 
-**A date's partner of ANOTHER KIND lands on the date arm**, whichever arm would otherwise own it — a number, a text and a date range each draw `MVK_INVALID_COMPARE_TO_DATE` rather than that partner's own class, measured in both operand orders. A DATE FRAGMENT is a date carrier here too: matching components admitted, differing ones refused.
+**A date's partner of ANOTHER KIND lands on the date arm**, whichever arm would otherwise own it — a number, a text and a date range each draw `MVK_INVALID_COMPARE_TO_DATE` rather than that partner's own class, measured in both operand orders. *Corrected 2026-09-25:* every arm asked AFTER it, not every arm. The boolean arm is asked first, so a confirm or boolean partner draws `MVK_INVALID_COMPARE_TO_YES` or `…_YESNO` and the date arm is never reached ([KF469](#kf469)). A DATE FRAGMENT is a date carrier here too: matching components admitted, differing ones refused.
 
 **The date-range arm demands EXACT component agreement and ignores both the format string and the separator.** Two ranges spelled `dd.MM.yyyy`/`-` and `yyyy-MM-dd`/`/` are ADMITTED; `dd.MM.yyyy` against `MM` is refused. A12 passes `false` for the base year in this arm alone, where the date arm supplements.
 
@@ -9237,7 +9237,7 @@ Locked: `validate.laws.ParallelIterationGateLawsTest`. **Reported by the portabl
 
 **A `$`-marked filter reference that no iteration encloses is walked as the rule's own read.** From the fixed `Summary`, `Sum(Returns*/Weight Having [$Invoices/Weight] == [Returns/Weight]) > 0` is `MVK_ERROR_FIELD_NO_INDEX` with `Invoices` keyed, the marked read of the unkeyed filtered group itself is `MVK_NO_WILDCARD`, and a marked read of a `Summary` field is admitted — each the class the same read draws outside any filter, measured beside them. The same body UNMARKED is `MVK_INVALID_ITERATION_IN_FILTER_CONDITION`, so on this pair the marker alone decides which of the two classes the reference draws. This confirms the second delta of the same entry (their report); the checker's silence there is DEV-API-GAPS DG88.
 
-Locked: `validate.laws.IndexFieldBaseTypeLawsTest`, mirrored by `consistency.IndexFieldBaseTypeTest`. The checker reads both gates off one table, `IndexKeyClass`, since 2026-09-25; until then the parallel gate knew four kinds and fell silent on the rest, and the semantic-index gate put a date range among the temporal kinds.
+Locked: `validate.laws.IndexFieldBaseTypeLawsTest`, mirrored by `consistency.IndexFieldBaseTypeTest`. The checker reads both gates off one table, `BaseTypeClass`, since 2026-09-25, and every other gate that compares base types reads it too ([KF468](#kf468)); until then the parallel gate knew four kinds and fell silent on the rest, and the semantic-index gate put a date range among the temporal kinds.
 
 ## §9 supplement — one `RepetitionNotUnique` per condition, counted as CALLS over the whole tree (measured, 2026-09-14) <a id="kf352"></a>
 
@@ -10800,3 +10800,39 @@ The key rows order two spec-end classes as well: on one key spec, the body's ite
 **Extended 2026-09-25 — a sign stands on a number literal alone.** The grammar has no unary minus: `-` is part of `commonKonstante : minus='-'? ZiffernFolge …`. So `[BaseFee] > -1` and `[BaseFee] - -1 > 1` are admitted, while `-[BaseFee] < 0`, `[BaseFee] > -[EffectiveFee]`, `[BaseFee] > -{[EffectiveFee] + 1}`, `[BaseFee] > -Abs([EffectiveFee])` and `[BaseFee] > --1` are each `MVK_UNEXPECTED_TOKEN`. The checker had signed any operand and admitted all five; it now signs a literal only. The same holds on the operation carrier and in an operation argument: into `EffectiveFee`, `-5`, `0 - [BaseFee]`, `[BaseFee] * -1` and `RoundUp(0 - [BaseFee], 2)` are admitted, while `-[BaseFee]`, `[BaseFee] * -[BaseFee]`, `{-[BaseFee]}` and `RoundUp(-[BaseFee], 2)` are each `MVK_UNEXPECTED_TOKEN`, as the checker also answers.
 
 *Locked by:* `rulekit.validate.laws.WhereAConditionMayStandLawsTest`, `…FilterBodyComparisonLawsTest`, the connective rows of `…ConditionClassWithholdingLawsTest`, and `…ConditionArithmeticSymbolLawsTest` (both carriers); mirrored by `consistency.WhereAConditionMayStandTest`, `consistency.FilterBodyComparisonTest`, `consistency.ConditionMultipleDefectTest` and `consistency.ConditionShapeTest`.
+
+## §1 supplement — a time, a date-time and a date fragment share the date's base-type class, and a custom declaration the text's, wherever a gate compares two base types (source-read + measured, 2026-09-25) <a id="kf468"></a>
+
+> Fold: not-foldable — a diagnostic-class law about operand kinds, not an evaluation behaviour.
+
+**Read from source, then measured.** `TypeConverter.convert` (kernel-md-model at the pinned 30.8.1) builds a date fragment as a `DateTypeImpl` (`convertDateFragment`), as it builds a date, and the md-api `ITimeType` and `IDateTimeType` both extend `IDateType`, so all four temporal kinds reach the checks as the tool-api `IDateType`, whose `matchBaseType` admits any other `IDateType`. A custom declaration becomes a `PredefinedTypeImpl`, which `OperationResultTypeMap.isLikeStringType` reads as a string. So the partition predicted is {text, custom}, number, enumeration, {date, time, date-time, date fragment}, date range, boolean, confirm. Each row below holds the model and the rule fixed and changes one operand, on a parcel-shipment model that declares two fields of one format for each of the fragment, time and date-time kinds. Locked by `rulekit.validate.laws.TemporalAndCustomBaseTypeLawsTest`:
+
+| `FieldFilled(Reference) And …` | A12 |
+|---|---|
+| `[DispatchMonth] < [ReturnMonth]` (two fragments) · `[PickupTime] < [DropoffTime]` · `[ShippedAt] < [DeliveredAt]` | admitted |
+| `[DispatchMonth] < [Carrier]` · `[PickupTime] < [Carrier]` · `[Tracking] < 1`, a custom field ordered against a number | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+| `[ShippedAt] DiffersWithToleranceRange1 [Weight]` · `[Tracking] DiffersWithToleranceRange1 1` | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` |
+| `[Signed] == [DispatchMonth]` · `[Signed] == [PickupTime]` · `[Signed] == [Tracking]` | `MVK_INVALID_COMPARE_TO_YES` |
+| `[Insured] == [PickupTime]` · `[Insured] == [Tracking]` | `MVK_INVALID_COMPARE_TO_YESNO` |
+| `AtLeastOneFieldValueIncludedInValueList(ShipDate, DispatchMonth In "x")` · `(PickupTime, ShippedAt In "x")` | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
+| `AtLeastOneFieldValueIncludedInValueList(Carrier, Tracking In "x")` | admitted |
+| `AtLeastOneFieldValueIncludedInValueList(Carrier In Service, PickupTime)` · `FieldValueIncludedInValueList(Carrier, [PickupTime])` | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+
+**The value-list rows are what separate a class from a kind.** The quantifiers ask the base-type gate ahead of their kind gate, so a date beside a fragment, and a time beside a date-time, pass the first and are refused by the second, exactly as two dates are (`ValueListQuantifierOperandKindLawsTest`); a time beside a text is refused by the first. A second test measures each arm a reclassified kind reaches on the kind itself, rather than carrying the date's or the text's row over: `[ShipDate] < "x"`, `[PickupTime] < "x"` and `[DispatchMonth] < "x"` are each `MVK_INVALID_TYPE_FOR_COMPARISON`. The index-key gate had already measured the same partition on its own carriers ([KF353](#kf353)).
+
+**The portable checker kept a second table for these gates**, which gave the date fragment a class of its own and left the time, date-time and custom kinds out, and one gate special-cased the custom kind to text. It now reads the one table the index-key gate already held (`BaseTypeClass`) and answers every row of both tests as A12 does (`consistency.TemporalAndCustomBaseTypeTest`, which asserts each row's complete class set). The type definition and the unspecified kind stay unclassified, because their effective type is a definition body this checker does not read.
+
+## §1 supplement — a comparison's agreement arms answer in a fixed order, and only the arm asked first draws a class (source-read + measured, 2026-09-25) <a id="kf469"></a>
+
+> Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
+
+`CheckVergleichsBedingungImpl.check` asks the boolean arm (`checkYesAndYesNoOperations`), then the date arm, then the date-range arm, then the text and enumeration arms, then the number arm, and each arm throws. So where two arms would refuse one comparison, the one asked first names it. Each row pairs an earlier arm's refusal with a partner a later arm refuses too. Locked by `rulekit.validate.laws.ComparisonArmOrderLawsTest`:
+
+| `FieldFilled(Reference) And …` | A12 |
+|---|---|
+| a confirm against a date, a date range or an enumeration: `[Signed] == [ShipDate]` · `[DeliveryWindow]` · `[Priority]` | `MVK_INVALID_COMPARE_TO_YES` |
+| a boolean against a date, a text or a number: `[Insured] == [ShipDate]` · `[Carrier]` · `[Weight]` | `MVK_INVALID_COMPARE_TO_YESNO` |
+| a date against a date range, an enumeration or a number: `[ShipDate] == [DeliveryWindow]` · `[Priority]` · `[Weight]` | `MVK_INVALID_COMPARE_TO_DATE` |
+| a date range against a text, an enumeration or a number: `[DeliveryWindow] == [Carrier]` · `[Priority]` · `[Weight]` | `MVK_INVALID_COMPARE_TO_DATE_RANGE` |
+
+Four checks come earlier still: two constants, the tolerance and pattern operators, each of which returns once asked, and ordering, which does not. The tolerance and ordering ones are [KF386](#kf386)'s. **The portable checker judged each arm on its own**, so its date walk also claimed a confirm or boolean partner, and a comparison of a confirm with a date drew both classes. The mirror that would have shown it asserted only its own family's codes. The date walk now leaves any comparison with one of those two kinds to the boolean arm, and `consistency.ComparisonArmOrderTest` asserts every row's complete class set.

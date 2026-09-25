@@ -8,7 +8,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.comparisonsIn
  *
  * `CheckVergleichsBedingungImpl.checkDateType` and `checkDateRangeType` run back to back, ahead of the text,
  * enumeration and number arms, and each answers with a class of its own
- * ([KERNEL-FINDINGS KF386], `rulekit.validate.laws.TemporalComparisonAgreementLawsTest`).
+ * ([KERNEL-FINDINGS KF386], `rulekit.validate.laws.TemporalComparisonAgreementLawsTest`). They run BEHIND the
+ * boolean arm, `checkYesAndYesNoOperations`, which refuses every partner of a confirm or boolean side that
+ * this walk would, so a comparison with one of those two kinds is [booleanComparisonAgreementFindings]' to
+ * answer and this walk stays silent on it ([KF469], `…ComparisonArmOrderLawsTest`).
  *
  * | the question | class |
  * |---|---|
@@ -179,6 +182,9 @@ private fun TrackedFactBase.sideOf(
     inAFilterBody: Boolean,
 ): TemporalSide? {
     val declared = bareReferenceField(side, declaringGroup, element, inAFilterBody) ?: return null
+    if (declared.baseTypeClass() in BOOLEAN_ARM_KINDS) {
+        return null
+    }
     declaredTemporalFormatOf(declared)?.let {
         return TemporalSide.Date(declared.path, componentsOf(it))
     }
@@ -192,6 +198,9 @@ private fun TrackedFactBase.sideOf(
     }
     return if (declared.declaredFieldType() in DATED_TYPES) null else TemporalSide.Other(declared.path)
 }
+
+/** The two kinds the boolean arm, asked ahead of this walk, answers for whatever their partner is. */
+private val BOOLEAN_ARM_KINDS = setOf(BaseTypeClass.YES, BaseTypeClass.YES_NO)
 
 /** The kinds whose format member decides the arm; an unreadable body among them means "cannot say". */
 private val DATED_TYPES =

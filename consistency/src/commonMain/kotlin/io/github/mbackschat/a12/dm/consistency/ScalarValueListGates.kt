@@ -181,9 +181,9 @@ private fun TrackedFactBase.entryListFindings(
     if (walked.map { it.path }.distinct().size != walked.size) {
         return null
     }
-    var expected = subject.listBaseType() ?: return null
+    var expected = subject.baseTypeClass() ?: return null
     fields.forEach { field ->
-        val kind = field.listBaseType() ?: return null
+        val kind = field.baseTypeClass() ?: return null
         if (kind != expected) {
             return listOf(gate(VARYING_TYPES, call.operator, field, member, element, call.spanIn(member)))
         }
@@ -256,16 +256,6 @@ private fun JsonObject.lookupDomain(category: String?): List<String>? {
     val values = named["values"] as? JsonArray ?: return null
     return values.map { (it as? JsonPrimitive)?.takeIf { token -> token.isString }?.content ?: return null }
 }
-
-/**
- * The base type `matchBaseType` sorts this declaration into, or null where this reader cannot say.
- *
- * A CUSTOM declaration answers TEXT — measured on this carrier
- * (`rulekit.validate.laws.ScalarValueListGateLawsTest`), and deliberately not folded into the shared
- * [baseTypeClass], whose other consumers ask the same question on carriers where the grouping is unmeasured.
- */
-private fun TrackedDeclaration.listBaseType(): BaseTypeClass? =
-    if (declaredFieldType() == FieldType.CUSTOM_FIELD) BaseTypeClass.TEXT else baseTypeClass()
 
 /** Whether this operand is the list's `[entity]` spelling rather than a constant. */
 private fun CallOperand.namesAFieldEntry(): Boolean =

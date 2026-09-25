@@ -483,51 +483,16 @@ private fun declaredFieldTypeIn(body: JsonObject?): FieldType? =
     (body?.get("fieldType") as? JsonObject)?.namedFieldType()
 
 /**
- * The base-type classes `IFieldType.matchBaseType` sorts declarations into.
- *
- * Text and Custom share one because `IStringType` and `IPredefinedType` each accept the other; every other
- * class accepts only its own. The names are the ones a finding prints, so they read as a model author would
- * say them rather than as the wire discriminator does.
- */
-internal enum class BaseTypeClass(val spoken: String) {
-    TEXT("text"),
-    NUMBER("number"),
-    ENUMERATION("enumeration"),
-    DATE("date"),
-    YES("confirm"),
-    YES_NO("boolean"),
-    DATE_RANGE("date range"),
-    DATE_FRAGMENT("date fragment"),
-}
-
-/**
- * No `CustomFieldType` row, deliberately: A12 gives a custom declaration the TEXT base type, but whether
- * each comparison arm behind [baseTypeClass] then treats it as a string is unmeasured on those carriers, and
- * the three consumers all document that silence. The row was present spelled `CustomType`, a token no stored
- * model carries, so the silence held by accident; leaving it out states it.
- */
-private val BASE_TYPE_OF = mapOf(
-    FieldType.STRING to BaseTypeClass.TEXT,
-    FieldType.NUMBER to BaseTypeClass.NUMBER,
-    FieldType.ENUMERATION to BaseTypeClass.ENUMERATION,
-    FieldType.DATE to BaseTypeClass.DATE,
-    FieldType.CONFIRM to BaseTypeClass.YES,
-    FieldType.BOOLEAN to BaseTypeClass.YES_NO,
-    FieldType.DATE_RANGE to BaseTypeClass.DATE_RANGE,
-    FieldType.DATE_FRAGMENT to BaseTypeClass.DATE_FRAGMENT,
-)
-
-/**
- * Which base-type class this field's declaration falls into, or null where this reader cannot say.
+ * Which [BaseTypeClass] this field's declaration falls into, or null where this reader cannot say.
  *
  * Null covers `TypeDefType` and `UnspecifiedType`, whose effective type is a definition body this checker
  * declares as a coverage gap rather than reads — so a law over base types leaves such a field unjudged
  * rather than guessing at it.
  */
-internal fun DeclaredElement.baseTypeClass(): BaseTypeClass? = BASE_TYPE_OF[declaredFieldType()]
+internal fun DeclaredElement.baseTypeClass(): BaseTypeClass? = declaredFieldType()?.baseTypeClass
 
 /** The same reading through the read barrier — it rides [declaredFieldType], which already has both arms. */
-internal fun TrackedDeclaration.baseTypeClass(): BaseTypeClass? = BASE_TYPE_OF[declaredFieldType()]
+internal fun TrackedDeclaration.baseTypeClass(): BaseTypeClass? = declaredFieldType()?.baseTypeClass
 
 /**
  * The declared types this reader is CERTAIN A12 does not give the NUMBER operand type.
