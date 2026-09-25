@@ -52,6 +52,7 @@ private fun scanOf(text: String, language: ConditionLanguage) = ReferenceScan(
     tokenize(text),
     CONDITION_KEYWORDS.getValue(language),
     CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION],
+    CONDITION_OPERATOR_KEYWORDS.getValue(language)[SEMANTIC_INDEX],
 )
 
 /**
@@ -101,11 +102,7 @@ internal fun semanticIndexKeysIn(text: String, language: ConditionLanguage, keyw
  * answer rather than a gap: A12 answers such text with a class about the operand, never about the category.
  */
 internal fun categoryAccessesIn(text: String, language: ConditionLanguage): List<CategoryAccess> =
-    ReferenceScan(
-        tokenize(text),
-        CONDITION_KEYWORDS.getValue(language),
-        CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION],
-    ).categoryAccesses()
+    scanOf(text, language).categoryAccesses()
 
 /**
  * One `->` category access: the reference it hangs off, the name behind the arrow, and where the pair is
@@ -205,6 +202,7 @@ private class ReferenceScan(
                 }
                 tokens[at].text == "->" -> skipCategoryName()
                 startsReference(at) -> readReference()
+                startsDigitKey(at) -> readDigitKey()
                 else -> at++
             }
         }
@@ -290,6 +288,35 @@ private class ReferenceScan(
     }
 
     /**
+     * Whether a semantic-index key at [index] is a bare DIGIT SEQUENCE, which names an entity called by its
+     * digits: an unquoted key is an entity spec, and a segment admits `ZiffernFolge` beside a name
+     * (`nameOhnePunkt: … | ZiffernFolge`), so `For 5` and `For 05` both draw `MVK_INVALID_ENTITY`
+     * ([KERNEL-FINDINGS KF479], `rulekit.validate.laws.LiteralIndexKeyLawsTest`). Only a LONE sequence is
+     * read: a decimal is no entity spec at all (`MVK_UNEXPECTED_TOKEN`), and a digit segment a path continues
+     * was not measured.
+     */
+    private fun startsDigitKey(index: Int): Boolean {
+        val token = tokens[index]
+        return index == keyBegins && token.kind == TokenKind.NUMBER && token.text.all { it in '0'..'9' } &&
+            tokens.getOrNull(index + 1)?.text !in PATH_PUNCTUATION
+    }
+
+    private fun readDigitKey() {
+        val token = tokens[at]
+        record(ReferenceSpan(token.text, token.start, token.end), atKey = true)
+        at++
+    }
+
+    private fun record(span: ReferenceSpan, atKey: Boolean) {
+        found += span.written
+        spans += span
+        lastReference = span
+        if (atKey) {
+            keys += span
+        }
+    }
+
+    /**
      * Read the run of path tokens starting at [at], ignoring whitespace between them.
      *
      * **Whitespace is on the lexer's HIDDEN channel and is insignificant between ANY two tokens**
@@ -316,13 +343,7 @@ private class ReferenceScan(
         while (end > begin && tokens[end - 1].text in PATH_SEPARATORS) end--
         if (tokens.subList(begin, end).namesAnEntity()) {
             val path = normalizedPath(tokens.subList(begin, end))
-            found += path
-            val span = ReferenceSpan(path, tokens[begin].start, tokens[end - 1].end)
-            spans += span
-            lastReference = span
-            if (begin == keyBegins) {
-                keys += span
-            }
+            record(ReferenceSpan(path, tokens[begin].start, tokens[end - 1].end), atKey = begin == keyBegins)
         }
         // Even a run that named nothing consumed its first token, so the scan always advances.
         at = maxOf(end, begin + 1)

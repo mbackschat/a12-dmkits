@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
@@ -22,9 +23,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * **Both wildcard gates outrun the kind gate, so this reports only where the starring is already right.**
  * A repetition nothing addresses answers `MVK_NO_WILDCARD`, and a star on a level that does not repeat
  * answers `MVK_INVALID_WILDCARD` — in each case naming the kind would send the author to the wrong repair.
- * The test is therefore that every repeating level on the operand's path is addressed, by its own star or by
- * the level the rule iterates ([KERNEL-FINDINGS KF477]), which is silent on a two-level repetition carrying
- * one star rather than guessing which gate answers.
+ * The test is therefore that every repeating level on the operand's path is addressed, by its own star, by
+ * the level the rule iterates ([KERNEL-FINDINGS KF477]) or by a key the index chain admits ([KF476]), which
+ * is silent on a two-level repetition carrying one star rather than guessing which gate answers.
  *
  * **The root group is a third silence**, `MVK_ROOT_GROUP_REFERENCED` answering ahead of the kind class, and
  * **an earlier segment's gate is a fourth**: the `.*` suffix and a starred leading `..*` answer ahead of it too
@@ -46,7 +47,7 @@ internal fun TrackedFactBase.fieldOperandKindFindings(): List<Finding> {
                     // A12's arity gate answers ahead of the operand's, so a call with the wrong count is
                     // `EntityListArity`'s alone (`rulekit.validate.laws.EntityListArityLawsTest`).
                     call.operands.singleOrNull()?.let { operand ->
-                        operandFinding(operand.path, call, group, element, member)
+                        operandFinding(operand, call, group, element, member)
                     }
                 }
         }
@@ -60,7 +61,7 @@ private fun TrackedFactBase.spelledCarriers(): Set<String> =
     ENTITY_FIELD_OPERATORS.mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
 
 private fun TrackedFactBase.operandFinding(
-    written: String?,
+    operand: CallOperand,
     call: ConditionCall,
     declaringGroup: String,
     element: TrackedDeclaration,
@@ -68,15 +69,16 @@ private fun TrackedFactBase.operandFinding(
 ): Finding? {
     val operator = call.operator
     val span = call.spanIn(member)
-    val path = written ?: return null
+    val read = operandReferenceIn(operand.text, declaringGroup, element) { operand.path?.let(::OperandReference) }
+        ?: return null
+    val path = read.reference
     val resolved = resolveEntity(declaringGroup, path, element.origin) as? Reference.Resolved ?: return null
     val gate = earlierSegmentGate(
         path,
         resolves = { prefix -> resolveEntity(declaringGroup, prefix, element.origin) },
         isRepeatableGroup = { declarationAt(it)?.isRepeatableGroup == true },
     )
-    // No key: this gate's operand is a group, and the shared reader vouches only for a field-valued key.
-    val addressed = addressedTargetOf(path, declaringGroup, element, indexSelected = false, call.inAFilterBody)
+    val addressed = addressedTargetOf(path, declaringGroup, element, read.indexSelected, call.inAFilterBody)
     if (gate != null || addressed == null) {
         return null
     }

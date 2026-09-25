@@ -89,6 +89,30 @@ class SemanticIndexPinnedLevelLawsTest {
         assertEquals(expected, actual, "which level a semantic-index key addresses");
     }
 
+    /**
+     * A key does not hide the text around it: A12 names the first defect it reads, so an unaddressed read ahead
+     * of a keyed one answers first, and the keyed operand's class answers when it comes first. A key's own
+     * reference is the index chain's, which names the key crossing a repetition rather than the walk's class.
+     */
+    @Test
+    void theReadsAroundAKeyAnswerInTextOrder() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        String keyed = "Sum(Claims/Amount For \"X\") > 0";
+        String unaddressed = "[Riders/RiderRef] == \"a\"";
+        actual.put("an unaddressed read before a keyed operand", KernelLaws.verdictModel(POLICY, "/Policy",
+                "../Reference", "FieldFilled(Reference) And " + unaddressed + " And " + keyed));
+        actual.put("the keyed operand first", KernelLaws.verdictModel(POLICY, "/Policy", "../Reference",
+                "FieldFilled(Reference) And " + keyed + " And " + unaddressed));
+        actual.put("a key that is itself an unaddressed read", sum(POLICY, "/Policy", "../Reference",
+                "Claims/Amount For Riders/RiderRef"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("an unaddressed read before a keyed operand", "MVK_NO_WILDCARD");
+        expected.put("the keyed operand first", "MVK_PARAMSIZE_INVALIDN");
+        expected.put("a key that is itself an unaddressed read", "MVK_SEMANTIC_INDEX_INVALID_ITER");
+        assertEquals(expected, actual, "which class a text holding a key names first");
+    }
+
     /** [model] with the group at [path] (the root when empty) declaring [indexField] its index field. */
     private static String withIndexField(String model, String... pathThenField) {
         try {

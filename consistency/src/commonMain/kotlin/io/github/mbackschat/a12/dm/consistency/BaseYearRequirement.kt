@@ -149,7 +149,7 @@ private fun TrackedFactBase.yearlessFinding(
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
-    if (shape.operands.size != YEARLESS_ARITY || aDateSlotAnswersFirst(shape.operands, element)) {
+    if (shape.operands.size != YEARLESS_ARITY || aDateSlotAnswersFirst(shape, element)) {
         return null
     }
     return Finding(

@@ -7,8 +7,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.clausedOperandsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.firstReferenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
-import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
+import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.withoutFilterBodies
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -59,8 +60,15 @@ import kotlinx.serialization.json.contentOrNull
  * `rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`; the reach is
  * `rulekit.validate.laws.AggregateSlotLawsTest.whichClassAnUnstarredAggregateOperandDrawsOnEachIterationCarrier`).
  *
- * **Still silent on a semantic index**, where the spelling consumes the star and an indexed reference names
- * one value rather than a repetition — a shape this walk has not been measured on.
+ * **A keyed value is walked with the level its key addresses, and its key is not walked at all.** A key the
+ * index chain admits addresses the level of the group declaring the index and no other, so the walk treats
+ * that one level as the target's coordinates would and asks every other level as usual: `Cover` then `Items`
+ * then `Amount`, keyed on an index the root declares, is `MVK_NO_WILDCARD` ([KERNEL-FINDINGS KF478]). A key
+ * the chain refuses answers with the chain's class first — the same path keyed where nothing declares an
+ * index is `MVK_NO_INDEX_FIELD` — so its value is silent here, and a key's own reference is the chain's too.
+ * Every other reference in the text is walked, because A12 raises an earlier unaddressed read ahead of a
+ * later keyed one: `[Riders/Memo] == "a" And Sum(Claims/Amount For "X") > 0` is `MVK_NO_WILDCARD`
+ * (`rulekit.validate.laws.SemanticIndexPinnedLevelLawsTest`).
  *
  * **Silent where `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` answers first.** That gate runs at the top of the same
  * method, on the first iterating level, and fires whenever the target lies outside the declaring group —
@@ -69,7 +77,7 @@ import kotlinx.serialization.json.contentOrNull
  */
 internal fun TrackedFactBase.operandRepetitionScopeFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val unjudgeable = setOfNotNull(keywords[SEMANTIC_INDEX])
+    val indexKeyword = keywords[SEMANTIC_INDEX]
     val filterKeyword = setOfNotNull(keywords[HAVING])
     val targets = declaredReferences().associateBy { it.declaredAt }
     return declarations().mapNotNull { element ->
@@ -81,9 +89,7 @@ internal fun TrackedFactBase.operandRepetitionScopeFindings(): List<Finding> {
             return@mapNotNull null
         }
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            if (namesKeyword(text, unjudgeable) != null) {
-                return@firstNotNullOfOrNull null
-            }
+            val indexes = indexKeyword?.let { semanticIndexUsesIn(text, conditionLanguage, it) }.orEmpty()
             val own = withoutFilterBodies(text, conditionLanguage)
             if (OUTER_MARKER in own) {
                 return@firstNotNullOfOrNull null
@@ -92,18 +98,30 @@ internal fun TrackedFactBase.operandRepetitionScopeFindings(): List<Finding> {
                 .filter { operand -> operand.clauses.any { it.keyword in filterKeyword } }
             firstReferenceSpansIn(own, conditionLanguage)
                 .filterNot { isRuleContext(it.written, conditionLanguage) }
+                .filterNot { occurrence -> indexes.any { it.keys(occurrence.start, occurrence.end) } }
                 .firstNotNullOfOrNull { occurrence ->
                     val written = occurrence.written
+                    val index = indexes.firstOrNull { it.indexes(occurrence.end, text) }
+                    if (index != null && !admitsSemanticIndex(index, declaringGroup, element)) {
+                        return@firstNotNullOfOrNull null
+                    }
                     // A filtered base is asked once its whole spec is read, body included, so its span runs
                     // to the operand's end and a defect inside the body is placed ahead of it.
                     val filter = filtered.firstOrNull { it.at <= occurrence.start && occurrence.end <= it.baseEnd }
                     val span = TextSpan(member, occurrence.start, filter?.end ?: occurrence.end)
-                    levelClassOf(written, declaringGroup, targetGroup, element, filtered = filter != null)
+                    levelClassOf(written, declaringGroup, targetGroup, element, filter != null, keyed = index != null)
                         ?.let { scopeFinding(it, written, target, element, span) }
                 }
         }
     }
 }
+
+/** Whether the reference spanning [start] to [end] is this index's key. */
+private fun SemanticIndexUse.keys(start: Int, end: Int): Boolean = this.start <= start && end <= this.end
+
+/** Whether the reference ending at [end] is the value this index keys, written right before its keyword. */
+private fun SemanticIndexUse.indexes(end: Int, text: String): Boolean =
+    end <= keywordAt && text.substring(end, keywordAt).isBlank()
 
 internal fun TrackedFactBase.referencesOutsideFilterBodies(element: TrackedDeclaration): Set<String> {
     val declared = element.body ?: return emptySet()
@@ -125,7 +143,8 @@ internal fun TrackedFactBase.referencesOutsideFilterBodies(element: TrackedDecla
  *
  * **Not [addressedTargetOf]'s question.** That one also yields on a legal PARALLEL walk, which A12 admits
  * before asking the operator's gates, so answering it here would silence a class A12 draws. A keyed operand
- * reads as not refused, because the walk is not judged on one and silence here would be a guess.
+ * is walked as this family walks it, with its key's level addressed, and one whose key the chain refuses
+ * reads as not refused, the chain's class being another family's.
  */
 internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, element: TrackedDeclaration): Boolean {
     val target = declaredReferences().firstOrNull {
@@ -140,12 +159,16 @@ internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, eleme
     val filter = setOfNotNull(keywords?.get(HAVING))
     return call.operands.any { operand ->
         val base = operand.base ?: return@any false
-        if (operand.clauses.any { it.keyword in keyed }) {
+        val isKeyed = operand.clauses.any { it.keyword in keyed }
+        if (isKeyed && operandReferenceIn(operand.text, declaringGroup, element) { null }?.indexSelected != true) {
             return@any false
         }
         if (contained) {
             val filtered = operand.clauses.any { it.keyword in filter }
-            return@any levelClassOf(base, declaringGroup, targetGroup, element, filtered) != null
+            return@any levelClassOf(base, declaringGroup, targetGroup, element, filtered, isKeyed) != null
+        }
+        if (isKeyed) {
+            return@any false
         }
         val resolved = resolveEntity(declaringGroup, base.replace("*", ""), element.origin)
         val path = (resolved as? Reference.Resolved)?.path ?: return@any false
@@ -179,6 +202,7 @@ internal fun TrackedFactBase.groupOfTargetField(target: String): String? =
  * left unjudged there rather than given a field's.
  *
  * @param filtered whether [written] is the base of a `Having` filter.
+ * @param keyed whether [written] is the value of a key the index chain admits.
  * @return null wherever the reference is admitted, or is a shape another family owns.
  */
 internal fun TrackedFactBase.levelClassOf(
@@ -187,10 +211,13 @@ internal fun TrackedFactBase.levelClassOf(
     targetGroup: String,
     element: TrackedDeclaration,
     filtered: Boolean = false,
+    keyed: Boolean = false,
 ): String? {
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
     val declared = declarationAt(resolved.path) ?: return null
+    // The one level an admitted key addresses ([KERNEL-FINDINGS KF478]).
+    val pinned = if (keyed) indexGroupOf(resolved.path) else null
     val isGroup = declared.declaredKind == DeclaredKind.GROUP
     if (!isGroup && declared.declaredKind != DeclaredKind.FIELD || isGroup && filtered) {
         return null
@@ -205,6 +232,8 @@ internal fun TrackedFactBase.levelClassOf(
             return@forEach
         }
         when {
+            // A keyed level below a starred one was never measured, so the walk says nothing past it.
+            level.path == pinned -> if (wildcardSeen) return null
             wildcardSeen -> return NO_WILDCARD
             level.path.startsWith("$targetGroup/") -> return NO_WILDCARD
             targetGroup == level.path || targetGroup.startsWith("${level.path}/") -> Unit

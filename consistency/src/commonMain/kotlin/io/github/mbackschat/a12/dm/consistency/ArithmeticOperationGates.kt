@@ -63,7 +63,7 @@ internal fun TrackedFactBase.arithmeticOperationGateFindings(): List<Finding> = 
     val body = element.body ?: return@mapNotNull null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-        walkOperation(tokenize(text), group, element).defects
+        walkOperation(tokenize(text), text, group, element).defects
             .minByOrNull { it.at }
             ?.let { defect -> operationFinding(defect, element, member) }
     }
@@ -110,17 +110,18 @@ private class LevelResult(val type: OperandBaseType?, val defects: List<Operatio
  */
 private fun TrackedFactBase.walkOperation(
     tokens: List<Token>,
+    text: String,
     group: String,
     element: TrackedDeclaration,
 ): LevelResult {
-    val terms = termsOf(tokens)
+    val terms = termsOf(tokens, text)
     val defects = mutableListOf<OperationDefect>()
     val types = terms.map { term ->
         val operand = term as? Term.Operand ?: return@map null
         if (operand.nested == null) {
             operandType(operand, group, element)
         } else {
-            walkOperation(operand.nested, group, element).also { defects += it.defects }.type
+            walkOperation(operand.nested, text, group, element).also { defects += it.defects }.type
         }
     }
     val kindDefects = mutableListOf<Violation>()
@@ -282,7 +283,7 @@ private fun TrackedFactBase.operandType(
     if (operand.digits != null) {
         return OperandBaseType.NUMBER
     }
-    val field = operand.path?.let { declaredFieldAt(it, group, element) } ?: return null
+    val field = fieldOf(operand, group, element) ?: return null
     return when (val declared = field.declaredFieldType()) {
         FieldType.NUMBER -> OperandBaseType.NUMBER
         FieldType.STRING, FieldType.CUSTOM_FIELD -> OperandBaseType.TEXT
@@ -324,7 +325,7 @@ private fun TrackedFactBase.exponentDefect(
     }
     val digits = when {
         operand.digits != null -> operand.digits
-        operand.path != null -> declaredScaleOf(operand.path, group, element) ?: return null
+        operand.path != null -> declaredScaleOf(operand, group, element) ?: return null
         else -> return null
     }
     return if (digits == 0) null else Violation(INVALID_EXPONENT, at, operand.path ?: "$digits digits")
@@ -363,23 +364,33 @@ private fun arityDefects(terms: List<Term>): List<Violation> {
     return defects
 }
 
-/** The field a reference at this level names, or null for every shape this reader does not resolve. */
-private fun TrackedFactBase.declaredFieldAt(
-    path: String,
+/**
+ * The field a `[…]` operand at this level names, or null for every shape this reader does not resolve.
+ *
+ * A keyed operand is read through [operandReferenceIn], which names its value only where the chain vouches for
+ * the key: the operand's normalized path runs the key into the value (`Claims/MemoFor"X"`), so `[Claims/Memo
+ * For "X"] + 1` resolved nothing and every gate here stayed silent where A12 types the keyed field as it types
+ * the unkeyed one (`adapter.laws.CheckerKeyedOperandAgreementTest`, "arithmetic under a pattern").
+ */
+private fun TrackedFactBase.fieldOf(
+    operand: Term.Operand,
     group: String,
     element: TrackedDeclaration,
 ): TrackedDeclaration? {
+    val written = operand.written ?: return null
+    val path = operandReferenceIn(written, group, element) { operand.path?.let { OperandReference(it) } }
+        ?.reference ?: return null
     val resolved = resolveEntity(group, path, element.origin) as? Reference.Resolved ?: return null
     return declarationAt(resolved.path, DeclaredKind.FIELD)
 }
 
 /** The `maxFractionalDigits` a referenced number field declares, or null for every other shape. */
 private fun TrackedFactBase.declaredScaleOf(
-    path: String,
+    operand: Term.Operand,
     group: String,
     element: TrackedDeclaration,
 ): Int? {
-    val field = declaredFieldAt(path, group, element) ?: return null
+    val field = fieldOf(operand, group, element) ?: return null
     val type = (field.body?.get("fieldType") as? JsonObject) ?: return null
     val number = (FieldType.NUMBER.bodyIn(type)) ?: return null
     return (number["maxFractionalDigits"] as? JsonPrimitive)?.intOrNull
@@ -400,6 +411,7 @@ private sealed interface Term {
      *
      * @param digits the fractional digits a NUMBER literal spells.
      * @param path the entity a `[…]` reference names, in normalized spelling.
+     * @param written the `[…]` reference as it is written, brackets included, which a key is read off.
      * @param nested the tokens of a braced or parenthesized run, which A12 checks as its own context.
      * @param boundary whether it ends the current chain — a name, a comparison, a comma or a connective.
      */
@@ -408,6 +420,7 @@ private sealed interface Term {
         override val end: Int,
         val digits: Int? = null,
         val path: String? = null,
+        val written: String? = null,
         val nested: List<Token>? = null,
         val boundary: Boolean = false,
     ) : Term
@@ -418,8 +431,8 @@ private fun Term.Operand.wrote(symbol: String): String = path ?: "the operand of
 
 private val ARITHMETIC = setOf("+", "-", "*", "/", "^")
 
-/** Splits one token run into this level's operators and operands, delimited runs kept whole. */
-private fun termsOf(tokens: List<Token>): List<Term> {
+/** Splits one token run of [text] into this level's operators and operands, delimited runs kept whole. */
+private fun termsOf(tokens: List<Token>, text: String): List<Term> {
     val terms = mutableListOf<Term>()
     var index = 0
     while (index < tokens.size) {
@@ -435,7 +448,8 @@ private fun termsOf(tokens: List<Token>): List<Term> {
                     return terms
                 }
                 terms += if (token.text == "[") {
-                    Term.Operand(token.start, tokens[end].end, path = normalizedPath(tokens.subList(index + 1, end)))
+                    Term.Operand(token.start, tokens[end].end, path = normalizedPath(tokens.subList(index + 1, end)),
+                        written = text.substring(token.start, tokens[end].end))
                 } else {
                     Term.Operand(token.start, tokens[end].end, nested = tokens.subList(index + 1, end))
                 }

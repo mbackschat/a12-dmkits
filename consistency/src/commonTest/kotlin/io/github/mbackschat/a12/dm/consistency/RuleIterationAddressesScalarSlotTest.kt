@@ -89,20 +89,15 @@ class RuleIterationAddressesScalarSlotTest {
             val (field, gateClass) = GATES.getValue(gate)
             actual["$gate — a string key inside Claims"] =
                 codes(CLAIMS, "../ClaimRef", "FieldFilled(ClaimRef) And ${probe.with("$field For \\\"X\\\"")}")
-            // A key whose value is a GROUP is one neither the shared reader nor the key chain judges, so both key
-            // rows of that gate are silent here where A12 names a class (DEV-API-GAPS DG97).
-            val groupValued = gate == "field-operand kind"
-            expected["$gate — a string key inside Claims"] = if (groupValued) emptyList() else listOf(gateClass)
+            expected["$gate — a string key inside Claims"] = listOf(gateClass)
+            // A digit sequence is an entity name, so the key names an entity nothing declares ([KF479]).
             actual["$gate — a number literal key inside Claims"] =
                 codes(CLAIMS, "../ClaimRef", "FieldFilled(ClaimRef) And ${probe.with("$field For 5")}")
-            // A12 names the key's `MVK_INVALID_ENTITY` here, which this checker does not (DEV-API-GAPS DG98): the
-            // row locks that the gate does not read past the key, and empty is that under-report, disclosed.
-            expected["$gate — a number literal key inside Claims"] = emptyList()
+            expected["$gate — a number literal key inside Claims"] = listOf("MVK_INVALID_ENTITY")
             // The admission half of the key reader: `Riders` declares no index field, so its key is refused.
             actual["$gate — a string key inside Riders"] =
                 codes(RIDERS, "../ClaimRef", "FieldFilled(ClaimRef) And ${probe.with("$field For \\\"X\\\"")}")
-            expected["$gate — a string key inside Riders"] =
-                if (groupValued) emptyList() else listOf("MVK_NO_INDEX_FIELD")
+            expected["$gate — a string key inside Riders"] = listOf("MVK_NO_INDEX_FIELD")
             actual["$gate — another level's filter body"] = codes(ROOT, "../Reference",
                 "FieldFilled(Reference) And NumberOfFilledFields(Notes*/Text Having " +
                     "${probe.with("Claims/$field")}) > 0")

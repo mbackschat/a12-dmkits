@@ -561,11 +561,15 @@ internal fun TrackedFactBase.bareReferenceField(
  * @param indexSelected whether a semantic-index key the chain admits stands on the reference, which is what
  *     [addressedTargetOf] asks.
  * @param category the category a `->` projects the reference onto, where the reader keeps one.
+ * @param key the admitted key as written, which is part of the operand's identity in an entity list: A12 keys
+ *     an operand by path, category, index and outer flag (KERNEL-FINDINGS kf439), so two reads of one path
+ *     under different keys are different operands.
  */
 internal data class OperandReference(
     val reference: String,
     val indexSelected: Boolean = false,
     val category: String? = null,
+    val key: String? = null,
 )
 
 /**
@@ -603,7 +607,7 @@ internal fun TrackedFactBase.operandReferenceIn(
     }
     val sound = bareKey && tokenize(inner.substring(use.end)).isEmpty() &&
         admitsSemanticIndex(use, declaringGroup, element)
-    return if (sound) OperandReference(value, indexSelected = true) else null
+    return if (sound) OperandReference(value, indexSelected = true, key = key.trim()) else null
 }
 
 /** Whether [text] writes a semantic index anywhere, which is what routes it to [operandReferenceIn]. */
@@ -636,11 +640,27 @@ internal fun TrackedFactBase.declaredTargetOf(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): TrackedDeclaration? {
-    val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
+    val reference = singleReferenceOf(operand, declaringGroup, element) ?: return null
     val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
     val target = (resolved as? Reference.Resolved)?.path ?: return null
     return declarationAt(target)
 }
+
+/**
+ * The one reference [operand] names, stars kept, or null where it names none or several.
+ *
+ * Read through [operandReferenceIn], so a keyed operand names its VALUE only where the chain vouches for the
+ * key. Counting references instead read `Claims/Amount For "X"` as `Claims/Amount` whatever the key was, and
+ * `Claims/Amount For Code` as no operand at all, so a family judging the value named its own class past a key
+ * A12 refuses first and stayed silent on a sound one (`adapter.laws.CheckerKeyedOperandAgreementTest`).
+ */
+internal fun TrackedFactBase.singleReferenceOf(
+    operand: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): String? = operandReferenceIn(operand, declaringGroup, element) {
+    referencesIn(operand, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
+}?.reference
 
 /** The one reference a bare entity spec reduces to, or null for text that is not one — no model read. */
 private fun bareReferenceIn(text: String, language: ConditionLanguage): String? {

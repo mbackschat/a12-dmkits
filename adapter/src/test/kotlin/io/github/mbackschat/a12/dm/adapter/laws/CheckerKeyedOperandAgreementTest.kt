@@ -1,8 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -18,12 +21,18 @@ import org.junit.jupiter.api.Test
  * KF476], `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`). So each row has a TWIN the checker already
  * reads: the same field from a rule declared inside `Claims`.
  *
- * **Two ways to fail.** Any class A12 does not name fails outright, since a keyed operand the checker reads past
- * its key names the family's class where A12 names the key's. SILENCE fails only where the twin agrees: the
- * checker may stay quiet about a key, but not about a family it reads everywhere else.
+ * **Every row must agree, silence included.** The checker reads every key the chain judges and every key form
+ * the grid writes, so a row it left silent would be a key it stopped reading, and one naming a class A12 does
+ * not name would be a key it read past. The twin is each family's positive control: A12 must refuse it and the
+ * checker must name the same class, or the family's rows prove nothing.
+ *
+ * Beside the key forms, each family is read in TEXT ORDER against an unaddressed read, where A12 names whichever
+ * it reads first, and under a second indexed ancestor, which is `MVK_MULTIPLE_INDEX_FIELDS` on every gate
+ * ([KERNEL-FINDINGS KF478]).
  *
  * Own domain (insurance claims); `Riders` declares the fields of `Claims` and no index field, and `Endorsements`
- * indexes them on the enumeration `Status`, where a written constant is a key the checker cannot vouch for.
+ * indexes them on the enumeration `Status`, whose constant key the chain judges against its value tokens
+ * ([KERNEL-FINDINGS KF479]).
  */
 class CheckerKeyedOperandAgreementTest {
 
@@ -42,6 +51,14 @@ class CheckerKeyedOperandAgreementTest {
             .group("Notes") { g -> g.repeatable(5).stringField("Text") { } } }
         .build().toJson()
 
+    /** The same model with the root also declaring an index, so every keyed read has a second indexed ancestor. */
+    private val rootIndexed = ObjectMapper().let { mapper ->
+        val root = mapper.readTree(policy)
+        (root.path("content").path("modelRoot").path("rootGroups").get(0).path("Group") as ObjectNode)
+            .put("indexFieldName", "Reference")
+        mapper.writeValueAsString(root)
+    }
+
     private val validator = RuleValidator()
 
     @Test
@@ -50,32 +67,107 @@ class CheckerKeyedOperandAgreementTest {
         var compared = 0
         for ((family, probe) in PROBES) {
             val local = compare(IN_CLAIMS, probe.with("%s"))
+            if (local.a12.isEmpty() || local.verdict() != null) {
+                failures += "$family — local: the positive control A12 ${local.a12} ours ${local.ours}"
+            }
+            val keyed = probe.with("Claims/%s For \"X\"")
             val rows = linkedMapOf(
-                "string key" to (compare(AT_ROOT, probe.with("Claims/%s For \"X\"")) to local),
-                "field key" to (compare(AT_ROOT, probe.with("Claims/%s For Code")) to local),
-                "key on the iterated level" to (compare(IN_CLAIMS, probe.with("%s For \"X\"")) to local),
-                "number literal key on the iterated level" to (compare(IN_CLAIMS, probe.with("%s For 5")) to null),
-                "unkeyed in a filter body" to (compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text Having " +
-                    "${probe.with("Claims/%s")}) > 0") to local),
-                "unkeyed in the filtered level's own body" to (compare(AT_ROOT, "NumberOfFilledFields(Claims*/Memo " +
-                    "Having ${probe.with("Claims/%s")}) > 0") to local),
-                "keyed in a filter body" to (compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text Having " +
-                    "${probe.with("Claims/%s For \"X\"")}) > 0") to local),
-                "number literal key in a filter body" to (compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text " +
-                    "Having ${probe.with("Claims/%s For 5")}) > 0") to null),
-            ) + DEFECTS.mapValues { (_, form) -> compare(AT_ROOT, probe.with(form)) to null }
-            for ((row, pair) in rows) {
-                val (keyed, twin) = pair
+                "string key" to compare(AT_ROOT, keyed),
+                "enumeration constant key" to compare(AT_ROOT, probe.with("Endorsements/%s For \"OPEN\"")),
+                "field key" to compare(AT_ROOT, probe.with("Claims/%s For Code")),
+                "key on the iterated level" to compare(IN_CLAIMS, probe.with("%s For \"X\"")),
+                "number literal key on the iterated level" to compare(IN_CLAIMS, probe.with("%s For 5")),
+                "unkeyed in a filter body" to compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text Having " +
+                    "${probe.with("Claims/%s")}) > 0"),
+                "unkeyed in the filtered level's own body" to compare(AT_ROOT, "NumberOfFilledFields(Claims*/Memo " +
+                    "Having ${probe.with("Claims/%s")}) > 0"),
+                "keyed in a filter body" to compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text Having " +
+                    "${probe.with("Claims/%s For \"X\"")}) > 0"),
+                "number literal key in a filter body" to compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text " +
+                    "Having ${probe.with("Claims/%s For 5")}) > 0"),
+                "an unaddressed read ahead of the keyed read" to compare(AT_ROOT, "$UNADDRESSED And $keyed"),
+                "the keyed read ahead of an unaddressed read" to compare(AT_ROOT, "$keyed And $UNADDRESSED"),
+                "an enumeration constant key ahead of an unaddressed read" to compare(AT_ROOT,
+                    "${probe.with("Endorsements/%s For \"OPEN\"")} And $UNADDRESSED"),
+                "a refused enumeration constant ahead of an unaddressed read" to compare(AT_ROOT,
+                    "${probe.with("Endorsements/%s For \"PENDING\"")} And $UNADDRESSED"),
+                "a second indexed ancestor" to compare(AT_ROOT, probe.with("Claims/%s For \"X\""), rootIndexed),
+            ) + DEFECTS.mapValues { (_, form) -> compare(AT_ROOT, probe.with(form)) }
+            for ((row, comparison) in rows) {
                 compared++
-                val verdict = keyed.verdict() ?: continue
-                if (verdict != SILENT || twin?.verdict() == null && twin?.a12?.isNotEmpty() == true) {
-                    failures += "$family — $row: $verdict ${keyed.ours.sorted()}"
-                }
+                val verdict = comparison.verdict() ?: continue
+                failures += "$family — $row: $verdict ${comparison.ours.sorted()} A12 ${comparison.a12.sorted()}"
             }
         }
-        // A floor, not a count: it answers whether the grid reached both engines at all.
-        assertTrue(compared > 200, "the grid compared only $compared rows")
+        // The positive control is each family's local read above, which both engines must name alike and A12
+        // must refuse; this floor only answers whether every row was reached.
+        assertTrue(compared == PROBES.size * ROWS_PER_FAMILY, "the grid compared $compared rows")
         assertEquals(KNOWN_DIVERGENCES, failures, "keyed operands the checker reads unlike A12")
+    }
+
+    /**
+     * A keyed GROUP beside a keyed field of it, where the entity-list pre-gates read the group's own fields
+     * through the key ([KERNEL-FINDINGS KF475]): the same key repeats the field, another key does not. Both
+     * engines must name the same class, since the checker reads these keys and has no reason to stay silent.
+     */
+    @Test
+    fun theCheckerReadsAKeyedGroupOperandAsA12Does() {
+        val rows = linkedMapOf(
+            "the same key on the group and its field" to "Sum(Claims For \"X\", Claims/Amount For \"X\") > 0",
+            "another key on the field" to "Sum(Claims For \"X\", Claims/Amount For \"Y\") > 0",
+        )
+        val actual = rows.mapValues { (_, probe) -> compare(AT_ROOT, probe).let { it.ours to it.a12 } }
+        val expected = actual.mapValues { (_, pair) -> pair.second to pair.second }
+        assertTrue(actual.values.all { it.second.isNotEmpty() }, "A12 refuses every row: $actual")
+        assertEquals(expected, actual, "a keyed group operand, as (ours, A12)")
+    }
+
+    /** A desk whose repeatable `Claims` carries an enumeration projected through a covering and a wider category. */
+    private val desk = DocumentModelDraft.named("policy-enum-source").locale("en_US")
+        .rootGroup("Policy") { p -> p
+            .stringField("Reference") { }
+            .enumField("Status") { e -> e.value("OPEN").value("CLOSED") }
+            .group("Claims") { g -> g.repeatable(5)
+                .enumField("Banded") { e -> e.value("OPEN").value("CLOSED").value("VOID")
+                    .category("Band", "OPEN", "CLOSED", "OPEN")
+                    .category("Wide", "OPEN", "CLOSED", "VOID") }
+                .group("Review") { r -> r.enumField("Outcome") { e -> e.value("OPEN").value("CLOSED") } } } }
+        .build().toJson()
+
+    /**
+     * An enumeration-valued computation reading its source through a STAR or a CLIMB, where the category
+     * reader hands the access to the addressing test rather than refusing it as no bare spec. The local read is
+     * the class's control; both engines must name the same class on every row.
+     */
+    @Test
+    fun theCheckerReadsAnEnumComputationSourceAsA12Does() {
+        val rows = linkedMapOf(
+            "the local read of a wider category — the control" to
+                Triple("/Policy/Claims", "../Review/Outcome", "[Banded -> Wide]"),
+            "a starred read of a covering category" to Triple("/Policy", "../Status", "[Claims*/Banded -> Band]"),
+            "a starred read of a wider category" to Triple("/Policy", "../Status", "[Claims*/Banded -> Wide]"),
+            "a starred read of the wider field itself" to Triple("/Policy", "../Status", "[Claims*/Banded]"),
+            "a climbing read of a covering category" to
+                Triple("/Policy/Claims/Review", "../Outcome", "[../Banded -> Band]"),
+            "a climbing read of a wider category" to
+                Triple("/Policy/Claims/Review", "../Outcome", "[../Banded -> Wide]"),
+            "a climbing read of the wider field itself" to
+                Triple("/Policy/Claims/Review", "../Outcome", "[../Banded]"),
+        )
+        val actual = rows.mapValues { (_, row) ->
+            val (group, target, operation) = row
+            val draft = DraftComputation(group, "DerivedOutcome", target, null,
+                listOf(DraftComputation.Alternative(null, operation)))
+            val a12 = validator.check(desk, draft).let { result ->
+                if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse(UNKEYED) }.toSet()
+            }
+            val ours = check(ModelSource(validator.inject(desk, draft))).findings
+                .filter { it.justifiesRejection }.map { it.code }.toSet()
+            ours to a12
+        }
+        assertTrue(actual.getValue(rows.keys.first()).second.isNotEmpty(), "A12 refuses the control: $actual")
+        assertEquals(actual.mapValues { (_, pair) -> pair.second to pair.second }, actual,
+            "an enumeration computation's source, as (ours, A12)")
     }
 
     /** One row's two answers. */
@@ -90,14 +182,14 @@ class CheckerKeyedOperandAgreementTest {
         }
     }
 
-    private fun compare(at: Pair<String, String>, probe: String): Comparison {
+    private fun compare(at: Pair<String, String>, probe: String, model: String = policy): Comparison {
         val (group, errorLeaf) = at
         val draft = DraftRule(group, "ProbeRule", "../$errorLeaf", "FieldFilled($errorLeaf) And $probe", "PROBE",
             "ERROR")
-        val a12 = validator.check(policy, draft).let { result ->
+        val a12 = validator.check(model, draft).let { result ->
             if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse(UNKEYED) }.toSet()
         }
-        val ours = check(ModelSource(validator.inject(policy, draft))).findings
+        val ours = check(ModelSource(validator.inject(model, draft))).findings
             .filter { it.justifiesRejection }.map { it.code }.toSet()
         return Comparison(a12, ours)
     }
@@ -135,18 +227,44 @@ class CheckerKeyedOperandAgreementTest {
             "date arithmetic amount" to Probe("AddDays(Opened, [%s]) < Today", "Memo"),
             "date arithmetic precision" to Probe("[Opened] < AddHours(%s, 1)", "Filed"),
             "entity-list duplicate" to Probe("Sum(%s, %s) > 0", "Amount", "Amount"),
+            "value-list condition" to Probe("AtLeastOneFieldValueIncludedInValueList(%s In \"a\")", "Amount"),
+            "table enumeration operand" to Probe("ValueNotConsistent(%s To \"HIGH\")", "Amount"),
+            "rounding digits" to Probe("RoundUpValue(%s, 15) > 0", "Amount"),
+            "arithmetic under a pattern" to Probe("[%s] + 1 PatternMatched \"a+\"", "Memo"),
+            "date construction slot" to Probe("Date(%s, \"02\", \"2020\") < Today", "Memo"),
+            "date-range value list" to Probe("AtLeastOneDateRangeOverlaps(%s In Code)", "Memo"),
         )
 
+        /** A read of the unstarred, unindexed `Riders` from the root, which A12 refuses as `MVK_NO_WILDCARD`. */
+        const val UNADDRESSED = "[Riders/Memo] == \"a\""
+
+        /** The rows each family is compared on: the named ones in the loop, then one per key defect. */
+        val ROWS_PER_FAMILY = 14 + 9
+
         /**
-         * The rows that still disagree, for a reason that is neither the key's nor the body's (DEV-API-GAPS DG96).
-         * The family is silent on this fixture even OUTSIDE a filter, so inside one a class A12 raises later on
-         * the same spec stands where A12 names its own: the filter walk's on the plain read, the index's on the
-         * keyed one. A fix deletes its row, and a row that starts agreeing fails here until it is deleted.
+         * The rows that still disagree, all from one family that is neither the key's nor the body's (DEV-API-GAPS
+         * DG96): it does not type a temporal comparison against a number constant, so its own local read is silent,
+         * and so is every row where nothing else in the text draws a class; wherever the grid puts that comparison
+         * beside another read, a class A12 raises later on the same text stands in its place — the filter walk's,
+         * the index's, the unaddressed read's. A fix deletes its row, and a row that starts agreeing fails here
+         * until it is deleted.
          */
         val KNOWN_DIVERGENCES = listOf(
+            "comparison against a constant — local: the positive control A12 [MVK_INVALID_COMPARE_TO_DATE] ours []",
+            "comparison against a constant — string key: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
+            "comparison against a constant — enumeration constant key: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
+            "comparison against a constant — field key: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
+            "comparison against a constant — key on the iterated level: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
             "comparison against a constant — unkeyed in a filter body: WRONG-CLASS " +
-                "[MVK_INVALID_ITERATION_IN_FILTER_CONDITION]",
-            "comparison against a constant — keyed in a filter body: WRONG-CLASS [MVK_SEMANTIC_INDEX_NOT_ALLOWED]",
+                "[MVK_INVALID_ITERATION_IN_FILTER_CONDITION] A12 [MVK_INVALID_COMPARE_TO_DATE]",
+            "comparison against a constant — unkeyed in the filtered level's own body: SILENT [] " +
+                "A12 [MVK_INVALID_COMPARE_TO_DATE]",
+            "comparison against a constant — keyed in a filter body: WRONG-CLASS [MVK_SEMANTIC_INDEX_NOT_ALLOWED] " +
+                "A12 [MVK_INVALID_COMPARE_TO_DATE]",
+            "comparison against a constant — the keyed read ahead of an unaddressed read: WRONG-CLASS " +
+                "[MVK_NO_WILDCARD] A12 [MVK_INVALID_COMPARE_TO_DATE]",
+            "comparison against a constant — an enumeration constant key ahead of an unaddressed read: WRONG-CLASS " +
+                "[MVK_NO_WILDCARD] A12 [MVK_INVALID_COMPARE_TO_DATE]",
         )
 
         /** The key defects, each as the operand form it is spelled with. */
@@ -157,6 +275,9 @@ class CheckerKeyedOperandAgreementTest {
             "an iterating key" to "Claims/%s For Notes/Text",
             "a key beside a star" to "Claims*/%s For \"X\"",
             "a constant the enumeration index refuses" to "Endorsements/%s For \"PENDING\"",
+            "the enumeration's token in another case" to "Endorsements/%s For \"open\"",
+            "a refused enumeration constant and a filter on the operand" to
+                "Endorsements/%s For \"PENDING\" Having [Endorsements/ClaimRef] == \"a\"",
             // A string key takes no filter, so this `Having` is the operand's: the text is no longer ONE index.
             "a string key and a filter on the operand" to "Claims/%s For \"X\" Having [Claims/ClaimRef] == \"a\"",
         )

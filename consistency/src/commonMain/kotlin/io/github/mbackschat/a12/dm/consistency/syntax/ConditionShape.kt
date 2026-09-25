@@ -36,7 +36,7 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * there first, which [shapeFailureAhead] decides.
  */
 fun shapeFailure(text: String, language: ConditionLanguage, entry: SyntaxEntry): ShapeFailure? {
-    val parser = ShapeParser(tokenize(text).filter { it.kind != TokenKind.COMMENT }, language)
+    val parser = ShapeParser(text, language)
     return when (entry) {
         SyntaxEntry.CONDITION -> parser.parseCondition()
         SyntaxEntry.OPERATION -> parser.parseOperation()
@@ -99,8 +99,20 @@ data class ShapeFailure(val at: Int, val ranOutWithDelimiterOpen: Boolean, val f
  *
  * @param at the offset of the operator name, so a finding can point at the call rather than at the rule.
  * @param end the offset just past its closing parenthesis, where A12 runs the operator's own check.
+ * @param source the text the call was read from, which every token offset points into — what [textOf] and
+ *     [inAFilterBody] re-read.
  */
-internal data class CallShape(val operator: String, val at: Int, val end: Int, val operands: List<List<Token>>)
+internal data class CallShape(
+    val operator: String,
+    val at: Int,
+    val end: Int,
+    val operands: List<List<Token>>,
+    val source: String,
+)
+
+/** The authored text of one of this call's [CallShape.operands], verbatim between its first and last token. */
+internal fun CallShape.textOf(operand: List<Token>): String =
+    if (operand.isEmpty()) "" else source.substring(operand.first().start, operand.last().end)
 
 /**
  * One comparison: the token runs on either side of an infix comparison operator, and the operator itself.
@@ -123,11 +135,7 @@ internal fun comparisonShapes(
     entry: SyntaxEntry,
 ): List<ComparisonShape> {
     val comparisons = mutableListOf<ComparisonShape>()
-    val parser = ShapeParser(
-        tokenize(text).filter { it.kind != TokenKind.COMMENT },
-        language,
-        comparisons = comparisons,
-    )
+    val parser = ShapeParser(text, language, comparisons = comparisons)
     when (entry) {
         SyntaxEntry.CONDITION -> parser.parseCondition()
         SyntaxEntry.OPERATION -> parser.parseOperation()
@@ -147,7 +155,7 @@ internal fun comparisonShapes(
  */
 internal fun callShapes(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<CallShape> {
     val calls = mutableListOf<CallShape>()
-    val parser = ShapeParser(tokenize(text).filter { it.kind != TokenKind.COMMENT }, language, calls)
+    val parser = ShapeParser(text, language, calls)
     when (entry) {
         SyntaxEntry.CONDITION -> parser.parseCondition()
         SyntaxEntry.OPERATION -> parser.parseOperation()
@@ -163,7 +171,8 @@ internal fun callShapes(text: String, language: ConditionLanguage, entry: Syntax
  * the parser's position to know whether it succeeded.
  */
 private class ShapeParser(
-    private val tokens: List<Token>,
+    /** The text being read, which every recorded call keeps so a consumer can re-read an argument's text. */
+    private val source: String,
     language: ConditionLanguage,
     /** Where completed calls are recorded, for [callsIn]; null when only the failure is wanted. */
     private val calls: MutableList<CallShape>? = null,
@@ -171,10 +180,15 @@ private class ShapeParser(
     private val comparisons: MutableList<ComparisonShape>? = null,
 ) {
 
+    private val tokens: List<Token> = tokenize(source).filter { it.kind != TokenKind.COMMENT }
+
     private val keywords: Map<String, KeywordKind> = CONDITION_KEYWORDS.getValue(language)
 
     /** The model language's spelling of the filter clause, the one clause whose operand is a condition. */
     private val filterKeyword: String? = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
+
+    /** The model language's spelling of the semantic-index clause, whose operand is a key. */
+    private val indexKeyword: String? = CONDITION_OPERATOR_KEYWORDS.getValue(language)[SEMANTIC_INDEX]
 
     private var index = 0
 
@@ -333,9 +347,9 @@ private class ShapeParser(
             val token = peek() ?: return null
             val arithmetic = (token.kind == TokenKind.OPERATOR_SYMBOL && token.text in ARITHMETIC_SYMBOLS) ||
                 (token.kind == TokenKind.PUNCTUATION && token.text in PATH_SHAPED_ARITHMETIC)
-            val listKeyword = token.kind == TokenKind.NAME && kindOf(token) == KeywordKind.UNCATALOGED &&
-                LIST_KEYWORDS.contains(token.text)
-            if (!arithmetic && !listKeyword) {
+            // A list keyword joins an argument's operands, never a condition's: inside a filter body it ends the
+            // body, and the argument the filtered spec belongs to reads it ([argument]).
+            if (!arithmetic && !(entitySpecStands && isListKeyword(token))) {
                 return null
             }
             take()
@@ -381,6 +395,10 @@ private class ShapeParser(
         return null
     }
 
+    /** Whether a number with a fractional part stands next. */
+    private fun opensADecimal(): Boolean = peek()?.kind == TokenKind.NUMBER &&
+        tokens.getOrNull(index + 1)?.text == "." && tokens.getOrNull(index + 2)?.kind == TokenKind.NUMBER
+
     /** A number's fractional part arrives as `.` then digits, since `.` is also a name separator. */
     private fun decimalTail() {
         if (textIs(".") && tokens.getOrNull(index + 1)?.kind == TokenKind.NUMBER) {
@@ -413,7 +431,7 @@ private class ShapeParser(
         val failure = grouped { arguments(operands) }
         // Recorded only on success, so a caller never reads an argument list the parser abandoned half-way.
         if (failure == null) {
-            calls?.add(CallShape(operator.text, operator.start, tokens[index - 1].end, operands))
+            calls?.add(CallShape(operator.text, operator.start, tokens[index - 1].end, operands, source))
         }
         return failure
     }
@@ -448,11 +466,27 @@ private class ShapeParser(
      * constant in A12's grammar, so a connective, a comparison or a predicate call inside one is a token the
      * parser cannot use (`rulekit.validate.laws.WhereAConditionMayStandLawsTest`). The one condition an
      * argument can hold is a filter's body, which [clauses] reads.
+     *
+     * A list keyword may follow the clause chain too, not only a bare operand: in
+     * `AtLeastOneDateRangeOverlaps(Claims/Memo For "X" Having [Claims/ClaimRef] == "a" In Code)` the filtered
+     * spec is read to its end and the value list after it, since A12 names that spec's own
+     * `MVK_WILDCARDS_REQUIRED` — a class it raises once the whole spec is read — and no grammar class
+     * (`adapter.laws.CheckerKeyedOperandAgreementTest`, "date-range value list").
      */
     private fun argument(): ShapeFailure? {
         expression()?.let { return it }
-        return clauses()
+        clauses()?.let { return it }
+        val token = peek() ?: return null
+        if (!isListKeyword(token)) {
+            return null
+        }
+        take()
+        return argument()
     }
+
+    /** Whether [token] is `In` or `To`, which join an operand to a value list, in a spelling the lexer admits. */
+    private fun isListKeyword(token: Token): Boolean =
+        token.kind == TokenKind.NAME && kindOf(token) == KeywordKind.UNCATALOGED && LIST_KEYWORDS.contains(token.text)
 
     /**
      * The clause chain an entity spec may carry, wherever it is reached from.
@@ -473,6 +507,13 @@ private class ShapeParser(
                 if (token.text == filterKeyword) {
                     within(entitySpecs = false) { condition() }?.let { return it }
                 } else {
+                    // A key is an entity spec or a string (`semanticIndex: entitySpec | StringLiteral`), and a
+                    // number is neither unless it is a bare digit sequence, which the grammar reads as an entity
+                    // name: `For 5.5` is `MVK_UNEXPECTED_TOKEN` where `For 5` is `MVK_INVALID_ENTITY`
+                    // ([KERNEL-FINDINGS KF479]).
+                    if (token.text == indexKeyword && opensADecimal()) {
+                        return unexpected()
+                    }
                     within(entitySpecs = true) { expression() }?.let { return it }
                 }
                 continue

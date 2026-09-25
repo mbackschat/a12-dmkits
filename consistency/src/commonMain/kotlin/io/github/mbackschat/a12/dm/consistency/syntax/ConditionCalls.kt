@@ -25,6 +25,10 @@ fun callsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List
     }
 }
 
+/** Whether a `Having` body of its own text holds this call, read as [ConditionCall.inAFilterBody] is. */
+internal fun CallShape.inAFilterBody(language: ConditionLanguage): Boolean =
+    filterBodiesIn(source, language).any { body -> body.at <= at && end <= body.at + body.text.length }
+
 /**
  * One call: the operator as it was SPELLED, and its top-level arguments in authored order.
  *
@@ -190,6 +194,12 @@ internal data class ClausedOperand(
  * each call's argument list off its delimiters alone: an operator name followed by `(` opens one, a `,` at
  * the list's own depth ends an argument, and the matching `)` ends the list — or the end of the text, when
  * the list is never closed. Each argument is then cut into base and clauses exactly as [callsIn] cuts it.
+ *
+ * **A field-value read's `[ … ]` is read the same way**, because it holds the same `entitySpec` production a
+ * call argument does, key and filter included: `[Claims/Filed For "X" Having [Claims/ClaimRef] == "a"] == 5`
+ * is `MVK_WILDCARDS_REQUIRED` in A12, the filtered spec's own class, in every comparison family measured
+ * (`adapter.laws.CheckerKeyedOperandAgreementTest`). Reading only call arguments left that body unblanked,
+ * so its leaf was judged as the rule's own read.
  */
 internal fun clausedOperandsIn(text: String, language: ConditionLanguage): List<ClausedOperand> {
     val keywords = CONDITION_KEYWORDS.getValue(language)
@@ -216,7 +226,7 @@ internal fun clausedOperandsIn(text: String, language: ConditionLanguage): List<
                 val operator = tokens.getOrNull(index - 1)
                 val call = token.text == "(" && operator != null && operator.kind == TokenKind.NAME &&
                     operator.text in keywords
-                open += if (call) index + 1 else null
+                open += if (call || token.text == "[") index + 1 else null
             }
             in CLOSING_DELIMITERS -> if (open.isNotEmpty()) argument(open.removeAt(open.lastIndex), index)
             "," -> if (open.lastOrNull() != null) {
@@ -464,11 +474,15 @@ internal fun fieldValueReadsIn(text: String, language: ConditionLanguage): List<
             "]" -> {
                 val from = open.removeLastOrNull() ?: return@forEachIndexed
                 val at = tokens[from].start
+                val spec = tokens.subList(from + 1, index)
+                val category = spec.takeIf { it.size > 2 && it[it.size - 2].text == "->" && it.last().isName() }
+                    ?.last()?.text
                 reads += FieldValueRead(
-                    tokens.subList(from + 1, index).asPath(keywords),
+                    (if (category == null) spec else spec.dropLast(2)).asPath(keywords),
                     at,
                     token.end,
                     inAFilterBody = bodies.any { body -> body.at <= at && token.end <= body.at + body.text.length },
+                    category = category,
                 )
             }
         }
@@ -477,16 +491,38 @@ internal fun fieldValueReadsIn(text: String, language: ConditionLanguage): List<
 }
 
 /**
+ * The field-value read [text] consists of, or null when the text is anything more or less than one bracket.
+ *
+ * For a reader whose subject is a whole operation that A12 lowers to one `feldWertOp`: the bracket's own path
+ * reader spells every path the grammar admits, a climbing `..` included, where a bare-spec reader need not.
+ */
+internal fun soleFieldValueReadIn(text: String, language: ConditionLanguage): FieldValueRead? {
+    val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
+    val read = fieldValueReadsIn(text, language).singleOrNull() ?: return null
+    return read.takeIf { tokens.firstOrNull()?.start == it.at && tokens.lastOrNull()?.end == it.end }
+}
+
+/**
  * One field-value read.
  *
  * @param path the entity it names, in the normalized spelling [referencesIn] produces with any repetition
- *     wildcard kept — absent when the spec is not one bare path: it carries a clause, a category, the `$`
- *     outer marker or the rule-context keyword, each of which brings another gate ahead of this one.
+ *     wildcard kept — absent when the spec is not one bare path, or one path and a category: it carries a
+ *     clause, the `$` outer marker or the rule-context keyword, each of which brings another gate ahead of
+ *     this one.
  * @param at the offset of the opening bracket, and [end] the offset just past the closing one: where A12 has
  *     read the production and runs `CheckFeldWertOpImpl.check`.
  * @param inAFilterBody whether a `Having` body holds the read, at any depth.
+ * @param category the name behind a `->` the spec ends with, or null. A category belongs to the entity spec
+ *     inside the brackets (`entitySpec: … entity ('->' categoryName)? …`), whose own gates run when the spec
+ *     ends, before the bracket's.
  */
-internal data class FieldValueRead(val path: String?, val at: Int, val end: Int, val inAFilterBody: Boolean)
+internal data class FieldValueRead(
+    val path: String?,
+    val at: Int,
+    val end: Int,
+    val inAFilterBody: Boolean,
+    val category: String? = null,
+)
 
 /** Every `Having` body in [text], each placed by its own offset. */
 private fun filterBodiesIn(text: String, language: ConditionLanguage): List<OperandClause> {

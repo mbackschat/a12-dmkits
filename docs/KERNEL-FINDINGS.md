@@ -7605,6 +7605,8 @@ A12 resolves an error-message parameter against the rule's own CONDITION, not ag
 
 Reported by the portable checker (`CheckFamily.ENUM_COMPUTATION_SOURCE`), which stays silent on the three pre-empted shapes and on any operation it will not reduce to a read or a `FirstFilledValue` — a disclosed under-report rather than a guess at which class the walk would answer with.
 
+**Extended 2026-09-25 — a climbing source is judged like a local one.** From a rule declared in `Claims/Review`, computing `Outcome` (`OPEN`, `CLOSED`) from `Claims/Banded` (`OPEN`, `CLOSED`, `VOID`, with categories `Band` of `OPEN`, `CLOSED` and `Wide` of all three): `[../Banded]` and `[../Banded -> Wide]` draw `MVK_ERROR_INVALID_ENUM_CALCULATION`, and `[../Banded -> Band]` is admitted. A starred source never reaches this gate, because its bracket refuses it first ([KF473](#kf473)). The checker had been silent on `[../Banded]`, because its bare-spec reader refuses the `..` token. It now reads a source through the bracket's own reader (`adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerReadsAnEnumComputationSourceAsA12Does`). The same refusal leaves other families silent on a climbing operand, which is [DEV-API-GAPS](DEV-API-GAPS.md) DG101.
+
 *Locked by:* `rulekit.validate.laws.EnumComputationSourceLawsTest`, mirrored by `consistency.EnumComputationSourceTest`.
 
 ## §9 supplement — an index field on the ROOT withholds the error-target iteration class (source-verified + measured, 2026-09-14) <a id="kf410"></a>
@@ -10962,6 +10964,8 @@ A12 never parses a computation's members one by one. `ComputationAlternativesJoi
 
 **The portable checker had no family for the bracket.** With it disabled, the checker is silent on every star row outside a filter's body and on every group, value-validation and partial-date row above, and draws `MVK_NO_ITERATION_FOR_WILDCARD` on the group read in a filter's body; the starred bracket in a body was already `FILTER_WILDCARD`'s. `CheckFamily.FIELD_VALUE_READ_OPERAND` now asks the four gates at the bracket's span, on a spec the reader passes. It leaves the star in a filter's body to `FILTER_WILDCARD`. Until 2026-09-25 it also stayed silent on a body read that left a repetition unbound, which lost the two body rows above that name a repeatable group; in a body it now skips that test, as the rows require. `consistency.FieldValueReadOperandTest` answers every row with its complete class list. Its scalar value-list family had asked value validation of the entries itself, after their duplicates and base types, and had expanded a group entry to its fields. It now judges only lists of field entries and leaves each entry's own gates to the bracket (`consistency.ScalarValueListGatesTest`).
 
+**Extended 2026-09-25 — a category behind the path leaves the star gate standing.** The spec's category gates run when the spec ends, before the bracket's ([KF359](#kf359)). A category the enumeration declares passes them, and the star gate then answers. As an enumeration computation's whole operation, `[Claims*/Banded -> Band]`, `[Claims*/Banded -> Wide]` and `[Claims*/Banded]` all draw `MVK_NO_WILDCARDS_ALLOWED`, whichever category the target covers. The `Wide` row is the discriminator: `[Banded -> Wide]` read locally draws the computation-source gate's `MVK_ERROR_INVALID_ENUM_CALCULATION` ([KF411](#kf411)), so the star answers first. The checker's family now reads a bracket carrying a category once its category gates pass (`adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerReadsAnEnumComputationSourceAsA12Does`).
+
 ## §11 supplement — a banded computation's `roundingMode` rounds what it WRITES to a whole number, and its implicit validation compares the operation as authored (differential, both strategies, 2026-09-25) <a id="kf474"></a>
 
 > Fold: pending — belongs in [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §11 beside the tolerance band.
@@ -11016,7 +11020,9 @@ Three facts, each with the row that separates it from its rival:
 
 **Lock:** `adapter.laws.KeyedGroupFieldListDiffTest`, each row on dynamic Groovy, static Java and the interpreter, the refused row in `aRepeatableLevelBelowTheKeyMustBeStarred`. The interpreter's side is [IF340](INTERPRETER-FINDINGS.md#if340).
 
-## §9 supplement — a semantic-index key addresses the repetition it keys for every operand gate, and a defective key answers before that gate (kernel `checkConsistency`, 2026-09-25) <a id="kf476"></a>
+**Extended 2026-09-25 — a keyed group beside a keyed field of it.** A12 keys an operand by path, category, index and outer flag (kf439), so the key is part of what repeats. `Sum(Claims For "X", Claims/Amount For "X") > 0` is `MVK_DUPLICATE_PARAM2`: the group's `Amount` under the same key repeats the second operand. With `For "Y"` on the field nothing repeats, and the list meets `Sum`'s number gate on the group's String cells, `MVK_NO_NUMBER`. The checker names both (`adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerReadsAKeyedGroupOperandAsA12Does`).
+
+## §9 supplement — a semantic-index key addresses the repetition it keys on each operand gate measured, and a defective key answers before that gate (kernel `checkConsistency`, 2026-09-25) <a id="kf476"></a>
 
 > Fold: not-foldable — a diagnostic-class law about which gate answers on a keyed operand, not an evaluation behaviour.
 
@@ -11038,6 +11044,22 @@ Three facts, each with the row that separates it from its rival:
 So a sound key addresses exactly as the declaration's own iteration does, and the unkeyed row is each gate's control that the rival, a keyed read left unaddressed, was observable. A key is judged ahead of the operator: each defect draws the key's class though the gate would refuse the operand too. `5` is an entity key rather than a constant of the wrong kind, because the grammar's entity name admits a bare digit sequence (`nameOhnePunkt: … | ZiffernFolge`, `GrammarOnly_ConditionParser.g4`), so it resolves nothing. Two further carriers hold the same way. Inside a `Having` body, the unkeyed read and the keyed read give the gate's own class and `For 5` gives `MVK_INVALID_ENTITY`, in all twenty gates, and on both body shapes: `NumberOfFilledFields(Notes*/Text Having <read>) > 0`, where the body reads a level the filter does not iterate, and `NumberOfFilledFields(Claims*/Memo Having <read>) > 0`, where it reads the filtered level itself (widened 2026-09-25 from one comparison carrier). So a body addresses every level it reads, as [KF467](#kf467) found for comparisons, and the gate's class is the whole verdict: neither the filter walk's `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` nor the `MVK_SEMANTIC_INDEX_NOT_ALLOWED` an index draws in an otherwise legal body ([KF377](#kf377)) is raised beside it. And an enumeration-valued computation reading `[Claims/Memo For "X"]` draws `MVK_ERROR_INVALID_ENUM_CALCULATION` as the root's own text field does.
 
 The portable checker read a keyed operand in the entity-list pre-gates alone and stood down everywhere else; two gates read past the key, naming their own class where A12 names `MVK_INVALID_ENTITY`, and the pattern gate took a keyed side for an expression. It now reads every keyed operand through one reader that honours only a key the semantic-index chain admits. Inside a body, only the comparison families read with every level addressed; the other gates stood down, which left the filter walk's class where A12 names theirs in fourteen of the twenty. Every call now carries whether a body holds it, as a comparison does, and each gate reads its operands addressed there.
+
+**Extended 2026-09-25 — to twenty-six gates, three more key defects, and the text around a key.** The differential grid adds six carriers: a value-list quantifier, a table-enumeration operand, the rounding digits, an arithmetic side of a pattern comparison, a `Date(…)` construction slot and a date-range value list. Every row above holds on each of them. The new rows, on all twenty-six:
+
+| read | class |
+|---|---|
+| `Endorsements/<field> For "OPEN"`, a token the enumeration index declares | the gate's own class |
+| `Endorsements/<field> For "open"`, that token in another case | `MVK_INDEX_VALUE_INVALID` |
+| `Endorsements/<field> For "PENDING" Having [Endorsements/ClaimRef] == "a"` | `MVK_INDEX_VALUE_INVALID` |
+| `Claims/<field> For "X" Having [Claims/ClaimRef] == "a"` | `MVK_WILDCARDS_REQUIRED` |
+| `[Riders/Memo] == "a"` ahead of the keyed read | `MVK_NO_WILDCARD` |
+| the keyed read, or the `"OPEN"` key, ahead of `[Riders/Memo] == "a"` | the gate's own class |
+| the `"PENDING"` key ahead of `[Riders/Memo] == "a"` | `MVK_INDEX_VALUE_INVALID` |
+
+So a refused constant answers before the filter on the same operand. A string key takes no filter of its own, so that `Having` belongs to the operand and demands its star. And A12 names whichever read it meets first, as [KF478](#kf478) found for the arity gate. What a literal key is: [KF479](#kf479).
+
+The checker names A12's class on every row of the grid. The differential now fails on a silent row too, where it had tolerated silence on a key defect; the only rows it lists are [DEV-API-GAPS](DEV-API-GAPS.md) DG96's.
 
 *Locked by:* `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`; the checker against A12 on the same model: `adapter.laws.CheckerKeyedOperandAgreementTest`.
 
@@ -11082,6 +11104,31 @@ The portable checker asked the first three gates a second addressing question th
 
 So the key addresses the level of the group that declares the index. An index group that is the root or a fixed group addresses no repetition at all, and an unindexed repetition above the index group still needs a star or the rule's iteration. The last row is the control that the key is what addresses `Legs`. The root and `Cover` carry their index field through a JSON edit, since the typed surface declares one only on a repeatable group; A12 builds both models ([KF116](#kf116)).
 
-The portable checker pinned "the one repetition crossed" whenever a key stood on a path crossing exactly one, so it named the operand gate's class on the root- and fixed-indexed rows, and it stood down on the `Legs` row, which crosses two. It now pins the index group's level. It also stops admitting a key whose value has a second indexed group above it, where it had named the gate's class; that row's `MVK_MULTIPLE_INDEX_FIELDS` is measured on this one carrier, so the checker withholds the class rather than naming it on every carrier (DEV-API-GAPS DG100).
+**Extended 2026-09-25:** with the root indexed, every one of [KF476](#kf476)'s twenty-six gates draws `MVK_MULTIPLE_INDEX_FIELDS` on `Claims/<field> For "X"` (`adapter.laws.CheckerKeyedOperandAgreementTest`). The walk that finds the index group starts at the keyed value itself, a group value included (`CheckEntityUtils.getIndexGroup`, source-read).
+
+The portable checker pinned "the one repetition crossed" whenever a key stood on a path crossing exactly one, so it named the operand gate's class on the root- and fixed-indexed rows, and it stood down on the `Legs` row, which crosses two. It now pins the index group's level. *Corrected 2026-09-25:* a doubly indexed path had been withheld as measured on one carrier. The checker now names `MVK_MULTIPLE_INDEX_FIELDS` on every carrier. It also names the three `MVK_NO_WILDCARD` rows: the scope walk had stood down on any keyed value, and it now walks one whose key the chain admits, with that key's level addressed.
 
 *Locked by:* `rulekit.validate.laws.SemanticIndexPinnedLevelLawsTest`; the checker mirror: `consistency.SemanticIndexPinnedLevelTest`.
+
+## §9 supplement — a literal semantic-index key is a string constant the index field judges, or a digit sequence the grammar reads as an entity name (kernel `checkConsistency`, 2026-09-25) <a id="kf479"></a>
+
+> Fold: not-foldable — a diagnostic-class law about what a key literal is, not an evaluation behaviour.
+
+`semanticIndex: entitySpec | StringLiteral` (`GrammarOnly_ConditionParser.g4`) gives a key two literal forms. A string is judged by the index field's own value validation: `CheckSemanticIndexImpl` raises `MVK_INDEX_VALUE_INVALID` when `isValueApplicable` refuses it, and an enumeration without a table admits the tokens its values declare (`IEnumerationType.isValueApplicable` over `getXMLValues`, which holds each value's `value`; source-read). An unquoted digit sequence is an entity spec, since a path segment admits one (`nameOhnePunkt: … | ZiffernFolge`). One fixture: `/Policy` holds a repeatable `Claims` keyed by the String `ClaimRef` and a repeatable `Endorsements` keyed by the enumeration `Status` (`OPEN` labelled "Open endorsement", `CLOSED`), each with a Number `Amount`, and an unindexed repeatable `Riders`. Each probe is `Sum(<keyed>) > 0` from the root, whose class on an addressed lone field is `MVK_PARAMSIZE_INVALIDN`.
+
+| key | class |
+|---|---|
+| `Endorsements/Amount For "OPEN"` | `MVK_PARAMSIZE_INVALIDN` |
+| `For "PENDING"`, a value the enumeration does not declare | `MVK_INDEX_VALUE_INVALID` |
+| `For "open"`, the token in another case | `MVK_INDEX_VALUE_INVALID` |
+| `For "Open endorsement"`, the token's label | `MVK_INDEX_VALUE_INVALID` |
+| `Claims/Amount For 5`, `For 12`, `For 05`; `Endorsements/Amount For 5` | `MVK_INVALID_ENTITY` |
+| `Claims/Amount For 5.5` | `MVK_UNEXPECTED_TOKEN` |
+| the `"OPEN"` key, the `"PENDING"` key or `For 5` ahead of `[Riders/RiderRef] == "a"` | `MVK_PARAMSIZE_INVALIDN`, `MVK_INDEX_VALUE_INVALID`, `MVK_INVALID_ENTITY` |
+| `[Riders/RiderRef] == "a"` ahead of the `"OPEN"` key or `For 5` | `MVK_NO_WILDCARD` |
+
+So the enumeration admits exactly its tokens, case-sensitively, and never a label. The case and label rows are what separate that from a looser match. A digit sequence of any length, a leading zero included, names an entity called by its digits, over a String index and an enumeration index alike. A decimal is neither an entity name nor a string, so it does not parse. The order rows are the control that each key class is observable where it stands: A12 names whichever read it meets first. The same rows hold under the German keyword `Fuer` on a `de_DE` model, measured on the `"OPEN"`, `"open"`, `5` and `5.5` keys.
+
+The portable checker had left a constant key over an enumeration index unjudged. It reported nothing on a digit key, because its reference scan stepped over the key, and it read `For 5.5` as an expression. It now judges a constant key against the declared tokens, reads a lone digit key as the entity reference it is, and refuses a decimal key in its shape parser. `consistency.LiteralIndexKeyTest` runs every row under both condition languages.
+
+*Locked by:* `rulekit.validate.laws.LiteralIndexKeyLawsTest`; the checker mirror: `consistency.LiteralIndexKeyTest`; the checker against A12 on twenty-six operand gates: `adapter.laws.CheckerKeyedOperandAgreementTest`.

@@ -184,7 +184,7 @@ private fun TrackedFactBase.dateArmDefect(
     val head = sole.firstOrNull()?.takeIf { it.text == dateConstruction } ?: return null
     val construction = shapes.firstOrNull { it.operator == dateConstruction && it.at == head.start }
         ?: return null
-    val reading = readDateConstruction(construction.operands, element) ?: return null
+    val reading = readDateConstruction(construction, element) ?: return null
     return if (!reading.aSlotAnswersFirst && !reading.namesAnEntity) {
         ValidityDefect(
             "MVK_ONLY_CONSTANTS_USED", element.path,

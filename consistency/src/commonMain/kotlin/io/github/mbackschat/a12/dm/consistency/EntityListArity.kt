@@ -154,7 +154,7 @@ private fun TrackedFactBase.arityFinding(
         addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected, call.inAFilterBody)
             ?: return null
     }
-    if (entityListPreGateAnswers(written, targets)) {
+    if (entityListPreGateAnswers(reads, targets)) {
         return null
     }
     val kinds = targets.map { target -> declarationAt(target)?.declaredKind }

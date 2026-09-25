@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.soleFieldValueReadIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -76,6 +77,12 @@ private fun TrackedFactBase.sourceDefect(
             readDefect(operand, admitted, target, declaringGroup, element)
         }
     }
+    // A starred read is refused by its own bracket, during the parse, and this gate runs in the CALC module
+    // after it: `[Claims*/Banded -> Wide]` draws `MVK_NO_WILDCARDS_ALLOWED` and no enumeration class
+    // (`adapter.laws.CheckerKeyedOperandAgreementTest`), which [fieldValueReadOperandFindings] names.
+    if (soleFieldValueReadIn(operation, conditionLanguage)?.path?.contains('*') == true) {
+        return null
+    }
     return readDefect(operation, admitted, target, declaringGroup, element)
 }
 
@@ -103,7 +110,10 @@ private fun TrackedFactBase.readDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): String? {
-    val (written, keyed, category) = categorySpecIn(text, declaringGroup, element) ?: return null
+    // The bracket's own reader spells a climbing `..`, which the bare-spec reader refuses as a token.
+    val (written, keyed, category) = categorySpecIn(text, declaringGroup, element)
+        ?: categorySpecIn(text, declaringGroup, element) { soleFieldValueReadIn(text, conditionLanguage)?.path }
+        ?: return null
     // The source is the whole operation, so no filter body can hold it.
     val addressed = addressedTargetOf(written, declaringGroup, element, keyed, everyLevelAddressed = false)
         ?: return null

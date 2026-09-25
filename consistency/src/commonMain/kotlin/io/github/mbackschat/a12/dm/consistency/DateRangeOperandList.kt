@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
-import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 
 /**
@@ -164,7 +163,7 @@ private fun TrackedFactBase.groupOperandDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): RangeDefect? = call.operands.firstNotNullOfOrNull { operand ->
-    val target = resolvedTarget(operand.text, declaringGroup, element) ?: return null
+    val target = declaredTargetOf(operand.text, declaringGroup, element) ?: return null
     if (target.declaredKind == DeclaredKind.GROUP) {
         RangeDefect(
             "MVK_NO_GROUPS_ALLOWED", target.path,
@@ -207,7 +206,7 @@ private fun TrackedFactBase.valueList(
     element: TrackedDeclaration,
 ): List<ListedReference>? {
     val (written, opposite) = call.splitAtIn() ?: return null
-    val subject = bareReferenceField(written.singleOrNull() ?: return null, declaringGroup, element)
+    val subject = bareReferenceField(written.singleOrNull() ?: return null, declaringGroup, element, call.inAFilterBody)
         ?: return null
     val values = opposite.map { operand -> expandedReference(operand, declaringGroup, element) ?: return null }
     if (values.any { reference -> reference.fields.any { it.baseTypeClass() != subject.baseTypeClass() } }) {
@@ -222,21 +221,9 @@ private fun TrackedFactBase.expandedReference(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): ListedReference? {
-    val target = resolvedTarget(operand, declaringGroup, element) ?: return null
+    val target = declaredTargetOf(operand, declaringGroup, element) ?: return null
     val fields = expandToFields(target.path) ?: return null
     return ListedReference(target.path, fields)
-}
-
-/** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
-private fun TrackedFactBase.resolvedTarget(
-    operand: String,
-    declaringGroup: String,
-    element: TrackedDeclaration,
-): TrackedDeclaration? {
-    val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
-    val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
-    val path = (resolved as? Reference.Resolved)?.path ?: return null
-    return declarationAt(path)
 }
 
 private fun finding(

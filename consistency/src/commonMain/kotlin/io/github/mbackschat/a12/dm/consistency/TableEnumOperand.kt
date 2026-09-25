@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
-import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtInfix
 
 /**
@@ -86,7 +85,7 @@ private fun TrackedFactBase.subjectDefect(
     member: String,
 ): Finding? {
     val written = call.splitAtInfix(infix)?.first?.singleOrNull() ?: return null
-    val reference = referencesIn(written, conditionLanguage).singleOrNull() ?: return null
+    val reference = singleReferenceOf(written, declaringGroup, element) ?: return null
     val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
     val path = (resolved as? Reference.Resolved)?.path ?: return null
     val target = declarationAt(path) ?: return null

@@ -135,12 +135,11 @@ private fun TrackedFactBase.operandDefect(
         operandReferenceIn(operand.text, declaringGroup, element) { operand.path?.let { OperandReference(it) } }
             ?: return null
     }
-    val written = reads.map { it.reference }
     val targets = reads.map { read ->
         addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected, call.inAFilterBody)
             ?: return null
     }
-    if (preEmptedBeforeTheSwitch(written, targets)) {
+    if (preEmptedBeforeTheSwitch(reads, targets)) {
         return null
     }
     val fields = targets.flatMap { target ->
@@ -227,10 +226,10 @@ private fun distinctDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
  * The shared pre-gates every entity list meets, plus the arity gate all four carriers here take, which
  * demands more than one field or one group.
  */
-private fun TrackedFactBase.preEmptedBeforeTheSwitch(written: List<String>, targets: List<String>): Boolean {
-    val loneField = targets.size == 1 && '*' !in written.first() &&
+private fun TrackedFactBase.preEmptedBeforeTheSwitch(reads: List<OperandReference>, targets: List<String>): Boolean {
+    val loneField = targets.size == 1 && '*' !in reads.first().reference &&
         declarationAt(targets.first())?.declaredKind == DeclaredKind.FIELD
-    return entityListPreGateAnswers(written, targets) || loneField
+    return entityListPreGateAnswers(reads, targets) || loneField
 }
 
 private fun finding(

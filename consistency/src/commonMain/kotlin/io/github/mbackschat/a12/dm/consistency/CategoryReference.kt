@@ -94,7 +94,7 @@ private fun TrackedFactBase.categoryFinding(
  * a nameless or non-object entry makes the whole list unreadable here rather than silently shortening the
  * declared set — which would turn a neighbouring defect into a wrong `MVK_CATEGORY_UNKOWN`.
  */
-private fun JsonObject.declaredCategoryNames(): Set<String>? {
+internal fun JsonObject.declaredCategoryNames(): Set<String>? {
     val categories = this["categories"] ?: return emptySet()
     val entries = categories as? JsonArray ?: return null
     return entries.map { entry ->

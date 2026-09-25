@@ -36,8 +36,16 @@ import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
  * refused at its bracket, from the filter chain's `MVK_NO_ITERATION_FOR_WILDCARD`, raised only once the whole
  * filtered spec has been read.
  *
- * **Silent on a spec carrying a clause, a category, the `$` marker or the rule-context keyword**, whose own
- * gates run first and are unmeasured beside these.
+ * **A category behind the path leaves the star gate standing.** The spec's category gates run when the spec
+ * ends and so ahead of the bracket's (`CheckEntitySpecImpl.checkCategory`, [categoryReferenceFindings]), but
+ * a category an enumeration declares passes them, and a read of one through a starred `Claims` level then
+ * draws the star's class — measured as a computation's whole operation, where it also answers ahead of the
+ * enumeration-source gate (`adapter.laws.CheckerKeyedOperandAgreementTest`). This family judges such a read
+ * only where the category gates pass, and asks nothing else of it: an enumeration neither waives value
+ * validation nor is a date.
+ *
+ * **Silent on a spec carrying a clause, the `$` marker or the rule-context keyword**, whose own gates run
+ * first and are unmeasured beside these.
  */
 internal fun TrackedFactBase.fieldValueReadOperandFindings(): List<Finding> = declarations().flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
@@ -77,6 +85,9 @@ private fun TrackedFactBase.readDefect(
         )
         DeclaredKind.FIELD -> Unit
         else -> return null
+    }
+    if (read.category != null && read.category !in target.enumerationBody()?.declaredCategoryNames().orEmpty()) {
+        return null
     }
     if ('*' in written) {
         return if (read.inAFilterBody) {

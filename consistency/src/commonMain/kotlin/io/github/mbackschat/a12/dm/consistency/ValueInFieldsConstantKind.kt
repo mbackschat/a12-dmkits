@@ -147,12 +147,11 @@ private fun TrackedFactBase.constantKindFinding(
             referencesIn(text, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
         } ?: return null
     }
-    val written = reads.map { it.reference }
     val targets = reads.map { read ->
         addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected, call.inAFilterBody)
             ?: return null
     }
-    if (preEmptedBeforeTheSwitch(written, targets)) {
+    if (preEmptedBeforeTheSwitch(reads, targets)) {
         return null
     }
     // The fall-through arm refuses the CONSTANT and never reads a declaration, so it answers here rather
@@ -285,10 +284,10 @@ private fun typeWalkVerdict(
  * Two of them are the shared pre-gates every entity list meets ([entityListPreGateAnswers]); the third is
  * this operator's own arity gate, which takes more than one field or one group.
  */
-private fun TrackedFactBase.preEmptedBeforeTheSwitch(written: List<String>, targets: List<String>): Boolean {
-    val loneField = targets.size == 1 && '*' !in written.first() &&
+private fun TrackedFactBase.preEmptedBeforeTheSwitch(reads: List<OperandReference>, targets: List<String>): Boolean {
+    val loneField = targets.size == 1 && '*' !in reads.first().reference &&
         declarationAt(targets.first())?.declaredKind == DeclaredKind.FIELD
-    return entityListPreGateAnswers(written, targets) || loneField
+    return entityListPreGateAnswers(reads, targets) || loneField
 }
 
 /** Which arm of the switch this constant takes, or null for a shape none of the four covers. */

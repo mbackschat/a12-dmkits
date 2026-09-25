@@ -301,11 +301,11 @@ private fun List<String>.firstNestedEntity(written: List<ListOperand>): Int? =
  * The root-group arm is read as PLAIN here because a family that yields on a root group is silent either
  * way — under-reporting where the caller asks no gate, never over-reporting.
  */
-internal fun entityListPreGateAnswers(written: List<String>, targets: List<String>): Boolean {
-    // These callers reduce their own operands to plain specs before asking, so every identity here carries an
-    // empty key — which is what makes the arms compare on path alone, exactly as they did for every list
-    // before clause-carrying operands became readable.
-    val operands = written.map { ListOperand(it, "") }
+internal fun entityListPreGateAnswers(reads: List<OperandReference>, targets: List<String>): Boolean {
+    // Each identity carries the key its read was admitted with, so `Claims For "X"` and `Claims/Amount For "Y"`
+    // are neither nested nor repeated, and the operator's own gate answers — `MVK_NO_NUMBER` for a `Sum` over
+    // them (`adapter.laws.CheckerKeyedOperandAgreementTest`). Comparing on path alone read that list as nested.
+    val operands = reads.map { ListOperand(it.reference, it.key.orEmpty(), it.indexSelected) }
     return targets.firstDirectDuplicate(operands) != null ||
         targets.firstNestedEntity(operands) != null ||
         targets.any { it.isRootGroup() }

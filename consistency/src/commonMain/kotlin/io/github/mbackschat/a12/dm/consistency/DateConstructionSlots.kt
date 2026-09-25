@@ -1,11 +1,14 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.callShapes
+import io.github.mbackschat.a12.dm.consistency.syntax.inAFilterBody
 import io.github.mbackschat.a12.dm.consistency.syntax.isName
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
+import io.github.mbackschat.a12.dm.consistency.syntax.textOf
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -69,7 +72,7 @@ internal fun TrackedFactBase.dateConstructionSlotFindings(): List<Finding> {
             callShapes(text, conditionLanguage, syntaxEntryOf(member))
                 .firstNotNullOfOrNull { shape ->
                     val construction = constructions[shape.operator] ?: return@firstNotNullOfOrNull null
-                    construction.firstDefectiveSlot(this, element, shape.operands, extractOps)
+                    construction.firstDefectiveSlot(this, element, shape, extractOps)
                         ?.let { slotFinding(it, shape.operator, element, member, shape.spanIn(member)) }
                 }
         }
@@ -98,19 +101,20 @@ internal data class DateConstructionReading(val aSlotAnswersFirst: Boolean, val 
  * exactly the shape that law is about.
  */
 internal fun TrackedFactBase.aDateSlotAnswersFirst(
-    operands: List<List<Token>>,
+    shape: CallShape,
     element: TrackedDeclaration,
 ): Boolean {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return false
     val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
-    return TemporalConstruction.DATE.defectAmongSlots(this, element, operands, extractOps) != null
+    return TemporalConstruction.DATE.defectAmongSlots(this, element, shape, extractOps) != null
 }
 
-/** Read the `Date` construction written at [operands]; null where this reader does not judge that shape. */
+/** Read the `Date` construction [shape]; null where this reader does not judge that shape. */
 internal fun TrackedFactBase.readDateConstruction(
-    operands: List<List<Token>>,
+    shape: CallShape,
     element: TrackedDeclaration,
 ): DateConstructionReading? {
+    val operands = shape.operands
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
     val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
     val construction = TemporalConstruction.DATE
@@ -121,8 +125,8 @@ internal fun TrackedFactBase.readDateConstruction(
         return null
     }
     return DateConstructionReading(
-        aSlotAnswersFirst = construction.firstDefectiveSlot(this, element, operands, extractOps) != null,
-        namesAnEntity = operands.any { armOf(it, extractOps) is SlotArm.Entity },
+        aSlotAnswersFirst = construction.firstDefectiveSlot(this, element, shape, extractOps) != null,
+        namesAnEntity = operands.any { armIn(shape, it, element, extractOps).namesAnEntity },
     )
 }
 
@@ -214,10 +218,10 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
     fun firstDefectiveSlot(
         model: TrackedFactBase,
         element: TrackedDeclaration,
-        operands: List<List<Token>>,
+        shape: CallShape,
         extractOps: Map<String, String>,
     ): SlotDefect? =
-        if (admitsArity(operands.size)) defectAmongSlots(model, element, operands, extractOps) else null
+        if (admitsArity(shape.operands.size)) defectAmongSlots(model, element, shape, extractOps) else null
 
     /**
      * The same walk over whatever slots were written, arity unjudged.
@@ -229,19 +233,22 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
     fun defectAmongSlots(
         model: TrackedFactBase,
         element: TrackedDeclaration,
-        operands: List<List<Token>>,
+        shape: CallShape,
         extractOps: Map<String, String>,
     ): SlotDefect? {
+        val operands = shape.operands
+        val inAFilterBody = shape.inAFilterBody(model.conditionLanguage)
         // The split-year shape's last two operands are a CENTURY and a SHORT YEAR, which the slot table does
         // not describe — walking them against the complete year's demands would compare `"20"` to 1800..2199.
         // So its day and month keep their gates, in A12's own order, and the pair gets its one measured law.
         val described = if (this == DATE && operands.size == SPLIT_YEAR_ARITY) 2 else slots.size
         operands.take(described).forEachIndexed { at, operand ->
             val slot = slots[at]
-            val defect = when (val arm = armOf(operand, extractOps)) {
+            val defect = when (val arm = model.armIn(shape, operand, element, extractOps)) {
                 is SlotArm.Constant -> slot.constantDefect(arm.digits)
                 is SlotArm.Extract -> slot.extractDefect(arm.op, ownFamily)
-                is SlotArm.Entity -> slot.entityDefect(model, element, arm.path)
+                is SlotArm.Entity -> slot.entityDefect(model, element, arm.path, keyed = false, inAFilterBody)
+                is SlotArm.Keyed -> arm.value?.let { slot.entityDefect(model, element, it, keyed = true, inAFilterBody) }
                 SlotArm.Unjudged -> null
             }
             if (defect != null) {
@@ -298,11 +305,38 @@ private sealed interface SlotArm {
     /** A bare entity path — no wildcard, no category selector, no filter. */
     data class Entity(val path: String) : SlotArm
 
-    /** Any shape this reader did not reduce to one of the three arms above. */
+    /** An entity spec carrying a semantic index: its value where the chain vouches for the key, else null. */
+    data class Keyed(val value: String?) : SlotArm
+
+    /** Any shape this reader did not reduce to one of the arms above. */
     data object Unjudged : SlotArm
+
+    /** Whether the slot is A12's `entitySpec` arm, which a keyed spec is as much as a bare one. */
+    val namesAnEntity: Boolean get() = this is Entity || this is Keyed
 }
 
 private data class SlotDefect(val code: String, val slot: String, val wrote: String, val expected: String)
+
+/**
+ * The arm [operand] of [shape] takes, read as [armOf] reads it except for a slot that writes a semantic index.
+ *
+ * A keyed slot is an entity spec like a bare one, so it names an entity and its declaration is judged — read
+ * through [operandReferenceIn], which yields its value only where the chain vouches for the key and stands
+ * the slot down otherwise, the key's own class answering first ([KERNEL-FINDINGS KF476]).
+ */
+private fun TrackedFactBase.armIn(
+    shape: CallShape,
+    operand: List<Token>,
+    element: TrackedDeclaration,
+    extractOps: Map<String, String>,
+): SlotArm {
+    val text = shape.textOf(operand)
+    if (!writesASemanticIndex(text)) {
+        return armOf(operand, extractOps)
+    }
+    val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return SlotArm.Keyed(operandReferenceIn(text, declaringGroup, element) { null }?.reference)
+}
 
 private fun armOf(operand: List<Token>, extractOps: Map<String, String>): SlotArm {
     val head = operand.firstOrNull() ?: return SlotArm.Unjudged
@@ -395,28 +429,23 @@ private fun Slot.entityDefect(
     model: TrackedFactBase,
     element: TrackedDeclaration,
     written: String,
+    keyed: Boolean,
+    inAFilterBody: Boolean,
 ): SlotDefect? {
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    val resolved = model.resolveEntity(declaringGroup, written, element.origin) as? Reference.Resolved
-        ?: return null
-    val field = model.declarationAt(resolved.path)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
-        ?: return null
-    // A12's reference reader answers BEFORE this gate. A component reached by crossing a repetition the
-    // rule's own group does not sit in draws `MVK_NO_WILDCARD` there and the slot gate never runs — measured
-    // 2026-09-14 with both controls (`DateConstructionSlotLawsTest.theReferenceReaderAnswersBeforeTheSlotGate`):
-    // the same read with a CORRECT declaration still draws the reference class, so it does not depend on the
-    // declaration, and the same wrong declaration read from inside the repeating group does draw this
-    // family's class, so the slot gate is live on that fixture. `OPERAND_REPETITION_SCOPE` owns the reference
-    // class, so answering here as well would put two findings on a declaration A12 answers once. It is left
-    // SILENT rather than deferred: where the two branches iterate jointly A12 admits the read and does reach
-    // this gate, and that cell goes unreported.
-    if (model.crossesARepetitionOutside(declaringGroup, resolved.path)) {
-        return null
-    }
+    // A12's reference reader answers BEFORE this gate: a component read across a repetition nothing addresses
+    // draws `MVK_NO_WILDCARD` there and the slot gate never runs — measured 2026-09-14 with both controls
+    // (`DateConstructionSlotLawsTest.theReferenceReaderAnswersBeforeTheSlotGate`), and that class is
+    // `OPERAND_REPETITION_SCOPE`'s. What addresses a level is [addressedTargetOf]'s one reading — the rule's
+    // iteration, a key, a filter body — which a containment test got wrong on both of the last two, standing
+    // the gate down where A12 names its class (`adapter.laws.CheckerKeyedOperandAgreementTest`).
+    val target = model.addressedTargetOf(written, declaringGroup, element, keyed, inAFilterBody) ?: return null
+    val field = model.declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null
     val declared = (field.body?.get("fieldType") as? JsonObject) ?: return null
     val discriminator = declared.namedFieldType() ?: return null
     return when (discriminator) {
-        FieldType.STRING -> stringDefect(FieldType.STRING.bodyIn(declared) ?: return null, written)
+        // A string declaring no body declares no pattern, which the pattern gate refuses like any non-digit one.
+        FieldType.STRING -> stringDefect(FieldType.STRING.bodyIn(declared) ?: JsonObject(emptyMap()), written)
         FieldType.NUMBER -> numberDefect(FieldType.NUMBER.bodyIn(declared) ?: return null, written)
         FieldType.DATE -> dateDefect(FieldType.DATE.bodyIn(declared) ?: return null, written)
         else -> null

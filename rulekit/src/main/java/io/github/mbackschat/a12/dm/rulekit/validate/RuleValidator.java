@@ -208,7 +208,8 @@ public final class RuleValidator {
                 elements.add(ruleNode(rule, localeCodes(root))));
     }
 
-    private String inject(String modelJson, DraftComputation computation) {
+    /** The computation twin of {@link #inject(String, DraftRule)}: the model text {@link #check} validates. */
+    public String inject(String modelJson, DraftComputation computation) {
         return injectInto(modelJson, computation.groupPath(), (root, elements) ->
                 elements.add(computationNode(computation, localeCodes(root))));
     }

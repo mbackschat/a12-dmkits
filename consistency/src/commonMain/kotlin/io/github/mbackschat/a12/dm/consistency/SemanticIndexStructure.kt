@@ -101,9 +101,8 @@ private fun TrackedFactBase.firstClassIn(
  * Whether A12 admits [use] on every gate of the semantic-index chain, as far as this reader can tell.
  *
  * True only where the chain reads CLEAN: an index this family would refuse, or one it cannot judge — a group
- * value or key, a constant the index field may refuse, a key whose declared type is unsettled, a value with a
- * second indexed group above it — is not admitted, so a reader that honours a key on this answer honours only
- * a key A12 does. A nested index never reaches here: [operandReferenceIn] honours a text with ONE index use.
+ * key, a constant a table-backed enumeration judges, a key whose declared type is unsettled — is not admitted,
+ * so a reader that honours a key on this answer honours only a key A12 does. A nested index never reaches here: [operandReferenceIn] honours a text with ONE index use.
  */
 internal fun TrackedFactBase.admitsSemanticIndex(
     use: SemanticIndexUse,
@@ -125,18 +124,19 @@ private fun TrackedFactBase.classOf(
     element: TrackedDeclaration,
 ): IndexVerdict {
     val value = use.valuePath ?: return IndexVerdict.Opaque
-    val indexed = resolveField(value, declaringGroup, element) ?: return IndexVerdict.Opaque
+    val indexed = resolveElement(value, declaringGroup, element) ?: return IndexVerdict.Opaque
     when (keyVerdict(use, declaringGroup, element)) {
         KeyVerdict.UNJUDGEABLE -> return IndexVerdict.Opaque
         KeyVerdict.STARRED -> return IndexVerdict.Reported("MVK_SEMANTIC_INDEX_WITH_WILDCARD")
         KeyVerdict.PLAIN -> Unit
     }
-    val indexGroup = indexGroupOf(indexed) ?: return IndexVerdict.Reported("MVK_NO_INDEX_FIELD")
-    // A second indexed group above the value is `MVK_MULTIPLE_INDEX_FIELDS` in A12, measured on one carrier
-    // only ([KERNEL-FINDINGS KF478]), so the chain stands down there rather than naming it on every one.
+    // A12 walks from the value up and refuses a second indexed group on the way, in the same walk that finds the
+    // index group (`CheckEntityUtils.getIndexGroup`), measured on the twenty-six operand gates of
+    // `adapter.laws.CheckerKeyedOperandAgreementTest` ([KERNEL-FINDINGS KF478]).
     if (indexedGroupsAbove(indexed).size > 1) {
-        return IndexVerdict.Opaque
+        return IndexVerdict.Reported("MVK_MULTIPLE_INDEX_FIELDS")
     }
+    val indexGroup = indexGroupOf(indexed) ?: return IndexVerdict.Reported("MVK_NO_INDEX_FIELD")
     val indexField = indexFieldOf(indexGroup) ?: return IndexVerdict.Opaque
     keyClassOf(use, indexGroup, indexField, declaringGroup, element)?.let { return it }
     val starred = starredPrefixesOf(value, declaringGroup, element)
@@ -157,8 +157,8 @@ private fun TrackedFactBase.classOf(
  * star is this block's class and not the star's.
  *
  * A CONSTANT key meets the first of the three as an applicability test — A12 runs the index field's own
- * value validation over the constant — and this reader decides that only where the index field constrains
- * nothing, leaving every other constant-keyed index unjudged rather than naming a class A12 reaches past.
+ * value validation over the constant — and this reader decides it where [admitsConstant] can, leaving every
+ * other constant-keyed index unjudged rather than naming a class A12 reaches past.
  */
 private fun TrackedFactBase.keyClassOf(
     use: SemanticIndexUse,
@@ -168,11 +168,8 @@ private fun TrackedFactBase.keyClassOf(
     element: TrackedDeclaration,
 ): IndexVerdict? {
     use.keyLiteral?.let { literal ->
-        return when {
-            literal.isEmpty() -> IndexVerdict.Reported("MVK_INDEX_VALUE_INVALID")
-            indexField.admitsEveryConstant() -> null
-            else -> IndexVerdict.Opaque
-        }
+        val admitted = literal.isNotEmpty() && (indexField.admitsConstant(literal) ?: return IndexVerdict.Opaque)
+        return if (admitted) null else IndexVerdict.Reported("MVK_INDEX_VALUE_INVALID")
     }
     val key = element(use.keyPath?.let { written -> resolveField(written, declaringGroup, element) })
         ?: return IndexVerdict.Opaque
@@ -185,6 +182,23 @@ private fun TrackedFactBase.keyClassOf(
         return IndexVerdict.Reported("MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX")
     }
     return if (key.waivesValueValidation()) IndexVerdict.Reported("MVK_INVALID_RAW_TYPE") else null
+}
+
+/**
+ * Whether this index field's own value validation admits the non-empty [constant], or null where this reader
+ * cannot say.
+ *
+ * An enumeration without a table admits exactly the tokens its values declare, in their case and never a
+ * label ([KERNEL-FINDINGS KF479], `IEnumerationType.isValueApplicable`); a table-backed one admits the
+ * table's values, which a model does not carry. A12 strips the CR of a CRLF from the constant before the
+ * test, so a constant holding one is left unjudged rather than compared in a spelling A12 never sees.
+ */
+private fun TrackedDeclaration.admitsConstant(constant: String): Boolean? {
+    if (admitsEveryConstant()) {
+        return true
+    }
+    val enumeration = enumerationBody()?.takeIf { it["tableName"] == null && '\r' !in constant } ?: return null
+    return enumeration.declaredEnumValues()?.takeIf { it.isNotEmpty() }?.let { constant in it }
 }
 
 /**
@@ -252,27 +266,38 @@ private fun TrackedFactBase.keyVerdict(
     }
 }
 
-/** The resolved path of [written] when it names a declared FIELD, stars ignored; null otherwise. */
-private fun TrackedFactBase.resolveField(
+/**
+ * The path [written] resolves to, a field or a group, or null where it resolves to neither.
+ *
+ * A group value is an index's value as much as a field is: A12 finds its index group by walking from the value
+ * entity itself, whichever kind it is (`CheckEntityUtils.getIndexGroup`), and a keyed group reads as the row
+ * its key selects ([KERNEL-FINDINGS KF475]).
+ */
+private fun TrackedFactBase.resolveElement(
     written: String,
     declaringGroup: String,
     element: TrackedDeclaration,
 ): String? {
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
-    return resolved.path.takeIf { path ->
-        declarationAt(path, DeclaredKind.FIELD) != null
-    }
+    return resolved.path.takeIf { path -> declarationAt(path) != null }
 }
 
-/** The innermost group above [fieldPath] that declares an index field — the one A12 indexes on. */
-internal fun TrackedFactBase.indexGroupOf(fieldPath: String): String? =
-    indexedGroupsAbove(fieldPath).maxByOrNull { it.length }
+/** The FIELD [written] resolves to, or null — a key is one ([KERNEL-FINDINGS KF476]), never a group. */
+private fun TrackedFactBase.resolveField(
+    written: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): String? = resolveElement(written, declaringGroup, element)?.takeIf { declarationAt(it, DeclaredKind.FIELD) != null }
 
-/** Every group above [fieldPath] that declares an index field. */
-private fun TrackedFactBase.indexedGroupsAbove(fieldPath: String): List<String> = allDeclarations()
+/** The innermost indexed group at or above [path] — the one A12 indexes on. */
+internal fun TrackedFactBase.indexGroupOf(path: String): String? =
+    indexedGroupsAbove(path).maxByOrNull { it.length }
+
+/** Every group that declares an index field on A12's walk from [path] up: the element itself, then its ancestors. */
+private fun TrackedFactBase.indexedGroupsAbove(path: String): List<String> = allDeclarations()
     .filter {
-        it.declaredKind == DeclaredKind.GROUP && fieldPath.startsWith("${it.path}/") &&
+        it.declaredKind == DeclaredKind.GROUP && (it.path == path || path.startsWith("${it.path}/")) &&
             indexFieldNameOf(it) != null
     }
     .map { it.path }
@@ -302,7 +327,7 @@ private fun structureFinding(code: String, element: TrackedDeclaration, member: 
     span,
 )
 
-/** What is wrong, per class — the same index shape reaches nine different repairs. */
+/** What is wrong, per class — the same index shape reaches eleven different repairs. */
 private val ADVICE = mapOf(
     "MVK_SEMANTIC_INDEX_WITH_WILDCARD" to
         "keys on a starred reference; the key names ONE value to match, so it may not stand for a list",
@@ -312,7 +337,12 @@ private val ADVICE = mapOf(
         "reads a group that declares no index field, so there is nothing for the key to be compared against",
     "MVK_SEMANTIC_INDEX_BELOW_WILDCARD" to
         "stars a level ABOVE the indexed group, which leaves the index selecting inside a list of lists",
-    "MVK_INDEX_VALUE_INVALID" to "carries an empty key, which matches no repetition",
+    "MVK_INDEX_VALUE_INVALID" to
+        "carries a constant key its index field refuses — an empty one matches no repetition, and an " +
+            "enumeration index admits exactly its value tokens, in their case and never a label",
+    "MVK_MULTIPLE_INDEX_FIELDS" to
+        "reads a reference with a second indexed group on its path, and one key cannot say which of the two " +
+            "it selects — drop the index field from one of them, or read the field from a single indexed level",
     "MVK_INDEX_TYPE_INCONSISTENT" to
         "keys on a field whose declared type the index field's cannot be compared against; the two are " +
             "matched by value, so they have to share a base type",
