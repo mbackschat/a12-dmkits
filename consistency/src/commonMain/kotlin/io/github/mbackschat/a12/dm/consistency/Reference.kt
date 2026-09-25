@@ -592,9 +592,32 @@ internal fun TrackedFactBase.bareReferenceField(
     filteredBy: String? = null,
 ): TrackedDeclaration? {
     val reference = bareReferenceIn(text, conditionLanguage) ?: return null
-    val filtered = filteredBy?.let { starredLevelsOf(it, declaringGroup, element) ?: return null }.orEmpty()
+    val filtered = filteredBy?.let { filteredLevelsOf(it, declaringGroup, element) ?: return null }.orEmpty()
     val target = addressedTargetOf(reference, declaringGroup, element, filtered = filtered) ?: return null
     return declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
+}
+
+/**
+ * The repeatable levels a `Having` filter's [spec] iterates, whose one row its body reads, or null when the
+ * spec resolves to nothing or stars a level that does not repeat.
+ *
+ * Every level, not only the starred ones. An unstarred filtered operand is refused by the filter's own chain,
+ * which A12 runs once the whole spec is read, body included, so a comparison in the body is raised first
+ * and is judged over that row regardless; the same holds for a nested aggregate's filter and the construct
+ * gate refusing it (`rulekit.validate.laws.FilterBodyComparisonLawsTest
+ * .aFilterBodysComparisonOutranksTheFilteredSpecsOwnClass`). A misplaced star is `MVK_INVALID_WILDCARD`,
+ * which A12 answers alone ([KF328]), so that spec types nothing.
+ */
+private fun TrackedFactBase.filteredLevelsOf(
+    spec: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): Set<String>? {
+    val reference = referencesIn(spec, conditionLanguage).singleOrNull() ?: return null
+    starredLevelsOf(reference, declaringGroup, element) ?: return null
+    val path = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin) as? Reference.Resolved)
+        ?.path ?: return null
+    return iteratedLevels(path).toSet()
 }
 
 /** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
@@ -652,8 +675,8 @@ internal fun isBareEntitySpec(text: String): Boolean {
  *     measured shape there is no second level for a key to reach and no verdict to be wrong about. An
  *     UNINDEXED outer level is the shape that would separate "the level it selects" from "every level it
  *     crosses", and it is unmeasured, so this yields there rather than choosing one.
- * @param filtered the levels a `Having` filter enclosing the read stars: its body reads the filtered row, so
- *     those levels are addressed there ([ConditionComparison.filteredBy]).
+ * @param filtered the levels a `Having` filter enclosing the read iterates: its body reads the filtered row,
+ *     so those levels are addressed there ([ConditionComparison.filteredBy]).
  */
 internal fun TrackedFactBase.addressedTargetOf(
     reference: String,

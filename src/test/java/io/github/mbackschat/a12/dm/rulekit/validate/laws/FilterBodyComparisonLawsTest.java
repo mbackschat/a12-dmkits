@@ -46,10 +46,13 @@ class FilterBodyComparisonLawsTest {
                             .dateRangeField("MonthWindow", d -> d.format("MM").separator("/"))))
             .build().toJson();
 
-    /** Names the error field, so an admitted control is admitted rather than refused for not reading it. */
     private static String filtered(String comparison) {
-        return KernelLaws.verdictModel(POLICY, "/Policy", "../Reference",
-                "FieldFilled(Reference) And Sum(Claims*/Paid Having " + comparison + ") > 0");
+        return verdict("Sum(Claims*/Paid Having " + comparison + ") > 0");
+    }
+
+    /** Names the error field, so an admitted control is admitted rather than refused for not reading it. */
+    private static String verdict(String condition) {
+        return KernelLaws.verdictModel(POLICY, "/Policy", "../Reference", "FieldFilled(Reference) And " + condition);
     }
 
     @Test
@@ -78,5 +81,31 @@ class FilterBodyComparisonLawsTest {
         Map<String, String> actual = new LinkedHashMap<>();
         rows.keySet().forEach(comparison -> actual.put(comparison, filtered(comparison)));
         assertEquals(rows, actual, "each comparison family's refusal, inside a filter body");
+    }
+
+    /**
+     * The body reads the filtered row even where the filtered operand is itself refused, because the filter's
+     * own chain answers once the whole spec is read — body included — and the body's comparison is raised as
+     * soon as it is read. Each refused shape has its sound-body control beside it, so the class that loses to
+     * the comparison is measured rather than assumed.
+     */
+    @Test
+    void aFilterBodysComparisonOutranksTheFilteredSpecsOwnClass() {
+        Map<String, String> rows = new LinkedHashMap<>();
+        rows.put("Sum(Claims/Paid Having [Claims/Units] > 5) > 0", "MVK_NO_WILDCARD");
+        rows.put("Sum(Claims/Paid Having [Claims/Notes] < [Claims/Units]) > 0", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        rows.put("Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0",
+                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
+        rows.put("Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Notes] < [Claims/Units]) > 0) > 0",
+                "MVK_INVALID_TYPE_FOR_COMPARISON");
+        rows.put("Sum(Claims*/Paid Having Sum(Claims*/Units Having [Reference] > 5) > 0) > 0",
+                "MVK_INVALID_TYPE_FOR_COMPARISON");
+        rows.put("Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Units] > 5) > 0) > 0", "MVK_NO_WILDCARD");
+        rows.put("Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Notes] < [Claims/Units]) > 0) > 0",
+                "MVK_INVALID_TYPE_FOR_COMPARISON");
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        rows.keySet().forEach(condition -> actual.put(condition, verdict(condition)));
+        assertEquals(rows, actual, "a filter body's comparison beside the filtered spec's own class");
     }
 }

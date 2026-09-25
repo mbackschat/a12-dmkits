@@ -10739,7 +10739,20 @@ Reconciles a12-kernel-lean `SPEC-2026-09-24-03` (their report, measured on their
 | `[Claims/Window] == [Claims/MonthWindow]` | `MVK_INVALID_COMPARE_TO_DATE_RANGE` |
 | `Length(Claims/Notes) PatternMatched "a+"` · `[Claims/Units] PatternMatched "a+"` · `[Claims/Notes] PatternMatched [Claims/ClaimNo]` · `[Claims/Notes] PatternMatched "a\\*+"` | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` · `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON` · `MVK_MISSING_CONST_IN_PATTERN_COMP` · `MVK_INVALID_PATTERN` |
 
-The checker had judged no comparison inside a filter body, so it was silent on the first two rows of the table above and substituted the sound twin's class on the third. It now hands each one to the seven comparison families and types a side through the filtered row: the body reads the one repetition the filter decides, so an unstarred step through the filtered level, `Claims` here, is addressed there. It answers every row of both tables as A12 does. A `$`-marked side reads the enclosing row rather than the filtered one and is not typed, which is silent rather than wrong.
+The checker had judged no comparison inside a filter body, so it was silent on the first two rows of the table above and substituted the sound twin's class on the third. It now hands each one to the seven comparison families and types a side through the filtered row: the body reads the one repetition the filter decides, so an unstarred step through the filtered level, `Claims` here, is addressed there. It answers every row of the two tables above as A12 does. A `$`-marked side reads the enclosing row rather than the filtered one and is not typed, which is silent rather than wrong.
+
+**A body's comparison outranks the filtered spec's own class.** The filter's chain runs once the whole spec is read, body included, so a comparison in the body is raised first, and is judged over the filtered row even where the operand itself is refused. Each refused shape is measured beside its sound-body control:
+
+| `FieldFilled(Reference) And …` | A12 |
+|---|---|
+| `Sum(Claims/Paid Having [Claims/Units] > 5) > 0`, an unstarred operand | `MVK_NO_WILDCARD` |
+| the same with `[Claims/Notes] < [Claims/Units]` as the body | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+| `Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0`, a nested filter | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` |
+| the same with `[Claims/Notes] < [Claims/Units]` or `[Reference] > 5` as the nested body | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+| the nested operand unstarred, `… Having Sum(Claims/Units Having [Claims/Units] > 5) > 0) > 0` | `MVK_NO_WILDCARD` |
+| the same with `[Claims/Notes] < [Claims/Units]` as the nested body | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+
+So the checker types a body's side through every level the innermost filtered spec iterates, starred or not. It is silent on the two nested controls, whose classes belong to a filter walk that declines a nested filter ([DEV-API-GAPS](DEV-API-GAPS.md) DG90).
 
 **Extended 2026-09-25 — a sign stands on a number literal alone.** The grammar has no unary minus: `-` is part of `commonKonstante : minus='-'? ZiffernFolge …`. So `[BaseFee] > -1` and `[BaseFee] - -1 > 1` are admitted, while `-[BaseFee] < 0`, `[BaseFee] > -[EffectiveFee]`, `[BaseFee] > -{[EffectiveFee] + 1}`, `[BaseFee] > -Abs([EffectiveFee])` and `[BaseFee] > --1` are each `MVK_UNEXPECTED_TOKEN`. The checker had signed any operand and admitted all five; it now signs a literal only. The same holds on the operation carrier and in an operation argument: into `EffectiveFee`, `-5`, `0 - [BaseFee]`, `[BaseFee] * -1` and `RoundUp(0 - [BaseFee], 2)` are admitted, while `-[BaseFee]`, `[BaseFee] * -[BaseFee]`, `{-[BaseFee]}` and `RoundUp(-[BaseFee], 2)` are each `MVK_UNEXPECTED_TOKEN`, as the checker also answers.
 

@@ -37,7 +37,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * gate was ever reached.
  *
  * **One of A12's three forbidden constructs is not reported**: a NESTED filter leaves this walk before the
- * gate, being one of the shapes [filterDefectOf] declines outright. `CustomCondition` needed a parser fix to
+ * gate, being one of the shapes [filterDefectOf] declines outright (DEV-API-GAPS DG90). `CustomCondition` needed a parser fix to
  * reach it at all — the shape reader spelled the keyword-plus-bare-name predicate only where a condition was
  * expected positionally, never as a CLAUSE operand, so a filter body carrying it drew `MVK_UNEXPECTED_TOKEN`
  * from the syntax family on a text A12 parses.

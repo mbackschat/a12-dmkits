@@ -38,6 +38,26 @@ class FilterBodyComparisonTest {
         assertEquals(rows, actual, "each comparison family's refusal, inside a filter body")
     }
 
+    @Test
+    fun aFilterBodysComparisonOutranksTheFilteredSpecsOwnClass() {
+        val rows = linkedMapOf(
+            "Sum(Claims/Paid Having [Claims/Units] > 5) > 0" to "MVK_NO_WILDCARD",
+            "Sum(Claims/Paid Having [Claims/Notes] < [Claims/Units]) > 0" to "MVK_INVALID_TYPE_FOR_COMPARISON",
+            // Divergence locks, DEV-API-GAPS DG90: A12 refuses a nested filter by the construct gate, and the
+            // nested operand by its own chain; the checker's filter walk declines a nested filter outright.
+            "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0" to ADMITTED,
+            "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Notes] < [Claims/Units]) > 0) > 0" to
+                "MVK_INVALID_TYPE_FOR_COMPARISON",
+            "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Reference] > 5) > 0) > 0" to
+                "MVK_INVALID_TYPE_FOR_COMPARISON",
+            "Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Units] > 5) > 0) > 0" to ADMITTED,
+            "Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Notes] < [Claims/Units]) > 0) > 0" to
+                "MVK_INVALID_TYPE_FOR_COMPARISON",
+        )
+        val actual = rows.keys.associateWith { firstCode(it) }
+        assertEquals(rows, actual, "a filter body's comparison beside the filtered spec's own class")
+    }
+
     /** The class the checker names first, which is the one A12 raises. */
     private fun firstCode(probe: String): String = check(ModelSource(model(json("FieldFilled(Reference) And $probe"))))
         .findings.firstOrNull { it.category == FindingCategory.A12_CONSTRAINT && it.at == "/Policy/Probe" }

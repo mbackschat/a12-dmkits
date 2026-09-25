@@ -402,7 +402,9 @@ fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry)
             runText(shape.right, text),
             start = start,
             end = end,
-            // The innermost filter whose body holds the comparison, since that filter's row is what it reads.
+            // The innermost filter whose body holds the comparison. Which row a nested body reads where two
+            // filters iterate different levels is unmeasured; the innermost spec's levels are a subset of the
+            // enclosing specs' levels together, so the choice can only leave a side untyped.
             filteredBy = bodies.filter { (body, _) -> body.at <= start && end <= body.at + body.text.length }
                 .minByOrNull { (body, _) -> body.text.length }?.second,
         )
@@ -419,11 +421,11 @@ fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry)
  * @param right the text right of the operator, by the same rule as [left].
  * @param start the offset of the left side's first token, and [end] the offset just past the right side's
  *     last: where the comparison has been read, which is where A12 runs `checkVergleichsBedingung`.
- * @param filteredBy the spec whose `Having` body holds the comparison — the filtered operand, or the index
- *     key a filter after `For` belongs to ([OperandClause.filtersKey]) — as written, star kept; null outside
- *     every filter. A12 judges the comparison there exactly as outside one, reading the FILTERED row
- *     (`rulekit.validate.laws.FilterBodyComparisonLawsTest`), so a reader typing a side counts the spec's
- *     starred levels as addressed. Absent when the spec reduces to no path.
+ * @param filteredBy the spec whose `Having` body holds the comparison, the innermost where filters nest — the
+ *     filtered operand, or the index key a filter after `For` belongs to ([OperandClause.filtersKey]) — as
+ *     written, star kept; null outside every filter. A12 judges the comparison there exactly as outside one, reading the FILTERED row
+ *     (`rulekit.validate.laws.FilterBodyComparisonLawsTest`), so a reader typing a side counts the levels the
+ *     spec iterates as addressed. Absent when the spec reduces to no path.
  */
 data class ConditionComparison(
     val left: String,
