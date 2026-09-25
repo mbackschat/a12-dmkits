@@ -71,8 +71,9 @@ class RepetitionWildcardTest {
         // would then mean the sibling family stopped firing — which is exactly what this grid should notice.
         expected["scalar GroupFilled | repeatable"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
         // `Stays` repeats and is unstarred, a second defect A12 names once the first is fixed
-        // (`rulekit.validate.laws.GroupOperandRepetitionScopeLawsTest`); A12 stops at the first.
-        expected["quantifier operand | FIXED"] = listOf(invalid, "MVK_NO_WILDCARD")
+        // (`rulekit.validate.laws.GroupOperandRepetitionScopeLawsTest`); A12 stops at the first, and so does
+        // report assembly, both classes carrying their span.
+        expected["quantifier operand | FIXED"] = listOf(invalid)
         expected["quantifier operand | repeatable"] = listOf("MVK_NO_WILDCARDS_G_ALLOWED")
         expected["count operand | FIXED"] = listOf(invalid)
         expected["count operand | repeatable"] = emptyList()
@@ -82,6 +83,28 @@ class RepetitionWildcardTest {
         expected["a star on a FIELD"] = listOf(invalid)
         expected["a star on the ROOT group"] = listOf(invalid)
         assertEquals(expected, actual, "a star on a fixed group, in every position")
+    }
+
+    /**
+     * A misplaced star and an unstarred repeatable level in one condition: the FIRST in the text is named,
+     * in one operand list and across two calls alike
+     * (`rulekit.validate.laws.StarredNonRepeatableReachLawsTest.aMisplacedStarAndAnUnstarredLevelAnswerInTextOrder`).
+     * Every row reverses its neighbour, so a report keeping one fixed class, or both, fails one of the pair.
+     */
+    @Test
+    fun aMisplacedStarAndAnUnstarredLevelAnswerInTextOrder() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["star first, one call"] = codes("AllGroupsFilled(Guest*, Stays)")
+        actual["unstarred level first, one call"] = codes("AllGroupsFilled(Stays, Guest*)")
+        actual["star first, two calls"] = codes("GroupFilled(Guest*) And GroupFilled(Stays)")
+        actual["unstarred level first, two calls"] = codes("GroupFilled(Stays) And GroupFilled(Guest*)")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["star first, one call"] = listOf(invalid)
+        expected["unstarred level first, one call"] = listOf("MVK_NO_WILDCARD")
+        expected["star first, two calls"] = listOf(invalid)
+        expected["unstarred level first, two calls"] = listOf("MVK_NO_WILDCARD")
+        assertEquals(expected, actual, "a misplaced star and an unstarred level answer in text order")
     }
 
     /**

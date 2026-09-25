@@ -991,13 +991,15 @@ public final class io/github/mbackschat/a12/dm/consistency/syntax/LexicalFailure
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/syntax/OperandClause {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;I)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/consistency/syntax/OperandClause;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/OperandClause;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/OperandClause;
+	public final fun component4 ()I
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;I)Lio/github/mbackschat/a12/dm/consistency/syntax/OperandClause;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/syntax/OperandClause;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/syntax/OperandClause;
 	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAt ()I
 	public final fun getKeyword ()Ljava/lang/String;
 	public final fun getPath ()Ljava/lang/String;
 	public final fun getText ()Ljava/lang/String;

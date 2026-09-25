@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.delimitersBalanced
  * [FactRead.DeclarationContent] per declaration.
  */
 internal fun TrackedFactBase.declarationsWithUnsoundDsl(): Set<String> {
-    val unresolved = conditionReferences().declarationsWithAnUnresolvedReference()
+    val unresolved = conditionReferences().unresolvedByDeclaration().keys
     val unparseable = declarations().mapNotNull { declaration ->
         val body = declaration.body ?: return@mapNotNull null
         declaration.path.takeIf {
@@ -50,17 +50,28 @@ internal fun TrackedFactBase.declarationsWithUnsoundDsl(): Set<String> {
 internal fun PreparedModel.declarationsWithABrokenErrorTarget(
     declared: List<DeclaredReference>,
 ): Set<String> {
-    val declarationsPerPath = elements.groupingBy { it.path }.eachCount()
+    val twinned = pathsSharedByTwoDeclarations()
     return declared
         .filter { it.role == ReferenceRole.ERROR_TARGET && it.target !is Reference.Resolved }
         .map { it.declaredAt }
-        .filter { declarationsPerPath[it] == 1 }
+        .filterNot { it in twinned }
         .toSet()
 }
 
 /**
- * The declarations whose condition names something that does not resolve — A12 answers with THAT and nothing
- * else about the text.
+ * The paths more than one element is declared at, where a finding's `at` cannot say which one it is about.
+ *
+ * [PreparedModel] builds a path from the parent and the NAME, with no kind in it, so a rule and a field — or
+ * two rules — sharing a name in one group share a path. A model A12 refuses, and this checker reports, so the
+ * shape is reachable. Every gate that reads two findings at one path as being about one declaration has to
+ * stand down here (`CheckCellKeyTest.twoDeclarationsAtOnePathGetTwoCellsAndBothVerdictsReachTheReport`).
+ */
+internal fun PreparedModel.pathsSharedByTwoDeclarations(): Set<String> =
+    elements.groupingBy { it.path }.eachCount().filterValues { it > 1 }.keys
+
+/**
+ * Where each declaration's condition names something that does not resolve — A12 answers with THAT and
+ * nothing after it in the text.
  *
  * **A12 reports the FIRST defect in the text and nothing after it**, so an unresolvable name withholds every
  * class that would have been drawn later in the same text — the syntax ones and the operand ones alike
@@ -68,8 +79,8 @@ internal fun PreparedModel.declarationsWithABrokenErrorTarget(
  * then resolve": a text with an unclosed delimiter AND a bad name ahead of it still answers with the entity
  * class, so resolution reaches text the parser never approved.
  *
- * **The caller uses this set position-BLIND, which under-reports** where the other defect comes first — the
- * disclosed cost recorded with `CONDITION_TEXT_CODES`, since a finding carries no offset into the text.
+ * **The caller orders a finding against these spans only when the finding carries a span of its own**, and
+ * withholds position-blind otherwise — the disclosed cost recorded with `CONDITION_TEXT_CODES`.
  *
  * **This is the shape a family-per-defect-kind checker gets wrong on ordinary input.** Eleven families read
  * the same condition text and each reports what it finds, so any condition carrying two defects — the normal
@@ -80,8 +91,8 @@ internal fun PreparedModel.declarationsWithABrokenErrorTarget(
  * syntax class of its OPERATION (`ComputationMemberVerdictLawsTest`). A gate applied one text at a time
  * would report that syntax class.
  */
-internal fun declarationsWithAnUnresolvableConditionReference(walked: List<ConditionReference>): Set<String> =
-    walked.declarationsWithAnUnresolvedReference()
+internal fun unresolvableConditionReferences(walked: List<ConditionReference>): Map<String, List<TextSpan>> =
+    walked.unresolvedByDeclaration()
 
 /**
  * The condition references A12's segment walk reaches the END of: all of them except those an EARLIER
@@ -112,7 +123,7 @@ internal fun PreparedModel.conditionReferencesWalkedToTheirEnd(): List<Condition
 }
 
 /**
- * The declarations a condition reference fails to resolve in — the one expression of that question.
+ * The condition references that fail to resolve, by declaration — the one expression of that question.
  *
  * It exists because there were two, written out identically in the two gates above, twenty-five lines from
  * the `@param` note warning that "two expressions of one query can drift apart while both stay green"
@@ -121,7 +132,5 @@ internal fun PreparedModel.conditionReferencesWalkedToTheirEnd(): List<Condition
  * `List<ConditionReference>` rather than a receiver is what lets both use it, since one gate reads through
  * the charging barrier and the other does not.
  */
-private fun List<ConditionReference>.declarationsWithAnUnresolvedReference(): Set<String> =
-    filter { it.target !is Reference.Resolved }
-        .map { it.declaredAt }
-        .toSet()
+private fun List<ConditionReference>.unresolvedByDeclaration(): Map<String, List<TextSpan>> =
+    filter { it.target !is Reference.Resolved }.groupBy({ it.declaredAt }, { it.span })

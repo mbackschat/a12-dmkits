@@ -578,8 +578,10 @@ final class io.github.mbackschat.a12.dm.consistency.syntax/LexicalFailure { // i
 }
 
 final class io.github.mbackschat.a12.dm.consistency.syntax/OperandClause { // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause|null[0]
-    constructor <init>(kotlin/String, kotlin/String?, kotlin/String) // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.<init>|<init>(kotlin.String;kotlin.String?;kotlin.String){}[0]
+    constructor <init>(kotlin/String, kotlin/String?, kotlin/String, kotlin/Int) // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.<init>|<init>(kotlin.String;kotlin.String?;kotlin.String;kotlin.Int){}[0]
 
+    final val at // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.at|{}at[0]
+        final fun <get-at>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.at.<get-at>|<get-at>(){}[0]
     final val keyword // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.keyword|{}keyword[0]
         final fun <get-keyword>(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.keyword.<get-keyword>|<get-keyword>(){}[0]
     final val path // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.path|{}path[0]
@@ -590,7 +592,8 @@ final class io.github.mbackschat.a12.dm.consistency.syntax/OperandClause { // io
     final fun component1(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.component1|component1(){}[0]
     final fun component2(): kotlin/String? // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.component2|component2(){}[0]
     final fun component3(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.component3|component3(){}[0]
-    final fun copy(kotlin/String = ..., kotlin/String? = ..., kotlin/String = ...): io.github.mbackschat.a12.dm.consistency.syntax/OperandClause // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.copy|copy(kotlin.String;kotlin.String?;kotlin.String){}[0]
+    final fun component4(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.component4|component4(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/String? = ..., kotlin/String = ..., kotlin/Int = ...): io.github.mbackschat.a12.dm.consistency.syntax/OperandClause // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.copy|copy(kotlin.String;kotlin.String?;kotlin.String;kotlin.Int){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/OperandClause.toString|toString(){}[0]

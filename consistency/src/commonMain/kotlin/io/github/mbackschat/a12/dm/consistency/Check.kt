@@ -992,7 +992,9 @@ internal fun checkRun(
     // A reference an earlier segment's gate answers for never reaches its miss, so it is neither a missing
     // name nor a reason to withhold what follows it (KF356).
     val walked = prepared.conditionReferencesWalkedToTheirEnd()
-    val resolvedFirst = declarationsWithAnUnresolvableConditionReference(walked)
+    val unresolved = unresolvableConditionReferences(walked)
+    // Two declarations at one path are two texts under one `at`, so no offset there can be set against another.
+    val twinned = prepared.pathsSharedByTwoDeclarations()
     // Every cell this check must produce, in dispatch order. Validity is decided ONCE per cell and
     // everything below reads that decision — both output channels and the counter.
     val scheduled = schedule(tracked)
@@ -1004,20 +1006,23 @@ internal fun checkRun(
         it.key to (reusable.getValue(it.key) ?: tracked.cellFor(it.key, prepared, it.produce))
     }
     val reused = reusable.count { it.value != null }
-    val references = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
-        walked.mapNotNull {
-            it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
-        }
+    val conditionReferences = walked.mapNotNull {
+        it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
+    }
+    val references = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } + conditionReferences
     // A reference's own class is what withholds the text classes, so it is never withheld behind itself —
     // which matters because a misplaced up-step's class is a token error, spelled like one of those it withholds.
     val textClasses = scheduled.flatMap { cells.getValue(it.key).findings }
-        .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
+        .filterNot {
+            it.code in CONDITION_TEXT_CODES && it.mayFollowAnUnresolvableName(unresolved[it.at], it.at in twinned)
+        }
     val messageVerdicts = scheduled.filter { it.key.producer.completes.all { f -> f in MESSAGE_MEMBER_FAMILIES } }
         .flatMapTo(mutableSetOf()) { cells.getValue(it.key).findings }
     val dslVerdicts = scheduled.filter { it.key.producer.completes.none { f -> f in BESIDE_THE_DSL_FAMILIES } }
         .flatMap { cells.getValue(it.key).findings }
     val judged = (references + textClasses)
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
+        .withoutDefectsBehindAnEarlierOne(conditionReferences.toSet(), twinned)
         .withoutPostParseClassesBehindAPositionedDefect()
         .withoutMessageVerdictsBehindARefusedDsl(messageVerdicts, dslVerdicts = references + dslVerdicts)
     val findings = judged.notSuppressedBy(tracked.variantFilterSuppressed())
@@ -1230,6 +1235,55 @@ private val UNIMPLEMENTED_FAMILIES = listOf(
 private val ERROR_TARGET_CODES = setOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD, CK_MODEL_NOT_BUILDABLE)
 
 /**
+ * Whether an unresolvable name in the same declaration may stand ahead of this finding, which withholds it.
+ *
+ * Only a positioned class carrying its own span can be placed, and only against a name in the SAME member:
+ * across members the order is not measured, and a name in a precondition is measured withholding the
+ * operation's class (`rulekit.validate.laws.ComputationMemberVerdictLawsTest`). Everything else answers yes
+ * wherever the declaration has such a name — the position-blind substitution [CONDITION_TEXT_CODES] discloses.
+ * So does a finding at a [twinned] path, whose spans may index another declaration's text.
+ */
+private fun Finding.mayFollowAnUnresolvableName(unresolved: List<TextSpan>?, twinned: Boolean): Boolean {
+    if (unresolved == null) {
+        return false
+    }
+    val own = span?.takeIf { !twinned && code in POSITIONED_CONDITION_CODES } ?: return true
+    return unresolved.any { it.member != own.member || it.start < own.end }
+}
+
+/**
+ * Drops a finding that an EARLIER defect in the same DSL member stands ahead of: A12 names the first defect in
+ * a text and nothing after it.
+ *
+ * Measured in both orders on every pair of kinds this can see — two reference classes, a reference class and
+ * a positioned one, a wildcard class and a parser class (`rulekit.validate.laws.ConditionClassWithholdingLawsTest`),
+ * and the two wildcard classes in one call and across two
+ * (`…StarredNonRepeatableReachLawsTest.aMisplacedStarAndAnUnstarredLevelAnswerInTextOrder`).
+ *
+ * **Only a finding that can be PLACED takes part**: a positioned class carrying its span, or a condition
+ * reference's own class ([references]), at a path only one declaration has ([twinned]). A positioned class
+ * with no span is neither dropped nor drops, because placing it would be a guess, so it and a later spanned
+ * class both stand where A12 names one ([DEV-API-GAPS DG84]). **A repeat of one code is kept**, as the
+ * reference family has always reported every name that does not resolve: it adds no class A12 withholds, and
+ * it shows the author each place to fix.
+ */
+private fun List<Finding>.withoutDefectsBehindAnEarlierOne(
+    references: Set<Finding>,
+    twinned: Set<String>,
+): List<Finding> {
+    fun Finding.placed(): TextSpan? = span?.takeIf {
+        at !in twinned && justifiesRejection && (code in POSITIONED_CONDITION_CODES || this in references)
+    }
+    val placedByMember = mapNotNull { finding -> finding.placed()?.let { finding to it } }
+        .groupBy { (finding, span) -> finding.at to span.member }
+    return filterNot { finding ->
+        val own = finding.placed() ?: return@filterNot false
+        placedByMember.getValue(finding.at to own.member)
+            .any { (earlier, span) -> earlier.code != finding.code && span.end <= own.start }
+    }
+}
+
+/**
  * Drops a POST-PARSE class at any declaration whose condition text already draws a positioned one.
  *
  * Unlike the two model-reading gates above, this one reads the findings, because it is not the model that
@@ -1388,20 +1442,19 @@ private val POST_PARSE_CONDITION_CODES = setOf(
 /**
  * Every class read out of the condition text, all of which an unresolvable name in it can withhold.
  *
- * **This gate is deliberately position-BLIND, and the price is a SUBSTITUTION, not an under-report.** A
- * finding carries no offset into the condition text, so the faithful rule — drop a class only when an
- * unresolvable name precedes it — would need one threaded through eleven families. Dropping unconditionally
- * matches A12 exactly when the bad name comes first, and when it does not we name the bad name where A12
- * names the other defect: one class either way, both true of the text, and the author reaches the same fixed
- * condition. What it never does is reject a model A12 admits, or report two classes where A12 reports one.
+ * **A class that carries its span is placed against the names; one that does not is withheld position-BLIND,
+ * and the price there is a SUBSTITUTION, not an under-report.** The reference, lexer, completeness, grammar
+ * and repetition-wildcard families and the operand-scope walk publish a span, so for their classes the
+ * faithful rule holds — withheld only behind a name that comes first ([mayFollowAnUnresolvableName]). The
+ * other families carry no offset into the text, and for them dropping unconditionally matches A12 exactly when
+ * the bad name comes first; when it does not we name the bad name where A12 names the other defect: one class
+ * either way, both true of the text, and the author reaches the same fixed condition. What it never does is
+ * reject a model A12 admits, or report two classes where A12 reports one.
  *
- * **The substitution survives only between two DIFFERENT references.** Within one path the order is known
- * without an offset, because A12 walks the path segment by segment: a reference whose earlier segment's gate
- * answers never reaches its miss, so it is not an unresolvable name here at all
- * ([conditionReferencesWalkedToTheirEnd], measured 2026-09-24). `RepetitionWildcardTest.theShapesItLeavesAlone`
- * was the row that showed the substitution, a starred fixed group ahead of a missing leaf, and it now names
- * A12's class. It once asserted both classes on the reasoning that the extra one was still true;
- * [ConsistencyReport] settles that: a finding is A12's verdict on a declaration, so a class A12 did not draw
- * is a divergence however true it is.
+ * **Within one path the order is known without an offset**, because A12 walks the path segment by segment: a
+ * reference whose earlier segment's gate answers never reaches its miss, so it is not an unresolvable name
+ * here at all ([conditionReferencesWalkedToTheirEnd], measured 2026-09-24). Substituting there would still be
+ * wrong though both classes are true: a finding is A12's verdict on a declaration ([ConsistencyReport]), so a
+ * class A12 did not draw is a divergence however true it is.
  */
 private val CONDITION_TEXT_CODES = POSITIONED_CONDITION_CODES + POST_PARSE_CONDITION_CODES

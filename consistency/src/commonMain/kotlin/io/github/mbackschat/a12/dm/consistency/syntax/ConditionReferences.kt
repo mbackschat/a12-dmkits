@@ -39,6 +39,15 @@ fun referenceSpansIn(text: String, language: ConditionLanguage): List<ReferenceS
 /** One reference occurrence: its normalized spelling, and the characters it occupies. */
 data class ReferenceSpan(val written: String, val start: Int, val end: Int)
 
+/**
+ * Each name [text] references once, at its FIRST occurrence — [referencesIn] with the characters attached.
+ *
+ * The first is the one a finding points at: A12 reports the first defect in a text and nothing after it, so
+ * a later spelling of the same name is never where it stopped.
+ */
+internal fun firstReferenceSpansIn(text: String, language: ConditionLanguage): List<ReferenceSpan> =
+    referenceSpansIn(text, language).distinctBy { it.written }
+
 private fun scanOf(text: String, language: ConditionLanguage) = ReferenceScan(
     tokenize(text),
     CONDITION_KEYWORDS.getValue(language),

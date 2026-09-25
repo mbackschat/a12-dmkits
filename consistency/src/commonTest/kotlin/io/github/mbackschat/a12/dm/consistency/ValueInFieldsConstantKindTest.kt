@@ -99,9 +99,9 @@ class ValueInFieldsConstantKindTest {
             listOf("MVK_INVALID_WILDCARD")
         // The SECOND shape of the same divergence, asserted rather than hidden: A12's parse stops at the
         // token, so the arity gate is never reached, while this checker's reader splits the call anyway and
-        // counts one field. Both classes are positioned ones that compete for first place, and this estate
-        // keeps every competitor because it has no offsets to order them by — so the right class arrives
-        // beside a wrong one instead of replacing it.
+        // counts one field. Both classes compete for first place, and report assembly orders only classes
+        // that carry a span, which the arity class does not — so the right class arrives beside a wrong one
+        // instead of replacing it.
         expected["an OPERATION in the slot"] = listOf("MVK_UNEXPECTED_TOKEN", "MVK_PARAMSIZE_INVALIDN")
         expected["a parenthesized number in the slot"] = listOf("MVK_UNEXPECTED_TOKEN")
         expected["an EMPTY slot"] = listOf("MVK_UNEXPECTED_TOKEN")

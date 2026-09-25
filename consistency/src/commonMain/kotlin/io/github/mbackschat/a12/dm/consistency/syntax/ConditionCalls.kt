@@ -77,8 +77,10 @@ data class CallOperand(
  * @param path the clause's own operand reduced by the same bare-spec rule as [CallOperand.path] — present
  *     for a scope, absent for a filter, whose operand is a whole condition rather than a path.
  * @param text the authored text of the clause's operand, for a consumer that needs to read it further.
+ * @param at the offset of [text] in the whole member text, so a consumer can set exactly these characters
+ *     aside. Matching [text] instead finds every run that spells it, including one outside the clause.
  */
-data class OperandClause(val keyword: String, val path: String?, val text: String)
+data class OperandClause(val keyword: String, val path: String?, val text: String, val at: Int)
 
 /**
  * The operand this token run describes, split at its top-level clause keywords.
@@ -99,6 +101,8 @@ private fun List<Token>.asOperand(keywords: Map<String, KeywordKind>, source: St
             cut.keyword,
             body.asPath(keywords),
             if (body.isEmpty()) "" else source.substring(body.first().start, body.last().end),
+            // An empty body has no first token, so its offset is where one would begin: after the keyword.
+            body.firstOrNull()?.start ?: this[cut.at + cut.width - 1].end,
         )
     }
     // `path` keeps its narrower contract deliberately: it has always meant "a bare spec and nothing else",

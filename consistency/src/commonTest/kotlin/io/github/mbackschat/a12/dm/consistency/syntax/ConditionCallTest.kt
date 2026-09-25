@@ -131,7 +131,7 @@ class ConditionCallTest {
         val operand = calls("RepetitionNotUnique(Crates/CrateRef @From Crates)").single().operands.single()
         assertEquals(null, operand.path)
         assertEquals("Crates/CrateRef", operand.base)
-        assertEquals(listOf(OperandClause("@From", "Crates", "Crates")), operand.clauses)
+        assertEquals(listOf(OperandClause("@From", "Crates", "Crates", at = 42)), operand.clauses)
     }
 
     /** A bare operand carries no clause and its base is its path, so a consumer needs no special case. */
@@ -149,9 +149,12 @@ class ConditionCallTest {
      */
     @Test
     fun aFilterClauseCarriesItsTextRatherThanAPath() {
-        val operand = calls("Sum(Items*/Count Having [Items/Sku] == \"X\") > 0").first().operands.single()
+        val text = "Sum(Items*/Count Having [Items/Sku] == \"X\") > 0"
+        val operand = calls(text).first().operands.single()
         assertEquals("Items*/Count", operand.base)
-        assertEquals(listOf(OperandClause("Having", null, "[Items/Sku] == \"X\"")), operand.clauses)
+        assertEquals(listOf(OperandClause("Having", null, "[Items/Sku] == \"X\"", at = 24)), operand.clauses)
+        // The offset is into the whole member text, which is what lets a reader set the body aside by place.
+        assertEquals(24, text.indexOf('['))
     }
 
     /**

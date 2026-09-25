@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.firstReferenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -85,11 +86,13 @@ internal fun TrackedFactBase.operandRepetitionScopeFindings(): List<Finding> {
                 return@firstNotNullOfOrNull null
             }
             val filtered = filteredBases(text, member, filterKeyword, conditionLanguage)
-            referencesIn(own, conditionLanguage)
-                .filterNot { isRuleContext(it, conditionLanguage) }
-                .firstNotNullOfOrNull { written ->
+            firstReferenceSpansIn(own, conditionLanguage)
+                .filterNot { isRuleContext(it.written, conditionLanguage) }
+                .firstNotNullOfOrNull { occurrence ->
+                    val written = occurrence.written
+                    val span = TextSpan(member, occurrence.start, occurrence.end)
                     levelClassOf(written, declaringGroup, targetGroup, element, filtered = written in filtered)
-                        ?.let { scopeFinding(it, written, target, element, member) }
+                        ?.let { scopeFinding(it, written, target, element, span) }
                 }
         }
     }
@@ -107,18 +110,28 @@ internal fun TrackedFactBase.referencesOutsideFilterBodies(element: TrackedDecla
         .toSet()
 }
 
+/**
+ * [text] with every `Having` filter body blanked IN PLACE, one space per character.
+ *
+ * In place so that an offset into the result is an offset into [text], which is what lets a finding read off
+ * it point at the author's characters. And by POSITION rather than by matching the body's text, which would
+ * also blank a conjunct that happens to spell it — a read A12 still judges
+ * (`rulekit.validate.laws.FilterBodyTextRepeatedOutsideLawsTest`).
+ */
 private fun withoutFilterBodies(
     text: String,
     member: String,
     filterKeyword: Set<String>,
     conditionLanguage: ConditionLanguage,
-): String = callsIn(text, conditionLanguage, syntaxEntryOf(member))
-    .flatMap { call -> call.operands }
-    .flatMap { operand -> operand.clauses }
-    .filter { it.keyword in filterKeyword }
-    .map { it.text }
-    .filter { it.isNotEmpty() }
-    .fold(text) { stripped, bodyText -> stripped.replace(bodyText, " ") }
+): String {
+    val blanked = text.toCharArray()
+    callsIn(text, conditionLanguage, syntaxEntryOf(member))
+        .flatMap { call -> call.operands }
+        .flatMap { operand -> operand.clauses }
+        .filter { it.keyword in filterKeyword }
+        .forEach { body -> blanked.fill(' ', body.at, body.at + body.text.length) }
+    return blanked.concatToString()
+}
 
 /** The operands [text] hands to a `Having` filter, by their base. */
 private fun filteredBases(
@@ -347,14 +360,15 @@ private fun scopeFinding(
     written: String,
     target: String,
     element: TrackedDeclaration,
-    member: String,
+    span: TextSpan,
 ) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,
-    "in `$member`: `$written` reads a repetition that `$target`'s own coordinates do not address — " +
+    "in `${span.member}`: `$written` reads a repetition that `$target`'s own coordinates do not address — " +
         "${REMEDIES.getValue(code)}",
     element.path,
+    span,
 )
 
 private val REMEDIES = mapOf(

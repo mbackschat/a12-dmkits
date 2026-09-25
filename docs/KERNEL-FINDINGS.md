@@ -6755,7 +6755,7 @@ Reported by the portable checker (`CheckFamily.REPETITION_WILDCARD_TARGET`) unde
 | a `SumOfProducts` pair | `Fees*/Handling, Vouchers*/Amount` | `MVK_DIFFERENT_GROUPS` |
 | against an unreferenced error field | `FieldFilled(Customs*/Declaration)` | `MVK_ERROR_FIELD_NOT_REFERENCED` |
 
-**"Alone" holds per defect, not per condition: of two defects, the one read first answers.** `AllGroupsFilled(Guest*, Nights)`, a misplaced star ahead of an unstarred repeatable `Nights`, draws `MVK_INVALID_WILDCARD`, and `AllGroupsFilled(Nights, Guest*)` draws `MVK_NO_WILDCARD` alone. The same two defects in two calls answer the same way, `GroupFilled(Guest*) And GroupFilled(Nights)` against its reverse. The rival account, that the resolver's class outranks the walk's, predicts `MVK_INVALID_WILDCARD` on each second row and is refuted there. This is [KF443](#kf443)'s per-operand read seen from the other side. The portable checker reports both classes on every order ([DG84](DEV-API-GAPS.md)).
+**"Alone" holds per defect, not per condition: of two defects, the one read first answers.** `AllGroupsFilled(Guest*, Nights)`, a misplaced star ahead of an unstarred repeatable `Nights`, draws `MVK_INVALID_WILDCARD`, and `AllGroupsFilled(Nights, Guest*)` draws `MVK_NO_WILDCARD` alone. The same two defects in two calls answer the same way, `GroupFilled(Guest*) And GroupFilled(Nights)` against its reverse. The rival account, that the resolver's class outranks the walk's, predicts `MVK_INVALID_WILDCARD` on each second row and is refuted there. This is [KF443](#kf443)'s per-operand read seen from the other side. The portable checker names the first as well, both classes carrying their span ([KF342](#kf342)).
 
 *Locked by:* `rulekit.validate.laws.StarredNonRepeatableReachLawsTest` (two carriers); the portable checker's mirror is `consistency.RepetitionWildcardTest`, and its agreement with the Kernel on real models is `adapter.laws.CheckerSilenceOnCleanModelsTest`.
 
@@ -7179,9 +7179,25 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 | `AllGroupsFilled(/Registry, X)` — a root group | `MVK_ROOT_GROUP_REFERENCED` | `MVK_ROOT_GROUP_REFERENCED` | **`MVK_INVALID_ENTITY`** |
 | `GroupFilled(X/Notes)` — a field where a group belongs | `MVK_NO_FIELDS_ALLOWED` | `MVK_NO_FIELDS_ALLOWED` | **`MVK_INVALID_ENTITY`** |
 | `GroupFilled(X*)` — a star on a fixed group | `MVK_INVALID_WILDCARD` | `MVK_INVALID_WILDCARD` | **`MVK_INVALID_ENTITY`** |
+| `FieldFilled(Claims/Amount)` — an unstarred repeatable read | `MVK_NO_WILDCARD` | `MVK_NO_WILDCARD` | **`MVK_INVALID_ENTITY`** |
+| `… And % …` — a character the lexer cannot take | `MVK_LEXER_STANDARD_ERROR` | `MVK_LEXER_STANDARD_ERROR` | **`MVK_INVALID_ENTITY`** |
+| `FieldFilled(../../Reference)` — a path climbing above the root | `MVK_TOO_MANY_PARENT_GROUPS` | `MVK_TOO_MANY_PARENT_GROUPS` | **`MVK_INVALID_ENTITY`** |
 | `… And And …` — an unexpected token | `MVK_UNEXPECTED_TOKEN` | `MVK_UNEXPECTED_TOKEN` | **`MVK_INVALID_ENTITY`** (KF340) |
 
-**The middle column is the whole finding.** KF340 had no middle column, and without it "resolution runs first" was untestable.
+**The middle column is the whole finding.** KF340 had no middle column, and without it "resolution runs first" was untestable. *(Extended 2026-09-25 by the three rows above the last: the above-root row is a second REFERENCE class, so the order holds between two classes drawn by the same resolution too.)*
+
+**Nor is a missing name needed on either side (measured 2026-09-25).** Each pair is one text read both ways round:
+
+| first in the text | then | A12 |
+|---|---|---|
+| `GroupFilled(X*)` — a misplaced star | `… And And …` | `MVK_INVALID_WILDCARD` |
+| `… And And …` | `GroupFilled(X*)` | `MVK_UNEXPECTED_TOKEN` |
+| `FieldFilled(Claims/Amount)` — an unstarred repeatable read | `… And And …` | `MVK_NO_WILDCARD` |
+| `… And And …` | `FieldFilled(Claims/Amount)` | `MVK_UNEXPECTED_TOKEN` |
+| `GroupFilled(/Policy/Archive)` — an empty group | `GroupFilled(X*)` | `MVK_GROUP_IS_EMPTY` |
+| `GroupFilled(X*)` | `GroupFilled(/Policy/Archive)` | `MVK_INVALID_WILDCARD` |
+
+So a resolution class, a parser class and an operand class each answer only when they come first; the two wildcard classes against each other are [KF328](#kf328)'s.
 
 **Two classes are not in that competition at all — they lose wherever the bad name sits:**
 
@@ -7194,7 +7210,7 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 
 **`MVK_INCOMPLETE_INPUT` has no reversed row and cannot have one**: the class says the text ended early, so no second defect can sit after it.
 
-Reported by the portable checker as two gates where the report is assembled. The first drops every condition-text code at a declaration with an unresolvable name and is deliberately **position-blind**, because a finding carries no offset into the text and threading one through eleven families is a larger change than it buys; the price is a SUBSTITUTION rather than an under-report — where the other defect comes first A12 names it and the checker names the bad name, one class either way and both true of the text. That cost is visible in `consistency.RepetitionWildcardTest`, which asserted BOTH classes on `FieldFilled(Guest*/NoSuchField)` until this entry: A12 stops at the star, and a class A12 did not draw is a divergence however true it is. The second gate drops the two relational codes wherever another family already reported on the same text, and reads the FINDINGS rather than the model, because the same unreferenced error target is reported on a sound condition and withheld on a defective one.
+Reported by the portable checker where the report is assembled. **A class whose family publishes its span is placed**: the reference, lexer, completeness and grammar families, the repetition-wildcard family and the operand-scope walk do, and in one member the earliest placed class stands while every placed class of another code behind it goes. **A class with no span cannot be placed**, so beside an unresolvable name it is dropped position-blind — a SUBSTITUTION where it came first, one class either way and both true of the text — and beside a later placed class both stand ([DG84](DEV-API-GAPS.md)). Nothing is placed across two members, nor at a path two declarations share. A class A12 did not draw is a divergence however true it is, which is why `consistency.RepetitionWildcardTest` stopped asserting both classes on `FieldFilled(Guest*/NoSuchField)`. The second gate drops the two relational codes wherever another family already reported on the same text, and reads the FINDINGS rather than the model, because the same unreferenced error target is reported on a sound condition and withheld on a defective one.
 
 *Locked by:* `rulekit.validate.laws.ConditionClassWithholdingLawsTest`, mirrored by `consistency … ConditionMultipleDefectTest`.
 

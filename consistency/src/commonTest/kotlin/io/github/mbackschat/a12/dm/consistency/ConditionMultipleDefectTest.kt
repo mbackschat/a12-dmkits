@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * The checker's half of "A12 reports the first defect in the condition text and nothing after it".
@@ -10,9 +12,11 @@ import kotlin.test.assertEquals
  * Eleven families read one condition text, so without the withholding a condition carrying two defects — the
  * normal state of one being written — draws a class A12 withheld.
  *
- * **The gate is position-blind where A12 is not**, so the rows here all put the bad name first, which is the
- * case the two agree on. Where the other defect comes first A12 names it and the checker names the bad name
- * instead; that is the disclosed under-report in `CONDITION_TEXT_CODES`, not a row to lock as agreement.
+ * **The gate is position-blind for a class that carries no span**, so the rows for those classes all put the
+ * bad name first, which is the case the two agree on. Where such a class comes first A12 names it and the
+ * checker names the bad name instead; that is the disclosed substitution in `CONDITION_TEXT_CODES`, not a
+ * row to lock as agreement. A class that carries its span is placed, and
+ * [aClassCarryingItsSpanIsPlacedAgainstTheBadName] holds it to A12 in both orders.
  */
 class ConditionMultipleDefectTest {
 
@@ -129,6 +133,70 @@ class ConditionMultipleDefectTest {
         assertEquals(expected, actual, "an unresolvable name withholds the other member's syntax class")
     }
 
+    /**
+     * The classes that carry their span, placed against the bad name in both orders — and the one kind that
+     * cannot be placed, a class with no span, which stands beside a later spanned one where A12 names only
+     * the first (`DEV-API-GAPS` DG84). Every row is `rulekit.validate.laws.ConditionClassWithholdingLawsTest`'s.
+     */
+    @Test
+    fun aClassCarryingItsSpanIsPlacedAgainstTheBadName() {
+        val actual = mutableMapOf<String, List<String>>()
+        val expected = mutableMapOf<String, List<String>>()
+        fun ordered(row: String, condition: String, alone: String) {
+            actual["$row, bad name after"] = codes("$condition And FieldFilled(NoSuchField)")
+            expected["$row, bad name after"] = listOf(alone)
+            actual["$row, bad name BEFORE"] = codes("FieldFilled(NoSuchField) And $condition")
+            expected["$row, bad name BEFORE"] = listOf("MVK_INVALID_ENTITY")
+        }
+        ordered("a star on a fixed group", "GroupFilled(/Policy/Assessment*)", "MVK_INVALID_WILDCARD")
+        ordered("an unstarred repeatable read", "FieldFilled(/Policy/Claims/Amount)", "MVK_NO_WILDCARD")
+        ordered("a character the lexer cannot take", "FieldFilled(Reference) And % FieldFilled(Reference)",
+            "MVK_LEXER_STANDARD_ERROR")
+        ordered("a stray connective", "FieldFilled(Reference) And And FieldFilled(Reference)",
+            "MVK_UNEXPECTED_TOKEN")
+        ordered("a path climbing above the root", "FieldFilled(../../Reference)", "MVK_TOO_MANY_PARENT_GROUPS")
+
+        val stray = "FieldFilled(Reference) And And FieldFilled(Reference)"
+        actual["a misplaced star, then a stray connective"] = codes("GroupFilled(/Policy/Assessment*) And $stray")
+        expected["a misplaced star, then a stray connective"] = listOf("MVK_INVALID_WILDCARD")
+        actual["a stray connective, then a misplaced star"] = codes("$stray And GroupFilled(/Policy/Assessment*)")
+        expected["a stray connective, then a misplaced star"] = listOf("MVK_UNEXPECTED_TOKEN")
+
+        // A12 names the first of these two, in either order. The empty-group class carries no span, so
+        // neither can be placed and both stand: the residual this checker discloses rather than guesses at.
+        actual["an empty group, then a misplaced star"] =
+            codes("GroupFilled(/Policy/Archive) And GroupFilled(/Policy/Assessment*)")
+        expected["an empty group, then a misplaced star"] = listOf("MVK_GROUP_IS_EMPTY", "MVK_INVALID_WILDCARD")
+        actual["a misplaced star, then an empty group"] =
+            codes("GroupFilled(/Policy/Assessment*) And GroupFilled(/Policy/Archive)")
+        expected["a misplaced star, then an empty group"] = listOf("MVK_GROUP_IS_EMPTY", "MVK_INVALID_WILDCARD")
+        assertEquals(expected, actual, "which class a condition carrying a spanned class and a bad name reports")
+    }
+
+    /**
+     * Two rules sharing one path are two texts under one `at`, so an offset in one says nothing about the
+     * other. The wildcard class is EARLIER in its own text than the bad name is in its twin's, and a placement
+     * comparing the two would keep it; the position-blind withholding applies instead, the same under-report
+     * every span-less class takes (`Check.kt`, `pathsSharedByTwoDeclarations`).
+     */
+    @Test
+    fun twoRulesAtOnePathAreNeverPlacedAgainstEachOther() {
+        val reported = check(ModelSource(twins(
+            "FieldFilled(Reference) And FieldFilled(NoSuchField)", "GroupFilled(/Policy/Assessment*)",
+        ))).findings.filter { it.at == "/Policy/Probe" }.map { it.code }.toSet()
+
+        assertTrue("MVK_INVALID_ENTITY" in reported, "the bad name must be reported, or this row is vacuous")
+        assertFalse("MVK_INVALID_WILDCARD" in reported, "a twin's offset was compared with the other's: $reported")
+    }
+
+    /** [model] with a second rule of the SAME name carrying [second], so the two share one path. */
+    private fun twins(first: String, second: String): String = model(
+        first, "../Reference",
+        twin = """{"type":"Rule","id":"r9","name":"Probe","Rule":{"errorCondition":"$second",
+          "errorEntityRelPath":"../Reference","errorCode":"C2",
+          "errorMessage":[{"locale":"en_US","text":"see it"}]}},""",
+    )
+
     private fun computing(precondition: String, operation: String): List<String> =
         check(ModelSource(computationModel(precondition, operation))).findings
             .filter { it.at == "/Depot/WeightCalc" }.map { it.code }.distinct().sorted()
@@ -148,7 +216,7 @@ class ConditionMultipleDefectTest {
          ]}}}
     """.trimIndent()
 
-    private fun model(condition: String, errorTarget: String): String = """
+    private fun model(condition: String, errorTarget: String, twin: String = ""): String = """
         {"header":{"id":"policy","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
@@ -158,6 +226,10 @@ class ConditionMultipleDefectTest {
               {"type":"Field","id":"f2","name":"Notes","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
             {"type":"Group","id":"g2","name":"Archive","Group":{"elements":[]}},
+            {"type":"Group","id":"g4","name":"Claims","Group":{"repeatability":5,"elements":[
+              {"type":"Field","id":"f4","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}}
+            ]}},
+            $twin
             {"type":"Rule","id":"r0","name":"Probe","Rule":{
               "errorCondition":"$condition","errorEntityRelPath":"$errorTarget",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"see it"}]}}

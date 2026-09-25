@@ -52,7 +52,9 @@ class ConditionClassWithholdingLawsTest {
                     .stringField("Reference", f -> { })
                     .numberField("Score", f -> { })
                     .group("Assessment", assessment -> assessment.stringField("Notes", f -> { }))
-                    .group("Archive", archive -> { }))
+                    .group("Archive", archive -> { })
+                    // A repeatable group, so an unstarred read of it has a position to compete for.
+                    .group("Claims", claims -> claims.repeatable(5).numberField("Amount", f -> { })))
             .rootGroup("Registry", registry -> registry.stringField("Code", f -> { }))
             .build().toJson();
 
@@ -91,6 +93,16 @@ class ConditionClassWithholdingLawsTest {
                 "GroupFilled(/Policy/Assessment/Notes)", "MVK_NO_FIELDS_ALLOWED");
         measure(actual, expected, "a star on a fixed group", "GroupFilled(/Policy/Assessment*)",
                 "MVK_INVALID_WILDCARD");
+        measure(actual, expected, "an unstarred repeatable read", "FieldFilled(/Policy/Claims/Amount)",
+                "MVK_NO_WILDCARD");
+        // A lexer class that swallows nothing after it, unlike the unterminated literal above, so it has
+        // an after-row.
+        measure(actual, expected, "a character the lexer cannot take",
+                "FieldFilled(Reference) And % FieldFilled(Reference)", "MVK_LEXER_STANDARD_ERROR");
+        // A second REFERENCE class, so the bad name competes with a class drawn by the same resolution rather
+        // than by another phase.
+        measure(actual, expected, "a path climbing above the root", "FieldFilled(../../Reference)",
+                "MVK_TOO_MANY_PARENT_GROUPS");
 
         // The reversal for the classes ConditionMultipleDefectLawsTest could only ask one way round.
         // MVK_INCOMPLETE_INPUT gets no row at all: the class says the text ended early, so no second defect
@@ -140,6 +152,38 @@ class ConditionClassWithholdingLawsTest {
         expected.put("an app condition AHEAD of an empty group", "MVK_GROUP_IS_EMPTY");
 
         assertEquals(expected, actual, "which condition class an unresolvable name withholds");
+    }
+
+    /**
+     * The same order law between two classes that are NOT a missing name: a repetition wildcard's, drawn while
+     * a reference is resolved, against the parser's own and an operand class. Each pair is one text read both
+     * ways round, so the only variable is which defect comes first.
+     */
+    @Test
+    void aWildcardClassAndAParserOrOperandClassAnswerInTextOrder() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        String stray = "FieldFilled(Reference) And And FieldFilled(Reference)";
+        actual.put("a misplaced star, then a stray connective",
+                verdict("GroupFilled(/Policy/Assessment*) And " + stray));
+        expected.put("a misplaced star, then a stray connective", "MVK_INVALID_WILDCARD");
+        actual.put("a stray connective, then a misplaced star",
+                verdict(stray + " And GroupFilled(/Policy/Assessment*)"));
+        expected.put("a stray connective, then a misplaced star", "MVK_UNEXPECTED_TOKEN");
+        actual.put("an unstarred repeatable read, then a stray connective",
+                verdict("FieldFilled(/Policy/Claims/Amount) And " + stray));
+        expected.put("an unstarred repeatable read, then a stray connective", "MVK_NO_WILDCARD");
+        actual.put("a stray connective, then an unstarred repeatable read",
+                verdict(stray + " And FieldFilled(/Policy/Claims/Amount)"));
+        expected.put("a stray connective, then an unstarred repeatable read", "MVK_UNEXPECTED_TOKEN");
+        // And against an OPERAND class, drawn while the operator reads its operand list.
+        actual.put("an empty group, then a misplaced star",
+                verdict("GroupFilled(/Policy/Archive) And GroupFilled(/Policy/Assessment*)"));
+        expected.put("an empty group, then a misplaced star", "MVK_GROUP_IS_EMPTY");
+        actual.put("a misplaced star, then an empty group",
+                verdict("GroupFilled(/Policy/Assessment*) And GroupFilled(/Policy/Archive)"));
+        expected.put("a misplaced star, then an empty group", "MVK_INVALID_WILDCARD");
+        assertEquals(expected, actual, "a wildcard class and a parser or operand class answer in text order");
     }
 
     /** One class in three rows: alone, with the bad name after it, and with the bad name ahead of it. */

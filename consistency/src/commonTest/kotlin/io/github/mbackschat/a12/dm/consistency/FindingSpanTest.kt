@@ -76,6 +76,25 @@ class FindingSpanTest {
         assertEquals(22, finding.span?.start, "the SECOND `And`, which is the one out of place")
     }
 
+    /** The wildcard classes are located at the reference they judge, which is what lets them be ordered. */
+    @Test
+    fun aMisplacedStarIsLocatedAtItsWholeReference() {
+        val condition = "FieldFilled(Code) And GroupFilled(Details*)"
+        val finding = single(condition)
+
+        assertEquals("MVK_INVALID_WILDCARD", finding.code)
+        assertEquals("Details*", slice(condition, finding))
+    }
+
+    @Test
+    fun anUnstarredRepeatableReadIsLocatedAtItsWholeReference() {
+        val condition = "FieldFilled(Code) And FieldFilled(Lines/Qty)"
+        val finding = single(condition)
+
+        assertEquals("MVK_NO_WILDCARD", finding.code)
+        assertEquals("Lines/Qty", slice(condition, finding))
+    }
+
     @Test
     fun aParserThatRanOutWithABracketOpenPlacesACaretRatherThanARange() {
         val condition = "FieldFilled(Code"
@@ -150,6 +169,12 @@ class FindingSpanTest {
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
             {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Group","id":"g-details","name":"Details","Group":{"elements":[
+              {"type":"Field","id":"f-note","name":"Note","Field":{"fieldType":{"type":"StringType"}}}
+            ]}},
+            {"type":"Group","id":"g-lines","name":"Lines","Group":{"repeatability":9,"elements":[
+              {"type":"Field","id":"f-qty","name":"Qty","Field":{"fieldType":{"type":"NumberType"}}}
+            ]}},
             {"type":"Rule","id":"r-code","name":"CodeRequired","Rule":{
               "errorCondition":"$condition","errorEntityRelPath":"$errorTarget",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"the order code"}]}}

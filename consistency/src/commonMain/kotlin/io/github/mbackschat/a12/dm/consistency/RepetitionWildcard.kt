@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.firstReferenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.starsRuleContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -59,7 +59,8 @@ internal fun TrackedFactBase.repetitionWildcardFindings(): List<Finding> = decla
         } else {
             emptyList()
         }
-        onTheRulesOwnGroup + referencesIn(text, conditionLanguage).mapNotNull { written ->
+        onTheRulesOwnGroup + firstReferenceSpansIn(text, conditionLanguage).mapNotNull { occurrence ->
+            val written = occurrence.written
             val segments = written.split('/')
             val offence = segments.indices
                 .firstNotNullOfOrNull { at -> offenceAt(segments, at, group, element.origin) }
@@ -71,6 +72,7 @@ internal fun TrackedFactBase.repetitionWildcardFindings(): List<Finding> = decla
                 "this $member writes `$written` with a repetition wildcard on ${offence.why} — a `*` belongs " +
                     "only on a repeatable group",
                 element.path,
+                TextSpan(member, occurrence.start, occurrence.end),
             )
         }
     }

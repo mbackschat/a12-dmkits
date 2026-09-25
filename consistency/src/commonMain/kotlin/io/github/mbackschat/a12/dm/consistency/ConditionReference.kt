@@ -2,8 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
-import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
-import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
+import io.github.mbackschat.a12.dm.consistency.syntax.firstReferenceSpansIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -102,11 +101,7 @@ private inline fun conditionReferencesIn(
     }
     val group = path.substringBeforeLast('/', missingDelimiterValue = "")
     return conditionTexts(kind, body).flatMap { (member, text) ->
-        // One scan, keyed by name with the FIRST occurrence winning. `associateBy` would keep the last, and
-        // the first is the one a report must point at, A12 stopping at the first defect in a text.
-        val firstOccurrence = LinkedHashMap<String, ReferenceSpan>()
-        referenceSpansIn(text, language).forEach { firstOccurrence.getOrPut(it.written) { it } }
-        firstOccurrence.values.map { occurrence ->
+        firstReferenceSpansIn(text, language).map { occurrence ->
             ConditionReference(
                 path,
                 member,
