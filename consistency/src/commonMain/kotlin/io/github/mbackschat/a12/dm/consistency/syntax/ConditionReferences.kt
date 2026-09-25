@@ -192,7 +192,7 @@ private class ReferenceScan(
                     if (semanticIndex != null && tokens[at].text == semanticIndex) {
                         keyBegins = at + keyword
                     }
-                    at += keyword + boundNameLength(keyword)
+                    at += keyword + boundNameLength(keyword) + formSpecLength(keyword)
                 }
                 tokens[at].text == "->" -> skipCategoryName()
                 startsReference(at) -> readReference()
@@ -242,6 +242,24 @@ private class ReferenceScan(
         }
         val following = tokens.getOrNull(at + keywordLength) ?: return 0
         return if (following.isName()) 1 else 0
+    }
+
+    /**
+     * The parenthesized argument of an H-model FORM construct, which names a form and never an entity.
+     *
+     * The grammar reads it as `formularSpec : nameOhnePunkt formularEbenenSpecHModel` — a bare name and a
+     * level specifier, with no reference check anywhere on it — for all seven constructs in
+     * [FORM_CONSTRUCTS], so resolving it reported a class A12 never draws beside the construct's own
+     * (`rulekit.validate.laws.HModelFormConditionReachabilityLawsTest.theArgumentIsNeverReadAsAnEntity`).
+     * Only a spelling the model's language lexes as the keyword counts: in an English model the same text is
+     * an ordinary name, refused by the parser.
+     */
+    private fun formSpecLength(keywordLength: Int): Int {
+        if (tokens[at].text !in FORM_CONSTRUCTS || tokens.getOrNull(at + keywordLength)?.text != "(") {
+            return 0
+        }
+        val close = (at + keywordLength until tokens.size).firstOrNull { tokens[it].text == ")" }
+        return (close ?: tokens.lastIndex) - (at + keywordLength) + 1
     }
 
     /**
@@ -302,6 +320,23 @@ private class ReferenceScan(
 }
 
 internal fun Token.isName(): Boolean = kind == TokenKind.NAME || kind == TokenKind.QUOTED_NAME
+
+/**
+ * The seven H-model form constructs, each spelled as the German bundle spells it — the only language that
+ * lexes them as keywords.
+ *
+ * Six are the alternatives of the grammar's `formularBedingungName`; the seventh is the count operation
+ * `anzahlAngegebenOpHModelName`, which takes the same `formularSpec` argument.
+ */
+internal val FORM_CONSTRUCTS = setOf(
+    "VordruckAngegeben",
+    "VordruckNichtAngegeben",
+    "KeinVordruckAngegeben",
+    "MindestensEinVordruckAngegeben",
+    "VordruckNichtFortlaufend",
+    "UsbNichtFortlaufend",
+    "AnzahlAngegebenerVordrucke",
+)
 
 /**
  * Render the run as one path.

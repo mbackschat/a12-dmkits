@@ -31,6 +31,23 @@ class HModelFormConstructTest {
     }
 
     /**
+     * A construct's argument is a bare NAME, never an entity, so it is not a reference whatever it spells:
+     * the COMPLETE class list is the construct's — `rulekit.validate.laws.HModelFormConditionReachabilityLawsTest
+     * .theArgumentIsNeverReadAsAnEntity`, whose conjunct naming the error field keeps the unreferenced-target
+     * class out of the row. `Bestellung` does not resolve from inside its own group, so a reader taking it for a
+     * reference names `MVK_INVALID_ENTITY` too, a class A12 never draws there.
+     */
+    @Test
+    fun theConstructsArgumentIsNotAReference() {
+        val actual = listOf("Bestellung", "NoSuchForm").associateWith { argument ->
+            check(ModelSource(germanRule("VordruckAngegeben($argument) Oder FeldAngegeben(Kennzeichen)"))).findings
+                .filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }
+        }
+        assertEquals(mapOf("Bestellung" to listOf(refused), "NoSuchForm" to listOf(refused)), actual,
+            "the complete class list of a form construct in a German A12 model")
+    }
+
+    /**
      * The count operation in a rule CONDITION is the one measured shape this reader cannot see, disclosed.
      *
      * `conditionPart` consumes an UNCATALOGED call as a whole condition, so the `> 0` after it is leftover

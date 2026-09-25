@@ -4,11 +4,15 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
@@ -86,6 +90,34 @@ class HModelFormConditionReachabilityLawsTest {
             KernelLaws.rejectsModelInsteadOf(ORDERS, "/Order", "../Code", name + "(Order)",
                     "MVK_UNEXPECTED_TOKEN", "MVK_INVALID_ROOT_GROUP_CONSTR");
         }
+    }
+
+    /**
+     * The construct's argument is a NAME and never an entity: {@code formularSpec} is {@code nameOhnePunkt}
+     * plus a level specifier, with no reference check on it, and the name's own {@code isA12Model()} throw
+     * ends the parse before the argument is read. So the COMPLETE class list is the construct's, whether the
+     * argument names the root group or nothing at all — the row a checker reading the argument as a reference
+     * gets wrong. The conjunct naming the error field keeps the unreferenced-target class out of the question,
+     * and the bare rows show it withheld too.
+     */
+    @Test
+    void theArgumentIsNeverReadAsAnEntity() {
+        Map<String, List<String>> actual = new LinkedHashMap<>();
+        for (String argument : List.of("Order", "NoSuchForm")) {
+            actual.put(argument, codes("VordruckAngegeben(" + argument + ")"));
+            actual.put(argument + ", the error field named",
+                    codes("VordruckAngegeben(" + argument + ") Oder FeldAngegeben(Code)"));
+        }
+        List<String> construct = List.of("MVK_INVALID_ROOT_GROUP_CONSTR");
+        assertEquals(Map.of("Order", construct, "Order, the error field named", construct,
+                        "NoSuchForm", construct, "NoSuchForm, the error field named", construct), actual,
+                "the complete class list of a form construct in a German A12 model");
+    }
+
+    private static List<String> codes(String condition) {
+        ValidationResult result = new RuleValidator().check(ORDERS_DE,
+                new DraftRule("/Order", "ProbeRule", "../Code", condition, "PROBE", "ERROR"));
+        return result.diagnostics().stream().flatMap(d -> d.code().stream()).toList();
     }
 
     /**

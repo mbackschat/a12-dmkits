@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
+import io.github.mbackschat.a12.dm.consistency.syntax.FORM_CONSTRUCTS
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
@@ -100,19 +101,3 @@ private fun String.namesWholeWord(word: String): Boolean {
 }
 
 private fun Char?.isIdentifierPart(): Boolean = this != null && (isLetterOrDigit() || this == '_')
-
-/**
- * The seven constructs measured as reaching their checker, each spelled as the German bundle spells it.
- *
- * Six are the alternatives of the grammar's `formularBedingungName`; the seventh is the count operation
- * `anzahlAngegebenOpHModelName`, which carries its own copy of the same throw.
- */
-private val FORM_CONSTRUCTS = setOf(
-    "VordruckAngegeben",
-    "VordruckNichtAngegeben",
-    "KeinVordruckAngegeben",
-    "MindestensEinVordruckAngegeben",
-    "VordruckNichtFortlaufend",
-    "UsbNichtFortlaufend",
-    "AnzahlAngegebenerVordrucke",
-)
