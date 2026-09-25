@@ -57,6 +57,34 @@ class ConditionArithmeticSymbolLawsTest {
         assertEquals(expected, actual, "which infix arithmetic symbols A12 admits");
     }
 
+    /**
+     * A leading minus signs a number literal and nothing else. The grammar spells a signed constant
+     * ({@code commonKonstante : minus='-'? ZiffernFolge …}) and has no unary minus, so a sign ahead of a
+     * reference, a braced operation, a call or a second sign is a token the parser cannot use. The
+     * subtracted literal is the row that keeps the sign apart from the infix minus beside it.
+     */
+    @Test
+    void aSignStandsOnlyOnANumberLiteral() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a signed literal — the control", verdict("[BaseFee] > -1"));
+        actual.put("a signed literal subtracted", verdict("[BaseFee] - -1 > 1"));
+        actual.put("a signed reference", verdict("-[BaseFee] < 0"));
+        actual.put("a signed reference on the right", verdict("[BaseFee] > -[EffectiveFee]"));
+        actual.put("a signed braced operation", verdict("[BaseFee] > -{[EffectiveFee] + 1}"));
+        actual.put("a signed call", verdict("[BaseFee] > -Abs([EffectiveFee])"));
+        actual.put("a sign twice", verdict("[BaseFee] > --1"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a signed literal — the control", KernelLaws.ADMITTED);
+        expected.put("a signed literal subtracted", KernelLaws.ADMITTED);
+        expected.put("a signed reference", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a signed reference on the right", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a signed braced operation", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a signed call", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a sign twice", "MVK_UNEXPECTED_TOKEN");
+        assertEquals(expected, actual, "what a leading minus may sign");
+    }
+
     private static String verdict(String condition) {
         return KernelLaws.verdictOf(ModelWriter.addRule(Fixtures.subscriptionJson(), "/Subscription/Billing",
                 "ArithmeticProbe", "../BaseFee", "PROBE", condition, "ERROR", List.of(en("x"), de("y"))));

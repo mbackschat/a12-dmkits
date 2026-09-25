@@ -143,6 +143,30 @@ class ConditionShapeTest {
         assertEquals(expected, actual, "the rule-context entity parses as a reference, a keyword does not")
     }
 
+    /** Mirrors `rulekit.validate.laws.ConditionArithmeticSymbolLawsTest.aSignStandsOnlyOnANumberLiteral`. */
+    @Test
+    fun aSignStandsOnlyOnANumberLiteral() {
+        val actual = linkedMapOf(
+            "a signed literal — the control" to verdict("[BaseFee] > -1"),
+            "a signed literal subtracted" to verdict("[BaseFee] - -1 > 1"),
+            "a signed reference" to verdict("-[BaseFee] < 0"),
+            "a signed reference on the right" to verdict("[BaseFee] > -[EffectiveFee]"),
+            "a signed braced operation" to verdict("[BaseFee] > -{[EffectiveFee] + 1}"),
+            "a signed call" to verdict("[BaseFee] > -Abs([EffectiveFee])"),
+            "a sign twice" to verdict("[BaseFee] > --1"),
+        )
+        val expected = linkedMapOf(
+            "a signed literal — the control" to ACCEPTS,
+            "a signed literal subtracted" to ACCEPTS,
+            "a signed reference" to "MVK_UNEXPECTED_TOKEN",
+            "a signed reference on the right" to "MVK_UNEXPECTED_TOKEN",
+            "a signed braced operation" to "MVK_UNEXPECTED_TOKEN",
+            "a signed call" to "MVK_UNEXPECTED_TOKEN",
+            "a sign twice" to "MVK_UNEXPECTED_TOKEN",
+        )
+        assertEquals(expected, actual, "what a leading minus may sign")
+    }
+
     private fun verdict(text: String, language: ConditionLanguage = ConditionLanguage.EN): String {
         val failure = shapeFailure(text, language, SyntaxEntry.CONDITION) ?: return ACCEPTS
         return if (failure.ranOutWithDelimiterOpen) "MVK_EXPECTED_TOKEN_NOT_FOUND" else "MVK_UNEXPECTED_TOKEN"

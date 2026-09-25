@@ -343,9 +343,10 @@ private class ShapeParser(
         return when {
             textIs("{") -> grouped("}") { expression() }
             textIs("[") -> grouped("]") { entitySpecWithClauses() }
-            // A leading `-` is a sign, not a subtraction. The tokenizer files it as punctuation because it is
-            // also a path step, so it is matched by text.
-            textIs("-") -> { take(); term() }
+            // A leading `-` is a sign, not a subtraction, and A12 signs a number literal alone
+            // (`commonKonstante : minus='-'? ZiffernFolge …`; `ConditionArithmeticSymbolLawsTest`). The
+            // tokenizer files it as punctuation because it is also a path step, so it is matched by text.
+            textIs("-") -> { take(); signedNumber() }
             token.kind == TokenKind.NUMBER || token.kind == TokenKind.STRING -> { take(); decimalTail(); null }
             token.kind == TokenKind.NAME || token.kind == TokenKind.QUOTED_NAME -> named()
             // A path may open with its own punctuation: root-anchored, a climb, or the `$` that pins a
@@ -353,6 +354,16 @@ private class ShapeParser(
             textIs("/") || textIs("..") || isOuterMarker() -> entitySpecWithClauses()
             else -> unexpected()
         }
+    }
+
+    /** The literal a sign stands on; anything else after it is a token the parser cannot use. */
+    private fun signedNumber(): ShapeFailure? {
+        if (peek()?.kind != TokenKind.NUMBER) {
+            return unexpected()
+        }
+        take()
+        decimalTail()
+        return null
     }
 
     /** A number's fractional part arrives as `.` then digits, since `.` is also a name separator. */
