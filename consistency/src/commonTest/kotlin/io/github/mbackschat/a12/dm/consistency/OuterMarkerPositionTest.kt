@@ -48,6 +48,23 @@ class OuterMarkerPositionTest {
         assertEquals(expected, actual, "where the outer marker may stand")
     }
 
+    /**
+     * A conjunct OUTSIDE the filter that spells its body verbatim, marker first, is refused: A12 reads the
+     * position, so a reader cutting the body out by its TEXT would set the conjunct aside too. Mirrors the
+     * laws test's `aMarkerOutsideIsRefusedEvenWhereItsConjunctSpellsTheFilterBody`, every class included, so
+     * a co-firing one shows.
+     */
+    @Test
+    fun aMarkerOutsideIsRefusedEvenWhereItsConjunctSpellsTheFilterBody() {
+        val body = "([\$/Claim/ExcessDue] > 0 And [Assessments/Code] == \\\"X\\\")"
+        val filtered = "FieldFilled(Reference) And Sum(Assessments*/Amount Having $body) > 0"
+        fun codes(condition: String) = check(ModelSource(model(condition))).findings
+            .filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }.distinct()
+
+        assertEquals(emptyList(), codes(filtered), "the filter alone — the control")
+        assertEquals(listOf(outer), codes("$filtered And $body"), "the filter, then its body's text outside it")
+    }
+
     /** The finding names the marked path, since dropping the marker is the repair. */
     @Test
     fun theFindingNamesTheMarkedPath() {
