@@ -76,6 +76,13 @@ class EnumCategoryIndexRelevanceDiffTest {
     /** The value read of the same cell — the carrier whose answer is already settled. */
     private val valueRead: Condition = plan.`is`("PREMIUM")
 
+    /**
+     * A carrier true on every DEFINITE read, so it stays silent only on an unavailable one. The plain carriers
+     * cannot tell those apart: their silence means only "not true", which a definite non-match gives too.
+     */
+    private fun definite(tier: String): Condition = plan.category("Tier").`is`(tier).or(plan.category("Tier").isNot(tier))
+    private fun definiteValue(value: String): Condition = plan.`is`(value).or(plan.isNot(value))
+
     private fun admitted(model: String): String {
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model).filter { it.startsWith("ERROR") },
             "the kernel must admit the model, or an absent verdict is the gate's silence and not an evaluation")
@@ -137,9 +144,12 @@ class EnumCategoryIndexRelevanceDiffTest {
     fun aCategoryReadOfAnIndexCellTheDocumentMakesUnavailableIsSilentInValidation() {
         val readings = linkedMapOf(
             "duplicated" to DUPLICATED, "distinct" to DISTINCT, "over capacity" to OVER_CAPACITY,
-        ).mapValues { (_, document) -> "${firings(categoryRead, document)}/${firings(valueRead, document)}" }
-        assertEquals(linkedMapOf("duplicated" to "0/0", "distinct" to "1/1", "over capacity" to "0/0"), readings,
-            "category/value firings")
+        ).mapValues { (_, document) ->
+            listOf(categoryRead, valueRead, definite("HIGH"), definiteValue("PREMIUM"))
+                .joinToString("/") { firings(it, document).toString() }
+        }
+        assertEquals(linkedMapOf("duplicated" to "0/0/0/0", "distinct" to "1/1/2/2", "over capacity" to "0/0/2/2"),
+            readings, "category / value / definite-category / definite-value firings")
     }
 
     @Test
