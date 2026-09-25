@@ -100,10 +100,10 @@ class ConditionCallTest {
     fun aNestedCallIsItsOwnEntryAndNotTheOutersPath() {
         assertEquals(
             listOf(
-                "FieldFilled" to listOf("Tier"),
-                "AllGroupsFilled" to listOf(null, "Coverage"),
+                "AddDays" to listOf("Start", null),
+                "DifferenceInDays" to listOf(null, "End"),
             ),
-            operands("AllGroupsFilled(FieldFilled(Tier), Coverage)"),
+            operands("DifferenceInDays(AddDays(Start, 1), End) > 0"),
         )
     }
 

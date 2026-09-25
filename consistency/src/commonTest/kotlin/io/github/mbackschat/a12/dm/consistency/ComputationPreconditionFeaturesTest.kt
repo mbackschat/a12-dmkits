@@ -52,11 +52,9 @@ class ComputationPreconditionFeaturesTest {
         expected["CustomCondition in a RULE — the control"] = emptyList()
         expected["RepetitionNotUnique in a RULE — the control"] = emptyList()
         // The SLOT decides the class, not the text: A12 answers the same predicate in an operation with
-        // `MVK_UNEXPECTED_TOKEN` (measured), so this family must not reach the alternative's other string
-        // member. Empty rather than that code because the checker UNDER-reports here: `Name(path)` is a
-        // well-formed operation to the grammar family, and what A12 refuses is the operator's KIND — the
-        // project's standing arity/operand-kind gap, which is silence, never a different verdict.
-        expected["RepetitionNotUnique in the OPERATION — the control"] = emptyList()
+        // `MVK_UNEXPECTED_TOKEN` (`ComputationPreconditionLanguageFeatureLawsTest`), the grammar family's
+        // class, so this family must not reach the alternative's other string member.
+        expected["RepetitionNotUnique in the OPERATION — the control"] = listOf("MVK_UNEXPECTED_TOKEN")
         assertEquals(expected, actual, "which predicates a computation precondition may not use")
     }
 

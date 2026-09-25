@@ -30,10 +30,7 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * there first, which [shapeFailureAhead] decides.
  */
 fun shapeFailure(text: String, language: ConditionLanguage, entry: SyntaxEntry): ShapeFailure? {
-    val parser = ShapeParser(
-        tokenize(text).filter { it.kind != TokenKind.COMMENT },
-        CONDITION_KEYWORDS.getValue(language),
-    )
+    val parser = ShapeParser(tokenize(text).filter { it.kind != TokenKind.COMMENT }, language)
     return when (entry) {
         SyntaxEntry.CONDITION -> parser.parseCondition()
         SyntaxEntry.OPERATION -> parser.parseOperation()
@@ -121,7 +118,7 @@ internal fun comparisonShapes(
     val comparisons = mutableListOf<ComparisonShape>()
     val parser = ShapeParser(
         tokenize(text).filter { it.kind != TokenKind.COMMENT },
-        CONDITION_KEYWORDS.getValue(language),
+        language,
         comparisons = comparisons,
     )
     val failure = when (entry) {
@@ -140,11 +137,7 @@ internal fun comparisonShapes(
  */
 internal fun callShapes(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<CallShape> {
     val calls = mutableListOf<CallShape>()
-    val parser = ShapeParser(
-        tokenize(text).filter { it.kind != TokenKind.COMMENT },
-        CONDITION_KEYWORDS.getValue(language),
-        calls,
-    )
+    val parser = ShapeParser(tokenize(text).filter { it.kind != TokenKind.COMMENT }, language, calls)
     val failure = when (entry) {
         SyntaxEntry.CONDITION -> parser.parseCondition()
         SyntaxEntry.OPERATION -> parser.parseOperation()
@@ -161,14 +154,26 @@ internal fun callShapes(text: String, language: ConditionLanguage, entry: Syntax
  */
 private class ShapeParser(
     private val tokens: List<Token>,
-    private val keywords: Map<String, KeywordKind>,
+    language: ConditionLanguage,
     /** Where completed calls are recorded, for [callsIn]; null when only the failure is wanted. */
     private val calls: MutableList<CallShape>? = null,
     /** Where completed comparisons are recorded, for [comparisonsIn]; null when they are not wanted. */
     private val comparisons: MutableList<ComparisonShape>? = null,
 ) {
 
+    private val keywords: Map<String, KeywordKind> = CONDITION_KEYWORDS.getValue(language)
+
+    /** The model language's spelling of the filter clause, the one clause whose operand is a condition. */
+    private val filterKeyword: String? = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
+
     private var index = 0
+
+    /**
+     * How many filter bodies the cursor is inside. A comparison there is not handed to [comparisons]: every
+     * family reading them was measured on comparisons outside a filter and none inside one, so reaching into
+     * a filter body would be a refusal with no kernel basis (`DEV-API-GAPS` DG87).
+     */
+    private var filterDepth = 0
 
     /** How many delimiters are open, so running out of text can be told from meeting the end of it. */
     private var open = 0
@@ -256,7 +261,7 @@ private class ShapeParser(
         comparisonOperator()?.let { return it }
         val rightFrom = index
         val failure = expression()
-        if (failure == null) {
+        if (failure == null && filterDepth == 0) {
             comparisons?.add(
                 ComparisonShape(
                     tokens.subList(from, operatorAt),
@@ -329,14 +334,14 @@ private class ShapeParser(
     /**
      * One operand.
      *
-     * `{ … }` is the grammar's own grouping for an operation (`'{' operation '}'`), distinct from the
-     * parentheses that group a condition, and both are accepted here because an argument can be either.
+     * `{ … }` is the grammar's own grouping for an operation (`'{' operation '}'`). A parenthesis groups only
+     * a condition (`geklammerteBedingung`), which [conditionPart] opens before it ever reads an operand, so
+     * one reaching here is a token the parser cannot use.
      */
     private fun term(): ShapeFailure? {
         val token = peek() ?: return unexpected()
         return when {
-            textIs("(") -> grouped { expressionOrCondition() }
-            textIs("{") -> grouped("}") { expressionOrCondition() }
+            textIs("{") -> grouped("}") { expression() }
             textIs("[") -> grouped("]") { entitySpecWithClauses() }
             // A leading `-` is a sign, not a subtraction. The tokenizer files it as punctuation because it is
             // also a path step, so it is matched by text.
@@ -358,11 +363,16 @@ private class ShapeParser(
         }
     }
 
-    /** A name: a call when a parenthesis follows, a constant on its own, otherwise an entity reference. */
+    /**
+     * A name: a call when a parenthesis follows, a constant on its own, otherwise an entity reference.
+     *
+     * A PREDICATE's call is a condition, and no operand position takes one, so it stops the parse here. An
+     * uncataloged keyword's call is read as a call, because the catalog cannot say which of the two it is.
+     */
     private fun named(): ShapeFailure? {
         val token = peek() ?: return unexpected()
         if (token.kind == TokenKind.NAME && callFollows() && kindOf(token) != null) {
-            return call()
+            return if (kindOf(token) == KeywordKind.PREDICATE) unexpected() else call()
         }
         if (token.kind == TokenKind.NAME && kindOf(token) == KeywordKind.CONSTANT) {
             take()
@@ -408,11 +418,13 @@ private class ShapeParser(
     /**
      * One argument: an expression, possibly carrying the clauses an entity spec may take.
      *
-     * A `Having` filter's operand is a whole condition, which is why this loops back into the condition
-     * layer rather than staying inside the expression one.
+     * Never a condition. Every operator's argument is an `entitySpec`, an `entityListe`, an `operation` or a
+     * constant in A12's grammar, so a connective, a comparison or a predicate call inside one is a token the
+     * parser cannot use (`rulekit.validate.laws.WhereAConditionMayStandLawsTest`). The one condition an
+     * argument can hold is a filter's body, which [clauses] reads.
      */
     private fun argument(): ShapeFailure? {
-        expressionOrCondition()?.let { return it }
+        expression()?.let { return it }
         return clauses()
     }
 
@@ -429,53 +441,25 @@ private class ShapeParser(
             val token = peek() ?: return null
             if (token.kind == TokenKind.NAME && kindOf(token) == KeywordKind.PATH_OP) {
                 take()
-                // A clause's operand is a whole CONDITION, so it may hold the keyword-plus-bare-name
-                // predicate an expression reader cannot spell. A12 parses it there and refuses it from the
-                // filter's own last gate, so reading it as a token error names a class A12 never reaches.
-                // The permission stops at the clause: a plain aggregate argument is an expression, where the
-                // same text IS an error, and widening it there would trade a wrong class for silence.
-                expressionOrCondition(boundNamePredicateAllowed = true)?.let { return it }
+                // Only a filter's operand is a condition (`'Mit' bedingung`), and a condition may be the
+                // keyword-plus-bare-name predicate, which A12 parses there and refuses from the filter's own
+                // last gate. A key is an `entitySpec` or a string, so it is read as an operand.
+                if (token.text == filterKeyword) {
+                    filterDepth++
+                    condition()?.let { return it }
+                    filterDepth--
+                } else {
+                    expression()?.let { return it }
+                }
                 continue
             }
             if (isScopeMarker()) {
                 take()
                 take()
-                expressionOrCondition()?.let { return it }
+                expression()?.let { return it }
                 continue
             }
             return null
-        }
-    }
-
-    /**
-     * Whatever the region holds, without deciding which it is first.
-     *
-     * An argument may be a plain expression, a comparison, or a condition joined by connectives — and only
-     * the tokens after it say which. Parsing the expression and then consuming a comparison and any
-     * connectives keeps the reader from having to look ahead for something no bounded lookahead can see.
-     */
-    private fun expressionOrCondition(boundNamePredicateAllowed: Boolean = false): ShapeFailure? {
-        val token = peek() ?: return unexpected()
-        if (token.kind == TokenKind.NAME && kindOf(token).isCallableCondition() && callFollows()) {
-            call()?.let { return it }
-        } else if (!(boundNamePredicateAllowed && takesBoundNamePredicate())) {
-            expression()?.let { return it }
-        }
-        while (true) {
-            if (isConnective()) {
-                take()
-                expressionOrCondition(boundNamePredicateAllowed)?.let { return it }
-                continue
-            }
-            val next = peek() ?: return null
-            val symbolic = next.kind == TokenKind.OPERATOR_SYMBOL && next.text in COMPARISON_SYMBOLS
-            val worded = next.kind == TokenKind.NAME && kindOf(next) == KeywordKind.OPERATOR &&
-                !CONNECTIVE_SPELLINGS.contains(next.text)
-            if (!symbolic && !worded) {
-                return null
-            }
-            take()
-            expression()?.let { return it }
         }
     }
 

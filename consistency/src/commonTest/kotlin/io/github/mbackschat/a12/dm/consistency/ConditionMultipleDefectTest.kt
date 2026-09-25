@@ -177,13 +177,12 @@ class ConditionMultipleDefectTest {
         // it: a substitution, DEV-API-GAPS DG84.
         actual["an empty group, then a bad name"] = codes("GroupFilled(/Policy/Archive) And FieldFilled(NoSuchField)")
         expected["an empty group, then a bad name"] = listOf("MVK_INVALID_ENTITY")
-        // Divergence locks, DEV-API-GAPS DG85: A12's parser stops at the `And` inside a field operand's brackets
-        // (MVK_UNEXPECTED_TOKEN on both), while this checker's grammar reads a condition there.
+        // A field operand's argument is not a condition, so the parse stops at its `And`, ahead of the bad name.
         actual["an unclosed bracket, bad name after"] = codes("FieldFilled(Reference And FieldFilled(NoSuchField)")
-        expected["an unclosed bracket, bad name after"] = listOf("MVK_INVALID_ENTITY")
+        expected["an unclosed bracket, bad name after"] = listOf("MVK_UNEXPECTED_TOKEN")
         actual["a connective inside a field operand's brackets"] =
             codes("FieldFilled(Reference And FieldFilled(Reference))")
-        expected["a connective inside a field operand's brackets"] = listOf()
+        expected["a connective inside a field operand's brackets"] = listOf("MVK_UNEXPECTED_TOKEN")
         assertEquals(expected, actual, "which class a condition carrying a spanned class and a bad name reports")
     }
 
