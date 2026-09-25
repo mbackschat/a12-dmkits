@@ -104,7 +104,9 @@ private fun TrackedFactBase.readDefect(
     element: TrackedDeclaration,
 ): String? {
     val (written, keyed, category) = categorySpecIn(text, declaringGroup, element) ?: return null
-    val addressed = addressedTargetOf(written, declaringGroup, element, keyed) ?: return null
+    // The source is the whole operation, so no filter body can hold it.
+    val addressed = addressedTargetOf(written, declaringGroup, element, keyed, everyLevelAddressed = false)
+        ?: return null
     val source = declarationAt(addressed)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null
     if (source.declaredFieldType() == FieldType.STRING) {
         return "reads `${source.path}`, which is a text field — A12 assigns an enumeration only from a " +

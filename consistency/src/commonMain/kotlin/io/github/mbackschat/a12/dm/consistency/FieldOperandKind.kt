@@ -75,7 +75,8 @@ private fun TrackedFactBase.operandFinding(
         resolves = { prefix -> resolveEntity(declaringGroup, prefix, element.origin) },
         isRepeatableGroup = { declarationAt(it)?.isRepeatableGroup == true },
     )
-    val addressed = addressedTargetOf(path, declaringGroup, element, everyLevelAddressed = call.inAFilterBody)
+    // No key: this gate's operand is a group, and the shared reader vouches only for a field-valued key.
+    val addressed = addressedTargetOf(path, declaringGroup, element, indexSelected = false, call.inAFilterBody)
     if (gate != null || addressed == null) {
         return null
     }

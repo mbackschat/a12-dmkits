@@ -99,12 +99,6 @@ private fun TrackedFactBase.rangeDefect(
                 "the repeating group instead",
         )
     }
-    // A key addresses the one repetition it crosses, as the declaration's iteration would, and a filter body
-    // addresses every one ([KERNEL-FINDINGS KF476]); [addressedTargetOf] has already refused a keyed read
-    // crossing any other.
-    if (!keyed && !call.inAFilterBody && crossesARepetitionOutside(declaringGroup, target)) {
-        return null
-    }
     if (category != null) {
         return SubstringDefect(
             "MVK_CATEGORY_NOT_ALLOWED",

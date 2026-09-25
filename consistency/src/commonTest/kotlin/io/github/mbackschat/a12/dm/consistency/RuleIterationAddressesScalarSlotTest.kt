@@ -33,6 +33,8 @@ class RuleIterationAddressesScalarSlotTest {
                     {"type":"Group","id":"g1","name":"Claims","Group":{"repeatability":20,"indexFieldName":"ClaimRef",
                      "elements":[
                       {"type":"Field","id":"f1","name":"ClaimRef","Field":{"fieldType":{"type":"StringType"}}},
+                      {"type":"Field","id":"f10","name":"Amount","Field":{"fieldType":{"type":"NumberType",
+                        "NumberType":{"maxFractionalDigits":2}}}},
                       {"type":"Field","id":"f2","name":"Memo","Field":{"fieldType":{"type":"StringType"}}},
                       {"type":"Field","id":"f3","name":"Settled","Field":{"fieldType":{"type":"BooleanType"}}},
                       {"type":"Group","id":"g2","name":"Assessor","Group":{"elements":[
@@ -41,6 +43,8 @@ class RuleIterationAddressesScalarSlotTest {
                     ]}},
                     {"type":"Group","id":"g4","name":"Riders","Group":{"repeatability":5,"elements":[
                       {"type":"Field","id":"f6","name":"ClaimRef","Field":{"fieldType":{"type":"StringType"}}},
+                      {"type":"Field","id":"f11","name":"Amount","Field":{"fieldType":{"type":"NumberType",
+                        "NumberType":{"maxFractionalDigits":2}}}},
                       {"type":"Field","id":"f7","name":"Memo","Field":{"fieldType":{"type":"StringType"}}},
                       {"type":"Field","id":"f8","name":"Settled","Field":{"fieldType":{"type":"BooleanType"}}},
                       {"type":"Group","id":"g5","name":"Assessor","Group":{"elements":[
@@ -124,6 +128,8 @@ class RuleIterationAddressesScalarSlotTest {
             "field-operand kind" to "FieldFilled(%s)",
             "value-list subject" to "FieldValueIncludedInValueList(%s, \\\"x\\\")",
             "date-argument slot" to "AddDays(%s, 1) < Today",
+            "range operand" to "RangeAsString(%s, 1, 2) == \\\"a\\\"",
+            "value-as-date operand" to "ValueAsDate(%s, FirstDay) > \\\"01.01.2020\\\"",
         )
 
         /** The field of `Claims` each gate is probed on, and the class the kernel names there. */
@@ -131,6 +137,8 @@ class RuleIterationAddressesScalarSlotTest {
             "field-operand kind" to ("Assessor" to "MVK_NO_GROUPS_ALLOWED"),
             "value-list subject" to ("Settled" to "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED"),
             "date-argument slot" to ("Memo" to "MVK_NO_DATE"),
+            "range operand" to ("Amount" to "MVK_INVALID_TYPE"),
+            "value-as-date operand" to ("Memo" to "MVK_INVALID_DATE_TYPE_FOR_OP"),
         )
     }
 }

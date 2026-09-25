@@ -100,15 +100,16 @@ private fun TrackedFactBase.firstClassIn(
 /**
  * Whether A12 admits [use] on every gate of the semantic-index chain, as far as this reader can tell.
  *
- * True only where the chain reads CLEAN: an index this family would refuse, or one it cannot judge — a nested
- * index, a group value or key, a constant the index field may refuse, a key whose declared type is unsettled —
- * is not admitted, so a reader that honours a key on this answer honours only a key A12 does.
+ * True only where the chain reads CLEAN: an index this family would refuse, or one it cannot judge — a group
+ * value or key, a constant the index field may refuse, a key whose declared type is unsettled, a value with a
+ * second indexed group above it — is not admitted, so a reader that honours a key on this answer honours only
+ * a key A12 does. A nested index never reaches here: [operandReferenceIn] honours a text with ONE index use.
  */
 internal fun TrackedFactBase.admitsSemanticIndex(
     use: SemanticIndexUse,
     declaringGroup: String,
     element: TrackedDeclaration,
-): Boolean = !use.nested && classOf(use, declaringGroup, element) == IndexVerdict.Clean
+): Boolean = classOf(use, declaringGroup, element) == IndexVerdict.Clean
 
 /** What one index settles: a class, nothing to say, or that nothing past it may be judged either. */
 private sealed interface IndexVerdict {
@@ -131,6 +132,11 @@ private fun TrackedFactBase.classOf(
         KeyVerdict.PLAIN -> Unit
     }
     val indexGroup = indexGroupOf(indexed) ?: return IndexVerdict.Reported("MVK_NO_INDEX_FIELD")
+    // A second indexed group above the value is `MVK_MULTIPLE_INDEX_FIELDS` in A12, measured on one carrier
+    // only ([KERNEL-FINDINGS KF478]), so the chain stands down there rather than naming it on every one.
+    if (indexedGroupsAbove(indexed).size > 1) {
+        return IndexVerdict.Opaque
+    }
     val indexField = indexFieldOf(indexGroup) ?: return IndexVerdict.Opaque
     keyClassOf(use, indexGroup, indexField, declaringGroup, element)?.let { return it }
     val starred = starredPrefixesOf(value, declaringGroup, element)
@@ -260,13 +266,16 @@ private fun TrackedFactBase.resolveField(
 }
 
 /** The innermost group above [fieldPath] that declares an index field — the one A12 indexes on. */
-private fun TrackedFactBase.indexGroupOf(fieldPath: String): String? = allDeclarations()
+internal fun TrackedFactBase.indexGroupOf(fieldPath: String): String? =
+    indexedGroupsAbove(fieldPath).maxByOrNull { it.length }
+
+/** Every group above [fieldPath] that declares an index field. */
+private fun TrackedFactBase.indexedGroupsAbove(fieldPath: String): List<String> = allDeclarations()
     .filter {
         it.declaredKind == DeclaredKind.GROUP && fieldPath.startsWith("${it.path}/") &&
             indexFieldNameOf(it) != null
     }
-    .maxByOrNull { it.path.length }
-    ?.path
+    .map { it.path }
 
 /** The resolved paths of the levels [written] stars, so a star's POSITION can be compared against a group. */
 private fun TrackedFactBase.starredPrefixesOf(

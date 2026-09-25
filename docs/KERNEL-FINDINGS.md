@@ -11045,18 +11045,43 @@ The portable checker read a keyed operand in the entity-list pre-gates alone and
 
 > Fold: not-foldable — a diagnostic-class law about which gate answers, not an evaluation behaviour.
 
-The laws for the field-operand kind gate, the scalar value-list subject and the date-argument slot ([KF357](#kf357), [KF400](#kf400)) all declare their rule at the root, so none of them varied where the rule iterates. One fixture: `/Policy` holds a repeatable `Claims` with a text `Memo`, a boolean `Settled` and a fixed subgroup `Assessor`. Each gate reads a field of `Claims` that it refuses.
+The laws for the field-operand kind gate, the scalar value-list subject and the date-argument slot ([KF357](#kf357), [KF400](#kf400)) all declare their rule at the root, so none of them varied where the rule iterates, and [KF476](#kf476)'s grid, which carries the range and value-as-date gates, puts no error field in a repetition the rule is not declared in. One fixture: `/Policy` holds a repeatable `Claims` with a text `Memo`, a boolean `Settled` and a fixed subgroup `Assessor`. Each gate reads a field of `Claims` that it refuses.
 
 | probe | root rule | rule declared inside `Claims` | root rule, error field `Claims/ClaimRef` |
 |---|---|---|---|
 | `FieldFilled(Claims/Assessor)` | `MVK_NO_WILDCARD` | `MVK_NO_GROUPS_ALLOWED` | `MVK_NO_GROUPS_ALLOWED` |
 | `FieldValueIncludedInValueList(Claims/Settled, "x")` | `MVK_NO_WILDCARD` | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
 | `AddDays(Claims/Memo, 1) < Today` | `MVK_NO_WILDCARD` | `MVK_NO_DATE` | `MVK_NO_DATE` |
+| `RangeAsString(Claims/Amount, 1, 2) == "a"` | `MVK_NO_WILDCARD` | `MVK_INVALID_TYPE` | `MVK_INVALID_TYPE` |
+| `ValueAsDate(Claims/Memo, FirstDay) > "01.01.2020"` | `MVK_NO_WILDCARD` | `MVK_INVALID_DATE_TYPE_FOR_OP` | `MVK_INVALID_DATE_TYPE_FOR_OP` |
 
 (Inside `Claims` the operand is written without the `Claims/` prefix.) So the rule's iteration addresses the read exactly as a star would, and the gate's class answers. The root rule is the control that an unaddressed read is observable, and the third column separates the target's group from the declaring group: a root rule reporting into `Claims` iterates it too.
 
-[KF476](#kf476)'s other rows hold on the same three gates, with `Claims` indexed by `ClaimRef`: inside `Claims` a string key gives the gate's class and `For 5` gives `MVK_INVALID_ENTITY`, and a read in a `Having` body gives the gate's class both on `Notes*/Text` and on the filtered `Claims*/Memo` itself. On `Riders`, which declares the same fields and no index field, the string key draws `MVK_NO_INDEX_FIELD` on all three, [KF476](#kf476)'s defect row.
+[KF476](#kf476)'s other rows hold on the same five gates, with `Claims` indexed by `ClaimRef`: inside `Claims` a string key gives the gate's class and `For 5` gives `MVK_INVALID_ENTITY`, and a read in a `Having` body gives the gate's class both on `Notes*/Text` and on the filtered `Claims*/Memo` itself. On `Riders`, which declares the same fields and no index field, the string key draws `MVK_NO_INDEX_FIELD` on all five, [KF476](#kf476)'s defect row.
 
-The portable checker asked these three gates a second addressing question that counted only stars and jointly iterated levels, so all three stood down on the two iterated columns. They now ask the one predicate every other operand gate asks, the value-list subject and the date slot through the shared key reader and all three with the body flag.
+The portable checker asked the first three gates a second addressing question that counted only stars and jointly iterated levels, so all three stood down on the two iterated columns, and the range and value-as-date gates asked one keyed on the declaring group, so both stood down on the third. All five now ask the one predicate every other operand gate asks, with the shared key reader and the body flag.
 
 *Locked by:* `rulekit.validate.laws.RuleIterationAddressesScalarSlotLawsTest`; the checker mirror: `consistency.RuleIterationAddressesScalarSlotTest`.
+
+## §9 supplement — a semantic-index key addresses the level of the group declaring the index, and only that one (kernel `checkConsistency`, 2026-09-25) <a id="kf478"></a>
+
+> Fold: not-foldable — a diagnostic-class law about which levels a key addresses, not an evaluation behaviour.
+
+[KF476](#kf476)'s grid keys a path whose one repetition is itself the index group, so "the key addresses its index group's level" and "the key addresses the one repetition it crosses" agree on every row it holds. These rows separate them. Each probe is `Sum(<path> For "X") > 0` from `/Policy`, whose own class on an addressed lone field is `MVK_PARAMSIZE_INVALIDN`. `Claims` is repeatable and indexed; `Riders` is repeatable and unindexed, with a repeatable indexed `Legs` inside; `Cover` is fixed, with a repeatable unindexed `Items` inside.
+
+| path | index group | class |
+|---|---|---|
+| `Claims/Amount For "X"` | `Claims`, the repetition itself | `MVK_PARAMSIZE_INVALIDN` |
+| the same, with the root also indexed | `Claims` and the root | `MVK_MULTIPLE_INDEX_FIELDS` |
+| `Cover/Items/Amount For "X"` | none | `MVK_NO_INDEX_FIELD` |
+| the same, with the root indexed | the root, above the repetition | `MVK_NO_WILDCARD` |
+| the same, with `Cover` indexed | the fixed `Cover`, above the repetition | `MVK_NO_WILDCARD` |
+| `Riders/Legs/Amount For "X"` | `Legs`, below the unindexed `Riders` | `MVK_NO_WILDCARD` |
+| `Legs/Amount For "X"` from a rule declared inside `Riders` | `Legs` | `MVK_PARAMSIZE_INVALIDN` |
+| `Legs/Amount` from that rule, no key | — | `MVK_NO_WILDCARD` |
+
+So the key addresses the level of the group that declares the index. An index group that is the root or a fixed group addresses no repetition at all, and an unindexed repetition above the index group still needs a star or the rule's iteration. The last row is the control that the key is what addresses `Legs`. The root and `Cover` carry their index field through a JSON edit, since the typed surface declares one only on a repeatable group; A12 builds both models ([KF116](#kf116)).
+
+The portable checker pinned "the one repetition crossed" whenever a key stood on a path crossing exactly one, so it named the operand gate's class on the root- and fixed-indexed rows, and it stood down on the `Legs` row, which crosses two. It now pins the index group's level. It also stops admitting a key whose value has a second indexed group above it, where it had named the gate's class; that row's `MVK_MULTIPLE_INDEX_FIELDS` is measured on this one carrier, so the checker withholds the class rather than naming it on every carrier (DEV-API-GAPS DG100).
+
+*Locked by:* `rulekit.validate.laws.SemanticIndexPinnedLevelLawsTest`; the checker mirror: `consistency.SemanticIndexPinnedLevelTest`.

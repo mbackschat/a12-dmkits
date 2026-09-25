@@ -11,9 +11,10 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
  * KERNEL-FINDINGS KF477 — <b>the level a rule iterates addresses a scalar slot's read</b>, whether the rule is
  * declared inside the repetition or its error field sits there.
  *
- * <p>The laws for these three gates ({@code FieldOperandKindLawsTest}, {@code ScalarValueListGateLawsTest},
+ * <p>The laws for the first three gates ({@code FieldOperandKindLawsTest}, {@code ScalarValueListGateLawsTest},
  * {@code DateArgumentSlotLawsTest}) all declare their rule at the root, so none of them varies where the rule
- * iterates. Each gate here reads a field of the repeatable {@code Claims} three ways: from a root rule, whose
+ * iterates; KF476's grid, which carries the last two, puts no error field in a repetition the rule is not
+ * declared in. Each gate here reads a field of the repeatable {@code Claims} three ways: from a root rule, whose
  * unaddressed read is {@code MVK_NO_WILDCARD} and is the control that the rival reading is observable; from a
  * rule declared inside {@code Claims}; and from a root rule whose error field is in {@code Claims}, which
  * separates the declaring group from the target's group.
@@ -36,6 +37,7 @@ class RuleIterationAddressesScalarSlotLawsTest {
 
     private static DocumentModelDraft.GroupBuilder claimFields(DocumentModelDraft.GroupBuilder g) {
         return g.stringField("ClaimRef", f -> { })
+                .numberField("Amount", f -> f.fractionDigits(2))
                 .stringField("Memo", f -> { })
                 .booleanField("Settled", f -> { })
                 .group("Assessor", a -> a.stringField("AssessorName", f -> { }));
@@ -54,13 +56,19 @@ class RuleIterationAddressesScalarSlotLawsTest {
         CLASS.put("value-list subject", "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED");
         PROBES.put("date-argument slot", "AddDays(%s, 1) < Today");
         CLASS.put("date-argument slot", "MVK_NO_DATE");
+        PROBES.put("range operand", "RangeAsString(%s, 1, 2) == \"a\"");
+        CLASS.put("range operand", "MVK_INVALID_TYPE");
+        PROBES.put("value-as-date operand", "ValueAsDate(%s, FirstDay) > \"01.01.2020\"");
+        CLASS.put("value-as-date operand", "MVK_INVALID_DATE_TYPE_FOR_OP");
     }
 
     /** The field of {@code Claims} each gate is probed on. */
     private static final Map<String, String> FIELD = Map.of(
             "field-operand kind", "Assessor",
             "value-list subject", "Settled",
-            "date-argument slot", "Memo");
+            "date-argument slot", "Memo",
+            "range operand", "Amount",
+            "value-as-date operand", "Memo");
 
     @Test
     void theLevelARuleIteratesAddressesTheRead() {

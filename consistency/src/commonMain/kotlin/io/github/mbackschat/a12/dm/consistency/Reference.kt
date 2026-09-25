@@ -558,8 +558,8 @@ internal fun TrackedFactBase.bareReferenceField(
 /**
  * A written operand reduced to the reference an operand gate reads.
  *
- * @param indexSelected whether a semantic-index key addresses the one repetition the reference crosses, which
- *     is what [addressedTargetOf] asks.
+ * @param indexSelected whether a semantic-index key the chain admits stands on the reference, which is what
+ *     [addressedTargetOf] asks.
  * @param category the category a `->` projects the reference onto, where the reader keeps one.
  */
 internal data class OperandReference(
@@ -679,21 +679,22 @@ internal fun isBareEntitySpec(text: String): Boolean {
  * discriminating pair is within one model: the same field named twice is `MVK_NO_WILDCARD` bare and
  * `MVK_DUPLICATE_PARAM1` with a key on both sides (`validate.laws.DuplicateOverlapCarrierSweepLawsTest`).
  *
- * @param indexSelected whether the operand carries a semantic-index key. It addresses ONE crossed level, so
- *     it is honoured only where the target crosses exactly one — a path crossing two INDEXED levels under a
- *     single key is `MVK_MULTIPLE_INDEX_FIELDS` before any later gate ([KERNEL-FINDINGS KF444]), so on the
- *     measured shape there is no second level for a key to reach and no verdict to be wrong about. An
- *     UNINDEXED outer level is the shape that would separate "the level it selects" from "every level it
- *     crosses", and it is unmeasured, so this yields there rather than choosing one.
+ * @param indexSelected whether the operand carries a semantic-index key the chain admits. It addresses the
+ *     level of the group declaring the index and no other ([KERNEL-FINDINGS KF478]): an unindexed repetition
+ *     above it still needs a star or the rule's iteration, and an index group that is the root or a fixed
+ *     group addresses no repetition at all. A path with a second indexed group is never admitted.
  * @param everyLevelAddressed whether the read sits in a `Having` body, where the repetitions it crosses are the
  *     filter chain's question, asked after everything in the body ([ConditionComparison.inAFilterBody]).
+ *
+ * Neither flag has a default: a caller that forgot one read a keyed or a body read as unaddressed and stood
+ * down silently, which is how two whole classes of operand gate went unjudged (DEV-API-GAPS DG92, DG95).
  */
 internal fun TrackedFactBase.addressedTargetOf(
     reference: String,
     declaringGroup: String,
     element: TrackedDeclaration,
-    indexSelected: Boolean = false,
-    everyLevelAddressed: Boolean = false,
+    indexSelected: Boolean,
+    everyLevelAddressed: Boolean,
 ): String? {
     val target = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
         as? Reference.Resolved)?.path ?: return null
@@ -702,7 +703,9 @@ internal fun TrackedFactBase.addressedTargetOf(
     }
     val starred = starredLevelsOf(reference, declaringGroup, element) ?: return null
     val levels = iteratedLevels(target)
-    val pinned = if (indexSelected && levels.size == 1) levels.toSet() else emptySet()
+    // The key addresses the level of the group that declares the index, and no other: an index group that is
+    // the root or a fixed group above the repetition leaves it unaddressed ([KERNEL-FINDINGS KF478]).
+    val pinned = if (indexSelected) setOfNotNull(indexGroupOf(target)?.takeIf { it in levels }) else emptySet()
     // The TARGET's own group, not the DECLARING one: A12 asks whether the target's coordinates address the
     // level, and a rule's error field can reach into a repetition the rule is not declared in. Keying this on
     // the declaring group made every family behind it yield on an operand A12 admits there.

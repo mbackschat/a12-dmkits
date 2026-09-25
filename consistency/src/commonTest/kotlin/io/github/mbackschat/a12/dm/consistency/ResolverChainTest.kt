@@ -96,7 +96,7 @@ class ResolverChainTest {
 
         assertEquals(
             "/Policy/Claims/Amount",
-            tracked.addressedTargetOf("Claims*/Amount", "/Policy", tracked.rule("ClaimAmountRequired")),
+            tracked.addressedTargetOf("Claims*/Amount", "/Policy", tracked.rule("ClaimAmountRequired"), false, false),
             "a starred operand addresses the repetition it names",
         )
         // UNSTARRED, on the rule that DOES iterate the claim list — the one case that separates the
@@ -105,11 +105,11 @@ class ResolverChainTest {
         // going silent on a model it should judge.
         assertEquals(
             "/Policy/Claims/Amount",
-            tracked.addressedTargetOf("Claims/Amount", "/Policy", tracked.rule("ClaimAmountRequired")),
+            tracked.addressedTargetOf("Claims/Amount", "/Policy", tracked.rule("ClaimAmountRequired"), false, false),
             "the rule's own iteration addresses the repetition without a star",
         )
         assertNull(
-            tracked.addressedTargetOf("Claims/Amount", "/Policy", tracked.rule("HolderRequired")),
+            tracked.addressedTargetOf("Claims/Amount", "/Policy", tracked.rule("HolderRequired"), false, false),
             "an unstarred crossing of a repetition the declaration does not iterate must refuse",
         )
     }
