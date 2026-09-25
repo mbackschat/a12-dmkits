@@ -24,6 +24,13 @@ package io.github.mbackschat.a12.dm.consistency
  * groups — an aggregate over a repeatable group's field, and an absolute read back out of it — is refused
  * exactly like two sibling reads, so keying on the resolved path alone is correct. Measured, because a
  * family built from same-group rows would have inherited a scope it never tested.
+ *
+ * **A computation a variant filter takes out of the check is no node**: the code generator that draws the
+ * cycle generates the default variant, so a circle through an `ONLY`-filtered computation is admitted
+ * whichever of its computations carries the filter
+ * (`rulekit.validate.laws.CalculationMemberWithholdingLawsTest.aCircleThroughAFilteredComputationIsNoCycle`).
+ * Report assembly's own filter cannot stand in for this: it drops a finding AT a suppressed declaration, and
+ * the cycle is placed at one computation of the circle, which need not be the filtered one.
  */
 internal fun TrackedFactBase.computationCycleFindings(): List<Finding> {
     val writtenBy = computedTargets()
@@ -45,14 +52,17 @@ internal fun TrackedFactBase.computationCycleFindings(): List<Finding> {
 }
 
 /** Each computed field's absolute path, mapped to the computation that writes it. */
-private fun TrackedFactBase.computedTargets(): Map<String, String> = declaredReferences()
-    .filter { it.role == ReferenceRole.COMPUTED_TARGET }
-    .mapNotNull { declared ->
-        (declared.target as? Reference.Resolved)?.path?.let { it to declared.declaredAt }
-    }
-    // A field written by two computations is a different law; the first writer is enough to place an edge,
-    // and this family may not turn that shape into a second opinion about it.
-    .toMap()
+private fun TrackedFactBase.computedTargets(): Map<String, String> {
+    val suppressed = variantFilterSuppressed()
+    return declaredReferences()
+        .filter { it.role == ReferenceRole.COMPUTED_TARGET && it.declaredAt !in suppressed }
+        .mapNotNull { declared ->
+            (declared.target as? Reference.Resolved)?.path?.let { it to declared.declaredAt }
+        }
+        // A field written by two computations is a different law; the first writer is enough to place an edge,
+        // and this family may not turn that shape into a second opinion about it.
+        .toMap()
+}
 
 /**
  * For each computed field, the computed fields its own computation reads.

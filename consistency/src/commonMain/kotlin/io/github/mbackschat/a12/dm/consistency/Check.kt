@@ -1032,7 +1032,7 @@ internal fun checkRun(
         .withoutDefectsBehindAnEarlierOne(placedReferences, twinned)
         .withoutPostParseClassesBehindAPositionedDefect(aboutTheDsl)
         .withoutMessageVerdictsBehindARefusedDsl(messageVerdicts, dslVerdicts = references + dslVerdicts)
-        .withoutComputationMemberClassesBehindARefusedText(dslVerdicts = references + dslVerdicts)
+        .withoutCalculationClassesBehindAnEarlierStage(dslVerdicts = references + dslVerdicts)
     // After the variant filter, because a declaration A12 never examines draws no class that could stop it.
     val findings = judged.notSuppressedBy(tracked.variantFilterSuppressed()).withoutACycleBesideAnyOtherClass()
     return CheckRun(
@@ -1418,31 +1418,73 @@ private fun Finding.inConditionText(codes: Set<String>, aboutTheDsl: Set<Finding
  * condition, the operation and both preconditions, so a syntax family falling silent on one fails there rather
  * than leaking a message class here. A DSL defect no family detects is the gap it cannot close: the member reads
  * as sound, so its message classes stand where A12 withholds them.
+ *
+ * **The calculation module is not the parser**, so none of its classes is a trigger: every one of them, and the
+ * code generator's cycle, stands beside a missing or a refused message
+ * (`rulekit.validate.laws.CalculationMemberWithholdingLawsTest.theErrorTextClassesStandBesideTheCalculationModule`).
  */
 private fun List<Finding>.withoutMessageVerdictsBehindARefusedDsl(
     messageVerdicts: Set<Finding>,
     dslVerdicts: List<Finding>,
 ): List<Finding> {
-    val refused = dslVerdicts.filter { it.justifiesRejection }.mapTo(mutableSetOf()) { it.at }
+    val refused = dslVerdicts.filter { it.justifiesRejection && CalculationStage.of(it.code) == null }
+        .mapTo(mutableSetOf()) { it.at }
     return filterNot { it in messageVerdicts && it.at in refused }
 }
 
 /**
- * Drops the calculation module's classes about ONE computation's other members where its own texts are refused.
+ * Drops each calculation-module class A12 never reaches on its computation, because an earlier stage failed.
  *
- * A12 judges a computation's rounding mode, its target and the shape of its alternatives only once both of its
- * texts parsed and every name in them resolved: a parse-time class in either member, or a name that resolves
- * to nothing, withholds all three, while a class in another declaration stands beside them
- * (`rulekit.validate.laws.CalculationMemberWithholdingLawsTest`, [KERNEL-FINDINGS KF375]). Keyed by CODE, not
- * by family, because the alternatives family draws text classes of its own beside its member class, and a
- * member class never triggers the drop: two of them on one computation are unmeasured, so both stand.
+ * `CalculationService.checkCalculationRule` runs only on a computation whose texts parsed — a parse that fails,
+ * the parser's post-parse checks included, yields no condition, and the method returns on it — and then asks
+ * its questions in [CalculationStage] order, returning as soon as one fails. So any other class a text draws,
+ * and a name that resolves to nothing, withholds all of them; an earlier stage withholds a later one; and the
+ * classes one stage draws stand together, because every alternative is judged whatever the one before it drew
+ * (`rulekit.validate.laws.CalculationMemberWithholdingLawsTest`, [KERNEL-FINDINGS KF375]). A class in another
+ * declaration never stops this computation's check.
  */
-private fun List<Finding>.withoutComputationMemberClassesBehindARefusedText(
-    dslVerdicts: List<Finding>,
-): List<Finding> {
-    val refused = dslVerdicts.filter { it.justifiesRejection && it.code !in COMPUTATION_MEMBER_CODES }
-        .mapTo(mutableSetOf()) { it.at }
-    return filterNot { it.code in COMPUTATION_MEMBER_CODES && it.at in refused }
+private fun List<Finding>.withoutCalculationClassesBehindAnEarlierStage(dslVerdicts: List<Finding>): List<Finding> {
+    val failedAt = dslVerdicts.filter { it.justifiesRejection }
+        .groupBy({ it.at }, { CalculationStage.of(it.code)?.ordinal ?: BEFORE_THE_CALCULATION })
+        .mapValues { (_, stages) -> stages.min() }
+    return filterNot { finding ->
+        val stage = CalculationStage.of(finding.code) ?: return@filterNot false
+        val failed = failedAt[finding.at] ?: return@filterNot false
+        failed < stage.ordinal
+    }
+}
+
+/** The stage of every class that is not the calculation module's: the parse the whole check waits on. */
+private const val BEFORE_THE_CALCULATION = -1
+
+/**
+ * The calculation module's checks on one computation, in the order A12 asks them, and the classes each draws.
+ *
+ * `CalculationService.checkCalculationRule` asks the TARGET, `testRuleStructure` the STRUCTURE and then
+ * `NormalisierteBerechnungsFormHelper.checkNormalisierteForm` the NORMAL_FORM and each of the ALTERNATIVES, and
+ * `extractCalculationInfo` the rounding mode only once all of those passed. The code generator draws the cycle
+ * after the whole consistency check, which is why it is the last stage here and has a step of its own besides
+ * ([withoutACycleBesideAnyOtherClass]). Only the classes this checker draws are listed; A12 asks more in the same
+ * stages. Every boundary but STRUCTURE's is measured; the projected self-read's place between the target and the
+ * normal form is read from `testRuleStructure` alone.
+ */
+private enum class CalculationStage(val codes: Set<String>) {
+    TARGET(setOf("MVK_ERROR_INDEX_AS_CALCULATED_FIELD")),
+    STRUCTURE(setOf("MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD")),
+    NORMAL_FORM(setOf("MVK_ERROR_INVALID_LANGUAGE_FEATURE")),
+    ALTERNATIVES(
+        setOf(
+            "MVK_ERROR_EMPTY_PRECONDITION", "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD",
+            "MVK_ERROR_INVALID_ENUM_CALCULATION",
+        ),
+    ),
+    EXTRACTION(setOf("MVK_ERROR_WRONG_ROUNDING_MODE")),
+    CODE_GENERATION(setOf(CALC_CYCLE)),
+    ;
+
+    companion object {
+        fun of(code: String): CalculationStage? = entries.firstOrNull { code in it.codes }
+    }
 }
 
 /**
@@ -1458,10 +1500,6 @@ private fun List<Finding>.withoutACycleBesideAnyOtherClass(): List<Finding> =
 
 private const val CALC_CYCLE = "MVK_ERROR_CALC_CYCLE"
 
-/** The classes about one computation's members other than its texts, which its refused texts withhold. */
-private val COMPUTATION_MEMBER_CODES = setOf(
-    "MVK_ERROR_WRONG_ROUNDING_MODE", "MVK_ERROR_INDEX_AS_CALCULATED_FIELD", "MVK_ERROR_EMPTY_PRECONDITION",
-)
 
 /**
  * The families that report A12's ERROR-TEXT checker, whose verdicts A12 gives only beside a sound DSL.
@@ -1626,9 +1664,9 @@ private val POSITIONED_CONDITION_CODES = setOf(
  * (`rulekit.validate.laws.ComputationMemberVerdictLawsTest`, `…ComputedTargetProjectedReadLawsTest`). The
  * raw-type length's `MVK_INTERNAL_ERROR` is read by `AnalyseService.extractConstant` only past the
  * post-parse shape gate, which answers first when both fail (`RawTypeLength`); it is the one member listed
- * from that order rather than measured against a parse-time class. The calculation module's classes about a
- * computation's other members are not text classes and stay out: their own two steps withhold them
- * ([withoutComputationMemberClassesBehindARefusedText], [withoutACycleBesideAnyOtherClass]).
+ * from that order rather than measured against a parse-time class. How the calculation module's classes rank
+ * among THEMSELVES is its own stage order, which [withoutCalculationClassesBehindAnEarlierStage] applies; its
+ * classes about a computation's other members are not text classes and stay out of this set.
  *
  * Measured: `MVK_PARALLEL_ITERATION_NOT_ALLOWED` and `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` both
  * vanish behind a containment class on one model (`RepetitionNotUniqueFromScopeLawsTest`, whose verdict is

@@ -6915,9 +6915,11 @@ Reported by the portable checker as `CheckFamily.COMPUTATION_PRECONDITION_FEATUR
 
 **The graph is over RESOLVED fields, not over declaration sites.** The cross-group row is measured rather than transferred from the same-group rows: it closes its circle through `Sum(Crates*/Cost)` in one direction and an absolute `[/Depot/Weight]` read in the other, and is refused exactly like two sibling reads — so keying on the resolved path alone is correct.
 
-Reported by the portable checker as `CheckFamily.COMPUTATION_CYCLE`, which drops the self-loop for the reason above.
+**A computation a variant filter takes out of the check is no node** (*extended 2026-09-25*): a circle through an `ONLY`-filtered computation is admitted whichever of its computations carries the filter, and where the cycle stands beside other classes is [KF375](#kf375)'s.
 
-*Locked by:* `rulekit.validate.laws.ComputationDependencyCycleLawsTest`.
+Reported by the portable checker as `CheckFamily.COMPUTATION_CYCLE`, which drops the self-loop for the reason above and builds its graph over the computations the variant filter leaves.
+
+*Locked by:* `rulekit.validate.laws.ComputationDependencyCycleLawsTest`, `…CalculationMemberWithholdingLawsTest.aCircleThroughAFilteredComputationIsNoCycle`.
 
 ## §13 supplement — which CLASS each message-parameter shape draws, and that a computation's message is gated by its own members (measured, 2026-09-13) <a id="kf335"></a>
 
@@ -8594,7 +8596,7 @@ The calculation module is a later phase of the same kind: its classes about what
 
 The portable checker listed only the phase members it had measured, so 106 reported operand-gate codes were in neither of its two phase sets and co-fired beside the class A12 names; the three calculation-module classes did the same. Every reported code is now classified by where A12 raises it — the gates by their raise sites under `kernel-core-parser`'s `check` packages, swept 2026-09-25, the five rows above measured and the rest assumed on that shared phase — and `CheckerConditionCodePhaseGuardTest` refuses one that is not. It reads the calls and comparisons a failed parse read to their end, and every family stating a positioned code publishes the span of the production A12 raises it from, so every row of this entry matches (`CheckerGateSpanGuardTest` refuses a family that builds such a finding with none; a construct A12 raises from no place in a text — a computation with no alternatives, a computed field that iterates on its own — publishes `null` by design).
 
-**Extended 2026-09-25 to the calculation module's classes about a computation's OTHER members.** Its rounding mode (`RoundUp` against a band-less alternative's `!=`), its target (the index field of a keyed group) and the shape of its alternatives (one unconditional beside a preconditioned one) draw `MVK_ERROR_WRONG_ROUNDING_MODE`, `MVK_ERROR_INDEX_AS_CALCULATED_FIELD` and `MVK_ERROR_EMPTY_PRECONDITION`; two computations reading each other's field draw `MVK_ERROR_CALC_CYCLE`. Each was written on a checkout model beside one text defect at a time, and every defect beside no member class as its control. The verdict column is A12's COMPLETE class set:
+**Extended 2026-09-25 to the calculation module's classes about a computation's OTHER members.** Its rounding mode (a rounding-up mode against a band-less alternative's `!=`), its target (the index field of a keyed group) and the shape of its alternatives (one unconditional beside a preconditioned one) draw `MVK_ERROR_WRONG_ROUNDING_MODE`, `MVK_ERROR_INDEX_AS_CALCULATED_FIELD` and `MVK_ERROR_EMPTY_PRECONDITION`; two computations reading each other's field draw `MVK_ERROR_CALC_CYCLE`. Each was written on a checkout model beside one text defect at a time, and every defect beside no member class as its control. The verdict column is A12's COMPLETE class set:
 
 | beside… | the three per-computation classes | the cycle |
 |---|---|---|
@@ -8605,7 +8607,20 @@ The portable checker listed only the phase members it had measured, so 106 repor
 | a rule's arity gate or bad name | both classes (rounding measured) | the rule's class alone |
 | a structural class, a hyphenated field name no text reads (`MVK_PATH_INVALID`) | both classes (rounding measured) | `MVK_PATH_INVALID` alone |
 
-So the three per-computation classes are withheld exactly where their own computation's texts are refused, and the cycle wherever any other class is drawn. The cycle is raised by the code generator rather than the consistency check (`CodeGenCalcBuilder` in `kernel-core-codegen`, source-read at 30.8.1), which is one account of why no other class lets it through; the rows, not that account, are what the checker follows. It had co-reported all four beside every text defect. It now withholds the three at a computation whose texts drew a class, and the cycle beside any other rejecting finding.
+So a text defect of the computation itself withholds all three, and the cycle is withheld wherever any other class is drawn. *Corrected 2026-09-25:* this sentence first said the three are withheld "exactly where their own computation's texts are refused", which was broader than its rows — an independent review found the calculation module's OWN classes do not all withhold each other. The module asks its questions in stages, each returning as soon as it fails (`CalculationService.checkCalculationRule`, then `testRuleStructure`, then `NormalisierteBerechnungsFormHelper.checkNormalisierteForm`, and `extractCalculationInfo` only once all of those passed; source-read at 30.8.1). Measured on the same checkout, complete class sets:
+
+| on ONE computation | A12 reports |
+|---|---|
+| the index target beside a language feature, an enumeration source, or a read of the computed field | the index class alone |
+| a language feature (`CustomCondition` in a precondition) beside a rounding or a mixed-alternatives shape | `MVK_ERROR_INVALID_LANGUAGE_FEATURE` alone |
+| mixed alternatives beside an enumeration source or a read of the computed field in the OTHER alternative | both |
+| a rounding shape beside an enumeration source, or beside a read of the computed field (text and number targets) | the source's or the read's class alone |
+
+That is the order: a text the parser refuses, or a name resolving to nothing, then the target, then the normal form, then the alternatives — whose classes stand together, every alternative being judged — then the rounding mode. The projected self-read (`MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD`) is raised by `testRuleStructure` between the target and the normal form; that place is source-read and has no row. The cycle is raised by the code generator (`CodeGenCalcBuilder` in `kernel-core-codegen`, which `BaseCodeGenerator` runs only after the consistency pre-check), which is one account of why no other class lets it through; the rows, not that account, are what the checker follows.
+
+**The error-text classes stand beside every one of them, the cycle included.** A missing message draws `MVK_ERROR_MESSAGE_MISSING` and `RULE_HAS_NO_ERRORTEXT` beside each calculation-module class above and on the computation a cycle names, and a tab in the message draws `INVALID_CHARACTERS` beside the rounding class. Only the parser withholds the error-text class ([KF338](#kf338)): a text it refuses keeps the presence class `MVK_ERROR_MESSAGE_MISSING` and drops `RULE_HAS_NO_ERRORTEXT`. A circle through a variant-filtered computation is no cycle at all ([KF334](#kf334)).
+
+The checker had co-reported all four beside every text defect; its first withholding keyed the three on any class at the computation, the module's own included, and counted every calculation-module class and the cycle as a refused text for the error-text classes. It now applies the stage order at report assembly, lets no calculation-module class withhold an error-text class, and builds the cycle graph over the computations the variant filter leaves. One row keeps a divergence: the checker is silent on a self-read into a NUMBER target (the derived-scale gate, `ComputationSelfRead`), so beside a rounding shape it names the rounding class where A12 names the read.
 
 *Locked by:* `rulekit.validate.laws.RepetitionNotUniqueFromScopeLawsTest`, `…ConditionClassWithholdingLawsTest.theOperatorGatesOrderLikeTheOtherOperandClasses` and `….aGateAnswersAheadOfALaterGrammarError`, `….aGateIsRaisedWhereItsOwnProductionEnds`, `…ComputationMemberVerdictLawsTest.whetherAParseTimeClassWithholdsTheCalculationModulesClasses`, `…ComputedTargetProjectedReadLawsTest.aParseTimeClassInAPreconditionWithholdsTheProjectedClass`, `…CalculationMemberWithholdingLawsTest`; mirrored by `consistency … RepetitionKeyContainmentTest`, `OperatorGateOrderTest`, `CalculationModuleWithholdingTest`, `CalculationMemberWithholdingTest` and `ComputationSelfReadTest`.
 

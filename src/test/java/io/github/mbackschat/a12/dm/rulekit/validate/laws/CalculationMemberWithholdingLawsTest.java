@@ -20,7 +20,8 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 
 /**
  * KERNEL-FINDINGS KF375 — what a refused text does to the calculation module's classes about a computation's
- * OTHER members: its rounding mode, its target, the shape of its alternatives, and the computations together.
+ * OTHER members: its rounding mode, its target, the shape of its alternatives, and the computations together;
+ * how the module's own classes rank against each other, and against the error-text classes.
  *
  * <p>Each class is written alone, then beside one text defect at a time: an arity gate and an unresolvable
  * name in the precondition, a rounding gate and an unresolvable name in the operation. Every defect is also
@@ -39,10 +40,17 @@ class CalculationMemberWithholdingLawsTest {
                     .numberField("Total", f -> f.fractionDigits(2))
                     .numberField("Tax", f -> f.fractionDigits(2))
                     .stringField("Coupon", f -> { })
+                    .stringField("Label", f -> { })
+                    .enumField("Tier", e -> e.value("GOLD").value("SILVER"))
                     .group("Lines", lines -> lines.repeatable(5).indexField("Sku")
                             .stringField("Sku", f -> { })
-                            .numberField("Quantity", f -> f.fractionDigits(0))))
+                            .numberField("Quantity", f -> f.fractionDigits(0)))
+                    .group("Parcels", parcels -> parcels.repeatable(3).indexField("Kind")
+                            .enumField("Kind", e -> e.value("BOX").value("ENVELOPE"))))
             .build().toJson();
+
+    /** A precondition carrying the one construct a computation may not use. */
+    private static final String FEATURE = "FieldFilled(Coupon) And CustomCondition NotReverse";
 
     /** The sound precondition and operation each shape starts from; a defect replaces one of them. */
     private static final String PRECONDITION = "FieldFilled(Coupon)";
@@ -125,6 +133,130 @@ class CalculationMemberWithholdingLawsTest {
         expected.put("ROUNDING · a structural class", "MVK_ERROR_WRONG_ROUNDING_MODE,MVK_PATH_INVALID");
         assertEquals(expected, actual, "a member class beside a defect elsewhere in the model");
     }
+
+    /**
+     * The calculation module's classes on ONE computation, which A12 asks in stages: the target, then the
+     * normal form, then every alternative, and only once all of those passed the rounding mode
+     * ({@code CalculationService.checkCalculationRule}, {@code NormalisierteBerechnungsFormHelper}). A failed
+     * stage ends the check, so a later stage's class is withheld behind an earlier one, while the classes one
+     * stage draws stand together — the alternatives are each judged, whatever the one before them drew.
+     */
+    @Test
+    void theCalculationModuleAsksItsStagesInOrder() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the language feature alone", verdict(List.of(total(null, new Alternative(FEATURE, "[Subtotal]")))));
+        actual.put("ROUNDING · the language feature",
+                verdict(List.of(total("RoundUp", new Alternative(FEATURE, "[Subtotal]")))));
+        actual.put("MIXED · the language feature",
+                verdict(List.of(total(null, UNCONDITIONAL, new Alternative(FEATURE, "[Subtotal]")))));
+        actual.put("INDEX_TARGET · the language feature", verdict(List.of(
+                new Calc("SkuCalc", "../Lines/Sku", null, List.of(new Alternative(FEATURE, "[Coupon]"))))));
+        actual.put("an enumeration source alone", verdict(List.of(tier(null, new Alternative(PRECONDITION, "[Label]")))));
+        actual.put("MIXED · an enumeration source",
+                verdict(List.of(tier(null, new Alternative(null, "[Label]"), new Alternative(PRECONDITION, "[Label]")))));
+        actual.put("INDEX_TARGET · an enumeration source", verdict(List.of(
+                new Calc("KindCalc", "../Parcels/Kind", null, List.of(new Alternative(PRECONDITION, "[Label]"))))));
+        actual.put("ROUNDING · an enumeration source",
+                verdict(List.of(tier("RoundUp", new Alternative(PRECONDITION, "[Label]")))));
+        actual.put("a read of the computed field alone", verdict(List.of(label(new Alternative(SELF_READ, "[Coupon]")))));
+        actual.put("MIXED · a read of the computed field",
+                verdict(List.of(label(new Alternative(null, "[Coupon]"), new Alternative(SELF_READ, "[Coupon]")))));
+        actual.put("ROUNDING · a read of the computed field", verdict(List.of(new Calc("LabelCalc", "../Label",
+                "RoundUp", List.of(new Alternative(SELF_READ, "[Coupon]"))))));
+        actual.put("ROUNDING · a read of the computed NUMBER field",
+                verdict(List.of(total("RoundUp", new Alternative("FieldFilled(Total)", "[Subtotal]")))));
+        actual.put("INDEX_TARGET · a read of the computed field", KernelLaws.verdictOf(edited(modelOf(List.of(
+                new Calc("SkuCalc", "../Sku", null, List.of(new Alternative("FieldFilled(Sku)", "\"x\""))))),
+                root -> moveIntoLines(root, "SkuCalc"))));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the language feature alone", FEATURE_CLASS);
+        expected.put("ROUNDING · the language feature", FEATURE_CLASS);
+        expected.put("MIXED · the language feature", FEATURE_CLASS);
+        expected.put("INDEX_TARGET · the language feature", Shape.INDEX_TARGET.code);
+        expected.put("an enumeration source alone", ENUM_SOURCE);
+        expected.put("MIXED · an enumeration source", Shape.MIXED.code + "," + ENUM_SOURCE);
+        expected.put("INDEX_TARGET · an enumeration source", Shape.INDEX_TARGET.code);
+        expected.put("ROUNDING · an enumeration source", ENUM_SOURCE);
+        expected.put("a read of the computed field alone", SELF_READ_CLASS);
+        expected.put("MIXED · a read of the computed field", Shape.MIXED.code + "," + SELF_READ_CLASS);
+        expected.put("ROUNDING · a read of the computed field", SELF_READ_CLASS);
+        expected.put("ROUNDING · a read of the computed NUMBER field", SELF_READ_CLASS);
+        expected.put("INDEX_TARGET · a read of the computed field", Shape.INDEX_TARGET.code);
+        assertEquals(expected, actual, "the calculation module's classes on one computation");
+    }
+
+    /**
+     * The error-text classes beside the calculation module's. A12 withholds them behind a text the PARSER
+     * refuses (KERNEL-FINDINGS KF338), and the calculation module is not the parser: every one of its classes
+     * stands beside a missing or refused message, and so does the code generator's cycle.
+     */
+    @Test
+    void theErrorTextClassesStandBesideTheCalculationModule() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("no message — the control", unmessaged(plain(Defect.NONE), "TotalCalc"));
+        actual.put("no message · a text the parser refuses",
+                unmessaged(plain(Defect.PRECONDITION_ARITY), "TotalCalc"));
+        for (Shape shape : List.of(Shape.ROUNDING, Shape.INDEX_TARGET, Shape.MIXED)) {
+            List<Calc> calcs = shape.written(Defect.NONE);
+            actual.put("no message · " + shape, unmessaged(calcs, calcs.get(0).name()));
+        }
+        actual.put("no message · the language feature",
+                unmessaged(List.of(total(null, new Alternative(FEATURE, "[Subtotal]"))), "TotalCalc"));
+        actual.put("no message · an enumeration source",
+                unmessaged(List.of(tier(null, new Alternative(PRECONDITION, "[Label]"))), "TierCalc"));
+        actual.put("no message · a read of the computed field",
+                unmessaged(List.of(label(new Alternative(SELF_READ, "[Coupon]"))), "LabelCalc"));
+        actual.put("no message on the computation the cycle names", unmessaged(Shape.CYCLE.written(Defect.NONE),
+                "DiscountCalc"));
+        actual.put("a refused character · ROUNDING", KernelLaws.verdictOf(edited(modelOf(Shape.ROUNDING.written(
+                Defect.NONE)), root -> ((ObjectNode) computation(root, "TotalCalc").path("errorMessage").get(0))
+                .put("text", "see\tit"))));
+
+        Map<String, String> unmessaged = new LinkedHashMap<>();
+        String missing = "MVK_ERROR_MESSAGE_MISSING,RULE_HAS_NO_ERRORTEXT";
+        unmessaged.put("no message — the control", missing);
+        // The parser's class withholds the error-text class and not the presence one (KF338).
+        unmessaged.put("no message · a text the parser refuses", "MVK_PARAMSIZE_INVALID1,MVK_ERROR_MESSAGE_MISSING");
+        unmessaged.put("no message · ROUNDING", Shape.ROUNDING.code + "," + missing);
+        unmessaged.put("no message · INDEX_TARGET", Shape.INDEX_TARGET.code + "," + missing);
+        unmessaged.put("no message · MIXED", Shape.MIXED.code + "," + missing);
+        unmessaged.put("no message · the language feature", FEATURE_CLASS + "," + missing);
+        unmessaged.put("no message · an enumeration source", ENUM_SOURCE + "," + missing);
+        unmessaged.put("no message · a read of the computed field", SELF_READ_CLASS + "," + missing);
+        unmessaged.put("no message on the computation the cycle names", missing);
+        unmessaged.put("a refused character · ROUNDING", Shape.ROUNDING.code + ",INVALID_CHARACTERS");
+        assertEquals(unmessaged, actual, "the error-text classes beside the calculation module's");
+    }
+
+    /**
+     * A computation a variant filter takes out of the check is no node of the dependency graph either: the
+     * code generator that draws the cycle generates the default variant ({@code ComputationVariantFilterLawsTest}),
+     * so a circle through an {@code ONLY}-filtered computation is no circle A12 sees.
+     */
+    @Test
+    void aCircleThroughAFilteredComputationIsNoCycle() {
+        String cycle = modelOf(Shape.CYCLE.written(Defect.NONE));
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("unfiltered — the control", KernelLaws.verdictOf(cycle));
+        actual.put("the computation it names, filtered", KernelLaws.verdictOf(filtered(cycle, "DiscountCalc")));
+        actual.put("the other computation, filtered", KernelLaws.verdictOf(filtered(cycle, "TotalCalc")));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("unfiltered — the control", Shape.CYCLE.code);
+        expected.put("the computation it names, filtered", KernelLaws.ADMITTED);
+        expected.put("the other computation, filtered", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "a dependency circle through a variant-filtered computation");
+    }
+
+    private static final String FEATURE_CLASS = "MVK_ERROR_INVALID_LANGUAGE_FEATURE";
+
+    private static final String ENUM_SOURCE = "MVK_ERROR_INVALID_ENUM_CALCULATION";
+
+    private static final String SELF_READ_CLASS = "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD";
+
+    /** A precondition reading the field its own computation writes. */
+    private static final String SELF_READ = "FieldFilled(Label)";
 
     private static final Alternative SOUND = new Alternative(PRECONDITION, "[Subtotal]");
 
@@ -211,6 +343,19 @@ class CalculationMemberWithholdingLawsTest {
         return new Calc("TaxCalc", "../Tax", roundingMode, List.of(alternatives));
     }
 
+    private static Calc total(String roundingMode, Alternative... alternatives) {
+        return new Calc("TotalCalc", "../Total", roundingMode, List.of(alternatives));
+    }
+
+    /** Into the enumeration {@code Tier}, whose sources a text field cannot be. */
+    private static Calc tier(String roundingMode, Alternative... alternatives) {
+        return new Calc("TierCalc", "../Tier", roundingMode, List.of(alternatives));
+    }
+
+    private static Calc label(Alternative... alternatives) {
+        return new Calc("LabelCalc", "../Label", null, List.of(alternatives));
+    }
+
     private static List<Calc> beside(List<Calc> shape, Calc other) {
         List<Calc> all = new ArrayList<>(shape);
         all.add(other);
@@ -240,6 +385,56 @@ class CalculationMemberWithholdingLawsTest {
             field.put("type", "Field").put("id", "fbad").put("name", "Gift-Note");
             field.putObject("Field").putObject("fieldType").put("type", "StringType");
         });
+    }
+
+    /** [calcs]' model with the error message of the computation [name] removed. */
+    private static String unmessaged(List<Calc> calcs, String name) {
+        return KernelLaws.verdictOf(edited(modelOf(calcs), root -> computation(root, name).remove("errorMessage")));
+    }
+
+    /** [model] with the computation [name] filtered to a variant other than the default. */
+    private static String filtered(String model, String name) {
+        return edited(model, root -> computation(root, name).set("variantFilter",
+                MAPPER.createObjectNode().put("filterType", "ONLY").set("variants",
+                        MAPPER.createArrayNode().add("premium"))));
+    }
+
+    /** Moves the computation [name] from the root group into {@code Lines}. */
+    private static void moveIntoLines(ObjectNode root, String name) {
+        ArrayNode elements = elementsOf(root);
+        for (int at = 0; at < elements.size(); at++) {
+            if (name.equals(elements.get(at).path("name").asText())) {
+                ObjectNode moved = (ObjectNode) elements.remove(at);
+                groupNamed(elements, "Lines").withArray("elements").add(moved);
+                return;
+            }
+        }
+        throw new IllegalArgumentException("no computation " + name);
+    }
+
+    private static ObjectNode groupNamed(ArrayNode elements, String name) {
+        for (var element : elements) {
+            if (name.equals(element.path("name").asText())) {
+                return (ObjectNode) element.path("Group");
+            }
+        }
+        throw new IllegalArgumentException("no group " + name);
+    }
+
+    /** The {@code Computation} body of the root-group computation [name]. */
+    private static ObjectNode computation(ObjectNode root, String name) {
+        for (var element : elementsOf(root)) {
+            if (name.equals(element.path("name").asText())) {
+                return (ObjectNode) element.path("Computation");
+            }
+        }
+        throw new IllegalArgumentException("no computation " + name);
+    }
+
+    private static String edited(String model, Consumer<ObjectNode> edit) {
+        ObjectNode root = parse(model);
+        edit.accept(root);
+        return root.toString();
     }
 
     private static String verdictWith(String model, Consumer<ArrayNode> addition) {
