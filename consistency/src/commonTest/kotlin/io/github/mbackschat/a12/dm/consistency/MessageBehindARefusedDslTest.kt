@@ -161,6 +161,8 @@ class MessageBehindARefusedDslTest {
             "FieldFilled(Reference) And AtLeastOneFieldFilled(Premium, Premium)",
             // JSON-escaped: the condition is written into the model text as it stands.
             "FieldFilled(Reference) And [Premium] == \\\"x\\\"",
+            // A post-parse class: an up-step in the text is spelled like a parse-time one and withheld anyway.
+            "FieldFilled(Premium)",
         ).forEach { condition ->
             val alone = ruleCodes(condition = condition)
             assertTrue(alone.isNotEmpty(), "$condition must itself be refused")

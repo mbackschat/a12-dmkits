@@ -1012,21 +1012,22 @@ internal fun checkRun(
     }
     val references = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } + conditionReferences
     val placedReferences = conditionReferences.toSet()
-    // A reference's own class is what withholds the text classes, so it is never withheld behind itself —
-    // which matters because a misplaced up-step's class is a token error, spelled like one of those it withholds.
-    val textClasses = scheduled.flatMap { cells.getValue(it.key).findings }
-        .filterNot {
-            it.code in CONDITION_TEXT_CODES &&
-                it.mayFollowAnUnresolvableName(unresolved[it.at], it.placedIn(placedReferences, twinned))
-        }
     val messageVerdicts = scheduled.filter { it.key.producer.completes.all { f -> f in MESSAGE_MEMBER_FAMILIES } }
         .flatMapTo(mutableSetOf()) { cells.getValue(it.key).findings }
     val dslVerdicts = scheduled.filter { it.key.producer.completes.none { f -> f in BESIDE_THE_DSL_FAMILIES } }
         .flatMap { cells.getValue(it.key).findings }
+    val aboutTheDsl = (conditionReferences + dslVerdicts).toSet()
+    // A reference's own class is what withholds the text classes, so it is never withheld behind itself —
+    // which matters because a misplaced up-step's class is a token error, spelled like one of those it withholds.
+    val textClasses = scheduled.flatMap { cells.getValue(it.key).findings }
+        .filterNot {
+            it.inConditionText(CONDITION_TEXT_CODES, aboutTheDsl) &&
+                it.mayFollowAnUnresolvableName(unresolved[it.at], it.placedIn(placedReferences, twinned))
+        }
     val judged = (references + textClasses)
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .withoutDefectsBehindAnEarlierOne(placedReferences, twinned)
-        .withoutPostParseClassesBehindAPositionedDefect()
+        .withoutPostParseClassesBehindAPositionedDefect(aboutTheDsl)
         .withoutMessageVerdictsBehindARefusedDsl(messageVerdicts, dslVerdicts = references + dslVerdicts)
     val findings = judged.notSuppressedBy(tracked.variantFilterSuppressed())
     return CheckRun(
@@ -1341,10 +1342,26 @@ private val PARSER_CONDITION_CODES = setOf(
  * splitting it is what left the whole-rule half a single member while three more classes of the same phase
  * were live ([KERNEL-FINDINGS KF375]).
  */
-private fun List<Finding>.withoutPostParseClassesBehindAPositionedDefect(): List<Finding> {
-    val defective = filter { it.code in POSITIONED_CONDITION_CODES }.mapTo(mutableSetOf()) { it.at }
-    return filterNot { it.at in defective && it.code in POST_PARSE_CONDITION_CODES }
+private fun List<Finding>.withoutPostParseClassesBehindAPositionedDefect(aboutTheDsl: Set<Finding>): List<Finding> {
+    val defective = filter { it.inConditionText(POSITIONED_CONDITION_CODES, aboutTheDsl) }
+        .mapTo(mutableSetOf()) { it.at }
+    return filterNot { it.at in defective && it.inConditionText(POST_PARSE_CONDITION_CODES, aboutTheDsl) }
 }
+
+/**
+ * Whether this finding is one of [codes] as a class of the DSL member's text, which is what every code set
+ * below classifies: a finding [aboutTheDsl] (a condition reference's, or a DSL-reading family's) that is
+ * spelled like one of them.
+ *
+ * The spelling alone is not enough, because the error-text checker's parameter parser draws
+ * `MVK_UNEXPECTED_TOKEN` too, about a different text. Read by spelling, an up-step in a parameter was taken
+ * for a parse-time class of the condition and withheld its post-parse `MVK_ERROR_FIELD_NOT_REFERENCED`, and
+ * the message law then withheld the up-step behind that same class, so a rule A12 refuses reported nothing
+ * (`MessageBehindARefusedDslTest.everyRefusedConditionShapeKeepsOnlyThePresenceClass`, against
+ * `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest.whichClassesEachRefusedConditionShapeWithholds`).
+ */
+private fun Finding.inConditionText(codes: Set<String>, aboutTheDsl: Set<Finding>): Boolean =
+    code in codes && this in aboutTheDsl
 
 /**
  * Drops every MESSAGE verdict at a declaration whose own DSL member draws a class.

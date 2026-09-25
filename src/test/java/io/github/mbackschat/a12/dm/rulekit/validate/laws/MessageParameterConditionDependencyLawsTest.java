@@ -335,6 +335,9 @@ class MessageParameterConditionDependencyLawsTest {
         refused.put("a presence test given two fields", "FieldFilled(Reference, Premium)");
         refused.put("one field listed twice", "FieldFilled(Reference) And AtLeastOneFieldFilled(Premium, Premium)");
         refused.put("a number compared with a text", "FieldFilled(Reference) And [Premium] == \"x\"");
+        // A POST-parse class, beside an up-step in the text spelled like a parse-time one: the error-text
+        // checker is skipped whichever phase refused the condition, so the spelling cannot rescue the message.
+        refused.put("the error field unreferenced", "FieldFilled(Premium)");
         Map<String, String> actual = new LinkedHashMap<>();
         Map<String, String> expected = new LinkedHashMap<>();
         refused.forEach((shape, condition) -> {
