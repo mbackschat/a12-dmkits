@@ -82,6 +82,21 @@ if ! git diff --quiet -- "$FILE" || ! git diff --cached --quiet -- "$FILE"; then
   exit 2
 fi
 
+# The lane's result directory, read twice: once below for a red control, once after the run for an empty one.
+lane_project=${LANE%:*}
+lane_dir=$(printf '%s' "${lane_project#:}" | tr ':' '/')
+results=${lane_dir:+$lane_dir/}build/test-results/${LANE##*:}
+# A control that is ALREADY red reports every mutant killed, and the verdict reads as proof. Measured 2026-09-25:
+# a mirror test edited and not yet green "killed" a mutant that a green control later let survive. The kills
+# this script causes delete their own red XMLs (see restore), so a red one still here is the operator's last run.
+red=$(find "$results" -name "TEST-${FILTER}.xml" -exec grep -l -E 'failures="[1-9]|errors="[1-9]' {} + 2>/dev/null)
+if [ -n "$red" ]; then
+  echo "mutant: REFUSING — the control's last recorded run in $LANE is red, so any mutant would read killed:" >&2
+  printf '%s\n' "$red" | sed 's/^/          /' >&2
+  echo "        Run the control green on the unmutated source first." >&2
+  exit 2
+fi
+
 STARTED=$(mktemp); BACKUP=$(mktemp); cp "$FILE" "$BACKUP"
 # A killed mutant leaves a FAILING result XML behind, and those persist. Left there it makes every later
 # "are you about to commit on red?" check cry wolf, which is how an honest signal gets ignored. The experiment
@@ -187,9 +202,6 @@ fi
 # that run, and the check above reads its refusal; this one stays for any lane that passes without it, so a
 # PASSING lane must still show a fresh result file with at least one test in it, whatever the platform.
 if [ "$VERDICT" -eq 0 ] && [ "${exit_and_clean:-0}" -eq 0 ]; then
-  lane_project=${LANE%:*}
-  lane_dir=$(printf '%s' "${lane_project#:}" | tr ':' '/')
-  results=${lane_dir:+$lane_dir/}build/test-results/${LANE##*:}
   if [ -z "$(find "$results" -name 'TEST-*.xml' -newer "$RUN_MARK" -exec grep -l 'tests="[1-9]' {} + 2>/dev/null)" ]; then
     echo "mutant: $LANE passed but ran no test under '$FILTER' (no fresh result in $results) — that is a" >&2
     echo "        filter that selected nothing, not a verdict. On a Kotlin/JS lane end the pattern with a" >&2
