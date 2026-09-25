@@ -210,6 +210,8 @@ Pick the review checkpoints **while writing the plan**, not while working, and r
 
 Work that outgrows one session carries its state in a proposal/design doc whose work-item table is the state carrier, updated in the same commit as each landing. No separate tracker, and no relay protocol: the next session reads that table and continues.
 
+**Under Claude Code, the task list holds BATCHES, not findings (owner directive, 2026-09-25).** This applies only where the session's own task list exists (`TaskCreate`/`TaskUpdate`), not under Codex. Group pending work by mechanism or module into a few batch tasks. Before a batch's first run, write its acceptance matrix, with each row's oracle, predicted outcome and the discriminator against the rival account. Then implement the whole batch and verify it once: one lane run and one doc-guard run, landed as 1–3 commits. Fold an incoming a12-kernel-lean entry into the batch that owns its mechanism, and send one letter per batch, not one per entry. The cost this prevents was measured on 2026-09-25. Four single-finding commits each paid the full loop of operator index, doc guards and lane. Two defects in committed work surfaced only at letter-verification time, because claims had been written before they were measured. One differential needed four 2.5-minute runs, because its discriminators were settled after the first run instead of before it.
+
 ## Cold adversarial review gates
 
 **One test decides it: review where a mistake would be expensive to discover later and the guards cannot see it.** Not where the work was large, not where it felt hard. This is the archived model policy's criterion ("the price premium is paid exactly where CI can't help") applied to review instead of to model choice.
