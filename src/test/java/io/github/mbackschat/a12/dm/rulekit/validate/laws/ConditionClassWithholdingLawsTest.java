@@ -301,6 +301,57 @@ class ConditionClassWithholdingLawsTest {
         assertEquals(expected, actual, "the operator gates against a bad name and an unreferenced target");
     }
 
+    /**
+     * A gate raised before a later GRAMMAR error still answers: the parser runs the operator's check once the
+     * call or comparison is read, before it meets the token it cannot use. Reversed, the grammar class answers.
+     *
+     * <p>The last two rows discriminate that account from its rival, ANTLR's adaptive prediction refusing a
+     * condition part before its call is read. The rival predicts the grammar class for a call that cannot
+     * become a comparison ({@code RoundUpValue(…) And …}), which leaves the prediction no viable alternative;
+     * A12 draws the gate there too, so a call read to its end has its gate raised whatever follows it.
+     */
+    @Test
+    void aGateAnswersAheadOfALaterGrammarError() {
+        String stray = " And And FieldFilled(Reference)";
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        Map<String, String> gates = new LinkedHashMap<>();
+        gates.put("0 < RoundUpValue(Reference, 2)", "MVK_NO_NUMBER");
+        gates.put("FieldFilled(Reference, Score)", "MVK_PARAMSIZE_INVALID1");
+        gates.put("NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0", "MVK_NO_GROUPS_ALLOWED");
+        gates.put("DifferenceInDays(Reference, Reference) > 0", "MVK_NO_DATE");
+        gates.put("[Reference] > 5", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        gates.put("[Premium] == [Score]", "MVK_INVALID_COMPARE_DEC_PLACES");
+        gates.forEach((gate, alone) -> {
+            actual.put(gate + ", then a stray connective", verdict(gate + stray));
+            expected.put(gate + ", then a stray connective", alone);
+        });
+        actual.put("a gate, then a dangling connective", verdict("0 < RoundUpValue(Reference, 2) And"));
+        expected.put("a gate, then a dangling connective", "MVK_NO_NUMBER");
+        actual.put("a gate, then a comparison as a field operand",
+                verdict("[Reference] > 5 And FieldFilled(Score > 3)"));
+        expected.put("a gate, then a comparison as a field operand", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        actual.put("a gate, then a signed reference",
+                verdict("0 < RoundUpValue(Reference, 2) And [Score] > -[Score]"));
+        expected.put("a gate, then a signed reference", "MVK_NO_NUMBER");
+        actual.put("a gate, then a parenthesised operation",
+                verdict("0 < RoundUpValue(Reference, 2) And ([Score] + 1) > 0"));
+        expected.put("a gate, then a parenthesised operation", "MVK_NO_NUMBER");
+        actual.put("a gate, a bad name, then a stray connective",
+                verdict("[Reference] > 5 And FieldFilled(NoSuchField)" + stray));
+        expected.put("a gate, a bad name, then a stray connective", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        actual.put("a stray connective, then a gate — the reverse",
+                verdict("FieldFilled(Reference)" + stray + " And [Reference] > 5"));
+        expected.put("a stray connective, then a gate — the reverse", "MVK_UNEXPECTED_TOKEN");
+        actual.put("a gated call that cannot become a comparison",
+                verdict("RoundUpValue(Reference, 2) And FieldFilled(Reference)"));
+        expected.put("a gated call that cannot become a comparison", "MVK_NO_NUMBER");
+        actual.put("a gated call before a comparison operator, a defect after it",
+                verdict("RoundUpValue(Reference, 2) > -[Score]"));
+        expected.put("a gated call before a comparison operator, a defect after it", "MVK_NO_NUMBER");
+        assertEquals(expected, actual, "a gate against a later grammar error");
+    }
+
     /** One class in three rows: alone, with the bad name after it, and with the bad name ahead of it. */
     private static void measure(Map<String, String> actual, Map<String, String> expected, String row,
             String condition, String alone) {

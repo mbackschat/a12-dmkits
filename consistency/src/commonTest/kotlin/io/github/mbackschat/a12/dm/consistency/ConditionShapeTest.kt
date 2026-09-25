@@ -167,8 +167,25 @@ class ConditionShapeTest {
         assertEquals(expected, actual, "what a leading minus may sign")
     }
 
-    private fun verdict(text: String, language: ConditionLanguage = ConditionLanguage.EN): String {
-        val failure = shapeFailure(text, language, SyntaxEntry.CONDITION) ?: return ACCEPTS
+    /** Mirrors `…ConditionArithmeticSymbolLawsTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo`. */
+    @Test
+    fun onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo() {
+        val operations = listOf(
+            "-5", "0 - [BaseFee]", "-[BaseFee]", "[BaseFee] * -1", "[BaseFee] * -[BaseFee]", "{-[BaseFee]}",
+            "RoundUp(0 - [BaseFee], 2)", "RoundUp(-[BaseFee], 2)",
+        )
+        val actual = operations.associateWith { verdict(it, entry = SyntaxEntry.OPERATION) }
+        val refused = setOf("-[BaseFee]", "[BaseFee] * -[BaseFee]", "{-[BaseFee]}", "RoundUp(-[BaseFee], 2)")
+        val expected = operations.associateWith { if (it in refused) "MVK_UNEXPECTED_TOKEN" else ACCEPTS }
+        assertEquals(expected, actual, "what a leading minus may sign in an operation")
+    }
+
+    private fun verdict(
+        text: String,
+        language: ConditionLanguage = ConditionLanguage.EN,
+        entry: SyntaxEntry = SyntaxEntry.CONDITION,
+    ): String {
+        val failure = shapeFailure(text, language, entry) ?: return ACCEPTS
         return if (failure.ranOutWithDelimiterOpen) "MVK_EXPECTED_TOKEN_NOT_FOUND" else "MVK_UNEXPECTED_TOKEN"
     }
 

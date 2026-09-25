@@ -11,6 +11,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
@@ -83,6 +84,38 @@ class ConditionArithmeticSymbolLawsTest {
         expected.put("a signed call", "MVK_UNEXPECTED_TOKEN");
         expected.put("a sign twice", "MVK_UNEXPECTED_TOKEN");
         assertEquals(expected, actual, "what a leading minus may sign");
+    }
+
+    /**
+     * The same rule on the OPERATION carrier, which parses through the grammar's operation entry rule, and in
+     * an operation argument: the sign rule is the literal's own spelling, so it holds wherever an operand
+     * stands. The subtraction twins are the controls that the refused rows fail on the sign alone.
+     */
+    @Test
+    void onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (String operation : List.of("-5", "0 - [BaseFee]", "-[BaseFee]", "[BaseFee] * -1",
+                "[BaseFee] * -[BaseFee]", "{-[BaseFee]}", "RoundUp(0 - [BaseFee], 2)", "RoundUp(-[BaseFee], 2)")) {
+            actual.put(operation, computation(operation));
+        }
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("-5", KernelLaws.ADMITTED);
+        expected.put("0 - [BaseFee]", KernelLaws.ADMITTED);
+        expected.put("-[BaseFee]", "MVK_UNEXPECTED_TOKEN");
+        expected.put("[BaseFee] * -1", KernelLaws.ADMITTED);
+        expected.put("[BaseFee] * -[BaseFee]", "MVK_UNEXPECTED_TOKEN");
+        expected.put("{-[BaseFee]}", "MVK_UNEXPECTED_TOKEN");
+        expected.put("RoundUp(0 - [BaseFee], 2)", KernelLaws.ADMITTED);
+        expected.put("RoundUp(-[BaseFee], 2)", "MVK_UNEXPECTED_TOKEN");
+        assertEquals(expected, actual, "what a leading minus may sign in an operation");
+    }
+
+    private static String computation(String operation) {
+        return KernelLaws.computationVerdict(Fixtures.subscriptionJson(), DraftComputation.builder()
+                .groupPath("/Subscription/Billing").name("SignProbe").computedFieldRelPath("../EffectiveFee")
+                .alternatives(List.of(new DraftComputation.Alternative(null, operation)))
+                .messages(List.of(en("x"), de("y")))
+                .build());
     }
 
     private static String verdict(String condition) {

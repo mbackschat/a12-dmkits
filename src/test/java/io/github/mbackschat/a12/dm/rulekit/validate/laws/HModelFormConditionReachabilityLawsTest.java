@@ -114,6 +114,42 @@ class HModelFormConditionReachabilityLawsTest {
                 "the complete class list of a form construct in a German A12 model");
     }
 
+    /**
+     * The construct's class orders like the other parse-time classes: its name's check runs at the name, so it
+     * answers ahead of a bad name after it, of a grammar error inside its own parentheses and of one after it,
+     * and a bad name ahead of it answers instead. The count construct is an OPERATION the grammar reads
+     * unpredicated, so it answers from a comparison side too; its two siblings are predicate-gated on
+     * {@code isHModel()} and are refused at the parser.
+     */
+    @Test
+    void theConstructsClassOrdersLikeTheOtherParseTimeClasses() {
+        Map<String, List<String>> actual = new LinkedHashMap<>();
+        for (String condition : List.of(
+                "VordruckAngegeben(Order) Oder FeldAngegeben(NoSuchField)",
+                "FeldAngegeben(NoSuchField) Oder VordruckAngegeben(Order)",
+                "VordruckAngegeben(Order Oder FeldAngegeben(Code))",
+                "VordruckAngegeben(Order) Oder Oder FeldAngegeben(Code)",
+                "AnzahlAngegebenerVordrucke(Order) > 0",
+                "AnzahlAngegebenerVordrucke(Order) > 0 Oder FeldAngegeben(NoSuchField)",
+                "FeldAngegeben(Code) Und AnzahlAngegebenerVordrucke(Order) > 0",
+                "AktuelleVordruckNummer(Code) > 0",
+                "MaximalAngegebenerZeilenindex(Code) > 0")) {
+            actual.put(condition, codes(condition));
+        }
+        List<String> construct = List.of("MVK_INVALID_ROOT_GROUP_CONSTR");
+        Map<String, List<String>> expected = new LinkedHashMap<>();
+        expected.put("VordruckAngegeben(Order) Oder FeldAngegeben(NoSuchField)", construct);
+        expected.put("FeldAngegeben(NoSuchField) Oder VordruckAngegeben(Order)", List.of("MVK_INVALID_ENTITY"));
+        expected.put("VordruckAngegeben(Order Oder FeldAngegeben(Code))", construct);
+        expected.put("VordruckAngegeben(Order) Oder Oder FeldAngegeben(Code)", construct);
+        expected.put("AnzahlAngegebenerVordrucke(Order) > 0", construct);
+        expected.put("AnzahlAngegebenerVordrucke(Order) > 0 Oder FeldAngegeben(NoSuchField)", construct);
+        expected.put("FeldAngegeben(Code) Und AnzahlAngegebenerVordrucke(Order) > 0", construct);
+        expected.put("AktuelleVordruckNummer(Code) > 0", List.of("MVK_UNEXPECTED_TOKEN"));
+        expected.put("MaximalAngegebenerZeilenindex(Code) > 0", List.of("MVK_UNEXPECTED_TOKEN"));
+        assertEquals(expected, actual, "where a form construct's class stands in a German A12 model");
+    }
+
     private static List<String> codes(String condition) {
         ValidationResult result = new RuleValidator().check(ORDERS_DE,
                 new DraftRule("/Order", "ProbeRule", "../Code", condition, "PROBE", "ERROR"));
