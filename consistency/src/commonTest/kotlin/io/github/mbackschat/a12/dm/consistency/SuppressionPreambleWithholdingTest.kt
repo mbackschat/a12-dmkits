@@ -29,6 +29,12 @@ class SuppressionPreambleWithholdingTest {
             "two entries, an operation naming nothing" to codes("FieldFilled(Base)", "[NoSuchField] + 1", TWICE),
             "two entries, a rounding gate in the operation" to
                 codes("FieldFilled(Base)", "RoundUpValue(Label, 2)", TWICE),
+            "no suppression, an operation naming nothing" to codes("FieldFilled(Base)", "[NoSuchField] + 1", null),
+            "no suppression, a precondition naming nothing" to codes("FieldFilled(NoSuchField)", "[Base] + 1", null),
+            "no suppression, a rounding gate in the operation" to
+                codes("FieldFilled(Base)", "RoundUpValue(Label, 2)", null),
+            "no suppression, a read of the computed field" to
+                codes("FieldFilled(Base)", "[Note] + $TEXT", null, target = "../Note"),
             "sound texts, a control character in the message — the control" to
                 codes("FieldFilled(Base)", "[Base] + 1", null, message = TAB),
             "an unsupported name, a control character in the message" to
@@ -48,6 +54,12 @@ class SuppressionPreambleWithholdingTest {
             "two entries, sound texts — the control" to unparsed,
             "two entries, an operation naming nothing" to unparsed,
             "two entries, a rounding gate in the operation" to unparsed,
+            // Each withheld text class drawn without the member: the control that every row above withholds a
+            // class the checker does report.
+            "no suppression, an operation naming nothing" to listOf("MVK_INVALID_ENTITY"),
+            "no suppression, a precondition naming nothing" to listOf("MVK_INVALID_ENTITY"),
+            "no suppression, a rounding gate in the operation" to listOf("MVK_NO_NUMBER"),
+            "no suppression, a read of the computed field" to listOf("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD"),
             "sound texts, a control character in the message — the control" to listOf("INVALID_CHARACTERS"),
             "an unsupported name, a control character in the message" to unsupported,
             "two entries, a control character in the message" to unparsed,

@@ -37,10 +37,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.StructuralKernelFix;
  * code the checker gains whose owner has guidance fails this guard until the projection is regenerated.
  *
  * <p><b>Spelled is a SUPERSET of emitted, and this guard cannot narrow it.</b> A textual scan sees every
- * literal, including one the checker holds to compare an authored value against rather than to report —
- * {@code SuppressedWarnings.SUPPRESSIBLE} is exactly that, and no textual rule separates it from an emitted
- * code without being false of {@code CK_MODEL_NOT_BUILDABLE}, which is a module constant the checker does
- * report. So the bound is all this guard claims; that every projected entry is reachable from a real report
+ * literal, including an inert member of a phase list that no family reports, and no textual rule separates
+ * the two. So the bound is all this guard claims; that every projected entry is reachable from a real report
  * is measured on the Kotlin side, by {@code consistency.CorrectiveTest}, which names the residue.
  *
  * <p><b>The scan skips its own output.</b> Walking the whole of {@code commonMain} would read

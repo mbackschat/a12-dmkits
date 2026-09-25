@@ -7,10 +7,11 @@ import kotlin.test.assertEquals
  * The checker's half of "an operator's gate is a parse-time class and orders like the other operand classes".
  *
  * Mirrors `rulekit.validate.laws.ConditionClassWithholdingLawsTest.theOperatorGatesOrderLikeTheOtherOperandClasses`
- * row for row, one gate per operator family. The gates publish no span, so the row with the bad name AFTER
- * the gate is a disclosed substitution rather than a match: A12 names the gate, and this checker withholds a
- * span-less class behind any bad name in the text and names the bad name (`DEV-API-GAPS` DG84). Every other
- * row matches, the unreferenced-target ones included, which is what listing the codes as positioned bought.
+ * row for row, one gate per operator family and the comparison's scale gate beside its type gate. The gates
+ * publish no span, so the row with the bad name AFTER the gate is a disclosed substitution rather than a
+ * match: A12 names the gate, and this checker withholds a span-less class behind any bad name in the text and
+ * names the bad name (`DEV-API-GAPS` DG84). Every other row matches, the unreferenced-target ones included,
+ * which is what listing the codes as positioned bought.
  */
 class OperatorGateOrderTest {
 
@@ -23,6 +24,7 @@ class OperatorGateOrderTest {
                 ("NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0" to "MVK_NO_GROUPS_ALLOWED"),
             "text in a date slot" to ("DifferenceInDays(Reference, Reference) > 0" to "MVK_NO_DATE"),
             "text ordered against a number" to ("[Reference] > 5" to "MVK_INVALID_TYPE_FOR_COMPARISON"),
+            "two scales held equal" to ("[Premium] == [Score]" to "MVK_INVALID_COMPARE_DEC_PLACES"),
         )
         val actual = linkedMapOf<String, List<String>>()
         val expected = linkedMapOf<String, List<String>>()
@@ -56,6 +58,8 @@ class OperatorGateOrderTest {
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"Score","Field":{"fieldType":{"type":"NumberType"}}},
+            {"type":"Field","id":"f5","name":"Premium","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxFractionalDigits":2}}}},
             {"type":"Group","id":"g1","name":"Assessment","Group":{"elements":[
               {"type":"Field","id":"f2","name":"Notes","Field":{"fieldType":{"type":"StringType"}}}
             ]}},

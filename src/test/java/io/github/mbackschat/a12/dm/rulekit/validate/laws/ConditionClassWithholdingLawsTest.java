@@ -52,6 +52,8 @@ class ConditionClassWithholdingLawsTest {
             .rootGroup("Policy", policy -> policy
                     .stringField("Reference", f -> { })
                     .numberField("Score", f -> { })
+                    // Of another scale than Score, so `==` between the two draws the comparison's scale gate.
+                    .numberField("Premium", f -> f.fractionDigits(2))
                     .group("Assessment", assessment -> assessment.stringField("Notes", f -> { }))
                     .group("Archive", archive -> { })
                     // A repeatable group, so an unstarred read of it has a position to compete for.
@@ -264,9 +266,10 @@ class ConditionClassWithholdingLawsTest {
     }
 
     /**
-     * The operand gates beyond the four above, one per operator family: each is raised by the operator's own
-     * check, which the condition grammar runs as a parser action once the call is read, so each should order
-     * like the measured operand classes and should withhold the unreferenced-target class as they do.
+     * The operand gates beyond the four above, one per operator family and the comparison's scale gate beside
+     * its type gate: each is raised by the operator's own check, which the condition grammar runs as a parser
+     * action once the call is read, so each should order like the measured operand classes and should
+     * withhold the unreferenced-target class as they do.
      */
     @Test
     void theOperatorGatesOrderLikeTheOtherOperandClasses() {
@@ -280,18 +283,21 @@ class ConditionClassWithholdingLawsTest {
                 "MVK_NO_DATE");
         measure(actual, expected, "text ordered against a number", "[Reference] > 5",
                 "MVK_INVALID_TYPE_FOR_COMPARISON");
+        measure(actual, expected, "two scales held equal", "[Premium] == [Score]",
+                "MVK_INVALID_COMPARE_DEC_PLACES");
         // No gate text names Assessment/Notes, so the class it withholds is live on every row: the control.
         String unnamed = "../Assessment/Notes";
         actual.put("a sound condition, error field unreferenced", targetedVerdict("FieldFilled(Reference)", unnamed));
         expected.put("a sound condition, error field unreferenced", "MVK_ERROR_FIELD_NOT_REFERENCED");
         for (String gate : List.of("0 < RoundUpValue(Reference, 2)", "FieldFilled(Reference, Score)",
-                "DifferenceInDays(Reference, Reference) > 0", "[Reference] > 5")) {
+                "DifferenceInDays(Reference, Reference) > 0", "[Reference] > 5", "[Premium] == [Score]")) {
             actual.put(gate + ", error field unreferenced", targetedVerdict(gate, unnamed));
         }
         expected.put("0 < RoundUpValue(Reference, 2), error field unreferenced", "MVK_NO_NUMBER");
         expected.put("FieldFilled(Reference, Score), error field unreferenced", "MVK_PARAMSIZE_INVALID1");
         expected.put("DifferenceInDays(Reference, Reference) > 0, error field unreferenced", "MVK_NO_DATE");
         expected.put("[Reference] > 5, error field unreferenced", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        expected.put("[Premium] == [Score], error field unreferenced", "MVK_INVALID_COMPARE_DEC_PLACES");
         assertEquals(expected, actual, "the operator gates against a bad name and an unreferenced target");
     }
 

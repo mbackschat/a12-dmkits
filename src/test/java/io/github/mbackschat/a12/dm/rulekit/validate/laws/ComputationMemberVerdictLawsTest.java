@@ -129,6 +129,15 @@ class ComputationMemberVerdictLawsTest {
                 verdictInto("../Weight", "FieldFilled(Base)", "[NoSuchField] + 1", twice));
         actual.put("two entries, a rounding gate in the operation",
                 verdictInto("../Weight", "FieldFilled(Base)", "RoundUpValue(Label, 2)", twice));
+        // Each withheld text class drawn without the member, so every row above withholds a live class.
+        actual.put("no suppression, an operation naming nothing",
+                verdictInto("../Weight", "FieldFilled(Base)", "[NoSuchField] + 1"));
+        actual.put("no suppression, a precondition naming nothing",
+                verdictInto("../Weight", "FieldFilled(NoSuchField)", "[Base] + 1"));
+        actual.put("no suppression, a rounding gate in the operation",
+                verdictInto("../Weight", "FieldFilled(Base)", "RoundUpValue(Label, 2)"));
+        actual.put("no suppression, a read of the computed field",
+                verdictInto("../Note", "FieldFilled(Base)", "[Note] + \"x\""));
         // The message is judged only beside a sound DSL (KF338), so these say which side the preamble is on.
         actual.put("sound texts, a control character in the message — the control",
                 verdictInto("../Weight", "FieldFilled(Base)", "[Base] + 1", null, TAB));
@@ -146,6 +155,10 @@ class ComputationMemberVerdictLawsTest {
         expected.put("two entries, sound texts — the control", "MVK_UNEXPECTED_TOKEN");
         expected.put("two entries, an operation naming nothing", "MVK_UNEXPECTED_TOKEN");
         expected.put("two entries, a rounding gate in the operation", "MVK_UNEXPECTED_TOKEN");
+        expected.put("no suppression, an operation naming nothing", "MVK_INVALID_ENTITY");
+        expected.put("no suppression, a precondition naming nothing", "MVK_INVALID_ENTITY");
+        expected.put("no suppression, a rounding gate in the operation", "MVK_NO_NUMBER");
+        expected.put("no suppression, a read of the computed field", "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD");
         expected.put("sound texts, a control character in the message — the control", "INVALID_CHARACTERS");
         expected.put("an unsupported name, a control character in the message", "MVK_INVALID_SUPPRESSED_WARNING");
         expected.put("two entries, a control character in the message", "MVK_UNEXPECTED_TOKEN");

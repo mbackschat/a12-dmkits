@@ -104,16 +104,20 @@ class WhereAConditionMayStandTest {
             "the same over a field outside the filtered group" to
                 rule(READS_IT + "Sum(Claims*/Amount Having [Reference] > 5) > 0"),
             "its sound twin" to rule(READS_IT + "Sum(Claims*/Amount Having [Reference] == $X) > 0"),
+            "the control's comparison after a filter body" to
+                rule(READS_IT + "Sum(Claims*/Amount Having [Claims/Amount] > 0) > 0 And [Reference] > 5"),
         )
         val expected = linkedMapOf(
             "a text ordered against a number — the control" to listOf("MVK_INVALID_TYPE_FOR_COMPARISON"),
             // Divergence locks, DEV-API-GAPS DG87: A12 draws the control's class on both, and the comparison
-            // families are not yet handed a comparison inside a filter body. The first is silence, since the
+            // families are not handed a comparison inside a filter body. The first is silence, since the
             // family declines to type a read through the unstarred `Claims` wherever it stands; the second is a
             // substitution, the class A12 draws on the sound twin standing in for the one it withholds.
             "the same inside a filter body" to ADMITTED,
             "the same over a field outside the filtered group" to listOf("MVK_NO_ITERATION_FOR_WILDCARD"),
             "its sound twin" to listOf("MVK_NO_ITERATION_FOR_WILDCARD"),
+            // Leaving a filter body hands the comparisons after it to the families again.
+            "the control's comparison after a filter body" to listOf("MVK_INVALID_TYPE_FOR_COMPARISON"),
         )
         assertEquals(expected, actual, "where a comparison is judged")
     }

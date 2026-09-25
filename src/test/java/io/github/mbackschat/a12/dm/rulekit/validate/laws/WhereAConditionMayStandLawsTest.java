@@ -131,8 +131,9 @@ class WhereAConditionMayStandLawsTest {
 
     /**
      * A filter body is a condition like any other, so A12 judges its comparisons as it judges one outside a
-     * filter. The portable checker does not yet read them there ({@code DEV-API-GAPS} DG87), which is why its
-     * mirror of the second row is a divergence lock.
+     * filter. The portable checker does not read them there ({@code DEV-API-GAPS} DG87), which is why its
+     * mirror of the second and third rows are divergence locks. The last row is the checker's control that a
+     * comparison AFTER a filter body is judged again.
      */
     @Test
     void aFilterBodysComparisonIsJudgedThereToo() {
@@ -143,6 +144,8 @@ class WhereAConditionMayStandLawsTest {
         actual.put("the same over a field outside the filtered group",
                 verdict(READS_IT + "Sum(Claims*/Amount Having [Reference] > 5) > 0"));
         actual.put("its sound twin", verdict(READS_IT + "Sum(Claims*/Amount Having [Reference] == \"x\") > 0"));
+        actual.put("the control's comparison after a filter body",
+                verdict(READS_IT + "Sum(Claims*/Amount Having [Claims/Amount] > 0) > 0 And [Reference] > 5"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a text ordered against a number — the control", "MVK_INVALID_TYPE_FOR_COMPARISON");
@@ -150,6 +153,7 @@ class WhereAConditionMayStandLawsTest {
         expected.put("the same over a field outside the filtered group", "MVK_INVALID_TYPE_FOR_COMPARISON");
         // A body naming nothing the filter iterates has its own class, which the comparison class withholds.
         expected.put("its sound twin", "MVK_NO_ITERATION_FOR_WILDCARD");
+        expected.put("the control's comparison after a filter body", "MVK_INVALID_TYPE_FOR_COMPARISON");
         assertEquals(expected, actual, "where a comparison is judged");
     }
 

@@ -169,9 +169,10 @@ private class ShapeParser(
     private var index = 0
 
     /**
-     * How many filter bodies the cursor is inside. A comparison there is not handed to [comparisons]: every
-     * family reading them was measured on comparisons outside a filter and none inside one, so reaching into
-     * a filter body would be a refusal with no kernel basis (`DEV-API-GAPS` DG87).
+     * How many filter bodies the cursor is inside. A comparison there is not handed to [comparisons]: the
+     * families reading them were measured on comparisons outside a filter, and inside one only on the type
+     * class, so handing them a filter body's comparison would refuse with no kernel basis for every other
+     * class they draw (`DEV-API-GAPS` DG87).
      */
     private var filterDepth = 0
 

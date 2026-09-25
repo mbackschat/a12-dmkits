@@ -100,8 +100,8 @@ class ValueInFieldsConstantKindTest {
         // The SECOND shape of the same divergence, asserted rather than hidden: A12's parse stops at the
         // token, so the arity gate is never reached, while this checker's reader splits the call anyway and
         // counts one field. Both classes compete for first place, and report assembly orders only POSITIONED
-        // classes that carry a span; the arity class is neither (DEV-API-GAPS DG84) — so the right class
-        // arrives beside a wrong one instead of replacing it.
+        // classes that carry a span; the arity class is positioned but carries none (DEV-API-GAPS DG84) — so
+        // the right class arrives beside a wrong one instead of replacing it.
         expected["an OPERATION in the slot"] = listOf("MVK_UNEXPECTED_TOKEN", "MVK_PARAMSIZE_INVALIDN")
         expected["a parenthesized number in the slot"] = listOf("MVK_UNEXPECTED_TOKEN")
         expected["an EMPTY slot"] = listOf("MVK_UNEXPECTED_TOKEN")

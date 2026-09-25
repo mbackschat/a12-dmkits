@@ -37,11 +37,9 @@ internal fun TrackedFactBase.suppressedWarningFindings(): List<Finding> =
     declarations().filter { it.declaredKind == DeclaredKind.COMPUTATION }.flatMap { suppressionFindings(it) }
 
 /**
- * The single code A12's `@SuppressWarning` pragma accepts — the static assignment-scale gate.
- *
- * The checker compares an authored code against this one; it never reports it, because no family measures
- * decimal-place agreement. `CorrectiveTest` names it for that reason: it is the one code the corrective
- * projection carries that no report can deliver.
+ * The single code A12's `@SuppressWarning` pragma accepts — the static scale gate on `==` / `!=` between two
+ * numbers, which [numberComparisonScaleFindings] reports and which this family compares an authored code
+ * against.
  */
 internal const val SUPPRESSIBLE = "MVK_INVALID_COMPARE_DEC_PLACES"
 

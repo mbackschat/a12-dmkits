@@ -113,6 +113,28 @@ class CheckerMessageFamilyGuardTest {
                 "DeclarationSlots.kt should host two families: " + byFile.get("DeclarationSlots.kt"));
     }
 
+    /**
+     * The positive control for the reach walk, on a synthetic source: the literal's own function, a caller of
+     * it and a caller of THAT are reached, while a function stating the code only in a comment is not. Without
+     * it, a walk that reached nothing would report no leak on every real file, and read as a green guard.
+     */
+    @Test
+    void theReachWalkFollowsCallsInsideAFile() {
+        String source = """
+                internal fun TrackedFactBase.withheldEntry(): List<Finding> = middle()
+
+                private fun middle(): List<Finding> = stating()
+
+                private fun stating(): List<Finding> = listOf(finding("ERROR_TEXT_PROBE"))
+
+                internal fun TrackedFactBase.otherEntry(): List<Finding> = quiet()
+
+                // "ERROR_TEXT_PROBE" named in a comment only
+                private fun quiet(): List<Finding> = emptyList()
+                """;
+        assertEquals(Set.of("stating", "middle", "withheldEntry"), reachOf(source, "ERROR_TEXT_PROBE"));
+    }
+
     /** One `CHECK_PRODUCERS` entry: the families it completes and the functions it calls. */
     private record Registration(Set<String> families, Set<String> entries) {
     }

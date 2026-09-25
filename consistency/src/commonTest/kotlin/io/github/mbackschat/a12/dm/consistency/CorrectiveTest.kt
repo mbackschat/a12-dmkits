@@ -244,10 +244,9 @@ class CorrectiveTest {
      * Every projected entry is reachable from a real report, save the ones the checker never reports.
      *
      * This is the enforcement locus for the projection's own claim, and it cannot live on the Java side: the
-     * generator scans source TEXT, and a textual scan cannot tell a code the checker reports from one it
-     * holds to compare an authored value against. [SUPPRESSIBLE] is the latter, so it is named here rather
-     * than filtered there — no textual rule separates the two without also being false of
-     * [CK_MODEL_NOT_BUILDABLE], a module constant the checker does report.
+     * generator scans source TEXT, and a textual scan cannot tell a code the checker reports from one it only
+     * spells — an inert member of a phase list, above — so the residue is named here rather than filtered
+     * there.
      *
      * Asserting the whole residue as a set, rather than subtracting it, is what makes a NEW dead entry fail:
      * guidance shipped for a code no consumer can receive is bytes on every wire and a promise to nobody.

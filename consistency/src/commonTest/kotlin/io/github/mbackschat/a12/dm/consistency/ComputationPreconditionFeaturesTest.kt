@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 /**
  * The checker's half of "which predicates a computation precondition may not use".
@@ -15,17 +16,20 @@ class ComputationPreconditionFeaturesTest {
 
     private val prohibited = "MVK_ERROR_INVALID_LANGUAGE_FEATURE"
 
+    private val inAFilter = "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+
     private fun computing(
         precondition: String? = null,
         commonPrecondition: String? = null,
         operation: String = "1",
+        target: String = "../Lines/Amount",
     ): List<String> = check(
         ModelSource(model(precondition = precondition, commonPrecondition = commonPrecondition,
-            operation = operation)),
+            operation = operation, target = target)),
     ).findings.map { it.code }
 
-    private fun ruleSaying(condition: String): List<String> =
-        check(ModelSource(model(condition = condition))).findings.map { it.code }
+    private fun ruleSaying(condition: String, target: String = "../Lines/Sku"): List<String> =
+        check(ModelSource(model(condition = condition, target = target))).findings.map { it.code }
 
     @Test
     fun aPreconditionMayNotUseAnApplicationConditionOrRepetitionNotUnique() {
@@ -56,6 +60,43 @@ class ComputationPreconditionFeaturesTest {
         // class, so this family must not reach the alternative's other string member.
         expected["RepetitionNotUnique in the OPERATION — the control"] = listOf("MVK_UNEXPECTED_TOKEN")
         assertEquals(expected, actual, "which predicates a computation precondition may not use")
+    }
+
+    /**
+     * Inside a filter body the filter's own gate answers on every carrier, and this family's class is withheld
+     * behind it (`ComputationPreconditionLanguageFeatureLawsTest`, the filter-body rows).
+     */
+    @Test
+    fun aPredicateInAFilterBodyDrawsTheFiltersClassOnEveryCarrier() {
+        val unique = "Lines*/Amount Having RepetitionNotUnique(Lines/Sku)"
+        val custom = "Lines*/Amount Having [Lines/Amount] > 0 And CustomCondition NotReverse"
+        val plain = "Lines*/Amount Having [Lines/Amount] > 0"
+        val actual = linkedMapOf<String, List<String>>()
+        val expected = linkedMapOf<String, List<String>>()
+        for (filtered in listOf(unique, custom, plain)) {
+            val sum = "Sum($filtered)"
+            actual["precondition | $sum"] = computing(precondition = "$sum > 0", target = "../Total")
+            actual["operation | $sum"] = computing(operation = sum, target = "../Total")
+            actual["rule | $sum"] = ruleSaying("FieldFilled(Total) And $sum > 0", target = "../Total")
+            val verdict = if (filtered == plain) emptyList() else listOf(inAFilter)
+            expected["precondition | $sum"] = verdict
+            expected["operation | $sum"] = verdict
+            expected["rule | $sum"] = verdict
+        }
+        assertEquals(expected, actual, "a prohibited predicate inside a filter body")
+    }
+
+    /**
+     * The family reads the preconditions and never the operation, asked directly: in a report the difference
+     * cannot show, because a predicate an operation holds either fails its parse or sits in a filter body, and
+     * both positioned classes withhold this post-parse one.
+     */
+    @Test
+    fun theFamilyNeverReadsTheOperation() {
+        val prepared = prepare(assertIs<Admission.Admitted>(
+            admit(ModelSource(model(operation = "RepetitionNotUnique(Lines/Sku)"))),
+        ))
+        assertEquals(emptyList(), prepared.tracked().everyDeclaration { computationPreconditionFeatureFindings(it) })
     }
 
     /**
@@ -94,16 +135,17 @@ class ComputationPreconditionFeaturesTest {
         commonPrecondition: String? = null,
         condition: String? = null,
         operation: String = "1",
+        target: String? = null,
     ): String {
         val declaration = if (condition != null) {
             """{"type":"Rule","id":"r0","name":"LineTotal","Rule":{
-                 "errorCondition":"$condition","errorEntityRelPath":"../Lines/Sku",
+                 "errorCondition":"$condition","errorEntityRelPath":"${target ?: "../Lines/Sku"}",
                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
         } else {
             val common = commonPrecondition?.let { """"commonPrecondition":"$it",""" } ?: ""
             val guard = precondition?.let { """"precondition":"$it",""" } ?: ""
             """{"type":"Computation","id":"c0","name":"LineTotal","Computation":{
-                 "computedFieldRelPath":"../Lines/Amount",$common
+                 "computedFieldRelPath":"${target ?: "../Lines/Amount"}",$common
                  "computationAlternatives":[{$guard"operation":"$operation"}],
                  "errorMessage":[{"locale":"en_US","text":"x"}]}}"""
         }
@@ -115,6 +157,7 @@ class ComputationPreconditionFeaturesTest {
                   {"type":"Field","id":"f0","name":"Sku","Field":{"fieldType":{"type":"StringType"}}},
                   {"type":"Field","id":"f1","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}}
                 ]}},
+                {"type":"Field","id":"f2","name":"Total","Field":{"fieldType":{"type":"NumberType"}}},
                 $declaration
               ]}}
              ]}}}

@@ -1468,9 +1468,10 @@ private val BESIDE_THE_DSL_FAMILIES = MESSAGE_MEMBER_FAMILIES + setOf(
  *
  * **The operand gates are here by where A12 raises them, swept 2026-09-25.** Each code's raise sites in the
  * sibling kernel's `kernel-core-parser` are the operators' `Check…Impl` classes and the `check.util` helpers
- * they call, which the condition grammar runs as parser actions, so each is drawn DURING the parse. Five of
+ * they call, which the condition grammar runs as parser actions, so each is drawn DURING the parse. Six of
  * them are measured to order like the classes above — alone, standing ahead of a later bad name, withheld
- * behind an earlier one, and withholding the unreferenced-target class — one per operator family
+ * behind an earlier one, and withholding the unreferenced-target class — one per operator family, and the
+ * comparison's scale gate beside its type gate
  * (`rulekit.validate.laws.ConditionClassWithholdingLawsTest.theOperatorGatesOrderLikeTheOtherOperandClasses`);
  * the rest are ASSUMED to, on that shared raise phase. None of them carries a span, so each stands beside a
  * later spanned class and is withheld behind any bad name wherever it sits ([DEV-API-GAPS DG84]).
@@ -1511,7 +1512,7 @@ private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_TOO_MANY_POW_FOR_CALC", "MVK_TOO_MANY_CONST_FOR_CALC_OP",
     // Comparisons and patterns.
     "MVK_INVALID_TYPE_FOR_COMPARISON", "MVK_INVALID_TYPES_FOR_COMPARISON", "MVK_INVALID_TYPE_FOR_TOLERANCE_OP",
-    "MVK_INVALID_COMPARE_TO_CONST", "MVK_INVALID_COMPARE_TO_YES", "MVK_INVALID_COMPARE_TO_YESNO",
+    "MVK_INVALID_COMPARE_DEC_PLACES", "MVK_INVALID_COMPARE_TO_CONST", "MVK_INVALID_COMPARE_TO_YES", "MVK_INVALID_COMPARE_TO_YESNO",
     "MVK_INVALID_COMPARE_TO_ENUM_OR_STRING", "MVK_INVALID_COMPARE_ENUM_TO_ENUM", "MVK_INVALID_COMPARE_ENUM_TO_STRING",
     "MVK_INVALID_COMPARE_TO_DATE", "MVK_INVALID_COMPARE_TO_DATE_RANGE", "MVK_INCONSISTENT_TYPES_COMPARED",
     "MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON", "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION",
@@ -1606,7 +1607,8 @@ private val POST_PARSE_CONDITION_CODES = setOf(
  * other families carry no offset into the text, and for them dropping unconditionally matches A12 exactly when
  * the bad name comes first; when it does not we name the bad name where A12 names the other defect: one class
  * either way, both true of the text, and the author reaches the same fixed condition. What it never does is
- * reject a model A12 admits, or report two classes where A12 reports one.
+ * reject a model A12 admits. It can report two classes where A12 reports one: a span-less class stands beside
+ * a later spanned one ([DEV-API-GAPS DG84]).
  *
  * **Within one path the order is known without an offset**, because A12 walks the path segment by segment: a
  * reference whose earlier segment's gate answers never reaches its miss, so it is not an unresolvable name

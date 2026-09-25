@@ -36,6 +36,8 @@ class ComputationPreconditionLanguageFeatureLawsTest {
 
     private static final String PROHIBITED = "MVK_ERROR_INVALID_LANGUAGE_FEATURE";
 
+    private static final String IN_A_FILTER = "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION";
+
     @Test
     void whichPredicatesAComputationPreconditionMayNotUse() {
         Map<String, String> actual = new LinkedHashMap<>();
@@ -64,6 +66,39 @@ class ComputationPreconditionLanguageFeatureLawsTest {
         // alike would answer a legal-looking question with A12's other vocabulary.
         expected.put("RepetitionNotUnique in the OPERATION — the control", "MVK_UNEXPECTED_TOKEN");
         assertEquals(expected, actual, "which predicates a computation precondition may not use");
+    }
+
+    /**
+     * Inside a filter body neither predicate reaches the calculation module: the filter's own gate answers
+     * with {@code MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION}, on a rule, a precondition and an operation
+     * alike, so a checker reading the whole precondition for the two keywords would name the wrong class there.
+     * The body naming the filtered level is the control that the filter is otherwise admitted on each carrier.
+     */
+    @Test
+    void aPredicateInAFilterBodyDrawsTheFiltersClassOnEveryCarrier() {
+        String unique = "Items*/Count Having RepetitionNotUnique(Items/Sku)";
+        String custom = "Items*/Count Having [Items/Count] > 0 And CustomCondition NotReverse";
+        String plain = "Items*/Count Having [Items/Count] > 0";
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String filtered : List.of(unique, custom, plain)) {
+            String sum = "Sum(" + filtered + ")";
+            actual.put("precondition | " + sum, computationInto("../Quantity", sum + " > 0", "1"));
+            actual.put("operation | " + sum, computationInto("../Quantity", null, sum));
+            actual.put("rule | " + sum, KernelLaws.verdictModel(Fixtures.orderJson(), "/Order", "../Quantity",
+                    "FieldFilled(Quantity) And " + sum + " > 0"));
+            String verdict = filtered.equals(plain) ? KernelLaws.ADMITTED : IN_A_FILTER;
+            expected.put("precondition | " + sum, verdict);
+            expected.put("operation | " + sum, verdict);
+            expected.put("rule | " + sum, verdict);
+        }
+        assertEquals(expected, actual, "a prohibited predicate inside a filter body");
+    }
+
+    /** One computation on {@code /Order} into [target], its single alternative guarded by [precondition]. */
+    private static String computationInto(String target, String precondition, String operation) {
+        return verdictOf(new DraftComputation("/Order", "CalcProbe", target, null,
+                List.of(new DraftComputation.Alternative(precondition, operation)), List.of()));
     }
 
     /** One computation on {@code /Order} whose single alternative is guarded by [precondition]. */
