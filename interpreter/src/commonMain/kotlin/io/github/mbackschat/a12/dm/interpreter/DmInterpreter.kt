@@ -303,7 +303,7 @@ class DmInterpreter private constructor(
      * mirroring the kernel-adapter's `Opaque` read. Genuine bugs still throw.
      */
     fun validate(doc: Document, locale: String = "en_US"): ValidationOutcome =
-        validateWith(doc, locale, ALL_RELEVANT)
+        validateWith(doc, locale, CallRelevance.FULL)
 
     /**
      * Tolerant **partial** validation — the runtime twin of the kernel's `validatePart(DocumentV2,
@@ -325,18 +325,41 @@ class DmInterpreter private constructor(
      */
     fun validatePart(doc: Document, relevant: Set<RelevantEntity>, locale: String = "en_US"): ValidationOutcome {
         val queries = relevanceQueriesOf(relevant)
-        return validateWith(
-            doc,
-            locale,
-            queries::isRelevant,
-            customRelevantOf(relevant),
-            starRelevantOf(relevant),
-            starExtentKnownOf(relevant),
-            starFullyEnumeratedOf(relevant),
-            groupRelevanceOf(relevant),
-            queries::isRelevantWithin,
-            GroupCountExtents(relevant),
-        )
+        return validateWith(doc, locale, CallRelevance(
+            isRelevant = queries::isRelevant,
+            customRelevant = customRelevantOf(relevant),
+            starRelevant = starRelevantOf(relevant),
+            starExtentKnown = starExtentKnownOf(relevant),
+            starFullyEnumerated = starFullyEnumeratedOf(relevant),
+            groupRelevance = groupRelevanceOf(relevant),
+            relevantWithin = queries::isRelevantWithin,
+            groupCounts = GroupCountExtents(relevant),
+        ))
+    }
+
+    /**
+     * The relevance seams one validation call derives from its relevant set. They are one value because they are
+     * always derived together, and three of them share one function type, so the positional list they replaced
+     * let a caller swap two with no compiler prompt. [FULL] is full validation: every cell relevant, every
+     * partial-only seam absent.
+     */
+    private class CallRelevance(
+        val isRelevant: Relevance,
+        /** The set a `CustomCondition` sees: the caller's set plus the globals ([IF38]). */
+        val customRelevant: Set<CustomConditionFieldPointer>? = null,
+        /** Whether an all-rows aggregate's star is wildcard-relevant ([IF42]). */
+        val starRelevant: ((String, Int, List<Int>) -> Boolean)? = null,
+        val starExtentKnown: ((String, Int, List<Int>) -> Boolean)? = null,
+        val starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)? = null,
+        val groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL },
+        /** [EffectiveRelevanceIndex.isRelevantWithin] — the rule-run gate's bound-level query ([IF268]). */
+        val relevantWithin: ((String, List<Int>, Int) -> Boolean)? = null,
+        /** The relevance side of `NumberOfFilledGroups`' [GroupCountGate] ([IF339]). */
+        val groupCounts: GroupCountExtents? = null,
+    ) {
+        companion object {
+            val FULL = CallRelevance(ALL_RELEVANT)
+        }
     }
 
     /**
@@ -722,24 +745,16 @@ class DmInterpreter private constructor(
             model.globalFields.map { CustomConditionFieldPointer(it, List(pathParts(it).size) { RelevantEntity.ALL }) }
 
     /**
-     * The shared validation pipeline, parameterized by [isRelevant] (`(path, reps) → Boolean`). Full
-     * validation passes [ALL_RELEVANT]; partial passes a relevance predicate. Formal errors first — the
+     * The shared validation pipeline, parameterized by the call's [relevance]. Full validation passes
+     * [CallRelevance.FULL]; partial passes the seams its relevant set derives. Formal errors first — the
      * kernel checks every field before evaluating rules: format errors on every filled-but-malformed field,
      * and `mandatoryField` on every required-but-empty field. Both make the field "unknown", so a rule
      * referencing it sees Val.Unknown (the 3VL propagates it). Every emitted message is gated by its error
      * field's relevance.
      */
-    private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
-            customRelevant: Set<CustomConditionFieldPointer>? = null,
-            starRelevant: ((String, Int, List<Int>) -> Boolean)? = null,
-            starExtentKnown: ((String, Int, List<Int>) -> Boolean)? = null,
-            starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)? = null,
-            groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL },
-            /** Partial only: [EffectiveRelevanceIndex.isRelevantWithin] — the rule-run gate's bound-level query ([IF268]). */
-            relevantWithin: ((String, List<Int>, Int) -> Boolean)? = null,
-            /** Partial only: the relevance side of `NumberOfFilledGroups`' [GroupCountGate] ([IF339]). */
-            groupCounts: GroupCountExtents? = null): ValidationOutcome =
+    private fun validateWith(doc: Document, locale: String, relevance: CallRelevance): ValidationOutcome =
         observeCaches(doc) {
+            val isRelevant = relevance.isRelevant
             // The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible
             // clean-empty index cell's S-value into a call-local view — before the generated checks and
             // authored rules, never mutating the caller's document (the kernel's transient evaluation
@@ -755,7 +770,7 @@ class DmInterpreter private constructor(
             val dup = checks.duplicateIndexCells(call, valueAdmissions, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
             lateinit var formalResults: FormalResultCache
             val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
-                AdmittedGroupContentIndex.build(model, call, isRelevant, groupRelevance, formalResults, paths)
+                AdmittedGroupContentIndex.build(model, call, isRelevant, relevance.groupRelevance, formalResults, paths)
             }
             formalResults = FormalResultCache(
                 checks,
@@ -779,20 +794,16 @@ class DmInterpreter private constructor(
                 formalResults.invalidPointers()
             }
             val groupPresence by lazy(LazyThreadSafetyMode.NONE) {
-                GroupPresenceIndex(admittedGroupContent, formallyIncorrect, groupRelevance)
+                GroupPresenceIndex(admittedGroupContent, formallyIncorrect, relevance.groupRelevance)
             }
             val indexIdentityAdmitted: (String, List<Int>, String) -> Boolean = { path, reps, raw ->
                 isRelevant(path, reps) && formalResults.admitsIdentityAt(path, reps, raw)
             }
-            val pass = ValidationPass(call, doc, locale, isRelevant, relevantWithin, dup,
+            val pass = ValidationPass(call, doc, locale, isRelevant, relevance.relevantWithin, dup,
                 validationConfig(
-                    isRelevant,
-                    customRelevant,
-                    starRelevant,
-                    starExtentKnown,
-                    starFullyEnumerated,
+                    relevance,
                     indexIdentityAdmitted,
-                    groupCounts?.gate { path, reps -> groupPresence.state(path, reps) },
+                    relevance.groupCounts?.gate { path, reps -> groupPresence.state(path, reps) },
                 ) { path, reps -> groupPresence.state(path, reps) },
                 formalResults, { formallyIncorrect })
             for (rule in model.rules) {
@@ -931,10 +942,11 @@ class DmInterpreter private constructor(
         val call = if (indexDefaults.isEmpty()) doc else doc.withComputed(indexDefaults)
         val valueAdmissions = ValueAdmissionCache(checks, locale, checks.overRepetitionGateNeeded(call))
         val dup = checks.duplicateIndexCells(call, valueAdmissions)
-        val groupRelevance = { _: String, _: List<Int> -> GroupRelevance.FULL }
+        val relevance = CallRelevance.FULL
         lateinit var formalResults: FormalResultCache
         val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
-            AdmittedGroupContentIndex.build(model, call, ALL_RELEVANT, groupRelevance, formalResults, paths)
+            AdmittedGroupContentIndex.build(model, call, relevance.isRelevant, relevance.groupRelevance, formalResults,
+                paths)
         }
         formalResults = FormalResultCache(
             checks,
@@ -947,24 +959,16 @@ class DmInterpreter private constructor(
             formalResults.invalidPointers()
         }
         val groupPresence by lazy(LazyThreadSafetyMode.NONE) {
-            GroupPresenceIndex(admittedGroupContent, formallyIncorrect, groupRelevance)
+            GroupPresenceIndex(admittedGroupContent, formallyIncorrect, relevance.groupRelevance)
         }
         val pass = ValidationPass(
             call,
             doc,
             locale,
-            ALL_RELEVANT,
-            null,
+            relevance.isRelevant,
+            relevance.relevantWithin,
             dup,
-            validationConfig(
-                ALL_RELEVANT,
-                null,
-                null,
-                null,
-                null,
-                formalResults::admitsIdentityAt,
-                null,
-            ) { path, reps -> groupPresence.state(path, reps) },
+            validationConfig(relevance, formalResults::admitsIdentityAt, null) { path, reps -> groupPresence.state(path, reps) },
             formalResults,
             { formallyIncorrect },
         )
@@ -1001,10 +1005,7 @@ class DmInterpreter private constructor(
      * aggregate's star is wildcard-relevant (IF42), [EvalConfig.customRelevant] the set a `CustomCondition` sees
      * (null in full, the caller's set + globals in partial — IF38).
      */
-    private fun validationConfig(isRelevant: Relevance, customRelevant: Set<CustomConditionFieldPointer>?,
-            starRelevant: ((String, Int, List<Int>) -> Boolean)?,
-            starExtentKnown: ((String, Int, List<Int>) -> Boolean)?,
-            starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)?,
+    private fun validationConfig(relevance: CallRelevance,
             indexIdentityAdmitted: (String, List<Int>, String) -> Boolean,
             groupCountGate: GroupCountGate?,
             groupPresence: (String, List<Int>) -> GroupPresenceState): EvalConfig =
@@ -1012,10 +1013,10 @@ class DmInterpreter private constructor(
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
             patternMatches = patterns::matches,
             indexIdentityAdmitted = indexIdentityAdmitted,
-            cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
-            starRelevant = starRelevant, starExtentKnown = starExtentKnown,
-            starFullyEnumerated = starFullyEnumerated,
-            customRelevant = customRelevant, groupPresence = groupPresence, groupCountGate = groupCountGate)
+            cellRelevant = relevance.isRelevant.takeUnless { it === ALL_RELEVANT },
+            starRelevant = relevance.starRelevant, starExtentKnown = relevance.starExtentKnown,
+            starFullyEnumerated = relevance.starFullyEnumerated,
+            customRelevant = relevance.customRelevant, groupPresence = groupPresence, groupCountGate = groupCountGate)
             .also { it.work = workLedger }
 
     /** The kernel's allowed-and-eliminated raw-type length shape (see [rowOutcomes]): the whole condition is
