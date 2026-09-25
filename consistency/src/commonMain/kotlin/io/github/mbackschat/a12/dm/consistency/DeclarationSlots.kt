@@ -157,12 +157,12 @@ private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
 private val SEVERITIES = setOf("ERROR", "WARNING", "INFO")
 
 /**
- * A12's second, UNPREFIXED class for a declaration with no usable message, which rides beside
- * `MVK_ERROR_MESSAGE_MISSING`.
+ * A12's second, UNPREFIXED class for a declaration leaving a declared locale without text, which rides beside
+ * the prefixed message class.
  *
  * **It is a family of its own, [CheckFamily.ERROR_TEXT_PRESENCE], because A12's error-text checker draws
  * it.** That checker judges a message only beside a sound condition or operation, while the prefixed class
- * it rides with is judged regardless: beside a refused condition A12 reports `MVK_ERROR_MESSAGE_MISSING` and
+ * it rides with is judged regardless: beside a refused condition A12 reports either message class and
  * withholds this one, measured over seven refused condition shapes and on a computation's operation and both
  * its preconditions (`rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`, [KF338]). Report
  * assembly applies that, and it can only because the two are produced apart.
@@ -171,57 +171,49 @@ internal fun TrackedFactBase.errorTextPresenceFindings(): List<Finding> =
     declarations().filter { it.declaredKind in EXECUTABLE_KINDS }.flatMap { element ->
         val authored = (element.authoredMessages() as? AuthoredMessages.Read)?.entries
             ?: return@flatMap emptyList()
-        if (authored.coveredLocales(declaredLocales).isNotEmpty()) {
-            return@flatMap emptyList()
-        }
         element.unprefixedErrorTextFinding(authored, declaredLocales)
     }
 
 /**
- * Which declarations with no covered locale draw the unprefixed class — and the one shape that omits it.
+ * Which declarations draw the unprefixed class: those leaving some declared locale with NO TEXT AT ALL.
  *
- * `RULE_HAS_NO_ERRORTEXT` rides beside `MVK_ERROR_MESSAGE_MISSING` on every shape that leaves a declared
- * locale uncovered — no member at all, an empty array, an empty text, a text only for an undeclared locale,
- * a filled entry replaced by a blank one — **except a text that is whitespace rather than empty**, which
- * draws the prefixed class alone ([KERNEL-FINDINGS KF346],
- * `rulekit.validate.laws.RuleSlotMultipleDefectLawsTest`).
+ * `RULE_HAS_NO_ERRORTEXT` rides beside both message classes — `MVK_ERROR_MESSAGE_MISSING` when no declared
+ * locale is covered, `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` when another one is — and on both carriers. It
+ * keys on whether an uncovered locale has any text: an absent entry, an empty text, a text only for an
+ * undeclared locale and a filled entry replaced by an empty one all draw it, **a whitespace text does not**
+ * ([KERNEL-FINDINGS KF346], `rulekit.validate.laws.RuleSlotMultipleDefectLawsTest`, and for the rule beside
+ * an answered locale `…MessageSlotRawShapeLawsTest.whenTheUnprefixedNoErrorTextClassCoFiresWithAPerLocaleVerdict`).
  *
- * [KF323] had measured two of those shapes, one on each side of the split, and this family therefore left
- * the second class to A12 on the stated ground that the split was unmeasured. It is enumerated now, so the
- * class is emitted — leaving it out was an under-report on every shape but one.
+ * **The question is asked of each DECLARED locale, not of the texts present**, and the two-locale rows are
+ * what settle it: whitespace beside an empty text or an absent entry draws the class, and only whitespace for
+ * every uncovered locale omits it. So "every collected text is whitespace" fits every one-locale row and is
+ * false on the row with an unanswered locale. *Corrected 2026-09-25:* this asked only of a declaration with
+ * no covered locale at all, which dropped the class beside the per-locale one on every such shape.
  *
- * **The whitespace exception is stated as an observation, not explained.** "A12 trims for one check and not
- * the other" fits it, and so does "the second check asks only whether the string is empty"; the two cannot
- * be told apart, because a non-empty string that still counts as blank IS a whitespace-only one.
- *
- * **The exception is over the DECLARED LOCALES, not over the texts present**, which took the two-locale rows
- * to settle: whitespace beside an EMPTY text draws both, whitespace beside an ABSENT entry draws both, and
- * only whitespace for every declared locale omits the class. So a rule keyed on "every collected text is
- * whitespace" fits every one-locale row and is false on the row that has an unanswered locale.
+ * **Whitespace is stated as an observation, not explained.** "A12 trims for one check and not the other"
+ * fits it, and so does "the second check asks only whether the string is empty"; the two cannot be told
+ * apart, because a non-empty string that still counts as blank IS a whitespace-only one.
  *
  * **And a model with NO usable declared locale draws no class at all.** Every such shape — an empty
  * `header.locales`, a code A12's reader refuses, the empty code — leaves the model unbuildable or unreadable,
  * so A12 reaches no verdict about the message and reporting one here would state this checker's reading as
- * A12's. The split above was measured on a model declaring one good locale, and that carrier is the
- * condition for applying it.
+ * A12's. The split above was measured on a model declaring good locales, and that carrier is the condition
+ * for applying it.
  */
 private fun TrackedDeclaration.unprefixedErrorTextFinding(
     authored: List<AuthoredMessage>,
     declaredLocales: List<String>,
 ): List<Finding> {
     // NO MUTANT CAN KILL THIS BRANCH, and it stays because it states a different law from the one that
-    // happens to cover it: `all {}` over an empty list is vacuously true, so an undeclared locale set already
-    // falls out below. The two coincide only for as long as the whitespace rule is written as an `all`, and
-    // the law here — a model with no usable locale reaches no verdict, so neither class is A12's — is not
-    // that rule's to carry.
+    // happens to cover it: `any {}` over an empty list is false, so an undeclared locale set already falls
+    // out below. The two coincide only for as long as the text rule is written as an `any`, and the law
+    // here — a model with no usable locale reaches no verdict, so neither class is A12's — is not that
+    // rule's to carry.
     if (declaredLocales.isEmpty()) {
         return emptyList()
     }
     val collected = authored.collectedTexts(declaredLocales)
-    val everyLocaleAnsweredWithWhitespace = declaredLocales.all { locale ->
-        collected[locale]?.let { it.isNotEmpty() && it.isBlank() } == true
-    }
-    if (everyLocaleAnsweredWithWhitespace) {
+    if (declaredLocales.none { collected[it].isNullOrEmpty() }) {
         return emptyList()
     }
     return listOf(

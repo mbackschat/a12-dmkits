@@ -100,8 +100,9 @@ class DeclarationSlotTest {
                 // One text is EMPTY and the other whitespace, so not every declared locale is answered
                 // with whitespace and the unprefixed class stands.
                 "every text blank" to listOf("MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT),
+                // Whitespace, so the uncovered locale has a text and the unprefixed class stays out.
                 "one declared locale blank" to listOf("MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING"),
-                "one declared locale absent" to listOf("MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING"),
+                "one declared locale absent" to listOf("MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING", NO_ERROR_TEXT),
                 "undeclared locale beside both" to listOf("RK_UNDECLARED_MESSAGE_LOCALE"),
                 "duplicate locale" to listOf("MVK_LANGUAGE_DUPLICATE"),
             )
@@ -127,7 +128,7 @@ class DeclarationSlotTest {
             val expected = mapOf(
                 "duplicate, both filled" to listOf("MVK_LANGUAGE_DUPLICATE"),
                 "duplicate, LATER blank" to
-                    listOf("MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING", "MVK_LANGUAGE_DUPLICATE"),
+                    listOf("MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING", "MVK_LANGUAGE_DUPLICATE", NO_ERROR_TEXT),
                 "duplicate, EARLIER blank" to listOf("MVK_LANGUAGE_DUPLICATE"),
             )
             assertEquals(expected, actual, "which entry for one locale survives, on a $kind")

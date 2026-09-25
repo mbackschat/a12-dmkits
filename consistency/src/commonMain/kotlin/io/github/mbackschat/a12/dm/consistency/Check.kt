@@ -27,10 +27,11 @@ enum class CheckFamily {
     DECLARATION_SLOTS,
 
     /**
-     * A12's unprefixed error-text class for a declaration that answers no declared locale. Its own constant
-     * rather than part of [DECLARATION_SLOTS] because A12's error-text checker draws it, and that checker
-     * judges a message only beside a sound condition or operation, while the prefixed slot classes it rides
-     * with are judged regardless — measured on both carriers, preconditions included ([KF338]).
+     * A12's unprefixed error-text class for a declaration leaving a declared locale with no text or an empty
+     * one ([KF346]), beside either message class. Its own constant rather than part of [DECLARATION_SLOTS]
+     * because A12's error-text checker draws it, and that checker judges a message only beside a sound
+     * condition or operation, while the prefixed slot classes it rides with are judged regardless — measured
+     * on both carriers, preconditions included ([KF338]).
      */
     ERROR_TEXT_PRESENCE,
 

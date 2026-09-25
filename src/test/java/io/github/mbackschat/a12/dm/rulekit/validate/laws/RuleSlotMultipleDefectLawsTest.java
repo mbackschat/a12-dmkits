@@ -195,6 +195,49 @@ class RuleSlotMultipleDefectLawsTest {
     }
 
     /**
+     * The split on the carrier where ANOTHER declared locale is answered, asked of both declarations.
+     *
+     * <p>Every row above leaves no declared locale covered, so the message class is the prefixed-missing one.
+     * Answering {@code en_US} moves it to the per-locale class, and the unprefixed one then keys on the same
+     * question as before — whether the unanswered locale has any text at all: a blank text and an absent entry
+     * draw it, a whitespace text does not. `MessageSlotRawShapeLawsTest` measured the rule's three cells; the
+     * computation's are the carrier that measurement did not reach.
+     */
+    @Test
+    void theUnprefixedClassKeysOnAnUnansweredLocalesTextBesideAnAnsweredOne() {
+        String en = "{\"locale\":\"en_US\",\"text\":\"see it\"}";
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("rule, de_DE BLANK", bilingual("[" + en + ",{\"locale\":\"de_DE\",\"text\":\"\"}]"));
+        actual.put("rule, de_DE WHITESPACE", bilingual("[" + en + ",{\"locale\":\"de_DE\",\"text\":\"  \"}]"));
+        actual.put("rule, de_DE ABSENT", bilingual("[" + en + "]"));
+        actual.put("rule, en_US filled then EMPTY", bilingual("[" + en + ",{\"locale\":\"en_US\",\"text\":\"\"},"
+                + "{\"locale\":\"de_DE\",\"text\":\"sieh\"}]"));
+        actual.put("computation, both answered — the control",
+                bilingualComputation("[" + en + ",{\"locale\":\"de_DE\",\"text\":\"sieh\"}]"));
+        actual.put("computation, de_DE BLANK",
+                bilingualComputation("[" + en + ",{\"locale\":\"de_DE\",\"text\":\"\"}]"));
+        actual.put("computation, de_DE WHITESPACE",
+                bilingualComputation("[" + en + ",{\"locale\":\"de_DE\",\"text\":\"  \"}]"));
+        actual.put("computation, de_DE ABSENT", bilingualComputation("[" + en + "]"));
+        actual.put("computation, en_US filled then EMPTY", bilingualComputation("[" + en
+                + ",{\"locale\":\"en_US\",\"text\":\"\"},{\"locale\":\"de_DE\",\"text\":\"sieh\"}]"));
+
+        String perLocale = "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING";
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("rule, de_DE BLANK", perLocale + "," + NO_ERROR_TEXT);
+        expected.put("rule, de_DE WHITESPACE", perLocale);
+        expected.put("rule, de_DE ABSENT", perLocale + "," + NO_ERROR_TEXT);
+        // The LAST entry for a locale is the one A12 keeps, so an empty one after a filled one unanswers it.
+        expected.put("rule, en_US filled then EMPTY", perLocale + "," + NO_ERROR_TEXT);
+        expected.put("computation, both answered — the control", KernelLaws.ADMITTED);
+        expected.put("computation, de_DE BLANK", perLocale + "," + NO_ERROR_TEXT);
+        expected.put("computation, de_DE WHITESPACE", perLocale);
+        expected.put("computation, de_DE ABSENT", perLocale + "," + NO_ERROR_TEXT);
+        expected.put("computation, en_US filled then EMPTY", perLocale + "," + NO_ERROR_TEXT);
+        assertEquals(expected, actual, "the unprefixed class beside an answered locale");
+    }
+
+    /**
      * The two-locale model, DRAFTED so every element carries the German label A12 demands.
      *
      * <p>Hand-writing the header's second locale is not enough: the model then fails to build for a reason
@@ -244,10 +287,18 @@ class RuleSlotMultipleDefectLawsTest {
         return computation("[{\"locale\":\"en_US\",\"text\":\"  \"}]");
     }
 
-    /** A computation computing `Score`, with its `errorMessage` written verbatim or omitted. */
     private static String computation(String errorMessageJson) {
+        return computation(SCORED, errorMessageJson);
+    }
+
+    private static String bilingualComputation(String errorMessageJson) {
+        return computation(BILINGUAL_SCORED, errorMessageJson);
+    }
+
+    /** A computation computing `Score` in [model], with its `errorMessage` written verbatim or omitted. */
+    private static String computation(String model, String errorMessageJson) {
         try {
-            ObjectNode root = (ObjectNode) MAPPER.readTree(SCORED);
+            ObjectNode root = (ObjectNode) MAPPER.readTree(model);
             ObjectNode node = (ObjectNode) ((ArrayNode) root.path("content").path("modelRoot")
                     .path("rootGroups").get(0).path("Group").path("elements")).addObject();
             node.put("type", "Computation").put("id", "cprobe").put("name", "ScoreCalc");
@@ -264,6 +315,13 @@ class RuleSlotMultipleDefectLawsTest {
     }
 
     private static final String SCORED = DocumentModelDraft.named("claims-policy").locale("en_US")
+            .rootGroup("Policy", policy -> policy
+                    .stringField("Reference", f -> { })
+                    .numberField("Score", f -> { }))
+            .build().toJson();
+
+    private static final String BILINGUAL_SCORED = DocumentModelDraft.named("claims-policy")
+            .locale("en_US").locale("de_DE")
             .rootGroup("Policy", policy -> policy
                     .stringField("Reference", f -> { })
                     .numberField("Score", f -> { }))

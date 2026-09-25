@@ -9304,9 +9304,11 @@ So "every collected text is whitespace" fits every single-locale row and is fals
 
 **And a model with no usable declared locale draws neither class**: an empty `header.locales`, a code A12's reader refuses, and the empty code all leave it unbuildable or unreadable, so no verdict about the message exists at all.
 
-Reported by the portable checker, which emitted the prefixed class alone on the stated ground that the split was unmeasured — an under-report on every shape but one.
+**Beside an ANSWERED locale the class asks the same question (measured 2026-09-25, both carriers).** With `en_US` answered the prefixed class is `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`, and `RULE_HAS_NO_ERRORTEXT` co-fires when `de_DE` is absent, empty, or emptied by a later duplicate of its own, and not when it is whitespace. So across both message classes the unprefixed one fires exactly when some declared locale is left with no text or an empty one.
 
-*Locked by:* `rulekit.validate.laws.RuleSlotMultipleDefectLawsTest`, mirrored by `consistency … DeclarationSlotTest`.
+Reported by the portable checker, which emitted the prefixed class alone on the stated ground that the split was unmeasured — an under-report on every shape but one. *Corrected 2026-09-25:* it then asked the question only of a declaration with no covered locale, and so dropped the class beside the per-locale one on every shape above.
+
+*Locked by:* `rulekit.validate.laws.RuleSlotMultipleDefectLawsTest` and, for the rule beside an answered locale, `…MessageSlotRawShapeLawsTest`, mirrored by `consistency … DeclarationSlotTest`.
 
 ## §8 supplement — the table-enum condition family: one gate every model reaches, closed as unreachable on an inverted reading (source-verified + measured, 2026-09-15) <a id="kf422"></a>
 

@@ -514,7 +514,7 @@ class WorkspaceMountTest {
         val monolingual = check(host(), provider).findings
 
         assertEquals(
-            listOf("MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING"),
+            listOf("MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING", "RULE_HAS_NO_ERRORTEXT"),
             bilingual.map { it.code },
             "the entry declares de_DE, so the mounted rule owes a German text: $bilingual",
         )
