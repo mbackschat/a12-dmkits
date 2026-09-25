@@ -144,7 +144,9 @@ private fun TrackedFactBase.preGateFinding(
     // (KERNEL-FINDINGS KF443, `validate.laws.DuplicateOverlapCarrierSweepLawsTest`) — so a duplicate sitting
     // elsewhere in that list is not this family's to name. Judging each operand alone reported it, which is
     // the shape of an over-rejection: a code A12 does not give, on a model it refuses for something else.
-    val targets = written.map { addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected) ?: return null }
+    val targets = written.map {
+        addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, call.inAFilterBody) ?: return null
+    }
     val direct = targets.firstDirectDuplicate(written)
     if (direct != null) {
         return finding(

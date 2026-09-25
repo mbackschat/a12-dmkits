@@ -190,7 +190,7 @@ private fun TrackedFactBase.plainList(
         return null
     }
     return call.operands.map { operand ->
-        val field = bareReferenceField(operand.text, declaringGroup, element) ?: return null
+        val field = bareReferenceField(operand.text, declaringGroup, element, call.inAFilterBody) ?: return null
         ListedReference(field.path, listOf(field))
     }
 }

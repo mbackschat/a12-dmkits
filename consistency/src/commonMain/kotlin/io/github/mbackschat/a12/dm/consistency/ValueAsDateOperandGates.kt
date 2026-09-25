@@ -80,7 +80,7 @@ private fun TrackedFactBase.valueAsDateDefect(
         return null
     }
     val (written, keyed, category) = operandSpec(call.operands[0], declaringGroup, element) ?: return null
-    val target = addressedTargetOf(written, declaringGroup, element, keyed) ?: return null
+    val target = addressedTargetOf(written, declaringGroup, element, keyed, call.inAFilterBody) ?: return null
     val declared = declarationAt(target) ?: return null
     val starred = '*' in written
     if (declared.declaredKind == DeclaredKind.GROUP) {
@@ -105,9 +105,10 @@ private fun TrackedFactBase.valueAsDateDefect(
                 "iterate the repeating group instead",
         )
     }
-    // A key addresses the one repetition it crosses, as the declaration's iteration would ([KERNEL-FINDINGS
-    // KF476]); [addressedTargetOf] has already refused a keyed read crossing any other.
-    if (!keyed && crossesARepetitionOutside(declaringGroup, target)) {
+    // A key addresses the one repetition it crosses, as the declaration's iteration would, and a filter body
+    // addresses every one ([KERNEL-FINDINGS KF476]); [addressedTargetOf] has already refused a keyed read
+    // crossing any other.
+    if (!keyed && !call.inAFilterBody && crossesARepetitionOutside(declaringGroup, target)) {
         return null
     }
     if (category != null) {

@@ -251,22 +251,25 @@ class KeyedOperandFamilyGateLawsTest {
     }
 
     /**
-     * Inside a `Having` body the key changes nothing either: the unkeyed read there already reaches the
-     * comparison's gate, the sound key keeps it, and a defective key answers first.
+     * Inside a `Having` body a read is judged as outside one: the unkeyed read reaches the family's gate though
+     * no star addresses the level it crosses, whether that is another level or the filtered one; the sound key
+     * keeps it, and a defective key answers first.
      */
     @Test
-    void aKeyedReadInsideAFilterBodyIsJudgedAsOutsideOne() {
+    void aReadInsideAFilterBodyIsJudgedAsOutsideOne() {
         Map<String, String> actual = new LinkedHashMap<>();
         Map<String, String> expected = new LinkedHashMap<>();
-        for (String family : new String[] {"comparison against a constant", "boolean comparison",
-                "string/enum comparison"}) {
+        for (String family : PROBES.keySet()) {
             for (String form : new String[] {"Claims/%s", "Claims/%s For \"X\"", "Claims/%s For 5"}) {
                 actual.put(family + " — " + form, keyed("NumberOfFilledFields(Notes*/Text Having "
                         + probe(family, operands(family, form)) + ") > 0"));
                 expected.put(family + " — " + form, form.endsWith("5") ? "MVK_INVALID_ENTITY" : CLASS.get(family));
             }
+            actual.put(family + " — the filtered level's own body", keyed("NumberOfFilledFields(Claims*/Memo Having "
+                    + probe(family, operands(family, "Claims/%s")) + ") > 0"));
+            expected.put(family + " — the filtered level's own body", CLASS.get(family));
         }
-        assertEquals(expected, actual, "a keyed read inside a filter body");
+        assertEquals(expected, actual, "a read inside a filter body");
     }
 
     /**

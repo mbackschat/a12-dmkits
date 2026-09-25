@@ -13,10 +13,10 @@ import org.junit.jupiter.api.Test
  * Where a semantic-index key addresses the repetition it keys, the classes the checker names against the classes
  * A12 names, in every operand family whose gate reads a field.
  *
- * A12 addresses a keyed read exactly as the declaration's own iteration does and judges a defective key before
- * the family's gate ([KERNEL-FINDINGS KF476], `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`). So each
- * keyed row has a TWIN the checker already reads: the same field from a rule declared inside `Claims`, or the
- * same read unkeyed inside a `Having` body, where the filter chain addresses every level.
+ * A12 addresses a keyed read exactly as the declaration's own iteration does, addresses every level a read
+ * inside a `Having` body crosses, and judges a defective key before the family's gate ([KERNEL-FINDINGS
+ * KF476], `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`). So each row has a TWIN the checker already
+ * reads: the same field from a rule declared inside `Claims`.
  *
  * **Two ways to fail.** Any class A12 does not name fails outright, since a keyed operand the checker reads past
  * its key names the family's class where A12 names the key's. SILENCE fails only where the twin agrees: the
@@ -50,14 +50,17 @@ class CheckerKeyedOperandAgreementTest {
         var compared = 0
         for ((family, probe) in PROBES) {
             val local = compare(IN_CLAIMS, probe.with("%s"))
-            val filterTwin = compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text Having ${probe.with("Claims/%s")}) > 0")
             val rows = linkedMapOf(
                 "string key" to (compare(AT_ROOT, probe.with("Claims/%s For \"X\"")) to local),
                 "field key" to (compare(AT_ROOT, probe.with("Claims/%s For Code")) to local),
                 "key on the iterated level" to (compare(IN_CLAIMS, probe.with("%s For \"X\"")) to local),
                 "number literal key on the iterated level" to (compare(IN_CLAIMS, probe.with("%s For 5")) to null),
+                "unkeyed in a filter body" to (compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text Having " +
+                    "${probe.with("Claims/%s")}) > 0") to local),
+                "unkeyed in the filtered level's own body" to (compare(AT_ROOT, "NumberOfFilledFields(Claims*/Memo " +
+                    "Having ${probe.with("Claims/%s")}) > 0") to local),
                 "keyed in a filter body" to (compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text Having " +
-                    "${probe.with("Claims/%s For \"X\"")}) > 0") to filterTwin),
+                    "${probe.with("Claims/%s For \"X\"")}) > 0") to local),
                 "number literal key in a filter body" to (compare(AT_ROOT, "NumberOfFilledFields(Notes*/Text " +
                     "Having ${probe.with("Claims/%s For 5")}) > 0") to null),
             ) + DEFECTS.mapValues { (_, form) -> compare(AT_ROOT, probe.with(form)) to null }
@@ -135,13 +138,16 @@ class CheckerKeyedOperandAgreementTest {
         )
 
         /**
-         * The rows that still disagree, for a reason that is not the key's (DEV-API-GAPS DG95). Both families are
-         * silent on this fixture even OUTSIDE a filter, so inside one the filter walk's own class stands where
-         * A12 names theirs, raised earlier in the body; the unkeyed twin fails the same way in fourteen families.
-         * A fix deletes its row, and a row that starts agreeing fails here until it is deleted.
+         * The rows that still disagree, for a reason that is neither the key's nor the body's (DEV-API-GAPS DG96).
+         * Both families are silent on this fixture even OUTSIDE a filter, so inside one a class A12 raises later
+         * on the same spec stands where A12 names theirs: the filter walk's on the plain read, the index's on the
+         * keyed one. A fix deletes its row, and a row that starts agreeing fails here until it is deleted.
          */
         val KNOWN_DIVERGENCES = listOf(
+            "comparison against a constant — unkeyed in a filter body: WRONG-CLASS " +
+                "[MVK_INVALID_ITERATION_IN_FILTER_CONDITION]",
             "comparison against a constant — keyed in a filter body: WRONG-CLASS [MVK_SEMANTIC_INDEX_NOT_ALLOWED]",
+            "date arithmetic — unkeyed in a filter body: WRONG-CLASS [MVK_INVALID_ITERATION_IN_FILTER_CONDITION]",
             "date arithmetic — keyed in a filter body: WRONG-CLASS [MVK_SEMANTIC_INDEX_NOT_ALLOWED]",
         )
 

@@ -79,8 +79,8 @@ private fun TrackedFactBase.roundingDefect(
 ): RoundingDefect? {
     val rounded = call.operands.firstOrNull() ?: return null
     val operandDefect = when (kind) {
-        RoundedOperand.ENTITY_SPEC -> entitySpecDefect(rounded, declaringGroup, element)
-        RoundedOperand.OPERATION -> operationDefect(rounded, declaringGroup, element)
+        RoundedOperand.ENTITY_SPEC -> entitySpecDefect(rounded, call.inAFilterBody, declaringGroup, element)
+        RoundedOperand.OPERATION -> operationDefect(rounded, call.inAFilterBody, declaringGroup, element)
     }
     return operandDefect ?: digitsDefect(call)
 }
@@ -88,13 +88,14 @@ private fun TrackedFactBase.roundingDefect(
 /** The field construct's three shape gates and its type gate, in the order `CheckRundenOpImpl` calls them. */
 private fun TrackedFactBase.entitySpecDefect(
     rounded: CallOperand,
+    inAFilterBody: Boolean,
     declaringGroup: String,
     element: TrackedDeclaration,
 ): RoundingDefect? {
     val (written, keyed) = operandReferenceIn(rounded.text, declaringGroup, element) {
         rounded.path?.let { OperandReference(it) }
     } ?: return null
-    val target = addressedTargetOf(written, declaringGroup, element, keyed) ?: return null
+    val target = addressedTargetOf(written, declaringGroup, element, keyed, inAFilterBody) ?: return null
     val declared = declarationAt(target) ?: return null
     if (declared.declaredKind == DeclaredKind.GROUP) {
         return RoundingDefect("MVK_NO_GROUPS_ALLOWED", "rounds `$target`, which is a group — round one field of it")
@@ -121,6 +122,7 @@ private fun TrackedFactBase.entitySpecDefect(
 /** The operation construct's two gates, in the order `CheckRundenOperOpImpl` calls them. */
 private fun TrackedFactBase.operationDefect(
     rounded: CallOperand,
+    inAFilterBody: Boolean,
     declaringGroup: String,
     element: TrackedDeclaration,
 ): RoundingDefect? {
@@ -133,7 +135,7 @@ private fun TrackedFactBase.operationDefect(
     }
     // A12 types the whole operation; this reader types only a bare field reference, so an expression is left
     // alone rather than typed from its most visible operand.
-    val field = bareReferenceField(rounded.text, declaringGroup, element) ?: return null
+    val field = bareReferenceField(rounded.text, declaringGroup, element, inAFilterBody) ?: return null
     return if (field.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES) {
         RoundingDefect(
             "MVK_NO_NUMBER",

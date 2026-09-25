@@ -137,7 +137,8 @@ private fun TrackedFactBase.operandDefect(
     }
     val written = reads.map { it.reference }
     val targets = reads.map { read ->
-        addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected) ?: return null
+        addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected, call.inAFilterBody)
+            ?: return null
     }
     if (preEmptedBeforeTheSwitch(written, targets)) {
         return null

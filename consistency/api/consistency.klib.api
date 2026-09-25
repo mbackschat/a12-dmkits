@@ -490,12 +490,14 @@ final class io.github.mbackschat.a12.dm.consistency.syntax/CallOperand { // io.g
 }
 
 final class io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall { // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall|null[0]
-    constructor <init>(kotlin/String, kotlin/Int, kotlin.collections/List<io.github.mbackschat.a12.dm.consistency.syntax/CallOperand>, kotlin/Int) // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.<init>|<init>(kotlin.String;kotlin.Int;kotlin.collections.List<io.github.mbackschat.a12.dm.consistency.syntax.CallOperand>;kotlin.Int){}[0]
+    constructor <init>(kotlin/String, kotlin/Int, kotlin.collections/List<io.github.mbackschat.a12.dm.consistency.syntax/CallOperand>, kotlin/Int, kotlin/Boolean = ...) // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.<init>|<init>(kotlin.String;kotlin.Int;kotlin.collections.List<io.github.mbackschat.a12.dm.consistency.syntax.CallOperand>;kotlin.Int;kotlin.Boolean){}[0]
 
     final val at // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.at|{}at[0]
         final fun <get-at>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.at.<get-at>|<get-at>(){}[0]
     final val end // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.end|{}end[0]
         final fun <get-end>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.end.<get-end>|<get-end>(){}[0]
+    final val inAFilterBody // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.inAFilterBody|{}inAFilterBody[0]
+        final fun <get-inAFilterBody>(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.inAFilterBody.<get-inAFilterBody>|<get-inAFilterBody>(){}[0]
     final val operands // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.operands|{}operands[0]
         final fun <get-operands>(): kotlin.collections/List<io.github.mbackschat.a12.dm.consistency.syntax/CallOperand> // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.operands.<get-operands>|<get-operands>(){}[0]
     final val operator // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.operator|{}operator[0]
@@ -505,7 +507,8 @@ final class io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall { // io
     final fun component2(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.component2|component2(){}[0]
     final fun component3(): kotlin.collections/List<io.github.mbackschat.a12.dm.consistency.syntax/CallOperand> // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.component3|component3(){}[0]
     final fun component4(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.component4|component4(){}[0]
-    final fun copy(kotlin/String = ..., kotlin/Int = ..., kotlin.collections/List<io.github.mbackschat.a12.dm.consistency.syntax/CallOperand> = ..., kotlin/Int = ...): io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.copy|copy(kotlin.String;kotlin.Int;kotlin.collections.List<io.github.mbackschat.a12.dm.consistency.syntax.CallOperand>;kotlin.Int){}[0]
+    final fun component5(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.component5|component5(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/Int = ..., kotlin.collections/List<io.github.mbackschat.a12.dm.consistency.syntax/CallOperand> = ..., kotlin/Int = ..., kotlin/Boolean = ...): io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.copy|copy(kotlin.String;kotlin.Int;kotlin.collections.List<io.github.mbackschat.a12.dm.consistency.syntax.CallOperand>;kotlin.Int;kotlin.Boolean){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall.toString|toString(){}[0]

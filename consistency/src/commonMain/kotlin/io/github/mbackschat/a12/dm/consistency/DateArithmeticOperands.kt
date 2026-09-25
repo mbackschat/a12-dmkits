@@ -84,7 +84,7 @@ private fun TrackedFactBase.shiftDefect(
     element: TrackedDeclaration,
 ): ShiftDefect? {
     val date = call.operands.firstOrNull() ?: return null
-    val field = bareReferenceField(date.text, declaringGroup, element) ?: return null
+    val field = bareReferenceField(date.text, declaringGroup, element, call.inAFilterBody) ?: return null
     if (declaresAPartialPrecision(field)) {
         return ShiftDefect(
             "MVK_INVALID_DATE_TYPE", field.path,
@@ -113,7 +113,7 @@ private fun TrackedFactBase.shiftDefect(
         )
     }
     val amount = call.operands.getOrNull(1) ?: return null
-    val amountField = bareReferenceField(amount.text, declaringGroup, element) ?: return null
+    val amountField = bareReferenceField(amount.text, declaringGroup, element, call.inAFilterBody) ?: return null
     return if (amountField.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES) {
         ShiftDefect(
             "MVK_NON_NUMERIC", amountField.path,

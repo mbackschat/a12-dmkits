@@ -17,9 +17,11 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  */
 fun callsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionCall> {
     val keywords = CONDITION_KEYWORDS.getValue(language)
+    val bodies = filterBodiesIn(text, language)
     return callShapes(text, language, entry).map { shape ->
         ConditionCall(shape.operator, shape.at, shape.operands.map { it.asOperand(keywords, language, text) },
-            shape.end)
+            shape.end,
+            inAFilterBody = bodies.any { body -> body.at <= shape.at && shape.end <= body.at + body.text.length })
     }
 }
 
@@ -32,8 +34,18 @@ fun callsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List
  * @param at the offset of the operator name.
  * @param end the offset just past the closing parenthesis: where the call has been read, which is where A12
  *     runs the operator's own check.
+ * @param inAFilterBody whether a `Having` body holds the call, at any depth. A12 judges an operand gate there as
+ *     outside one, with every repetition its operands cross addressed: which levels the body reads is the
+ *     filter chain's question, asked after the body, the same rule a comparison follows ([ConditionComparison])
+ *     and measured for every operand family (`rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`).
  */
-data class ConditionCall(val operator: String, val at: Int, val operands: List<CallOperand>, val end: Int)
+data class ConditionCall(
+    val operator: String,
+    val at: Int,
+    val operands: List<CallOperand>,
+    val end: Int,
+    val inAFilterBody: Boolean = false,
+)
 
 /**
  * One top-level argument.
