@@ -1,0 +1,255 @@
+package io.github.mbackschat.a12.dm;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.junit.jupiter.api.Test;
+
+/**
+ * Every error-text code the portable checker states comes from a family it withholds behind a refused DSL.
+ *
+ * <p><b>The defect this exists to stop, measured 2026-09-24.</b> A12 examines a declaration's message only
+ * once its condition or operation is sound ({@code KERNEL-FINDINGS KF338}), and {@code Check.kt} applies that
+ * law by FAMILY: a finding is withheld when its family is in {@code MESSAGE_MEMBER_FAMILIES}. The Base Year and
+ * no-text classes were drawn from inside the condition and slot families, so they co-fired beside a refused DSL
+ * until each arm became a family of its own. Nothing went red, because each family's own tests build its
+ * findings directly and never meet report assembly.
+ *
+ * <p><b>What is read, and from where.</b> The error-text vocabulary is the kernel's own enum
+ * ({@link KernelErrorVocabulary}); the files stating each code are {@link CheckerReportedCodes}'s; the family
+ * each file hosts is read from {@code CheckProducers.kt}'s registrations; the withheld families from
+ * {@code Check.kt}. A file stating a code must host a withheld family. Where it also hosts a family that is
+ * NOT withheld, the literal's function must reach only the withheld family's entry, through the calls made
+ * inside that file, which is exactly the shape the two historical cases had.
+ *
+ * <p><b>What it does not see.</b> A call from a non-withheld family into a helper in ANOTHER file: the one
+ * such helper, {@code ReferenceDiagnostic.kt}, picks its unprefixed codes by the reference's role and is named
+ * below with that reason. The {@code MVK_}-keyed classes of the same checker ({@code MVK_INDEX_FOR_ERROR_TEXT_INVALID},
+ * the parameter parser's {@code MVK_UNEXPECTED_TOKEN}) are outside the enum and share a spelling with grammar
+ * classes, so no vocabulary selects them.
+ */
+class CheckerMessageFamilyGuardTest {
+
+    private static final Path SOURCES =
+            Path.of("consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency");
+
+    /** Files stating an error-text code without hosting a family, each with why that is not a leak. */
+    private static final Map<String, String> SHARED_HELPERS = Map.of(
+            "ReferenceDiagnostic.kt",
+            "turns a reference outcome into a finding; the unprefixed codes belong to the message-parameter ROLE, "
+                    + "which only the message-parameter family reads");
+
+    private static final Pattern FAMILY = Pattern.compile("CheckFamily\\.([A-Z_]+)");
+
+    private static final Pattern CALL = Pattern.compile("\\.([a-z]\\w*)\\(");
+
+    /** A top-level declaration, the unit a literal is attributed to; a function's is named, a property's not. */
+    private static final Pattern TOP_LEVEL = Pattern.compile("(?m)^(?:[a-z@][^\\n]*)$");
+
+    private static final Pattern FUNCTION = Pattern.compile("^(?:(?:internal|private) )?fun (?:[^(]*\\.)?(\\w+)\\(");
+
+    @Test
+    void everyErrorTextCodeComesFromAWithheldFamily() {
+        Set<String> vocabulary = KernelErrorVocabulary.errorTextCodes();
+        Map<String, Set<String>> reported = CheckerReportedCodes.bySource(vocabulary::contains);
+        assertTrue(reported.size() >= 20, "the scan found only " + reported.size() + " error-text codes");
+        Set<String> withheld = familiesIn(block(read(SOURCES.resolve("Check.kt")),
+                "internal val MESSAGE_MEMBER_FAMILIES = setOf("));
+        Map<String, List<Registration>> byFile = registrationsByFile();
+
+        Map<String, String> leaks = new TreeMap<>();
+        reported.forEach((code, sources) -> sources.forEach(source -> {
+            String file = Path.of(source).getFileName().toString();
+            if (SHARED_HELPERS.containsKey(file)) {
+                return;
+            }
+            List<Registration> hosted = byFile.getOrDefault(file, List.of());
+            Set<String> entriesWithheld = entries(hosted, withheld, true);
+            Set<String> entriesNot = entries(hosted, withheld, false);
+            if (entriesWithheld.isEmpty()) {
+                leaks.put(code + " in " + file, "the file hosts no family in MESSAGE_MEMBER_FAMILIES");
+                return;
+            }
+            if (!entriesNot.isEmpty()) {
+                Set<String> reach = reachOf(read(SOURCES.resolve(file)), code);
+                reach.retainAll(entriesNot);
+                if (!reach.isEmpty()) {
+                    leaks.put(code + " in " + file, "reached from the non-withheld entry " + reach);
+                }
+            }
+        }));
+        assertEquals(Map.of(), leaks, "an error-text class reaches a family A12's message law does not withhold, "
+                + "so it co-fires beside a refused DSL; list the family in MESSAGE_MEMBER_FAMILIES or move the arm "
+                + "into a family of its own");
+    }
+
+    /** The positive control: the registrations parse into the families the withheld set names. */
+    @Test
+    void theRegistrationsParse() {
+        Map<String, List<Registration>> byFile = registrationsByFile();
+        Set<String> withheld = familiesIn(block(read(SOURCES.resolve("Check.kt")),
+                "internal val MESSAGE_MEMBER_FAMILIES = setOf("));
+        assertTrue(withheld.size() >= 8 && withheld.contains("ERROR_TEXT_PRESENCE"), "withheld: " + withheld);
+        Set<String> registered = new TreeSet<>();
+        byFile.values().forEach(list -> list.forEach(r -> registered.addAll(r.families())));
+        Set<String> unregistered = new TreeSet<>(withheld);
+        unregistered.removeAll(registered);
+        assertEquals(Set.of(), unregistered, "a withheld family has no registration this guard can read");
+        assertTrue(byFile.getOrDefault("DeclarationSlots.kt", List.of()).size() >= 2,
+                "DeclarationSlots.kt should host two families: " + byFile.get("DeclarationSlots.kt"));
+    }
+
+    /** One `CHECK_PRODUCERS` entry: the families it completes and the functions it calls. */
+    private record Registration(Set<String> families, Set<String> entries) {
+    }
+
+    private static Map<String, List<Registration>> registrationsByFile() {
+        Map<String, String> fileOf = new TreeMap<>();
+        for (Path source : sources()) {
+            String text = withoutComments(read(source));
+            Matcher line = TOP_LEVEL.matcher(text);
+            while (line.find()) {
+                Matcher function = FUNCTION.matcher(line.group());
+                if (function.find()) {
+                    fileOf.putIfAbsent(function.group(1), source.getFileName().toString());
+                }
+            }
+        }
+        Map<String, List<Registration>> byFile = new TreeMap<>();
+        for (String entry : entriesOf(block(read(SOURCES.resolve("CheckProducers.kt")),
+                "internal val CHECK_PRODUCERS: List<CheckProducer> = listOf("))) {
+            Set<String> families = familiesIn(entry);
+            Set<String> calls = new TreeSet<>();
+            CALL.matcher(entry).results().map(m -> m.group(1)).filter(fileOf::containsKey).forEach(calls::add);
+            Registration registration = new Registration(families, calls);
+            calls.stream().map(fileOf::get).distinct().forEach(file ->
+                    byFile.computeIfAbsent(file, key -> new ArrayList<>()).add(registration));
+        }
+        return byFile;
+    }
+
+    private static Set<String> entries(List<Registration> hosted, Set<String> withheld, boolean inWithheld) {
+        Set<String> entries = new TreeSet<>();
+        hosted.stream().filter(r -> withheld.containsAll(r.families()) == inWithheld)
+                .forEach(r -> entries.addAll(r.entries()));
+        return entries;
+    }
+
+    /** Every function of [text] whose calls, inside the file, lead to a literal of [code]. */
+    private static Set<String> reachOf(String source, String code) {
+        String text = withoutComments(source);
+        List<int[]> extents = new ArrayList<>();
+        List<String> names = new ArrayList<>();
+        Matcher line = TOP_LEVEL.matcher(text);
+        while (line.find()) {
+            Matcher function = FUNCTION.matcher(line.group());
+            extents.add(new int[] {line.start(), text.length()});
+            names.add(function.find() ? function.group(1) : null);
+        }
+        for (int i = 0; i + 1 < extents.size(); i++) {
+            extents.get(i)[1] = extents.get(i + 1)[0];
+        }
+        Set<String> reach = new LinkedHashSet<>();
+        for (int i = 0; i < extents.size(); i++) {
+            if (names.get(i) != null && body(text, extents.get(i)).contains("\"" + code + "\"")) {
+                reach.add(names.get(i));
+            }
+        }
+        boolean grew = true;
+        while (grew) {
+            grew = false;
+            for (int i = 0; i < extents.size(); i++) {
+                String name = names.get(i);
+                if (name == null || reach.contains(name)) {
+                    continue;
+                }
+                String body = body(text, extents.get(i));
+                if (reach.stream().anyMatch(callee -> Pattern.compile("\\b" + callee + "\\(").matcher(body).find())) {
+                    grew = reach.add(name);
+                }
+            }
+        }
+        return reach;
+    }
+
+    private static String body(String text, int[] extent) {
+        return text.substring(extent[0], extent[1]);
+    }
+
+    /** The top-level comma-separated entries of the list opened by [block]'s head. */
+    private static List<String> entriesOf(String block) {
+        List<String> entries = new ArrayList<>();
+        int depth = 0;
+        int from = block.indexOf('(') + 1;
+        for (int i = from; i < block.length(); i++) {
+            char c = block.charAt(i);
+            if (c == '(' || c == '{' || c == '[') {
+                depth++;
+            } else if (c == ')' || c == '}' || c == ']') {
+                depth--;
+            } else if (c == ',' && depth == 0) {
+                entries.add(block.substring(from, i));
+                from = i + 1;
+            }
+        }
+        entries.add(block.substring(from));
+        return entries.stream().filter(e -> !e.isBlank()).toList();
+    }
+
+    private static Set<String> familiesIn(String text) {
+        Set<String> families = new TreeSet<>();
+        FAMILY.matcher(text).results().forEach(m -> families.add(m.group(1)));
+        return families;
+    }
+
+    /** From [head] to the line that closes it at column 0. */
+    private static String block(String source, String head) {
+        int from = source.indexOf(head);
+        assertTrue(from >= 0, "no longer declared: " + head);
+        return withoutComments(source.substring(from, source.indexOf("\n)", from)));
+    }
+
+    /** Comments blanked, not removed, so an offset still points where it did. */
+    private static String withoutComments(String text) {
+        StringBuilder out = new StringBuilder(text);
+        Matcher comment = Pattern.compile("/\\*.*?\\*/|//[^\\n]*", Pattern.DOTALL).matcher(text);
+        while (comment.find()) {
+            for (int i = comment.start(); i < comment.end(); i++) {
+                if (out.charAt(i) != '\n') {
+                    out.setCharAt(i, ' ');
+                }
+            }
+        }
+        return out.toString();
+    }
+
+    private static List<Path> sources() {
+        try (var files = Files.list(SOURCES)) {
+            return files.filter(p -> p.toString().endsWith(".kt")).sorted().toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static String read(Path path) {
+        try {
+            return Files.readString(path);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+}
