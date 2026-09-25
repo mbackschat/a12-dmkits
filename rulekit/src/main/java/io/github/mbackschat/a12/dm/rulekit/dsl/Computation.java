@@ -256,10 +256,14 @@ public record Computation(
         }
 
         /**
-         * Round the computed value up or down instead of assigning it exactly — A12's
-         * {@code Computation.roundingMode}. A non-{@code EXACT} mode is legal only when every alternative
-         * carries a {@link ToleranceBand}, which {@link #build()} checks (KF297); {@code null} leaves the
-         * default {@code EXACT}.
+         * How the computation rounds the value it writes — A12's {@code Computation.roundingMode}. A
+         * non-{@code EXACT} mode is legal only when every alternative carries a {@link ToleranceBand}, which
+         * {@link #build()} checks (KF297); {@code null} leaves the default {@code EXACT}.
+         *
+         * <p>The rounding is to a WHOLE number, not to the computed field's digits: {@code ROUND_UP} toward +∞
+         * and {@code ROUND_DOWN} toward −∞, so a banded {@code ROUND_UP} writes 2 for an operation of 1.25.
+         * {@code EXACT} beside a band rounds down to the field's digits instead. The implicit validation
+         * compares the entered value with the operation unrounded in every mode (KERNEL-FINDINGS KF474).
          */
         public Builder roundingMode(RoundingMode roundingMode) {
             this.roundingMode = roundingMode == null ? RoundingMode.EXACT : roundingMode;
@@ -327,14 +331,6 @@ public record Computation(
                 require(operationMatchesComputedKind(a.operation()),
                         assignmentMismatchMessage(a.operation(), computedPath));
             }
-            // A12 asks `cmpOp == NE && roundingMode != EXACT` of each alternative, and an alternative's band is
-            // what chooses a tolerance comparison over `!=` (NormalisierteBerechnungsFormHelper:326; measured in
-            // either position on a two-alternative carrier, validate.laws.ComputationRoundingModeLawsTest).
-            require(roundingMode == RoundingMode.EXACT
-                            || alternatives.stream().allMatch(a -> a.toleranceRangeOp().isPresent()),
-                    KernelCode.MVK_ERROR_WRONG_ROUNDING_MODE, "rounding mode " + roundingMode.wire()
-                            + " needs a tolerance band on every alternative — the kernel compares an unbanded"
-                            + " alternative exactly; add a ToleranceBand to calc(...) or keep the mode EXACT");
             requireNoSelfReference(strongestSelfRead(computedPath), computedPath);
             for (Alternative a : alternatives) {
                 a.precondition().ifPresent(this::requireNoCustomCondition);
@@ -342,6 +338,16 @@ public record Computation(
             if (commonPrecondition != null) {
                 requireNoCustomCondition(commonPrecondition);
             }
+            // A12 asks `cmpOp == NE && roundingMode != EXACT` of each alternative, and an alternative's band is
+            // what chooses a tolerance comparison over `!=` (NormalisierteBerechnungsFormHelper:326; measured in
+            // either position on a two-alternative carrier, validate.laws.ComputationRoundingModeLawsTest). It is
+            // the calculation module's LAST stage, so a self-read or a CustomCondition names its own class first
+            // (validate.laws.CalculationMemberWithholdingLawsTest.theCalculationModuleAsksItsStagesInOrder).
+            require(roundingMode == RoundingMode.EXACT
+                            || alternatives.stream().allMatch(a -> a.toleranceRangeOp().isPresent()),
+                    KernelCode.MVK_ERROR_WRONG_ROUNDING_MODE, "rounding mode " + roundingMode.wire()
+                            + " needs a tolerance band on every alternative — the kernel compares an unbanded"
+                            + " alternative exactly; add a ToleranceBand to calc(...) or keep the mode EXACT");
 
             String groupPath = group != null ? group.path().value()
                     : computedPath.substring(0, computedPath.lastIndexOf('/'));

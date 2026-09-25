@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
 
@@ -55,10 +57,18 @@ class ComputationRoundingModeTest {
 
     @Test
     void aBandedRoundingComputationIsAdmittedByTheKernel() {
+        StringRef email = m.str("/Subscription/Billing/InvoiceEmail");
+        List<UnaryOperator<Computation.Builder>> shapes = List.of(
+                b -> b.calc(BASE_FEE.value(), ToleranceBand.TR2),
+                // every alternative banded: the admitted twin of the refused mixed shapes below
+                b -> b.when(email.filled()).calc(BASE_FEE.value(), ToleranceBand.TR1)
+                        .when(email.notFilled()).calc(BASE_FEE.value(), ToleranceBand.TR5));
         for (RoundingMode mode : List.of(RoundingMode.ROUND_UP, RoundingMode.ROUND_DOWN)) {
-            ValidationResult result = new RuleValidator().check(Fixtures.subscriptionJson(),
-                    fee(b -> b.calc(BASE_FEE.value(), ToleranceBand.TR2).roundingMode(mode)).draft());
-            assertTrue(result.ok(), () -> mode + " beside a band is admitted: " + result.diagnostics());
+            for (UnaryOperator<Computation.Builder> shape : shapes) {
+                ValidationResult result = new RuleValidator().check(Fixtures.subscriptionJson(),
+                        fee(b -> shape.apply(b).roundingMode(mode)).draft());
+                assertTrue(result.ok(), () -> mode + " beside a band is admitted: " + result.diagnostics());
+            }
         }
     }
 
@@ -77,6 +87,26 @@ class ComputationRoundingModeTest {
                     () -> fee(b -> shape.apply(b).roundingMode(RoundingMode.ROUND_UP)));
             assertEquals(Optional.of(KernelCode.MVK_ERROR_WRONG_ROUNDING_MODE.name()), refusal.diagnostic().code());
         }
+    }
+
+    /**
+     * The mode is the calculation module's last question, so an unbanded mode beside a self-read or a
+     * CustomCondition is refused for those, as the kernel refuses it
+     * ({@code validate.laws.CalculationMemberWithholdingLawsTest.theCalculationModuleAsksItsStagesInOrder}, rows
+     * "ROUNDING · a read of the computed NUMBER field" and "ROUNDING · the language feature").
+     */
+    @Test
+    void anEarlierStageNamesItsOwnClassBesideAnUnbandedMode() {
+        NumberRef effectiveFee = m.num("/Subscription/Billing/EffectiveFee");
+        Map<String, UnaryOperator<Computation.Builder>> shapes = new LinkedHashMap<>();
+        shapes.put("a read of the computed field", b -> b.when(effectiveFee.filled()).calc(BASE_FEE.value()));
+        shapes.put("a CustomCondition", b -> b.when(Dsl.customCondition("IsRenewal")).calc(BASE_FEE.value()));
+        Map<String, String> actual = new LinkedHashMap<>();
+        shapes.forEach((row, shape) -> actual.put(row, assertThrows(PrecheckException.class,
+                () -> fee(b -> shape.apply(b).roundingMode(RoundingMode.ROUND_UP))).diagnostic().code().orElse("")));
+        assertEquals(Map.of(
+                "a read of the computed field", KernelCode.MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD.name(),
+                "a CustomCondition", KernelCode.MVK_ERROR_INVALID_LANGUAGE_FEATURE.name()), actual);
     }
 
     /**

@@ -3071,7 +3071,7 @@ final class ConditionConverter {
                 errorCodesToSuppress, roundingMode(info.getRoundingMode()));
     }
 
-    private static RoundingMode roundingMode(IBaseCalculationService.RoundingMode mode) {
+    static RoundingMode roundingMode(IBaseCalculationService.RoundingMode mode) {
         return switch (mode) {
             case EXACT -> RoundingMode.EXACT;
             case ROUND_UP -> RoundingMode.ROUND_UP;

@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.Suggest;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelCard;
-import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
@@ -176,9 +175,7 @@ final class ModelReportCommand extends BaseCommand {
             if (c.commonPrecondition() != null) {
                 node.put("commonPrecondition", c.commonPrecondition());
             }
-            if (c.roundingMode() != null && c.roundingMode() != RoundingMode.EXACT) {
-                node.put("roundingMode", c.roundingMode().wire());
-            }
+            c.roundingMode().stored().ifPresent(mode -> node.put("roundingMode", mode));
             if (!c.alternatives().isEmpty()) {
                 ArrayNode alternatives = node.putArray("alternatives");
                 for (DraftComputation.Alternative alt : c.alternatives()) {

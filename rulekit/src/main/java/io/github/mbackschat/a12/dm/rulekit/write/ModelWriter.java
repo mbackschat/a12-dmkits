@@ -27,7 +27,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
-import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
@@ -445,9 +444,7 @@ public final class ModelWriter {
         ObjectNode body = node.putObject("Computation");
         body.put("computedFieldRelPath", c.computedFieldRelPath());
         // Right after the target and only when not Exact — where and when A12's ComputationSerializer writes it.
-        if (c.roundingMode() != RoundingMode.EXACT) {
-            body.put("roundingMode", c.roundingMode().wire());
-        }
+        c.roundingMode().stored().ifPresent(mode -> body.put("roundingMode", mode));
         if (!c.errorCodesToSuppress().isEmpty()) {
             ArrayNode suppress = body.putArray("errorCodesToSuppress");
             c.errorCodesToSuppress().forEach(suppress::add);

@@ -124,7 +124,7 @@
           "canonicalText": { "type": "string", "description": "the kernel-canonical text (present when Opaque)" },
           "reason": { "type": "string", "description": "the construct rulekit could not model — present only when explained is false" },
           "commonPrecondition": { "type": "string", "description": "the precondition gating the WHOLE computation, when set — the DSL text (same shape as `computation read`)" },
-          "roundingMode": { "type": "string", "enum": ["RoundUp", "RoundDown"], "description": "how the computed value is rounded, when not Exact — absent means Exact, as A12 stores it (same shape as `computation read`); present only when explained" },
+          "roundingMode": { "type": "string", "enum": ["RoundUp", "RoundDown"], "description": "how the computed value is rounded (to a whole number, in the mode's direction), when not Exact — absent means Exact, as A12 stores it (same shape as `computation read`); the computation element's own member, so it is present whether or not the formula is explained" },
           "errorCodesToSuppress": {
             "type": "array",
             "items": { "type": "string" },

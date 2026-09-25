@@ -20,21 +20,24 @@ final class ComputationDiffProjector {
     static Map<String, Map<String, String>> project(ModelDiffState state) {
         Map<String, Map<String, String>> out = new LinkedHashMap<>();
         state.adapter().readAllComputations().forEach((name, read) -> out.put(name,
-                aspects(read, state.adapter().computationErrorCodesToSuppress(name))));
+                aspects(read, state.adapter().computationErrorCodesToSuppress(name),
+                        state.adapter().computationRoundingMode(name))));
         return out;
     }
 
     static Map<String, String> aspects(ReadComputation read) {
-        List<String> suppressions = read instanceof ReadComputation.Converted converted
-                ? converted.computation().errorCodesToSuppress()
-                : List.of();
-        return aspects(read, suppressions);
-    }
-
-    static Map<String, String> aspects(ReadComputation read, List<String> suppressions) {
         return switch (read) {
             case ReadComputation.Converted converted -> convertedAspects(converted.computation());
-            case ReadComputation.Opaque opaque -> opaqueAspects(opaque.canonicalText(), suppressions);
+            case ReadComputation.Opaque opaque -> opaqueAspects(opaque.canonicalText(), List.of(), RoundingMode.EXACT);
+        };
+    }
+
+    /** {@code suppressions} and {@code roundingMode} are the element's own members, which A12 keeps apart from the
+     *  formula, so an Opaque formula still carries them into the diff. */
+    static Map<String, String> aspects(ReadComputation read, List<String> suppressions, RoundingMode roundingMode) {
+        return switch (read) {
+            case ReadComputation.Converted converted -> convertedAspects(converted.computation());
+            case ReadComputation.Opaque opaque -> opaqueAspects(opaque.canonicalText(), suppressions, roundingMode);
         };
     }
 
@@ -70,9 +73,7 @@ final class ComputationDiffProjector {
         DraftComputation draft = computation.draft();
         Map<String, String> aspects = new LinkedHashMap<>();
         aspects.put("target", computation.computedField().path().value());
-        if (draft.roundingMode() != RoundingMode.EXACT) {
-            aspects.put("roundingMode", draft.roundingMode().wire());
-        }
+        draft.roundingMode().stored().ifPresent(mode -> aspects.put("roundingMode", mode));
         putIfPresent(aspects, "commonPrecondition", draft.commonPrecondition());
         for (int i = 0; i < draft.alternatives().size(); i++) {
             DraftComputation.Alternative alternative = draft.alternatives().get(i);
@@ -91,9 +92,10 @@ final class ComputationDiffProjector {
     }
 
     private static Map<String, String> opaqueAspects(
-            String canonicalText, List<String> errorCodesToSuppress) {
+            String canonicalText, List<String> errorCodesToSuppress, RoundingMode roundingMode) {
         Map<String, String> aspects = new LinkedHashMap<>();
         aspects.put("opaque", canonicalText);
+        roundingMode.stored().ifPresent(mode -> aspects.put("roundingMode", mode));
         if (!errorCodesToSuppress.isEmpty()) {
             aspects.put("errorCodesToSuppress", String.join(",", errorCodesToSuppress));
         }

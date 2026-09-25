@@ -2346,6 +2346,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode
   public static final io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode ROUND_DOWN
   public static final io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode ROUND_UP
   public static io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode fromWire(java.lang.String)
+  public java.util.Optional<java.lang.String> stored()
   public static io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode[] values()
   public java.lang.String wire()

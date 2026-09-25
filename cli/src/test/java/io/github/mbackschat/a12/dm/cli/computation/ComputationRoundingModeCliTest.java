@@ -54,6 +54,7 @@ class ComputationRoundingModeCliTest {
         Path model = write(dir, "model.json", CliTestSupport.subscriptionJson());
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "computation", "add",
                 write(dir, "spec.json", spec("\"DiffersWithToleranceRange1\"", "\"RoundDown\"")).toString()).code());
+        assertTrue(Files.readString(model).contains("\"roundingMode\" : \"RoundDown\""), "the mode was stored first");
 
         var modify = CliTestSupport.run("-m", model.toString(), "computation", "modify", COMPUTATION, "--spec",
                 write(dir, "respec.json", spec("\"DiffersWithToleranceRange1\"", null)).toString());
@@ -61,6 +62,47 @@ class ComputationRoundingModeCliTest {
         assertFalse(Files.readString(model).contains("roundingMode"), "Exact is never stored");
         JsonNode read = data(CliTestSupport.run("-m", model.toString(), "computation", "read", COMPUTATION));
         assertTrue(read.path("roundingMode").isMissingNode(), read::toString);
+        JsonNode explain = data(CliTestSupport.run("-m", model.toString(), "computation", "explain", COMPUTATION));
+        assertTrue(explain.path("roundingMode").isMissingNode(), () -> "explain omits Exact too: " + explain);
+    }
+
+    /**
+     * The mode is the computation element's own member in A12, stored beside the formula like
+     * {@code errorCodesToSuppress}, so a formula the adapter cannot convert still shows it, and a modify that
+     * drops it is visible in the diff. The Opaque trigger is a braced operand, which the converted rendering
+     * would drop ({@code KernelAdapter.readOne}).
+     */
+    @Test
+    void anOpaqueFormulaStillShowsItsModeAndADroppedModeShowsInTheDiff(@TempDir Path dir) throws Exception {
+        Path model = write(dir, "model.json", CliTestSupport.subscriptionJson());
+        String braced = spec("\"DiffersWithToleranceRange1\"", "\"RoundUp\"").replace("\"[BaseFee]\"", "\"{[BaseFee]}\"");
+        var add = CliTestSupport.run("-m", model.toString(), "computation", "add", write(dir, "spec.json", braced).toString());
+        assertEquals(0, add.code(), () -> add.err() + add.out());
+        Path base = write(dir, "base.json", Files.readString(model));
+
+        JsonNode read = data(CliTestSupport.run("-m", model.toString(), "computation", "read", COMPUTATION));
+        assertFalse(read.path("converted").asBoolean(), () -> "the fixture must be Opaque, or this asserts nothing: " + read);
+        assertEquals("RoundUp", read.path("roundingMode").asText(), read::toString);
+        JsonNode explain = data(CliTestSupport.run("-m", model.toString(), "computation", "explain", COMPUTATION));
+        assertEquals("RoundUp", explain.path("roundingMode").asText(), explain::toString);
+        JsonNode report = data(CliTestSupport.run("-m", model.toString(), "model", "report"));
+        assertEquals("RoundUp", report.path("computations").findValue("roundingMode").asText(), report::toString);
+
+        // `apply`, because `computation modify` refuses to render an Opaque re-expression before it writes.
+        String modifyOp = "[" + braced.replace("\"roundingMode\": \"RoundUp\",", "").replaceFirst("\\{",
+                "{\"target\":\"computation\",\"op\":\"modify\",\"computationPathInModel\":\"" + COMPUTATION + "\",") + "]";
+        var modify = CliTestSupport.run("-m", model.toString(), "apply", write(dir, "ops.json", modifyOp).toString());
+        assertEquals(0, modify.code(), modify::err);
+        assertFalse(Files.readString(model).contains("roundingMode"), "the re-expression made it exact");
+        JsonNode diff = data(CliTestSupport.run("model", "diff", base.toString(), model.toString()));
+        JsonNode dropped = null;
+        for (JsonNode delta : diff.path("changes").get(0).path("deltas")) {
+            if ("roundingMode".equals(delta.path("aspect").asText())) {
+                dropped = delta;
+            }
+        }
+        assertTrue(dropped != null, () -> "the dropped mode is a diff delta: " + diff);
+        assertEquals("RoundUp", dropped.path("before").asText(), diff::toString);
     }
 
     @Test

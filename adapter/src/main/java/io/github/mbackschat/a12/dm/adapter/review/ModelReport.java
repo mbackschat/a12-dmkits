@@ -274,11 +274,15 @@ public final class ModelReport {
      * common precondition, alternatives, suppressions, and messages together; the Opaque branch carries the
      * preserved text and conversion reason. Owner-level suppression metadata lives on the containing report,
      * independently of formula conversion.
+     *
+     * <p>{@code roundingMode} is the element's own member, which A12 keeps apart from the formula, so it is set
+     * whether or not the formula is explained.
      */
     public record ComputationEntry(String computation, String scope,
-            ComputationExplanationOutcome explanation) {
+            ComputationExplanationOutcome explanation, RoundingMode roundingMode) {
         public ComputationEntry {
             Objects.requireNonNull(explanation, "explanation");
+            roundingMode = roundingMode == null ? RoundingMode.EXACT : roundingMode;
         }
 
         public static Builder builder(String computation, String scope) {
@@ -324,14 +328,6 @@ public final class ModelReport {
             };
         }
 
-        /** The explained computation's rounding mode, or {@code null} when the formula is Opaque. */
-        public RoundingMode roundingMode() {
-            return switch (explanation) {
-                case ExplainedComputation explained -> explained.draft().roundingMode();
-                case OpaqueExplanation ignored -> null;
-            };
-        }
-
         public List<Message> messages() {
             return switch (explanation) {
                 case ExplainedComputation explained -> explained.messages();
@@ -350,6 +346,7 @@ public final class ModelReport {
             private final String computation;
             private final String scope;
             private ComputationExplanationOutcome explanation;
+            private RoundingMode roundingMode;
 
             private Builder(String computation, String scope) {
                 this.computation = computation;
@@ -361,8 +358,14 @@ public final class ModelReport {
                 return this;
             }
 
+            /** {@code null} leaves the default {@code EXACT}. */
+            public Builder roundingMode(RoundingMode roundingMode) {
+                this.roundingMode = roundingMode;
+                return this;
+            }
+
             public ComputationEntry build() {
-                return new ComputationEntry(computation, scope, explanation);
+                return new ComputationEntry(computation, scope, explanation, roundingMode);
             }
         }
     }
@@ -481,7 +484,8 @@ public final class ModelReport {
                             .reason(opaque.reason())
                             .build();
             };
-            out.add(ComputationEntry.builder(name, scopeOf(name)).explanation(explanation).build());
+            out.add(ComputationEntry.builder(name, scopeOf(name)).explanation(explanation)
+                    .roundingMode(adapter.computationRoundingMode(name)).build());
         }
         return new ComputationCatalog(List.copyOf(out), Map.copyOf(suppressions));
     }

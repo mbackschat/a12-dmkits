@@ -208,12 +208,15 @@ class ModelDiffComputationTest {
     void opaqueComputationsUseTheirVerbatimTextAsTheFingerprint() {
         var first = ComputationDiffProjector.aspects(
                 new ReadComputation.Opaque("[Price] * [Quantity]", "x"),
-                List.of("MVK_INVALID_COMPARE_DEC_PLACES"));
+                List.of("MVK_INVALID_COMPARE_DEC_PLACES"), RoundingMode.ROUND_UP);
         var second = ComputationDiffProjector.aspects(new ReadComputation.Opaque("[Price] + [Quantity]", "y"));
 
         assertEquals("[Price] * [Quantity]", first.get("opaque"));
         assertEquals("MVK_INVALID_COMPARE_DEC_PLACES", first.get("errorCodesToSuppress"));
+        // the element's own members ride beside the verbatim formula
+        assertEquals("RoundUp", first.get("roundingMode"));
         assertEquals("[Price] + [Quantity]", second.get("opaque"));
+        assertEquals(null, second.get("roundingMode"), "Exact is never an aspect");
     }
 
     @Test

@@ -94,9 +94,7 @@ public record ComputationExplanation(
             node.set("operation", operationJson(a.operation()));
             a.toleranceRangeOp().ifPresent(tolerance -> node.put("toleranceRangeOp", tolerance.wire()));
         }
-        if (roundingMode != RoundingMode.EXACT) {
-            root.put("roundingMode", roundingMode.wire());
-        }
+        roundingMode.stored().ifPresent(mode -> root.put("roundingMode", mode));
 
         ArrayNode msgs = root.putArray("messages");
         for (Message m : messages) {

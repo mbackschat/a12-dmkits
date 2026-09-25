@@ -16,7 +16,6 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
-import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
@@ -225,6 +224,9 @@ public final class ReadPayloads {
         data.put("group", computation.substring(0, computation.lastIndexOf('/')));
         ArrayNode suppressions = data.putArray("errorCodesToSuppress");
         adapter.computationErrorCodesToSuppress(computation).forEach(suppressions::add);
+        // Owner-level like the suppressions, so an Opaque formula still shows it; absent means Exact, as in the
+        // stored model, since A12's serializer never writes Exact.
+        adapter.computationRoundingMode(computation).stored().ifPresent(mode -> data.put("roundingMode", mode));
         switch (adapter.readComputation(computation)) {
             case ReadComputation.Converted converted -> {
                 data.put("converted", true);
@@ -233,10 +235,6 @@ public final class ReadPayloads {
                 DraftComputation draft = comp.draft();
                 if (draft.commonPrecondition() != null) {
                     data.put("commonPrecondition", draft.commonPrecondition());
-                }
-                // Absent means Exact, as in the stored model: A12's serializer never writes Exact.
-                if (draft.roundingMode() != RoundingMode.EXACT) {
-                    data.put("roundingMode", draft.roundingMode().wire());
                 }
                 ArrayNode alternatives = data.putArray("alternatives");
                 for (DraftComputation.Alternative alt : draft.alternatives()) {

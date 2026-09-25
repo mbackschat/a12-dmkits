@@ -82,6 +82,12 @@ class CorrectiveTest {
               "errorMessage":[{"locale":"en_US","text":"x"}],
               "computationAlternatives":[
                 {"operation":"[/Catalog/Crates/CrateRef For /Catalog/KeyedNote]"}]}},
+            {"type":"Field","id":"f72","name":"RoundedTally","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxFractionalDigits":0}}}},
+            {"type":"Computation","id":"c72","name":"RoundsAStrictComparison","Computation":{
+              "computedFieldRelPath":"../RoundedTally","roundingMode":"RoundUp",
+              "errorMessage":[{"locale":"en_US","text":"x"}],
+              "computationAlternatives":[{"operation":"[Tally]"}]}},
             {"type":"Rule","id":"r18","name":"PatternTheGateRefuses","Rule":{
               "errorCondition":"FieldFilled(Note) And [Note] PatternMatched \"a++\"",
               "errorEntityRelPath":"../Note",

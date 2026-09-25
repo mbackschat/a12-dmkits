@@ -402,7 +402,7 @@ public final class RuntimeLaws {
         }
         String common = commonPrecondition == null ? ""
                 : " \"commonPrecondition\": \"" + esc(commonPrecondition) + "\",";
-        String mode = roundingMode == RoundingMode.EXACT ? "" : " \"roundingMode\": \"" + roundingMode.wire() + "\",";
+        String mode = roundingMode.stored().map(stored -> " \"roundingMode\": \"" + stored + "\",").orElse("");
         String suppress = errorCodesToSuppress.isEmpty() ? ""
                 : " \"errorCodesToSuppress\": [ " + errorCodesToSuppress.stream()
                         .map(c -> "\"" + c + "\"").collect(Collectors.joining(", ")) + " ],";

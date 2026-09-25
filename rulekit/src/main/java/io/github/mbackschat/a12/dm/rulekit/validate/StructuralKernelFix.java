@@ -337,6 +337,19 @@ public final class StructuralKernelFix {
                             + "calculated-field-reference ban, and it pre-empts the plain half when both readings occur "
                             + "in one operation — so this code identifies the reading MODE, while the plain code is what "
                             + "an unprojected self-read reports (kernel-measured, KF182).")),
+            Map.entry(KernelCode.MVK_ERROR_WRONG_ROUNDING_MODE, new Hint(
+                    "Give EVERY alternative a tolerance band (toleranceRangeOp DiffersWithToleranceRange1, 2, 5 or "
+                            + "10), or keep the rounding mode Exact. The mode is never wrong by itself: it is refused "
+                            + "only beside an alternative without a band, in any position. Before adding the band, "
+                            + "check that rounding is what you want: RoundUp/RoundDown round the WRITTEN value to a "
+                            + "whole number (RoundUp toward +infinity, RoundDown toward -infinity), not to the computed "
+                            + "field's digits; to round to digits, keep Exact and round inside the operation "
+                            + "(RoundUp([op], 2)).",
+                    "MVK_ERROR_WRONG_ROUNDING_MODE (\"When using exact calculation comparisons only the rounding mode "
+                            + "'exact' is allowed\") judges a PAIR: an alternative without a band compares the computed "
+                            + "field exactly, and A12 refuses a non-Exact mode against that comparison, while the same "
+                            + "mode beside a band is admitted (kernel-measured, KF297; what the admitted pair writes: "
+                            + "KF474).")),
             Map.entry(KernelCode.MVK_INVALID_COMPARE_DEC_PLACES, new Hint(
                     "The kernel could not establish compatible DERIVED decimal scales here. Numeric == / != carries "
                             + "a known SIGNED scale or unknown plus an independent multiplicative-constant capability: "

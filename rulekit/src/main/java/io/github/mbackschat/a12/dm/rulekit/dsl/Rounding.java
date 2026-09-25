@@ -16,7 +16,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  */
 public record Rounding(Mode mode, Calculation operand, Optional<Integer> decimalPlaces) implements Calculation {
 
-    /** The three rounding directions (kernel {@code OpListOperationName}) with their catalog operator-ids. */
+    /** The three rounding directions (kernel {@code OpListOperationName}) with their catalog operator-ids. Not
+     *  {@link RoundingMode}, which is a computation's rounding of the value it writes. */
     public enum Mode {
         DOWN("RoundDown"),
         UP("RoundUp"),

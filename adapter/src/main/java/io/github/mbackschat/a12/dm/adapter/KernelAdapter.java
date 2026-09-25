@@ -29,12 +29,12 @@ import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumen
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
-import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
@@ -873,6 +873,12 @@ public final class KernelAdapter {
         return errorCodesToSuppress(calculationRule(computationFullName));
     }
 
+    /** A12's owner-level rounding mode ({@code ICalculationRule.getRoundingMode}), independent of formula AST
+     *  conversion like the suppression list, so an Opaque formula still reports it. */
+    public RoundingMode computationRoundingMode(String computationFullName) {
+        return ConditionConverter.roundingMode(calculationRule(computationFullName).getRoundingMode());
+    }
+
     /** Look up a computation's {@code ICalculationRule} by full name (read-only — the {@link #rule} peer).
      *  Served from the {@link #calcIndex} so repeated computation reads stay {@code O(C)}, not {@code O(C²)}. */
     private ICalculationRule calculationRule(String computationFullName) {
@@ -1098,9 +1104,7 @@ public final class KernelAdapter {
         if (!computation.errorCodesToSuppress().isEmpty()) {
             text.append("\nerrorCodesToSuppress=").append(computation.errorCodesToSuppress());
         }
-        if (computation.roundingMode() != RoundingMode.EXACT) {
-            text.append("\nroundingMode=").append(computation.roundingMode().wire());
-        }
+        computation.roundingMode().stored().ifPresent(mode -> text.append("\nroundingMode=").append(mode));
         return text.toString();
     }
 
