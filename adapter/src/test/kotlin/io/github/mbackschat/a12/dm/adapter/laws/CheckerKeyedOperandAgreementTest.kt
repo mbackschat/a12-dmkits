@@ -139,16 +139,14 @@ class CheckerKeyedOperandAgreementTest {
 
         /**
          * The rows that still disagree, for a reason that is neither the key's nor the body's (DEV-API-GAPS DG96).
-         * Both families are silent on this fixture even OUTSIDE a filter, so inside one a class A12 raises later
-         * on the same spec stands where A12 names theirs: the filter walk's on the plain read, the index's on the
+         * The family is silent on this fixture even OUTSIDE a filter, so inside one a class A12 raises later on
+         * the same spec stands where A12 names its own: the filter walk's on the plain read, the index's on the
          * keyed one. A fix deletes its row, and a row that starts agreeing fails here until it is deleted.
          */
         val KNOWN_DIVERGENCES = listOf(
             "comparison against a constant — unkeyed in a filter body: WRONG-CLASS " +
                 "[MVK_INVALID_ITERATION_IN_FILTER_CONDITION]",
             "comparison against a constant — keyed in a filter body: WRONG-CLASS [MVK_SEMANTIC_INDEX_NOT_ALLOWED]",
-            "date arithmetic — unkeyed in a filter body: WRONG-CLASS [MVK_INVALID_ITERATION_IN_FILTER_CONDITION]",
-            "date arithmetic — keyed in a filter body: WRONG-CLASS [MVK_SEMANTIC_INDEX_NOT_ALLOWED]",
         )
 
         /** The key defects, each as the operand form it is spelled with. */

@@ -405,18 +405,6 @@ internal fun TrackedFactBase.unstarredRepeatableLevels(
 }
 
 /**
- * [unstarredRepeatableLevels] less those A12 iterates jointly with [element]'s target ([iteratesJointly]) —
- * the levels a SCALAR slot's read crosses that nothing addresses, so that its own gate is not A12's to ask.
- */
-internal fun TrackedFactBase.unaddressedRepeatableLevels(
-    written: String,
-    path: String,
-    declaringGroup: String,
-    element: TrackedDeclaration,
-): List<String>? = unstarredRepeatableLevels(written, path, declaringGroup, element)
-    ?.filterNot { iteratesJointly(it, element) }
-
-/**
  * Whether A12 iterates [level] JOINTLY with [element]'s target: a parallel level both branches key by one index
  * field of one name and type ([parallelVerdictOf]).
  *

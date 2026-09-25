@@ -71,7 +71,7 @@ internal fun TrackedFactBase.dateArgumentSlotFindings(): List<Finding> {
                 val slots = carriers[call.operator] ?: return@flatMap emptyList()
                 slots.mapNotNull { slot ->
                     val operand = call.operands.getOrNull(slot) ?: return@mapNotNull null
-                    slotDefect(operand, numericExtractors, group, element)
+                    slotDefect(operand, call.inAFilterBody, numericExtractors, group, element)
                         ?.let { finding(it, call, operand, element, member) }
                 }
             }
@@ -102,12 +102,14 @@ private class DateArgumentDefect(val code: String, val said: String)
 /** The gate this slot fails, or null where it fails none and where this reader may not judge. */
 private fun TrackedFactBase.slotDefect(
     operand: CallOperand,
+    inAFilterBody: Boolean,
     numericExtractors: Set<String>,
     declaringGroup: String,
     element: TrackedDeclaration,
 ): DateArgumentDefect? {
+    val read = operandReferenceIn(operand.text, declaringGroup, element) { operand.path?.let { OperandReference(it) } }
     val leadingName = tokenize(operand.text).firstOrNull()?.takeIf { it.kind == TokenKind.NAME }?.text
-    if (leadingName != null && operand.path == null) {
+    if (leadingName != null && read == null) {
         // A nested OPERATION rather than a reference. Only the extractions are typed here; every other
         // operation is left alone, because typing it would be a claim with nothing behind it.
         return if (leadingName in numericExtractors) {
@@ -132,9 +134,9 @@ private fun TrackedFactBase.slotDefect(
             )
         }
     }
-    val written = operand.path ?: return null
+    val (written, keyed) = read ?: return null
     val target = declaredTargetOf(written, declaringGroup, element) ?: return null
-    if (unaddressedRepeatableLevels(written, target.path, declaringGroup, element)?.isEmpty() != true) {
+    if (addressedTargetOf(written, declaringGroup, element, keyed, inAFilterBody) == null) {
         return null
     }
     if (target.declaredKind == DeclaredKind.GROUP) {

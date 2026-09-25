@@ -11040,3 +11040,23 @@ So a sound key addresses exactly as the declaration's own iteration does, and th
 The portable checker read a keyed operand in the entity-list pre-gates alone and stood down everywhere else; two gates read past the key, naming their own class where A12 names `MVK_INVALID_ENTITY`, and the pattern gate took a keyed side for an expression. It now reads every keyed operand through one reader that honours only a key the semantic-index chain admits. Inside a body, only the comparison families read with every level addressed; the other gates stood down, which left the filter walk's class where A12 names theirs in fourteen of the twenty. Every call now carries whether a body holds it, as a comparison does, and each gate reads its operands addressed there.
 
 *Locked by:* `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`; the checker against A12 on the same model: `adapter.laws.CheckerKeyedOperandAgreementTest`.
+
+## §9 supplement — the level a rule iterates addresses a scalar slot's read, from the declaring group or the error field's (kernel `checkConsistency`, 2026-09-25) <a id="kf477"></a>
+
+> Fold: not-foldable — a diagnostic-class law about which gate answers, not an evaluation behaviour.
+
+The laws for the field-operand kind gate, the scalar value-list subject and the date-argument slot ([KF357](#kf357), [KF400](#kf400)) all declare their rule at the root, so none of them varied where the rule iterates. One fixture: `/Policy` holds a repeatable `Claims` with a text `Memo`, a boolean `Settled` and a fixed subgroup `Assessor`. Each gate reads a field of `Claims` that it refuses.
+
+| probe | root rule | rule declared inside `Claims` | root rule, error field `Claims/ClaimRef` |
+|---|---|---|---|
+| `FieldFilled(Claims/Assessor)` | `MVK_NO_WILDCARD` | `MVK_NO_GROUPS_ALLOWED` | `MVK_NO_GROUPS_ALLOWED` |
+| `FieldValueIncludedInValueList(Claims/Settled, "x")` | `MVK_NO_WILDCARD` | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
+| `AddDays(Claims/Memo, 1) < Today` | `MVK_NO_WILDCARD` | `MVK_NO_DATE` | `MVK_NO_DATE` |
+
+(Inside `Claims` the operand is written without the `Claims/` prefix.) So the rule's iteration addresses the read exactly as a star would, and the gate's class answers. The root rule is the control that an unaddressed read is observable, and the third column separates the target's group from the declaring group: a root rule reporting into `Claims` iterates it too.
+
+[KF476](#kf476)'s other rows hold on the same three gates, with `Claims` indexed by `ClaimRef`: inside `Claims` a string key gives the gate's class and `For 5` gives `MVK_INVALID_ENTITY`, and a read in a `Having` body gives the gate's class both on `Notes*/Text` and on the filtered `Claims*/Memo` itself. On `Riders`, which declares the same fields and no index field, the string key draws `MVK_NO_INDEX_FIELD` on all three, [KF476](#kf476)'s defect row.
+
+The portable checker asked these three gates a second addressing question that counted only stars and jointly iterated levels, so all three stood down on the two iterated columns. They now ask the one predicate every other operand gate asks, the value-list subject and the date slot through the shared key reader and all three with the body flag.
+
+*Locked by:* `rulekit.validate.laws.RuleIterationAddressesScalarSlotLawsTest`; the checker mirror: `consistency.RuleIterationAddressesScalarSlotTest`.

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
@@ -19,10 +20,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * records the same trap in the other direction, where the name would have refused five.
  *
  * **Both wildcard gates outrun the kind gate, so this reports only where the starring is already right.**
- * A repetition read without a star answers `MVK_NO_WILDCARD`, and a star on a level that does not repeat
+ * A repetition nothing addresses answers `MVK_NO_WILDCARD`, and a star on a level that does not repeat
  * answers `MVK_INVALID_WILDCARD` — in each case naming the kind would send the author to the wrong repair.
- * The test is therefore that the operand's star COUNT matches the number of repeating levels on its path,
- * which is silent on a two-level repetition carrying one star rather than guessing which gate answers.
+ * The test is therefore that every repeating level on the operand's path is addressed, by its own star or by
+ * the level the rule iterates ([KERNEL-FINDINGS KF477]), which is silent on a two-level repetition carrying
+ * one star rather than guessing which gate answers.
  *
  * **The root group is a third silence**, `MVK_ROOT_GROUP_REFERENCED` answering ahead of the kind class, and
  * **an earlier segment's gate is a fourth**: the `.*` suffix and a starred leading `..*` answer ahead of it too
@@ -44,7 +46,7 @@ internal fun TrackedFactBase.fieldOperandKindFindings(): List<Finding> {
                     // A12's arity gate answers ahead of the operand's, so a call with the wrong count is
                     // `EntityListArity`'s alone (`rulekit.validate.laws.EntityListArityLawsTest`).
                     call.operands.singleOrNull()?.let { operand ->
-                        operandFinding(operand.path, call.operator, group, element, member, call.spanIn(member))
+                        operandFinding(operand.path, call, group, element, member)
                     }
                 }
         }
@@ -59,12 +61,13 @@ private fun TrackedFactBase.spelledCarriers(): Set<String> =
 
 private fun TrackedFactBase.operandFinding(
     written: String?,
-    operator: String,
+    call: ConditionCall,
     declaringGroup: String,
     element: TrackedDeclaration,
     member: String,
-    span: TextSpan,
 ): Finding? {
+    val operator = call.operator
+    val span = call.spanIn(member)
     val path = written ?: return null
     val resolved = resolveEntity(declaringGroup, path, element.origin) as? Reference.Resolved ?: return null
     val gate = earlierSegmentGate(
@@ -72,7 +75,8 @@ private fun TrackedFactBase.operandFinding(
         resolves = { prefix -> resolveEntity(declaringGroup, prefix, element.origin) },
         isRepeatableGroup = { declarationAt(it)?.isRepeatableGroup == true },
     )
-    if (gate != null || unaddressedRepeatableLevels(path, resolved.path, declaringGroup, element)?.isEmpty() != true) {
+    val addressed = addressedTargetOf(path, declaringGroup, element, everyLevelAddressed = call.inAFilterBody)
+    if (gate != null || addressed == null) {
         return null
     }
     val target = declarationAt(resolved.path, DeclaredKind.GROUP)
