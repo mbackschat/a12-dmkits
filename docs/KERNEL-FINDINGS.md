@@ -8216,8 +8216,13 @@ So duplicates, the root-group gate ([KF388](#kf388)) and the param law come firs
 |---|---|---|
 | `Sum(Specs)`, `Specs` holding a String and a Number | `MVK_NO_NUMBER` | a lone group judged as a group rather than its fields |
 | `Sum(Nested)`, `Nested` holding only a subgroup that holds a String | `MVK_NO_NUMBER` | an expansion that stops at direct children |
-| `Sum(Keyed*)` · `MaxValue(Released, Keyed*) > [Released]`, `Keyed` indexed on a String | `MVK_NO_NUMBER` · `MVK_DATE_AND_NONDATE` | an expansion that leaves the index field out |
-| `NumberOfDifferentValues(Specs, Weight)` | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | a class read off the operand rather than its first field; the group's own Number breaks it |
+| `Sum(Keyed*)`, `Keyed` holding its String index field `Key` and a Number | `MVK_NO_NUMBER` | an expansion that leaves the index field out |
+| `NumberOfDifferentValues(Keyed*, Title)` | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | the same; without `Key`, the Number would lead and `Title` break it |
+| `NumberOfDifferentValues(Specs, Weight)`, `Specs` declaring its String before its Number | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | a family set by a later field of the leading group; the group's own Number breaks it |
+| `NumberOfDifferentValues(Rekeyed*, Title)`, `Rekeyed` declaring a Number before its String index field | `MVK_NUMBER_AND_NON_NUMBER` | an index field that leads its group's expansion wherever it is declared |
+| `NumberOfDifferentValues(Layered, Weight)`, `Layered` declaring a subgroup holding a String before a Number | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | direct fields expanded ahead of a subgroup's |
+| `NumberOfDifferentValues(Annotated, Weight)`, `Annotated` declaring a Number before a subgroup holding a String | `MVK_NUMBER_AND_NON_NUMBER` | a subgroup's fields expanded ahead of direct fields; so the expansion is depth-first in declaration order |
+| `MaxValue(Released, Keyed*) > [Released]` | `MVK_DATE_AND_NONDATE` | a group behind a temporal leader passed unexamined |
 | `NumberOfDifferentValues(Title, Keyed For "k")`, the key valid | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | an index-selected group judged as a group once its key resolves |
 | `MaxValue(Released, Monthly*) > [Released]`, `Monthly` holding two `yyyy-MM` dates | `MVK_DATEFORMATS_NOT_COMPATIBLE` | component sets that a group does not carry |
 

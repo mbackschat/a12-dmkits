@@ -41,6 +41,12 @@ class EntityListGroupExpansionKindLawsTest {
                     .group("NumNested", g -> g.group("Tally", tally -> tally.field("Qty", FieldKind.NUMBER)))
                     .group("Keyed", g -> g.repeatable(5).indexField("Key").field("Key", FieldKind.STRING)
                             .field("Amount", FieldKind.NUMBER))
+                    .group("Rekeyed", g -> g.repeatable(5).indexField("Code").field("Tally", FieldKind.NUMBER)
+                            .field("Code", FieldKind.STRING))
+                    .group("Layered", g -> g.group("Sheet", sheet -> sheet.field("Remark", FieldKind.STRING))
+                            .field("Count", FieldKind.NUMBER))
+                    .group("Annotated", g -> g.field("Pieces", FieldKind.NUMBER)
+                            .group("Memo", memo -> memo.field("Text", FieldKind.STRING)))
                     .group("Dated", g -> g.repeatable(5)
                             .dateField("PackedOn", d -> d.format("dd.MM.yyyy"))
                             .dateField("BestBefore", d -> d.format("dd.MM.yyyy")))
@@ -88,6 +94,11 @@ class EntityListGroupExpansionKindLawsTest {
             new Row("NumberOfDifferentValues", "Specs, Weight", STRING_ENUM, STRING_ENUM),
             new Row("NumberOfDifferentValues", "Grading, Weight", ADMITTED, ADMITTED),
             new Row("NumberOfDifferentValues", "Keyed*, Title", STRING_ENUM, STRING_ENUM),
+            // the expansion keeps declaration order: an index field declared after a Number does not lead, and a
+            // subgroup's fields stand in its place, leading when it is declared first and following when it is not
+            new Row("NumberOfDifferentValues", "Rekeyed*, Title", NUMBER_AND_NON, NUMBER_AND_NON),
+            new Row("NumberOfDifferentValues", "Layered, Weight", STRING_ENUM, STRING_ENUM),
+            new Row("NumberOfDifferentValues", "Annotated, Weight", NUMBER_AND_NON, NUMBER_AND_NON),
             // an index-selected group is read as its expansion too once its key resolves; behind the index the
             // model-bound factory refuses uncoded
             new Row("NumberOfDifferentValues", "Title, Keyed For \"k\"", STRING_ENUM, UNCODED),
@@ -96,7 +107,7 @@ class EntityListGroupExpansionKindLawsTest {
             new Row("MaxValue@date", "Dated*, Weight", DATE_AND_NONDATE, DATE_AND_NONDATE),
             new Row("MaxValue@date", "Released, Dated*, Title", DATE_AND_NONDATE, DATE_AND_NONDATE),
             new Row("MaxValue@date", "Dated*, Released", ADMITTED, ADMITTED),
-            // the String index field is walked too, and a group's component sets are its fields'
+            // a group behind a temporal leader is walked through its fields, and its component sets are theirs
             new Row("MaxValue@date", "Released, Keyed*", DATE_AND_NONDATE, DATE_AND_NONDATE),
             new Row("MaxValue@date", "Released, Monthly*", "MVK_DATEFORMATS_NOT_COMPATIBLE",
                     "MVK_DATEFORMATS_NOT_COMPATIBLE"));
