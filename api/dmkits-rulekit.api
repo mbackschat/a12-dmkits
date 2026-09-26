@@ -363,6 +363,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome
 public record io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation
   public ComputationExplanation(java.lang.String, java.lang.String, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation>, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Alternative>, io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Message>, java.lang.String)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Alternative> alternatives()
+  public static io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Builder builder()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation> commonPrecondition()
   public java.lang.String computedField()
   public java.lang.String computedFieldKind()
@@ -383,6 +384,17 @@ public static record io.github.mbackschat.a12.dm.rulekit.context.ComputationExpl
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation> precondition()
   public final java.lang.String toString()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand> toleranceRangeOp()
+
+public static final class io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Builder
+  public Builder()
+  public io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Builder alternatives(java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Alternative>)
+  public io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation build()
+  public io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Builder commonPrecondition(io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation)
+  public io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Builder computedField(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Builder computedFieldKind(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Builder gloss(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Builder messages(java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Message>)
+  public io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Builder roundingMode(io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode)
 
 public static record io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Message
   public Message(java.lang.String, java.lang.String)

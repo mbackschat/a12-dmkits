@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
 
 /**
  * F9 explain for <b>computations</b> ({@link ModelContext#explainComputation}, the calculated-field peer
@@ -72,5 +73,17 @@ class ComputationExplanationTest {
         assertTrue(ex.commonPrecondition().isEmpty());
         assertTrue(ex.gloss().contains("unconditionally"), () -> "gloss: " + ex.gloss());
         assertFalse(ex.toJson().contains("\"commonPrecondition\""), "no common precondition in JSON");
+    }
+
+    @Test
+    void aBuilderLeavesEveryUnsetAspectAtItsDefault() {
+        ComputationExplanation ex = ComputationExplanation.builder()
+                .computedField("/Subscription/Billing/EffectiveFee").computedFieldKind("NUMBER")
+                .gloss("EffectiveFee is computed unconditionally.").build();
+
+        assertTrue(ex.commonPrecondition().isEmpty());
+        assertTrue(ex.alternatives().isEmpty());
+        assertEquals(RoundingMode.EXACT, ex.roundingMode());
+        assertTrue(ex.messages().isEmpty());
     }
 }

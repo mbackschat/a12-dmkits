@@ -28,6 +28,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
  *   <li>{@code messages} — the self-validation error texts (the kernel requires them), by locale.</li>
  *   <li>{@code gloss} — a one-line natural-language summary.</li>
  * </ul>
+ *
+ * <p>Built via {@link #builder()}: seven components, two of them adjacent strings, are too swap-prone for a
+ * positional constructor. An unset aspect takes its default — no precondition, no alternatives or messages,
+ * {@code Exact} rounding.
  */
 public record ComputationExplanation(
         String computedField,
@@ -42,9 +46,36 @@ public record ComputationExplanation(
 
     public ComputationExplanation {
         commonPrecondition = commonPrecondition == null ? Optional.empty() : commonPrecondition;
-        alternatives = List.copyOf(alternatives);
+        alternatives = alternatives == null ? List.of() : List.copyOf(alternatives);
         roundingMode = roundingMode == null ? RoundingMode.EXACT : roundingMode;
-        messages = List.copyOf(messages);
+        messages = messages == null ? List.of() : List.copyOf(messages);
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private String computedField;
+        private String computedFieldKind;
+        private RuleExplanation commonPrecondition;
+        private List<Alternative> alternatives;
+        private RoundingMode roundingMode;
+        private List<Message> messages;
+        private String gloss;
+
+        public Builder computedField(String v) { this.computedField = v; return this; }
+        public Builder computedFieldKind(String v) { this.computedFieldKind = v; return this; }
+        public Builder commonPrecondition(RuleExplanation v) { this.commonPrecondition = v; return this; }
+        public Builder alternatives(List<Alternative> v) { this.alternatives = v; return this; }
+        public Builder roundingMode(RoundingMode v) { this.roundingMode = v; return this; }
+        public Builder messages(List<Message> v) { this.messages = v; return this; }
+        public Builder gloss(String v) { this.gloss = v; return this; }
+
+        public ComputationExplanation build() {
+            return new ComputationExplanation(computedField, computedFieldKind,
+                    Optional.ofNullable(commonPrecondition), alternatives, roundingMode, messages, gloss);
+        }
     }
 
     /** One {@code (precondition?, operation)} tier — the precondition (if any) and the value it assigns. */

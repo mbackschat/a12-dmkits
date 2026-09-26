@@ -97,9 +97,12 @@ public final class ModelContext {
                 .map(t -> new ComputationExplanation.Message(t.locale(), t.text()))
                 .toList();
 
-        return new ComputationExplanation(field, kind, commonPrecondition, alternatives,
-                computation.roundingMode(), messages,
-                computationGloss(field, commonPrecondition, alternatives));
+        return ComputationExplanation.builder()
+                .computedField(field).computedFieldKind(kind)
+                .commonPrecondition(commonPrecondition.orElse(null))
+                .alternatives(alternatives).roundingMode(computation.roundingMode()).messages(messages)
+                .gloss(computationGloss(field, commonPrecondition, alternatives))
+                .build();
     }
 
     /** Project one computation operation (a value expression) — its rendered formula, operators, and references. */
