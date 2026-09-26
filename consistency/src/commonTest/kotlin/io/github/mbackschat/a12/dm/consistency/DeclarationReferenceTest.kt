@@ -16,25 +16,19 @@ import kotlin.test.assertIs
  */
 class DeclarationReferenceTest {
 
-    private fun prepared(rule: String) = prepare(
-        assertIs<Admission.Admitted>(
-            admit(
-                ModelSource(
-                    """
-                    {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
-                      {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
-                        {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
-                        {"type":"Group","id":"g1","name":"Lines","Group":{"elements":[
-                          {"type":"Field","id":"f1","name":"Qty","Field":{"fieldType":{"type":"StringType"}}}
-                        ]}},
-                        $rule
-                      ]}}
-                    ]}}}
-                    """.trimIndent(),
-                ),
-            ),
-        ),
-    )
+    private fun model(rule: String) = """
+        {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
+            {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Group","id":"g1","name":"Lines","Group":{"elements":[
+              {"type":"Field","id":"f1","name":"Qty","Field":{"fieldType":{"type":"StringType"}}}
+            ]}},
+            $rule
+          ]}}
+        ]}}}
+    """.trimIndent()
+
+    private fun prepared(rule: String) = prepare(assertIs<Admission.Admitted>(admit(ModelSource(model(rule)))))
 
     private fun rule(relPath: String) =
         """{"type":"Rule","id":"r0","name":"Check","Rule":{"errorCode":"C",
@@ -108,6 +102,35 @@ class DeclarationReferenceTest {
             Reference.AboveRoot("../../../Order/Code"),
             prepared(rule("../../../Order/Code")).declaredReferences().single().target,
             "clamping at the root would have resolved this to the same element as the legal case",
+        )
+    }
+
+    /**
+     * An up-step inside a declared target is taken LEXICALLY, unlike one in a condition reference, and where
+     * it lands decides the class (`rulekit.validate.laws.ErrorFieldRelativePathLawsTest`). A rule's target on
+     * another group is judged like a field the condition does not name, and on the rule's OWN group A12
+     * cannot build the model; a computation's target on any group cannot be built either.
+     */
+    @Test
+    fun anUpStepIsTakenLexicallyAndWhereItLandsDecidesTheClass() {
+        fun codes(relPath: String) = checkRead(ModelSource(model(rule(relPath)))).findings
+            .filter { it.justifiesRejection }.map { "${it.code} at ${it.at}" }
+        fun calc(relPath: String) = checkRead(ModelSource(model(
+            """{"type":"Computation","id":"c0","name":"Calc","Computation":{"computedFieldRelPath":"$relPath",
+               "computationAlternatives":[{"operation":"\"x\""}],"errorMessage":[{"locale":"en_US","text":"x"}]}}""",
+        ))).findings.filter { it.justifiesRejection }.map { "${it.code} at ${it.at}" }
+        assertEquals(
+            listOf(
+                emptyList(),
+                listOf("$CK_MODEL_NOT_BUILDABLE at /Order/Check"),
+                listOf("MVK_ERROR_FIELD_NOT_REFERENCED at /Order/Check"),
+                listOf("MVK_ERROR_FIELD_NOT_REFERENCED at /Order/Check"),
+                emptyList(),
+                listOf("$CK_MODEL_NOT_BUILDABLE at /Order/Calc"),
+                listOf("$CK_MODEL_NOT_BUILDABLE at /Order/Calc"),
+            ),
+            listOf(codes("../Lines/../Code"), codes("../Code/.."), codes("../Lines"), codes("../Lines/Qty/.."),
+                calc("../Code"), calc(".."), calc("../Lines")),
         )
     }
 

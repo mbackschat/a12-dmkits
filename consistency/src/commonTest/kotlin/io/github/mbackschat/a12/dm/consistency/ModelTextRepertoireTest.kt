@@ -179,8 +179,7 @@ class ModelTextRepertoireTest {
         val only = """"variantFilter":{"filterType":"ONLY","variants":["premium"]},"""
         assertEquals(
             listOf(
-                // A12 also names MVK_MISSING_ERROR_FIELD beside the target's code: CONSISTENCY-GAPS DG112.
-                setOf(RULE, "MVK_ERROR_FIELD_MISSING at /Claim/ProbeRule"),
+                setOf(RULE, "MVK_ERROR_FIELD_MISSING at /Claim/ProbeRule", "MVK_MISSING_ERROR_FIELD at /Claim/ProbeRule"),
                 setOf(RULE, "MVK_ERROR_FIELD_NOT_REFERENCED at /Claim/ProbeRule"),
                 emptySet(),
             ),

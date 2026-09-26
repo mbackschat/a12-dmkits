@@ -235,7 +235,7 @@ class FieldVariantFilterTest {
         // target first and stops the rule there, so the entity code is withheld. `FieldVariantFilterLawsTest`
         // measured exactly this row and says so in its own comment — this mirror had asserted the union of
         // both roles and sat green, because nothing compares a mirror against its laws test.
-        expected["ONLY"] = listOf("MVK_ERROR_FIELD_MISSING")
+        expected["ONLY"] = TARGET_PAIR
         assertEquals(expected, actual, "what the checker says about a rule targeting a filtered field")
     }
 }

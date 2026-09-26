@@ -38,15 +38,14 @@ class RuleMemberWithholdingTest {
         val expected = mutableMapOf<String, List<String>>()
         expected["both members sound — the control"] = emptyList()
         expected["the CONDITION names nothing"] = listOf("MVK_INVALID_ENTITY")
-        // A12 names MVK_MISSING_ERROR_FIELD beside it on each broken-target row: CONSISTENCY-GAPS DG112.
-        expected["the error TARGET names nothing"] = listOf("MVK_ERROR_FIELD_MISSING")
+        expected["the error TARGET names nothing"] = listOf("MVK_ERROR_FIELD_MISSING", "MVK_MISSING_ERROR_FIELD")
         // The condition's own class is GONE, which is the whole family: judging the members independently
         // and reporting both would name a verdict A12 withheld.
-        expected["BOTH name nothing"] = listOf("MVK_ERROR_FIELD_MISSING")
+        expected["BOTH name nothing"] = listOf("MVK_ERROR_FIELD_MISSING", "MVK_MISSING_ERROR_FIELD")
         expected["the target names nothing, a message parameter beside it"] =
-            listOf("MVK_ERROR_FIELD_MISSING")
+            listOf("MVK_ERROR_FIELD_MISSING", "MVK_MISSING_ERROR_FIELD")
         expected["the target names nothing, a control character in the text"] =
-            listOf("MVK_ERROR_FIELD_MISSING")
+            listOf("MVK_ERROR_FIELD_MISSING", "MVK_MISSING_ERROR_FIELD")
         // The twin that makes the row above mean "withheld" rather than "never fires here": the same text
         // over a sound target does report, so the fixture is not simply incapable of drawing that class.
         expected["a sound target, the same control character — the control"] = listOf("INVALID_CHARACTERS")

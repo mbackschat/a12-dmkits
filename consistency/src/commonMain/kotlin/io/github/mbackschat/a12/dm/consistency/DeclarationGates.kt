@@ -26,7 +26,8 @@ internal fun TrackedFactBase.declarationsWithUnsoundDsl(): Set<String> {
 }
 
 /**
- * The rules whose error TARGET does not resolve — A12 reports that and stops examining the rule.
+ * The rules whose error TARGET does not resolve, or names the rule's own group — A12 reports that and stops
+ * examining the rule.
  *
  * **It terminates the whole declaration, not one member.** With a broken target the condition's own
  * `MVK_INVALID_ENTITY` is gone, and so are both error-text classes, leaving A12 reporting only about the
@@ -52,7 +53,7 @@ internal fun PreparedModel.declarationsWithABrokenErrorTarget(
 ): Set<String> {
     val twinned = pathsSharedByTwoDeclarations()
     return declared
-        .filter { it.role == ReferenceRole.ERROR_TARGET && it.target !is Reference.Resolved }
+        .filter { it.role == ReferenceRole.ERROR_TARGET && (it.target !is Reference.Resolved || it.namesItsOwnGroup) }
         .map { it.declaredAt }
         .filterNot { it in twinned }
         .toSet()

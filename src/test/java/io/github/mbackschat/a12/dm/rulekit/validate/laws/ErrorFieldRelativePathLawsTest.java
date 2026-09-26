@@ -3,10 +3,14 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import org.junit.jupiter.api.Test;
 
@@ -51,6 +55,15 @@ class ErrorFieldRelativePathLawsTest {
         // The member is strictly RELATIVE: an ABSOLUTE spelling that names the very field the legal row
         // reaches is refused during conversion, so "relPath" is a contract and not just a naming convention.
         actual.put("absolute, naming the same field", verdict("/Order/Code", "FieldFilled(Code)"));
+        // An up-step after a named segment, which a condition reference refuses as a token: the error target's
+        // resolver is a different one and takes `..` lexically, so it is measured here rather than carried over.
+        actual.put("an up-step after a named segment", verdictByText("../Meta/../Code", "FieldFilled(Code)"));
+        actual.put("an up-step after the target", verdictByText("../Code/..", "FieldFilled(Code)"));
+        actual.put("naming a group", verdictByText("../Meta", "FieldFilled(Code)"));
+        actual.put("naming the rule's own group", verdictByText("../../Order", "FieldFilled(Code)"));
+        actual.put("a nested rule naming its own group", verdictByText("/Order/Meta", "../../Meta", "FieldFilled(Ref)"));
+        actual.put("a nested rule naming the root group", verdictByText("/Order/Meta", "../..", "FieldFilled(Ref)"));
+        actual.put("an up-step landing on a nested group", verdictByText("../Meta/Ref/..", "FieldFilled(Code)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("sibling field, with the parent step", KernelLaws.ADMITTED);
@@ -61,6 +74,15 @@ class ErrorFieldRelativePathLawsTest {
         expected.put("up to the root, then down again", KernelLaws.ADMITTED);
         expected.put("one step PAST the root", UNCODED);
         expected.put("absolute, naming the same field", UNCODED);
+        expected.put("an up-step after a named segment", KernelLaws.ADMITTED);
+        // A group target is judged like a field no condition names, unless it is the rule's OWN group: then the
+        // build fails, by whichever spelling reaches it, while the root is an ordinary group to a nested rule.
+        expected.put("an up-step after the target", NOT_BUILDABLE);
+        expected.put("naming a group", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("an up-step landing on a nested group", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("naming the rule's own group", NOT_BUILDABLE);
+        expected.put("a nested rule naming its own group", NOT_BUILDABLE);
+        expected.put("a nested rule naming the root group", "MVK_ERROR_FIELD_NOT_REFERENCED");
         assertEquals(expected, actual, "the relative path is resolved from the rule element itself");
     }
 
@@ -84,6 +106,52 @@ class ErrorFieldRelativePathLawsTest {
         expected.put("path resolves into a REPEATABLE group", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "a resolvable error-field path is necessary, not sufficient");
     }
+
+    /** The computation's target, the sibling carrier of the rule's: which groups it may name. */
+    @Test
+    void aComputationsTargetNamingAGroup() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a field, the control", computing("../Code"));
+        actual.put("its own group", computing(".."));
+        actual.put("another group", computing("../Meta"));
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a field, the control", KernelLaws.ADMITTED);
+        // Unlike the rule's target, ANY group fails the build here, the declaring one or another.
+        expected.put("its own group", NOT_BUILDABLE);
+        expected.put("another group", NOT_BUILDABLE);
+        assertEquals(expected, actual, "which groups a computation's target may name");
+    }
+
+    private static String computing(String target) {
+        List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> diagnostics = new RuleValidator().check(ORDER,
+                new DraftComputation("/Order", "ProbeCalc", target, null,
+                        List.of(new DraftComputation.Alternative(null, "\"x\"")), List.of(), null,
+                        List.of(new LocalizedText("en_US", "x")))).diagnostics();
+        return diagnostics.isEmpty() ? KernelLaws.ADMITTED : diagnostics.stream()
+                .map(ErrorFieldRelativePathLawsTest::byText).distinct().reduce((a, b) -> a + "," + b).orElse("?");
+    }
+
+    /** As {@link #verdict}, a codeless finding by its text, since the class it stands for is the question. */
+    private static String verdictByText(String errorFieldRelPath, String condition) {
+        return verdictByText("/Order", errorFieldRelPath, condition);
+    }
+
+    private static String verdictByText(String group, String errorFieldRelPath, String condition) {
+        ValidationResult r = KernelLaws.checkModel(ORDER, group, errorFieldRelPath, condition);
+        return r.ok() ? KernelLaws.ADMITTED : r.diagnostics().stream()
+                .map(ErrorFieldRelativePathLawsTest::byText).distinct().reduce((a, b) -> a + "," + b).orElse("?");
+    }
+
+    /**
+     * A codeless finding by its text, except the kernel failing to BUILD the model, whose text is an internal
+     * exception's (an index out of range, a failed cast) and names no law.
+     */
+    private static String byText(io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic d) {
+        return d.code().orElseGet(() -> d.summary().contains("the kernel could not build this model")
+                ? NOT_BUILDABLE : "(no code: " + d.summary() + ")");
+    }
+
+    private static final String NOT_BUILDABLE = "not buildable";
 
     private static String verdict(String errorFieldRelPath, String condition) {
         ValidationResult r = KernelLaws.checkModel(ORDER, "/Order", errorFieldRelPath, condition);

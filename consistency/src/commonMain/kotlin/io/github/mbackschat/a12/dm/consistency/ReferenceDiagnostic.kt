@@ -89,9 +89,8 @@ internal const val MISSING_ERROR_FIELD = "MVK_MISSING_ERROR_FIELD"
 private val ReferenceRole.walksAPrefix get() = this == ReferenceRole.CONDITION_ENTITY
 
 private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
-    // An unresolvable error target reports `MVK_ERROR_FIELD_MISSING` together with `MVK_MISSING_ERROR_FIELD`;
-    // the checker reports the first, the second being the metamodel law restating it rather than a
-    // second defect. An above-root one never reaches a check at all.
+    // An unresolvable error target is `MVK_ERROR_FIELD_MISSING` here, and [findings] adds the
+    // `MVK_MISSING_ERROR_FIELD` A12 draws beside it. An above-root one never reaches a check at all.
     ReferenceRole.ERROR_TARGET ->
         if (outcome is Reference.AboveRoot) CK_MODEL_NOT_BUILDABLE else ERROR_FIELD_MISSING
     ReferenceRole.COMPUTED_TARGET -> CK_MODEL_NOT_BUILDABLE
@@ -126,6 +125,40 @@ private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
         else -> "INVALID_ENTITY"
     }
 }
+
+/**
+ * Every finding A12 draws for a structurally declared reference, which is not always one.
+ *
+ * An unresolvable error target draws a PAIR, `MVK_ERROR_FIELD_MISSING` beside `MVK_MISSING_ERROR_FIELD`, on
+ * every shape measured ([KERNEL-FINDINGS KF293], [KF339]); [asFinding] names the first alone, so a report
+ * built from it would under-report what A12 said. And a rule's target naming the group the rule is declared
+ * in resolves and still fails: A12 cannot build the model, by any spelling that reaches that group, while
+ * another group, the root included, is judged like a field the condition does not name
+ * (`rulekit.validate.laws.ErrorFieldRelativePathLawsTest`).
+ */
+internal fun DeclaredReference.findings(): List<Finding> {
+    if (namesItsOwnGroup) {
+        return listOf(
+            a12Error(
+                CK_MODEL_NOT_BUILDABLE,
+                declaredAt,
+                "`$written` names the group this rule is declared in, and A12 cannot build a model whose rule " +
+                    "attaches its error there — attach it to a field, or to another group",
+            ),
+        )
+    }
+    val finding = target.asFinding(role, declaredAt) ?: return emptyList()
+    return if (finding.code == ERROR_FIELD_MISSING) {
+        listOf(finding, finding.copy(code = MISSING_ERROR_FIELD))
+    } else {
+        listOf(finding)
+    }
+}
+
+/** Whether this is a rule's error target naming the group the rule is declared in ([findings]). */
+internal val DeclaredReference.namesItsOwnGroup: Boolean
+    get() = role == ReferenceRole.ERROR_TARGET &&
+        (target as? Reference.Resolved)?.path == declaredAt.substringBeforeLast('/')
 
 private fun a12Error(code: String, at: String, explain: String, span: TextSpan? = null) =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at, span)

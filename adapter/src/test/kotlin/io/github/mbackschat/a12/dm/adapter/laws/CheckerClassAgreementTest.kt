@@ -148,8 +148,9 @@ class CheckerClassAgreementTest {
      * even on a mutant where the checker did speak — the case a per-mutant silence count cannot see.
      *
      * **Its positive control is the run that introduced it, not a synthetic mutant.** With this set empty the
-     * sweep failed on the row below and on nothing else, every other assertion staying green — which is the
-     * whole claim, since that row is invisible to `ours ⊆ kernel` by construction.
+     * sweep failed on one row and on nothing else, every other assertion staying green — which is the whole
+     * claim, since that row is invisible to `ours ⊆ kernel` by construction. The row was an unresolvable error
+     * target's `MVK_MISSING_ERROR_FIELD`, pinned here until the checker named A12's pair (2026-09-26).
      *
      * **What this check does NOT currently add over [misplaced], measured 2026-09-16 and stated rather than
      * assumed:** dropping the declaration from its key leaves the sweep green, because [misplaced] being
@@ -158,15 +159,7 @@ class CheckerClassAgreementTest {
      * the redundancy is a property of the corpus, and the moment a row enters [positionsA12Masks] the two
      * stop agreeing and only the keyed form still refuses a class named about the wrong element.
      */
-    private val unreached = setOf(
-        // A12 draws BOTH codes for an unresolvable error target and the checker draws the first alone, on a
-        // decision already recorded in `ReferenceDiagnostic.kt`: the second is the metamodel law restating
-        // the first, not a second defect, and reporting it would hand an author two defects to fix where
-        // there is one. The pin carries the class we name instead, so a change there re-opens this row
-        // rather than silently matching nothing.
-        "iteration-groups.json[repoint-error-field-into-a-repetition]: A12 named MVK_MISSING_ERROR_FIELD " +
-            "at /M/G1/G2/R_AG and no family of ours does (we say [MVK_ERROR_FIELD_MISSING])",
-    )
+    private val unreached = emptySet<String>()
 
     /**
      * (declaration, class) pairs A12 would name on a TWO-defect model that the checker does not name there.

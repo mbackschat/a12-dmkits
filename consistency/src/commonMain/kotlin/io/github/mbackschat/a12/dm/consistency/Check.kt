@@ -1040,7 +1040,7 @@ internal fun checkRun(
     val conditionReferences = walked.mapNotNull {
         it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
     }
-    val references = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } + conditionReferences
+    val references = declared.flatMap { it.findings() } + conditionReferences
     val placedReferences = conditionReferences.toSet()
     val messageVerdicts = scheduled.filter { it.key.producer.completes.all { f -> f in MESSAGE_MEMBER_FAMILIES } }
         .flatMapTo(mutableSetOf()) { cells.getValue(it.key).findings }

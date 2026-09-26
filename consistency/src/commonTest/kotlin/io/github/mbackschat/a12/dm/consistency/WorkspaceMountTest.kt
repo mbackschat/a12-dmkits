@@ -96,7 +96,7 @@ class WorkspaceMountTest {
         // measures — an assumption worth naming, and a safe one in direction, since it only drops a finding.
         // What this row locks is that the nested path does not bind at all, which the single code says.
         assertEquals(
-            listOf("MVK_ERROR_FIELD_MISSING"),
+            TARGET_PAIR,
             check(nests, address).findings.map { it.code },
         )
     }
@@ -181,7 +181,7 @@ class WorkspaceMountTest {
         // The error target's code alone, for the reason the SINGLE_RG row above states: A12 stops a rule at
         // its unresolvable error target rather than reporting its condition as well.
         assertEquals(
-            listOf("MVK_ERROR_FIELD_MISSING"),
+            TARGET_PAIR,
             check(flattened, twoRootProvider()).findings.map { it.code },
         )
     }
@@ -327,7 +327,7 @@ class WorkspaceMountTest {
             assertEquals(emptyList(), report.findings, mountBody)
         }
         assertEquals(
-            listOf("MVK_ERROR_FIELD_MISSING"),
+            TARGET_PAIR,
             check(host(), ruleProvider).findings.map { it.code },
             "without the flag the same provider's rule is checked",
         )
@@ -386,7 +386,7 @@ class WorkspaceMountTest {
         val markedMount = """"modelAlias":"addr","excludeRules":true,"usageType":"attachment""""
 
         assertEquals(
-            listOf("MVK_ERROR_FIELD_MISSING"),
+            TARGET_PAIR,
             check(host(mountBody = """"modelAlias":"addr","excludeRules":true"""), shielded).findings.map { it.code },
             "the provider root is an attachment, so its rules survive the outer exclusion",
         )
@@ -411,7 +411,7 @@ class WorkspaceMountTest {
             ]}}""",
         )
 
-        assertEquals(listOf("MVK_ERROR_FIELD_MISSING"), check(entry, address).findings.map { it.code })
+        assertEquals(TARGET_PAIR, check(entry, address).findings.map { it.code })
     }
 
     /**
@@ -427,7 +427,7 @@ class WorkspaceMountTest {
 
         listOf("\"true\"", "\"yes\"", "1", "{}").forEach { value ->
             val report = check(host(mountBody = """"modelAlias":"addr","excludeRules":$value"""), address)
-            assertEquals(listOf("MVK_ERROR_FIELD_MISSING"), report.findings.map { it.code }, value)
+            assertEquals(TARGET_PAIR, report.findings.map { it.code }, value)
         }
         assertEquals(
             emptyList(),

@@ -114,10 +114,10 @@ class FindingSpanTest {
     @Test
     fun aFindingAboutTheDECLARATIONCarriesNoSpanAtAll() {
         val noTarget = model(condition = "FieldFilled(Code)", errorTarget = "../NoSuchField")
-        val finding = checkRead(ModelSource(noTarget)).findings.single()
+        val findings = checkRead(ModelSource(noTarget)).findings
 
-        assertEquals("MVK_ERROR_FIELD_MISSING", finding.code)
-        assertNull(finding.span, "`errorEntityRelPath` is a structured member, not text with an offset")
+        assertEquals(TARGET_PAIR, findings.map { it.code })
+        findings.forEach { assertNull(it.span, "`errorEntityRelPath` is a structured member, not text with an offset") }
     }
 
     /**

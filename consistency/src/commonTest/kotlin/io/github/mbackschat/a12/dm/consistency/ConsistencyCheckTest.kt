@@ -69,8 +69,8 @@ class ConsistencyCheckTest {
         val report = checkRead(model(rule("../Missing")))
 
         assertEquals(ConsistencyStatus.Invalid, report.status)
-        assertEquals(listOf("MVK_ERROR_FIELD_MISSING"), report.findings.map { it.code })
-        assertEquals("/Order/Check", report.findings.single().at)
+        assertEquals(TARGET_PAIR, report.findings.map { it.code })
+        assertEquals(listOf("/Order/Check"), report.findings.map { it.at }.distinct())
         assertTrue(
             CheckFamily.DECLARED_REFERENCES in report.checksCompleted,
             "a check that found a violation still completed",
