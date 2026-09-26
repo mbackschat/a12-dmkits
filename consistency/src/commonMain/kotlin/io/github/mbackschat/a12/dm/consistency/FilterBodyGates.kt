@@ -63,11 +63,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * name a third class beside a pair that is already one too many.
  *
  * **A filter an entity key owns is walked against the KEY.** A `Having` after an entity key is the key's
- * ([OperandClause.filtersKey]), so A12 asks every gate here of the key's spec while the key is parsed, ahead
- * of the index gates the outer spec asks of the key once it is complete: `[Orders/Note]` in the body of a
- * filter the starred key `Parties* / Name` owns is the iteration class, not the key's star class. An index in such a body sits
- * inside the key's own index and is refused as a nested one while the body is parsed, so it is
- * [semanticIndexStructureFindings]' (`adapter.laws.CheckerFilterBodyAgreementTest`, [KERNEL-FINDINGS KF485]).
+ * ([OperandClause.filtersKey]), so A12 asks every gate here of the key's spec while the key is parsed, ahead of the
+ * index gates the outer spec asks of the key once it is complete: `[Orders/Note]` in the body of a filter the
+ * starred key `Parties* / Name` owns is the iteration class, not the key's star class. An index in such a body sits
+ * inside the key's own index and is refused as a nested one while the body is parsed; that class is
+ * [semanticIndexStructureFindings]', spanned on the inner index, so report assembly places it ahead of this walk's
+ * (`adapter.laws.CheckerFilterBodyAgreementTest`, [KERNEL-FINDINGS KF485]).
  *
  * **A level is "ridden" by ending at it as much as by passing through it.** `CurrentRepetition(Legs)`
  * resolves to the group itself and carries the same iteration marker a field beneath `Legs` does, so a walk
@@ -163,11 +164,6 @@ private fun TrackedFactBase.filterDefectOf(
     val uses = indexKeyword
         ?.let { semanticIndexUsesIn(filter.text, conditionLanguage, it) }
         .orEmpty()
-    // An index in a key's filter body sits inside the key's own index, so A12 refuses it as a nested index
-    // while the body is parsed, before this walk runs — [semanticIndexStructureFindings]' class.
-    if (key != null && uses.isNotEmpty()) {
-        return null
-    }
     // An ENTITY key leaves the whole operand unjudged. A12 answers such a body from the index's own spec
     // gates, which run while the spec is parsed and so ahead of this walk — measured on two shapes, one
     // answered by the key-kind gate and one by the filter branch, neither by anything this walk asks.
