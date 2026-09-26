@@ -434,7 +434,11 @@ public final class ModelWriter {
         }
     }
 
-    /** Build a {@code Computation} element node from its rendered slots + real messages (the DM-JSON computation shape). */
+    /**
+     * Build a {@code Computation} element node from its rendered slots + real messages. Members go in the order
+     * A12's {@code ComputationSerializer} writes them, and an optional one is omitted when it does, so a model this
+     * writes re-serializes byte-stable ({@code ElementMemberOrderTest} holds it against the kernel's serializer).
+     */
     private static ObjectNode computationNode(DraftComputation c, List<LocalizedText> messages) {
         ObjectNode node = MAPPER.createObjectNode();
         node.put("type", "Computation");
@@ -443,37 +447,30 @@ public final class ModelWriter {
 
         ObjectNode body = node.putObject("Computation");
         body.put("computedFieldRelPath", c.computedFieldRelPath());
-        // Right after the target and only when not Exact — where and when A12's ComputationSerializer writes it.
         c.roundingMode().stored().ifPresent(mode -> body.put("roundingMode", mode));
-        if (!c.errorCodesToSuppress().isEmpty()) {
-            ArrayNode suppress = body.putArray("errorCodesToSuppress");
-            c.errorCodesToSuppress().forEach(suppress::add);
-        }
         if (c.commonPrecondition() != null) {
             body.put("commonPrecondition", c.commonPrecondition());
         }
         ArrayNode alternatives = body.putArray("computationAlternatives");
         for (DraftComputation.Alternative alternative : c.alternatives()) {
             ObjectNode alt = alternatives.addObject();
+            alt.put("operation", alternative.operation());
             if (alternative.precondition() != null) {
                 alt.put("precondition", alternative.precondition());
             }
-            alt.put("operation", alternative.operation());
             if (alternative.toleranceRangeOp() != null) {
                 alt.put("toleranceRangeOp", alternative.toleranceRangeOp().wire());
             }
         }
-
-        ArrayNode messageArray = body.putArray("errorMessage");
-        for (LocalizedText text : messages) {
-            ObjectNode message = messageArray.addObject();
-            message.put("locale", text.locale());
-            message.put("text", text.text());
+        if (!c.errorCodesToSuppress().isEmpty()) {
+            ArrayNode suppress = body.putArray("errorCodesToSuppress");
+            c.errorCodesToSuppress().forEach(suppress::add);
         }
+        putMessages(body, messages);
         return node;
     }
 
-    /** Build a {@code Rule} element node from its slots (the one place that knows the DM-JSON rule shape). */
+    /** Build a {@code Rule} element node from its slots, in the order A12's {@code RuleSerializer} writes them. */
     private static ObjectNode ruleNode(String id, String name, String errorEntityRelPath, String errorCode,
             String errorCondition, String severity, List<LocalizedText> messages) {
         ObjectNode node = MAPPER.createObjectNode();
@@ -486,13 +483,17 @@ public final class ModelWriter {
         body.put("errorCode", errorCode);
         body.put("errorCondition", errorCondition);
         body.put("severity", severity);
+        putMessages(body, messages);
+        return node;
+    }
 
+    private static void putMessages(ObjectNode body, List<LocalizedText> messages) {
+        if (messages.isEmpty()) {
+            return;
+        }
         ArrayNode messageArray = body.putArray("errorMessage");
         for (LocalizedText text : messages) {
-            ObjectNode message = messageArray.addObject();
-            message.put("locale", text.locale());
-            message.put("text", text.text());
+            messageArray.addObject().put("locale", text.locale()).put("text", text.text());
         }
-        return node;
     }
 }

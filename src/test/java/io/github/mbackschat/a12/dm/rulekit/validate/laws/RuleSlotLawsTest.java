@@ -46,14 +46,24 @@ class RuleSlotLawsTest {
     }
 
     /**
-     * An {@code errorMessage} member that is ABSENT rather than an empty array — a shape the writer never
-     * emits and stored DM-JSON can carry, so a reader that equates the two is asserting a transfer it has not
-     * run. Measured here because the wrong answer is the dangerous one: treating absent as "no messages"
-     * would refuse a model A12 might accept.
+     * An {@code errorMessage} member that is ABSENT and one that is an empty array are both refused.
+     *
+     * <p>A12's own serializer omits an empty member, so the writer emits the absent shape and stored DM-JSON can
+     * carry either; a reader that equates the two is asserting a transfer only these rows run. Measured because
+     * the wrong answer is the dangerous one: treating absent as "no messages" would refuse a model A12 might
+     * accept.
      */
     @Test
-    void anAbsentErrorMessageMemberIsRejectedLikeAnEmptyOne() {
-        String json = withoutErrorMessageMember(withProbeRule("NoMessageMemberProbe", List.of()));
+    void anAbsentErrorMessageMemberIsRejected() {
+        String json = withProbeRule("NoMessageMemberProbe", List.of());
+        assertTrue(!errorMessageMemberPresent(json), "the writer omits an empty errorMessage, as A12 does");
+        assertCode(assertThrows(ModelConsistencyException.class, () -> BoundModel.ofJson(json)),
+                "MVK_ERROR_MESSAGE_MISSING");
+    }
+
+    @Test
+    void anEmptyErrorMessageArrayIsRejected() {
+        String json = withEmptyErrorMessageMember(withProbeRule("EmptyMessageMemberProbe", List.of()));
         assertCode(assertThrows(ModelConsistencyException.class, () -> BoundModel.ofJson(json)),
                 "MVK_ERROR_MESSAGE_MISSING");
     }
@@ -68,7 +78,7 @@ class RuleSlotLawsTest {
      */
     @Test
     void aMessagelessRuleIsRejectedEvenWhenTheModelDeclaresNoLocale() {
-        String json = withoutDeclaredLocales(withProbeRule("NoLocaleProbe", List.of()));
+        String json = withoutDeclaredLocales(withEmptyErrorMessageMember(withProbeRule("NoLocaleProbe", List.of())));
         assertCode(assertThrows(ModelConsistencyException.class, () -> BoundModel.ofJson(json)),
                 "MVK_ERROR_MESSAGE_MISSING");
     }
@@ -88,18 +98,35 @@ class RuleSlotLawsTest {
         }
     }
 
-    /** Drop the probe's {@code errorMessage} member, refusing rather than silently passing the input through. */
-    private static String withoutErrorMessageMember(String json) {
-        try {
-            ObjectNode root = (ObjectNode) new ObjectMapper().readTree(json);
-            for (JsonNode element : root.path("content").path("modelRoot").path("rootGroups").get(0)
-                    .path("Group").path("elements")) {
-                JsonNode body = element.path("Rule");
-                if (body.isObject() && ((ObjectNode) body).remove("errorMessage") != null) {
-                    return root.toString();
-                }
+    /** Give the probe rule an empty {@code errorMessage} array, refusing when it already carries the member. */
+    private static String withEmptyErrorMessageMember(String json) {
+        ObjectNode root = tree(json);
+        ObjectNode body = probeRuleBody(root);
+        if (body.has("errorMessage")) {
+            throw new IllegalStateException("the probe rule already carries an errorMessage member");
+        }
+        body.putArray("errorMessage");
+        return root.toString();
+    }
+
+    private static boolean errorMessageMemberPresent(String json) {
+        return probeRuleBody(tree(json)).has("errorMessage");
+    }
+
+    /** The body of the one rule the probe fixture's root group carries. */
+    private static ObjectNode probeRuleBody(ObjectNode root) {
+        for (JsonNode element : root.path("content").path("modelRoot").path("rootGroups").get(0)
+                .path("Group").path("elements")) {
+            if (element.path("Rule").isObject()) {
+                return (ObjectNode) element.path("Rule");
             }
-            throw new IllegalStateException("the probe rule carries no errorMessage member to remove");
+        }
+        throw new IllegalStateException("the fixture carries no probe rule");
+    }
+
+    private static ObjectNode tree(String json) {
+        try {
+            return (ObjectNode) new ObjectMapper().readTree(json);
         } catch (IOException unreadable) {
             throw new UncheckedIOException("the writer's own output must be readable", unreadable);
         }

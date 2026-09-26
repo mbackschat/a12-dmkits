@@ -17,10 +17,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.Notification;
@@ -204,30 +204,29 @@ public final class RuleValidator {
      * message-required check does not mask the authored candidate.
      */
     public String inject(String modelJson, DraftRule rule) {
-        return injectInto(modelJson, rule.groupPath(), (root, elements) ->
-                elements.add(ruleNode(rule, localeCodes(root))));
+        return ModelWriter.addRule(modelJson, rule.groupPath(), rule.name(), rule.errorEntityRelPath(),
+                rule.errorCode(), rule.errorCondition(), rule.severity(),
+                messagesForEveryLocale(modelJson, rule.messages(), rule.name()));
     }
 
     /** The computation twin of {@link #inject(String, DraftRule)}: the model text {@link #check} validates. */
     public String inject(String modelJson, DraftComputation computation) {
-        return injectInto(modelJson, computation.groupPath(), (root, elements) ->
-                elements.add(computationNode(computation, localeCodes(root))));
+        return ModelWriter.addComputation(modelJson, computation,
+                messagesForEveryLocale(modelJson, computation.messages(), computation.name()));
     }
 
-    private String injectInto(String modelJson, String groupPath,
-            java.util.function.BiConsumer<ObjectNode, ArrayNode> adder) {
-        try {
-            ObjectNode root = (ObjectNode) mapper.readTree(modelJson);
-            JsonNode rootGroups = root.path("content").path("modelRoot").path("rootGroups");
-            ArrayNode elements = elementsOf(rootGroups, groupPath);
-            if (elements == null) {
-                throw new IllegalArgumentException("no group at path: " + groupPath);
-            }
-            adder.accept(root, elements);
-            return mapper.writeValueAsString(root);
-        } catch (IOException e) {
-            throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
-        }
+    /**
+     * One message per declared locale: the authored text where there is one, the element's name otherwise, so
+     * {@code MVK_ERROR_MESSAGE_MISSING} does not mask a partial candidate while supplied text still reaches the
+     * checker.
+     */
+    private List<LocalizedText> messagesForEveryLocale(String modelJson, List<LocalizedText> authored,
+            String fallback) {
+        Map<String, String> supplied = new LinkedHashMap<>();
+        authored.forEach(m -> supplied.put(m.locale(), m.text()));
+        return declaredLocales(modelJson).stream()
+                .map(code -> new LocalizedText(code, supplied.getOrDefault(code, fallback)))
+                .toList();
     }
 
     private List<String> localeCodes(JsonNode root) {
@@ -286,22 +285,6 @@ public final class RuleValidator {
         return null;
     }
 
-    private ObjectNode ruleNode(DraftRule rule, List<String> localeCodes) {
-        ObjectNode node = mapper.createObjectNode();
-        node.put("type", "Rule");
-        node.put("id", rule.groupPath() + "/" + rule.name());
-        node.put("name", rule.name());
-
-        ObjectNode body = node.putObject("Rule");
-        body.put("errorEntityRelPath", rule.errorEntityRelPath());
-        body.put("errorCode", rule.errorCode());
-        body.put("errorCondition", rule.errorCondition());
-        body.put("severity", rule.severity());
-
-        addMessages(body, localeCodes, rule.messages(), rule.name());
-        return node;
-    }
-
     /**
      * The locales a caller asked about that the model does not declare — refused rather than injected.
      *
@@ -328,52 +311,6 @@ public final class RuleValidator {
             return localeCodes(mapper.readTree(modelJson));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
-        }
-    }
-
-    private ObjectNode computationNode(DraftComputation computation, List<String> localeCodes) {
-        ObjectNode node = mapper.createObjectNode();
-        node.put("type", "Computation");
-        node.put("id", computation.groupPath() + "/" + computation.name());
-        node.put("name", computation.name());
-
-        ObjectNode body = node.putObject("Computation");
-        body.put("computedFieldRelPath", computation.computedFieldRelPath());
-        // Right after the target and only when not Exact — where and when A12's ComputationSerializer writes it.
-        computation.roundingMode().stored().ifPresent(mode -> body.put("roundingMode", mode));
-        if (!computation.errorCodesToSuppress().isEmpty()) {
-            ArrayNode suppress = body.putArray("errorCodesToSuppress");
-            computation.errorCodesToSuppress().forEach(suppress::add);
-        }
-        if (computation.commonPrecondition() != null) {
-            body.put("commonPrecondition", computation.commonPrecondition());
-        }
-        ArrayNode alternatives = body.putArray("computationAlternatives");
-        for (DraftComputation.Alternative alternative : computation.alternatives()) {
-            ObjectNode alt = alternatives.addObject();
-            if (alternative.precondition() != null) {
-                alt.put("precondition", alternative.precondition());
-            }
-            alt.put("operation", alternative.operation());
-            if (alternative.toleranceRangeOp() != null) {
-                alt.put("toleranceRangeOp", alternative.toleranceRangeOp().wire());
-            }
-        }
-
-        addMessages(body, localeCodes, computation.messages(), computation.name());
-        return node;
-    }
-
-    private static void addMessages(ObjectNode body, List<String> localeCodes,
-            List<LocalizedText> authored, String fallback) {
-        // MVK_ERROR_MESSAGE_MISSING must not mask a partial candidate, but supplied text must reach the checker.
-        Map<String, String> supplied = new LinkedHashMap<>();
-        authored.forEach(m -> supplied.put(m.locale(), m.text()));
-        ArrayNode messages = body.putArray("errorMessage");
-        for (String code : localeCodes) {
-            ObjectNode message = messages.addObject();
-            message.put("locale", code);
-            message.put("text", supplied.getOrDefault(code, fallback));
         }
     }
 }
