@@ -90,6 +90,24 @@ class EntityProductionCloseLawsTest {
         assertEquals(expected, actual, "which class each malformed operation draws, from /Policy");
     }
 
+    /**
+     * Only the time constructor's argument list may be empty: {@code timeKonstrukt} is the one production that
+     * makes its whole list optional ({@code 'Zeit' '(' (…)? ')'}), so every other call's {@code )} right after
+     * its {@code (} is a token the parser cannot use, a constant's included.
+     */
+    @Test
+    void onlyTheTimeConstructorTakesAnEmptyArgumentList() {
+        Map<String, List<String>> actual = new LinkedHashMap<>();
+        Map<String, List<String>> expected = new LinkedHashMap<>();
+        for (String condition : List.of("FieldFilled()", "Abs() > 1", "MinValue() > 1", "Today() > 1")) {
+            actual.put(condition, policyCodes("FieldFilled(Code) And " + condition));
+            expected.put(condition, List.of("MVK_UNEXPECTED_TOKEN"));
+        }
+        actual.put("Time() == Time()", policyCodes("FieldFilled(Code) And Time() == Time()"));
+        expected.put("Time() == Time()", List.of());
+        assertEquals(expected, actual, "which calls take an empty argument list");
+    }
+
     private static void row(Map<String, List<String>> actual, Map<String, List<String>> expected, String operand,
                             List<String> predicted) {
         actual.put(operand, codes("FieldFilled(Limit) And " + operand));

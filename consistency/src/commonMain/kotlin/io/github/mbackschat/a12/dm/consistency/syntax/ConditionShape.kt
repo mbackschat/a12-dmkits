@@ -480,7 +480,7 @@ private class ShapeParser(
      * An empty list is a token the parser cannot use everywhere but the time constructor: of the grammar's
      * productions only `timeKonstrukt` makes its whole argument list optional (`Zeit '(' (…)? ')'`, and `Time()`
      * is midnight, [KERNEL-FINDINGS] KF78), so `FieldFilled()` is `MVK_UNEXPECTED_TOKEN`
-     * at the `)` (`adapter.laws.CheckerNearMissSweepTest`).
+     * at the `)` (`rulekit.validate.laws.EntityProductionCloseLawsTest.onlyTheTimeConstructorTakesAnEmptyArgumentList`).
      */
     private fun arguments(operands: MutableList<List<Token>>?, admitsNone: Boolean): ShapeFailure? =
         within(entitySpecs = true) {
