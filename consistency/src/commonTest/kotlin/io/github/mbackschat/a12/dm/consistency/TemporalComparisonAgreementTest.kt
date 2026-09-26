@@ -91,10 +91,9 @@ class TemporalComparisonAgreementTest {
         expected["a number on the LEFT of a date"] = date
         expected["a date ORDERED against a number"] = date
         expected["a number ORDERED against a date"] = date
-        // A12 draws the date class on both constant rows too (the laws twin); a written-out value is left
-        // unjudged here, since A12 types some constants by their own spelling, so these two are an under-report.
-        expected["a number CONSTANT ordered against a date"] = emptyList()
-        expected["a date ordered against a number constant"] = emptyList()
+        // A written-out number is typed as A12 types it, an orderable partner that is no date (the laws twin).
+        expected["a number CONSTANT ordered against a date"] = date
+        expected["a date ordered against a number constant"] = date
         assertEquals(expected, actual, "what a date partner of another kind draws")
     }
 

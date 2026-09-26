@@ -46,10 +46,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
  * this class and a date ordered against a text is `MVK_INVALID_TYPE_FOR_COMPARISON`, measured as the pair
  * that separates them.
  *
- * **Both sides must be DECLARATIONS.** A written-out value is deliberately left unjudged: A12 types a
- * date-shaped string CONSTANT as a date, so treating `"01.01.2020"` as text would refuse a comparison A12
- * admits — the one direction this project forbids. `Today`, `Now` and `BaseYear` are left alone for the
- * neighbouring reason, that their format is not one this reader can name.
+ * **A written-out side is typed as A12 types it** ([writtenConstantOf]): `Today`, `Now` and a date-shaped
+ * literal are dates at the components of the format A12 gives them, a number is an orderable partner, and
+ * `True`, `False` and any other literal are partners neither arm admits. So `[Shipped] == 5` and
+ * `[Label] == "05.03.2024"` draw the date class, `[Window] == 5` the range class, and `[Birthday] == "05.03."`
+ * is admitted on the same component test a declaration meets (`adapter.laws.CheckerComparisonConstantAgreementTest`,
+ * [KERNEL-FINDINGS KF484]). Two written-out sides are judged only where [constantGateAdmits] lets them
+ * through — every other pair is the constant gate's. `BaseYear` is left alone, being of a base type with
+ * arms of its own.
  */
 internal fun TrackedFactBase.temporalComparisonAgreementFindings(): List<Finding> = declarations().mapNotNull { element ->
     val body = element.body ?: return@mapNotNull null
@@ -74,17 +78,17 @@ private const val RANGE = "MVK_INVALID_COMPARE_TO_DATE_RANGE"
 /** What one side is, as far as the two arms need to know. */
 private sealed interface TemporalSide {
 
-    /** A declaration A12 types as a date, at the components its format carries. */
-    data class Date(val path: String, val components: Set<Component>) : TemporalSide
+    /** A side A12 types as a date, at the components its format carries. */
+    data class Date(val components: Set<Component>) : TemporalSide
 
     /** A `DateRangeType` declaration, at the components its format carries. */
-    data class Range(val path: String, val components: Set<Component>) : TemporalSide
+    data class Range(val components: Set<Component>) : TemporalSide
 
-    /** A number declaration — not a date, but ORDERABLE, which decides whether this walk is reached. */
-    data class Number(val path: String) : TemporalSide
+    /** A number — not a date, but ORDERABLE, which decides whether this walk is reached. */
+    data object Number : TemporalSide
 
-    /** A declaration of any other kind — a partner neither arm admits, and not orderable. */
-    data class Other(val path: String) : TemporalSide
+    /** A side of any other kind — a partner neither arm admits, and not orderable. */
+    data object Other : TemporalSide
 }
 
 private val TemporalSide.isOrderable: Boolean
@@ -99,8 +103,15 @@ private fun TrackedFactBase.temporalFinding(
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
-    val left = sideOf(comparison.left, declaringGroup, element, comparison.inAFilterBody) ?: return null
-    val right = sideOf(comparison.right, declaringGroup, element, comparison.inAFilterBody) ?: return null
+    val leftConstant = writtenConstantOf(comparison.left)
+    val rightConstant = writtenConstantOf(comparison.right)
+    if (leftConstant != null && rightConstant != null && !constantGateAdmits(leftConstant, rightConstant)) {
+        return null
+    }
+    val left = sideOf(comparison.left, leftConstant, declaringGroup, element, comparison.inAFilterBody)
+        ?: return null
+    val right = sideOf(comparison.right, rightConstant, declaringGroup, element, comparison.inAFilterBody)
+        ?: return null
     val equality = comparison.operator == EQUAL || comparison.operator == NOT_EQUAL
     if (!equality) {
         // The tolerance and pattern arms RETURN before this walk, and an ordering comparison reaches it only
@@ -176,26 +187,33 @@ private fun rangeDefect(
 /** What this side is, or null wherever this reader will not say — see [bareReferenceField]. */
 private fun TrackedFactBase.sideOf(
     side: String,
+    constant: WrittenConstant?,
     declaringGroup: String,
     element: TrackedDeclaration,
     inAFilterBody: Boolean,
 ): TemporalSide? {
+    when (constant) {
+        is WrittenConstant.Temporal -> return TemporalSide.Date(constant.components)
+        is WrittenConstant.Number -> return TemporalSide.Number
+        is WrittenConstant.BooleanConstant, is WrittenConstant.Text -> return TemporalSide.Other
+        null -> {}
+    }
     val declared = bareReferenceField(side, declaringGroup, element, inAFilterBody) ?: return null
     if (declared.baseTypeClass() in BOOLEAN_ARM_KINDS) {
         return null
     }
     declaredTemporalFormatOf(declared)?.let {
-        return TemporalSide.Date(declared.path, componentsOf(it))
+        return TemporalSide.Date(componentsOf(it))
     }
     declaredDateRangeFormatOf(declared)?.let {
-        return TemporalSide.Range(declared.path, componentsOf(it))
+        return TemporalSide.Range(componentsOf(it))
     }
     // A declaration whose kind this reader knows and that carries no temporal format is an ordinary
     // partner; one whose temporal body it cannot read is not, and leaves the comparison unjudged.
     if (declared.declaredFieldType() == FieldType.NUMBER) {
-        return TemporalSide.Number(declared.path)
+        return TemporalSide.Number
     }
-    return if (declared.declaredFieldType() in DATED_TYPES) null else TemporalSide.Other(declared.path)
+    return if (declared.declaredFieldType() in DATED_TYPES) null else TemporalSide.Other
 }
 
 /** The two kinds the boolean arm, asked ahead of this walk, answers for whatever their partner is. */

@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
-import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
 
@@ -35,8 +34,9 @@ import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
  *
  * **Silent where the left side is a bare name that does not RESOLVE**: that is the reference family's
  * answer, and it runs before this walk. Silent too on a `CustomFieldType` declaration, whose base type is not
- * measured on this carrier, and wherever both sides are written out — the constant gate answers that pair
- * ([comparisonOperatorOperandFindings]).
+ * measured on this carrier, and wherever both sides are written out and the constant gate refuses the pair
+ * ([comparisonOperatorOperandFindings]); `Today` on the left of a text passes that gate and draws the shape
+ * class here.
  */
 internal fun TrackedFactBase.patternComparisonOperandFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
@@ -88,12 +88,14 @@ private fun TrackedFactBase.patternFinding(
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
-    val left = sideOf(comparison.left, declaringGroup, element, comparison.inAFilterBody) ?: return null
-    val right = sideOf(comparison.right, declaringGroup, element, comparison.inAFilterBody) ?: return null
     // Two written-out values are the constant gate's, which is asked ahead of this whole arm.
-    if (left is PatternSide.Written && right is PatternSide.Written) {
+    val leftConstant = writtenConstantOf(comparison.left)
+    val rightConstant = writtenConstantOf(comparison.right)
+    if (leftConstant != null && rightConstant != null && !constantGateAdmits(leftConstant, rightConstant)) {
         return null
     }
+    val left = sideOf(comparison.left, declaringGroup, element, comparison.inAFilterBody) ?: return null
+    val right = sideOf(comparison.right, declaringGroup, element, comparison.inAFilterBody) ?: return null
     val defect = defectOf(comparison, left, right) ?: return null
     return Finding(
         FindingCategory.A12_CONSTRAINT,
@@ -159,14 +161,15 @@ private fun TrackedFactBase.sideOf(
     element: TrackedDeclaration,
     inAFilterBody: Boolean,
 ): PatternSide? {
+    // Only a written-out TEXT is a pattern: A12 types a date-shaped literal as a date, so it fails the type
+    // question as a number or `True` does ([KERNEL-FINDINGS KF484]).
+    when (val constant = writtenConstantOf(side)) {
+        is WrittenConstant.Text -> return PatternSide.Written(constant.value)
+        is WrittenConstant.Number, is WrittenConstant.BooleanConstant, is WrittenConstant.Temporal ->
+            return PatternSide.Written(null)
+        null -> {}
+    }
     val tokens = tokenize(side)
-    val single = tokens.singleOrNull()
-    if (single?.kind == TokenKind.STRING) {
-        return PatternSide.Written(single.text.removeSurrounding("\"").replace("\"\"", "\""))
-    }
-    if (isNumberLiteral(tokens)) {
-        return PatternSide.Written(null)
-    }
     // A keyed read is ONE field read once A12 admits its key, which it judges before this walk, so its string
     // or number key is no sign of an expression; the shared reader answers for it ([KERNEL-FINDINGS KF476]).
     val outsideASpec = !writesASemanticIndex(side) && !isBareEntitySpec(side)

@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
-import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -62,9 +60,6 @@ private const val EQUAL = "=="
 private const val NOT_EQUAL = "!="
 
 private const val WRONG_TYPE = "MVK_INCONSISTENT_TYPES_COMPARED"
-
-/** The two constants A12 spells as bare NAMES, which no arm of this walk admits opposite a number. */
-private val BOOLEAN_CONSTANTS = listOf("True", "False")
 
 /** What one side is, as far as the two questions need to know. */
 private sealed interface NumberSide {
@@ -158,11 +153,12 @@ private fun TrackedFactBase.sideOf(
     element: TrackedDeclaration,
     inAFilterBody: Boolean,
 ): NumberSide? {
-    val tokens = tokenize(side)
-    numberLiteralScale(tokens)?.let { return NumberSide.Written(it) }
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]
-    val spellings = BOOLEAN_CONSTANTS.mapNotNull { keywords?.get(it) }
-    tokens.singleOrNull()?.takeIf { it.text in spellings }?.let { return NumberSide.BooleanConstant }
+    when (val constant = writtenConstantOf(side)) {
+        is WrittenConstant.Number -> return NumberSide.Written(constant.scale)
+        is WrittenConstant.BooleanConstant -> return NumberSide.BooleanConstant
+        is WrittenConstant.Temporal, is WrittenConstant.Text -> return null
+        null -> {}
+    }
     val declared = bareReferenceField(side, declaringGroup, element, inAFilterBody) ?: return null
     if (declared.declaredFieldType() != FieldType.NUMBER) {
         return null

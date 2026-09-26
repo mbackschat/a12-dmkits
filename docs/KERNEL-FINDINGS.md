@@ -8365,7 +8365,7 @@ Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the ca
 | does a TOLERANCE operator have a number on both sides? | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` |
 | does an ORDERING operator have a number or a date on both sides? | `MVK_INVALID_TYPE_FOR_COMPARISON` |
 
-**The constant question is asked first, and the grid moves the OPERATOR to show it.** `1 > 2` is refused as two constants, not as an ordering comparison — so a reading that asked about the operator first would name the wrong class on it. The exemption is DATETIME: two constants are admitted when exactly one of them is `Today`/`Now`, which is why a checker must leave those comparisons alone rather than refuse them.
+**The constant question is asked first, and the grid moves the OPERATOR to show it.** `1 > 2` is refused as two constants, not as an ordering comparison — so a reading that asked about the operator first would name the wrong class on it. The exemption is DATETIME: two constants are admitted when exactly one of them is `Today`/`Now`, which is why a checker must leave those comparisons alone rather than refuse them. *Corrected 2026-09-26:* admitted to the walk, not admitted outright, and only where the LEFT constant is a date — `Today == 5` goes on to draw `MVK_INVALID_COMPARE_TO_DATE` while `5 == Today` is `MVK_INVALID_COMPARE_TO_CONST` ([KF484](#kf484)).
 
 **The tolerance and ordering arms RETURN once satisfied**, so a comparison that clears them is never asked the agreement questions at all — measured as admitted rows (`[Quantity] DiffersWithToleranceRange1 5`, `[PlacedOn] <= [ShippedOn]`) rather than assumed.
 
@@ -11112,7 +11112,7 @@ The portable checker read a keyed operand in the entity-list pre-gates alone and
 
 So a refused constant answers before the filter on the same operand. A string key takes no filter of its own, so that `Having` belongs to the operand and demands its star. And A12 names whichever read it meets first, as [KF478](#kf478) found for the arity gate. What a literal key is: [KF479](#kf479).
 
-The checker names A12's class on every row of the grid. The differential now fails on a silent row too, where it had tolerated silence on a key defect; the only rows it lists are [CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG96's.
+The checker names A12's class on every row of the grid. The differential now fails on a silent row too, where it had tolerated silence on a key defect; the only rows it listed were those of the constant typing [KF484](#kf484) closed.
 
 *Locked by:* `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`, every row on all twenty-seven gates with each class written out (the keyed and `For 5` reads of the filtered level's own body, and the seven added carriers, locked there since 2026-09-26); the checker against A12 on the same model: `adapter.laws.CheckerKeyedOperandAgreementTest`.
 
@@ -11202,7 +11202,7 @@ The portable checker had left a constant key over an enumeration index unjudged.
 
 So a climb names the level it lands on and is judged as that level's read: the rule's iteration addresses `Claims` however the path reaches it, and the `Riders` row is the control that an unaddressed landing is observable. Where an up-step may stand at all is [KF465](#kf465)'s.
 
-The portable checker had been silent on `../<x>` and `../../Claims/<x>` in ten families beside DG96's own, and named `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` in the pattern comparison. On the keyed climb it was silent in twenty-six of the twenty-seven; the rounding-digits gate, which never reads the operand, was the one that answered. One mechanism did all of it: its bare-spec test did not admit the `..` token, so every family typing an operand through it, and the key reader reducing a keyed value, took a climb for an expression. Admitting `..` there cleared every row but the three of [CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG96's family, which is the discriminator against a rival in the scope walk or the resolver, both of which the fix left untouched.
+The portable checker had been silent on `../<x>` and `../../Claims/<x>` in ten families beside DG96's own, and named `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` in the pattern comparison. On the keyed climb it was silent in twenty-six of the twenty-seven; the rounding-digits gate, which never reads the operand, was the one that answered. One mechanism did all of it: its bare-spec test did not admit the `..` token, so every family typing an operand through it, and the key reader reducing a keyed value, took a climb for an expression. Admitting `..` there cleared every row but the three of [CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG96's family (since closed by [KF484](#kf484)), which is the discriminator against a rival in the scope walk or the resolver, both of which the fix left untouched.
 
 *Locked by:* `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest.aClimbingReadIsJudgedAtTheLevelItReaches`; the checker against A12: `adapter.laws.CheckerKeyedOperandAgreementTest`.
 
@@ -11327,3 +11327,40 @@ What the rows separate:
 The portable checker was silent on every refused copy row, and named both classes on the first three joined rows and the unresolved name's on the fourth. It now reads a computation's lowered comparison through the same shape parser as an authored one (`comparisonsOf`), and the seven comparison families judge it. The field-value read family reads the target. Report assembly orders a declaration's members by their place in the joined text (`joinedOrderOf`). One row stays under-reported, the sum: the comparison families type a side only where it is one entity spec or a written-out constant, for rules and computations alike.
 
 *Locked by:* `adapter.laws.CheckerComputationJoinedConditionAgreementTest`, A12's class written out on every row and the checker required to name it; mirrored by `consistency.ComputationJoinedConditionTest`.
+
+## §1 supplement — A12 types a written-out constant before the comparison walk: a date-shaped literal, `Today` and `Now` are DATES, any other literal is text, and the two-constant gate exempts a pair only where its LEFT side is a date (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf484"></a>
+
+> Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
+
+`CheckKonstanteImpl` gives every constant its operand type before `CheckVergleichsBedingungImpl` asks its questions (source-read): `True` and `False` their two boolean types, `Today` a date of `dd.MM.yyyy`, `Now` a stamp of `dd.MM.yyyy'T'HH:mm:ss`, a number its scale, and a quoted literal a date of the format its length names wherever `DateUtils.isStringAValidDate` accepts it ([KF340](#kf340)'s four shapes), text otherwise. The walk then treats the constant exactly as a declaration of that type. Measured on one `/Order` carrier holding a text, a scale-0 number, an enumeration, a boolean, a `yyyy-MM-dd` date, a `MM-dd` date, a `HH:mm:ss` time, a stamp, the fragments `yyyy` and `MM`, and a date range, with no Base Year unless a row says so:
+
+| the comparison | A12 | what it separates |
+|---|---|---|
+| `[Shipped] == 5`, `[Shipped] > 5`, `5 < [Shipped]`, `[Shipped] == True`, `[Shipped] == "abc"` | `MVK_INVALID_COMPARE_TO_DATE` | a number clears the ordering gate and meets the date arm |
+| `[Shipped] > True`, `[Shipped] > "abc"` | `MVK_INVALID_TYPE_FOR_COMPARISON` | neither is orderable |
+| `[Shipped] > "05.03.2024"`, `"05.03.2024" < [Shipped]`, `[Shipped] > "05.03.2024T12:30:00"`, `[Cutoff] > "12:30:00"` | ADMITTED | a dated literal is orderable, being a date |
+| `[Shipped] == "29.02.2023"`; the same under `>` | `MVK_INVALID_COMPARE_TO_DATE`; `MVK_INVALID_TYPE_FOR_COMPARISON` | a day the calendar lacks is TEXT, not a refused date |
+| `[Shipped] == "05.03."`, `[Birthday] == "05.03.2024"`, `[Cutoff] == "05.03.2024"`, `[Shipped] == Now`, `[Stamped] == Today` | `MVK_INVALID_COMPARE_TO_DATE` | [KF386](#kf386)'s three component questions, asked of the constant's format |
+| `[Birthday] == "05.03."`, `[FiscalYear] == "05.03.2024"`, `[Season] == "05.03."`, `[Shipped] == Today`, `[Stamped] == Now` | ADMITTED | the same questions, answered alike |
+| `[Window] == 5`, `[Window] == True`, `[Window] == "abc"` | `MVK_INVALID_COMPARE_TO_DATE_RANGE` | the range arm owns a partner that is no date |
+| `[Window] == "05.03.2024"`, `[Window] == Today` | `MVK_INVALID_COMPARE_TO_DATE` | the date arm runs first and owns a date-typed constant |
+| `[Label] == "05.03.2024"`, `[Tier] == "05.03.2024"`, `[Tier] == Now`, `[Total] == "05.03.2024"`, `[Total] > Today` | `MVK_INVALID_COMPARE_TO_DATE` | a date-typed constant opposite no date; the enumeration's domain question is never reached |
+| `[Label] == "29.02.2023"` | ADMITTED | text against text |
+| `[Paid] == "05.03.2024"` | `MVK_INVALID_COMPARE_TO_YESNO` | the boolean arm runs before the date arm ([KF469](#kf469)) |
+| `Today == 5`, `Today == "abc"`, `Today > "05.03."` | `MVK_INVALID_COMPARE_TO_DATE` | the constant gate exempts a date on the LEFT beside a non-keyword |
+| `5 == Today`, `"abc" == Today`, `Today == Now`, `"05.03.2024" == "06.03.2024"` | `MVK_INVALID_COMPARE_TO_CONST` | not a date on the left, two keywords, or two literals |
+| `"05.03.2024" == Today`, `Now == "05.03.2024T12:30:00"` | ADMITTED | exempt, and the date arm agrees |
+| `Today == True`; `True == Today` | `MVK_INVALID_COMPARE_TO_DATE`; `MVK_INVALID_COMPARE_TO_CONST` | the same gate, with a boolean constant |
+| `[Label] PatternMatched "12:30:00"`, `… "05.03.2024"`, `… True`, `… Today` | `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON` | a pattern must be TEXT, and a date-typed literal is not ([KF387](#kf387)) |
+| `[Label] PatternMatched "12:30"` | ADMITTED | five characters name no date shape |
+| `Today PatternMatched "a+"`; `"a+" PatternMatched Today` | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON`; `MVK_INVALID_COMPARE_TO_CONST` | exempt `Today` reaches the pattern arm's shape question |
+
+**The constant gate is one-sided.** `isValidConstantComparison` asks whether the LEFT constant's type is a date and then whether exactly one side is `Today` or `Now` (source-read), so `Today == 5` and `5 == Today` answer differently — the discriminating pair, measured in both orders.
+
+**A Base Year supplements a constant's year as it does a declaration's.** With one declared, `[Birthday] == "05.03.2024"` and `[Shipped] == "05.03."` are ADMITTED and `[Cutoff] == "05.03.2024"` stays refused, its calendar question unaffected.
+
+**A computation's constant is its lowered comparison's ([KF483](#kf483)).** `"05.03.2024"` into a text, `5` or `True` into a date, `Now` into a time and `Today` into a number draw the date class, `5` into a date range the range class; `"05.03.2024"` into a date and `Now` into a stamp are admitted; and a precondition `[Shipped] > 1` is the date class.
+
+The portable checker had read a quoted literal as text and ignored `Today`, `Now`, `True`, `False` and every number opposite a date. It was silent on every refused row above but the enumeration's, named `MVK_INVALID_TYPE_FOR_COMPARISON` on the five orderable dated-literal rows A12 admits, and named the enumeration domain class, the text-kind class and the ordering class on three date-class rows. It now types a constant as A12 does in one reader (`writtenConstantOf`) that all six comparison families share, where five had kept a private one, and asks the constant gate as A12 does (`constantGateAdmits`). The keyed-operand grid's fourteen rows of this class now agree too.
+
+*Locked by:* `adapter.laws.CheckerComparisonConstantAgreementTest`, A12's class written out on every row and the checker required to name it; mirrored by `consistency.ComparisonConstantTest`.

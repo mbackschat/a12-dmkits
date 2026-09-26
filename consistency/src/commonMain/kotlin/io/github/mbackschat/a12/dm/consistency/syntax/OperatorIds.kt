@@ -26,3 +26,7 @@ internal const val DATE_CONSTRUCTION = "Date"
 internal const val TRUE_CONSTANT = "True"
 
 internal const val FALSE_CONSTANT = "False"
+
+internal const val TODAY_CONSTANT = "Today"
+
+internal const val NOW_CONSTANT = "Now"

@@ -1,11 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
-import io.github.mbackschat.a12.dm.consistency.syntax.FALSE_CONSTANT
-import io.github.mbackschat.a12.dm.consistency.syntax.TRUE_CONSTANT
-import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
-import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
  * What a CONFIRM or BOOLEAN declaration may be compared to, and with which equality operator.
@@ -45,27 +40,15 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * **Only a bare reference or a written-out constant is judged**, for the reason [bareReferenceField] carries:
  * a side that is arithmetic, a call or an aggregate has a result type A12 computes and this reader does not.
  */
-internal fun TrackedFactBase.booleanComparisonAgreementFindings(): List<Finding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val spellings = BooleanConstants(
-        yes = keywords[TRUE_CONSTANT],
-        no = keywords[FALSE_CONSTANT],
-        temporal = TEMPORAL_CONSTANTS.mapNotNull { keywords[it] }.toSet(),
-    )
-    return declarations().mapNotNull { element ->
+internal fun TrackedFactBase.booleanComparisonAgreementFindings(): List<Finding> =
+    declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
             comparisonsOf(element, body, member, text)
-                .firstNotNullOfOrNull { comparison ->
-                    agreementFinding(comparison, spellings, group, element, member)
-                }
+                .firstNotNullOfOrNull { comparison -> agreementFinding(comparison, group, element, member) }
         }
     }
-}
-
-/** The two constants carrying A12's DATETIME base type; neither boolean kind admits one. */
-private val TEMPORAL_CONSTANTS = listOf("Today", "Now")
 
 private const val EQUAL = "=="
 
@@ -74,9 +57,6 @@ private const val NOT_EQUAL = "!="
 private const val YES = "MVK_INVALID_COMPARE_TO_YES"
 
 private const val YES_NO = "MVK_INVALID_COMPARE_TO_YESNO"
-
-/** How the model's own language spells the constants this walk has to recognize by name. */
-private data class BooleanConstants(val yes: String?, val no: String?, val temporal: Set<String>)
 
 /** What one side of the comparison is, as far as the two agreement gates need to know. */
 private enum class BooleanSide(val spoken: String) {
@@ -90,7 +70,6 @@ private enum class BooleanSide(val spoken: String) {
 
 private fun TrackedFactBase.agreementFinding(
     comparison: ConditionComparison,
-    spellings: BooleanConstants,
     declaringGroup: String,
     element: TrackedDeclaration,
     member: String,
@@ -98,8 +77,8 @@ private fun TrackedFactBase.agreementFinding(
     if (comparison.operator != EQUAL && comparison.operator != NOT_EQUAL) {
         return null
     }
-    val left = sideOf(comparison.left, spellings, declaringGroup, element, comparison.inAFilterBody) ?: return null
-    val right = sideOf(comparison.right, spellings, declaringGroup, element, comparison.inAFilterBody) ?: return null
+    val left = sideOf(comparison.left, declaringGroup, element, comparison.inAFilterBody) ?: return null
+    val right = sideOf(comparison.right, declaringGroup, element, comparison.inAFilterBody) ?: return null
     val equality = comparison.operator == EQUAL
     val code = when {
         left == BooleanSide.CONFIRM_FIELD || right == BooleanSide.CONFIRM_FIELD ->
@@ -163,21 +142,16 @@ private val BOOLEAN_PARTNERS = setOf(
 /** What this side is, or null wherever this reader will not say — see [bareReferenceField]. */
 private fun TrackedFactBase.sideOf(
     side: String,
-    spellings: BooleanConstants,
     declaringGroup: String,
     element: TrackedDeclaration,
     inAFilterBody: Boolean,
 ): BooleanSide? {
-    val tokens = tokenize(side)
-    val single = tokens.singleOrNull()
-    when {
-        single == null -> if (isNumberLiteral(tokens)) return BooleanSide.OTHER_CONSTANT
-        single.text == spellings.yes -> return BooleanSide.TRUE_CONSTANT
-        single.text == spellings.no -> return BooleanSide.FALSE_CONSTANT
-        single.kind == TokenKind.STRING || single.kind == TokenKind.NUMBER ->
+    when (val constant = writtenConstantOf(side)) {
+        is WrittenConstant.BooleanConstant ->
+            return if (constant.yes) BooleanSide.TRUE_CONSTANT else BooleanSide.FALSE_CONSTANT
+        is WrittenConstant.Number, is WrittenConstant.Temporal, is WrittenConstant.Text ->
             return BooleanSide.OTHER_CONSTANT
-        single.kind == TokenKind.NAME && single.text in spellings.temporal ->
-            return BooleanSide.OTHER_CONSTANT
+        null -> {}
     }
     val declared = bareReferenceField(side, declaringGroup, element, inAFilterBody) ?: return null
     return when (declared.baseTypeClass()) {

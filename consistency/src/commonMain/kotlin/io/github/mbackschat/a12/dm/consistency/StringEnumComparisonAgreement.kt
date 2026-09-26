@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
-import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
-import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
  * What a TEXT or ENUMERATION side of a comparison needs of its partner, and which written-out values an
@@ -176,12 +174,13 @@ private fun TrackedFactBase.sideOf(
     element: TrackedDeclaration,
     inAFilterBody: Boolean,
 ): TextSide? {
-    val tokens = tokenize(side)
-    if (isNumberLiteral(tokens)) {
-        return TextSide.NumberConstant
-    }
-    tokens.singleOrNull()?.takeIf { it.kind == TokenKind.STRING }?.let {
-        return TextSide.TextConstant(it.text.removeSurrounding("\"").replace("\"\"", "\""))
+    // A date-typed constant is the date arm's, which runs before this walk and refuses every partner it
+    // could have here; `True` and `False` are the boolean arm's or the number gate's.
+    when (val constant = writtenConstantOf(side)) {
+        is WrittenConstant.Number -> return TextSide.NumberConstant
+        is WrittenConstant.Text -> return TextSide.TextConstant(constant.value)
+        is WrittenConstant.Temporal, is WrittenConstant.BooleanConstant -> return null
+        null -> {}
     }
     val declared = bareReferenceField(side, declaringGroup, element, inAFilterBody) ?: return null
     return when (declared.declaredFieldType()) {

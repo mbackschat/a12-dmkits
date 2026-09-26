@@ -3,7 +3,9 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.FALSE_CONSTANT
+import io.github.mbackschat.a12.dm.consistency.syntax.NOW_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
+import io.github.mbackschat.a12.dm.consistency.syntax.TODAY_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TRUE_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
@@ -90,10 +92,6 @@ internal fun TrackedFactBase.valueInFieldsConstantKindFindings(): List<Finding> 
         }
     }
 }
-
-private const val TODAY_CONSTANT = "Today"
-
-private const val NOW_CONSTANT = "Now"
 
 /**
  * How the model's own language spells the constants this family keys on, absent where the table carries none.

@@ -120,14 +120,40 @@ private fun declaresAPartialPrecisionIn(body: JsonObject?): Boolean {
  * without any pattern being tried, which is why `01.02` — the year-less shape minus its trailing dot — is
  * not read as a shorter date.
  */
-internal fun isAcceptedDateConstant(constant: String): Boolean = when (constant.length) {
-    6 -> constant.matchesShape("dd.mm.") && constant.namesARealDay(day = 0, month = 3, year = null)
-    8 -> constant.matchesShape("hh:mm:ss") && constant.namesARealTime()
-    10 -> constant.matchesShape("dd.mm.yyyy") && constant.namesARealDay(day = 0, month = 3, year = 6)
-    19 -> constant.matchesShape("dd.mm.yyyyThh:mm:ss") &&
-        constant.namesARealDay(day = 0, month = 3, year = 6) && constant.substring(11).namesARealTime()
-    else -> false
+internal fun isAcceptedDateConstant(constant: String): Boolean = acceptedDateConstantFormat(constant) != null
+
+/**
+ * The format A12 types an accepted date constant with, or null where [constant] is no date to A12.
+ *
+ * `DateUtils.getDateFormatFromDate` switches on the same LENGTH that picked the pattern, so each accepted
+ * shape carries exactly one format; that format, not the literal, is what the comparison walk reads.
+ */
+internal fun acceptedDateConstantFormat(constant: String): String? = when (constant.length) {
+    6 -> YEARLESS_DATE_FORMAT.takeIf {
+        constant.matchesShape("dd.mm.") && constant.namesARealDay(day = 0, month = 3, year = null)
+    }
+    8 -> TIME_FORMAT.takeIf { constant.matchesShape("hh:mm:ss") && constant.namesARealTime() }
+    10 -> DATE_FORMAT.takeIf {
+        constant.matchesShape("dd.mm.yyyy") && constant.namesARealDay(day = 0, month = 3, year = 6)
+    }
+    19 -> STAMP_FORMAT.takeIf {
+        constant.matchesShape("dd.mm.yyyyThh:mm:ss") &&
+            constant.namesARealDay(day = 0, month = 3, year = 6) && constant.substring(11).namesARealTime()
+    }
+    else -> null
 }
+
+/** `DateUtils.DATUM_FORMAT_WITHOUT_YEAR`. */
+private const val YEARLESS_DATE_FORMAT = "dd.MM."
+
+/** `DateUtils.TIME_FORMAT`. */
+private const val TIME_FORMAT = "HH:mm:ss"
+
+/** `DateUtils.DATUM_FORMAT_WITH_YEAR`, which is also the format `Today` carries. */
+internal const val DATE_FORMAT = "dd.MM.yyyy"
+
+/** `DateUtils.DATETIME_FORMAT`, which is also the format `Now` carries. */
+internal const val STAMP_FORMAT = "dd.MM.yyyy'T'HH:mm:ss"
 
 /**
  * Whether the string matches [shape], where a letter stands for the digit class the kernel's pattern uses

@@ -268,36 +268,10 @@ class CheckerKeyedOperandAgreementTest {
         val ROWS_PER_FAMILY = 21 + 9
 
         /**
-         * The rows that still disagree, all from one family that is neither the key's nor the body's (CONSISTENCY-GAPS
-         * DG96): it does not type a temporal comparison against a number constant, so its own local read is silent,
-         * and so is every row where nothing else in the text draws a class; wherever the grid puts that comparison
-         * beside another read, a class A12 raises later on the same text stands in its place — the filter walk's,
-         * the index's, the unaddressed read's. A fix deletes its row, and a row that starts agreeing fails here
-         * until it is deleted.
+         * The rows that still disagree: none. A fix deletes its row, and a row that starts disagreeing fails
+         * here until it is understood — the list is empty on purpose, not unfinished.
          */
-        val KNOWN_DIVERGENCES = listOf(
-            "comparison against a constant — local: the positive control A12 [MVK_INVALID_COMPARE_TO_DATE] ours []",
-            "comparison against a constant — string key: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — enumeration constant key: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — field key: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — key on the iterated level: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — unkeyed in a filter body: WRONG-CLASS " +
-                "[MVK_INVALID_ITERATION_IN_FILTER_CONDITION] A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — unkeyed in the filtered level's own body: SILENT [] " +
-                "A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — keyed in a filter body: WRONG-CLASS [MVK_SEMANTIC_INDEX_NOT_ALLOWED] " +
-                "A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — keyed in the filtered level's own body: WRONG-CLASS " +
-                "[MVK_SEMANTIC_INDEX_NOT_ALLOWED] A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — the keyed read ahead of an unaddressed read: WRONG-CLASS " +
-                "[MVK_NO_WILDCARD] A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — an enumeration constant key ahead of an unaddressed read: WRONG-CLASS " +
-                "[MVK_NO_WILDCARD] A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — a climbing read: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — a climbing keyed read: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
-            "comparison against a constant — a climb to the root and back into Claims: SILENT [] " +
-                "A12 [MVK_INVALID_COMPARE_TO_DATE]",
-        )
+        val KNOWN_DIVERGENCES = emptyList<String>()
 
         /** The key defects, each as the operand form it is spelled with. */
         val DEFECTS = linkedMapOf(
