@@ -76,6 +76,11 @@ class CheckerRuleReferenceSetAgreementTest {
             "the error field read marked in a filter body" to
                 ("Sum(/Shipment/Received*/Quantity Having [/Shipment/Received/Quantity] > 1 And [\$Note] == \"x\") > 0" to
                     ADMITTED),
+            // The root reaches `Note` only from a body, so nothing the rule reads reaches it, and the iterating
+            // read beside it cannot make the iteration pair's class.
+            "the root reached only from a filter body, beside an iterating read" to
+                ("[Quantity] > 0 And Sum(/Shipment/Received*/Quantity Having GroupFilled(/Shipment) And " +
+                    "[/Shipment/Received/Quantity] > 1) > 0" to NOT_REFERENCED),
             "the error field read outside the filter — control" to
                 ("FieldFilled(Note) And Sum(/Shipment/Received*/Quantity Having [/Shipment/Received/Note] == \"x\") > 0" to
                     ADMITTED),

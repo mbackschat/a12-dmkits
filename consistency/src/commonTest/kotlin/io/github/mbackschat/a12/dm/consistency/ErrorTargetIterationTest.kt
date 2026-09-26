@@ -168,6 +168,8 @@ class ErrorTargetIterationTest {
                 listOf("MVK_ERROR_FIELD_NOT_REFERENCED"),
             "Sum(/Shipment/Received*/Quantity Having [/Shipment/Received/Quantity] > 1 And [\$Note] == \"x\") > 0" to
                 emptyList(),
+            "[Quantity] > 0 And Sum(/Shipment/Received*/Quantity Having GroupFilled(/Shipment) And [/Shipment/Received/Quantity] > 1) > 0" to
+                listOf("MVK_ERROR_FIELD_NOT_REFERENCED"),
         )
         val actual = rows.keys.associateWith { condition ->
             check(ModelSource(model(condition, repeatableRoot = false))).findings

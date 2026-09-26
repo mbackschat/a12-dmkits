@@ -116,6 +116,8 @@ class FilterBodyComparisonTest {
             "Sum(Parties*/Count Having [Claims/Notes] == \"x\" And [\$Claims/Notes] == \"x\") > 0" to
                 "MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
             "Sum(Parties*/Count Having [Parties/Name] == [\$Orders/Note]) > 0" to "MVK_ERROR_FIELD_NO_INDEX",
+            "Sum(Parties*/Count Having [Orders/Note] == \"y\" And [\$Orders/Note For \"A\"] == \"x\") > 0" to
+                "MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
             "Sum(Parties*/Count Having Sum(Parties*/Count Having [Parties/Name] == [\$Claims/Notes]) > 0) > 0" to
                 "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION",
         )

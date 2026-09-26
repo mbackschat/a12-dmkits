@@ -159,6 +159,8 @@ class CheckerFilterBodyAgreementTest {
             // done, marked or not (source-read); the walk, which runs during the parse, skips the marked read.
             "a marked keyed read beside an in-scope read" to
                 ("Sum(Parties*/Count Having [Parties/Name] == [\$Orders/Note For \"A\"]) > 0" to setOf("MVK_SEMANTIC_INDEX_NOT_ALLOWED")),
+            "an out-of-path read of the path a marked keyed read names" to
+                ("Sum(Parties*/Count Having [Orders/Note] == \"y\" And [\$Orders/Note For \"A\"] == \"x\") > 0" to ITERATION),
             "a marked keyed read alone" to ("Sum(Parties*/Count Having [\$Orders/Note For \"A\"] == \"x\") > 0" to NO_ITERATION),
             "(x) a marked read at the rule's coordinates inside a nested filter" to
                 ("Sum(Parties*/Count Having Sum(Parties*/Count Having [Parties/Name] == [\$Claims/Notes]) > 0) > 0" to DISALLOWED),

@@ -11441,6 +11441,7 @@ Measured on the claims policy of [KF485](#kf485) from three declarations. The fi
 | root · `Reference` | `[$Orders/Note For "A"] == "x"`, outside any filter | `MVK_INVALID_OUTER_ITERATION` | a keyed marked read, refused like any other |
 | root · `Claims/Notes` | `Parties*/Count Having [Parties/Name] == [$Orders/Note For "A"]` | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` | `ParserService.checkNormalRule` refuses any index in a filter condition after the parse, marked or not |
 | | `Parties*/Count Having [$Orders/Note For "A"] == "x"` | `MVK_NO_ITERATION_FOR_WILDCARD` | the walk, during the parse, answers first |
+| | `Parties*/Count Having [Orders/Note] == "y" And [$Orders/Note For "A"] == "x"` | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | the unmarked read of the path the marked one keys is still the walk's |
 
 The last row settles what [KF486](#kf486) had left to source reading. The containment class is raised while a spec's indices are checked, so it reads a nested base, which is checked after its filter ends. `IterationChecker` reads a reference's flag as the reference is created. It is a different consumer, whose classes come after the parse, and no row here measures it.
 
@@ -11469,6 +11470,7 @@ Measured on KF348's shape with a fixed root, plus an unkeyed repeatable `Returns
 | `Sum(/Shipment/Received*/Quantity Having [/Shipment/Received/Note] == "x") > 0` | `MVK_ERROR_FIELD_NOT_REFERENCED` | the target read only in a body |
 | the same body with `[/Shipment/Received/Quantity] > 1 And [$Note] == "x"` | ADMITTED | marked, it references the target |
 | `FieldFilled(Note) And` the first body | ADMITTED | control |
+| `[Quantity] > 0 And Sum(/Shipment/Received*/Quantity Having GroupFilled(/Shipment) And [/Shipment/Received/Quantity] > 1) > 0` | `MVK_ERROR_FIELD_NOT_REFERENCED` | the root named only in a body reaches nothing, so the iterating read beside it draws no class of its own |
 
 **The portable checker refused six of these models.** It counted every resolved reference as a read of its carrier: the three starred rows, both keyed rows and the unmarked body row. It named the parallel class on the marked row, from the unmarked `Returns` read. It stayed silent on the unreferenced row, counting a body read as reaching. It now reads the rule's own references (`rulesOwnReadsIn`). For the iteration pair it keeps only those that leave a repeatable level unstarred and are no index's value or key.
 
