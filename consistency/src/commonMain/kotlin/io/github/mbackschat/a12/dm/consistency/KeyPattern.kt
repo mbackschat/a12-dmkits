@@ -15,22 +15,22 @@ package io.github.mbackschat.a12.dm.consistency
  */
 internal class KeyPattern private constructor(private val atoms: List<Atom>) {
 
-    /** One atom: which characters it takes, and how many times. */
-    private class Atom(val admits: (Char) -> Boolean, val min: Int, val max: Int)
+    /** One atom: which code points it takes, and how many times. */
+    private class Atom(val admits: (Int) -> Boolean, val min: Int, val max: Int)
 
     /**
-     * Whether the whole of [value] matches. The caller keeps a value holding a surrogate away: Java matches code
-     * points, and this reads UTF-16 units, so a negated class would count one supplementary character twice.
+     * Whether the whole of [value] matches. Java matches code points, so a surrogate pair is one character to a
+     * negated class and so is a lone surrogate.
      */
-    fun matches(value: String): Boolean = matchesFrom(value, 0, 0)
+    fun matches(value: String): Boolean = matchesFrom(codePoints(value), 0, 0)
 
-    private fun matchesFrom(value: String, at: Int, next: Int): Boolean {
+    private fun matchesFrom(value: List<Int>, at: Int, next: Int): Boolean {
         if (next == atoms.size) {
-            return at == value.length
+            return at == value.size
         }
         val atom = atoms[next]
         var taken = 0
-        while (taken < atom.max && at + taken < value.length && atom.admits(value[at + taken])) {
+        while (taken < atom.max && at + taken < value.size && atom.admits(value[at + taken])) {
             taken++
         }
         return (taken downTo atom.min).any { count -> matchesFrom(value, at + count, next + 1) }
@@ -45,7 +45,7 @@ internal class KeyPattern private constructor(private val atoms: List<Atom>) {
                 val char = pattern[at]
                 val (admits, afterAtom) = when {
                     char == '[' -> classAt(pattern, at) ?: return null
-                    char.isClassMember() || char == '-' -> Pair({ c: Char -> c == char }, at + 1)
+                    char.isClassMember() || char == '-' -> Pair({ c: Int -> c == char.code }, at + 1)
                     else -> return null
                 }
                 val (min, max, afterQuantifier) = quantifierAt(pattern, afterAtom) ?: return null
@@ -60,13 +60,13 @@ internal class KeyPattern private constructor(private val atoms: List<Atom>) {
             this in 'A'..'Z' || this in 'a'..'z' || this in '0'..'9' || this == '_' || this == ' '
 
         /** The bracket class opening at [open], and where it ends, or null outside the subset. */
-        private fun classAt(pattern: String, open: Int): Pair<(Char) -> Boolean, Int>? {
+        private fun classAt(pattern: String, open: Int): Pair<(Int) -> Boolean, Int>? {
             var at = open + 1
             val negated = pattern.getOrNull(at) == '^'
             if (negated) {
                 at++
             }
-            val ranges = mutableListOf<CharRange>()
+            val ranges = mutableListOf<IntRange>()
             while (at < pattern.length && pattern[at] != ']') {
                 val first = pattern[at].takeIf { it.isClassMember() } ?: return null
                 if (pattern.getOrNull(at + 1) == '-') {
@@ -74,17 +74,17 @@ internal class KeyPattern private constructor(private val atoms: List<Atom>) {
                     if (last < first) {
                         return null
                     }
-                    ranges += first..last
+                    ranges += first.code..last.code
                     at += 3
                 } else {
-                    ranges += first..first
+                    ranges += first.code..first.code
                     at++
                 }
             }
             if (at >= pattern.length || ranges.isEmpty()) {
                 return null
             }
-            return Pair({ c: Char -> ranges.any { c in it } != negated }, at + 1)
+            return Pair({ c: Int -> ranges.any { c in it } != negated }, at + 1)
         }
 
         /** The quantifier at [at] as (min, max, end), (1, 1, [at]) where there is none, or null outside the subset. */
@@ -106,6 +106,24 @@ internal class KeyPattern private constructor(private val atoms: List<Atom>) {
                 if (min == null || max == null) null else Triple(min, max, close + 1)
             }
             else -> Triple(1, 1, at)
+        }
+
+        /** [value]'s code points, a lone surrogate standing for itself as `Character.codePointAt` reads it. */
+        private fun codePoints(value: String): List<Int> {
+            val points = mutableListOf<Int>()
+            var at = 0
+            while (at < value.length) {
+                val high = value[at]
+                val low = value.getOrNull(at + 1)
+                if (high.isHighSurrogate() && low != null && low.isLowSurrogate()) {
+                    points += 0x10000 + ((high.code - 0xD800) shl 10) + (low.code - 0xDC00)
+                    at += 2
+                } else {
+                    points += high.code
+                    at++
+                }
+            }
+            return points
         }
 
         private fun String.toCountOrNull(): Int? = takeIf { it.isNotEmpty() && it.all(Char::isDigit) }?.toIntOrNull()

@@ -28,6 +28,19 @@ class KeyPatternTest {
         )
     }
 
+    /** Java matches code points, so a surrogate pair is one character and a lone surrogate is one too. */
+    @Test
+    fun aSupplementaryCharacterIsOneCharacter() {
+        val grin = "\uD83D\uDE00"
+        assertEquals(
+            listOf(false, true, true, true, true),
+            listOf(
+                matches("[^0-9]{2}", grin), matches("[^0-9]", grin), matches("[^0-9]{2}", grin + "a"),
+                matches("[^0-9]", "\uD83D"), matches("[^0-9]{2}", "\uD83Da"),
+            ),
+        )
+    }
+
     /** Where Java and JavaScript regex part ways, or where a regex engine would be needed, the parser declines. */
     @Test
     fun everythingElseIsOutsideTheSubset() {

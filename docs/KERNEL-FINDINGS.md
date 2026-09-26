@@ -11319,9 +11319,12 @@ The empty constant is refused ahead of the type's rule on every kind by source; 
 | pattern `[^0-9]*` | `abc` | `a1` |
 | pattern `[a-z]?[0-9]*` | `5`, `a` | `ab` |
 | pattern `[0-9]{3,}` | `123` | `12` |
+| pattern `[^0-9]{2}` | `😀a` | `😀` |
 | pattern `[A-Z]+`, at most 3 long | `AB` | `ABCD` (the length), `ab` (the pattern) |
 | pattern `.{2}` | `ab` | `a` |
 | pattern `.{2}`, at most 1 long | — | `ab` (the length) |
+
+The pattern counts code points, as Java's regex does, while the length counts UTF-16 units: `😀` is one character to `[^0-9]{2}`. Both `😀` rows also draw the codeless `The field contains one or several unsupported signs.`, beside the index class, which is the message repertoire's refusal ([KF449](#kf449)) met in a condition text.
 
 The portable checker had judged a constant only against an enumeration. It now reproduces every rule above. It reproduces each shape without a regex, so both targets decide it alike, and it evaluates a declared pattern the same way: only in a subset it matches itself, of letters, digits, spaces, `_` and `-`, bracket classes of them, and the quantifiers `?`, `*`, `+` and the counted ones. `.{2}` is outside it, since Java's `.` excludes U+0085 where JavaScript's admits it, so such a key stays unjudged once its length is met; the last row is refused on the length, which A12 asks without reading the pattern ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG102).
 

@@ -35,6 +35,7 @@ class CheckerIndexKeyConstantAgreementTest {
             .group("Runs") { g -> keyed(g) { it.stringField("K") { s -> s.pattern("[0-9]{3,}", "three digits or more") } } }
             .group("Caps") { g -> keyed(g) { it.stringField("K") { s -> s.maxLength(3).pattern("[A-Z]+", "capitals") } } }
             .group("Loose") { g -> keyed(g) { it.stringField("K") { s -> s.pattern(".{2}", "two characters") } } }
+            .group("Pairs") { g -> keyed(g) { it.stringField("K") { s -> s.pattern("[^0-9]{2}", "two non-digits") } } }
             .group("Brief") { g -> keyed(g) { it.stringField("K") { s -> s.maxLength(1).pattern(".{2}", "two characters") } } }
             .group("Seqs") { g -> keyed(g) { it.numberField("K") { n -> n.fractionDigits(0) } } }
             .group("Rates") { g -> keyed(g) { it.numberField("K") { n -> n.fractionDigits(0, 2) } } }
@@ -101,6 +102,8 @@ class CheckerIndexKeyConstantAgreementTest {
             "String pattern and length, both met" to "Caps/Amount For \"AB\"",
             "String pattern and length, the pattern met and the length not" to "Caps/Amount For \"ABCD\"",
             "String pattern and length, the length met and the pattern not" to "Caps/Amount For \"ab\"",
+            "String pattern, a supplementary character counted once" to "Pairs/Amount For \"\uD83D\uDE00\"",
+            "String pattern, a supplementary character and a letter" to "Pairs/Amount For \"\uD83D\uDE00a\"",
             "String pattern outside the subset, matching" to "Loose/Amount For \"ab\"",
             "String pattern outside the subset, not matching" to "Loose/Amount For \"a\"",
             "String pattern outside the subset, the length not met" to "Brief/Amount For \"ab\"",
@@ -163,6 +166,7 @@ class CheckerIndexKeyConstantAgreementTest {
             "String pattern, an open count short",
             "String pattern and length, the pattern met and the length not",
             "String pattern and length, the length met and the pattern not",
+            "String pattern, a supplementary character counted once",
             "String pattern outside the subset, not matching",
             "String pattern outside the subset, the length not met",
             "Number 0 digits, a fraction",
@@ -186,17 +190,31 @@ class CheckerIndexKeyConstantAgreementTest {
             "DateRange dd.MM.yyyy-, one day",
         )
 
+        /**
+         * The rows whose constant carries a supplementary-plane character, which A12 also refuses in a condition
+         * text with a finding carrying no code, beside the index class.
+         */
+        val CODELESS_ROWS = setOf(
+            "String pattern, a supplementary character counted once",
+            "String pattern, a supplementary character and a letter",
+        )
+
         /** A12's class on each row. */
-        val A12: Map<String, Set<String>> = ROWS.keys.associateWith { if (it in REFUSED_ROWS) REFUSED else ADMITTED }
+        val A12: Map<String, Set<String>> = ROWS.keys.associateWith {
+            (if (it in REFUSED_ROWS) REFUSED else ADMITTED) + (if (it in CODELESS_ROWS) setOf("(no code)") else emptySet())
+        }
 
         /**
          * The rows where the checker answers otherwise, with what it answers. A declared pattern outside the
          * subset both targets evaluate alike is Java regex this checker does not evaluate, so it leaves the key
-         * unjudged and every gate behind it stands down.
+         * unjudged and every gate behind it stands down. The checker names no codeless repertoire refusal of a
+         * condition text (CONSISTENCY-GAPS DG109), so it gives those rows their index class alone.
          */
         val OURS: Map<String, Set<String>> = mapOf(
             "String pattern outside the subset, matching" to emptySet(),
             "String pattern outside the subset, not matching" to emptySet(),
+            "String pattern, a supplementary character counted once" to REFUSED,
+            "String pattern, a supplementary character and a letter" to ADMITTED,
         )
     }
 }
