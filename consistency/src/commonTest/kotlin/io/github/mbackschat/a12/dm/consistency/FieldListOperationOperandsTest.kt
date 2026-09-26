@@ -85,7 +85,7 @@ class FieldListOperationOperandsTest {
         actual["a confirm inside a group expansion"] = subject("FirstFilledValue(Items*) == [Reference]")
         actual["two booleans"] = subject("FirstFilledValue(Settled, Settled2) == [Settled]")
         actual["two text fields"] = subject("FirstFilledValue(Notes, Reference) == [Reference]")
-        actual["a mixed pair this family does not judge"] = subject("FirstFilledValue(Settled, Notes) == [Reference]")
+        actual["a Boolean beside text"] = subject("FirstFilledValue(Settled, Notes) == [Reference]")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a confirm leading"] = listOf("MVK_NO_BOOLY_ALLOWED")
@@ -94,8 +94,8 @@ class FieldListOperationOperandsTest {
         // `FieldUtils.isYes` tests `IYesType`, and `IYesNoType` is a sibling rather than a subtype.
         expected["two booleans"] = emptyList()
         expected["two text fields"] = emptyList()
-        // A12 answers `MVK_VARYING_TYPES_NOT_ALLOWED` here, which this family deliberately leaves unreported.
-        expected["a mixed pair this family does not judge"] = emptyList()
+        // A Boolean clears the confirm gate and then meets the type gate, which a text field beside it fails.
+        expected["a Boolean beside text"] = listOf("MVK_VARYING_TYPES_NOT_ALLOWED")
         assertEquals(expected, actual, "one confirm anywhere refuses the list; a boolean never does")
     }
 

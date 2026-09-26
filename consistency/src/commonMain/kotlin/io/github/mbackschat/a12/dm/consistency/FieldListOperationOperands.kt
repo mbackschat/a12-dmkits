@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * | the operator | what it demands of every expanded field | otherwise |
  * |---|---|---|
  * | `FirstFilledValue` | not a Confirm declaration | `MVK_NO_BOOLY_ALLOWED` |
+ * | …and then | the first field's type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
  * | `Sum` | a Number declaration | `MVK_NO_NUMBER` |
  * | `MaxValue`, `MinValue`, behind a non-temporal LEADER | a Number declaration | `MVK_NOT_SORTABLE` |
  * | `NumberOfDifferentValues`, behind a text/custom/enum LEADER | one of those three | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` |
@@ -60,10 +61,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * that calls the gate; the shared operand reducer declines a categorized operand, so this family never sees
  * such a call.
  *
- * **Type MATCHING is deliberately not reported.** `MVK_VARYING_TYPES_NOT_ALLOWED`, which `FirstFilledValue`
- * draws behind the confirm gate, rests on `OperationResultType.matches` — a comparison that reads a date's
- * declared format as well as its base class, measured in the same grid — and transcribing it is its own
- * question. Under-reporting it costs a model nothing here.
+ * **`FirstFilledValue` types its list as the FIRST expanded field and asks every later one to match it**
+ * ([KERNEL-FINDINGS KF391], `adapter.laws.CheckerFirstFilledValueTypeAgreementTest`). Matching is one base type,
+ * an Enumeration and a custom type counting as text, and for a date-bearing kind or a date range also the same
+ * declared format; the number's fraction digits play no part. **Two Booleans always match**, though A12's type
+ * comparison asks for equal stored values: a Boolean declaring its own values is admitted beside a default one
+ * and beside one declaring others. A group operand is its fields, so a mixed group is refused by itself.
  *
  * **`SumOfProducts` is not a carrier**, though it takes the same numeric arm: six of its own gates run
  * before it, and each is a class this family would have to answer for to avoid naming the numeric one on a
@@ -152,6 +155,7 @@ private fun TrackedFactBase.operandDefect(
     return when (arm) {
         FieldListArm.NO_CONFIRM -> fields.firstOrNull { it.declaredFieldType() == FieldType.CONFIRM }
             ?.let { FieldListDefect("MVK_NO_BOOLY_ALLOWED", "takes no confirm declaration in its list", it) }
+            ?: varyingTypeDefect(fields)
         FieldListArm.ALL_NUMBERS -> fields.firstOrNull { it.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES }
             ?.let {
                 FieldListDefect("MVK_NO_NUMBER", "adds up its list, so every field in it must be a number", it)
@@ -171,6 +175,41 @@ private fun TrackedFactBase.operandDefect(
             }
         FieldListArm.DISTINCT -> distinctDefect(fields)
     }
+}
+
+/**
+ * The first field that does not match the list's type, which is its FIRST field's, or null where all match.
+ *
+ * A field whose type this reader does not place is skipped, as every arm here skips one; an unplaceable FIRST
+ * field leaves the list untyped and so unjudged.
+ */
+private fun varyingTypeDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
+    val first = fields.first()
+    val listType = matchedTypeOf(first) ?: return null
+    return fields.drop(1).firstOrNull { field -> matchedTypeOf(field)?.let { it != listType } == true }?.let {
+        FieldListDefect(
+            "MVK_VARYING_TYPES_NOT_ALLOWED",
+            "takes its type from its first field, `${first.path}`, and every later field must match it",
+            it,
+        )
+    }
+}
+
+/** What A12's type match reads of one field: the base type, and the format a temporal one declares. */
+private data class MatchedType(val base: MatchedBase, val format: String? = null)
+
+private enum class MatchedBase { TEXT, NUMBER, YES_NO, YES, DATETIME, DATE_RANGE }
+
+/** [field]'s [MatchedType], or null where this reader does not place its type or finds no declared format. */
+private fun matchedTypeOf(field: TrackedDeclaration): MatchedType? = when (field.declaredFieldType() ?: return null) {
+    FieldType.STRING, FieldType.CUSTOM_FIELD, FieldType.ENUMERATION -> MatchedType(MatchedBase.TEXT)
+    FieldType.NUMBER -> MatchedType(MatchedBase.NUMBER)
+    FieldType.BOOLEAN -> MatchedType(MatchedBase.YES_NO)
+    FieldType.CONFIRM -> MatchedType(MatchedBase.YES)
+    FieldType.DATE_RANGE -> declaredDateRangeFormatOf(field)?.let { MatchedType(MatchedBase.DATE_RANGE, it) }
+    FieldType.DATE, FieldType.DATE_FRAGMENT, FieldType.TIME, FieldType.DATE_TIME ->
+        declaredTemporalFormatOf(field)?.let { MatchedType(MatchedBase.DATETIME, it) }
+    FieldType.TYPE_DEF, FieldType.UNSPECIFIED -> null
 }
 
 /**

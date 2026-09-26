@@ -374,6 +374,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerFilterBodyAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerRuleReferenceSetAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerRepetitionNotUniqueGateAgreementTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerFirstFilledValueTypeAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
@@ -608,7 +609,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
     // The path grid joins on the same footing: its disagreement ledger is a test RESOURCE, so the task's runtime
     // classpath already carries it as an input and a ledger edit re-runs it.
     // The keyed-operand, constant-index-key, field-value-read carrier, entity-list category, computation
-    // comparison, comparison-constant, filter-body, rule-reference-set and RepetitionNotUnique gate grids join
+    // comparison, comparison-constant, filter-body, rule-reference-set, RepetitionNotUnique gate and
+    // FirstFilledValue type grids join
     // beside it: the same both-engine claim over spellings of one construct, and none of them reads a repo file.
     filter {
         includeTestsMatching(
@@ -637,6 +639,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerRuleReferenceSetAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerRepetitionNotUniqueGateAgreementTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.CheckerFirstFilledValueTypeAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnSynthesizedModelsTest')
     }

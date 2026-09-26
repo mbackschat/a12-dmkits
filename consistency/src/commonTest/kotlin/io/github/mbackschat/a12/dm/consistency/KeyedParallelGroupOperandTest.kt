@@ -69,9 +69,8 @@ class KeyedParallelGroupOperandTest {
             "FieldNotFilled(Claims)" to listOf("MVK_NO_GROUPS_ALLOWED"),
             "NumberOfFilledGroups(Claims) > 0" to listOf("MVK_PARAMSIZE_INVALIDGN"),
             "Sum(Claims, Insured) > 0" to listOf("MVK_NO_NUMBER"),
-            // A12 draws MVK_VARYING_TYPES_NOT_ALLOWED here as it does on a group that does not repeat. Type
-            // matching is the under-report `fieldListOperationOperandFindings` discloses, not this walk's.
-            "FirstFilledValue(Claims, Insured) > 0" to emptyList(),
+            // The walk passes, so the list's own type gate answers: `Claims` mixes text and number.
+            "FirstFilledValue(Claims, Insured) > 0" to listOf("MVK_VARYING_TYPES_NOT_ALLOWED"),
             "NumberOfValueInFields(0 In Claims) > 0" to listOf("MVK_NO_NUMBER"),
         )
         assertEquals(expected, verdicts(RecoveriesIndex.CLAIM_REF), "one index name and type")
