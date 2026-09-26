@@ -88,6 +88,8 @@ private fun TrackedFactBase.markedFilteredOperand(
     indexKeyword: String?,
     uniqueness: String?,
 ): String? {
+    // A marked read in a body joins the parallel-iteration pass this gate follows
+    // (`ParserService.setSeparatePathIndexes` keeps an outer reference, source-read), and no row measures it.
     if (OUTER_MARKER in text) {
         return null
     }

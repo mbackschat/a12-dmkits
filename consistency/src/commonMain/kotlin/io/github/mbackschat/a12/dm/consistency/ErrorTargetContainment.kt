@@ -94,7 +94,9 @@ private fun TrackedFactBase.readsOneRowAtATime(
  * the declaring group, on either construct: a `Having` filter's own leaf, which is about the starred extent,
  * and the value half of a semantic index, which picks its row by key
  * (`rulekit.validate.laws.PartialStarContainmentLawsTest.aFilterLeafAndAKeyedReadAreNotPerRowReads`). The
- * filter body is removed from the text; a text that writes a semantic index offers no row read at all,
+ * filter body is removed from the text except for what A12 checks against the target there, a `$`-marked read
+ * and a nested filter's base ([rulesOwnReadsIn], `adapter.laws.CheckerFilterBodyAgreementTest`,
+ * [KERNEL-FINDINGS KF487]); a text that writes a semantic index offers no row read at all,
  * because the reference scan cannot tell its keyed spelling from a plain one — silence there is the
  * under-report [operandRepetitionScopeFindings] accepts on the same text.
  */
@@ -104,7 +106,7 @@ private fun TrackedFactBase.spellingsThatCanReadARow(element: TrackedDeclaration
     if (conditionTexts(element.kind, body).any { (_, text) -> namesKeyword(text, keyed) != null }) {
         return emptySet()
     }
-    return referencesOutsideFilterConditions(element)
+    return rulesOwnReferences(element)
 }
 
 /**

@@ -123,18 +123,77 @@ class CheckerFilterBodyAgreementTest {
         assertAgreement(predicted)
     }
 
-    private fun assertAgreement(predicted: Map<String, Pair<String, Set<String>>>) {
-        val wrong = predicted.mapNotNull { (row, probe) ->
-            val (condition, a12) = probe
-            val observed = compare(condition)
-            val expected = a12 to (OURS[row] ?: a12)
-            if (observed == expected) null else "$row: expected (A12, ours) $expected, observed $observed"
+    @Test
+    fun aMarkedReadInAFilterBodyIsTheRulesOwnRead() {
+        // A marked spec is checked with the rule's error field restored and skipped by the filter walk
+        // (`CheckEntitySpecImpl.checkCommon`, `extractFilterIterationEntityRefs`, source-read). The rival account,
+        // that the marker binds the read to the filter it stands in, answers otherwise on every row marked (x).
+        val fromTheRoot = linkedMapOf(
+            "(x) a marked read of the filtered level" to
+                ("Sum(Claims*/Paid Having [Claims/Units] > [\$Claims/Units]) > 0" to NO_WILDCARD),
+            "a marked read of a field no repetition holds" to
+                ("Sum(Claims*/Paid Having [Claims/Units] > 1 And [\$Reference] == \"x\") > 0" to ADMITTED),
+            "(x) a marked read of the filtered level inside a nested filter" to
+                ("Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > [\$Claims/Units]) > 0) > 0" to NO_WILDCARD),
+            "a marked read ahead of a nested filter" to
+                ("Sum(Claims*/Paid Having [\$Reference] == \"x\" And Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0" to DISALLOWED),
+            "a marked starred bracket in a body" to
+                ("Sum(Claims*/Paid Having [Claims/Units] > 1 And [\$Claims*/Units] > 1) > 0" to setOf("MVK_NO_WILDCARDS_ALLOWED")),
+            "a marked starred bracket outside any filter" to ("[\$Claims*/Units] > 1" to OUTER),
+        )
+
+        // The rule iterates `Claims`, so a marked read of it is at the rule's own coordinates.
+        val insideAClaim = linkedMapOf(
+            "(x) a marked read at the rule's coordinates" to
+                ("Sum(Parties*/Count Having [Parties/Name] == [\$Claims/Notes]) > 0" to ADMITTED),
+            "a marked read of the filtered level" to
+                ("Sum(Parties*/Count Having [Parties/Name] == [\$Parties/Name]) > 0" to NO_WILDCARD),
+            "a marked read of a keyed group the target's path does not key" to
+                ("Sum(Parties*/Count Having [Parties/Name] == [\$Orders/Note]) > 0" to setOf("MVK_ERROR_FIELD_NO_INDEX")),
+            "(x) a body of marked reads only" to ("Sum(Parties*/Count Having [\$Claims/Notes] == \"x\") > 0" to NO_ITERATION),
+            "the same body unmarked" to ("Sum(Parties*/Count Having [Claims/Notes] == \"x\") > 0" to ITERATION),
+            "the unmarked read beside the marked one" to
+                ("Sum(Parties*/Count Having [Claims/Notes] == \"x\" And [\$Claims/Notes] == \"x\") > 0" to ITERATION),
+            "(x) a marked read at the rule's coordinates inside a nested filter" to
+                ("Sum(Parties*/Count Having Sum(Parties*/Count Having [Parties/Name] == [\$Claims/Notes]) > 0) > 0" to DISALLOWED),
+        )
+
+        // Declared in `Parties` and reporting on the root: any read of one row of `Parties` is refused where
+        // A12 checks it, so the rows say which reads A12 checks as the rule's.
+        val outsideTheRuleGroup = linkedMapOf(
+            "(x) a marked read of one row" to
+                ("Sum(/Policy/Claims*/Paid Having [/Policy/Claims/Units] > [\$/Policy/Parties/Count]) > 0" to NOT_IN_RULEGROUP),
+            "the same read unmarked" to
+                ("Sum(/Policy/Claims*/Paid Having [/Policy/Claims/Units] > [/Policy/Parties/Count]) > 0" to ITERATION),
+            "a read of one row after a nested filter" to
+                ("Sum(/Policy/Claims*/Paid Having Sum(/Policy/Claims*/Units Having [/Policy/Claims/Units] > 5) > 0 " +
+                    "And [/Policy/Parties/Name] == \"x\") > 0" to NOT_IN_RULEGROUP),
+            "a nested base reading one row" to
+                ("Sum(/Policy/Claims*/Paid Having Sum(/Policy/Parties/Count Having [/Policy/Parties/Name] == \"x\") > 0) > 0" to
+                    NOT_IN_RULEGROUP),
+        )
+        assertAgreement(fromTheRoot to FROM_THE_ROOT, insideAClaim to INSIDE_A_CLAIM,
+            outsideTheRuleGroup to OUTSIDE_THE_RULE_GROUP)
+    }
+
+    private fun assertAgreement(predicted: Map<String, Pair<String, Set<String>>>) =
+        assertAgreement(predicted to FROM_THE_ROOT)
+
+    /** Every grid is run before anything is asserted, so one failing probe does not hide another's rows. */
+    private fun assertAgreement(vararg grids: Pair<Map<String, Pair<String, Set<String>>>, Probe>) {
+        val wrong = grids.flatMap { (predicted, probe) ->
+            predicted.mapNotNull { (row, cell) ->
+                val (condition, a12) = cell
+                val observed = compare(condition, probe)
+                val expected = a12 to (OURS[row] ?: a12)
+                if (observed == expected) null else "$row: expected (A12, ours) $expected, observed $observed"
+            }
         }
         assertTrue(wrong.isEmpty(), wrong.joinToString("\n", "rows that disagree:\n"))
     }
 
-    private fun compare(condition: String): Pair<Set<String>, Set<String>> {
-        val draft = DraftRule("/Policy", "ProbeRule", "../Reference", "FieldFilled(Reference) And $condition",
+    private fun compare(condition: String, probe: Probe): Pair<Set<String>, Set<String>> {
+        val draft = DraftRule(probe.group, "ProbeRule", probe.errorField, "${probe.filled} And $condition",
             "PROBE", "ERROR")
         val result = validator.check(policy, draft)
         val a12 = if (result.ok()) emptySet() else
@@ -144,13 +203,22 @@ class CheckerFilterBodyAgreementTest {
         return a12 to ours
     }
 
+    /** Where the probe rule is declared, the field it reports on, and the conjunct that reads that field. */
+    private data class Probe(val group: String, val errorField: String, val filled: String)
+
     private companion object {
+        val FROM_THE_ROOT = Probe("/Policy", "../Reference", "FieldFilled(Reference)")
+        val INSIDE_A_CLAIM = Probe("/Policy", "../Claims/Notes", "FieldFilled(Claims/Notes)")
+        val OUTSIDE_THE_RULE_GROUP = Probe("/Policy/Parties", "../../Reference", "FieldFilled(/Policy/Reference)")
+
         val ITERATION = setOf("MVK_INVALID_ITERATION_IN_FILTER_CONDITION")
         val NO_ITERATION = setOf("MVK_NO_ITERATION_FOR_WILDCARD")
         val KEY_STAR = setOf("MVK_SEMANTIC_INDEX_WITH_WILDCARD")
         val NESTED_INDEX = setOf("MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX")
         val NO_WILDCARD = setOf("MVK_NO_WILDCARD")
         val DISALLOWED = setOf("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")
+        val OUTER = setOf("MVK_INVALID_OUTER_ITERATION")
+        val NOT_IN_RULEGROUP = setOf("MVK_ERROR_FIELD_NOT_IN_RULEGROUP")
         val ADMITTED = emptySet<String>()
 
         /** The rows where the checker answers otherwise, with what it answers. */

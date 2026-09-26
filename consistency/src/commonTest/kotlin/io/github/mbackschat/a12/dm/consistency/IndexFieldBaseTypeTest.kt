@@ -68,10 +68,10 @@ class IndexFieldBaseTypeTest {
                 codes("Summary", "FieldFilled(Remark) And $returned > 0", "../Remark"),
         )
         val expected = linkedMapOf(
-            // Divergence locks, CONSISTENCY-GAPS DG88: A12 walks a marked reference no iteration encloses as the
-            // rule's own read and draws that walk's class, and the checker sets every marked body aside.
-            "marked, into the keyed Invoices" to ADMITTED,
-            "marked, into the unkeyed filtered group" to ADMITTED,
+            // A marked read in a body is checked as the rule's own read, so it draws the class the same read draws
+            // outside any filter (KERNEL-FINDINGS KF353, KF487).
+            "marked, into the keyed Invoices" to listOf("MVK_ERROR_FIELD_NO_INDEX"),
+            "marked, into the unkeyed filtered group" to listOf("MVK_NO_WILDCARD"),
             "unmarked, into the keyed Invoices" to listOf("MVK_INVALID_ITERATION_IN_FILTER_CONDITION"),
             "marked, into the fixed Summary" to ADMITTED,
             "a filter on its own group — control" to ADMITTED,

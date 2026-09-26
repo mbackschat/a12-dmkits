@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.ClausedOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
@@ -10,6 +9,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.firstReferenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.withoutFilterConditions
 import kotlinx.serialization.json.JsonObject
@@ -49,11 +49,12 @@ import kotlinx.serialization.json.contentOrNull
  * than transferred ([KF212], `ComputationDeclaringGroupLawsTest`) — the computed field takes the error
  * field's role, and the declaring group is not a variable in it.
  *
- * **On a text carrying a `Having` filter this reads the operand BASES only.** A filter body's references are
- * judged against the FILTERED entity rather than the rule's target — that walk is [filterBodyGateFindings]' —
- * and the flat reference list cannot tell the two apart, so the bodies are set aside by position
- * ([withoutFilterConditions]) and each base is judged by this walk like any other reference — found by delimiters
- * rather than by a parse, because a text that fails to parse later still has its earlier reads judged. A
+ * **On a text carrying a `Having` filter this reads what A12 checks against the rule's target** ([rulesOwnReadsIn]):
+ * the operand BASES, and a `$`-marked read in a body, which is judged exactly as the same read outside any
+ * filter ([KERNEL-FINDINGS KF487]). Every other body reference is judged against the FILTERED entity rather than
+ * the rule's target — that walk is [filterBodyGateFindings]' — and the flat reference list cannot tell the two
+ * apart, so they are set aside by position — found by delimiters rather than by a parse, because a text that
+ * fails to parse later still has its earlier reads judged. A
  * filtered base answers once its whole spec is read, so a defect inside the body comes first (both measured,
  * `rulekit.validate.laws.ConditionClassWithholdingLawsTest.aFilteredOperandsDefectsAnswerInTheOrderA12ReadsThem`).
  * Until 2026-09-15 the whole text was skipped, which threw the base away with the body and
@@ -93,10 +94,11 @@ internal fun TrackedFactBase.operandRepetitionScopeFindings(): List<Finding> {
             val indexes = indexKeyword?.let { semanticIndexUsesIn(text, conditionLanguage, it) }.orEmpty()
             val filtered = clausedOperandsIn(text, conditionLanguage)
                 .filter { operand -> operand.clauses.any { it.keyword in filterKeyword } }
-            val own = withFilteredBasesRead(withoutFilterConditions(text, conditionLanguage), text, filtered)
-            if (OUTER_MARKER in own) {
+            // A marker outside every filter is refused as it is read, which is [outerMarkerPositionFindings]'.
+            if (OUTER_MARKER in withoutFilterConditions(text, conditionLanguage)) {
                 return@firstNotNullOfOrNull null
             }
+            val own = rulesOwnReadsIn(text, conditionLanguage)
             firstReferenceSpansIn(own, conditionLanguage)
                 .filterNot { isRuleContext(it.written, conditionLanguage) }
                 .filterNot { occurrence -> indexes.any { it.keys(occurrence.start, occurrence.end) } }
@@ -125,28 +127,13 @@ private fun SemanticIndexUse.indexes(end: Int, text: String): Boolean =
     end <= keywordAt && text.substring(end, keywordAt).isBlank()
 
 /**
- * [blanked] with every filtered operand's BASE restored from [text], including one inside another filter's body.
- *
- * A spec is checked once it is read, and a filtered base is read only after its own filter has ended and
- * cleared A12's one filter flag, so a nested base is judged as the rule's read although it was written inside
- * a body: an unstarred one draws `MVK_NO_WILDCARD` (`adapter.laws.CheckerFilterBodyAgreementTest`,
- * [KERNEL-FINDINGS KF486]). The rule's ITERATION does not count it, which reads the flag as the reference was
- * written ([referencesOutsideFilterConditions]).
+ * The references [element] reads as the rule's own — the ones A12 checks against the rule's target
+ * ([rulesOwnReadsIn]), which is where a per-row read draws its iteration classes.
  */
-private fun withFilteredBasesRead(blanked: String, text: String, filtered: List<ClausedOperand>): String {
-    val restored = blanked.toCharArray()
-    filtered.forEach { operand -> (operand.at until operand.baseEnd).forEach { restored[it] = text[it] } }
-    return restored.concatToString()
-}
-
-/**
- * The references [element] reads as the rule's own, which A12's iteration counts: every one written while its
- * filter flag is off ([withoutFilterConditions]), as `IterationChecker` reads each reference's own flag.
- */
-internal fun TrackedFactBase.referencesOutsideFilterConditions(element: TrackedDeclaration): Set<String> {
+internal fun TrackedFactBase.rulesOwnReferences(element: TrackedDeclaration): Set<String> {
     val declared = element.body ?: return emptySet()
     return conditionTexts(element.kind, declared)
-        .flatMap { (_, text) -> referencesIn(withoutFilterConditions(text, conditionLanguage), conditionLanguage) }
+        .flatMap { (_, text) -> referencesIn(rulesOwnReadsIn(text, conditionLanguage), conditionLanguage) }
         .toSet()
 }
 

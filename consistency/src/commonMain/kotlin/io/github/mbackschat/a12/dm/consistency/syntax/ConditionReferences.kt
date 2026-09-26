@@ -143,6 +143,45 @@ internal fun isRuleContext(name: String, language: ConditionLanguage): Boolean =
 /** Path syntax that continues a reference: the separator, the two step forms, and the repetition wildcard. */
 internal val PATH_PUNCTUATION = setOf("/", "..", ".", "*")
 
+/**
+ * The `$`-marked references [text] writes, each spanning its marker and the whole path run behind it.
+ *
+ * [referencesIn] reports a marked reference without its marker, which is right for binding; a law about
+ * WHERE A12 checks the reference needs to know which ones carry it.
+ */
+internal fun markedReferenceSpansIn(text: String): List<ReferenceSpan> {
+    val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
+    return tokens.indices
+        .filter { tokens[it].text == OUTER_MARKER_TOKEN }
+        .mapNotNull { at -> pathRunAt(tokens, at + 1)?.let { (path, end) -> ReferenceSpan(path, tokens[at].start, end) } }
+}
+
+private const val OUTER_MARKER_TOKEN = "$"
+
+/**
+ * The path written by the run of tokens beginning at [from], with the offset just past it, or null where none
+ * begins there.
+ *
+ * Whitespace is insignificant between path tokens ([KERNEL-FINDINGS KF76]), so the run is rebuilt from the
+ * token texts rather than sliced out of the source — a marker written `$ /Claim/Excess` names the same path
+ * as one written tight against it.
+ */
+private fun pathRunAt(tokens: List<Token>, from: Int): Pair<String, Int>? {
+    val run = StringBuilder()
+    var at = from
+    while (at < tokens.size) {
+        val token = tokens[at]
+        val isName = token.kind == TokenKind.NAME || token.kind == TokenKind.QUOTED_NAME
+        if (!isName && token.text !in PATH_PUNCTUATION) {
+            break
+        }
+        run.append(token.text)
+        at++
+    }
+    return run.toString().takeIf { it.isNotEmpty() && it.any { c -> c.isLetterOrDigit() } }
+        ?.let { it to tokens[at - 1].end }
+}
+
 /** What a reference may end with — a trailing separator is a malformed tail, never part of the name. */
 private val PATH_SEPARATORS = setOf("/", ".")
 

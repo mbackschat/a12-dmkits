@@ -270,6 +270,29 @@ internal fun withoutFilterConditions(text: String, language: ConditionLanguage):
 }
 
 /**
+ * [text] with every region blanked IN PLACE except the specs A12 checks against the RULE's target.
+ *
+ * `CheckEntityUtils.checkIndicesForA12Model` skips a spec while the filter flag is on, so [withoutFilterConditions]
+ * is the starting point, and two kinds of spec written inside a body are restored (source-read, measured by
+ * `adapter.laws.CheckerFilterBodyAgreementTest`):
+ *
+ * - a `$`-marked one, which `CheckEntitySpecImpl.checkCommon` checks with the rule's error field restored, so it
+ *   is judged exactly as the same read outside any filter is ([KERNEL-FINDINGS KF487]);
+ * - a filtered base, which is checked once its own filter has ended and cleared the one flag, so a base written
+ *   inside another filter's body is the rule's read too ([KERNEL-FINDINGS KF486]).
+ */
+internal fun rulesOwnReadsIn(text: String, language: ConditionLanguage): String {
+    val filter = CONDITION_OPERATOR_KEYWORDS[language]?.get(HAVING) ?: return text
+    val restored = withoutFilterConditions(text, language).toCharArray()
+    val bases = clausedOperandsIn(text, language)
+        .filter { operand -> operand.clauses.any { it.keyword == filter } }
+        .map { it.at until it.baseEnd }
+    (bases + markedReferenceSpansIn(text).map { it.start until it.end })
+        .forEach { range -> range.forEach { restored[it] = text[it] } }
+    return restored.concatToString()
+}
+
+/**
  * The string constant this run is, or null when it is anything else.
  *
  * A12 writes an embedded quote as a doubled one, and the tokenizer keeps the literal verbatim, so the two

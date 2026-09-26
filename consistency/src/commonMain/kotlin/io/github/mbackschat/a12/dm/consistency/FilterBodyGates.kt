@@ -5,10 +5,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CUSTOM_CONDITION
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.OperandClause
+import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
 import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.markedReferenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
 import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -85,11 +87,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * error field sits rather than by where the rule is declared, which are the same thing on every carrier that
  * measured this until 2026-09-15 and are not the same question.
  *
- * **Silent wherever the body carries the `$` outer marker.** The marker relocates a reference to the
- * captured outer environment, so A12's own walk skips it — but where that environment has no coordinate for
- * the level the reference reader answers `MVK_NO_WILDCARD` instead, and this reader cannot see the marker at
- * all: [referencesIn] reports a marked reference without it, which is right for binding and wrong for this
- * walk. Judging the text either way would name a class on a shape the marker moves.
+ * **A `$`-marked reference is not walked.** `extractFilterIterationEntityRefs` skips it, and A12 checks it
+ * against the rule's target instead, as the same read outside any filter is — [operandRepetitionScopeFindings]'
+ * question ([rulesOwnReadsIn]). So it clears no gate here: a body reading nothing else is the scope class, where
+ * the same body unmarked, reading another repetition, is the iteration class. A marked read inside a nested
+ * filter reaches the RULE, not the filter it stands in (`adapter.laws.CheckerFilterBodyAgreementTest`,
+ * [KERNEL-FINDINGS KF487]). A body pairing the marker with a semantic index is left alone, that pair being
+ * unmeasured.
  */
 internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
@@ -116,6 +120,13 @@ internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> {
 }
 
 private const val FROM = "From"
+
+/** [text] with each of [spans] blanked in place. */
+private fun withoutSpans(text: String, spans: List<ReferenceSpan>): String {
+    val blanked = text.toCharArray()
+    spans.forEach { blanked.fill(' ', it.start, it.end) }
+    return blanked.concatToString()
+}
 
 /** The four gates of the filter walk, in the order A12 asks them. */
 private enum class FilterGate(val code: String) {
@@ -149,11 +160,11 @@ private fun TrackedFactBase.filterDefectOf(
     // below of the key's spec, while the key is parsed, so the key is the filtered entity here.
     val key = filter.filtersKey
     val written = (if (key == null) operand.base else key.path) ?: return null
-    // A scope clause, the rule-context keyword, and the outer marker each put a shape in the body that this
-    // walk has no measured cell for — the first two because they carry indices A12 reads and no path this
-    // reader can resolve, the third because the marker is invisible in a normalized reference. A starred
-    // bracket read is the field-value read's star gate, which A12 raises as the bracket is read.
-    if (OUTER_MARKER in filter.text ||
+    // A scope clause and the rule-context keyword each put a shape in the body that this walk has no measured
+    // cell for, carrying indices A12 reads and no path this reader can resolve. A starred bracket read is the
+    // field-value read's star gate, which A12 raises as the bracket is read.
+    val marked = markedReferenceSpansIn(filter.text)
+    if (marked.isNotEmpty() && indexKeyword != null && namesKeyword(filter.text, setOf(indexKeyword)) != null ||
         namesRuleContext(filter.text, conditionLanguage) ||
         namesKeyword(filter.text, clauseKeywords) != null ||
         fieldValueReadsIn(filter.text, conditionLanguage).any { it.path?.contains('*') == true }
@@ -193,7 +204,7 @@ private fun TrackedFactBase.filterDefectOf(
     // is a WILDCARD, which asks nothing but marks the levels after it, and an unstarred repeatable one is an
     // ITERATION, asked the path question first and the below-star one second (source-read; measured,
     // `adapter.laws.CheckerFilterBodyAgreementTest`).
-    referencesIn(filter.text, conditionLanguage)
+    referencesIn(withoutSpans(filter.text, marked), conditionLanguage)
         .filterNot { it in callable }
         .forEach { reference ->
             val wildcards = starredLevelsOf(reference, group, element) ?: return null

@@ -209,8 +209,8 @@ class FilterBodyGatesTest {
      * The shapes it leaves alone, each because another gate answers before the filter is reached.
      *
      * The unfiltered control is what locates the first refusal: the operand alone already draws it, so no
-     * filter row on that topology says anything. The last row is the positive control — without one, three
-     * silent rows would pass on a model that never parsed.
+     * filter row on that topology says anything. The last row is the positive control: a filter this family does
+     * judge, on the same model.
      */
     @Test
     fun theShapesItLeavesAlone() {
@@ -221,8 +221,6 @@ class FilterBodyGatesTest {
             fromRootOverBoxes("CurrentRepetition(/Shipment/Parcels) > 0")
         actual["a star inside the filter body"] =
             fromRoot("[Parcels*/Weight] > 0")
-        actual["the `$` outer marker in the filter body"] =
-            fromClaims("[/Shipment/Claims/Amount] > 0 And [\$/Shipment/Claims/Amount] > 0")
         actual["an out-of-path filter on the same model — the positive control"] =
             fromRoot("CurrentRepetition(Claims) > 0")
 
@@ -233,7 +231,6 @@ class FilterBodyGatesTest {
         // the filter BODY removed, and the operand outside it is judged like any other.
         expected["the same operand with a filter"] = listOf(noWildcard)
         expected["a star inside the filter body"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
-        expected["the `$` outer marker in the filter body"] = emptyList()
         expected["an out-of-path filter on the same model — the positive control"] = listOf(invalidIteration)
         assertEquals(expected, actual, "the shapes it leaves alone")
     }

@@ -448,10 +448,10 @@ private inline fun starredLevelsIn(
 /**
  * The `$` that marks a reference as reaching OUT of a filter into the enclosing rule.
  *
- * A marked reference re-enters the walk with the enclosing rule's error field restored
- * (`CheckEntitySpecImpl.checkCommon`), which no reader here can reproduce from text, so a text carrying one
- * is left alone rather than judged against the wrong target. Three families make that decision, which is why
- * the spelling is stated once.
+ * A marked reference is checked with the rule's own error field restored (`CheckEntitySpecImpl.checkCommon`),
+ * the one every read outside a filter is checked against, so the families that judge the rule's reads take it
+ * as one ([io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn]). A family that still sets a marked
+ * text aside says why where it does.
  */
 internal const val OUTER_MARKER = "$"
 

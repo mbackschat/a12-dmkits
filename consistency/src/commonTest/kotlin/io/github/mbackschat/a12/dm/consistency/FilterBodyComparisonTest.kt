@@ -7,7 +7,8 @@ import kotlin.test.assertEquals
  * The checker's half of "a comparison inside a `Having` filter body is judged as one outside it".
  *
  * Mirrors `rulekit.validate.laws.FilterBodyComparisonLawsTest` row for row: each comparison family's defining
- * refusal, written over fields of the filtered repetition so the body reads only the row it filters. A row's
+ * refusal, written over fields of the filtered repetition so the body reads only the row it filters. The
+ * marked-read rows mirror `adapter.laws.CheckerFilterBodyAgreementTest`, which measures them on the kernel. A row's
  * verdict is the model's COMPLETE class set, as the laws half's is, so a class the checker adds beside the one
  * A12 names fails here too.
  */
@@ -98,16 +99,41 @@ class FilterBodyComparisonTest {
         assertEquals(rows, actual, "where the filter chain is raised around its body")
     }
 
-    /** The model's complete A12 class set, sorted, or [ADMITTED]. */
-    private fun classes(probe: String): String = check(ModelSource(model(json("FieldFilled(Reference) And $probe"))))
-        .findings.filter { it.category == FindingCategory.A12_CONSTRAINT }
-        .map { it.code }.distinct().sorted().joinToString(",").ifEmpty { ADMITTED }
+    @Test
+    fun aMarkedReadInABodyIsTheRulesOwnRead() {
+        val fromTheRoot = linkedMapOf(
+            "Sum(Claims*/Paid Having [Claims/Units] > [\$Claims/Units]) > 0" to "MVK_NO_WILDCARD",
+            "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > [\$Claims/Units]) > 0) > 0" to
+                "MVK_NO_WILDCARD",
+            "Sum(Claims*/Paid Having [\$Reference] == \"x\" And Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0" to
+                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION",
+        )
+        assertEquals(fromTheRoot, fromTheRoot.keys.associateWith { classes(it) }, "a marked read, from the root")
+
+        // Reporting inside `Claims`, so the rule iterates it and a marked read of it is at the rule's coordinates.
+        val insideAClaim = linkedMapOf(
+            "Sum(Parties*/Count Having [\$Claims/Notes] == \"x\") > 0" to "MVK_NO_ITERATION_FOR_WILDCARD",
+            "Sum(Parties*/Count Having [Claims/Notes] == \"x\" And [\$Claims/Notes] == \"x\") > 0" to
+                "MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
+            "Sum(Parties*/Count Having [Parties/Name] == [\$Orders/Note]) > 0" to "MVK_ERROR_FIELD_NO_INDEX",
+            "Sum(Parties*/Count Having Sum(Parties*/Count Having [Parties/Name] == [\$Claims/Notes]) > 0) > 0" to
+                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION",
+        )
+        assertEquals(insideAClaim, insideAClaim.keys.associateWith { classes(it, "Claims/Notes") },
+            "a marked read, from a rule iterating Claims")
+    }
+
+    /** The model's complete A12 class set, sorted, or [ADMITTED], for a rule reporting on [target]. */
+    private fun classes(probe: String, target: String = "Reference"): String =
+        check(ModelSource(model(json("FieldFilled($target) And $probe"), target)))
+            .findings.filter { it.category == FindingCategory.A12_CONSTRAINT }
+            .map { it.code }.distinct().sorted().joinToString(",").ifEmpty { ADMITTED }
 
     /** A condition as the model text carries it. */
     private fun json(text: String) = text.replace("\\", "\\\\").replace("\"", "\\\"")
 
     /** The claims policy of the laws test. */
-    private fun model(condition: String): String = """
+    private fun model(condition: String, target: String): String = """
         {"header":{"id":"claims-policy","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
@@ -164,7 +190,7 @@ class FilterBodyComparisonTest {
               ]}}
             ]}},
             {"type":"Rule","id":"r0","name":"Probe","Rule":{
-              "errorCondition":"$condition","errorEntityRelPath":"../Reference",
+              "errorCondition":"$condition","errorEntityRelPath":"../$target",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"see it"}]}}
           ]}}
          ]}}}
