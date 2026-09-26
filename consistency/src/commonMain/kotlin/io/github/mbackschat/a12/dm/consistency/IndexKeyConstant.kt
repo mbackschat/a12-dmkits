@@ -65,9 +65,8 @@ private fun JsonObject?.constrainsNoString(): Boolean {
 private val LENGTH_MEMBERS = listOf("minLength", "maxLength")
 
 /**
- * A length bound is asked only where it is positive, then the pattern, as `IStringType` asks them. A12 refuses
- * on the length before it reads the pattern, so a pattern outside [KeyPattern]'s subset leaves unjudged only a
- * constant whose length is met. The length counts UTF-16 units, as `String.length()` does, while the pattern
+ * A length bound is asked only where it is positive, then the pattern, as `IStringType` asks them. A key must
+ * meet both, so a pattern outside [KeyPattern]'s subset leaves unjudged only a constant whose length is met. The length counts UTF-16 units, as `String.length()` does, while the pattern
  * counts code points.
  */
 private fun JsonObject.stringAdmits(constant: String): Boolean? {
