@@ -20,8 +20,15 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * with `MVK_INCOMPLETE_INPUT` for a trailing operator has every delimiter closed, and every row carrying an
  * unclosed one is answered differently. Outside that region the family stays silent, which under-reports
  * broken text — the only safe direction, and the report's gap already says the grammar is not covered.
+ *
+ * **And only where the parser does run out.** The last token alone cannot say so: in `… And And` the second
+ * operator is a token A12's parser meets while it still expects an operand, so it stops THERE with
+ * `MVK_UNEXPECTED_TOKEN`, and in `[Premium] > -` it runs out waiting for the one number a sign stands on,
+ * `MVK_EXPECTED_TOKEN_NOT_FOUND` (`rulekit.validate.laws.DanglingOperatorPairLawsTest`). So the shape parser
+ * is asked where it stopped, and this answers only where it ran out needing an operand; the grammar family
+ * names the rest. The trailing comma keeps its measured class although its delimiter is open.
  */
-fun incompleteInput(text: String, language: ConditionLanguage): IncompleteInput? {
+fun incompleteInput(text: String, language: ConditionLanguage, entry: SyntaxEntry): IncompleteInput? {
     val keywords = CONDITION_KEYWORDS.getValue(language)
     // Whitespace never becomes a token, and a comment is not input the grammar consumes — so the last
     // SIGNIFICANT token is what A12 is left holding, and `… And ;; note` ends on `And` just as `… And ` does.
@@ -41,7 +48,20 @@ fun incompleteInput(text: String, language: ConditionLanguage): IncompleteInput?
             last.text == "," || (last.text in PATH_AMBIGUOUS_OPERATORS && significant.everyDelimiterClosed())
         else -> false
     }
-    return if (dangling) IncompleteInput(last.text, last.start) else null
+    if (!dangling) {
+        return null
+    }
+    val stopped = shapeFailure(text, language, entry) ?: return IncompleteInput(last.text, last.start)
+    // A token the parser could not use stopped it before the end: the grammar family's class.
+    if (stopped.found.isNotEmpty()) {
+        return null
+    }
+    // With every delimiter closed, a run-out awaiting one token is a sign's. An open delimiter's run-out is the
+    // trailing comma's, which A12 names as this family's.
+    if (stopped.ranOutAwaitingOneToken && significant.everyDelimiterClosed()) {
+        return null
+    }
+    return IncompleteInput(last.text, last.start)
 }
 
 /**

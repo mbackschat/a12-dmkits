@@ -40,9 +40,8 @@ class ConditionMultipleDefectTest {
         expected["sound — the control"] = emptyList()
         expected["one unresolvable reference"] = listOf("MVK_INVALID_ENTITY")
         expected["a trailing operator alone"] = listOf("MVK_INCOMPLETE_INPUT")
-        // A divergence: A12 names MVK_UNEXPECTED_TOKEN, the second operator being the token its parser meets
-        // first (the laws row); CONSISTENCY-GAPS DG111.
-        expected["a doubled trailing operator"] = listOf("MVK_INCOMPLETE_INPUT")
+        // The second operator is the token A12's parser meets first, so the text never runs out.
+        expected["a doubled trailing operator"] = listOf("MVK_UNEXPECTED_TOKEN")
         // The pair of rows with teeth: each syntax class fires alone and is gone beside an unresolvable
         // name. Reporting both would name a verdict A12 withheld on the likeliest real input of all.
         expected["an unresolvable reference AND a trailing operator"] = listOf("MVK_INVALID_ENTITY")

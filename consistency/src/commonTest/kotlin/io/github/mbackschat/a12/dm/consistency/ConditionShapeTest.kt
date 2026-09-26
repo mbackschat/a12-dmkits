@@ -186,7 +186,7 @@ class ConditionShapeTest {
         entry: SyntaxEntry = SyntaxEntry.CONDITION,
     ): String {
         val failure = shapeFailure(text, language, entry) ?: return ACCEPTS
-        return if (failure.ranOutWithDelimiterOpen) "MVK_EXPECTED_TOKEN_NOT_FOUND" else "MVK_UNEXPECTED_TOKEN"
+        return if (failure.ranOutAwaitingOneToken) "MVK_EXPECTED_TOKEN_NOT_FOUND" else "MVK_UNEXPECTED_TOKEN"
     }
 
     private fun report(text: String, failure: io.github.mbackschat.a12.dm.consistency.syntax.ShapeFailure) =

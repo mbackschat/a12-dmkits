@@ -24,12 +24,15 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * | the parser… | code |
  * |---|---|
  * | met a token it cannot use where it stands — including the end of the text with every delimiter closed | `MVK_UNEXPECTED_TOKEN` |
- * | ran out of text with a delimiter still open | `MVK_EXPECTED_TOKEN_NOT_FOUND` |
+ * | ran out of text where exactly one token may follow: a delimiter still open, or a sign with no number yet | `MVK_EXPECTED_TOKEN_NOT_FOUND` |
  *
  * Both halves are measured. `FieldFilled(Tier` is the only shape of the delimiter grid that runs out with
  * something open, and it is the only one A12 answers with `MVK_EXPECTED_TOKEN_NOT_FOUND`; the other four meet
  * a wrong token first and are all `MVK_UNEXPECTED_TOKEN`. A bare `Tier` reaches the end with nothing open and
- * is `MVK_UNEXPECTED_TOKEN` too, which is why the end of the text is not by itself a "ran out".
+ * is `MVK_UNEXPECTED_TOKEN` too, which is why the end of the text is not by itself a "ran out". `[Premium] > -`
+ * runs out with nothing open and is `MVK_EXPECTED_TOKEN_NOT_FOUND` all the same, since a sign stands on a
+ * number alone (`rulekit.validate.laws.DanglingOperatorPairLawsTest`): what picks the code is that one token
+ * was required, of which an open delimiter is one case.
  *
  * The earlier phases own their own shapes: text that cannot be tokenized is [lexicalFailure]'s, and text that
  * ends on a dangling operator is [incompleteInput]'s. A caller runs them first — except where the parser gets
@@ -85,10 +88,10 @@ fun shapeFailureAhead(
  * Where the parser stopped and what it was holding.
  *
  * @param at the offset of the token it could not use, or the end of the text when it ran out.
- * @param ranOutWithDelimiterOpen the half that picks the code — see the table on [shapeFailure].
+ * @param ranOutAwaitingOneToken the half that picks the code — see the table on [shapeFailure].
  * @param found the token's text, or an empty string at the end of the text, so a finding can quote it.
  */
-data class ShapeFailure(val at: Int, val ranOutWithDelimiterOpen: Boolean, val found: String)
+data class ShapeFailure(val at: Int, val ranOutAwaitingOneToken: Boolean, val found: String)
 
 /**
  * One operator call the parser read, with the token run each of its top-level arguments spanned.
@@ -229,11 +232,11 @@ private class ShapeParser(
     private fun unexpected(): ShapeFailure {
         val token = peek()
         return if (token != null) {
-            ShapeFailure(token.start, ranOutWithDelimiterOpen = false, found = token.text)
+            ShapeFailure(token.start, ranOutAwaitingOneToken = false, found = token.text)
         } else {
             ShapeFailure(
                 at = tokens.lastOrNull()?.end ?: 0,
-                ranOutWithDelimiterOpen = open > 0,
+                ranOutAwaitingOneToken = open > 0,
                 found = "",
             )
         }
@@ -385,8 +388,14 @@ private class ShapeParser(
         }
     }
 
-    /** The literal a sign stands on; anything else after it is a token the parser cannot use. */
+    /**
+     * The literal a sign stands on; anything else after it is a token the parser cannot use, and the end of the
+     * text is a run-out awaiting that one token, as an open delimiter is.
+     */
     private fun signedNumber(): ShapeFailure? {
+        if (peek() == null) {
+            return ShapeFailure(at = tokens.last().end, ranOutAwaitingOneToken = true, found = "")
+        }
         if (peek()?.kind != TokenKind.NUMBER) {
             return unexpected()
         }

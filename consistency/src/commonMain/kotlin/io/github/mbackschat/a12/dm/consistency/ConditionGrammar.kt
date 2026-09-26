@@ -41,7 +41,7 @@ internal fun TrackedFactBase.conditionGrammarFindings(element: TrackedDeclaratio
             shapeFailureAhead(text, conditionLanguage, entry, lexical) ?: return@mapNotNull null
         } else {
             // The completeness phase already speaks for a text that ends unfinished.
-            if (incompleteInput(text, conditionLanguage) != null) {
+            if (incompleteInput(text, conditionLanguage, entry) != null) {
                 return@mapNotNull null
             }
             if (text.isBlank()) {
@@ -58,10 +58,10 @@ internal fun TrackedFactBase.conditionGrammarFindings(element: TrackedDeclaratio
         Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
-            if (failure.ranOutWithDelimiterOpen) "MVK_EXPECTED_TOKEN_NOT_FOUND" else "MVK_UNEXPECTED_TOKEN",
-            if (failure.ranOutWithDelimiterOpen) {
-                "`$member` ends at offset ${failure.at} with a bracket still open, so A12's parser reaches " +
-                    "the end of the text still waiting for what would close it"
+            if (failure.ranOutAwaitingOneToken) "MVK_EXPECTED_TOKEN_NOT_FOUND" else "MVK_UNEXPECTED_TOKEN",
+            if (failure.ranOutAwaitingOneToken) {
+                "`$member` ends at offset ${failure.at} where A12's parser still needs one particular token — " +
+                    "the bracket that closes an open one, or the number a sign stands on"
             } else {
                 "`$member` carries `${failure.found}` at offset ${failure.at}, which A12's grammar cannot " +
                     "use where it stands"
@@ -69,7 +69,7 @@ internal fun TrackedFactBase.conditionGrammarFindings(element: TrackedDeclaratio
             element.path,
             // A parser that ran out with a delimiter open has nothing left to point AT, so the span is the
             // position it stopped rather than a run of characters — an editor places a caret there.
-            TextSpan(member, failure.at, failure.at + if (failure.ranOutWithDelimiterOpen) 0 else failure.found.length),
+            TextSpan(member, failure.at, failure.at + if (failure.ranOutAwaitingOneToken) 0 else failure.found.length),
         )
     }
 }

@@ -6035,6 +6035,21 @@ The last row generalizes the string-literal result above rather than repeating i
 
 *Locked by:* `rulekit.validate.laws.RuleConditionSyntaxLawsTest` (the grids above, with a valid-condition liveness control, and `whetherTheLastTokenAloneCanDecideTheCode` carrying the refutation with two positive controls showing the truncated texts are truncations of text that parses) and `MvkLedgerTest.ledgerCoversTheParserMessageBundleExactly` (the source that was missing, with an empty-denominator control so a bundle that resolved but carried nothing could not pass vacuously).
 
+**Extended 2026-09-26 — two operators at the end, and the one that waits for a number.** The trailing-token grid above ends each text on one operator after a complete operand. A second operator right before it is a token the parser meets while it still expects an operand, so it stops there and never reaches the end:
+
+| condition text | code |
+|---|---|
+| `FieldFilled(Reference) And`, `[Premium] >` — the controls | `MVK_INCOMPLETE_INPUT` |
+| `… And And`, `… And Or`, `… Or And`, `… And And And`, `… and and`, `… And And ;; later` | `MVK_UNEXPECTED_TOKEN` |
+| `[Premium] > And`, `[Premium] > 1 And >`, `[Premium] > *` | `MVK_UNEXPECTED_TOKEN` |
+| `[Premium] > -` — a sign and no number | **`MVK_EXPECTED_TOKEN_NOT_FOUND`** |
+
+The sign row is the one that both a last-token rule and a doubled-operator rule get wrong. After a comparison, `-` starts a signed number, so the parser does run out, and A12 names the class of the unclosed argument list above with nothing open. With the trailing comma inside an open call drawing `MVK_INCOMPLETE_INPUT`, that fits "one specific token was required" better than "a delimiter is open". This is a hypothesis (ANTLR's mismatched token at the end of input, against no viable alternative), and those three rows are all that support it.
+
+The portable checker's completeness family now asks its shape parser where it stopped, and answers only where the parser ran out needing an operand. It had decided from the last token alone and named every pair above `MVK_INCOMPLETE_INPUT`.
+
+*Locked by:* `rulekit.validate.laws.DanglingOperatorPairLawsTest`, and the doubled row of `…ConditionMultipleDefectLawsTest`. Mirrored by `consistency.DanglingOperatorPairTest`.
+
 ## §1 supplement — one bracket level joins ANY number of parts, and the `And`/`Or` mixing refusal is a parser ACTION scoped to a bracket PAIR, not a depth (measured + source-verified, 2026-09-13) <a id="kf301"></a>
 
 > Fold: pending — the arity half belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §1's existing explicit-parentheses law, which states the mixing half already.

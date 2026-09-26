@@ -36,7 +36,7 @@ internal fun TrackedFactBase.conditionCompletenessFindings(element: TrackedDecla
         if (lexicalFailure(text) != null) {
             return@mapNotNull null
         }
-        incompleteInput(text, conditionLanguage)?.let { incomplete ->
+        incompleteInput(text, conditionLanguage, syntaxEntryOf(member))?.let { incomplete ->
             if (followedInGeneratedText(element.kind, body, member)) {
                 // A12 reads the `)` it appended here instead of running out, so the class is the token one and
                 // it is raised past this member's own text.

@@ -971,7 +971,7 @@ public final class io/github/mbackschat/a12/dm/consistency/syntax/IncompleteInpu
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/syntax/IncompleteInputKt {
-	public static final fun incompleteInput (Ljava/lang/String;Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;)Lio/github/mbackschat/a12/dm/consistency/syntax/IncompleteInput;
+	public static final fun incompleteInput (Ljava/lang/String;Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Lio/github/mbackschat/a12/dm/consistency/syntax/SyntaxEntry;)Lio/github/mbackschat/a12/dm/consistency/syntax/IncompleteInput;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/syntax/KeywordKind : java/lang/Enum {
@@ -1058,7 +1058,7 @@ public final class io/github/mbackschat/a12/dm/consistency/syntax/ShapeFailure {
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAt ()I
 	public final fun getFound ()Ljava/lang/String;
-	public final fun getRanOutWithDelimiterOpen ()Z
+	public final fun getRanOutAwaitingOneToken ()Z
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
