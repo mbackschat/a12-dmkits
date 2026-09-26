@@ -8210,7 +8210,20 @@ Reported by the portable checker (`CheckFamily.TEMPORAL_AGGREGATE_OPERANDS`), wh
 
 So duplicates, the root-group gate ([KF388](#kf388)) and the param law come first, and the precision question is part of the per-operand walk rather than a pass ahead of it. A list whose leader is not date-like is never asked about precision: by source, that route runs only the kind check (`CheckFeldListenOpImpl`'s MAX/MIN else-branch, `CheckFeldListenAnzahlOpImpl`'s non-DATETIME arms), and the rows show the kind check answering where a partial date is present. A group leader types the list by its expansion's first field. A TIME field that declares no format is compared as its default `HH:mm:ss`, so a missing declaration is not a missing component set. That is measured for TIME only, and it is why rulekit's walk still stops at an undeclared format rather than assuming the default. A client that sees only kinds therefore cannot cite this walk's classes, because an earlier operand's precision or component set may answer first. What it can cite, once duplicates, the root-group gate and the param law have passed, is the non-date route's class, since that route's one class answers for whichever operand fails. *Locked, with rulekit's model-free and model-bound citations held to each row:* `rulekit.validate.laws.EntityListLeaderRouteLawsTest`.
 
-*Locked by:* `rulekit.validate.laws.DateAggregateBaseTypeGateLawsTest` (the walk's three questions and the position pair), mirrored by `consistency.TemporalAggregateOperandsTest`; the "Extended 2026-09-23" rows by `rulekit.validate.laws.EntityListLeaderRouteLawsTest`.
+**Extended 2026-09-26 — the expansion every kind gate reads** (probe). The kind gates of `Sum`, `MaxValue`, `MinValue` and `NumberOfDifferentValues`, this walk included, read a group operand as the fields beneath it, in its place in the list:
+
+| list | class | what it rules out |
+|---|---|---|
+| `Sum(Specs)`, `Specs` holding a String and a Number | `MVK_NO_NUMBER` | a lone group judged as a group rather than its fields |
+| `Sum(Nested)`, `Nested` holding only a subgroup that holds a String | `MVK_NO_NUMBER` | an expansion that stops at direct children |
+| `Sum(Keyed*)` · `MaxValue(Released, Keyed*) > [Released]`, `Keyed` indexed on a String | `MVK_NO_NUMBER` · `MVK_DATE_AND_NONDATE` | an expansion that leaves the index field out |
+| `NumberOfDifferentValues(Specs, Weight)` | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | a class read off the operand rather than its first field; the group's own Number breaks it |
+| `NumberOfDifferentValues(Title, Keyed For "k")`, the key valid | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | an index-selected group judged as a group once its key resolves |
+| `MaxValue(Released, Monthly*) > [Released]`, `Monthly` holding two `yyyy-MM` dates | `MVK_DATEFORMATS_NOT_COMPATIBLE` | component sets that a group does not carry |
+
+The controls are admitted: `Sum(Grading)` and `Sum(NumNested, Weight)` over numbers, the second nested, `NumberOfDifferentValues(Grading, Weight)`, and `MaxValue(Dated*, Released)` over dates at one format. **For rulekit**, `BoundModel`'s factories ask the kind gates over `BoundModel.expansionOf` and cite these classes, while the records leave a group to the kernel.
+
+*Locked by:* `rulekit.validate.laws.DateAggregateBaseTypeGateLawsTest` (the walk's three questions and the position pair), mirrored by `consistency.TemporalAggregateOperandsTest`; the "Extended 2026-09-23" rows by `rulekit.validate.laws.EntityListLeaderRouteLawsTest`; the "Extended 2026-09-26" rows by `rulekit.validate.laws.EntityListGroupExpansionKindLawsTest`.
 
 ## §9 supplement — an entity list's DUPLICATE and ROOT-GROUP gates are the CALLER's, not the list's (source-verified + measured, 2026-09-14) <a id="kf388"></a>
 

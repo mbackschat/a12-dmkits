@@ -66,6 +66,15 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
      */
     static void requireList(AggOp op, List<AggregateOperand> operands) {
         EntityListRoute.requireShape(op.operatorId(), operands);
+        requireKinds(op, operands);
+    }
+
+    /**
+     * The kind gate over {@code operands} in list order. {@link BoundModel} passes each group's expansion in its
+     * place, which is the list A12 types (KERNEL-FINDINGS KF389); a record passes the operands as written and
+     * leaves a group to the kernel.
+     */
+    static void requireKinds(AggOp op, List<? extends AggregateOperand> operands) {
         for (AggregateOperand o : operands) {
             switch (o) {
                 case FieldOperand f -> requireNumber(op, operands, f);
@@ -86,7 +95,7 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
      * ({@code MVK_DATE_AND_NONDATE}, or admits it as a date extremum), and behind a group leader the route is
      * hidden, so there the refusal stands and its class is withheld.
      */
-    private static void requireNumber(AggOp op, List<AggregateOperand> operands, FieldOperand operand) {
+    private static void requireNumber(AggOp op, List<? extends AggregateOperand> operands, FieldOperand operand) {
         if (operand.kind() == ValueKind.NUMBER) {
             return;
         }

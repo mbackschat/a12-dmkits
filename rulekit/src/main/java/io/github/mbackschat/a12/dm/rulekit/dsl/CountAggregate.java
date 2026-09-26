@@ -188,7 +188,7 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
      * not see, so there the refusal stands and its class is withheld; {@link BoundModel#numberOfDifferentValues}
      * runs that walk first and cites it. Behind a group leader the leading class itself is hidden.
      */
-    private static void checkValueComparable(List<AggregateOperand> operands) {
+    static void checkValueComparable(List<? extends AggregateOperand> operands) {
         // Group scopes carry no kind of their own — the rule applies to the fields the kernel expands them
         // to, and both the admissible set and the homogeneity verdict over an expansion stay kernel-arbitrated
         // (AggregateOperand). So the partition below runs over the FIELD operands, which is all it can see.

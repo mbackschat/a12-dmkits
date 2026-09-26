@@ -124,9 +124,14 @@ class EntityListOperandReadLawsTest {
                 // resolve, so behind one they answer as the records do
                 boolean shown = EMPTY_GROUPS.contains(operand);
                 String titleLed = TITLE_LED_ADMITTED.get(carrier).contains(operand) ? ADMITTED : UNCODED;
+                // the model-bound factory reads an indexed group's expansion, numbers here beside a text leader,
+                // and refuses the list behind the index uncoded; the kernel refuses it either way
+                String titleLedBound = shown ? read
+                        : carrier.equals("NumberOfDifferentValues") && operand.equals("Grading For \"k\"") ? UNCODED
+                        : titleLed;
                 rows.add(new Row(carrier, operand + ", Weight, Weight", read, UNCODED, shown ? read : UNCODED));
                 rows.add(new Row(carrier, "Weight, Weight, " + operand, read, UNCODED, shown ? read : UNCODED));
-                rows.add(new Row(carrier, "Title, " + operand, read, titleLed, shown ? read : titleLed));
+                rows.add(new Row(carrier, "Title, " + operand, read, titleLed, titleLedBound));
             });
             // operands that read cleanly: the list gates answer; a record, unable to tell, withholds, and the
             // model-bound factory cites once it has read that every group holds a field
@@ -156,12 +161,13 @@ class EntityListOperandReadLawsTest {
                 "MVK_NUMBER_AND_NON_NUMBER"));
         rows.add(new Row("NumberOfDifferentValues", "Sealed, Grading", "MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED",
                 UNCODED, "MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED"));
-        // …and no further: a group LEADER hides the route, and a mismatch inside a group's expansion, which A12
-        // asks under the leader's class, is not asked here (DEV-API-GAPS DG73), so both stay with the kernel
-        rows.add(new Row("MaxValue", "Grading, Title", "MVK_NOT_SORTABLE", UNCODED, UNCODED));
-        rows.add(new Row("Sum", "Weight, Specs", "MVK_NO_NUMBER", ADMITTED, ADMITTED));
+        // …and through a group too: a group LEADER is typed by its first field, and a mismatch inside a group's
+        // expansion is asked under the leader's class, both of which the model-bound factories read and the records
+        // cannot (EntityListGroupExpansionKindLawsTest)
+        rows.add(new Row("MaxValue", "Grading, Title", "MVK_NOT_SORTABLE", UNCODED, "MVK_NOT_SORTABLE"));
+        rows.add(new Row("Sum", "Weight, Specs", "MVK_NO_NUMBER", ADMITTED, "MVK_NO_NUMBER"));
         rows.add(new Row("NumberOfDifferentValues", "Weight, Specs", "MVK_NUMBER_AND_NON_NUMBER", ADMITTED,
-                ADMITTED));
+                "MVK_NUMBER_AND_NON_NUMBER"));
         // the control for the two rows above: a group whose expansion is all NUMBER passes the numeric class
         rows.add(new Row("NumberOfDifferentValues", "Weight, Grading", ADMITTED, ADMITTED, ADMITTED));
 

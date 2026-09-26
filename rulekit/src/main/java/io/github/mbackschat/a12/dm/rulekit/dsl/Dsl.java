@@ -259,24 +259,28 @@ public final class Dsl {
      * {@code yyyy-MM-dd} and {@code dd.MM.yyyy} agree. Only a DATE declares a precision, so a TIME, DATETIME or
      * DATE_FRAGMENT operand passes that question ([KF427]).
      *
-     * <p><b>The walk stops, and leaves the rest to the kernel, at the first operand it cannot read</b>: a group,
-     * whose expansion A12 walks here first and this walk does not ({@code AggregateOperand}); a comparison
-     * with a field that declares no format, whose default this walk does not compare; and a dangling type. Stopping
-     * under-reports; walking on would cite a later operand's class where the unread one may answer first. A
-     * leader that is not date-like, or not visible, is not this route at all, so the record's own gate answers.
+     * <p>A group operand is walked as its expansion, in its place, which is what A12 walks
+     * ({@link BoundModel#expansionOf}). <b>The walk stops, and leaves the rest to the kernel, at the first operand
+     * it cannot read</b>: a comparison with a field that declares no format, whose default this walk does not
+     * compare, and a dangling type. Stopping under-reports; walking on would cite a later operand's class where
+     * the unread one may answer first. A leader that is not date-like is not this route at all, so the record's
+     * own gate answers.
      */
     static void requireComparableTemporalList(String operatorId, BoundModel model,
             AggregateOperand first, AggregateOperand... rest) {
         var operands = new ArrayList<AggregateOperand>();
         operands.add(first);
         operands.addAll(List.of(rest));
-        readOperandsThen(operatorId, model, operands, () -> walkTemporalList(operatorId, model, operands));
+        readOperandsThen(operatorId, model, operands, () -> {
+            EntityListRoute.requireShape(operatorId, operands);
+            walkTemporalList(operatorId, model, model.expansionOf(operands));
+        });
     }
 
     /**
-     * The walk above for {@code NumberOfDifferentValues}, then the record's own kind gate, asked coded. Off the
-     * date-like route the walk asks nothing, and behind a visible textual or numeric leader every mismatch is
-     * the leader's class wherever it stands ({@code validate.laws.NumberOfDifferentValuesOperandClassLawsTest}),
+     * The walk above for {@code NumberOfDifferentValues}, then the record's own kind gate, asked coded, both over
+     * the expansion. Off the date-like route the walk asks nothing, and behind a textual or numeric leader every
+     * mismatch is the leader's class wherever it stands ({@code validate.laws.NumberOfDifferentValuesOperandClassLawsTest}),
      * so once the groups are read the record's class is A12's. Behind a date-like leader the record never cites.
      */
     static void requireDifferentValuesList(BoundModel model, AggregateOperand first, AggregateOperand... rest) {
@@ -285,8 +289,10 @@ public final class Dsl {
         operands.addAll(List.of(rest));
         String operatorId = CountAggregate.CountOp.DIFFERENT_VALUES.operatorId();
         readOperandsThen(operatorId, model, operands, () -> {
-            walkTemporalList(operatorId, model, operands);
-            CountAggregate.requireList(CountAggregate.CountOp.DIFFERENT_VALUES, operands, List.of());
+            EntityListRoute.requireShape(operatorId, operands);
+            List<AggregateOperand> expanded = model.expansionOf(operands);
+            walkTemporalList(operatorId, model, expanded);
+            CountAggregate.checkValueComparable(expanded);
         });
     }
 
@@ -333,9 +339,9 @@ public final class Dsl {
         };
     }
 
+    /** The date-like walk over an expanded list; the shape gates have been asked of the operands as written. */
     private static void walkTemporalList(String operatorId, BoundModel model, List<AggregateOperand> operands) {
         AggregateOperand first = operands.getFirst();
-        EntityListRoute.requireShape(operatorId, operands);
         String leaderPath = declaredFieldPath(first);
         if (leaderPath == null || !EntityListRoute.isDateLike(model.field(leaderPath).kind())) {
             return;

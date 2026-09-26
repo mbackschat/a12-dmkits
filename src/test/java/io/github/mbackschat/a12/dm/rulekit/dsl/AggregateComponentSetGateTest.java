@@ -10,6 +10,8 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
@@ -24,10 +26,9 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * {@code dd.MM.yyyy}, and {@code yyyy-MM} beside {@code yyyyMM}. Without them a format-string gate and a
  * component-set gate would be indistinguishable here.
  *
- * <p>Two operand shapes stay DELEGATED, and neither is an oversight. A <b>group scope</b> carries no format of
- * its own — the rule applies to its expansion, whose extent {@code Dsl} already declines to re-derive because
- * an over-strict copy would refuse a legal model. An <b>indexed</b> operand's format is plausibly the selected
- * field's and is unmeasured (DEV-API-GAPS A9's subject).
+ * <p>A <b>group scope</b> carries no format of its own, so the gate reads its expansion in its place, as A12 does,
+ * index field included ({@code validate.laws.EntityListGroupExpansionKindLawsTest}). An <b>indexed</b> operand's
+ * format is plausibly the selected field's and is unmeasured (DEV-API-GAPS A9's subject), so it stays delegated.
  */
 class AggregateComponentSetGateTest {
 
@@ -137,12 +138,15 @@ class AggregateComponentSetGateTest {
     }
 
     /**
-     * A group scope is delegated: the rule applies to its EXPANSION, and re-deriving that extent here is what
-     * {@code Dsl} already declines to do for the same aggregates' base-kind rule.
+     * A group scope is walked as its expansion: {@code Rows} holds its String index field ahead of its date, so the
+     * list is refused at that field, the class A12 names there
+     * ({@code validate.laws.EntityListGroupExpansionKindLawsTest}, the keyed row).
      */
     @Test
-    void aGroupScopeOperandIsDelegated() {
-        assertDoesNotThrow(() -> NO_BASE_YEAR.latestOf(NO_BASE_YEAR.field("/Doc/IsoMonth"), NO_BASE_YEAR.flattenGroup("/Doc/Rows*")));
+    void aGroupScopeOperandIsWalkedAsItsExpansion() {
+        KernelCodeRefusal refusal = assertThrows(KernelCodeRefusal.class, () -> NO_BASE_YEAR.latestOf(
+                NO_BASE_YEAR.field("/Doc/IsoMonth"), NO_BASE_YEAR.flattenGroup("/Doc/Rows*")));
+        assertEquals(KernelCode.MVK_DATE_AND_NONDATE, refusal.code());
     }
 
 /**

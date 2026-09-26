@@ -145,11 +145,10 @@ class EntityListLeaderRouteLawsTest {
             new Row("ApproxDay, Released, Released", DUPLICATE, DUPLICATE, DUPLICATE),
             new Row("ApproxDay", ARITY, ARITY, ARITY),
             new Row("ApproxDay, Title", PARTIAL, UNCODED, PARTIAL),
-            // The walk stops at a group, whose expansion A12 walks first and this walk does not read.
-            new Row("Released, DatedBatches*, Title", DATE_AND_NONDATE, UNCODED, UNCODED),
-            new Row("DatedBatches*, Weight", DATE_AND_NONDATE, UNCODED, UNCODED),
-            // Delegated for the same reason — DEV-API-GAPS DG73: walking the group would cite it.
-            new Row("DatedBatches*, ApproxDay", PARTIAL, ADMITTED, ADMITTED),
+            // A group is walked as its expansion, in its place, as A12 walks it (EntityListGroupExpansionKindLawsTest).
+            new Row("Released, DatedBatches*, Title", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
+            new Row("DatedBatches*, Weight", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
+            new Row("DatedBatches*, ApproxDay", PARTIAL, ADMITTED, PARTIAL),
             new Row("Title, /Extra", ROOT, UNCODED, ROOT),
             new Row("Released, Title, /Extra", ROOT, UNCODED, ROOT));
 
@@ -178,7 +177,7 @@ class EntityListLeaderRouteLawsTest {
             new Row("Discontinued, Label", NOT_COMPARABLE, NOT_COMPARABLE, NOT_COMPARABLE),
             new Row("Weight, Discontinued", NUMBER_AND_NON, NUMBER_AND_NON, NUMBER_AND_NON),
             new Row("Released, Label", DATE_AND_NONDATE, UNCODED, DATE_AND_NONDATE),
-            new Row("Batches*, Label, Released", NUMBER_AND_NON, UNCODED, UNCODED),
+            new Row("Batches*, Label, Released", NUMBER_AND_NON, UNCODED, NUMBER_AND_NON),
             new Row("Label, ApproxDay", STRING_ENUM, STRING_ENUM, STRING_ENUM),
             new Row("ApproxDay, Label", PARTIAL, UNCODED, PARTIAL),
             new Row("Released, CoverFrom, Label", FORMATS, UNCODED, FORMATS),

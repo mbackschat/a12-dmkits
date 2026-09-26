@@ -649,6 +649,23 @@ public final class BoundModel {
         return fields().filter(field -> EntityPath.of(field.path()).isStrictlyInside(group.path()));
     }
 
+    /**
+     * The list A12 types an entity list as: each group operand replaced, in its place, by the fields beneath it
+     * at any depth, index field included, and every other operand kept ({@code validate.laws.EntityListGroupExpansionKindLawsTest}).
+     */
+    List<AggregateOperand> expansionOf(List<? extends AggregateOperand> operands) {
+        var expanded = new ArrayList<AggregateOperand>();
+        for (AggregateOperand operand : operands) {
+            switch (operand) {
+                case GroupListRef scope -> descendantFields(scope.group()).map(FieldInfo::ref).forEach(expanded::add);
+                case IndexedGroupValue indexed ->
+                        descendantFields(indexed.group().group()).map(FieldInfo::ref).forEach(expanded::add);
+                case FieldOperand field -> expanded.add(field);
+            }
+        }
+        return List.copyOf(expanded);
+    }
+
     /** Every group (root groups included), in model order. */
     public Stream<GroupInfo> groups() {
         return index.groupPaths().map(this::groupInfo);
@@ -862,8 +879,7 @@ public final class BoundModel {
      */
     public NumberExpr sum(AggregateOperand first, AggregateOperand... rest) {
         List<AggregateOperand> operands = listOf(first, rest);
-        Dsl.readOperandsThen("Sum", this, operands,
-                () -> ListAggregate.requireList(ListAggregate.AggOp.SUM, operands));
+        Dsl.readOperandsThen("Sum", this, operands, () -> requireListOverExpansion(ListAggregate.AggOp.SUM, operands));
         return Dsl.sum(first, rest);
     }
 
@@ -871,7 +887,7 @@ public final class BoundModel {
     public NumberExpr maxValue(AggregateOperand first, AggregateOperand... rest) {
         List<AggregateOperand> operands = listOf(first, rest);
         Dsl.readOperandsThen("MaxValue", this, operands,
-                () -> ListAggregate.requireList(ListAggregate.AggOp.MAX_VALUE, operands));
+                () -> requireListOverExpansion(ListAggregate.AggOp.MAX_VALUE, operands));
         return Dsl.maxValue(first, rest);
     }
 
@@ -879,7 +895,7 @@ public final class BoundModel {
     public NumberExpr minValue(AggregateOperand first, AggregateOperand... rest) {
         List<AggregateOperand> operands = listOf(first, rest);
         Dsl.readOperandsThen("MinValue", this, operands,
-                () -> ListAggregate.requireList(ListAggregate.AggOp.MIN_VALUE, operands));
+                () -> requireListOverExpansion(ListAggregate.AggOp.MIN_VALUE, operands));
         return Dsl.minValue(first, rest);
     }
 
@@ -941,6 +957,12 @@ public final class BoundModel {
         Dsl.readOperandsThen("NumberOfFilledGroups", this, CountAggregate.allOperands(List.of(), List.of(rootGroup)),
                 () -> { });
         return Dsl.numberOfFilledRootGroups(rootGroup);
+    }
+
+    /** The shape gates over the operands as written, then the kind gate over their expansion, as A12 asks them. */
+    private void requireListOverExpansion(ListAggregate.AggOp op, List<AggregateOperand> operands) {
+        EntityListRoute.requireShape(op.operatorId(), operands);
+        ListAggregate.requireKinds(op, expansionOf(operands));
     }
 
     @SafeVarargs
