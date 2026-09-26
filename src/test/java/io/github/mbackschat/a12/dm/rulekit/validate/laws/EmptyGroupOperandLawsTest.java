@@ -222,4 +222,28 @@ class EmptyGroupOperandLawsTest {
         assertEquals(ADMITTED, verdict("GroupFilled(/Store/Filled)"),
                 "a rule naming only populated groups is admitted, so the declarations themselves are legal");
     }
+
+    /**
+     * An empty REPEATABLE group named without its star, from a rule that iterates nothing, meets two gates at
+     * one reference: its emptiness and its missing star. The populated repeatable group beside it is the
+     * control that the missing star is refused on each carrier at all. Predicted from a
+     * {@code RepetitionNotUnique} scope, where the star answered: the same order on every carrier. Rival:
+     * emptiness answers at the reference, which gives {@code MVK_GROUP_IS_EMPTY} on the empty rows.
+     */
+    @Test
+    void anUnboundEmptyRepeatableGroupAnswersWithItsMissingStar() {
+        Map<String, String> expected = new LinkedHashMap<>();
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (String group : new String[] {"EmptyRows", "FilledRows"}) {
+            for (String carrier : new String[] {"GroupFilled(/Store/%s)",
+                    "NumberOfFilledGroups(/Store/%s, /Store/Filled) > 0",
+                    "AtLeastOneGroupFilled(/Store/%s, /Store/Filled)",
+                    "NumberOfFilledFields(/Store/%s, /Store/Filled) > 0"}) {
+                String condition = carrier.formatted(group);
+                expected.put(condition, "MVK_NO_WILDCARD");
+                actual.put(condition, verdict(condition));
+            }
+        }
+        assertEquals(expected, actual);
+    }
 }

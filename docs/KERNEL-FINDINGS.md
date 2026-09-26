@@ -3878,6 +3878,8 @@ Reported by the portable checker (`CheckFamily.EMPTY_GROUP_OPERAND`), on the DEC
 
 *(Locked: `validate.laws.EmptyGroupOperandLawsTest` — the four-carrier table with its shell and populated controls, and the root class beside a populated-root control; `cli … EmptyGroupDeclarationCliTest` — declare, `model check` valid, name-and-refuse, over the CLI. Kernel 30.8.1, 2026-08-29.)*
 
+**Extended 2026-09-26 — at one reference, a group's star answers ahead of its emptiness.** An empty repeatable group named without its star from a rule that iterates nothing draws only `MVK_NO_WILDCARD` on `GroupFilled`, `NumberOfFilledGroups`, `AtLeastOneGroupFilled` and `NumberOfFilledFields`, as its populated twin does, and so does an empty repeatable root and an empty repeatable `RepetitionNotUnique` `@From` scope. An empty fixed group or root written with a star draws only `MVK_INVALID_WILDCARD`. Starred as it repeats, an empty repeatable group draws `MVK_GROUP_IS_EMPTY` and an empty repeatable root `MVK_ROOT_GROUP_IS_EMPTY`. *(Locked: `validate.laws.EmptyGroupOperandLawsTest.anUnboundEmptyRepeatableGroupAnswersWithItsMissingStar`; the roots and the scope in `adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest`, which holds the portable checker to the same class.)*
+
 ## §8 supplement: an Enumeration category pairs POSITIONALLY with its values, and the fractional-digit cap is reported with no MVK code at all (kernel, 2026-08-29) <a id="kf216"></a>
 
 > Fold: pending — folds into §8's Enumeration account beside the category-suffix rendering ([KF198](#kf198)).
@@ -9244,6 +9246,27 @@ Keys on parallel paths draw `MVK_NOT_IN_SAME_PATH` with no scope and `MVK_NOT_IN
 The last two rows are why the rule-group gate is not "a key outside the rule group with no repetition of its own": an outsider in a repetition the rule's own iteration reaches — one iterated jointly with it, or the one that contains the rule group — passes the reference reader's wildcard gate and is refused here. Only an outsider in a repetition nothing addresses is the wildcard gate's (`MVK_NO_WILDCARD`).
 
 Locked: `validate.laws.RepetitionNotUniqueGateOrderLawsTest`, and the rows above in `adapter.laws.CheckerRepetitionNotUniqueGateAgreementTest`, which holds A12's class on every row beside the portable checker's. `MVK_CATEGORY_NOT_ALLOWED` and `MVK_NOT_IN_RULEGROUP` had no measurement anywhere in this estate before it.
+
+**Extended 2026-09-26 — the gates two at a time.** Each row violates two gates, or pairs one with the construct that decides whether a gate runs, and the rival order it rules out is named in its lock. `U` is `Insured/InsuredName For "k"`, an index on a group without an index field. Rules in `/Policy` report at `Claims/ClaimRef` unless named.
+
+| rows | A12 | what it settles |
+|---|---|---|
+| `U` beside a group, a raw, a categorized or a starred key, in both orders | `MVK_NO_INDEX_FIELD` | every key is read before any key-list gate |
+| each adjacent pair of the five key-list gates, and group beside raw, in both orders | the earlier gate's class | the gates run one over the whole list at a time, whatever the key order |
+| in `Claims`: `ClaimRef, /Policy/Payments/PayRef`, both orders | `MVK_NOT_IN_SAME_PATH` | the shared-path gate is asked ahead of the rule-group gate |
+| `Claims/Adjuster/AdjusterRef, Claims/Assessor/AssessorRef`, two sibling fixed groups of one repeatable group, with and without `@From Claims` | admitted | the shared path is the keys' lowest repeatable group |
+| `Batches/Items/ItemRef, Batches/Parts/PartRef`, two jointly iterated repeatable groups | `MVK_NOT_IN_SAME_PATH`; with `@From Batches`, `MVK_PARALLEL_ITERATION_NOT_ALLOWED` | under a scope no shared-path gate is asked, and the post-parse ban on parallel iteration refuses instead |
+| at the repeatable root `/Fleet`: `Plate`; `Plate, Vin` | admitted | the repeatable-group gate is skipped when every key sits directly in a repeatable root |
+| at `/Fleet`: `Registration/RegNo`, alone and beside `Plate` | `MVK_REPEATABLE_GROUP_MISSING` | the skip needs every key directly in the root; a fixed subgroup brings the gate back |
+| `Claims/RawNote @From Dormant`; `Claims/ClaimRef, Claims/ClaimRef @From Dormant` (`Dormant` an empty fixed group) | `MVK_GROUP_IS_EMPTY` | the scope is read ahead of every gate, the duplicate gate included |
+| `U @From Vacant` (`Vacant` an empty repeatable group, unbound) | `MVK_NO_INDEX_FIELD` | a key that cannot be read answers ahead of the scope |
+| `Claims/RawNote @From Vacant` and the duplicate pair `@From Vacant` | `MVK_NO_WILDCARD` | the empty repeatable scope's missing star answers ahead of its emptiness and of every gate ([KF215](#kf215)) |
+| `@From Insured For "k"`; `@From Claims For ""`; `@From Claims For "C-1"` | `MVK_NO_INDEX_FIELD`; `MVK_INDEX_VALUE_INVALID`; `MVK_SEMANTIC_INDEX_NOT_ALLOWED` | the scope's index is read like a key's, and a readable one meets the scope's own index gate |
+| reporting at the root: `Reference @From Claims`, `@From Riders`, `@From Vacant` | `MVK_NO_WILDCARD` | a keyed, an index-free and an empty scope alike, below a root error field |
+| in `Claims` reporting at the root: `ClaimRef`; `/Policy/Reference @From /Policy/Claims` | `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` | on a key and on a scope |
+| `Insured, Insured`; `/Policy, Claims/ClaimRef`, both orders; `Insured, Insured/InsuredName` | `MVK_DUPLICATE_PARAM1`; `MVK_DUPLICATE_PARAM2`; `MVK_DUPLICATE_PARAM2` | the duplicate gate answers ahead of the fields-only gate |
+
+The indexed repeatable pair had first been placed inside the indexed `Claims`, and drew `MVK_MULTIPLE_INDEX_FIELDS` before any gate of this construct ([KF332](#kf332)), so the pair sits in an index-free frame. *(Locked: `validate.laws.RepetitionNotUniquePairedGateLawsTest`, and every row in `adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest` beside the portable checker's class.)*
 
 ## §14 supplement — four `MVK_*` members are message LABELS and can never be a verdict, and one command enumerates them (source-verified, 2026-09-14) <a id="kf354"></a>
 

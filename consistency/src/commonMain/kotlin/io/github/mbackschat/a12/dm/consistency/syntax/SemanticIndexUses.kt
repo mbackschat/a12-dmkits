@@ -108,11 +108,14 @@ private class KeyRun(val path: String?, val literal: String?, val category: Stri
  * The path run ENDING immediately before [at] — the indexed half, which stands to the left of the keyword.
  *
  * Walked backwards because that is where it sits, and stopped by anything a path cannot contain: a delimiter,
- * an operator, or a NAME the language reads as a keyword.
+ * an operator, or a NAME the language reads as a keyword. `@From` and `@Von` count as keywords although the
+ * tokenizer emits the `@` apart, as the reference scan reads them: walking through the name half read the
+ * scope of `RepetitionNotUnique(Key @From Group For "k")` as `FromGroup`, which resolves to nothing, and the
+ * index went unjudged (`adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest`).
  */
 private fun List<Token>.pathEndingBefore(at: Int, keywords: Map<String, KeywordKind>): PathRun {
     var begin = at
-    while (begin > 0 && this[begin - 1].isPathToken(keywords)) {
+    while (begin > 0 && this[begin - 1].isPathToken(keywords) && !completesAnAtKeyword(begin - 1, keywords)) {
         begin--
     }
     var end = at
@@ -179,6 +182,13 @@ private fun List<Token>.categoryAt(at: Int): String? {
         return null
     }
     return getOrNull(at + 1)?.takeIf { it.isName() }?.text
+}
+
+/** Whether the NAME at [at] is the second half of an `@`-keyword such as `@From`, its `@` adjacent before it. */
+private fun List<Token>.completesAnAtKeyword(at: Int, keywords: Map<String, KeywordKind>): Boolean {
+    val before = getOrNull(at - 1) ?: return false
+    return this[at].kind == TokenKind.NAME && before.text == "@" && before.end == this[at].start &&
+        "@" + this[at].text in keywords
 }
 
 private fun Token.isPathToken(keywords: Map<String, KeywordKind>): Boolean = when {

@@ -29,6 +29,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * group: both classes belong to families that do not exist yet, and guessing between them would attach one
  * fix to a defect that has another.
  *
+ * **A repeatable ROOT is the one rule group that needs no repetition below it**, and only for keys that sit
+ * directly in it: `RepetitionNotUnique(Plate, Vin)` at the repeatable root `/Fleet` is admitted, while a key in a
+ * fixed subgroup of it draws the class, alone or beside a direct key
+ * (`rulekit.validate.laws.RepetitionNotUniquePairedGateLawsTest`).
+ *
  * **DEPTH does not matter, measured rather than assumed.** A repeatable group two levels down suppresses the
  * class as a direct child does, and a non-repeatable group two levels down draws it just the same — so the
  * test is "is there a repeatable group on the path between", never "is the key's own parent repeatable".
@@ -81,6 +86,11 @@ private fun TrackedFactBase.placementFinding(
     if (keys.any { !it.startsWith("$declaringGroup/") }) {
         return null
     }
+    // MEASURED: at a repeatable root, keys that all sit directly in it need no repetition between, since the
+    // root's own rows are the ones compared; one key in a subgroup brings the gate back for the whole call.
+    if (isRepeatableRoot(declaringGroup) && keys.all { it.lastIndexOf('/') == declaringGroup.length }) {
+        return null
+    }
     val unrepeated = keys.filterNot { key -> repeatableLiesBetween(declaringGroup, key) }
     if (unrepeated.isEmpty()) {
         return null
@@ -95,6 +105,10 @@ private fun TrackedFactBase.placementFinding(
         element.path,
     )
 }
+
+/** Whether [group] is a root group that repeats. */
+private fun TrackedFactBase.isRepeatableRoot(group: String): Boolean =
+    group.lastIndexOf('/') == 0 && repeatableGroups().any { it.path == group }
 
 /**
  * Whether a repeatable group sits strictly between [declaringGroup] and [key].

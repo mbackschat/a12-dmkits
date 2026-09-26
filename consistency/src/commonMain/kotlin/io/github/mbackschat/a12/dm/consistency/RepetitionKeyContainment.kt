@@ -81,9 +81,9 @@ private fun TrackedFactBase.containmentDefect(
     if (!repetitionKeyListIsSound(call, declaringGroup, element)) {
         return null
     }
-    val scopeSpelling = call.operands.firstNotNullOfOrNull { operand ->
-        operand.clauses.firstOrNull { it.keyword == scopeKeyword }?.path
-    }
+    val scopeText = call.operands.firstNotNullOfOrNull { operand -> scopeTextOf(operand, scopeKeyword) }
+    // A scope carrying more than a path, such as an index, meets its own gates first ([repetitionScopeGroupFindings]).
+    val scopeSpelling = scopeText?.let { it.bare ?: return null }
     val written = call.operands.map { it.base ?: return null }
     val keys = written.mapNotNull {
         (resolveEntity(declaringGroup, it, element.origin) as? Reference.Resolved)?.path

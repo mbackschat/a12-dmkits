@@ -84,9 +84,10 @@ private fun TrackedFactBase.keyListOf(
     }
     val scopeKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(FROM_SCOPE)
     val reads = call.operands.map { operand ->
-        // The operand's own path keeps a key's star, which the text reader's reduction drops; a clause other
-        // than the scope leaves no bare path, and the reader then takes a keyed or categorized text itself.
-        val bare = operand.base.takeIf { operand.clauses.all { it.keyword == scopeKeyword } }
+        // The operand's own path keeps a key's star, which the text reader's reduction drops; a clause ahead of
+        // the scope leaves no bare path, and the reader then takes a keyed or categorized text itself. The
+        // clauses after the scope are its own, such as its index.
+        val bare = operand.base.takeIf { operand.clauses.firstOrNull()?.let { it.keyword == scopeKeyword } ?: true }
         categorySpecIn(keyTextOf(operand, scopeKeyword), declaringGroup, element) { bare }
             ?: return KeyList.AnsweredEarlier
     }

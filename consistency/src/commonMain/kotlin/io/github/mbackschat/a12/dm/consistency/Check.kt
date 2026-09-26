@@ -1364,7 +1364,8 @@ private fun List<Finding>.withoutDefectsBehindAnEarlierOne(
         val raised = finding.raisePoint(own, conditionReferences)
         placedByDeclaration.getValue(finding.at).any { (earlier, span) ->
             earlier.code != finding.code && when (span.member) {
-                own.member -> earlier.raisePoint(span, conditionReferences) < raised
+                own.member -> earlier.raisePoint(span, conditionReferences) < raised ||
+                    span == own && earlier.code in STAR_CLASSES && finding.code in EMPTINESS_CLASSES
                 else -> joinedOrderPrecedes(span.member, own.member) == true
             }
         }
@@ -1387,12 +1388,26 @@ private fun List<Finding>.withoutDefectsBehindAnEarlierOne(
  * a production's action runs once its last child's has. Two spans ending together are nested, and the one
  * opening LATER is the inner: a filtered index key's own chain is raised ahead of the index it keys, which
  * ends on the same character (`…FilteredOperandGateOrderLawsTest.whoseFilterAHavingAfterAnIndexKeyIs`).
- * Spans that coincide exactly stay a tie, and both findings stand.
+ * Spans that coincide exactly stay a tie, and both findings stand, but for the one pair whose order at a single
+ * reference is measured ([STAR_CLASSES]).
  */
 private data class RaisePoint(val offset: Int, val byTheParser: Boolean, val opensAt: Int) : Comparable<RaisePoint> {
     override fun compareTo(other: RaisePoint): Int =
         compareValuesBy(this, other, { it.offset }, { it.byTheParser }, { -it.opensAt })
 }
+
+/**
+ * The one measured order between two classes raised at the SAME reference, which [RaisePoint] leaves a tie: a
+ * group's star is read ahead of its emptiness. An empty repeatable group named without its star, where nothing
+ * binds its level, draws only `MVK_NO_WILDCARD`, and an empty non-repeatable one written with a star only
+ * `MVK_INVALID_WILDCARD`, on every carrier measured, root groups and the `RepetitionNotUnique` scope included
+ * (`rulekit.validate.laws.EmptyGroupOperandLawsTest.anUnboundEmptyRepeatableGroupAnswersWithItsMissingStar`,
+ * `adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest`).
+ */
+private val STAR_CLASSES = setOf("MVK_NO_WILDCARD", "MVK_INVALID_WILDCARD")
+
+/** The classes an empty group draws at a reference, which [STAR_CLASSES] answer ahead of there. */
+private val EMPTINESS_CLASSES = setOf("MVK_GROUP_IS_EMPTY", "MVK_ROOT_GROUP_IS_EMPTY")
 
 private fun Finding.raisePoint(span: TextSpan, conditionReferences: Set<Finding>): RaisePoint =
     if (code in PARSER_CONDITION_CODES && this !in conditionReferences) {
