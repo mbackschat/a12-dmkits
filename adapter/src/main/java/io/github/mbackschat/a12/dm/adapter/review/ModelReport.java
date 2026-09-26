@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.review;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -50,7 +49,6 @@ public final class ModelReport {
     private final Usage usage;
     private final List<RuleEntry> rules;
     private final List<ComputationEntry> computations;
-    private final Map<String, List<String>> computationErrorCodesToSuppress;
     // The receipt of the gate that assembled this report, taken from the adapter — null iff none ran. NOT read
     // from Backends: that describes the environment, so an ungated assembly would still have looked confirmed.
     private final Verification consistencyGate;
@@ -58,14 +56,12 @@ public final class ModelReport {
     // Private on purpose: the report doubles as the CLI's proof that a consistency gate ran, and a receipt
     // anyone can construct is not proof. As a public record its canonical constructor could not be narrowed.
     private ModelReport(Identity identity, ModelCard structure, Usage usage,
-            List<RuleEntry> rules, List<ComputationEntry> computations,
-            Map<String, List<String>> computationErrorCodesToSuppress, Verification consistencyGate) {
+            List<RuleEntry> rules, List<ComputationEntry> computations, Verification consistencyGate) {
         this.identity = identity;
         this.structure = structure;
         this.usage = usage;
         this.rules = List.copyOf(rules);
         this.computations = List.copyOf(computations);
-        this.computationErrorCodesToSuppress = Map.copyOf(computationErrorCodesToSuppress);
         this.consistencyGate = consistencyGate;
     }
 
@@ -87,11 +83,6 @@ public final class ModelReport {
 
     public List<ComputationEntry> computations() {
         return computations;
-    }
-
-    /** A12's owner-level suppression list, available even when the computation formula is Opaque. */
-    public List<String> computationErrorCodesToSuppress(String computation) {
-        return computationErrorCodesToSuppress.getOrDefault(computation, List.of());
     }
 
     /**
@@ -271,18 +262,18 @@ public final class ModelReport {
 
     /**
      * One computation, glossed for comprehension. The explained branch carries the computed field,
-     * common precondition, alternatives, suppressions, and messages together; the Opaque branch carries the
-     * preserved text and conversion reason. Owner-level suppression metadata lives on the containing report,
-     * independently of formula conversion.
+     * common precondition, alternatives, and messages together; the Opaque branch carries the preserved text
+     * and conversion reason.
      *
-     * <p>{@code roundingMode} is the element's own member, which A12 keeps apart from the formula, so it is set
-     * whether or not the formula is explained.
+     * <p>{@code roundingMode} and {@code errorCodesToSuppress} are the element's own members, which A12 keeps
+     * apart from the formula, so they are set whether or not the formula is explained.
      */
     public record ComputationEntry(String computation, String scope,
-            ComputationExplanationOutcome explanation, RoundingMode roundingMode) {
+            ComputationExplanationOutcome explanation, RoundingMode roundingMode, List<String> errorCodesToSuppress) {
         public ComputationEntry {
             Objects.requireNonNull(explanation, "explanation");
             roundingMode = roundingMode == null ? RoundingMode.EXACT : roundingMode;
+            errorCodesToSuppress = errorCodesToSuppress == null ? List.of() : List.copyOf(errorCodesToSuppress);
         }
 
         public static Builder builder(String computation, String scope) {
@@ -347,6 +338,7 @@ public final class ModelReport {
             private final String scope;
             private ComputationExplanationOutcome explanation;
             private RoundingMode roundingMode;
+            private List<String> errorCodesToSuppress;
 
             private Builder(String computation, String scope) {
                 this.computation = computation;
@@ -364,8 +356,14 @@ public final class ModelReport {
                 return this;
             }
 
+            /** {@code null} leaves the list empty. */
+            public Builder errorCodesToSuppress(List<String> errorCodesToSuppress) {
+                this.errorCodesToSuppress = errorCodesToSuppress;
+                return this;
+            }
+
             public ComputationEntry build() {
-                return new ComputationEntry(computation, scope, explanation, roundingMode);
+                return new ComputationEntry(computation, scope, explanation, roundingMode, errorCodesToSuppress);
             }
         }
     }
@@ -398,9 +396,8 @@ public final class ModelReport {
         Identity identity = new Identity(doc.id(), doc.modelType(), doc.modelVersion(), doc.locales());
         ModelContext context = new ModelContext(model);
         ModelCard structure = context.describe();
-        ComputationCatalog computationCatalog = computationCatalog(adapter, context);
         return new ModelReport(identity, structure, usage(adapter, structure),
-                ruleCatalog(adapter, context), computationCatalog.entries(), computationCatalog.suppressions(),
+                ruleCatalog(adapter, context), computationCatalog(adapter, context),
                 adapter.consistencyGate().orElse(null));
     }
 
@@ -457,15 +454,10 @@ public final class ModelReport {
         return out;
     }
 
-    private record ComputationCatalog(
-            List<ComputationEntry> entries, Map<String, List<String>> suppressions) {}
-
-    private static ComputationCatalog computationCatalog(KernelAdapter adapter, ModelContext context) {
+    private static List<ComputationEntry> computationCatalog(KernelAdapter adapter, ModelContext context) {
         List<ComputationEntry> out = new ArrayList<>();
-        Map<String, List<String>> suppressions = new LinkedHashMap<>();
         for (String name : adapter.computationFullNames()) {
             ReadComputation read = adapter.readComputation(name);
-            suppressions.put(name, adapter.computationErrorCodesToSuppress(name));
             // An exhaustive switch rather than the `instanceof`/cast it replaced: the cast silently meant
             // "everything that is not Converted is Opaque", so a third state would have become a
             // ClassCastException on a legal read rather than a compile error. A sealed type is only safe
@@ -485,9 +477,10 @@ public final class ModelReport {
                             .build();
             };
             out.add(ComputationEntry.builder(name, scopeOf(name)).explanation(explanation)
-                    .roundingMode(adapter.computationRoundingMode(name)).build());
+                    .roundingMode(adapter.computationRoundingMode(name))
+                    .errorCodesToSuppress(adapter.computationErrorCodesToSuppress(name)).build());
         }
-        return new ComputationCatalog(List.copyOf(out), Map.copyOf(suppressions));
+        return List.copyOf(out);
     }
 
     /** The element's scope group — its containing group (the path with the trailing element name removed). */

@@ -190,7 +190,7 @@ final class ModelReportCommand extends BaseCommand {
                 }
             }
             ArrayNode suppressions = node.putArray("errorCodesToSuppress");
-            report.computationErrorCodesToSuppress(c.computation()).forEach(suppressions::add);
+            c.errorCodesToSuppress().forEach(suppressions::add);
             putMessages(node, c.messages());
         }
         return data;

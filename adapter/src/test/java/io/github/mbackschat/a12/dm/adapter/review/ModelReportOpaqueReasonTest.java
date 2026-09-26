@@ -56,7 +56,7 @@ class ModelReportOpaqueReasonTest {
         assertNull(opaqueComputation.computedField());
         assertNull(opaqueComputation.commonPrecondition());
         assertEquals(List.of(), opaqueComputation.alternatives());
-        assertEquals(List.of(SUPPRESSION), report.computationErrorCodesToSuppress(OPAQUE_COMPUTATION));
+        assertEquals(List.of(SUPPRESSION), opaqueComputation.errorCodesToSuppress());
     }
 
     @Test
