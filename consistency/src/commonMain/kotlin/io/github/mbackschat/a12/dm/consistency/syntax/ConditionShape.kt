@@ -339,8 +339,17 @@ private class ShapeParser(
 
     // ── expressions ──────────────────────────────────────────────────────────────────────────────────────
 
-    /** An operand and the infix operators that may join operands: arithmetic, and the list keywords. */
+    /**
+     * An operand and the infix operators that may join operands: arithmetic, and the list keywords.
+     *
+     * A bare entity spec is never an arithmetic operand, on either side ([KERNEL-FINDINGS KF76]): the grammar's
+     * arithmetic atoms are bracketed references, constants and calls. So in `MinValue(Items**Count)` the
+     * entity `Items*` is read and the second `*` is the token A12 cannot use, where joining the two as a
+     * product would let a reference class answer for a text A12 refuses at the parser
+     * (`adapter.laws.CheckerNearMissSweepTest`).
+     */
     private fun expression(): ShapeFailure? {
+        var bare = startsABareEntity()
         term()?.let { return it }
         while (true) {
             val token = peek() ?: return null
@@ -351,8 +360,32 @@ private class ShapeParser(
             if (!arithmetic && !(entitySpecStands && isListKeyword(token))) {
                 return null
             }
+            if (arithmetic && bare) {
+                return unexpected()
+            }
             take()
+            bare = startsABareEntity()
+            if (arithmetic && bare) {
+                return unexpected()
+            }
             term()?.let { return it }
+        }
+    }
+
+    /**
+     * Whether the term under the cursor is a bare entity spec, read as [term] and [named] would read it: a
+     * quoted name, a name that is neither a keyword's call nor a constant, or a path opened by its own
+     * punctuation. Only where an entity spec may stand at all.
+     */
+    private fun startsABareEntity(): Boolean {
+        val token = peek() ?: return false
+        if (!entitySpecStands) {
+            return false
+        }
+        return when (token.kind) {
+            TokenKind.QUOTED_NAME -> true
+            TokenKind.NAME -> !(callFollows() && kindOf(token) != null) && kindOf(token) != KeywordKind.CONSTANT
+            else -> textIs("/") || textIs("..") || isOuterMarker()
         }
     }
 
@@ -581,8 +614,7 @@ private class ShapeParser(
         if (!run.closes) {
             return unexpected()
         }
-        categoryTail()
-        return null
+        return categoryTail()
     }
 
     /**
@@ -600,14 +632,26 @@ private class ShapeParser(
         else -> false
     }
 
-    /** `X -> Category`, the H-model category selector, which rides an ordinary reference. */
-    private fun categoryTail() {
-        if (textIs("->")) {
-            take()
-            if (peek()?.kind == TokenKind.NAME || peek()?.kind == TokenKind.QUOTED_NAME) {
-                take()
-            }
+    /**
+     * `X -> Category`, the category selector, which rides an ordinary reference.
+     *
+     * The category is a `nameOhnePunkt` (`entitySpec … ('->' categoryName=nameOhnePunkt)?`), so a keyword there
+     * is a token A12 cannot use, and so is nothing at all: `[Priority -> And SpeedClass]` and `[Priority -> ]`
+     * are `MVK_UNEXPECTED_TOKEN` (`adapter.laws.CheckerNearMissSweepTest`).
+     */
+    private fun categoryTail(): ShapeFailure? {
+        if (!textIs("->")) {
+            return null
         }
+        take()
+        val name = peek()
+        val isName = name != null && (name.kind == TokenKind.QUOTED_NAME || name.kind == TokenKind.NUMBER ||
+            (name.kind == TokenKind.NAME && kindOf(name) == null))
+        if (!isName) {
+            return unexpected()
+        }
+        take()
+        return null
     }
 
     // ── delimiters ───────────────────────────────────────────────────────────────────────────────────────

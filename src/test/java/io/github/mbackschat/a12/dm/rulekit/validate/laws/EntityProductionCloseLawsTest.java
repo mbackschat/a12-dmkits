@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
@@ -54,10 +55,57 @@ class EntityProductionCloseLawsTest {
         assertEquals(expected, actual, "which class each malformed path draws, from /Policy/Claim/Cover");
     }
 
+    /**
+     * The same law for an operation, and the one arithmetic spelling a bare reference has.
+     *
+     * {@code checkOperation} runs once an arithmetic chain is read, so a chain the parser stops inside draws the
+     * token class and not its operand's type class, against the closed chain beside it. A {@code *} directly
+     * after a bare name is that name's repetition STAR ({@code idNameRef: idName ('.' '*')? stern='*'?}), so
+     * {@code FieldFilled(Premium * 2)} is the starred single field {@code Premium*}, refused as such before the
+     * stray {@code 2}. Every other operator after a bare reference is a token the parser cannot use
+     * ([KERNEL-FINDINGS KF76]). The category after {@code ->} is a name, so a keyword or nothing there is too.
+     */
+    @Test
+    void anArithmeticChainIsCheckedOnlyOnceItCloses() {
+        Map<String, List<String>> actual = new LinkedHashMap<>();
+        Map<String, List<String>> expected = new LinkedHashMap<>();
+        BiConsumer<String, List<String>> row = (condition, predicted) -> {
+            actual.put(condition, policyCodes("FieldFilled(Code) And " + condition));
+            expected.put(condition, predicted);
+        };
+        row.accept("[Code] * 2 == \"ABC\"", List.of("MVK_NO_NUMBER_FOR_CALC"));
+        row.accept("[Code] * == \"ABC\"", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("[Code] + * \"x\" == \"ABC\"", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("[Premium] - == 1", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("[Code] - PatternViolated \"[0-9]{5}\"", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("[Premium] * Abs([Premium]) > 1", List.of());
+        row.accept("MinValue(Items*/Count) > 1", List.of());
+        row.accept("MinValue(Items**Count) > 1", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("MinValue(Items*/Count - 1) > 1", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("MinValue(Items*/Count ^ 2) > 1", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("FieldFilled(Premium * 2)", List.of("MVK_INVALID_WILDCARD"));
+        row.accept("FieldFilled(NoSuch * 2)", List.of("MVK_INVALID_ENTITY"));
+        row.accept("[Code -> ] == \"x\"", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("[Code -> And X] == \"x\"", List.of("MVK_UNEXPECTED_TOKEN"));
+        assertEquals(expected, actual, "which class each malformed operation draws, from /Policy");
+    }
+
     private static void row(Map<String, List<String>> actual, Map<String, List<String>> expected, String operand,
                             List<String> predicted) {
         actual.put(operand, codes("FieldFilled(Limit) And " + operand));
         expected.put(operand, predicted);
+    }
+
+    /** A root group with a text, a number and a repeatable group, for the operation rows. */
+    private static final String ARITHMETIC = DocumentModelDraft.named("close-arithmetic").locale("en_US")
+            .rootGroup("Policy", p -> p.field("Code", FieldKind.STRING).field("Premium", FieldKind.NUMBER)
+                    .group("Items", i -> i.repeatable(9).field("Count", FieldKind.NUMBER)))
+            .build().toJson();
+
+    private static List<String> policyCodes(String condition) {
+        return new RuleValidator().check(ARITHMETIC, new DraftRule("/Policy", "CloseRule", "../Code", condition,
+                        "PROBE", "ERROR"))
+                .diagnostics().stream().flatMap(d -> d.code().stream()).toList();
     }
 
     private static List<String> codes(String condition) {

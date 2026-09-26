@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.KeywordKind
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
@@ -114,7 +116,7 @@ private fun TrackedFactBase.walkOperation(
     group: String,
     element: TrackedDeclaration,
 ): LevelResult {
-    val terms = termsOf(tokens, text)
+    val terms = termsOf(tokens, text, CONDITION_KEYWORDS.getValue(conditionLanguage))
     val defects = mutableListOf<OperationDefect>()
     val types = terms.map { term ->
         val operand = term as? Term.Operand ?: return@map null
@@ -127,7 +129,9 @@ private fun TrackedFactBase.walkOperation(
     val kindDefects = mutableListOf<Violation>()
     val resultType = typeWalk(terms, types, group, element, kindDefects)
     defects += kindDefects.ifEmpty { arityDefects(terms) }
-        .map { OperationDefect(it.code, it.at, it.wrote, terms.chainEndAt(it.at)) }
+        .mapNotNull { violation ->
+            terms.closedChainEndAt(violation.at)?.let { OperationDefect(violation.code, violation.at, violation.wrote, it) }
+        }
     return LevelResult(resultType, defects)
 }
 
@@ -244,9 +248,11 @@ private fun additiveSegments(terms: List<Term>, types: List<OperandBaseType?>): 
     var joinedBy: String? = null
     var operands = mutableListOf<Pair<Term.Operand, OperandBaseType?>>()
     var multiplicative = false
+    // Where a segment holding no operand is written — `+ *` — so a class about it lands on its own chain.
+    var firstOperatorAt: Int? = null
 
     fun close(nextJoin: String?) {
-        val at = operands.firstOrNull()?.first?.at ?: 0
+        val at = operands.firstOrNull()?.first?.at ?: firstOperatorAt ?: 0
         val type = when {
             multiplicative -> OperandBaseType.NUMBER
             operands.size == 1 -> operands.single().second
@@ -256,12 +262,16 @@ private fun additiveSegments(terms: List<Term>, types: List<OperandBaseType?>): 
         joinedBy = nextJoin
         operands = mutableListOf()
         multiplicative = false
+        firstOperatorAt = null
     }
 
     terms.forEachIndexed { position, term ->
         when {
             term is Term.Op && term.symbol in ADDITIVE -> close(term.symbol)
-            term is Term.Op -> multiplicative = true
+            term is Term.Op -> {
+                multiplicative = true
+                firstOperatorAt = firstOperatorAt ?: term.at
+            }
             // A boundary ends the chain rather than joining it: the segment after a comparison, a comma or a
             // connective is a fresh expression, and pairing it with what came before would invent an addition.
             term is Term.Operand && term.boundary -> close(null)
@@ -414,6 +424,7 @@ private sealed interface Term {
      * @param written the `[…]` reference as it is written, brackets included, which a key is read off.
      * @param nested the tokens of a braced or parenthesized run, which A12 checks as its own context.
      * @param boundary whether it ends the current chain — a name, a comparison, a comma or a connective.
+ * @param mayBeAnOperand whether that boundary can be an operator's operand ([mayBeAnOperand]).
      */
     data class Operand(
         override val at: Int,
@@ -423,6 +434,7 @@ private sealed interface Term {
         val written: String? = null,
         val nested: List<Token>? = null,
         val boundary: Boolean = false,
+        val mayBeAnOperand: Boolean = false,
     ) : Term
 }
 
@@ -432,7 +444,7 @@ private fun Term.Operand.wrote(symbol: String): String = path ?: "the operand of
 private val ARITHMETIC = setOf("+", "-", "*", "/", "^")
 
 /** Splits one token run of [text] into this level's operators and operands, delimited runs kept whole. */
-private fun termsOf(tokens: List<Token>, text: String): List<Term> {
+private fun termsOf(tokens: List<Token>, text: String, keywords: Map<String, KeywordKind>): List<Term> {
     val terms = mutableListOf<Term>()
     var index = 0
     while (index < tokens.size) {
@@ -467,7 +479,8 @@ private fun termsOf(tokens: List<Token>, text: String): List<Term> {
                 index++
             }
             else -> {
-                terms += Term.Operand(token.start, token.end, boundary = true)
+                terms += Term.Operand(token.start, token.end, boundary = true,
+                    mayBeAnOperand = token.mayBeAnOperand(keywords))
                 index++
             }
         }
@@ -475,29 +488,63 @@ private fun termsOf(tokens: List<Token>, text: String): List<Term> {
     return terms
 }
 
+/**
+ * Whether a token this level cannot read may still be an operator's operand: a string, a quoted name, or a name
+ * that is no comparison, connective, clause keyword or predicate. A call's name or a constant is one; a
+ * keyword such as `PatternViolated` ends the chain as a comparison would.
+ */
+private fun Token.mayBeAnOperand(keywords: Map<String, KeywordKind>): Boolean = when (kind) {
+    TokenKind.STRING, TokenKind.QUOTED_NAME -> true
+    TokenKind.NAME -> keywords[text] !in NOT_AN_OPERAND
+    else -> false
+}
+
+private val NOT_AN_OPERAND = setOf(KeywordKind.OPERATOR, KeywordKind.PATH_OP, KeywordKind.PREDICATE)
+
 private val CLOSING_OF = mapOf("[" to "]", "{" to "}", "(" to ")")
 
 /**
- * Where the chain holding the term written at [at] ends, which is where A12 raises the chain's gates:
- * `checkOperation` runs once the operation context is read. A boundary ends a chain, as in [termsOf].
+ * Where the chain holding the term written at [at] ends, which is where A12 raises the chain's gates, or null
+ * where the chain never closes.
+ *
+ * `checkOperation` runs once the operation context is read, so a chain the parser stops inside raises
+ * nothing: `[ProductCode] * == "ABC"` is `MVK_UNEXPECTED_TOKEN` at the `==`, never the operand's
+ * `MVK_NO_NUMBER_FOR_CALC` ([KERNEL-FINDINGS KF491]'s law, for an operation). Two shapes stop it, and both
+ * are read narrowly, since this reader has no keyword table: an operator directly after an operator, unless
+ * it is the sign of the number after it (`commonKonstante : minus='-'? ZiffernFolge …`), and an operator that
+ * ends the chain where the boundary after it cannot be its operand. A name or a string after it may be one
+ * (a call, a constant), so that chain is still taken as closed. A boundary ends a chain, as in [termsOf].
  */
-private fun List<Term>.chainEndAt(at: Int): Int {
-    var chainEnd = -1
-    var holdsIt = false
-    forEach { term ->
+private fun List<Term>.closedChainEndAt(at: Int): Int? {
+    var from = 0
+    forEachIndexed { position, term ->
         if (term is Term.Operand && term.boundary) {
-            if (holdsIt) {
-                return chainEnd
+            if (subList(from, position).any { it.at == at }) {
+                return closedEnd(from, position)
             }
-            chainEnd = -1
-        } else {
-            chainEnd = term.end
-            holdsIt = holdsIt || term.at == at
+            from = position + 1
         }
     }
-    check(holdsIt) { "a violation at $at sits on no term of its level" }
-    return chainEnd
+    check(subList(from, size).any { it.at == at }) { "a violation at $at sits on no term of its level" }
+    return closedEnd(from, size)
 }
+
+/** The end of the chain `[from, until)`, or null where it does not close; the term at [until] ended it. */
+private fun List<Term>.closedEnd(from: Int, until: Int): Int? {
+    val chain = subList(from, until)
+    chain.forEachIndexed { position, term ->
+        if (term is Term.Op && chain.getOrNull(position - 1) is Term.Op && !term.signs(chain.getOrNull(position + 1))) {
+            return null
+        }
+    }
+    if (chain.last() is Term.Op && (getOrNull(until) as? Term.Operand)?.mayBeAnOperand != true) {
+        return null
+    }
+    return chain.last().end
+}
+
+/** Whether this `-` is the sign of the number literal [next], which is part of that constant. */
+private fun Term.Op.signs(next: Term?): Boolean = symbol == "-" && (next as? Term.Operand)?.digits != null
 
 /** The index of [opening]'s partner, or null when the run does not balance. */
 private fun matchingDelimiter(tokens: List<Token>, from: Int, opening: String, closing: String): Int? {
