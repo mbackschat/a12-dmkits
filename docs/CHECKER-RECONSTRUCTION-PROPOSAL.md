@@ -2,7 +2,7 @@
 
 > **What this is.** The design for rebuilding the portable checker (`:consistency`) along A12 Kernel `30.8.1`'s own check structure, replacing its one-family-per-class implementation. It holds the model the rebuild follows and the rebuild's design; **the state lives in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md)'s work-item table** (items R0–R5), never here. Opened 2026-09-26.
 >
-> **Status of the model.** §1 and the appendices are **source-read**: the kernel's `ParserService`, the grammar `GrammarOnly_ConditionParser.g4`, the generated parser (ANTLR 4.13.2), `AbstractDefaultErrorStrategy`, the `Check*Impl` classes and the consistency-rule provider, all under `../a12-kernel`. **§2's parse model is confirmed on A12 itself** by plan item R2's trace over 9 063 conditions ([KF493](KERNEL-FINDINGS.md#kf493)), which corrected one sentence of it, on predicate timing. Decisions the population never failed at stay source-read.
+> **Status of the model.** §1 and the appendices are **source-read**: the kernel's `ParserService`, the grammar `GrammarOnly_ConditionParser.g4`, the generated parser (ANTLR 4.13.2), `AbstractDefaultErrorStrategy`, the `Check*Impl` classes and the consistency-rule provider, all under `../a12-kernel`. **§2's syntax-failure model is confirmed on A12 itself** by plan item R2's trace over 9 063 conditions ([KF493](KERNEL-FINDINGS.md#kf493)): each failure's kind, class, decision and, for the explicit rows, its site and token. The trace also corrected one sentence of the model, on predicate timing. It does **not** confirm the check actions' order, the lazy lexing (that is [KF311](KERNEL-FINDINGS.md#kf311)'s own measurement) or any decision, match or action the population never failed at, which stay source-read. The design review of 2026-09-26 corrected §1, §2.4, §5 and the appendices.
 
 ## Why
 
@@ -15,9 +15,9 @@ Reproducing the sequence removes the inference. The checker's code then has A12'
 | level | what runs | order and stopping |
 |---|---|---|
 | model | `DocumentModelConsistencyRulesProvider`: schema-version pattern, schema version, id uniqueness, number-field value limits, attachment groups, multi-select groups, **code generation**, the serializer's basic check | all eight run, in this order |
-| code generation (`CodeGenerationRule` → `generateValidationCodeKernelInternal`) | the element container for the **default variant** (`DocumentModelServiceUtils.convert`); then every computation (`CalculationService.checkAndExtractAllCalculationInfo`); then every rule (`CodeGeneratorService` → `ValidationCodeGenerator.preCheck` → `RuleInfoBuilder.parseCondition`) | all computations, then all rules; how a failing rule affects the next is for R0 to settle |
+| code generation (`CodeGenerationRule` → `generateValidationCodeKernelInternal`) | the element container for the **default variant** (`DocumentModelServiceUtils.convert`), which only this rule reads, while the seven others read the model as given; then every computation (`CalculationService.checkAndExtractAllCalculationInfo`); then every rule (`CodeGeneratorService` → `ValidationCodeGenerator.preCheck` → `RuleInfoBuilder.parseCondition`) | all computations, then all rules; how a failing rule affects the next is for R0 to settle |
 | one condition | pre-parse, parse, post-parse (§2) | the first failure ends the condition |
-| a message's parameters | `RuleParser.hasValidErrorText`: when some message contains `$`, the condition is parsed again first, and any problem there becomes `INVALID_CONDITION` for the message; the parameters are then parsed by a separate grammar with the same error strategy | per message |
+| a message's parameters | inside code generation, `RuleInfoBuilder` checks a rule's messages only when its condition parsed: a condition that failed marks the rule, and `getErrorTextParameters` then skips the message check altogether ([KF338](KERNEL-FINDINGS.md#kf338), `validate.laws.MessageParameterConditionDependencyLawsTest`). The parameters are parsed by a separate grammar with the same error strategy. `RuleParser.hasValidErrorText`, which replaces a condition problem by `INVALID_CONDITION`, is a different entry that `checkConsistency` does not take | per message; withheld behind its condition |
 
 A computation is checked through the same entry as a rule: `ComputationAlternativesJoiner` joins its preamble, field gate, common precondition and per-alternative `(precondition) AND [computed] != <operation>` into one condition text, and `parseAndCheckCondition` parses that text with the post-parse checks included. Positions are relative to the joined text. The snippet entries (`checkSnippet`, `bedingungSnippet`, `operationSnippet`) are used only by `isValidComputation`, outside `checkConsistency`.
 
@@ -37,7 +37,7 @@ ANTLR interleaves three kinds of event, left to right:
 
 - **a token is lexed** when the parser or a prediction first asks for it, so a lexical error surfaces exactly when a look-ahead or a match reaches it ([KF311](KERNEL-FINDINGS.md#kf311));
 - **a decision predicts**, reading as many tokens as it needs, **without running any action**;
-- **a rule completes**, and its check action runs: post-order, children before parents, left to right (57 action sites, Appendix A.1). A parent's check reads the result types its children's checks recorded, so type inference happens inside the check actions.
+- **a rule completes**, and its check action runs: post-order, children before parents, left to right (57 action sites, Appendix A.1). Three run mid-rule instead: the connective check inside the connective loop, from the third part on; the filter's set-up right after `Mit` and its reset after the filter; and the form condition's name check before its arguments. The trace confirms the syntax failures, not the actions' order, which A.2 records from source alone. A parent's check reads the result types its children's checks recorded, so type inference happens inside the check actions.
 
 So a check whose rule completed before the parser reached a defect wins over that defect, and a defect that a prediction reaches before a rule completes wins over that rule's check.
 
@@ -55,7 +55,7 @@ From `AbstractDefaultErrorStrategy.reportError`:
 
 ### 2.4 Which construct fails, and at which token
 
-The generated parser has 84 decisions: 52 are LL(1) (32 optional `if`, 8 loop `while`, 12 `switch`) and 32 are adaptive predictions. Beside them sit 209 single-token matches and 24 set matches.
+The generated parser has 84 decisions: 52 are LL(1) (32 optional `if`, 8 loop `while`, 12 `switch`) and 32 are adaptive predictions. Beside them sit 213 single-token matches and 24 set matches (`match(` and `recoverInline` counted in the generated parser; corrected 2026-09-26 from 209).
 
 | construct | fails as | offending token |
 |---|---|---|
@@ -65,7 +65,7 @@ The generated parser has 84 decisions: 52 are LL(1) (32 optional `if`, 8 loop `w
 | adaptive decision whose alternatives share **no** prefix (16: ANTLR chose adaptive prediction only because a model predicate is reachable) | `NoViableAlt` | the decision's first token |
 | adaptive decision whose alternatives **share** a prefix (16) | `NoViableAlt` | the first token no alternative survives, possibly many tokens ahead |
 
-Two runtime rules shape the last row. **An alternative that has already completed the decision's rule wins** when nothing survives the next token, so the failure moves to whatever follows that rule, as a match or a later decision. And **prediction runs as if every predicate held**: a model predicate is evaluated only where the prediction resolves. So the entity spec's H-model path form stays alive through any path it could spell, and the decision fails wherever neither form continues, measured up to nine tokens past its start. *(Corrected by the trace, 2026-09-26: this read "predicates are applied where prediction starts".)* The overlap decisions an A12 model can reach, with their windows, are in Appendix B.
+Two runtime rules shape the last row. **An alternative that has already completed the decision's rule wins** when nothing survives the next token, so the failure moves to whatever follows that rule, as a match or a later decision. And **a model predicate does not eliminate an alternative where prediction starts**: the entity spec's H-model path form stays alive through any path it could spell, and the decision fails wherever neither form continues, measured up to nine tokens past its start. Exactly where ANTLR evaluates the predicate (where the prediction resolves, by its documented algorithm) is source-derived, not measured. *(Corrected by the trace, 2026-09-26: this read "predicates are applied where prediction starts".)* The overlap decisions an A12 model can reach, with their windows, are in Appendix B.
 
 ## 3. What the model already explains
 
@@ -75,42 +75,71 @@ Two runtime rules shape the last row. **An alternative that has already complete
 | [KF311](KERNEL-FINDINGS.md#kf311), the earlier failure wins | §2.2, lexing on demand |
 | [KF491](KERNEL-FINDINGS.md#kf491), walked against unwalked paths | Appendix B, the entity-spec window: while it predicts, no segment check has run; `$` then a name, a leading climb or a star directly after a name ends the window, and only then do the segment checks run. Confirmed by the trace: `FieldFilled(Items*/NoSuch.)` fails at `)` before `NoSuch` is checked, where KF491's earlier "resolved segment by segment as it is read" predicted `MVK_INVALID_ENTITY` |
 | [KF492](KERNEL-FINDINGS.md#kf492), typed argument slots | §2.4: a place count or a day keyword is a match, an operation slot a decision |
-| DG83, a message class beside a refused condition | §1, the message's parameters: a refused condition becomes `INVALID_CONDITION` for the message |
+| DG83, a message class beside a refused condition | §1, the message's parameters: a condition that fails withholds its rule's message check |
 | DG117 and DG118, operation types | §2.2: every operation's type is computed bottom-up by the check actions, so a comparison and an extremum see the type of an arithmetic side |
-| DG114, a field an `ONLY` variant filter deletes | §1: the element container is built for the default variant before any check |
+| DG114, a field an `ONLY` variant filter deletes | §1: code generation reads the default-variant container; which field check sits in that stage is R0's question |
 | the widened sweep's end-of-input clusters | §2.3 × §2.4: `FieldFilled(` and `[` end in a decision, `FieldFilled` and `RoundUpValue(X,` in a match |
 
 ## 4. The trace (plan item R2)
 
 A12 keeps nothing of the recognition exception: `MVKParserError` carries a message and a span, no cause, and the parse tree is discarded after a failure. So the trace captures at the moment of failure. `ParserService.checkSnippet(rule, text, grammarRule, reporter, parserInit)` is public; its `parserInit` hook runs after the kernel installs its error strategy and before parsing, so a test can install a subclass of `MVKDefaultErrorStrategy` that records the exception and then calls `super.reportError`, which leaves the production behaviour unchanged. With `Lenient_ConditionParser::bedingung_start` it is the same parser class, lexer, strictness and entry rule as `checkConsistency`, without the post-parse checks. Record the exception kind, the ATN decision (`atn.states[e.offendingState]` as a `DecisionState`), the start and offending tokens, and `getRuleInvocationStack(e.ctx)`; add a lexer error listener for lexical errors. A semantic failure is an `MVKParserError` with no recorded recognition exception.
 
-**Result (2026-09-26):** built as `adapter.A12ParseTraceTest` in the sweep's lane; no signature fell outside the model, and the trace agreed with `checkConsistency` on every input ([KF493](KERNEL-FINDINGS.md#kf493)).
+**Result (2026-09-26):** built as `adapter.A12ParseTraceTest` in the sweep's lane; no signature fell outside the model; on every input the trace's code is among the classes `checkConsistency` reports, and no text it parses draws a syntax class downstream ([KF493](KERNEL-FINDINGS.md#kf493)). It records failures only, so a decision, match or action it never saw fail is unobserved, not unreached; visits would need their own instrument.
 
 The instrument lives in `:adapter`'s tests (the parser and ANTLR are already on that compile classpath through `kernel-md-model`), in package `io.github.mbackschat.a12.dm.adapter` to reach `KernelModelPreparation.expand`, and gets an `MVKService` the way `KernelAdapter.buildService` does. It runs the whole near-miss population and groups the parse-stage refusals by signature. **Acceptance:** every signature is predicted by §2.3–§2.4 and Appendix B; a signature the model does not predict is a model defect, fixed in this document before any parser code is written. The batch-S seed rows (Appendix C) are part of its input.
 
-## 5. The rebuild (plan items R3–R5)
+## 5. The rebuild (plan items R3a–R5)
 
-- **One parser for the A12 (non-H) language, producing one tree, exact in behaviour and original in expression.** It matches what A12 observably does: which texts it accepts, which class it names, at which token. It does not match how A12's grammar file or generated parser is written. Copyright protects a program's expression and not its functionality, language or formats (Directive 2009/24/EC Art. 1(2); CJEU C-406/10 *SAS Institute v World Programming*). A translation of the source, however, is an adaptation (Art. 4), which would bring EUPL-1.2's copyleft into MIT code. So:
-  - it is written from this proposal and the trace's data, never with the kernel's grammar, generated parser or `Check*Impl` classes open beside it;
-  - it uses its own decomposition and English names, and carries no prediction tables or ANTLR decision numbers in main code;
-  - its oracle is the sweep and the trace;
-  - the kernel-linked trace stays in `:adapter`'s tests and never moves into `:consistency`.
+**Partitioned after the design review of 2026-09-26.** The review kept R2's measurements. It found that the evidence supports replacing the syntax mechanism, but not yet rebuilding every stage: 764 of the 788 divergent inputs share that one mechanism, and nothing yet shows the check actions or the model stages must be rewritten wholesale. So the rebuild lands in partitions, each with its own acceptance matrix and oracle, and a later partition opens only on evidence.
 
-  [LICENSING](LICENSING.md) holds the project's licence split, which this does not change.
-- **Decisions by kind** (§2.4): LL(1) choices by one token; the overlap decisions with the windows of Appendix B; the completed-rule fallback; predicates only at a decision's start.
-- **Check actions at rule completion**, one per A12 action site that an A12 model reaches, each raising its codes in A12's order (Appendix A.2), types propagating bottom-up.
-- **Post-parse in A12's fixed order** (Appendix A.3), then the stages above the condition in §1's order.
-- **The report is the stage stream.** Raise points, the positioned-code tables and the withholding rules retire; a class A12 would not reach is never computed.
-- **Deletion travels with replacement.** The landing that makes a family, a scanner or a heuristic redundant deletes it and its tests in the same commit.
-- **What R3 deletes, from the test inventory of 2026-09-26.** Six test files exercise the syntax layer's internals and go with it: `consistency.syntax.ConditionCallTest`, `ConditionComparisonTest` and `ConditionReferenceTest`; `consistency.ConditionShapeTest` and `ConditionCompletenessTest`; and `adapter.laws.CheckerParserCorpusSweepTest`. The last carries one property the rebuild keeps: the parser accepts every stored condition and operation of the local reference corpora in its model's language. Tests that go through the public report API, 192 files, stay unless the families they test are deleted. Method-level divergence locks in 42 files become ledger rows once T1 has moved their inputs into the population. No test was redundant with the sweep, because none of their inputs is in its population yet.
-- **Non-goals:** the H-model arm (the checker reads A12 models only), the lenient parser, and code generation itself.
-- **Acceptance:** the sweep ledger's parse-stage clusters are empty, with no over-rejection, on JVM and JS; Appendix C's rows are predicted; the old syntax layer and every family the rebuilt stage covers are gone.
+| partition | scope | oracle | opens when |
+|---|---|---|---|
+| **R3a**, the syntax verdict | one parser that decides whether A12's parser accepts a condition or an operation and, where it does not, the failure kind, class and offending token. It replaces `ShapeParser` and `IncompleteInput`; the scanners, the families and the report assembly keep their inputs | the sweep's clusters whose A12 class is a syntax class; the trace's rows compared at site and token; a position comparison over P2 | the contract below is written and reviewed |
+| **R3b**, check actions | a family's checks re-expressed on R3a's tree, in A12's order | the sweep, an order and position oracle, and A.2's rows measured first | R0 shows a family duplicates another or cannot follow A12's order |
+| **R4**, model stages | as R0's map names them | named by R0 | R0 |
+| **R5**, the report stream | order, span, multiplicity and deduplication of the published report | an order oracle beside the class sweep, since a class-set comparison cannot see order | R3b |
+
+**What R3a specifies before code:**
+
+- **Entry points:** a condition and an operation, in the model's condition language. A syntax-only mode needs no model; it replaces the property of `adapter.laws.CheckerParserCorpusSweepTest` that the reference corpora's stored conditions and operations parse.
+- **The verdict:** accepted, or failure kind (match, decision, lexical), class and offending token span. For a computation, the verdict is mapped from the joined text to its member, the mapping the report already carries.
+- **The events it honours:**
+  - lexing on demand;
+  - prediction without actions, decided per Appendix B and §2.4, including the completed-rule fallback and a predicate that does not eliminate an alternative at the decision's start;
+  - the positions of A.1's mid-rule events, where a later partition's checks hook in.
+
+  R3a runs no check action. Where A12 raises a check before the syntax failure, today's families still answer, ordered as today.
+- **Its consumers:** the report reads the shape verdict through `ConditionShape`'s entry points, unchanged. The scanners are untouched.
+- **JVM and JS:** one common-code implementation, green on both of `:consistency:check`'s targets.
+
+**Clean-room procedure.** The parser is exact in behaviour and original in expression. It matches what A12 observably does: which texts it accepts, which class it names, at which token. It does not match how A12's grammar file or generated parser is written. Copyright protects a program's expression and not its functionality, language or formats (Directive 2009/24/EC Art. 1(2); CJEU C-406/10 *SAS Institute v World Programming*). A translation of the source, however, is an adaptation (Art. 4), which would bring EUPL-1.2's copyleft into MIT code. So:
+
+- it is written from this proposal and the trace's data, never with the kernel's grammar, generated parser or `Check*Impl` classes open beside it;
+- Appendices A and B are research notes, not a construction blueprint, so its decomposition follows the behaviour it must produce, not one counterpart per A12 rule or action;
+- it uses English names and carries no prediction tables or ANTLR decision numbers;
+- the kernel-linked trace stays in `:adapter`'s tests.
+
+[LICENSING](LICENSING.md) holds the project's licence split, which this does not change.
+
+**Deletion runs against a finite matrix, never by family ownership.** Each test a landing deletes has a row naming its claim kind (class, site, order, or runtime) and the assertion that replaces it; identical inputs under a class-set comparison are not a replacement. For R3a the candidates are `consistency.ConditionShapeTest` and `ConditionCompletenessTest`, whose rows move into the trace's row list or a kernel law, and `CheckerParserCorpusSweepTest`, replaced by the syntax-only mode above. `consistency.syntax.ConditionCallTest`, `ConditionComparisonTest` and `ConditionReferenceTest` test the scanners, which R3a keeps.
+
+**One parser for the checker and the interpreter (S1) is not settled here.** The interpreter's dependency gate refuses every intra-repo edge ([interpreter/CLAUDE.md](../interpreter/CLAUDE.md)), so sharing a parser needs an owner decision on module ownership first. R3a lives in `:consistency`.
+
+**Non-goals:** the H-model arm and the lenient parser. H-shaped syntax that decides an A12 model's prediction or rejection is not a non-goal: the entity spec's H path form, and decision 74 under the ungated German `AnzahlAngegebenerVordrucke`.
+
+**Acceptance of R3a:**
+
+- the sweep's syntax-class clusters are empty, with no new over-rejection;
+- the trace's rows are reproduced by the new parser at class and offending token;
+- JVM and JS are green;
+- `ShapeParser` and `IncompleteInput` are gone, and so is every test the deletion matrix covers.
+
 
 ## Appendix A — check actions (source-read)
 
 ### A.1 Where they sit
 
-Actions run at the end of their rule's only alternative unless noted. `bedingung_start`, `teilBedingung`, `geklammerteBedingung`, `einfacheBedingung`, **`applikationsBedingung`** (so it is never checked), `entityListe`, `entity`, `vglOp`, `logOp` and the list sub-rules carry no action. Predicates: `isHModel` at six places, `isA12Model` on the entity-spec path alternative, `isGroupFromHModel` in the H entity loop.
+Actions run at the end of their rule's only alternative unless noted. `bedingung_start`, `teilBedingung`, `geklammerteBedingung`, `einfacheBedingung`, **`applikationsBedingung`** (inside a filter, the enclosing entity spec's check refuses it), `entityListe`, `entity`, `vglOp`, `logOp` and the list sub-rules carry no action. Predicates: `isHModel` at six places, `isA12Model` on the entity-spec path alternative, `isGroupFromHModel` in the H entity loop.
 
 | rule | action | note |
 |---|---|---|
@@ -135,6 +164,8 @@ Actions run at the end of their rule's only alternative unless noted. `bedingung
 | H-model rules | seven actions | reachable only behind `isHModel`, except `anzahlAngegebenOpHModel`, which is not gated and so draws an error in an A12 model |
 
 ### A.2 What each action raises, in order
+
+**A source-read inventory, not an order specification.** The review of 2026-09-26 found rows whose order is finer than stated: an index-field lookup that can raise `MULTIPLE_INDEX_FIELDS(2)` or `INDEX_FIELD_INVALID` before `ERROR_FIELD_NO_INDEX`; a cross-list duplicate check after type matching in the value-list conditions; a four-parameter date constructor refusing an extraction before its fourth parameter, and a short year that must have two characters; a date range judged operand by operand; and the display-value restriction on `+` inspecting a direct field read only. Each becomes a requirement only once its discriminator is measured (R3b).
 
 "Common" gates: field expected → `NO_GROUPS_ALLOWED`; group expected → `NO_FIELDS_ALLOWED`; no star → `NO_WILDCARDS_ALLOWED`; no category → `CATEGORY_NOT_ALLOWED`; value validation → `INVALID_RAW_TYPE`; duplicate operand → `DUPLICATE_PARAM1`/`2`; root group → `ROOT_GROUP_REFERENCED(_AS_GROUP)`. All codes are `MVK_`-prefixed.
 
@@ -190,14 +221,15 @@ Actions run at the end of their rule's only alternative unless noted. `bedingung
 | 2 | a parallel-iterated filtered entity | `PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED` |
 | 3 | parallel iteration inside a filter | `PARALLEL_ITERATION_NOT_ALLOWED` |
 | 4 | a semantic index inside a filter | `SEMANTIC_INDEX_NOT_ALLOWED` |
-| 5–6 | repeated repetition-not-unique | `INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` |
+| 5 | repeated repetition-not-unique | `INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` |
+| 6 | repeated row-not-unique (H model only) | the same code |
 | 7 | raw-type `Length` | `INVALID_LENGTH_OF_RAW_TYPE` |
 | 8 | `IterationChecker`, on the parser's entity map: error field not referenced (`ERROR_FIELD_NOT_REFERENCED`) → iteration classes (`ERROR_FIELDGROUP_ITERATION4/5_INVALID`, `ERROR_FIELD_AND_ITERATION_INVALID`) → `ITERATION_RESTRICTION_IN_A12_MODEL`; reports, then stops | several |
 | 9 | USB iteration | `UITERATION_INVALID` |
 | 10 | parallel iteration validity | `PARALLEL_ITERATION_INVALID` |
 | 11 | a negated condition in an iteration | `NEG_CONDITION_IN_ITERATION` |
 
-Before step 1, `setParallelIterationIndices` turns some iterations into parallel iterations without raising anything.
+Before step 1, `setParallelIterationIndices` turns some iterations into parallel iterations without raising anything, and the high-level tree is derived from the parse.
 
 ## Appendix B — decisions an A12 model reaches (source-read)
 
@@ -210,6 +242,7 @@ Before step 1, `setParallelIterationIndices` turns some iterations into parallel
 | name continuation (dec 83) | `.` then a name, against `.*` and the H row suffix | two tokens |
 | operation primary (dec 20) and loop (dec 24) | a leading comment; operator tokens that also follow an inner operation | two tokens; precedence |
 | comment placement (dec 3, 17, 19) | `;;` may lead or trail several constructs | ambiguous by design |
+| a form level (dec 74), German models only | `/` then digits against `/*` in `AnzahlAngegebenerVordrucke`'s argument; the operation carries no model predicate, so an A12 model reaches it and its check refuses it only after the argument parses | two tokens; source-read, unmeasured |
 
 Matches and switches that can fail in practice: the set matches `tagSpec` (first/last day), `inOp`, `toOp` and `nameOhnePunkt` (after the application-condition keyword, after `->`, and after `/` inside a path); the switches `commonKonstante` (a count's constant), `vglOp` (after a comparison's left side) and `wertListenSpezifier2` (after a value list's comma). Every other set match and switch is pre-checked by an earlier prediction. The 16 predicate-only decisions are 0, 4, 7, 9, 16, 23, 25, 31, 37, 38, 39, 40, 41, 57, 59 and 69.
 

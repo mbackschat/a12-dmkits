@@ -11739,22 +11739,22 @@ A walked prefix that resolves still ends in the token class: `FieldFilled(Items*
 
 > Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §12's syntax material.
 
-The source-read model is [CHECKER-RECONSTRUCTION-PROPOSAL](CHECKER-RECONSTRUCTION-PROPOSAL.md) §2 and its appendices. The trace records, at the moment of failure, the recognition exception A12's own error strategy receives (`ParserService.checkSnippet`'s init hook, the strict parser, `bedingung_start`, each seed's probe rule as context), over every condition edit of the near-miss population. It found 3 277 failed matches, 4 783 failed predictions, 820 check-action failures, and no failed in-body predicate or lexical error. Every failure's class is `MVK_EXPECTED_TOKEN_NOT_FOUND` / `MVK_UNEXPECTED_TOKEN` for a match and `MVK_INCOMPLETE_INPUT` / `MVK_UNEXPECTED_TOKEN` for a prediction, at end of text or not. On every input, the code equals the class `checkConsistency` reports.
+The source-read model is [CHECKER-RECONSTRUCTION-PROPOSAL](CHECKER-RECONSTRUCTION-PROPOSAL.md) §2 and its appendices. The trace records, at the moment of failure, the recognition exception A12's own error strategy receives (`ParserService.checkSnippet`'s init hook, the strict parser, `bedingung_start`, each seed's probe rule as context), over every condition edit of the near-miss population. It found 3 277 failed matches, 4 783 failed predictions, 820 check-action failures, and no failed in-body predicate or lexical error. Every failure's class is `MVK_EXPECTED_TOKEN_NOT_FOUND` / `MVK_UNEXPECTED_TOKEN` for a match and `MVK_INCOMPLETE_INPUT` / `MVK_UNEXPECTED_TOKEN` for a prediction, at end of text or not. On every input the trace's code is among the classes `checkConsistency` reports, and no text the trace parses draws a syntax class downstream. *(Corrected 2026-09-26: this said the code equals A12's class, which the test does not assert.)* The trace records failures only, so a decision, match or action it never saw fail is unobserved, not unreached, and the check actions' order is not measured here.
 
 | decision | failed at | depth past its start |
 |---|---|---|
 | the prefix-free adaptive decisions (0, 7, 37–41, 69) and the three switches that can fail (a count's constant, a comparison operator, a value list's second part) | their first token | 0 |
 | the entity spec (56) | where neither the H-model nor the A12 path form continues | 0–9 |
-| the simple condition (6), `Valid (` against `Invalid (` | within three tokens | 1–2 |
+| the simple condition (6), date validity against predefined-type validity, which share `Valid (` or `Invalid (` | within three tokens | 1–2 |
 | a condition part's leading comment (3), an operation's primary (20) | their first token | 0 |
 
-**Prediction runs as if every model predicate held.** The two path forms are told apart only by `isHModel`/`isA12Model`, and the entity spec still fails up to nine tokens past its start, so the predicates are evaluated only where the prediction resolves, not where it starts.
+**A model predicate does not eliminate an alternative where prediction starts.** The two path forms are told apart only by `isHModel`/`isA12Model`, and the entity spec still fails up to nine tokens past its start. Where exactly the predicate is evaluated is not measured: ANTLR's documented algorithm evaluates it where the prediction resolves, and a trace of predicate events would be needed to confirm it. *(Corrected 2026-09-26: this stated the resolution point as measured.)*
 
-**Discriminating rows**, each measured on the trace's order fixture:
+**Discriminating rows**, the first from the population trace (a seed whose host has repeatable `Lines`), the others on the trace's order fixture:
 
 - `FieldFilled(Lines/Qty). And …` fails at the end-of-condition match on `.`: the connective loop exits on a token it cannot take, and the next match reports it.
 - `FieldFilled(Items*/NoSuch.)` is a mismatch at `)` before `NoSuch`'s segment check ([KF491](#kf491), corrected).
 - The unstarred `CurrentRepetition(/Order/Items, …)` is `MVK_NO_WILDCARD`, because the completed entity spec's check runs before the operation's `)` match fails. The starred one is the mismatch at `,`.
 - A comment inside an argument list is refused ([KF76](#kf76), corrected).
 
-*Locked by:* `adapter.A12ParseTraceTest` — the population trace, with a floor per failure kind, and the predicted rows (21 predicted before the run, 18 held, the three misses being misapplications of the model; see its row list).
+*Locked by:* `adapter.A12ParseTraceTest` — the population trace, with a floor per failure kind and witnesses for the deep entity-spec failures, the simple condition's and the three switches; and the predicted rows, locked at site and offending token (21 predicted before the run, 18 held, the three misses being misapplications of the model; see its row list).

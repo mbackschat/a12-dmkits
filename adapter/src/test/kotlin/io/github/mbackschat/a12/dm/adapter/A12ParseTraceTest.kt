@@ -80,6 +80,11 @@ class A12ParseTraceTest {
         assertTrue(tally.count(Kind.MISMATCH) >= 500, "mismatch failures traced: ${tally.kinds}")
         assertTrue(tally.count(Kind.NO_VIABLE) >= 500, "no-viable-alternative failures traced: ${tally.kinds}")
         assertTrue(tally.count(Kind.CHECK) >= 100, "check-action failures traced: ${tally.kinds}")
+        // Witnesses of what KF493 states, each well below the first run's count: the entity spec failing deep in a
+        // path, the simple condition failing past its first token, and every switch the model says can fail.
+        assertTrue(tally.witnessed(56, 5) >= 10, "deep entity-spec failures: ${tally.witnesses[56]}")
+        assertTrue(tally.witnessed(6, 1) >= 5, "simple-condition failures past the first token: ${tally.witnesses[6]}")
+        assertEquals(FALLIBLE_SWITCHES, tally.switchesFailed, "the switches observed failing")
     }
 
     /**
@@ -111,7 +116,7 @@ class A12ParseTraceTest {
             .single { it.fullName.endsWith("/${NearMissPopulation.PROBE}") }
         val observed = PREDICTED_ROWS.map { (condition, _) ->
             val trace = trace(service, rule, condition)
-            condition to "${trace.failure?.kind ?: "PARSED"} ${trace.code ?: ""}".trim()
+            condition to (trace.failure?.let { "${it.site()} ${trace.code}" } ?: "PARSED")
         }
         assertEquals(PREDICTED_ROWS, observed)
     }
@@ -175,6 +180,13 @@ class A12ParseTraceTest {
         fun signature() = "$kind\t$rule\t${if (decision < 0) "-" else "dec $decision"}\t$offending\t" +
             (if (kind == Kind.NO_VIABLE) "depth $depth" else "-")
 
+        /** Where a syntax failure happened, as a predicted row states it; a check or lexical failure has no site. */
+        fun site() = when (kind) {
+            Kind.MISMATCH, Kind.OTHER -> "$kind $rule at $offending"
+            Kind.NO_VIABLE -> "$kind $rule dec $decision at $offending depth $depth"
+            Kind.LEXICAL, Kind.CHECK -> "$kind"
+        }
+
         companion object {
             fun of(parser: Parser, e: RecognitionException): Failure {
                 val offending = e.offendingToken
@@ -203,6 +215,11 @@ class A12ParseTraceTest {
         val modelDefects = mutableListOf<String>()
         var parsed = 0
         var beyondTheParse = 0
+        val witnesses = sortedMapOf<Int, MutableList<Int>>()
+        val switchesFailed = mutableSetOf<String>()
+
+        /** How many failed predictions of [decision] lay at least [depth] tokens past its start. */
+        fun witnessed(decision: Int, depth: Int) = witnesses[decision].orEmpty().count { it >= depth }
 
         fun count(kind: Kind) = kinds.getValue(kind)
 
@@ -211,10 +228,17 @@ class A12ParseTraceTest {
             if (trace.code == null || failure == null) {
                 parsed++
                 if (a12.isNotEmpty()) beyondTheParse++
+                (a12 intersect SYNTAX_CLASSES).takeIf { it.isNotEmpty() }?.let {
+                    productionMismatches += "the trace parsed what A12 refuses as syntax $it · $condition"
+                }
                 return
             }
             if (trace.code !in a12) productionMismatches += "${trace.code} not in $a12 · $condition"
             kinds[failure.kind] = count(failure.kind) + 1
+            if (failure.kind == Kind.NO_VIABLE) {
+                witnesses.getOrPut(failure.decision) { mutableListOf() } += failure.depth
+            }
+            if (failure.rule in FALLIBLE_SWITCHES) switchesFailed += failure.rule
             signatures.getOrPut(failure.signature()) { mutableListOf() } += condition
             modelViolation(failure, trace.code)?.let { modelDefects += "$it · ${failure.signature()} · $condition" }
         }
@@ -232,8 +256,11 @@ class A12ParseTraceTest {
         private const val AFTER = "FieldFilled(Total) And "
 
         /**
-         * Each Appendix C condition with the exception kind and class A12 answers. `PARSED` is a text that reaches
-         * the end without a syntax failure, and `CHECK` a check action's class. Measured 2026-09-26: of the 21
+         * Each Appendix C condition with where A12's parser fails and the class it answers: the exception kind, the
+         * rule it failed in, for a failed prediction the decision and how far past its start, and the offending
+         * token. `PARSED` is a text that reaches the end without a syntax failure, and `CHECK` a check action's
+         * class. The kind and class were predicted before the first run; the sites were measured afterwards and each
+         * is the construct the model names for its row. Measured 2026-09-26: of the 21
          * rows predicted before the run, 18 held. The three misses were misapplications of the model, and each row
          * now carries what the model gives when applied in full. `$` then a name ends the entity-spec window, so
          * `$Code/` fails at a match. A completed spec's check wins over the later mismatch, so the unstarred
@@ -242,29 +269,29 @@ class A12ParseTraceTest {
          * settle that a comment is a token the grammar admits only at a condition's or an operation's edge.
          */
         val PREDICTED_ROWS = listOf(
-            AFTER + "FieldFilled" to "MISMATCH MVK_EXPECTED_TOKEN_NOT_FOUND",
-            AFTER + "Valid" to "NO_VIABLE MVK_INCOMPLETE_INPUT",
-            AFTER + "RoundUpValue(Total," to "MISMATCH MVK_EXPECTED_TOKEN_NOT_FOUND",
-            AFTER + "RangeAsNumber(Code, 1," to "MISMATCH MVK_EXPECTED_TOKEN_NOT_FOUND",
-            AFTER + "ValueAsDate(Estimated," to "MISMATCH MVK_EXPECTED_TOKEN_NOT_FOUND",
-            AFTER + "Max([Total]," to "NO_VIABLE MVK_INCOMPLETE_INPUT",
-            AFTER + "AddDays(Placed," to "NO_VIABLE MVK_INCOMPLETE_INPUT",
-            AFTER + "FieldFilled(Items*/NoSuch.)" to "MISMATCH MVK_UNEXPECTED_TOKEN",
-            AFTER + "FieldFilled(Items*/Count.)" to "MISMATCH MVK_UNEXPECTED_TOKEN",
-            AFTER + "FieldFilled(Items*/Lots/Qty/)" to "MISMATCH MVK_UNEXPECTED_TOKEN",
+            AFTER + "FieldFilled" to "MISMATCH feldListenBedingung at EOF MVK_EXPECTED_TOKEN_NOT_FOUND",
+            AFTER + "Valid" to "NO_VIABLE einfacheBedingung dec 6 at EOF depth 1 MVK_INCOMPLETE_INPUT",
+            AFTER + "RoundUpValue(Total," to "MISMATCH rundenOp at EOF MVK_EXPECTED_TOKEN_NOT_FOUND",
+            AFTER + "RangeAsNumber(Code, 1," to "MISMATCH feldOpMitParams at EOF MVK_EXPECTED_TOKEN_NOT_FOUND",
+            AFTER + "ValueAsDate(Estimated," to "MISMATCH tagSpec at EOF MVK_EXPECTED_TOKEN_NOT_FOUND",
+            AFTER + "Max([Total]," to "NO_VIABLE operation dec 20 at EOF depth 0 MVK_INCOMPLETE_INPUT",
+            AFTER + "AddDays(Placed," to "NO_VIABLE operation dec 20 at EOF depth 0 MVK_INCOMPLETE_INPUT",
+            AFTER + "FieldFilled(Items*/NoSuch.)" to "MISMATCH idNameRef at KLAMMER_ZU MVK_UNEXPECTED_TOKEN",
+            AFTER + "FieldFilled(Items*/Count.)" to "MISMATCH idNameRef at KLAMMER_ZU MVK_UNEXPECTED_TOKEN",
+            AFTER + "FieldFilled(Items*/Lots/Qty/)" to "MISMATCH nameOhnePunkt at KLAMMER_ZU MVK_UNEXPECTED_TOKEN",
             AFTER + "FieldFilled(Items*/Lots/Qty)" to "CHECK MVK_NO_WILDCARD",
-            AFTER + "FieldFilled(${'$'}Code/)" to "MISMATCH MVK_UNEXPECTED_TOKEN",
+            AFTER + "FieldFilled(${'$'}Code/)" to "MISMATCH nameOhnePunkt at KLAMMER_ZU MVK_UNEXPECTED_TOKEN",
             AFTER + "CurrentRepetition(/Order/Items, /Order/Items/Lots) > 0" to "CHECK MVK_NO_WILDCARD",
-            AFTER + "CurrentRepetition(/Order/Items*, /Order/Items/Lots) > 0" to "MISMATCH MVK_UNEXPECTED_TOKEN",
-            AFTER + "AddDays([Premium], 1) > 0" to "NO_VIABLE MVK_UNEXPECTED_TOKEN",
-            AFTER + "RoundUpValue(Total In NoSuch) > 0" to "MISMATCH MVK_UNEXPECTED_TOKEN",
-            AFTER + "Abs(RuleGroup) > 0" to "NO_VIABLE MVK_UNEXPECTED_TOKEN",
+            AFTER + "CurrentRepetition(/Order/Items*, /Order/Items/Lots) > 0" to "MISMATCH groupOp at KOMMA MVK_UNEXPECTED_TOKEN",
+            AFTER + "AddDays([Premium], 1) > 0" to "NO_VIABLE datumAngabe2 dec 39 at ECKIGE_KLAMMER_AUF depth 0 MVK_UNEXPECTED_TOKEN",
+            AFTER + "RoundUpValue(Total In NoSuch) > 0" to "MISMATCH rundenOp at IN1 MVK_UNEXPECTED_TOKEN",
+            AFTER + "Abs(RuleGroup) > 0" to "NO_VIABLE operation dec 20 at REGEL_KONTEXT depth 0 MVK_UNEXPECTED_TOKEN",
             "[Total] > \u0662" to "LEXICAL MVK_LEXER_STANDARD_ERROR",
-            AFTER + "[Total] > Abs Qty" to "MISMATCH MVK_UNEXPECTED_TOKEN",
+            AFTER + "[Total] > Abs Qty" to "MISMATCH feldOperOp at NameOhnePunktSTRAmAnfang MVK_UNEXPECTED_TOKEN",
             AFTER + "Abs({[Total]}) > 0" to "PARSED",
             AFTER + "Max([Total], RoundUp([Qty], 0)) > 0" to "PARSED",
             AFTER + "[Placed] < AddDays(Placed, Abs([Qty]))" to "PARSED",
-            AFTER + "RoundUpValue(Total, ;;c\n 2) > 0" to "MISMATCH MVK_UNEXPECTED_TOKEN",
+            AFTER + "RoundUpValue(Total, ;;c\n 2) > 0" to "MISMATCH rundenOp at Comment MVK_UNEXPECTED_TOKEN",
             AFTER + ";;c\n FieldFilled(Qty)" to "PARSED",
         )
         val MVK = Regex("MVK_[A-Z0-9_]+")
@@ -275,6 +302,12 @@ class A12ParseTraceTest {
         /** The adaptive decisions whose alternatives share a prefix, with the proposal's window where it is bounded. */
         val OVERLAP = mapOf(3 to null, 6 to 3, 17 to null, 19 to null, 20 to 2, 24 to null, 55 to null, 56 to null,
             58 to 2, 63 to 3, 66 to 3, 71 to null, 74 to 2, 79 to 2, 81 to 2, 83 to 2)
+
+        const val INTERNAL_ERROR = "MVK_INTERNAL_ERROR"
+
+        /** The classes only the parse stage raises, so a text the trace parses cannot draw one downstream. */
+        val SYNTAX_CLASSES = setOf("MVK_UNEXPECTED_TOKEN", "MVK_INCOMPLETE_INPUT", "MVK_EXPECTED_TOKEN_NOT_FOUND",
+            "MVK_LEXER_STANDARD_ERROR", "MVK_COMMON_PARSER_ERROR")
 
         /** The LL(1) switches whose default can fire, by rule (Appendix B). */
         val FALLIBLE_SWITCHES = setOf("wertListenSpezifier2", "commonKonstante", "vglOp")
@@ -290,7 +323,7 @@ class A12ParseTraceTest {
                 Kind.NO_VIABLE -> if (failure.atEnd) "MVK_INCOMPLETE_INPUT" else "MVK_UNEXPECTED_TOKEN"
                 Kind.OTHER -> return "an in-body predicate failed"
                 Kind.LEXICAL -> "MVK_LEXER_STANDARD_ERROR"
-                Kind.CHECK -> return null
+                Kind.CHECK -> return if (code == INTERNAL_ERROR) "an internal error, not a check action" else null
             }
             if (code != expected) return "class $code, the model says $expected"
             if (failure.kind != Kind.NO_VIABLE) return null
