@@ -5,8 +5,10 @@ import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 /**
  * Render the measured `en_US` String-pattern message grammar (EXP-2026-07-30-01). The scan is deliberately
  * over the original template exactly once: stored bytes inserted for `$field.value$` are opaque output and can
- * never become a second-stage `$field$` token. Unlike a rule message, `$$` is not a literal-dollar escape here;
- * the kernel rejects it during model consistency as an empty parameter.
+ * never become a second-stage `$field$` token. Unlike a rule message, `$$` is not a literal-dollar escape here.
+ * The kernel's model consistency refuses it inside the text and at its start as an empty parameter, but admits a
+ * pair at the very end and `$$` alone (KERNEL-FINDINGS KF490); what those render is unmeasured, so this declines
+ * them (INTERPRETER-GAPS IG159).
  */
 internal fun renderPatternFieldMessage(
     template: String,

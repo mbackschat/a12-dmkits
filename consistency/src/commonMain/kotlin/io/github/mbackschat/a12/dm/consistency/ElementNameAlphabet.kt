@@ -5,7 +5,7 @@ package io.github.mbackschat.a12.dm.consistency
  *
  * **The carriers do not share their alphabet, measured row for row** ([KERNEL-FINDINGS KF315],
  * `rulekit.validate.laws.GroupNameAlphabetLawsTest` and `FieldNameAlphabetLawsTest`). A group below the root
- * refuses a leading underscore that a field ADMITS, and admits a non-ASCII letter that a field refuses; the
+ * refuses a leading underscore that a field ADMITS, and admits a German umlaut that a field refuses; the
  * 60-character limit is the group's alone. Applying one carrier's law to the other would have refused a
  * field named `_Slots`, which is the direction this checker may not take — so the two are asked separately.
  *

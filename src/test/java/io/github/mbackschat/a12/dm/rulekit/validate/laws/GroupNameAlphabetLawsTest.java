@@ -20,8 +20,10 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
  * for {@code __meta} and {@code __attachment_meta*}. A consumer implementing the quoted sentence admits names
  * the kernel refuses, and the sentence is the kernel's own.
  *
- * <p><b>"Letters" is Unicode, not ASCII</b> — {@code Slöts} is admitted — so an implementation validating
- * {@code [A-Za-z]} refuses legal models from the other direction.
+ * <p><b>"Letters" is wider than ASCII</b> — {@code Slöts} is admitted — so an implementation validating
+ * {@code [A-Za-z]} refuses legal models from the other direction. It is not Unicode either: the group's pattern
+ * adds only the German umlauts and {@code ß}, and a group named {@code Parté} is refused ({@code KERNEL-FINDINGS
+ * KF315}, corrected).
  *
  * <p><b>The colon is the exception that keeps the lexer claim honest.</b> A hyphen, a space and a digit-initial
  * spelling inside a QUOTED segment die at the lexer, {@code MVK_LEXER_STANDARD_ERROR}, where the identical

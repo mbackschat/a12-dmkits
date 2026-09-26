@@ -126,6 +126,11 @@ class FieldTypeMessageTextLawsTest {
                 f -> f.pattern("[A-Z]+", "a\tb").patternMessage("de_DE", "a\nb"), "de_DE", "en_US")));
         actual.put("a message with no pattern, a tab", unpatterned("a\tb"));
         actual.put("a tab in an undeclared locale's message", inAnUndeclaredLocale("a\tb"));
+        actual.put("an empty pattern message", edited(patterned(f -> f.pattern("[A-Z]+", "capitals only"), "en_US"),
+                fieldType -> ((ObjectNode) fieldType.path("StringType").path("errorMessage").get(0)).put("text", "")));
+        actual.put("a tab on a field an ONLY filter deletes", editedCode(
+                patterned(f -> f.pattern("[A-Z]+", "a\tb"), "en_US"),
+                field -> field.putObject("variantFilter").put("filterType", "ONLY")));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("both locales defective", "INVALID_CHARACTERS");
@@ -137,6 +142,10 @@ class FieldTypeMessageTextLawsTest {
         expected.put("both locales defective, declared the other way round", "INVALID_LINEBREAK");
         expected.put("a message with no pattern, a tab", "INVALID_CHARACTERS,MVK_ERROR_MESSAGE_AND_NO_PATTERN");
         expected.put("a tab in an undeclared locale's message", KernelLaws.ADMITTED);
+        // An empty text is not a message at all: A12 names the pattern-message pairing, not a character gate.
+        expected.put("an empty pattern message", "MVK_ERROR_MESSAGE_AND_PATTERN_INVALID");
+        // The filter deletes the field before A12's element walk reaches it ([KF305]), so its message is never asked.
+        expected.put("a tab on a field an ONLY filter deletes", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "which field messages the checker reaches");
     }
 
@@ -326,7 +335,7 @@ class FieldTypeMessageTextLawsTest {
 
     /**
      * The String type's own message with no pattern beside it, written into the tree because the typed builder
-     * drops a message that has no pattern (a modelkit defect found by this very row, tracked on its own).
+     * drops a message that has no pattern ({@code DEV-API-GAPS} DG115).
      */
     private static String unpatterned(String text) {
         return edited(patterned(f -> { }, "en_US"), fieldType -> fieldType.putObject("StringType")
@@ -341,12 +350,17 @@ class FieldTypeMessageTextLawsTest {
     }
 
     private static String edited(String json, Consumer<ObjectNode> codeFieldType) {
+        return editedCode(json, field -> codeFieldType.accept((ObjectNode) field.path("fieldType")));
+    }
+
+    /** A12's verdict on {@code json} with the {@code Code} field's body edited in the tree. */
+    private static String editedCode(String json, Consumer<ObjectNode> codeField) {
         try {
             ObjectNode root = (ObjectNode) MAPPER.readTree(json);
             for (JsonNode element : root.path("content").path("modelRoot").path("rootGroups").get(0)
                     .path("Group").path("elements")) {
                 if ("Code".equals(element.path("name").asText())) {
-                    codeFieldType.accept((ObjectNode) element.path("Field").path("fieldType"));
+                    codeField.accept((ObjectNode) element.path("Field"));
                 }
             }
             return KernelLaws.verdictOf(root.toString());

@@ -62,7 +62,8 @@ private fun TrackedFactBase.ownMessageFinding(field: TrackedDeclaration, languag
         string != null -> FieldMessageCarrier.PATTERN_MESSAGE to string
         else -> FieldMessageCarrier.INVALID_VALUE_MESSAGE to (field.enumerationBody() ?: return null)
     }
-    // A source A12's reader refuses is never examined; STRING_PATTERN_MESSAGE reports that refusal.
+    // A source A12's reader refuses is never examined here. STRING_PATTERN_MESSAGE reports that refusal for a String
+    // type; for an Enumeration nothing does, and it is left to A12.
     val read = type.authoredMessages() as? AuthoredMessages.Read ?: return null
     val texts = read.entries.collectedTexts(declaredLocales)
     return declaredLocales.firstNotNullOfOrNull { locale ->

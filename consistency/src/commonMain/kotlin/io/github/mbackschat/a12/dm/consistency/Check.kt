@@ -126,7 +126,7 @@ enum class CheckFamily {
 
     /**
      * That a declared GROUP or FIELD name is one A12's own alphabet takes. Two laws rather than one: a group
-     * refuses a leading underscore a field admits and admits a non-ASCII letter a field refuses, so each
+     * refuses a leading underscore a field admits and admits a German umlaut a field refuses, so each
      * carrier is asked its own question and a carrier with no measurement is not asked. Non-ASCII characters
      * and the group's 60-character limit are left to A12.
      */

@@ -244,7 +244,7 @@ class DeclaredNameShapeLawsTest {
      * defect was live here until this grid was run, and it is why the row exists.
      *
      * <p>The alphabet rows transfer exactly — a hyphen, a space and a colon draw {@code MVK_PATH_INVALID} on
-     * both carriers, the separator draws {@code MVK_PATHS_INCONSISTENT} on both, and a non-ASCII letter is
+     * both carriers, the separator draws {@code MVK_PATHS_INCONSISTENT} on both, and an umlaut is
      * admitted on both. So the carrier does not move the law uniformly, and which rows it moves cannot be
      * predicted from the ones it leaves alone.
      */
