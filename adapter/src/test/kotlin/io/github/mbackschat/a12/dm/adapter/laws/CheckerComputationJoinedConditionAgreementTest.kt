@@ -210,7 +210,8 @@ class CheckerComputationJoinedConditionAgreementTest {
         /** The rows where the checker answers otherwise, with what it answers. */
         val OURS: Map<String, Set<String>> = mapOf(
             // The comparison families type a side only where it is one entity spec or a written-out constant,
-            // for rules and computations alike: an arithmetic side's type is derived from the whole expression.
+            // for rules and computations alike: an arithmetic side's type is derived from the whole expression
+            // ([CONSISTENCY-GAPS DG117](../../../../../../../../../../../docs/CONSISTENCY-GAPS.md)).
             "a String from a sum" to ADMITTED,
         )
     }

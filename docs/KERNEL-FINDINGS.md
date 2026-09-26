@@ -11430,6 +11430,21 @@ Before the fix the portable checker was silent on every row drawing the category
 
 The target's spelling was varied too: declared in `Billing` into a root String and into its own String, and declared at the root into `Lines/Qty` and in `Lines` into its own `Qty`, a String source draws `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` on all four.
 
+**The complete cross follows the arm order** (2026-09-26). A second carrier declares eleven fields over nine kinds, each with a twin, and copies every field into every twin: 121 cells, plus six Enumeration and arithmetic rows. Each class was predicted before the run from [KF469](#kf469)'s arm order, and A12 drew the predicted class on all 127:
+
+| the pair, either direction | A12 |
+|---|---|
+| a Confirm against any other kind, a Boolean included | `MVK_INVALID_COMPARE_TO_YES` |
+| otherwise a Boolean against any other kind | `MVK_INVALID_COMPARE_TO_YESNO` |
+| otherwise a Date, Time or DateTime against a non-temporal kind, a DateRange included, or against each other | `MVK_INVALID_COMPARE_TO_DATE` |
+| otherwise a DateRange against a String, a Number or an Enumeration | `MVK_INVALID_COMPARE_TO_DATE_RANGE` |
+| otherwise a Number against a String or an Enumeration | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
+| a labelled Enumeration against a String or an unlabelled one; two conflicting labellings | `MVK_INVALID_COMPARE_ENUM_TO_STRING`; `MVK_INVALID_COMPARE_ENUM_TO_ENUM` |
+| an unlabelled Enumeration over a wider domain, into an unlabelled target; into a labelled target | `MVK_ERROR_INVALID_ENUM_CALCULATION`; `MVK_INVALID_COMPARE_ENUM_TO_STRING` alone |
+| an unlabelled Enumeration into a String, or into a wider unlabelled one | ADMITTED |
+
+Each Confirm and Boolean row, read in both directions, refutes a class typed by one side's kind. The wider domain into a labelled target refutes the calculation's class answering first. The three temporal kinds carry three different formats here, so these rows do not separate the kind question from the format question. The cross follows a12-kernel-lean's `SPEC-2026-09-26-04`, whose grid over the same shape they report with the same classes.
+
 **The members are one text, and of the classes raised while it is parsed, A12 names the first.** *Corrected 2026-09-26:* this said A12 names the text's first class, which is broader than the rows. The calculation module's stage classes are not raised while the text is parsed. Mixed alternatives stand beside an enumeration source or a read of the computed field in the other alternative, and each such class stands beside `MVK_ERROR_MESSAGE_MISSING`, as [KF375](#kf375)'s complete class sets show. a12-kernel-lean's `SPEC-2026-09-26-02` drew the narrowing from those rows (their report).
 
 | the classes, in joined order | A12 |
@@ -11447,9 +11462,9 @@ What the rows separate:
 - **The target is read before the operation.** A partially known or raw target draws its read class, which is the bracket's and no comparison's ([KF81](#kf81) measured the partial date). A source read that spans the whole operation answers ahead of the comparison it sits in.
 - **Joined order, not preconditions first.** One alternative's operation withholds the next alternative's precondition, which a reading that parsed every precondition first would get wrong; and a name in the operation leaves the precondition's class standing, where [KF340](#kf340)'s measured name in a precondition withholds the operation's.
 
-The portable checker was silent on every refused copy row, and named both classes on the first three joined rows and the unresolved name's on the fourth. It now reads a computation's lowered comparison through the same shape parser as an authored one (`comparisonsOf`), and the seven comparison families judge it. The field-value read family reads the target. Report assembly orders a declaration's members by their place in the joined text (`joinedOrderOf`). One row stays under-reported, the sum: the comparison families type a side only where it is one entity spec or a written-out constant, for rules and computations alike.
+The portable checker was silent on every refused copy row, and named both classes on the first three joined rows and the unresolved name's on the fourth. It now reads a computation's lowered comparison through the same shape parser as an authored one (`comparisonsOf`), and the seven comparison families judge it. The field-value read family reads the target. Report assembly orders a declaration's members by their place in the joined text (`joinedOrderOf`). One row stays under-reported, the sum: the comparison families type a side only where it is one entity spec or a written-out constant, for rules and computations alike (DG117).
 
-*Locked by:* `adapter.laws.CheckerComputationJoinedConditionAgreementTest`, A12's class written out on every row and the checker required to name it; mirrored by `consistency.ComputationJoinedConditionTest`.
+*Locked by:* `adapter.laws.CheckerComputationJoinedConditionAgreementTest`, A12's class written out on every row and the checker required to name it, and `adapter.laws.CheckerFieldCopyCrossAgreementTest` for the complete cross, where the checker agrees on every row but the arithmetic one ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG117); mirrored by `consistency.ComputationJoinedConditionTest`.
 
 ## §1 supplement — A12 types a written-out constant before the comparison walk: a date-shaped literal, `Today` and `Now` are DATES, any other literal is text, and the two-constant gate exempts a pair only where its LEFT side is a date (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf484"></a>
 
