@@ -197,7 +197,7 @@ class TemporalAggregateOperandsTest {
         actual["a NUMBER as the LEADER, which another arm types"] =
             codes("MaxValue(Premium, StartOn) == [AuditOn]")
         actual["the operand-list Min, which carries the gate over OPERATIONS"] =
-            codes("Min(StartOn, PeriodFrom) == [AuditOn]")
+            codes("Min([StartOn], [PeriodFrom]) == [AuditOn]")
         actual["a complete date beside a year-month — the positive control"] =
             codes("MaxValue(StartOn, PeriodFrom) == [AuditOn]")
 

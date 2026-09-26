@@ -52,10 +52,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * limit is this reader's and not A12's, so an unreadable format stops the COMPARISON and not the walk: a
  * partial precision further down the list is still reported.
  *
- * **`Min` and `Max` carry the same gate and are deliberately out of scope.** Their operands are OPERATIONS,
- * not entity references, so the leading operand's type can be a computed expression this reader does not
- * type; judging the sub-case where every operand happens to be a bare field would rest the family on a shape
- * the reader cannot tell apart from the rest. `Sum` is not a carrier at all — it refuses a temporal operand
+ * **`Min` and `Max` carry the same gate, and this family leaves it unjudged** ([CONSISTENCY-GAPS] DG118).
+ * Their operands are OPERATIONS, not entity references, so the leading operand's type can be a computed
+ * expression this reader does not type; judging only the sub-case where every operand is a field read
+ * `[X]` would rest the family on a shape the reader cannot tell apart from the rest. A bare field is no
+ * sub-case at all: an operation never takes one ([KERNEL-FINDINGS KF472]). `Sum` is not a carrier at all — it refuses a temporal operand
  * outright with its own code.
  */
 internal fun TrackedFactBase.temporalAggregateOperandFindings(): List<Finding> {

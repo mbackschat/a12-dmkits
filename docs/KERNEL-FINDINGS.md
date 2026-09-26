@@ -11029,7 +11029,7 @@ A12 never parses a computation's members one by one. `ComputationAlternativesJoi
 
 **The names that resolve to nothing are the discriminating rows.** If the parser took a bare name into a reference and resolved it, `NoSuchField > 0` would draw `MVK_INVALID_ENTITY`. A12 draws the token class, so the name is never read as a reference at all.
 
-**The portable checker's shape parser read any bare name as a reference.** A name that resolves drew nothing, and one that does not drew a reference class: `MVK_INVALID_ENTITY` for `NoSuchField` and for a `Foo(` call, `MVK_INVALID_OUTER_ITERATION` for `$Total`. It now reads a bare entity only in an `entitySpec` position: an argument, a clause's operand, or a field-value bracket. It is refused at the entry rules, inside `{ … }` and in a filter body. It still takes EVERY argument as such a position, so a name in the digit count is resolved: `MVK_INVALID_ENTITY` where it names nothing, silence where it names a field (divergence locks in the same test; the per-operator argument grammar is [DG93](CONSISTENCY-GAPS.md)). `consistency.BareEntityOperandTest` answers every row with its complete class set. Three of the checker's own mirror fixtures had been written with bare operands that A12 refuses (`FilterBodyGatesTest`, `CheckFamilyWiringTest`, `ImpactTest`), and their kernel twins build the bracketed form, so they were corrected to the text A12 measured.
+**The portable checker's shape parser read any bare name as a reference.** A name that resolves drew nothing, and one that does not drew a reference class: `MVK_INVALID_ENTITY` for `NoSuchField` and for a `Foo(` call, `MVK_INVALID_OUTER_ITERATION` for `$Total`. It now reads a bare entity only in an `entitySpec` position: an argument, a clause's operand, or a field-value bracket. It is refused at the entry rules, inside `{ … }` and in a filter body. *Corrected 2026-09-26:* it took EVERY argument as such a position, so a name in the digit count was resolved; it now reads each typed slot from its production ([KF492](#kf492)), and the digit count draws the token class. `consistency.BareEntityOperandTest` answers every row with its complete class set. Three of the checker's own mirror fixtures had been written with bare operands that A12 refuses (`FilterBodyGatesTest`, `CheckFamilyWiringTest`, `ImpactTest`), and their kernel twins build the bracketed form, so they were corrected to the text A12 measured.
 
 ## §11 supplement — the field-value read `[ … ]` asks four gates of the entity it names, as its bracket closes and wherever it stands (source-read + measured, 2026-09-25) <a id="kf473"></a>
 
@@ -11712,3 +11712,25 @@ A walked prefix that resolves still ends in the token class: `FieldFilled(Items*
 **The portable checker reads a path with one walk of that production** (`consistency.syntax.entityRunAt`), which the shape parser uses for where the parse fails and the reference scanner for where a reference closes. A reference whose production does not close is not recorded unless it is walked, when the part it had read is, and one that closes is placed at its end, ahead of the parse error after it ([KF375](#kf375)'s raise-point order). Its arithmetic family raises nothing for a chain that does not close, and its shape parser refuses an operator beside a bare reference.
 
 *Locked by:* `rulekit.validate.laws.EntityProductionCloseLawsTest`. Mirrored by `consistency.ConditionReferenceTest.aPathThatStopsAtASeparatorIsNoReference`, `…aWalkedPathThatStopsAtASeparatorKeepsWhatItHadRead` and `adapter.laws.CheckerNearMissSweepTest`.
+
+## §12 supplement — each argument slot admits only the kind its production names: a place count takes unsigned digits, an operation slot no bare name, a day specification two keywords; a constant is never called, and `CustomCondition` takes a name, never a list (grammar-read + kernel `checkConsistency`, 2026-09-26) <a id="kf492"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §12's syntax material.
+
+`GrammarOnly_ConditionParser.g4` types each operator's argument slots. `rundenOp` and `rundenOperOp` end in `(',' z=ZiffernFolge)?`, and `feldOpMitParams` takes `begin=ZiffernFolge ',' ende=ZiffernFolge`. `feldOperOp`, `feldListenOperOp`, `rundenOperOp` and the amount of `datumAddOp` take an `operation`. `feldOpMitDatumSpecial` takes `tagSpec: 'ErsterTag' | 'LetzterTag'`. `commonKonstante` has no argument list, and `applikationsBedingung` is its keyword and one `nameOhnePunkt`. On an order (`/Order`: String `Code`, Numbers `Total` and `Qty`, Dates `Placed` and the partially known `Estimated`, repeatable `Items` {`Count`}; each condition after `FieldFilled(Total) And`; locked by `adapter.laws.CheckerArgumentSlotAgreementTest`):
+
+| the slot | refused, `MVK_UNEXPECTED_TOKEN` | admitted |
+|---|---|---|
+| a place count | `RoundUpValue(Total, Qty)`, `… 2And`, `… -2`, `… - 2`, `… 2.5`, `… [Qty]`, a third argument `… 1, 2`; `RoundUp([Total], Qty)` | `RoundUpValue(Total, 2)`, `RoundUpValue(Total)`, `RoundUp([Total], 2)` |
+| a range's bounds | `RangeAsNumber(Code, 1, Qty)`, `… -1, 2`, one bound only | `RangeAsNumber(Code, 1, 2)` |
+| an operation | `Abs(Total)`, `RoundUp(Total, 2)`, `Max(Total, 1)`, `Abs([Total], 1)`, `AddDays(Placed, Qty)`, `AddDays(Placed, 3And)`, `AddDays(Placed)` | `Abs([Total])`, `Max([Total], 1)`, `Max([Total])`, `AddDays(Placed, 3)`, `AddDays(Placed, [Qty])` |
+| a day specification | `ValueAsDate(Estimated, FirstDayAnd)`, `… Code`, `… Today`, `ValueAsDate(Estimated)` | `… FirstDay`, `… LastDay` |
+| a constant | `[Placed] < Today (`, `Today()`, `Now()` | `[Placed] < Today` |
+| `CustomCondition`'s name | `CustomCondition (Ext)`, `CustomCondition And …`; at the end of the text, `MVK_EXPECTED_TOKEN_NOT_FOUND` | `CustomCondition Ext`, `CustomCondition 5` |
+| any other predicate | `FieldFilled Qty` | — |
+
+`BaseYear(1)` on a model that declares no base year draws `MVK_NO_BASE_YEAR` and no token class: the constant's own check runs as it closes, ahead of the `(` ([KF491](#kf491)'s close-point law, on a constant).
+
+**The portable checker's shape parser reads these slots from one table of the productions** (`consistency.syntax.ConditionShape`'s `SIGNATURES`, keyed by operator id so both languages share it). It fails a predicate's bare name after the predicate, where A12 meets it, so a form construct's own class still answers first. Before, it took every argument as an entity slot, called a constant, and refused `CustomCondition 5`, which A12 admits. One row stays under-reported: a digit sequence that leads an entity slot is a name to A12, so `FieldFilled(5)`, `AbsValue(5)` and `MinValue(1 + Items*/Count)` draw `MVK_INVALID_ENTITY`, and the reference scanner does not read it as one ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG93).
+
+*Locked by:* `adapter.laws.CheckerArgumentSlotAgreementTest`, A12's class written out on every row and the checker required to name it.

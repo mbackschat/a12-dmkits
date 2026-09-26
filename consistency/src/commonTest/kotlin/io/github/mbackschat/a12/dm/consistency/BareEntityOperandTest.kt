@@ -32,10 +32,6 @@ class BareEntityOperandTest {
             actual[condition] = codes(rule("FieldFilled(Total) And $condition"))
             expected[condition] = if (condition in admitted) listOf() else listOf("MVK_UNEXPECTED_TOKEN")
         }
-        // Divergence locks, DG93: the shape parser takes every argument as an entity slot, so a name in the
-        // rounding digit count is resolved — a wrong class where it names nothing, silence where it names a field.
-        expected["RoundUpValue(Total, NoSuchField) > 0"] = listOf("MVK_INVALID_ENTITY")
-        expected["RoundUpValue(Total, Total) > 0"] = listOf()
         (refusedOperations + "[Fees/Handling]").forEach { operation ->
             actual["computation: $operation"] = codes(computation(operation))
             expected["computation: $operation"] =

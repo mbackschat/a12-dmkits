@@ -193,6 +193,18 @@ private class ShapeParser(
     /** The model language's spelling of the semantic-index clause, whose operand is a key. */
     private val indexKeyword: String? = CONDITION_OPERATOR_KEYWORDS.getValue(language)[SEMANTIC_INDEX]
 
+    /** The model language's spelling of `CustomCondition`, the one condition that takes a name and no call. */
+    private val customConditionKeyword: String? = CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION]
+
+    /** The model language's spellings of the two day specifications `ValueAsDate` takes. */
+    private val daySpecifications: Set<String> =
+        listOf(FIRST_DAY, LAST_DAY).mapNotNull { CONDITION_OPERATOR_KEYWORDS.getValue(language)[it] }.toSet()
+
+    /** Each typed operator's argument slots, by the model language's spelling of it. */
+    private val signatures: Map<String, Signature> = CONDITION_OPERATOR_KEYWORDS.getValue(language).let { spelling ->
+        SIGNATURES.entries.mapNotNull { (id, signature) -> spelling[id]?.let { it to signature } }.toMap()
+    }
+
     private var index = 0
 
     /**
@@ -272,11 +284,18 @@ private class ShapeParser(
         val token = peek() ?: return unexpected()
         // A PREDICATE names a production that IS a condition, so it never takes a comparison operator after
         // it. Everything else has to become one, which is what makes a bare reference an error.
+        if (token.kind == TokenKind.NAME && token.text == customConditionKeyword) {
+            return customCondition()
+        }
         if (token.kind == TokenKind.NAME && kindOf(token).isCallableCondition() && callFollows()) {
             return call()
         }
-        if (takesBoundNamePredicate()) {
-            return null
+        // Every other condition production is a call: A12 matches its name, then meets a token that is not its
+        // `(`, so the failure sits AFTER the name. That order matters for a form construct, whose own class is
+        // raised as its name is matched and so answers first (`consistency.HModelFormConstructTest`).
+        if (token.kind == TokenKind.NAME && startsACallCondition(token)) {
+            take()
+            return unexpected()
         }
         val from = index
         expression()?.let { return it }
@@ -299,25 +318,31 @@ private class ShapeParser(
     }
 
     /**
-     * Consumes `CustomCondition <Name>` — the one condition spelled as a keyword plus a BARE NAME.
+     * `CustomCondition <Name>` — the one condition spelled as a keyword plus a BARE NAME, or null wherever the
+     * region is some other shape, which is what lets a caller try it ahead of an expression.
      *
-     * `applikationsBedingung` is the single production of the grammar that is not a call, so a predicate
-     * without parentheses is not automatically an error. Leaves the index untouched and answers false
-     * wherever the region is some other shape, which is what lets a caller try it ahead of an expression.
+     * `applikationsBedingung: applikationsBedingungName name = nameOhnePunkt` is the single production of the
+     * grammar that is not a call, and only it. So an argument list after the keyword is a token the parser
+     * cannot use, and so is a keyword, while a digit sequence or a digit-led name is a `nameOhnePunkt` like
+     * any other. Every other predicate is a call, and a bare name after one is refused rather than taken as its
+     * operand: `FieldFilled Qty` is `MVK_UNEXPECTED_TOKEN`
+     * (`adapter.laws.CheckerArgumentSlotAgreementTest`).
      */
-    private fun takesBoundNamePredicate(): Boolean {
-        val token = peek() ?: return false
-        if (token.kind != TokenKind.NAME || !kindOf(token).isCallableCondition() || callFollows()) {
-            return false
-        }
-        val following = tokens.getOrNull(index + 1) ?: return false
-        if (following.kind != TokenKind.NAME && following.kind != TokenKind.QUOTED_NAME) {
-            return false
+    private fun customCondition(): ShapeFailure? {
+        take()
+        val name = peek() ?: return ShapeFailure(at = tokens.last().end, ranOutAwaitingOneToken = true, found = "")
+        val isName = name.kind == TokenKind.QUOTED_NAME || (name.kind == TokenKind.NAME && kindOf(name) == null) ||
+            (name.kind == TokenKind.NUMBER && name.text.all { it in '0'..'9' })
+        if (!isName) {
+            return unexpected()
         }
         take()
-        take()
-        return true
+        return null
     }
+
+    /** A catalogued predicate, or a form construct the model's language lexes as a keyword. */
+    private fun startsACallCondition(token: Token): Boolean =
+        kindOf(token) == KeywordKind.PREDICATE || (kindOf(token) != null && token.text in FORM_CONSTRUCTS)
 
     private fun KeywordKind?.isCallableCondition(): Boolean =
         this == KeywordKind.PREDICATE || this == KeywordKind.UNCATALOGED
@@ -453,12 +478,15 @@ private class ShapeParser(
      */
     private fun named(): ShapeFailure? {
         val token = peek() ?: return unexpected()
-        if (token.kind == TokenKind.NAME && callFollows() && kindOf(token) != null) {
-            return if (kindOf(token) == KeywordKind.PREDICATE) unexpected() else call()
-        }
+        // A constant is a terminal the grammar never calls (`commonKonstante`), so a `(` after one is a token
+        // the parser cannot use: `Today (` is `MVK_UNEXPECTED_TOKEN`, not a call that runs out
+        // (`adapter.laws.CheckerArgumentSlotAgreementTest`).
         if (token.kind == TokenKind.NAME && kindOf(token) == KeywordKind.CONSTANT) {
             take()
             return null
+        }
+        if (token.kind == TokenKind.NAME && callFollows() && kindOf(token) != null) {
+            return if (kindOf(token) == KeywordKind.PREDICATE) unexpected() else call()
         }
         return entityReference()
     }
@@ -466,7 +494,14 @@ private class ShapeParser(
     private fun call(): ShapeFailure? {
         val operator = take()
         val operands = mutableListOf<List<Token>>()
-        val failure = grouped { arguments(operands, admitsNone = operator.text in EMPTY_ARGUMENT_OPERATORS) }
+        val signature = signatures[operator.text]
+        val failure = grouped {
+            if (signature != null) {
+                typedArguments(signature, operands)
+            } else {
+                arguments(operands, admitsNone = operator.text in EMPTY_ARGUMENT_OPERATORS)
+            }
+        }
         // Recorded only on success, so a caller never reads an argument list the parser abandoned half-way.
         if (failure == null) {
             calls?.add(CallShape(operator.text, operator.start, tokens[index - 1].end, operands, source))
@@ -493,6 +528,50 @@ private class ShapeParser(
             argument(operands)?.let { return@within it }
         }
         null
+    }
+
+    /**
+     * The arguments of an operator whose production types its slots ([SIGNATURES]): each slot read as its kind,
+     * and no more arguments than it has or fewer than it requires. An argument past the last slot is refused at
+     * its `,` and a missing one at the `)`, where A12's parser meets the token it cannot use.
+     */
+    private fun typedArguments(signature: Signature, operands: MutableList<List<Token>>): ShapeFailure? =
+        within(entitySpecs = true) {
+            var position = 0
+            while (true) {
+                val from = index
+                slotArgument(checkNotNull(signature.slotAt(position)))?.let { return@within it }
+                operands.add(tokens.subList(from, index))
+                position++
+                if (!textIs(",")) {
+                    break
+                }
+                if (signature.slotAt(position) == null) {
+                    return@within unexpected()
+                }
+                take()
+            }
+            if (position < signature.required) unexpected() else null
+        }
+
+    private fun slotArgument(slot: Slot): ShapeFailure? = when (slot) {
+        Slot.ENTITY_SPEC -> argument()
+        // An operation takes no bare entity spec (`operation` never begins with one, [KERNEL-FINDINGS KF472]).
+        Slot.OPERATION -> within(entitySpecs = false) { expression() }
+        // `tagSpec: 'ErsterTag' | 'LetzterTag'`, in the model language's spelling, and nothing else.
+        Slot.DAY_SPECIFICATION -> if (peek()?.let { it.kind == TokenKind.NAME && it.text in daySpecifications } == true) {
+            take()
+            null
+        } else {
+            unexpected()
+        }
+        // `ZiffernFolge`: unsigned digits, so a sign, a fraction, a name or a read is a token A12 cannot use.
+        Slot.DIGITS -> if (peek()?.let { it.kind == TokenKind.NUMBER && it.text.all { c -> c in '0'..'9' } } == true) {
+            take()
+            null
+        } else {
+            unexpected()
+        }
     }
 
     /** One argument, with the token run it spanned handed to [operands] once it parsed. */
@@ -692,6 +771,44 @@ private class ShapeParser(
         /** The operators whose whole argument list is optional: the time constructor, in both languages. */
         val EMPTY_ARGUMENT_OPERATORS = setOf("Zeit", "Time")
 
+        const val FIRST_DAY = "FirstDay"
+
+        const val LAST_DAY = "LastDay"
+
+        /**
+         * The operators whose productions type a slot as something other than an entity spec, by operator id,
+         * each read off `GrammarOnly_ConditionParser.g4` (kernel `30.8.1`) and measured on the Kernel
+         * (`adapter.laws.CheckerArgumentSlotAgreementTest`). An operator absent here keeps the generic
+         * argument reading.
+         */
+        val SIGNATURES: Map<String, Signature> = buildMap {
+            // `rundenOp: rundenOpName '(' entitySpec (',' z=ZiffernFolge)? ')'`
+            for (id in listOf("RoundDownValue", "RoundUpValue", "RoundAccountingValue")) {
+                put(id, Signature(listOf(Slot.ENTITY_SPEC, Slot.DIGITS), required = 1))
+            }
+            // `rundenOperOp: rundenOperOpName '(' operation (',' z=ZiffernFolge)? ')'`
+            for (id in listOf("RoundDown", "RoundUp", "RoundAccounting")) {
+                put(id, Signature(listOf(Slot.OPERATION, Slot.DIGITS), required = 1))
+            }
+            // `feldOpMitParams: feldOpMitParamsName '(' entitySpec ',' begin=ZiffernFolge ',' ende=ZiffernFolge ')'`
+            for (id in listOf("RangeAsNumber", "RangeAsString")) {
+                put(id, Signature(listOf(Slot.ENTITY_SPEC, Slot.DIGITS, Slot.DIGITS), required = 3))
+            }
+            // `feldOperOp: feldOperOpName '(' operation ')'`
+            put("Abs", Signature(listOf(Slot.OPERATION), required = 1))
+            // `feldListenOperOp: feldListenOperOpName '(' operationListe ')'`, `operation (',' operation)*`
+            for (id in listOf("Max", "Min")) {
+                put(id, Signature(listOf(Slot.OPERATION), required = 1, repeatsLast = true))
+            }
+            // `feldOpMitDatumSpecial: 'WertAlsDatum' '(' entitySpec ',' tagSpec ')'`
+            put("ValueAsDate", Signature(listOf(Slot.ENTITY_SPEC, Slot.DAY_SPECIFICATION), required = 2))
+            // `datumAddOp: datumAddOpName '(' da=datumAngabe2 ',' amount=operation ')'`; the date slot keeps the
+            // generic reading, since `datumAngabe2` is several shapes this table does not type.
+            for (id in listOf("AddYears", "AddMonths", "AddDays", "AddHours", "AddMinutes", "AddSeconds")) {
+                put(id, Signature(listOf(Slot.ENTITY_SPEC, Slot.OPERATION), required = 2))
+            }
+        }
+
         /** `In` and `To` join an operand to a value list; both languages, every case the lexer admits. */
         val LIST_KEYWORDS = setOf("In", "IN", "in", "To", "TO", "to", "Zu", "ZU", "zu")
     }
@@ -706,3 +823,26 @@ private class ShapeParser(
  * File-level rather than parser-local so both read one set (see [namesRuleContext]).
  */
 internal val RULE_CONTEXT_SPELLINGS = setOf("RuleGroup", "RegelKontext")
+
+/** What one argument slot of a typed production takes. */
+private enum class Slot {
+    /** An `entitySpec` position, read as any untyped argument is: a reference with its clauses. */
+    ENTITY_SPEC,
+
+    /** An `operation`, which never begins with a bare entity spec. */
+    OPERATION,
+
+    /** A `ZiffernFolge`: unsigned digits and nothing else. */
+    DIGITS,
+
+    /** A `tagSpec`: the first-day or the last-day keyword. */
+    DAY_SPECIFICATION,
+}
+
+/**
+ * A typed production's argument slots, of which the first [required] must be present; when [repeatsLast], the
+ * last slot takes any number of further arguments, as a list production does.
+ */
+private class Signature(val slots: List<Slot>, val required: Int, val repeatsLast: Boolean = false) {
+    fun slotAt(position: Int): Slot? = slots.getOrNull(position) ?: slots.last().takeIf { repeatsLast }
+}

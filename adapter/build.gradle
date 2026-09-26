@@ -371,6 +371,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerEntityListCategoryAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerComputationJoinedConditionAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerFieldCopyCrossAgreementTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerArgumentSlotAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerComparisonConstantAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerFilterBodyAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerRuleReferenceSetAgreementTest'
@@ -614,7 +615,7 @@ tasks.register('checkerSilenceGuardTest', Test) {
     // The near-miss sweep joins on both grounds: it reads the committed model trees at runtime and keeps its
     // cluster ledger as a resource.
     // The keyed-operand, constant-index-key, field-value-read carrier, entity-list category, computation
-    // comparison, field-copy cross, comparison-constant, filter-body, rule-reference-set, RepetitionNotUnique gate and paired-gate,
+    // comparison, field-copy cross, argument slot, comparison-constant, filter-body, rule-reference-set, RepetitionNotUnique gate and paired-gate,
     // and FirstFilledValue type grids join
     // beside it: the same both-engine claim over spellings of one construct, and none of them reads a repo file.
     filter {
@@ -638,6 +639,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerComputationJoinedConditionAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerFieldCopyCrossAgreementTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.CheckerArgumentSlotAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerComparisonConstantAgreementTest')
         includeTestsMatching(

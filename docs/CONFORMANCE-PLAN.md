@@ -57,7 +57,7 @@
 | **M0** | clean baseline | C5 committed; the JS-only lone-surrogate test defect fixed and its class guarded; C4b's tier-1 review item fixed and its false claims corrected; hand batches C7–C10 folded into this plan; letter `-26n` sent | **done** 2026-09-26 (`13a02c3e1`, `6635b7664`, `acaf16a29`) |
 | **M1** | **the checker's frontier is known** | `CheckerNearMissSweepTest` runs P1 + P2 through O1; its ledger is committed; the cluster count per tier is recorded below | **done** 2026-09-26: the conditions and rule messages of P1 + P2. The field arm (a variant filter, a field type's own message) lands before M3 closes, because DG114 is tier 1. Element-name edits are M5's first widening (DG113) |
 | **M2** | the interpreter's and dmkits' frontier is known | O2 and O3 run on M1's accepted population; ledgers committed; counts recorded | open |
-| **M3** | tier 1 is empty | no OVER-REJECT or WRONG-CLASS cluster in O1, and no O2 or O3 tier-1 cluster | open. **Batch G (grammar)**: where A12's parser refuses a text the checker's shape parser admits, or a reference class stands where the parse stopped. G1 landed: one walk of the `entity` production for both readers, empty argument lists, the infix language rows ([KF491](KERNEL-FINDINGS.md#kf491)). G2 landed: a bare entity spec is never an arithmetic operand, `->` needs a name, an arithmetic chain that never closes raises no class. **Batch S (slots)**, next: a bare name in an operation slot, a signed number in a literal slot, a digit sequence read as an entity in an entity slot, and a keyword constant followed by `(`, which all need each operator's slot kinds (DG93). **Then batch R (residue)**: the wildcard, token and error-field clusters |
+| **M3** | tier 1 is empty | no OVER-REJECT or WRONG-CLASS cluster in O1, and no O2 or O3 tier-1 cluster | open. **Batch G (grammar)**: where A12's parser refuses a text the checker's shape parser admits, or a reference class stands where the parse stopped. G1 landed: one walk of the `entity` production for both readers, empty argument lists, the infix language rows ([KF491](KERNEL-FINDINGS.md#kf491)). G2 landed: a bare entity spec is never an arithmetic operand, `->` needs a name, an arithmetic chain that never closes raises no class. S landed: each typed argument slot read from its production, constants never called, `CustomCondition`'s name slot ([KF492](KERNEL-FINDINGS.md#kf492)); a digit sequence leading an entity slot stays open (DG93). **Batch R (residue)**, next: the wildcard, token and error-field clusters |
 | **M4** | tier 2 is closed | every SILENT cluster is fixed or declared | open |
 | **M5** | widen and repeat | P3 populations added one at a time, each re-running M3 and M4 | open |
 
@@ -65,7 +65,7 @@
 
 | item | oracle · tier | disposition |
 |---|---|---|
-| DG93 — per-operator argument slots in the shape parser | O1 · 1 | surfaced as P2 clusters (10 + 2 inputs): batch S |
+| DG93 — per-operator argument slots in the shape parser | O1 · 1 | batch S typed the slots; a digit sequence leading an entity slot remains, which needs the reference scanner |
 | DG83 — a message class beside a condition the checker leaves to A12 | O1 · 1–2 | not seen as a cluster yet: the message arm appends to the first message of an admitted rule only, so it never pairs a message class with a condition the checker leaves to A12 |
 | DG94 — fold `FILTER_WILDCARD`'s star gate into the bracket family | O1 · 3 | worked only if a cluster shows it |
 | DG102 residue — a constant key over a typedef or custom index field | O1 · 2 | needs typedef hosts: M5 |
@@ -85,3 +85,4 @@
 | 2026-09-26 | O1, after batch G1 | 139 | 4 469 inputs, 75 divergent | 11 WRONG-CLASS, 0 OVER-REJECT | 4 SILENT | 0 EXTRA |
 | 2026-09-26 | O1, after batch G2 | 139 | 4 469 inputs, 31 divergent | 6 WRONG-CLASS, 0 OVER-REJECT | 4 SILENT | 0 EXTRA |
 | 2026-09-26 | O1, after the M1 review: edits resampled per seed, walked open paths fixed ([KF491](KERNEL-FINDINGS.md#kf491)) | 139 | 4 469 inputs, 21 divergent | 10 WRONG-CLASS, 0 OVER-REJECT | 3 SILENT | 0 EXTRA |
+| 2026-09-26 | O1, after batch S ([KF492](KERNEL-FINDINGS.md#kf492)) | 139 | 4 469 inputs, 11 divergent | 7 WRONG-CLASS, 0 OVER-REJECT | 3 SILENT | 0 EXTRA |
