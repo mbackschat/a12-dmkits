@@ -104,7 +104,7 @@ private fun TrackedFactBase.spellingsThatCanReadARow(element: TrackedDeclaration
     if (conditionTexts(element.kind, body).any { (_, text) -> namesKeyword(text, keyed) != null }) {
         return emptySet()
     }
-    return referencesOutsideFilterBodies(element)
+    return referencesOutsideFilterConditions(element)
 }
 
 /**

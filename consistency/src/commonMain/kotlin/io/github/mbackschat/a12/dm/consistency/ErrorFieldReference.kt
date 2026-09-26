@@ -57,7 +57,7 @@ internal fun TrackedFactBase.errorFieldReferenceFindings(): List<Finding> {
             // of `AggregateSlotLawsTest`'s iteration grid, where an unstarred filter leaf crossing a
             // repetition the target sits outside of draws nothing at all.
             val readsOutsideFilters = declarationAt(declared.declaredAt)
-                ?.let { referencesOutsideFilterBodies(it) }.orEmpty()
+                ?.let { referencesOutsideFilterConditions(it) }.orEmpty()
             // Three ways this rule is not this family's to judge. A rule with no condition at all belongs to
             // `MVK_CONDITION_MISSING`. An UNRESOLVABLE operand PRE-EMPTS the gate — A12 reports the entity
             // and says nothing about the reference, measured — so reporting here would name a second fix for

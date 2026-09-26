@@ -240,7 +240,13 @@ internal fun clausedOperandsIn(text: String, language: ConditionLanguage): List<
 }
 
 /**
- * [text] with every `Having` filter body blanked IN PLACE, one space per character.
+ * [text] with every region A12 reads as a filter condition blanked IN PLACE, one space per character.
+ *
+ * A12's `inFilterCondition` is ONE boolean, set as a `Having` body begins and cleared as ANY body ends
+ * (`Lenient_ConditionParser.initFilterCondition` / `resetFilterCondition`, source-read). So a body is not one
+ * region: once a filter nested in it ends, the rest of the outer body is read as the rule's own text. An
+ * unstarred read of the filtered level draws `MVK_NO_WILDCARD` written after a nested filter and nothing
+ * written before one (`adapter.laws.CheckerFilterBodyAgreementTest`, [KERNEL-FINDINGS KF486]).
  *
  * In place, so an offset into the result is an offset into [text] and a finding read off it points at the
  * author's characters. By POSITION rather than by matching the body's text, which would also blank a
@@ -248,13 +254,18 @@ internal fun clausedOperandsIn(text: String, language: ConditionLanguage): List<
  * (`rulekit.validate.laws.FilterBodyTextRepeatedOutsideLawsTest`). And found by [clausedOperandsIn], so a
  * text that does not parse has its bodies set aside too.
  */
-internal fun withoutFilterBodies(text: String, language: ConditionLanguage): String {
+internal fun withoutFilterConditions(text: String, language: ConditionLanguage): String {
     val filter = CONDITION_OPERATOR_KEYWORDS[language]?.get(HAVING) ?: return text
+    val bodies = clausedOperandsIn(text, language).flatMap { operand -> operand.clauses }.filter { it.keyword == filter }
+    val switches = bodies.flatMap { listOf(it.at to true, it.at + it.text.length to false) }.sortedBy { it.first }
     val blanked = text.toCharArray()
-    clausedOperandsIn(text, language)
-        .flatMap { operand -> operand.clauses }
-        .filter { it.keyword == filter }
-        .forEach { body -> blanked.fill(' ', body.at, body.at + body.text.length) }
+    var since: Int? = null
+    switches.forEach { (at, on) ->
+        when {
+            on -> if (since == null) since = at
+            else -> since?.let { blanked.fill(' ', it, at) }.also { since = null }
+        }
+    }
     return blanked.concatToString()
 }
 

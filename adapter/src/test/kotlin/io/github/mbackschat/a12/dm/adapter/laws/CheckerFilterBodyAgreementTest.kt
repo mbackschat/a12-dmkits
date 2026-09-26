@@ -27,7 +27,8 @@ class CheckerFilterBodyAgreementTest {
             .group("Claims") { c -> c.repeatable(5)
                 .stringField("ClaimNo") { }
                 .stringField("Notes") { }
-                .numberField("Units") { n -> n.fractionDigits(0) } }
+                .numberField("Units") { n -> n.fractionDigits(0) }
+                .numberField("Paid") { n -> n.fractionDigits(2) } }
             .group("Parties") { p -> p.repeatable(4)
                 .stringField("Name") { }
                 .numberField("Count") { n -> n.fractionDigits(0) } }
@@ -77,6 +78,51 @@ class CheckerFilterBodyAgreementTest {
         assertAgreement(predicted)
     }
 
+    @Test
+    fun anAggregateInAFilterBodyIsReadByTheBodyWalk() {
+        val predicted = linkedMapOf(
+            // An aggregate with no filter of its own: its operand is one more spec the body walk reads.
+            "a starred aggregate alone" to ("Sum(Claims*/Paid Having Sum(Claims*/Units) > 0) > 0" to NO_ITERATION),
+            // Two operands, so the arity gate that answers a lone unstarred operand first stays out of the row.
+            "an unstarred aggregate of the filtered level" to
+                ("Sum(Claims*/Paid Having Sum(Claims/Units, Claims/Paid) > 0) > 0" to ADMITTED),
+            "a starred aggregate beside an in-scope read" to
+                ("Sum(Claims*/Paid Having Sum(Claims*/Units) > 0 And [Claims/Units] > 1) > 0" to ADMITTED),
+            "a starred aggregate of another repetition beside an in-scope read" to
+                ("Sum(Claims*/Paid Having Sum(Parties*/Count) > 0 And [Claims/Units] > 1) > 0" to ADMITTED),
+            "an unstarred aggregate of another repetition" to
+                ("Sum(Claims*/Paid Having Sum(Parties/Count, Claims/Units) > 0) > 0" to ITERATION),
+            // The path question is asked of a level before the below-star one.
+            "an aggregate iterating below its star" to
+                ("Sum(Orders*/Units Having Sum(Orders*/Lines/Qty) > 0 And [Orders/Units] > 1) > 0" to ITERATION),
+            "an aggregate iterating below its star, inside the filtered path" to
+                ("Sum(Orders*/Lines*/Qty Having Sum(Orders*/Lines/Qty) > 0 And [Orders/Lines/Qty] > 1) > 0" to NO_WILDCARD),
+            "an aggregate starred at every level" to
+                ("Sum(Orders*/Units Having Sum(Orders*/Lines*/Qty) > 0 And [Orders/Units] > 1) > 0" to ADMITTED),
+            // A nested filter: the inner walk runs as the inner spec is read, the outer walk after the body, and
+            // the construct gate last.
+            "a nested filter over the filtered level" to
+                ("Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0" to DISALLOWED),
+            "a nested filter over an unstarred operand" to
+                ("Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Units] > 5) > 0) > 0" to NO_WILDCARD),
+            "a nested filter over another repetition" to
+                ("Sum(Claims*/Paid Having Sum(Parties*/Count Having [Parties/Name] == \"x\") > 0) > 0" to ITERATION),
+            "a nested filter reading the outer level" to
+                ("Sum(Claims*/Paid Having Sum(Parties*/Count Having [Claims/Units] > 1) > 0) > 0" to ITERATION),
+            "a nested filter with no in-scope read" to
+                ("Sum(Claims*/Paid Having Sum(Claims*/Units Having [Reference] == \"x\") > 0) > 0" to NO_ITERATION),
+            // The filter flag is one boolean, cleared as the nested filter ends, so a read after it is the rule's.
+            "an in-scope read before a nested filter" to
+                ("Sum(Claims*/Paid Having [Claims/Units] > 1 And Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0" to DISALLOWED),
+            "an in-scope read after a nested filter" to
+                ("Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0 And [Claims/Units] > 1) > 0" to NO_WILDCARD),
+            "a marked read after a nested filter" to
+                ("Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0 And [\$Reference] == \"x\") > 0" to
+                    setOf("MVK_INVALID_OUTER_ITERATION")),
+        )
+        assertAgreement(predicted)
+    }
+
     private fun assertAgreement(predicted: Map<String, Pair<String, Set<String>>>) {
         val wrong = predicted.mapNotNull { (row, probe) ->
             val (condition, a12) = probe
@@ -103,6 +149,9 @@ class CheckerFilterBodyAgreementTest {
         val NO_ITERATION = setOf("MVK_NO_ITERATION_FOR_WILDCARD")
         val KEY_STAR = setOf("MVK_SEMANTIC_INDEX_WITH_WILDCARD")
         val NESTED_INDEX = setOf("MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX")
+        val NO_WILDCARD = setOf("MVK_NO_WILDCARD")
+        val DISALLOWED = setOf("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")
+        val ADMITTED = emptySet<String>()
 
         /** The rows where the checker answers otherwise, with what it answers. */
         val OURS: Map<String, Set<String>> = mapOf()

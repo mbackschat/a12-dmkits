@@ -10817,7 +10817,7 @@ The misplaced star, refused as the spec's path is read, is one class the body do
 | two nested filters over `Orders` and `Orders/Lines`, either way round, the inner body comparing `Lines` fields | `MVK_INVALID_TYPE_FOR_COMPARISON` |
 | an aggregate with no filter of its own in a body, `Sum(Claims*/Paid Having Sum(Claims*/Units) > 0) > 0` | `MVK_NO_ITERATION_FOR_WILDCARD` |
 
-The key rows order two spec-end classes as well: on one key spec, the body's iteration class comes before the key's star class. So the checker types a body's side whatever repetition it crosses, and raises the kind class at the `Having` keyword, finding the filtered operand by its delimiters so a text that breaks later in the body still draws it. It is silent on the nested-filter and body-aggregate controls ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG90), and named a key's star class where A12 names what the key's body reads until [KF485](#kf485) walked a key-owned body.
+The key rows order two spec-end classes as well: on one key spec, the body's iteration class comes before the key's star class. So the checker types a body's side whatever repetition it crosses, and raises the kind class at the `Having` keyword, finding the filtered operand by its delimiters so a text that breaks later in the body still draws it. It was silent on the nested-filter and body-aggregate controls until [KF486](#kf486) walked them, and named a key's star class where A12 names what the key's body reads until [KF485](#kf485) walked a key-owned body.
 
 **Extended 2026-09-25 — a sign stands on a number literal alone.** The grammar has no unary minus: `-` is part of `commonKonstante : minus='-'? ZiffernFolge …`. So `[BaseFee] > -1` and `[BaseFee] - -1 > 1` are admitted, while `-[BaseFee] < 0`, `[BaseFee] > -[EffectiveFee]`, `[BaseFee] > -{[EffectiveFee] + 1}`, `[BaseFee] > -Abs([EffectiveFee])` and `[BaseFee] > --1` are each `MVK_UNEXPECTED_TOKEN`. The checker had signed any operand and admitted all five; it now signs a literal only. The same holds on the operation carrier and in an operation argument: into `EffectiveFee`, `-5`, `0 - [BaseFee]`, `[BaseFee] * -1` and `RoundUp(0 - [BaseFee], 2)` are admitted, while `-[BaseFee]`, `[BaseFee] * -[BaseFee]`, `{-[BaseFee]}` and `RoundUp(-[BaseFee], 2)` are each `MVK_UNEXPECTED_TOKEN`, as the checker also answers.
 
@@ -11386,3 +11386,30 @@ The portable checker had read a quoted literal as text and ignored `Today`, `Now
 The portable checker walked only a filter the operand owns, so on a key's filter it named the key's star class where A12 names the body's, and on an index in that body it named the star class too. It now walks a key-owned body against the key and spans the class on the key, which places it ahead of the index classes, and it reads an index nested anywhere inside another's key as nested (`SemanticIndexUse.nested`).
 
 *Locked by:* `adapter.laws.CheckerFilterBodyAgreementTest`, A12's class written out on every row and the checker required to name it; the first row is mirrored by `consistency.FilterBodyComparisonTest`.
+
+## §9 supplement — A12's filter flag is ONE boolean: a `Having` body's walk reads every nested spec, and once a nested filter ends the rest of the outer body is the rule's own text (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf486"></a>
+
+> Fold: not-foldable — a diagnostic-class law about the filter walk and the parser's filter state, not an evaluation behaviour.
+
+Two mechanisms, both source-read and both measured on the claims policy of [KF485](#kf485), declared at the root. **The walk reads every spec in the body.** `extractFilterIterationEntityRefs` visits the whole parse tree below the filter, so a nested aggregate's operand and a nested filter's own body are walked like a bracket read, each level by level ([KF374](#kf374)): a starred level is a WILDCARD, which asks nothing but marks the levels after it, and an unstarred repeatable level is an ITERATION, asked the path question and then the below-star one. The construct gate refuses the nested filter afterwards. **The flag is one boolean.** `initFilterCondition` sets `inFilterCondition` as a body begins and `resetFilterCondition` clears it as ANY body ends, and `checkIndicesForA12Model` and `checkOuter` read it as a spec is checked, once the spec is read. So after a nested filter ends, the outer body's remaining specs are judged as the rule's reads, and so is the nested filtered operand's own base, which is checked after its filter.
+
+| the operand | A12 | what it separates |
+|---|---|---|
+| `Claims*/Paid Having Sum(Claims*/Units) > 0` | `MVK_NO_ITERATION_FOR_WILDCARD` | a starred spec binds no level |
+| `… Having Sum(Claims*/Units) > 0 And [Claims/Units] > 1`; `… Having Sum(Parties*/Count) > 0 And [Claims/Units] > 1` | ADMITTED | a WILDCARD level is not an iteration, of the filtered path or another |
+| `… Having Sum(Claims/Units, Claims/Paid) > 0` | ADMITTED | an unstarred aggregate of the filtered level reads the filtered row |
+| `… Having Sum(Parties/Count, Claims/Units) > 0` | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | an aggregate operand is asked the path question |
+| `Orders*/Units Having Sum(Orders*/Lines/Qty) > 0 And …` | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | the path question is asked of a level before the below-star one |
+| `Orders*/Lines*/Qty Having Sum(Orders*/Lines/Qty) > 0 And …` | `MVK_NO_WILDCARD` | on the filtered path, iteration below a star |
+| `Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0`; the same with `[Claims/Units] > 1 And` ahead of the nested aggregate | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` | the construct gate, last |
+| `… Having Sum(Parties*/Count Having [Parties/Name] == "x") > 0` | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | the outer walk reads the nested body, before the construct gate |
+| `… Having Sum(Parties*/Count Having [Claims/Units] > 1) > 0`; `… Having Sum(Claims*/Units Having [Reference] == "x") > 0` | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION`; `MVK_NO_ITERATION_FOR_WILDCARD` | the nested filter's own walk, as its spec is read |
+| `… Having Sum(Claims/Units Having [Claims/Units] > 5) > 0` | `MVK_NO_WILDCARD` | the nested base is checked after its filter clears the flag |
+| `… Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0 And [Claims/Units] > 1` | `MVK_NO_WILDCARD` | the same read ahead of the nested aggregate draws no class of its own: that text is the construct row above |
+| `… Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0 And [$Reference] == "x"` | `MVK_INVALID_OUTER_ITERATION` | `checkOuter` reads the same flag |
+
+**The two readers of the flag disagree only on a nested base.** A reference's own `inFilterCondition` is fixed as the reference is created, and `IterationChecker` reads that one to decide what the rule iterates, so a nested base, created inside the outer body, does not count there while a read after a nested filter does (source-read).
+
+The portable checker declined any body carrying a star or a nested `Having`, and blanked every body whole, so it was silent on every refused row. It now walks both, reports the construct gate on a nested filter, and blanks only the regions the flag covers (`withoutFilterConditions`). The operand-scope family reads a nested filtered base as the rule's. The iteration-counting families read the same regions without that exception.
+
+*Locked by:* `adapter.laws.CheckerFilterBodyAgreementTest`, A12's class written out on every row and the checker required to name it; the laws rows mirrored by `consistency.FilterBodyComparisonTest`.

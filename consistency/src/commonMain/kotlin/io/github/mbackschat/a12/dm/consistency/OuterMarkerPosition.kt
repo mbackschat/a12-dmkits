@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
-import io.github.mbackschat.a12.dm.consistency.syntax.withoutFilterBodies
+import io.github.mbackschat.a12.dm.consistency.syntax.withoutFilterConditions
 
 /**
  * Where the `$` outer marker may stand: inside a `Having` filter, and nowhere else.
@@ -54,12 +54,12 @@ internal fun TrackedFactBase.outerMarkerPositionFindings(): List<Finding> {
 /**
  * The paths of the `$`-marked references this text writes OUTSIDE every `Having` clause it carries.
  *
- * The clause bodies are blanked by position first ([withoutFilterBodies]), so what remains is exactly the
- * region A12 parses with `isInFilterCondition` false — a conjunct that happens to spell a body is outside it
+ * The filter conditions are blanked by position first ([withoutFilterConditions]), so what remains is exactly
+ * the region A12 parses with `isInFilterCondition` false, the rest of a body after a nested filter included — a conjunct that happens to spell a body is outside it
  * and keeps its marker, as A12 reads it (`rulekit.validate.laws.FilterBodyTextRepeatedOutsideLawsTest`).
  */
 private fun TrackedFactBase.markedPathsOutsideAFilter(text: String): List<ReferenceSpan> {
-    val outside = withoutFilterBodies(text, conditionLanguage)
+    val outside = withoutFilterConditions(text, conditionLanguage)
     if (OUTER_MARKER !in outside) {
         return emptyList()
     }

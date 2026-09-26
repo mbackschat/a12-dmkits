@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.OperandClause
 import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
 import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -27,9 +28,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * | what the body carries | class |
  * |---|---|
  * | iteration of a level the FILTERED entity does not sit under | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` |
+ * | iteration of a level below one the same spec stars | `MVK_NO_WILDCARD` |
  * | a SEMANTIC INDEX | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` |
  * | no level is one the operand's star reopens | `MVK_NO_ITERATION_FOR_WILDCARD` |
- * | `RepetitionNotUnique` or `CustomCondition`, once every gate above passes | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` |
+ * | a nested filter, `RepetitionNotUnique` or `CustomCondition`, once every gate above passes | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` |
  *
  * **The construct gate runs LAST, so it is reachable only from a filter that is otherwise legal** — every
  * class above pre-empts it, measured on both of the shapes that violate two gates at once. That ordering is
@@ -37,11 +39,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * whether the gates before it pass, and a separate family would have to reproduce all of them to know the
  * gate was ever reached.
  *
- * **One of A12's three forbidden constructs is not reported**: a NESTED filter leaves this walk before the
- * gate, being one of the shapes [filterDefectOf] declines outright (CONSISTENCY-GAPS DG90). `CustomCondition`
- * needed a parser fix to reach it at all — the shape reader spelled the keyword-plus-bare-name predicate only where a condition was
- * expected positionally, never as a CLAUSE operand, so a filter body carrying it drew `MVK_UNEXPECTED_TOKEN`
- * from the syntax family on a text A12 parses.
+ * **All three of A12's forbidden constructs are reported**: a NESTED filter, `CustomCondition` and
+ * `RepetitionNotUnique`. A nested filter is walked like the rest of the body first — its operand and its own
+ * body are specs the walk reads — so a body that names another repetition inside it is the iteration class,
+ * not the construct one ([KERNEL-FINDINGS KF486]). `CustomCondition` needed a parser fix to reach the gate at
+ * all: the shape reader spelled the keyword-plus-bare-name predicate only where a condition was expected
+ * positionally, never as a CLAUSE operand, so a filter body carrying it drew `MVK_UNEXPECTED_TOKEN` from the
+ * syntax family on a text A12 parses.
  *
  * **The first two gates yield to nothing and the third yields to any conjunct**, which is what makes the
  * distinction load-bearing rather than cosmetic: the scope gate is an OCCURRENCE check over the whole body,
@@ -91,9 +95,9 @@ internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
     val callable = keywords.values.toSet()
-    // A nested filter or a scope in the body is a shape with no measured cell; a semantic index no longer
-    // is one — it has its own branch of the same walk.
-    val clauseKeywords = setOfNotNull(keywords[HAVING], keywords[FROM])
+    // A scope in the body is a shape with no measured cell; a nested filter and a semantic index no longer
+    // are — the walk reads a nested spec like any other, and an index has its own branch of it.
+    val clauseKeywords = setOfNotNull(keywords[FROM])
     val indexKeyword = keywords[SEMANTIC_INDEX]
     return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
@@ -113,7 +117,17 @@ internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> {
 
 private const val FROM = "From"
 
-private data class FilterDefect(val code: String, val wrote: String, val level: String?)
+/** The four gates of the filter walk, in the order A12 asks them. */
+private enum class FilterGate(val code: String) {
+    INVALID_ITERATION("MVK_INVALID_ITERATION_IN_FILTER_CONDITION"),
+    ITERATION_BELOW_A_STAR("MVK_NO_WILDCARD"),
+    INDEX_NOT_ALLOWED("MVK_SEMANTIC_INDEX_NOT_ALLOWED"),
+    NO_ITERATION("MVK_NO_ITERATION_FOR_WILDCARD"),
+    DISALLOWED_CONSTRUCT("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"),
+}
+
+/** The gate this filter fails, what the author wrote there, and the level it iterates where the gate has one. */
+private data class FilterDefect(val gate: FilterGate, val wrote: String, val level: String? = null)
 
 /**
  * The first of the two gates this operand's filter fails, in A12's own order.
@@ -135,12 +149,14 @@ private fun TrackedFactBase.filterDefectOf(
     // below of the key's spec, while the key is parsed, so the key is the filtered entity here.
     val key = filter.filtersKey
     val written = (if (key == null) operand.base else key.path) ?: return null
-    // A nested clause, the rule-context keyword, and the outer marker each put a shape in the body that this
+    // A scope clause, the rule-context keyword, and the outer marker each put a shape in the body that this
     // walk has no measured cell for — the first two because they carry indices A12 reads and no path this
-    // reader can resolve, the third because the marker is invisible in a normalized reference.
+    // reader can resolve, the third because the marker is invisible in a normalized reference. A starred
+    // bracket read is the field-value read's star gate, which A12 raises as the bracket is read.
     if (OUTER_MARKER in filter.text ||
         namesRuleContext(filter.text, conditionLanguage) ||
-        namesKeyword(filter.text, clauseKeywords) != null
+        namesKeyword(filter.text, clauseKeywords) != null ||
+        fieldValueReadsIn(filter.text, conditionLanguage).any { it.path?.contains('*') == true }
     ) {
         return null
     }
@@ -172,23 +188,34 @@ private fun TrackedFactBase.filterDefectOf(
     }
     val indexed = uses.mapNotNullTo(mutableSetOf()) { it.valuePath }
     var boundSeen = false
+    // Every spec in the body is walked, a nested aggregate's operand and a nested filter's body included
+    // (`extractFilterIterationEntityRefs` visits the whole parse tree), each level by level: a starred level
+    // is a WILDCARD, which asks nothing but marks the levels after it, and an unstarred repeatable one is an
+    // ITERATION, asked the path question first and the below-star one second (source-read; measured,
+    // `adapter.laws.CheckerFilterBodyAgreementTest`).
     referencesIn(filter.text, conditionLanguage)
         .filterNot { it in callable }
         .forEach { reference ->
-            if ('*' in reference) {
-                return null
-            }
-            val resolved = (resolveEntity(group, reference, element.origin) as? Reference.Resolved)
+            val wildcards = starredLevelsOf(reference, group, element) ?: return null
+            val resolved = (resolveEntity(group, reference.replace("*", ""), element.origin) as? Reference.Resolved)
                 ?.path ?: return null
             // The index replaces ITERATION at the level it addresses, so this reference is never asked the
             // scope question — and the walk reads references in authored order, which is what decides
             // between the two classes when the body carries one of each.
             if (reference in indexed) {
-                return FilterDefect(INDEX_NOT_ALLOWED, reference, null)
+                return FilterDefect(FilterGate.INDEX_NOT_ALLOWED, reference)
             }
+            var belowAStar = false
             iteratedLevels(resolved).forEach { level ->
+                if (level in wildcards) {
+                    belowAStar = true
+                    return@forEach
+                }
                 if (!(filtered == level || filtered.startsWith("$level/"))) {
-                    return FilterDefect(INVALID_ITERATION, reference, level)
+                    return FilterDefect(FilterGate.INVALID_ITERATION, reference, level)
+                }
+                if (belowAStar) {
+                    return FilterDefect(FilterGate.ITERATION_BELOW_A_STAR, reference, level)
                 }
                 if (level in starred) {
                     boundSeen = true
@@ -196,24 +223,23 @@ private fun TrackedFactBase.filterDefectOf(
             }
         }
     if (!boundSeen) {
-        return FilterDefect(NO_ITERATION, written, null)
+        return FilterDefect(FilterGate.NO_ITERATION, written)
     }
     // A12's LAST gate over the body, and it runs only here: `checkNoDisallowedConstructsInFilterCondition`
     // sits after the index walk in `checkFilterCondition`, so every class above pre-empts it and it is
     // reachable only from a filter that is otherwise legal.
-    return disallowedConstructIn(filter.text, keywords)?.let { FilterDefect(DISALLOWED_CONSTRUCT, it, null) }
+    return disallowedConstructIn(filter.text, keywords)?.let { FilterDefect(FilterGate.DISALLOWED_CONSTRUCT, it) }
 }
 
 /**
- * The forbidden construct this filter body names, or null where it names none this reader may judge.
+ * The forbidden construct this filter body names, or null where it names none.
  *
  * A12's listener refuses exactly three, and each by its own terminal: a NESTED filter, `CustomCondition` and
- * `RepetitionNotUnique`. The last two are reported; the nested filter leaves this walk before the gate is
- * reached — the body is one of the shapes [filterDefectOf] declines outright — so naming it here would claim
- * a gate that never ran.
+ * `RepetitionNotUnique`. All three carry one class, so which one the text names first matters only to the
+ * message.
  */
 private fun disallowedConstructIn(text: String, keywords: Map<String, String>): String? =
-    listOfNotNull(keywords[CUSTOM_CONDITION], keywords[REPETITION_NOT_UNIQUE])
+    listOfNotNull(keywords[HAVING], keywords[CUSTOM_CONDITION], keywords[REPETITION_NOT_UNIQUE])
         .firstOrNull { namesKeyword(text, setOf(it)) != null }
 
 /**
@@ -226,33 +252,33 @@ private fun ownerSpanOf(operand: CallOperand, filter: OperandClause, member: Str
     return TextSpan(member, key.at, filter.at + filter.text.length)
 }
 
-private const val INVALID_ITERATION = "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
-
-private const val NO_ITERATION = "MVK_NO_ITERATION_FOR_WILDCARD"
-
-private const val INDEX_NOT_ALLOWED = "MVK_SEMANTIC_INDEX_NOT_ALLOWED"
-
-private const val DISALLOWED_CONSTRUCT = "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
-
 /** Every gate here runs in the filtered operand's `checkEntitySpec`, once its whole spec is read. */
 private fun filterFinding(defect: FilterDefect, element: TrackedDeclaration, member: String, span: TextSpan) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
-    defect.code,
-    when {
-        defect.code == INDEX_NOT_ALLOWED ->
+    defect.gate.code,
+    when (defect.gate) {
+        FilterGate.INDEX_NOT_ALLOWED ->
             "in `$member`: the filter reads `${defect.wrote}` through a semantic index, which picks ONE " +
                 "repetition where the filter decides whether the current one belongs — drop the index and " +
                 "read the field the filter is about, or move the comparison out of the filter"
-        defect.level == null ->
+        FilterGate.NO_ITERATION ->
             "in `$member`: the filter on `${defect.wrote}` names no level that the operand's own star " +
                 "reopens, so nothing in it is about the repetition being filtered — reference a field or " +
                 "group inside a starred level, or drop the filter"
-        else ->
+        FilterGate.INVALID_ITERATION ->
             "in `$member`: the filter names `${defect.wrote}`, which iterates `${defect.level}` — a " +
                 "repetition the filtered operand does not sit under, so A12 has no row of it to read; the " +
                 "`$OUTER_MARKER` marker is the only spelling that reaches one, and only where the " +
                 "declaration already iterates that level"
+        FilterGate.ITERATION_BELOW_A_STAR ->
+            "in `$member`: the filter names `${defect.wrote}`, which stars a level above `${defect.level}` " +
+                "and then reads one row of `${defect.level}` — a row of every repetition above it has no " +
+                "single one below it; star `${defect.level}` too"
+        FilterGate.DISALLOWED_CONSTRUCT ->
+            "in `$member`: the filter's body uses `${defect.wrote}`, which A12 refuses inside a filter, " +
+                "as it does a nested filter, `CustomCondition` and `RepetitionNotUnique` — move it out of " +
+                "the filter"
     },
     element.path,
     span,

@@ -45,14 +45,15 @@ class FilterBodyComparisonTest {
         val rows = linkedMapOf(
             "Sum(Claims/Paid Having [Claims/Units] > 5) > 0" to "MVK_NO_WILDCARD",
             "Sum(Claims/Paid Having [Claims/Notes] < [Claims/Units]) > 0" to "MVK_INVALID_TYPE_FOR_COMPARISON",
-            // Divergence locks, CONSISTENCY-GAPS DG90: A12 refuses a nested filter by the construct gate, and the
-            // nested operand by its own chain; the checker's filter walk declines a nested filter outright.
-            "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0" to ADMITTED,
+            // A nested filter is walked with the body and refused by the construct gate after it; an unstarred
+            // nested operand is read once its own filter has cleared A12's one filter flag, as the rule's read.
+            "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0" to
+                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION",
             "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Notes] < [Claims/Units]) > 0) > 0" to
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
             "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Reference] > 5) > 0) > 0" to
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
-            "Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Units] > 5) > 0) > 0" to ADMITTED,
+            "Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Units] > 5) > 0) > 0" to "MVK_NO_WILDCARD",
             "Sum(Claims*/Paid Having Sum(Claims/Units Having [Claims/Notes] < [Claims/Units]) > 0) > 0" to
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
             "Sum(Claims*/Paid* Having [Claims/Units] > 5) > 0" to "MVK_INVALID_WILDCARD",
@@ -90,9 +91,8 @@ class FilterBodyComparisonTest {
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
             "Sum(Orders*/Units Having Sum(Orders*/Lines*/Amount Having $LINE_COMPARISON) > 0) > 0" to
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
-            // Divergence lock, CONSISTENCY-GAPS DG90: A12 refuses an aggregate in a body by its own chain; the
-            // checker's filter walk declines an aggregate there.
-            "Sum(Claims*/Paid Having Sum(Claims*/Units) > 0) > 0" to ADMITTED,
+            // An aggregate in a body is one more spec the walk reads; a starred one binds no level.
+            "Sum(Claims*/Paid Having Sum(Claims*/Units) > 0) > 0" to "MVK_NO_ITERATION_FOR_WILDCARD",
         )
         val actual = rows.keys.associateWith { classes(it) }
         assertEquals(rows, actual, "where the filter chain is raised around its body")
