@@ -10966,6 +10966,55 @@ A12 never parses a computation's members one by one. `ComputationAlternativesJoi
 
 **Extended 2026-09-25 — a category behind the path leaves the star gate standing.** The spec's category gates run when the spec ends, before the bracket's ([KF359](#kf359)). A category the enumeration declares passes them, and the star gate then answers. As an enumeration computation's whole operation, `[Claims*/Banded -> Band]`, `[Claims*/Banded -> Wide]` and `[Claims*/Banded]` all draw `MVK_NO_WILDCARDS_ALLOWED`, whichever category the target covers. The `Wide` row is the discriminator: `[Banded -> Wide]` read locally draws the computation-source gate's `MVK_ERROR_INVALID_ENUM_CALCULATION` ([KF411](#kf411)), so the star answers first. An undeclared category, `[Claims*/Banded -> Nope]`, draws `MVK_CATEGORY_UNKOWN`, so the category's gates answer before the star. The checker's family now reads a bracket carrying a category once its category gates pass (`adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerReadsAnEnumComputationSourceAsA12Does`).
 
+**Extended 2026-09-26 — the gates reach every other carrier of the read, and a category of a non-enumeration, a membership subject and a bare group name each answer in a fixed place.** One carrier: `/Order` holds `Reference`, a Number `Total`, a raw String `Remark`, a partially known Date `Promised`, a Date `Shipped`, Strings `Channel` and `Label`, an Enumeration `Tier` with the category `Level`, `TierCopy`, Times `Cutoff` and `CutoffCopy`, DateRanges `Window` and `Window2`, the fixed groups `Billing` (a Number `Net`) and `Contact` (a String and a Date), and a repeatable `Lines` (a Number `Qty`, a String `Sku`, an Enumeration `Size`). Rules and computations are declared at the root unless the row says otherwise.
+
+| carrier | rows | class |
+|---|---|---|
+| arithmetic, `Abs`, `Min`, a sum side | `{[Billing] + 1}`, `{[Billing] * 2}`, `Abs([Billing])`, `Min([Billing], [Total])`, `[Total] + [Billing] > 0` | `MVK_NO_GROUPS_ALLOWED` |
+| | `{[Remark] + 1}`; `{[Promised] - 1}`; `{[NoSuch] + 1}` | `MVK_INVALID_RAW_TYPE`; `MVK_INVALID_DATE_TYPE`; `MVK_INVALID_ENTITY` |
+| | `{[Shipped] - 1}`, `{[Channel] * 2}`, where the read passes | `MVK_NO_NUMBER_FOR_CALC` |
+| a pattern comparison | `[Billing]`; `[Promised]`; `[Remark]` before `PatternMatched "a"` | `MVK_NO_GROUPS_ALLOWED`; `MVK_INVALID_DATE_TYPE`; `MVK_INVALID_RAW_TYPE` |
+| | `[Shipped] PatternMatched "a"`, where the read passes | `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON` |
+| a DateRange comparison | `[Billing]` on either side of `[Window]`; `[Window] == [Remark]` | `MVK_NO_GROUPS_ALLOWED`; `MVK_INVALID_RAW_TYPE` |
+| a category read | `[Billing -> Level]` as a comparison side and as a membership member | `MVK_NO_GROUPS_ALLOWED` |
+| | `[F -> Level]` over `Remark`, `Channel`, `Promised` and `Shipped`, and `[Channel -> Nope]`; a String's category as a membership member and subject, a value-list quantifier's field starred or not, a member of `NumberOfFilledFields`, `Sum`, `DateRangesOverlap`, `AtLeastOneDateRangeOverlaps` and `FieldValuesNotUnique`, and a computation's source into a root and a `Lines` Enumeration | `MVK_NO_ENUMERATION` |
+| | `[Lines -> Level]`, `[Lines/Sku -> Level]` | `MVK_NO_WILDCARD` |
+| | `Tier -> Level` inside `NumberOfFilledFields` and `FieldValuesNotUnique` | `MVK_CATEGORY_NOT_ALLOWED` |
+| a membership subject | `Billing`, the bare `Billing` and the root against literals, and `Billing` against numbers | `MVK_NO_GROUPS_ALLOWED` |
+| | `Lines` against literals, against numbers and against `[Remark]` | `MVK_NO_WILDCARD` |
+| | `Billing` and the root against `[Remark]`; `Billing` against `[Channel]` | `MVK_INVALID_RAW_TYPE`; `MVK_NO_GROUPS_ALLOWED` |
+| | `Billing -> Level` against `[Remark]` | `MVK_NO_GROUPS_ALLOWED` |
+| | `NoSuch` against `[Remark]` | `MVK_INVALID_ENTITY` |
+| | `Promised` against literals and against `[Channel]`, `Shipped` against literals | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
+| | `Remark` against String literals, against `[Channel]` and against numbers | `MVK_INVALID_RAW_TYPE` |
+| a value-list quantifier | `Contact` on either side of `Reference`; `Reference In Billing`; `Billing, Channel In "a"`; `Tier -> Level In Reference` | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+| | `NoSuch` opposite `Remark`, either way round | `MVK_INVALID_ENTITY` |
+| a filter's body over `Lines*/Qty` | `[Total] > 0` alone; `[Remark] == [Lines/Sku]`; `[Promised] > [Shipped]` | `MVK_NO_ITERATION_FOR_WILDCARD`; `MVK_INVALID_RAW_TYPE`; `MVK_INVALID_DATE_TYPE` |
+| a rule declared in `Lines` | `{[/Order/Billing] + 1} > 0`, `Length(/Order/Billing) > 0`; `{[/Order/Remark] + 1} > 0` | `MVK_NO_GROUPS_ALLOWED`; `MVK_INVALID_RAW_TYPE` |
+| a computation into a String, an Enumeration, a Time and a Number | `[Billing]`, `[Billing] + 1`, `[Billing -> Level]` | `MVK_NO_GROUPS_ALLOWED` |
+| | `[Remark]`, `[Remark] + 1`; `[Promised] - 1`; `[Lines]`, `[Lines] + 1` | `MVK_INVALID_RAW_TYPE`; `MVK_INVALID_DATE_TYPE`; `MVK_NO_WILDCARD` |
+| | `[Total]` into `TierCopy` | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
+| a computation into `Lines/Qty`, `Lines/Sku` and `Lines/Size` | `[Billing]`, `[Billing] + 1`, `[Total] + [Billing]`; `[Remark]`, `Abs([Remark])`; `[Promised]` | `MVK_NO_GROUPS_ALLOWED`; `MVK_INVALID_RAW_TYPE`; `MVK_INVALID_DATE_TYPE` |
+| | `[Lines]`, the target's own group, on all three | `MVK_NO_GROUPS_ALLOWED` |
+| a bare name | `[Billing] > 0` and `FieldFilled(Billing)`, beside one field named `Billing` elsewhere and beside two | `MVK_NO_GROUPS_ALLOWED` |
+| a computation's origin | declared in `Billing`, `Rank := [Grade]`, where `Billing` declares a Number `Grade` and the root an Enumeration `Grade` | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
+| the controls | `{[Total] + 1}`, `[Tier -> Level] == "HI"`, `[Channel] PatternMatched "a"`, `[Window] == [Window2]`, `FieldValueIncludedInValueList(Channel, "a", "b")`, `Having [Lines/Qty] > [Total]`, `{[/Order/Total] + 1} > 0` in `Lines`, the copies `[Channel]`, `[Tier]`, `[Cutoff]` and `[Billing/Net] + 1`, `[Total]` into `Lines/Qty` and `[Channel]` into `Lines/Sku`, `[Net] > 0` beside the bare-name rows, and `Billing/Rank := [Grade]` declared at the root | ADMITTED |
+
+What the rows separate:
+
+- **The construct's own class waits for the read.** An arithmetic operator's `MVK_NO_NUMBER_FOR_CALC` and the pattern comparison's type class appear only on a Date and a String, whose reads pass. A group operand would fail the operator's gate too, and draws the bracket's class.
+- **A category of a field declaring no enumeration draws `MVK_NO_ENUMERATION` ahead of the read's value gates and of `MVK_CATEGORY_UNKOWN`.** The raw, the partial-date and the undeclared-category rows discriminate: each would draw its own class if those gates came first. An Enumeration's category passes that gate, and each entity list that calls `checkNoCategories` then refuses it. On an A12 model those are four, `CheckFeldListenBedingungImpl`, `CheckFeldListenAnzahlOpImpl`, `CheckKontextListenBedingungImpl` and `CheckWiederholungBedingungImpl` (source-read, the other two callers being H-model constructs); the rows measure the first two.
+- **A plain membership subject waits for its members; a categorized one does not.** `Billing` against `[Remark]` draws the member's class, and `Billing -> Level` against the same member draws the group class. Against a member that passes, and against literals, the plain group draws the group class. The root waits as `Billing` does, while an unstarred repeatable subject and one resolving to nothing answer ahead of the member.
+- **A computation resolves a relative name from the group that declares it, not from its target's.** The target is `Billing/Rank` in both origin rows, so only the declaring group differs: declared at the root `[Grade]` is the root's Enumeration and is admitted.
+- **Into a repeatable target the target's own group passes the walk.** `[Lines]` into `Lines/Qty` draws the group class, where into the root's `Total` it draws `MVK_NO_WILDCARD`.
+- **A bare name its declaring group declares as a group takes no short-name fallback.** A fallback would admit the one-field rows, and an ambiguous one would draw `MVK_FIELDNAME_NOT_UNIQUE` beside two fields. `[Net] > 0` is the control that the short-name tier is on and resolves a name the root does not declare.
+
+The rows re-measure a12-kernel-lean's report (their `SPEC-2026-09-25-09`, `-10` and `SPEC-2026-09-26-01`) on our own carrier, and A12 answers every row of theirs as they state it. The origin row's class is ours: their report names the pair's split, not its class.
+
+The portable checker names A12's class on every row but eight. It is silent on the Enumeration's category in the two entity lists ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG105) and on both rows that copy a Number into an Enumeration (DG106). On the target's own group it is silent into `Lines/Qty` and names `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` into the other two (DG104). On the categorized subject it names the member's raw class (DG103).
+
+*Locked by:* `adapter.laws.CheckerFieldValueReadCarrierAgreementTest`, A12's class written out on every row and the checker required to name it.
+
 ## §11 supplement — a banded computation's `roundingMode` rounds what it WRITES to a whole number, and its implicit validation compares the operation as authored (differential, both strategies, 2026-09-25) <a id="kf474"></a>
 
 > Fold: pending — belongs in [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §11 beside the tolerance band.
