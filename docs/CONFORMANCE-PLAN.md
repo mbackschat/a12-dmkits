@@ -23,7 +23,7 @@
 | population | contents | status |
 |---|---|---|
 | **P1 seeds** | every rule in the committed model trees (`corpus/models`, `cli/…/models`, `src/test/resources/models`) and every catalog `validExample`, hosted on N7's scheme (`CatalogHosting`) and asked of A12 again there, since the hosting is not N7's own | M1 |
-| **P2 near-misses** | single edits of each P1 seed: delete, duplicate or swap a token; substitute an operator or a model name; insert a connective, bracket, comma, star or sign; and on a rule with a message, append `$`, an unresolvable parameter, `$$`, a tab or a supplementary character to its first message. Deterministic, seeded per seed, 30 condition edits per seed | M1 |
+| **P2 near-misses** | single edits of each P1 seed: delete, duplicate or swap a token; substitute an operator or a model name; insert a connective, bracket, comma, star or sign; and on a rule with a message, append `$`, an unresolvable parameter, `$$`, a tab or a supplementary character to its first message. Deterministic, seeded per seed, 30 condition edits per seed. On top of that sample, and never reshuffling it: every truncation after a token, and a `/` or a `.` written straight after every token, where A12's parser meets the end of input or a path separator it cannot continue from | M1 |
 | **P3 widenings** | element-name edits, computations, typedef and custom index hosts, deeper and sibling shapes, and, locally only, the reference corpora (`a12-kernel-mm`, the A12 Tools workspaces, never committed) | M5 |
 
 | oracle | compares | tiers |
@@ -86,3 +86,4 @@
 | 2026-09-26 | O1, after batch G2 | 139 | 4 469 inputs, 31 divergent | 6 WRONG-CLASS, 0 OVER-REJECT | 4 SILENT | 0 EXTRA |
 | 2026-09-26 | O1, after the M1 review: edits resampled per seed, walked open paths fixed ([KF491](KERNEL-FINDINGS.md#kf491)) | 139 | 4 469 inputs, 21 divergent | 10 WRONG-CLASS, 0 OVER-REJECT | 3 SILENT | 0 EXTRA |
 | 2026-09-26 | O1, after batch S ([KF492](KERNEL-FINDINGS.md#kf492)) | 139 | 4 469 inputs, 11 divergent | 7 WRONG-CLASS, 0 OVER-REJECT | 3 SILENT | 0 EXTRA |
+| 2026-09-26 | O1, P2 widened with every truncation and separator insertion; the sampled 4 469 unchanged | 139 | 9 362 inputs, 788 divergent | 11 WRONG-CLASS, 0 OVER-REJECT | 3 SILENT | 0 EXTRA |

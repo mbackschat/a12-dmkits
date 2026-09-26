@@ -96,6 +96,11 @@ class SurvivingDataNotInBuildGuardTest {
                             "the near-miss sweep's per-cluster counts and example mutants, rewritten on every run "
                                     + "from inputs the sweep regenerates deterministically; the committed ledger and "
                                     + "the plan's results table carry what must survive")),
+            Map.entry("build/checker-near-miss/divergent.tsv",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "every divergent input of the near-miss sweep under its cluster key, rewritten on every "
+                                    + "run from inputs the sweep regenerates deterministically; the committed ledger "
+                                    + "carries what must survive")),
             Map.entry("build/rp-large.dm.json",
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "a generated fixture for a manual before/after CLI comparison under -Drp.perf=true; "

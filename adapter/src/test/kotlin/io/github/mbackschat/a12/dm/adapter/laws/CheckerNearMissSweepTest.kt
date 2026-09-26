@@ -66,12 +66,13 @@ class CheckerNearMissSweepTest {
                 continue
             }
             tally.admitted[seed.arm] = tally.admitted.getValue(seed.arm) + 1
-            tally.compare(seed, Edit("as written", seed.rule, isMessageEdit = false), asWritten)
+            tally.compare(seed, Edit("as written", seed.rule, Family.AS_WRITTEN), asWritten)
             for (edit in edits(seed)) {
                 tally.compare(seed, edit, a12Classes(seed.host, edit.rule))
             }
         }
         REPORT.apply { parentFile.mkdirs() }.writeText(tally.report())
+        DIVERGENT.writeText(tally.divergent())
 
         val live = tally.counts()
         val ledger = ledger()
@@ -83,7 +84,9 @@ class CheckerNearMissSweepTest {
         assertTrue(tally.admitted.getValue(Arm.COMMITTED) >= 30, "committed seeds admitted: ${tally.admitted}")
         assertTrue(tally.admitted.getValue(Arm.CATALOG) >= 100, "catalog seeds admitted: ${tally.admitted}")
         assertTrue(tally.compared >= 4000, "the sweep compared only ${tally.compared} inputs")
-        assertTrue(tally.messageInputs >= 150, "only ${tally.messageInputs} message edits were compared")
+        assertTrue(tally.compared(Family.MESSAGE) >= 150, "only ${tally.compared(Family.MESSAGE)} message edits were compared")
+        assertTrue(tally.compared(Family.TRUNCATION) >= 1000, "only ${tally.compared(Family.TRUNCATION)} truncations were compared")
+        assertTrue(tally.compared(Family.SEPARATOR) >= 2000, "only ${tally.compared(Family.SEPARATOR)} separator edits were compared")
         assertTrue(tally.a12Refused >= 4000, "A12 refused only ${tally.a12Refused} inputs")
         assertTrue(tally.agreedRefusals >= 4000, "the checker agreed on only ${tally.agreedRefusals} refusals")
 
@@ -103,7 +106,7 @@ class CheckerNearMissSweepTest {
         val dropped = mutableListOf<String>()
         val clusters = sortedMapOf<String, MutableList<String>>()
         var compared = 0
-        var messageInputs = 0
+        val comparedByFamily = Family.entries.associateWith { 0 }.toMutableMap()
         var a12Refused = 0
         var agreedRefusals = 0
 
@@ -112,7 +115,7 @@ class CheckerNearMissSweepTest {
             check(report.modelId != null) { "the checker did not read ${seed.label} · ${edit.label}: ${report.diagnostics}" }
             val ours = report.findings.filter { it.justifiesRejection }.map { it.code }.toSet()
             compared++
-            if (edit.isMessageEdit) messageInputs++
+            comparedByFamily[edit.family] = comparedByFamily.getValue(edit.family) + 1
             if (a12.isNotEmpty()) a12Refused++
             val verdict = checkerVerdict(a12, ours)
             if (verdict == null) {
@@ -120,14 +123,21 @@ class CheckerNearMissSweepTest {
                 return
             }
             clusters.getOrPut(key(verdict, a12, ours)) { mutableListOf() } +=
-                "${seed.label} · ${edit.label} · ${edit.rule.errorCondition()}"
+                "${edit.family} · ${seed.label} · ${edit.label} · ${edit.rule.errorCondition()}"
         }
 
         fun counts(): Map<String, Int> = clusters.mapValues { it.value.size }
 
+        fun compared(family: Family): Int = comparedByFamily.getValue(family)
+
+        /** Every divergent input under its cluster key, for a batch that needs more than the report's three. */
+        fun divergent(): String = clusters.entries.joinToString("") { (key, inputs) ->
+            inputs.joinToString("") { "$key\t$it\n" }
+        }
+
         fun report(): String =
-            "# seeds admitted $admitted, dropped ${dropped.size}; inputs compared $compared, message edits " +
-                "$messageInputs, A12 refused $a12Refused, the checker agreed on $agreedRefusals; clusters " +
+            "# seeds admitted $admitted, dropped ${dropped.size}; inputs compared $compared $comparedByFamily, " +
+                "A12 refused $a12Refused, the checker agreed on $agreedRefusals; clusters " +
                 "${clusters.size}, divergent ${clusters.values.sumOf { it.size }}\n" +
                 clusters.entries.sortedByDescending { it.value.size }.joinToString("") {
                     "${it.value.size}\t${it.key}\t${it.value.take(3).joinToString(" || ")}\n"
@@ -182,22 +192,50 @@ class CheckerNearMissSweepTest {
             )
         }
 
-    /** A deterministic sample of [seed]'s single edits, distinct from each other and from the seed itself. */
+    /**
+     * [seed]'s single edits, distinct from each other and from the seed itself: a deterministic sample of the
+     * token edits, then every truncation and every separator insertion, which are exhaustive because each is one
+     * edit per token, then the message edits. The sample is drawn before the exhaustive families and from the
+     * token edits alone, so widening those families never reshuffles it.
+     */
     private fun edits(seed: Seed): List<Edit> {
         val condition = seed.rule.errorCondition()
         val candidates = LinkedHashMap<String, String>()
         conditionEdits(condition, ModelNames.of(seed.host)).forEach { (label, text) ->
             if (text != condition) candidates.putIfAbsent(text, label)
         }
-        val conditionEdits = candidates.entries.shuffled(java.util.Random(seed.label.hashCode().toLong()))
+        val sampled = candidates.entries.shuffled(java.util.Random(seed.label.hashCode().toLong()))
             .take(CONDITION_EDITS)
-            .map { (text, label) -> Edit(label, seed.rule.withErrorCondition(text), isMessageEdit = false) }
-        val first = seed.rule.messages().firstOrNull() ?: return conditionEdits
+            .map { (text, label) -> Edit(label, seed.rule.withErrorCondition(text), Family.SAMPLED) }
+        val seen = sampled.mapTo(mutableSetOf(condition)) { it.rule.errorCondition() }
+        val exhaustive = exhaustiveEdits(condition).filter { (_, text, _) -> seen.add(text) }
+            .map { (label, text, family) -> Edit(label, seed.rule.withErrorCondition(text), family) }
+        val first = seed.rule.messages().firstOrNull() ?: return sampled + exhaustive
         val messageEdits = MESSAGE_APPENDIXES.map { (label, appended) ->
             val messages = listOf(LocalizedText(first.locale(), first.text() + appended)) + seed.rule.messages().drop(1)
-            Edit(label, seed.rule.withMessages(messages), isMessageEdit = true)
+            Edit(label, seed.rule.withMessages(messages), Family.MESSAGE)
         }
-        return conditionEdits + messageEdits
+        return sampled + exhaustive + messageEdits
+    }
+
+    /**
+     * The text cut after each token but the last, where A12's parser meets the end of input inside a production;
+     * and a path separator, `/` or `.`, written straight after each token, where a path stops at a separator the
+     * production does not continue from.
+     */
+    private fun exhaustiveEdits(text: String): List<Triple<String, String, Family>> {
+        val tokens = TOKEN.findAll(text).filterNot { it.value.startsWith(";;") }.toList()
+        val cuts = tokens.dropLast(1).map { token ->
+            Triple("cut after `${token.value}`", text.substring(0, token.range.last + 1), Family.TRUNCATION)
+        }
+        val separators = tokens.flatMap { token ->
+            SEPARATORS.map { separator ->
+                Triple("`$separator` after `${token.value}`",
+                    text.substring(0, token.range.last + 1) + separator + text.substring(token.range.last + 1),
+                    Family.SEPARATOR)
+            }
+        }
+        return cuts + separators
     }
 
     private fun conditionEdits(text: String, names: ModelNames): List<Pair<String, String>> {
@@ -228,7 +266,10 @@ class CheckerNearMissSweepTest {
     /** One seed: its arm, a label unique across both arms, its host model, and the probe rule. */
     private class Seed(val arm: Arm, val label: String, val host: String, val rule: DraftRule)
 
-    private class Edit(val label: String, val rule: DraftRule, val isMessageEdit: Boolean)
+    private class Edit(val label: String, val rule: DraftRule, val family: Family)
+
+    /** Where an input came from, so a widening is counted apart from the sample it widens. */
+    private enum class Family { AS_WRITTEN, SAMPLED, TRUNCATION, SEPARATOR, MESSAGE }
 
     /** The host's field and group names, so a name edit can swap a field for a group or for an unresolvable name. */
     private class ModelNames(val fields: Set<String>, val groups: Set<String>) {
@@ -259,6 +300,7 @@ class CheckerNearMissSweepTest {
         const val LEDGER = "/checker-near-miss/clusters.tsv"
         val ACTUAL = File("build/checker-near-miss/actual.tsv")
         val REPORT = File("build/checker-near-miss/report.tsv")
+        val DIVERGENT = File("build/checker-near-miss/divergent.tsv")
         const val PROBE = "NearMissProbe"
         const val PROBE_CODE = "NEAR_MISS"
         const val UNRESOLVABLE = "Nope"
@@ -278,6 +320,8 @@ class CheckerNearMissSweepTest {
         )
 
         val INSERTS = listOf("And", "(", ")", ",", "*", "-")
+
+        val SEPARATORS = listOf("/", ".")
 
         val MESSAGE_APPENDIXES = listOf(
             "append a lone `$`" to " $",
