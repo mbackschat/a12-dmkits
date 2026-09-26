@@ -9,10 +9,11 @@ import kotlinx.serialization.json.intOrNull
  * Whether A12's value validation of this index field admits the non-empty [constant], or null where this reader
  * cannot say.
  *
- * A12 runs the index field type's `isValueApplicable` over a constant key (`CheckSemanticIndexImpl`), and on
- * this path it builds that type from the DECLARED members alone: the `notInDCustom*` ones are read only when
- * `TypeConverter` is told to consider them, and a Boolean declaring `J`/`N` still admits exactly `true` and
- * `false`. Every kind's test is a SHAPE test, measured row by row against the Kernel in
+ * A12 runs the index field type's `isValueApplicable` over a constant key (`CheckSemanticIndexImpl`). A
+ * Boolean's custom values do not count here: a Boolean declaring `J`/`N` still admits exactly `true` and
+ * `false` (measured), consistent with `TypeConverter` reading every `notInDCustom*` member only under its one
+ * `considerNotInD` flag (source-read). A custom date format rides the same flag and is unmeasured. Every kind's
+ * test is a SHAPE test, measured row by row against the Kernel in
  * `adapter.laws.CheckerIndexKeyConstantAgreementTest` ([KERNEL-FINDINGS KF481]).
  *
  * Unjudged, and therefore safe to under-report: a declared String pattern, which is Java regex this checker
