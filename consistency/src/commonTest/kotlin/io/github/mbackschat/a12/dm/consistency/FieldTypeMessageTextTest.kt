@@ -135,6 +135,26 @@ class FieldTypeMessageTextTest {
     }
 
     /**
+     * A12's code generation checks the element container it builds for the default variant, from which an `ONLY`
+     * filter deletes the field ([KERNEL-FINDINGS] KF490, KF305), so the deleted field's message is never asked.
+     * The kernel row is `rulekit.validate.laws.FieldTypeMessageTextLawsTest`'s "a tab on a field an ONLY filter
+     * deletes"; the unfiltered control keeps the fixture able to fail.
+     */
+    @Test
+    fun aFieldAnOnlyFilterDeletesIsNeverJudged() {
+        val tabbed = patterned(en("a${TAB}b"))
+        val actual = linkedMapOf(
+            "unfiltered, the control" to codes(model(tabbed)),
+            "deleted by an ONLY filter" to codes(model(tabbed, variantFilter = "ONLY")),
+        )
+        val expected = linkedMapOf(
+            "unfiltered, the control" to listOf(CHARACTERS),
+            "deleted by an ONLY filter" to none,
+        )
+        assertEquals(expected, actual, "a field A12 deletes at the default variant")
+    }
+
+    /**
      * Only this family's classes are compared, because the path rows draw the name families' classes too and
      * one of them names a class A12 does not give for `Co.1de` (docs/CONSISTENCY-GAPS.md DG113).
      */
@@ -310,6 +330,7 @@ class FieldTypeMessageTextTest {
         field: String = "Code",
         requiredMessage: String? = null,
         extra: JsonObject? = null,
+        variantFilter: String? = null,
     ): String = buildJsonObject {
         putJsonObject("header") {
             put("id", "claims-field-messages")
@@ -337,6 +358,7 @@ class FieldTypeMessageTextTest {
                                     put("name", field)
                                     putJsonObject("Field") {
                                         put("fieldType", type)
+                                        variantFilter?.let { putJsonObject("variantFilter") { put("filterType", it) } }
                                         requiredMessage?.let { text ->
                                             putJsonObject("requirednessConfig") {
                                                 put("mode", "absoluteOrRelativeToNextRepAncestor")

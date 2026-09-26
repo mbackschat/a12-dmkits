@@ -34,6 +34,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
  * **A field A12's element walk never reaches is never judged** ([reachedByTheElementWalk]). A12 checks each
  * element's path before its content and returns there, skipping what lies beneath, so a field whose own name or
  * an enclosing group's name its path alphabet refuses draws that path's class and nothing about its message.
+ * Nor is a field an `ONLY` variant filter deletes: code generation checks the default-variant container, from
+ * which the filter removed it ([deletesAtDefaultVariant]; KERNEL-FINDINGS KF490).
  *
  * **What it is not.** A required field's message is not reached at all. The pattern-and-message pairing is
  * [stringTypeMessageFindings]', and both are reported on one field: a message with no pattern beside it is
@@ -45,7 +47,7 @@ internal fun TrackedFactBase.fieldTypeMessageTextFindings(): List<Finding> {
     val unreached = declarations().filterNot { it.reachedByTheElementWalk() }.map { it.path }.toSet()
     val language = conditionLanguage
     return declarations()
-        .filter { it.declaredKind == DeclaredKind.FIELD && !it.origin.isMounted }
+        .filter { it.declaredKind == DeclaredKind.FIELD && !it.origin.isMounted && !it.body.deletesAtDefaultVariant() }
         .filter { field -> field.path !in unreached && field.path.enclosingPaths().none { it in unreached } }
         .mapNotNull { field -> ownMessageFinding(field, language) }
 }

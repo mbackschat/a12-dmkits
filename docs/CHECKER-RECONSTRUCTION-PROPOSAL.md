@@ -77,7 +77,7 @@ Two runtime rules shape the last row. **An alternative that has already complete
 | [KF492](KERNEL-FINDINGS.md#kf492), typed argument slots | §2.4: a place count or a day keyword is a match, an operation slot a decision |
 | DG83, a message class beside a refused condition | §1, the message's parameters: a condition that fails withholds its rule's message check |
 | DG117 and DG118, operation types | §2.2: every operation's type is computed bottom-up by the check actions, so a comparison and an extremum see the type of an arithmetic side |
-| DG114, a field an `ONLY` variant filter deletes | §1: code generation reads the default-variant container; which field check sits in that stage is R0's question |
+| [KF490](KERNEL-FINDINGS.md#kf490), a field an `ONLY` variant filter deletes | §1: code generation reads the default-variant container; which other field check sits in that stage is R0's question |
 | the widened sweep's end-of-input clusters | §2.3 × §2.4: `FieldFilled(` and `[` end in a decision, `FieldFilled` and `RoundUpValue(X,` in a match |
 
 ## 4. The trace (plan item R2)

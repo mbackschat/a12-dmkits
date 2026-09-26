@@ -400,8 +400,16 @@ data class PreparedModel(
 }
 
 /** Whether A12 drops this element before checking — see [PreparedModel.resolvableElements]. */
-private fun DeclaredElement.isDeletedAtDefaultVariant(): Boolean {
-    val filter = body?.get("variantFilter") as? JsonObject ?: return false
+private fun DeclaredElement.isDeletedAtDefaultVariant(): Boolean = body.deletesAtDefaultVariant()
+
+/**
+ * Whether a declaration with this body is one A12's converter deletes from the default-variant element container,
+ * which every check inside code generation reads ([PreparedModel.resolvableElements] carries the measurement).
+ * One predicate for every reader, so the reference resolver and a family walking declarations cannot disagree
+ * about which elements A12 examines there.
+ */
+internal fun JsonObject?.deletesAtDefaultVariant(): Boolean {
+    val filter = this?.get("variantFilter") as? JsonObject ?: return false
     val type = filter["filterType"] as? JsonPrimitive ?: return false
     return type.isString && type.content == "ONLY"
 }
