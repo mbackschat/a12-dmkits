@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * A12's codeless refusal of a character outside the Basic Multilingual Plane, on both targets.
@@ -52,8 +53,12 @@ class ModelTextRepertoireTest {
           ]}}]}}}
     """.trimIndent()
 
-    private fun reported(json: String): List<String> =
-        check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { "${it.code} at ${it.at}" }
+    /** Refuses a source the checker could not read, since an unread model reports nothing and every row passes. */
+    private fun reported(json: String): List<String> {
+        val report = check(ModelSource(json))
+        assertTrue(report.diagnostics.isEmpty(), "the fixture was not read: ${report.diagnostics}")
+        return report.findings.filter { it.justifiesRejection }.map { "${it.code} at ${it.at}" }
+    }
 
     private fun annotated(name: String, value: String) =
         """{"type":"Field","id":"f0","name":"Reference","annotations":[{"name":${q(name)},"value":${q(value)}}],
@@ -120,7 +125,7 @@ class ModelTextRepertoireTest {
                 reported(model(groupLabel = "Claim $GRIN")),
                 reported(model(reference = """{"type":"Field","id":"f0","name":"Reference","Field":{
                     "label":[{"locale":"en_US","text":${q("Reference $GRIN")}}],"fieldType":{"type":"StringType"}}}""")),
-                reported(model(rule(extraMessage = ""","{"locale":"de_DE","text":${q("see $GRIN")}}"""))),
+                reported(model(rule(extraMessage = """,{"locale":"de_DE","text":${q("see $GRIN")}}"""))),
                 reported(model(status(german = "Offen $GRIN"))),
             ),
         )
