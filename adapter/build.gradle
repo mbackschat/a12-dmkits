@@ -376,6 +376,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerRepetitionNotUniqueGateAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerFirstFilledValueTypeAgreementTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerNearMissSweepTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
@@ -609,6 +610,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
     // size the committed trees cannot reach, and its own inputs are test sources this task already declares.
     // The path grid joins on the same footing: its disagreement ledger is a test RESOURCE, so the task's runtime
     // classpath already carries it as an input and a ledger edit re-runs it.
+    // The near-miss sweep joins on both grounds: it reads the committed model trees at runtime and keeps its
+    // cluster ledger as a resource.
     // The keyed-operand, constant-index-key, field-value-read carrier, entity-list category, computation
     // comparison, comparison-constant, filter-body, rule-reference-set, RepetitionNotUnique gate and paired-gate,
     // and FirstFilledValue type grids join
@@ -644,6 +647,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerFirstFilledValueTypeAgreementTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.CheckerNearMissSweepTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnSynthesizedModelsTest')
     }

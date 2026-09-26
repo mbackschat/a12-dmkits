@@ -54,10 +54,10 @@
 
 | id | milestone | exit criterion | state |
 |---|---|---|---|
-| **M0** | clean baseline | C5 committed; the JS-only lone-surrogate test defect fixed and its class guarded; C4b's tier-1 review item fixed and its false claims corrected; hand batches C7–C10 folded into this plan; letter `-26n` sent | in progress |
-| **M1** | **the checker's frontier is known** | `CheckerNearMissSweepTest` runs P1 + P2 through O1; its ledger is committed; the cluster count per tier is recorded below | open |
+| **M0** | clean baseline | C5 committed; the JS-only lone-surrogate test defect fixed and its class guarded; C4b's tier-1 review item fixed and its false claims corrected; hand batches C7–C10 folded into this plan; letter `-26n` sent | **done** 2026-09-26 (`13a02c3e1`, `6635b7664`, `acaf16a29`) |
+| **M1** | **the checker's frontier is known** | `CheckerNearMissSweepTest` runs P1 + P2 through O1; its ledger is committed; the cluster count per tier is recorded below | **done** 2026-09-26: the conditions and rule messages of P1 + P2. The field arm (variant filter, element names, a field type's own message) is M5's first widening |
 | **M2** | the interpreter's and dmkits' frontier is known | O2 and O3 run on M1's accepted population; ledgers committed; counts recorded | open |
-| **M3** | tier 1 is empty | no OVER-REJECT or WRONG-CLASS cluster in O1, and no O2 or O3 tier-1 cluster | open |
+| **M3** | tier 1 is empty | no OVER-REJECT or WRONG-CLASS cluster in O1, and no O2 or O3 tier-1 cluster | open. **Batch G (grammar) first**: 18 clusters, 340 of the 362 divergent inputs. A12's parser refuses the text (`MVK_UNEXPECTED_TOKEN`) where the checker's shape parser admits it and then names a semantic class (17 WRONG-CLASS) or nothing (1 SILENT). It subsumes DG83 and DG93. **Then batch R (residue)**: 5 WRONG-CLASS clusters about wildcards, tokens and the error field |
 | **M4** | tier 2 is closed | every SILENT cluster is fixed or declared | open |
 | **M5** | widen and repeat | P3 populations added one at a time, each re-running M3 and M4 | open |
 
@@ -80,3 +80,4 @@
 
 | date | oracle | seeds | compared | tier-1 clusters | tier-2 | tier-3 |
 |---|---|---|---|---|---|---|
+| 2026-09-26 | O1, conditions and rule messages (`CheckerNearMissSweepTest`, first freeze) | 139 admitted as written | 4 469 inputs, 362 divergent | 23 WRONG-CLASS, 0 OVER-REJECT | 4 SILENT | 0 EXTRA |

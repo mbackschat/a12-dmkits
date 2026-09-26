@@ -65,12 +65,12 @@ class CheckerPathGridAgreementTest {
                 val draft = DraftRule(group, "ProbeRule", "../$errorLeaf",
                         "FieldFilled($errorLeaf) And $operand", "PROBE", "ERROR")
                 val a12 = validator.check(policy, draft).let { result ->
-                    if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse(UNKEYED) }.toSet()
+                    if (result.ok()) emptySet() else result.diagnostics().map { it.ledgerClass() }.toSet()
                 }
                 val ours = check(ModelSource(validator.inject(policy, draft))).findings
                         .filter { it.justifiesRejection }.map { it.code }.toSet()
                 compared++
-                verdict(a12, ours)?.let { live += listOf(group, operand, it, a12.sorted().joinToString(","),
+                checkerVerdict(a12, ours)?.let { live += listOf(group, operand, it, a12.sorted().joinToString(","),
                         ours.sorted().joinToString(",")).joinToString("\t") }
             }
         }
@@ -98,16 +98,6 @@ class CheckerPathGridAgreementTest {
         return paths.flatMap { listOf("FieldFilled($it)", "AtLeastOneGroupFilled($it)") }
     }
 
-    /** Null where the two agree, including the one designed superset; otherwise the ledger's verdict word. */
-    private fun verdict(a12: Set<String>, ours: Set<String>): String? = when {
-        a12 == ours -> null
-        a12 == setOf(POINT) && ours == setOf(POINT, "MVK_INVALID_WILDCARD") -> null
-        a12.isEmpty() -> "OVER-REJECT"
-        ours.isEmpty() -> "SILENT"
-        ours.containsAll(a12) -> "EXTRA"
-        else -> "WRONG-CLASS"
-    }
-
     private fun ledger(): Set<String> =
         checkNotNull(javaClass.getResource(LEDGER)) { "missing $LEDGER" }.readText().lines()
             .filter { it.isNotBlank() && !it.startsWith("#") }
@@ -116,8 +106,6 @@ class CheckerPathGridAgreementTest {
     private companion object {
         const val LEDGER = "/checker-path-grid/divergences.tsv"
         val ACTUAL = File("build/checker-path-grid/actual.tsv")
-        const val POINT = "MVK_POINT_IN_A12_MODEL"
-        const val UNKEYED = "(no code)"
         val VOCABULARY = listOf(
             "Claims", "Claims*", "Claims.*", "Insured", "Insured*", "Insured.*",
             "Holder", "Holder*", "Amount", "Nope", "Nope*", "..", "..*",

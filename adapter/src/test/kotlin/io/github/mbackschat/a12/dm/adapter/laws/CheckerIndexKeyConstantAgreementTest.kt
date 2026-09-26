@@ -66,11 +66,7 @@ class CheckerIndexKeyConstantAgreementTest {
         val draft = DraftRule("/Policy", "ProbeRule", "../Reference", "FieldFilled(Reference) And $probe", "PROBE",
             "ERROR")
         val a12 = validator.check(policy, draft).let { result ->
-            if (result.ok()) emptySet() else result.diagnostics().map { d ->
-                // A12's codeless charset refusal, named by the code this checker owns for it; any other
-                // codeless finding stays unnamed, so it would show as a disagreement.
-                d.code().orElse(if (UNSUPPORTED_SIGNS in d.summary()) UNSUPPORTED else "(no code)")
-            }.toSet()
+            if (result.ok()) emptySet() else result.diagnostics().map { it.ledgerClass() }.toSet()
         }
         val ours = check(ModelSource(validator.inject(policy, draft))).findings
             .filter { it.justifiesRejection }.map { it.code }.toSet()
@@ -195,7 +191,6 @@ class CheckerIndexKeyConstantAgreementTest {
         )
 
         const val UNSUPPORTED = "RK_UNSUPPORTED_CHARACTER"
-        const val UNSUPPORTED_SIGNS = "The field contains one or several unsupported signs."
 
         /**
          * The rows whose constant carries a supplementary-plane character, which A12 also refuses in a condition
