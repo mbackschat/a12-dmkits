@@ -90,7 +90,13 @@ The instrument lives in `:adapter`'s tests (the parser and ANTLR are already on 
 
 ## 5. The rebuild (plan items R3–R5)
 
-- **One parser for the A12 (non-H) language, producing one tree.** Its structure follows A12's constructs, with our own decomposition and names; the language is matched, the grammar file's expression is never copied (clean-room, the EUPL boundary).
+- **One parser for the A12 (non-H) language, producing one tree, exact in behaviour and original in expression.** It matches what A12 observably does: which texts it accepts, which class it names, at which token. It does not match how A12's grammar file or generated parser is written. Copyright protects a program's expression and not its functionality, language or formats (Directive 2009/24/EC Art. 1(2); CJEU C-406/10 *SAS Institute v World Programming*). A translation of the source, however, is an adaptation (Art. 4), which would bring EUPL-1.2's copyleft into MIT code. So:
+  - it is written from this proposal and the trace's data, never with the kernel's grammar, generated parser or `Check*Impl` classes open beside it;
+  - it uses its own decomposition and English names, and carries no prediction tables or ANTLR decision numbers in main code;
+  - its oracle is the sweep and the trace;
+  - the kernel-linked trace stays in `:adapter`'s tests and never moves into `:consistency`.
+
+  [LICENSING](LICENSING.md) holds the project's licence split, which this does not change.
 - **Decisions by kind** (§2.4): LL(1) choices by one token; the overlap decisions with the windows of Appendix B; the completed-rule fallback; predicates only at a decision's start.
 - **Check actions at rule completion**, one per A12 action site that an A12 model reaches, each raising its codes in A12's order (Appendix A.2), types propagating bottom-up.
 - **Post-parse in A12's fixed order** (Appendix A.3), then the stages above the condition in §1's order.
