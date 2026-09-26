@@ -20,10 +20,14 @@ import kotlin.test.assertEquals
  */
 class ConditionShapeTest {
 
+    private var harvest = SyntaxFixtureHarvest("ConditionShapeTest")
+
     @Test
     fun everyTextTheKernelAcceptsParses() {
+        harvest = SyntaxFixtureHarvest("ConditionShapeTest.everyTextTheKernelAcceptsParses")
         val rejected = mutableMapOf<String, String>()
         fun reject(id: String, text: String, language: ConditionLanguage, entry: SyntaxEntry) {
+            harvest.record(text, language, entry, catalogId = id)
             shapeFailure(text, language, entry)?.let { rejected["$language $id"] = report(text, it) }
         }
         for (row in ConditionCorpus.conditions()) {
@@ -47,6 +51,7 @@ class ConditionShapeTest {
      */
     @Test
     fun theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives() {
+        harvest = SyntaxFixtureHarvest("ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives")
         val actual = mutableMapOf<String, String>()
         for ((label, text) in REJECTED) {
             actual[label] = verdict(text)
@@ -94,6 +99,7 @@ class ConditionShapeTest {
      */
     @Test
     fun theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther() {
+        harvest = SyntaxFixtureHarvest("ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther")
         val actual = mutableMapOf<String, String>()
         for (spelling in listOf("In", "IN", "in")) {
             actual["EN $spelling"] = verdict("NoFieldValueIncludedInValueList(Tier $spelling Premium)")
@@ -132,6 +138,7 @@ class ConditionShapeTest {
      */
     @Test
     fun theRuleContextEntityParsesAsAReferenceInBothLanguages() {
+        harvest = SyntaxFixtureHarvest("ConditionShapeTest.theRuleContextEntityParsesAsAReferenceInBothLanguages")
         val actual = mutableMapOf<String, String>()
         actual["EN RuleGroup"] = verdict("GroupFilled(RuleGroup)")
         actual["DE RegelKontext"] = verdict("KontextAngegeben(RegelKontext)", ConditionLanguage.DE)
@@ -149,6 +156,7 @@ class ConditionShapeTest {
     /** Mirrors `rulekit.validate.laws.ConditionArithmeticSymbolLawsTest.aSignStandsOnlyOnANumberLiteral`. */
     @Test
     fun aSignStandsOnlyOnANumberLiteral() {
+        harvest = SyntaxFixtureHarvest("ConditionShapeTest.aSignStandsOnlyOnANumberLiteral")
         val actual = linkedMapOf(
             "a signed literal — the control" to verdict("[BaseFee] > -1"),
             "a signed literal subtracted" to verdict("[BaseFee] - -1 > 1"),
@@ -173,6 +181,7 @@ class ConditionShapeTest {
     /** Mirrors `…ConditionArithmeticSymbolLawsTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo`. */
     @Test
     fun onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo() {
+        harvest = SyntaxFixtureHarvest("ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo")
         val operations = listOf(
             "-5", "0 - [BaseFee]", "-[BaseFee]", "[BaseFee] * -1", "[BaseFee] * -[BaseFee]", "{-[BaseFee]}",
             "RoundUp(0 - [BaseFee], 2)", "RoundUp(-[BaseFee], 2)",
@@ -188,6 +197,7 @@ class ConditionShapeTest {
         language: ConditionLanguage = ConditionLanguage.EN,
         entry: SyntaxEntry = SyntaxEntry.CONDITION,
     ): String {
+        harvest.record(text, language, entry)
         val failure = shapeFailure(text, language, entry) ?: return ACCEPTS
         return if (failure.ranOutAwaitingOneToken) "MVK_EXPECTED_TOKEN_NOT_FOUND" else "MVK_UNEXPECTED_TOKEN"
     }

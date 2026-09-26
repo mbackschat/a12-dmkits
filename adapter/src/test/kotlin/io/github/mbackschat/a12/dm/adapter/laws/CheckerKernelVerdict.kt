@@ -1,5 +1,8 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException
+import io.github.mbackschat.a12.dm.core.ModelInputException
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic
 
 /**
@@ -41,3 +44,21 @@ private const val A12_REPERTOIRE_REFUSAL = "The field contains one or several un
 private const val RK_UNSUPPORTED_CHARACTER = "RK_UNSUPPORTED_CHARACTER"
 
 private const val POINT_IN_A12_MODEL = "MVK_POINT_IN_A12_MODEL"
+
+/** Whole-model admission, also covering the original partial fixtures P4 preserves before hosted completion. */
+internal fun kernelModelClasses(json: String): Set<String> = try {
+    BoundModel.ofJson(json)
+    emptySet()
+} catch (unreadable: ModelInputException) {
+    setOf("CK_MODEL_NOT_BUILDABLE")
+} catch (rejected: ModelConsistencyException) {
+    val messages = rejected.notifications().map { it.message().trim() }
+    check(messages.isNotEmpty()) { "A12 refused the model without a notification" }
+    messages.map { message ->
+        Regex("\\[(\\w+)]$").find(message)?.groupValues?.get(1) ?: when {
+            message.contains("the kernel could not build this model:") -> "CK_MODEL_NOT_BUILDABLE"
+            message.contains(A12_REPERTOIRE_REFUSAL) -> RK_UNSUPPORTED_CHARACTER
+            else -> UNKEYED_A12_CLASS
+        }
+    }.toSet()
+}

@@ -18,6 +18,8 @@ import kotlin.test.assertTrue
  */
 class ConditionCompletenessTest {
 
+    private var harvest = SyntaxFixtureHarvest("ConditionCompletenessTest")
+
     private fun model(condition: String) = prepare(
         assertIs<Admission.Admitted>(
             admit(
@@ -31,7 +33,7 @@ class ConditionCompletenessTest {
                           "errorCondition":${'"'}$condition${'"'},"errorEntityRelPath":"../Price"}}
                       ]}}
                      ]}}}
-                    """.trimIndent(),
+                    """.trimIndent().also(harvest::recordModel),
                 ),
             ),
         ),
@@ -45,6 +47,7 @@ class ConditionCompletenessTest {
 
     @Test
     fun textThatEndsOnAnInfixOperatorIsReportedIncomplete() {
+        harvest = SyntaxFixtureHarvest("ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete")
         val actual = mutableMapOf<String, List<String>>()
         actual["a complete condition — the control"] = codesFor("FieldFilled(Price)")
         actual["ends with And"] = codesFor("FieldFilled(Price) And")
@@ -89,6 +92,7 @@ class ConditionCompletenessTest {
      */
     @Test
     fun aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves() {
+        harvest = SyntaxFixtureHarvest("ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves")
         val actual = mutableMapOf<String, List<String>>()
         actual["ends on And — the canonical control"] = codesFor("FieldFilled(Price) And")
         actual["ends on AND"] = codesFor("FieldFilled(Price) AND")
@@ -125,6 +129,7 @@ class ConditionCompletenessTest {
      */
     @Test
     fun textWithAnUnclosedDelimiterIsNotThisFamilysBusiness() {
+        harvest = SyntaxFixtureHarvest("ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness")
         assertEquals(emptyList(), codesFor("FieldFilled([Price ->"), "the category arrow")
         assertEquals(emptyList(), codesFor("FieldFilled([Price For"), "the semantic-index keyword")
         assertEquals(emptyList(), codesFor("FieldFilled(Price For"), "the same keyword, one bracket fewer")
@@ -146,6 +151,7 @@ class ConditionCompletenessTest {
      */
     @Test
     fun theOperatorIsRecognisedInTheModelsOwnConditionLanguage() {
+        harvest = SyntaxFixtureHarvest("ConditionCompletenessTest.theOperatorIsRecognisedInTheModelsOwnConditionLanguage")
         val german = prepare(
             assertIs<Admission.Admitted>(
                 admit(
@@ -160,7 +166,7 @@ class ConditionCompletenessTest {
                               "errorCondition":"FeldAngegeben(Preis) Und","errorEntityRelPath":"../Preis"}}
                           ]}}
                          ]}}}
-                        """.trimIndent(),
+                        """.trimIndent().also(harvest::recordModel),
                     ),
                 ),
             ),
@@ -174,6 +180,7 @@ class ConditionCompletenessTest {
     /** The finding names the member, since a computation carries several DSL-bearing ones. */
     @Test
     fun theFindingNamesTheMemberThatEndsEarly() {
+        harvest = SyntaxFixtureHarvest("ConditionCompletenessTest.theFindingNamesTheMemberThatEndsEarly")
         val finding = model("FieldFilled(Price) And").completenessFindings().single()
         assertEquals("/Catalog/PriceRule", finding.at)
         assertTrue(

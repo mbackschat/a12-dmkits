@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mbackschat.a12.dm.adapter.laws.NearMissPopulation.Arm
 import io.github.mbackschat.a12.dm.adapter.laws.NearMissPopulation.Edit
 import io.github.mbackschat.a12.dm.adapter.laws.NearMissPopulation.Family
@@ -30,6 +31,10 @@ import java.io.File
  * one that opens a new key, and a fix that shrinks one fails it until the row is updated. The live run writes
  * every key with its count and three example mutants to `build/checker-near-miss/report.tsv`, so a batch starts
  * from the largest cluster and a discriminating example of it.
+ *
+ * **P4 also replays the syntax tests' helper inputs**, including negative rows that cannot be admitted seeds.
+ * Their original partial models are kept beside separately completed hosts; neither class-set comparison
+ * replaces the syntax-only acceptance, selected-family or positioned-report assertions R3a must preserve.
  *
  * **Floors per arm and on refusals**, because an empty ledger is the goal and must not be reachable by a sweep
  * that stopped comparing: each arm must admit its seeds and reach the message edits, and A12 must refuse inputs
@@ -76,6 +81,64 @@ class CheckerNearMissSweepTest {
         assertEquals(render(ledger), render(live),
             "cluster counts differ from the ledger (live counts in ${ACTUAL.path}, examples in ${REPORT.path}); " +
                 "a fix updates or deletes its rows, a new key is a new defect")
+    }
+
+    @Test
+    fun harvestedSyntaxFixturesHaveOnlyLedgeredDifferences() {
+        val fixed = HarvestedSyntaxPopulation.fixedRows()
+        val catalog = HarvestedSyntaxPopulation.catalogRows()
+        assertEquals(77, fixed.size)
+        assertEquals(324, catalog.size, "T1's live catalog denominator; re-harvest when its source changes")
+        assertEquals(26, fixed.count { it.originalModel != null })
+        val rows = fixed + catalog
+        assertEquals(rows.size, rows.map { it.id }.distinct().size)
+        val sourceCounts = mapOf(
+            "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives" to 15,
+            "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther" to 18,
+            "ConditionShapeTest.theRuleContextEntityParsesAsAReferenceInBothLanguages" to 3,
+            "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral" to 7,
+            "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo" to 8,
+            "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete" to 10,
+            "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves" to 6,
+            "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness" to 7,
+            "ConditionCompletenessTest.theOperatorIsRecognisedInTheModelsOwnConditionLanguage" to 2,
+            "ConditionCompletenessTest.theFindingNamesTheMemberThatEndsEarly" to 1,
+        )
+        val expectedIdentities = sourceCounts.flatMap { (source, count) ->
+            (1..count).map { ordinal -> "$source#$ordinal" }
+        }.toSet()
+        assertEquals(expectedIdentities, fixed.map { it.id }.toSet(), "every harvested source row survives")
+        rows.map { it.host.json }.distinct().forEach { host ->
+            assertEquals(emptySet<String>(), kernelModelClasses(host), "host control")
+        }
+        val clusters = sortedMapOf<String, Int>()
+        val examples = mutableListOf<String>()
+        var compared = 0
+        fun compare(id: String, json: String) {
+            val a12 = kernelModelClasses(json)
+            val report = check(ModelSource(json))
+            assertTrue(report.modelId != null, "checker did not read $id")
+            val ours = report.findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            compared++
+            val verdict = checkerVerdict(a12, ours) ?: return
+            val key = key(verdict, a12, ours)
+            clusters[key] = clusters.getOrDefault(key, 0) + 1
+            examples += "$key\t$id"
+        }
+        for (row in rows) {
+            compare(row.id, row.model())
+            row.originalModel?.let { compare("${row.id}:original", it) }
+        }
+        assertEquals(427, compared, "401 hosted rows and all 26 original models reach both oracles")
+        val directory = File("build/checker-harvest").apply { mkdirs() }
+        File(directory, "actual.tsv").writeText(render(clusters))
+        File(directory, "examples.tsv").writeText(examples.joinToString("\n"))
+        // Disposable enumeration checks the live catalog projection against the original helpers' harvest.
+        ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(
+            File(directory, "inputs.json"), rows.map { mapOf("id" to it.id, "text" to it.text,
+                "language" to it.language.name, "entry" to it.entry.name) })
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/harvested.tsv")).readText(),
+            render(clusters), "P4 baseline differs; actual keys and inputs are in ${directory.path}")
     }
 
     /** A12's classes for the host with [rule] injected: its ERROR findings, as the checker's side reads its own. */

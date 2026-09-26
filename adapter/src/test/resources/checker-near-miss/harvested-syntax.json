@@ -1,0 +1,570 @@
+{
+  "sourceRevision": "67d619321",
+  "rows": [
+    {
+      "source": "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves",
+      "row": 1,
+      "text": "FieldFilled(Price) And",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) And\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves",
+      "row": 2,
+      "text": "FieldFilled(Price) AND",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) AND\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves",
+      "row": 3,
+      "text": "FieldFilled(Price) and",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) and\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves",
+      "row": 4,
+      "text": "FieldFilled(Price) Or",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) Or\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves",
+      "row": 5,
+      "text": "FieldFilled(Price) OR",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) OR\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves",
+      "row": 6,
+      "text": "FieldFilled(Price) aNd",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) aNd\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete",
+      "row": 1,
+      "text": "FieldFilled(Price)",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price)\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete",
+      "row": 2,
+      "text": "FieldFilled(Price) And",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) And\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete",
+      "row": 3,
+      "text": "FieldFilled(Price) Or",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) Or\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete",
+      "row": 4,
+      "text": "[Price] >",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"[Price] >\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete",
+      "row": 5,
+      "text": "[Price] > 1 +",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"[Price] > 1 +\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete",
+      "row": 6,
+      "text": "[Price] -",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"[Price] -\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete",
+      "row": 7,
+      "text": "[Price] /",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"[Price] /\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete",
+      "row": 8,
+      "text": "AllFieldsFilled(Price,",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"AllFieldsFilled(Price,\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete",
+      "row": 9,
+      "text": "FieldFilled(Price) And   ",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) And   \",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete",
+      "row": 10,
+      "text": "FieldFilled(Price) And ;; note",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) And ;; note\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness",
+      "row": 1,
+      "text": "FieldFilled([Price ->",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled([Price ->\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness",
+      "row": 2,
+      "text": "FieldFilled([Price For",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled([Price For\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness",
+      "row": 3,
+      "text": "FieldFilled(Price For",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price For\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness",
+      "row": 4,
+      "text": "FieldFilled(Price And",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price And\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness",
+      "row": 5,
+      "text": "FieldFilled([Price) And",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled([Price) And\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness",
+      "row": 6,
+      "text": "FieldFilled(Price] And",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price] And\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness",
+      "row": 7,
+      "text": "FieldFilled[Price) And",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled[Price) And\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.theFindingNamesTheMemberThatEndsEarly",
+      "row": 1,
+      "text": "FieldFilled(Price) And",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) And\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.theOperatorIsRecognisedInTheModelsOwnConditionLanguage",
+      "row": 1,
+      "text": "FeldAngegeben(Preis) Und",
+      "language": "DE",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"de_DE\"}]},\n \"content\":{\"modelConfig\":{\"conditionLanguage\":{\"code\":\"de_DE\"}},\n  \"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Katalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Preis\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PreisRegel\",\"Rule\":{\n      \"errorCondition\":\"FeldAngegeben(Preis) Und\",\"errorEntityRelPath\":\"../Preis\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionCompletenessTest.theOperatorIsRecognisedInTheModelsOwnConditionLanguage",
+      "row": 2,
+      "text": "FieldFilled(Price) Und",
+      "language": "EN",
+      "entry": "CONDITION",
+      "originalModel": "{\"header\":{\"id\":\"catalog\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Catalog\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Price\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"PriceRule\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Price) Und\",\"errorEntityRelPath\":\"../Price\"}}\n  ]}}\n ]}}}"
+    },
+    {
+      "source": "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral",
+      "row": 1,
+      "text": "[BaseFee] > -1",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral",
+      "row": 2,
+      "text": "[BaseFee] - -1 > 1",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral",
+      "row": 3,
+      "text": "-[BaseFee] < 0",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral",
+      "row": 4,
+      "text": "[BaseFee] > -[EffectiveFee]",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral",
+      "row": 5,
+      "text": "[BaseFee] > -{[EffectiveFee] + 1}",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral",
+      "row": 6,
+      "text": "[BaseFee] > -Abs([EffectiveFee])",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral",
+      "row": 7,
+      "text": "[BaseFee] > --1",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo",
+      "row": 1,
+      "text": "-5",
+      "language": "EN",
+      "entry": "OPERATION"
+    },
+    {
+      "source": "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo",
+      "row": 2,
+      "text": "0 - [BaseFee]",
+      "language": "EN",
+      "entry": "OPERATION"
+    },
+    {
+      "source": "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo",
+      "row": 3,
+      "text": "-[BaseFee]",
+      "language": "EN",
+      "entry": "OPERATION"
+    },
+    {
+      "source": "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo",
+      "row": 4,
+      "text": "[BaseFee] * -1",
+      "language": "EN",
+      "entry": "OPERATION"
+    },
+    {
+      "source": "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo",
+      "row": 5,
+      "text": "[BaseFee] * -[BaseFee]",
+      "language": "EN",
+      "entry": "OPERATION"
+    },
+    {
+      "source": "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo",
+      "row": 6,
+      "text": "{-[BaseFee]}",
+      "language": "EN",
+      "entry": "OPERATION"
+    },
+    {
+      "source": "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo",
+      "row": 7,
+      "text": "RoundUp(0 - [BaseFee], 2)",
+      "language": "EN",
+      "entry": "OPERATION"
+    },
+    {
+      "source": "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo",
+      "row": 8,
+      "text": "RoundUp(-[BaseFee], 2)",
+      "language": "EN",
+      "entry": "OPERATION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 1,
+      "text": "@@@",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 2,
+      "text": "NotAnOperator(Tier)",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 3,
+      "text": "FeldAngegeben(Tier)",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 4,
+      "text": "Tier",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 5,
+      "text": "FieldFilled(Tier))",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 6,
+      "text": "FieldFilled([Tier)",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 7,
+      "text": "FieldFilled(Tier]",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 8,
+      "text": "FieldFilled(Tier)]",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 9,
+      "text": "FieldFilled(Tier",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 10,
+      "text": "FieldFilled(Tier)",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 11,
+      "text": "[Tier] > 1",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 12,
+      "text": "(FieldFilled(Tier) And FieldFilled(AutoRenew))",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 13,
+      "text": "NumberOfFilledFields(Addons*/Name Having [Addons/Name] == \"x\") > 0",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 14,
+      "text": "[BaseFee] / [EffectiveFee] > 1",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives",
+      "row": 15,
+      "text": "[BaseFee] ^ 2 > 1",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theRuleContextEntityParsesAsAReferenceInBothLanguages",
+      "row": 1,
+      "text": "GroupFilled(RuleGroup)",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theRuleContextEntityParsesAsAReferenceInBothLanguages",
+      "row": 2,
+      "text": "KontextAngegeben(RegelKontext)",
+      "language": "DE",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theRuleContextEntityParsesAsAReferenceInBothLanguages",
+      "row": 3,
+      "text": "GroupFilled(And)",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 1,
+      "text": "NoFieldValueIncludedInValueList(Tier In Premium)",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 2,
+      "text": "KeinFeldWertInWerteListe(Tier In Premium)",
+      "language": "DE",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 3,
+      "text": "NoFieldValueIncludedInValueList(Tier IN Premium)",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 4,
+      "text": "KeinFeldWertInWerteListe(Tier IN Premium)",
+      "language": "DE",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 5,
+      "text": "NoFieldValueIncludedInValueList(Tier in Premium)",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 6,
+      "text": "KeinFeldWertInWerteListe(Tier in Premium)",
+      "language": "DE",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 7,
+      "text": "ValueNotConsistent(Tier To Premium, \"gold\")",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 8,
+      "text": "WertNichtKonsistent(Tier To Premium, \"gold\")",
+      "language": "DE",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 9,
+      "text": "ValueNotConsistent(Tier TO Premium, \"gold\")",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 10,
+      "text": "WertNichtKonsistent(Tier TO Premium, \"gold\")",
+      "language": "DE",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 11,
+      "text": "ValueNotConsistent(Tier to Premium, \"gold\")",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 12,
+      "text": "WertNichtKonsistent(Tier to Premium, \"gold\")",
+      "language": "DE",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 13,
+      "text": "WertNichtKonsistent(Tier Zu Premium, \"gold\")",
+      "language": "DE",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 14,
+      "text": "ValueNotConsistent(Tier Zu Premium, \"gold\")",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 15,
+      "text": "WertNichtKonsistent(Tier ZU Premium, \"gold\")",
+      "language": "DE",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 16,
+      "text": "ValueNotConsistent(Tier ZU Premium, \"gold\")",
+      "language": "EN",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 17,
+      "text": "WertNichtKonsistent(Tier zu Premium, \"gold\")",
+      "language": "DE",
+      "entry": "CONDITION"
+    },
+    {
+      "source": "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther",
+      "row": 18,
+      "text": "ValueNotConsistent(Tier zu Premium, \"gold\")",
+      "language": "EN",
+      "entry": "CONDITION"
+    }
+  ]
+}

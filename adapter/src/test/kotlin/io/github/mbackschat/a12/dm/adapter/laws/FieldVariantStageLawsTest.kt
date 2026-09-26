@@ -4,10 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
-import io.github.mbackschat.a12.dm.core.ModelConsistencyException
-import io.github.mbackschat.a12.dm.core.ModelInputException
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
-import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -28,7 +25,7 @@ class FieldVariantStageLawsTest {
         assertEquals(expectedSize, rows.size, "the partition's frozen witness denominator")
         assertEquals(rows.size, rows.map { it.label }.distinct().size, "each witness must have a distinct label")
         val differences = rows.mapNotNull { row ->
-            val actual = kernelClasses(row.json)
+            val actual = kernelModelClasses(row.json)
             if (actual == row.predicted) null else "${row.label}: predicted ${row.predicted}, observed $actual"
         }
         assertEquals(emptyList<String>(), differences)
@@ -40,7 +37,7 @@ class FieldVariantStageLawsTest {
         val examples = mutableListOf<String>()
         var compared = 0
         for (row in FieldVariantPopulation.rows()) {
-            val a12 = kernelClasses(row.json)
+            val a12 = kernelModelClasses(row.json)
             val ours = check(ModelSource(row.json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
             compared++
             val verdict = checkerVerdict(a12, ours) ?: continue
@@ -61,22 +58,7 @@ class FieldVariantStageLawsTest {
 
     private fun column(codes: Set<String>) = codes.sorted().joinToString(",").ifEmpty { "(none)" }
 
-    private fun kernelClasses(json: String): Set<String> = try {
-        BoundModel.ofJson(json)
-        emptySet()
-    } catch (unreadable: ModelInputException) {
-        setOf("CK_MODEL_NOT_BUILDABLE")
-    } catch (rejected: ModelConsistencyException) {
-        val messages = rejected.notifications().map { it.message().trim() }
-        check(messages.isNotEmpty()) { "A12 refused the model without a notification" }
-        messages.map { message ->
-            Regex("\\[(\\w+)]$").find(message)?.groupValues?.get(1) ?: when {
-                message.contains("the kernel could not build this model:") -> "CK_MODEL_NOT_BUILDABLE"
-                message.contains("The field contains one or several unsupported signs.") -> "RK_UNSUPPORTED_CHARACTER"
-                else -> UNKEYED_A12_CLASS
-            }
-        }.toSet()
-    }
+
 }
 
 /** P3: each defect and its valid control, each under all three default-variant filter modes. */
