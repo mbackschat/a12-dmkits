@@ -164,18 +164,21 @@ private const val OUTER_MARKER_TOKEN = "$"
  *
  * Whitespace is insignificant between path tokens ([KERNEL-FINDINGS KF76]), so the run is rebuilt from the
  * token texts rather than sliced out of the source — a marker written `$ /Claim/Excess` names the same path
- * as one written tight against it.
+ * as one written tight against it. So a name directly after a name ends the run: `$Orders/Note For "A"` names
+ * `Orders/Note`, the keyword being the next production's.
  */
 private fun pathRunAt(tokens: List<Token>, from: Int): Pair<String, Int>? {
     val run = StringBuilder()
     var at = from
+    var afterName = false
     while (at < tokens.size) {
         val token = tokens[at]
         val isName = token.kind == TokenKind.NAME || token.kind == TokenKind.QUOTED_NAME
-        if (!isName && token.text !in PATH_PUNCTUATION) {
+        if (isName && afterName || !isName && token.text !in PATH_PUNCTUATION) {
             break
         }
         run.append(token.text)
+        afterName = isName
         at++
     }
     return run.toString().takeIf { it.isNotEmpty() && it.any { c -> c.isLetterOrDigit() } }

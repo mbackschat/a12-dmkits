@@ -32,6 +32,14 @@ package io.github.mbackschat.a12.dm.consistency
  * and it is not unreported: [errorTargetContainmentFindings] owns it, which is why this family's silence
  * there costs an author nothing.
  *
+ * **Only the rule's own ITERATING reads count**, which is what `IterationChecker` decides over: it keeps a
+ * reference created with the filter flag off or carrying the `$` marker, and asks for an ITERATION index, which
+ * a star is not, nor is a semantic index (source-read). So a starred or keyed read, of the error field's group
+ * or a parallel one, and an unmarked filter-body read are admitted, while a marked body read of the error
+ * field's group is the own-group class
+ * (`adapter.laws.CheckerRuleReferenceSetAgreementTest`, [KERNEL-FINDINGS KF488]). The same set decides what
+ * reaches and pins the target.
+ *
  * **Silent wherever a reading could become a refusal.** A condition naming the rule-context keyword is left
  * alone: the keyword carries no path, so whether it pins here is unmeasured, and `MVK_ERROR_FIELD_NOT_REFERENCED`
  * already treats it as reaching. An unresolvable operand pre-empts A12's own gate, so reporting would name a
@@ -50,6 +58,8 @@ internal fun TrackedFactBase.errorTargetIterationFindings(): List<Finding> {
             ) {
                 return@mapNotNull null
             }
+            val element = declarationAt(declared.declaredAt) ?: return@mapNotNull null
+            val rulesOwn = rulesOwnReferences(element).let { own -> references.filter { it.written in own } }
             val ruleGroup = declared.declaredAt.substringBeforeLast('/', missingDelimiterValue = "")
             // A target OUTSIDE the rule's group is `MVK_ERROR_FIELD_NOT_IN_RULEGROUP`, drawn at the top of
             // `checkIndicesForA12Model` on the first iterating level — where these two classes come from
@@ -66,12 +76,17 @@ internal fun TrackedFactBase.errorTargetIterationFindings(): List<Finding> {
             // `MVK_ERROR_FIELD_NOT_REFERENCED`'s, and A12 draws that class alone there. Every row of the
             // first grid carried a reaching reference, so the two silences looked like one until the
             // reference family's own mirror went red on a condition naming a sibling field.
-            if (references.none { it.reaches(target) } ||
-                references.any { it.reaches(target) && it.sitsWithin(ruleGroup) }
+            if (rulesOwn.none { it.reaches(target) } ||
+                rulesOwn.any { it.reaches(target) && it.sitsWithin(ruleGroup) }
             ) {
                 return@mapNotNull null
             }
-            val read = references.mapNotNull { (it.target as? Reference.Resolved)?.path }
+            val unkeyed = rulesOwnUnkeyedReferences(element)
+            val read = rulesOwn.filter { it.written in unkeyed }.mapNotNull { reference ->
+                (reference.target as? Reference.Resolved)?.path?.takeIf { path ->
+                    unstarredRepeatableLevels(reference.written, path, ruleGroup, element)?.isNotEmpty() == true
+                }
+            }
             val errorFieldGroup = target.substringBeforeLast('/', missingDelimiterValue = "")
             // There has to BE a repetition for A12 to be unable to choose one. Measured on a flat model:
             // a rule reaching its error field from above while reading a sibling is ADMITTED when nothing
@@ -88,7 +103,7 @@ internal fun TrackedFactBase.errorTargetIterationFindings(): List<Finding> {
 /**
  * The one class this rule draws, parallel first because that is the order A12 reports in.
  *
- * @param read every path the condition resolves to, the reaching reference included — it is harmless here,
+ * @param read every path the rule's own reads iterate, the reaching reference included — it is harmless here,
  *     since a reference that reaches the target is excluded from the own-group arm by [reaches] and cannot
  *     be parallel to the group it contains.
  */

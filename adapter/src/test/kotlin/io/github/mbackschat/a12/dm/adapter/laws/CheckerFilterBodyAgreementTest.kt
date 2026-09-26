@@ -140,6 +140,7 @@ class CheckerFilterBodyAgreementTest {
             "a marked starred bracket in a body" to
                 ("Sum(Claims*/Paid Having [Claims/Units] > 1 And [\$Claims*/Units] > 1) > 0" to setOf("MVK_NO_WILDCARDS_ALLOWED")),
             "a marked starred bracket outside any filter" to ("[\$Claims*/Units] > 1" to OUTER),
+            "a marked keyed read outside any filter" to ("[\$Orders/Note For \"A\"] == \"x\"" to OUTER),
         )
 
         // The rule iterates `Claims`, so a marked read of it is at the rule's own coordinates.
@@ -154,6 +155,11 @@ class CheckerFilterBodyAgreementTest {
             "the same body unmarked" to ("Sum(Parties*/Count Having [Claims/Notes] == \"x\") > 0" to ITERATION),
             "the unmarked read beside the marked one" to
                 ("Sum(Parties*/Count Having [Claims/Notes] == \"x\" And [\$Claims/Notes] == \"x\") > 0" to ITERATION),
+            // `ParserService.checkNormalRule` refuses any semantic index in a filter condition once the parse is
+            // done, marked or not (source-read); the walk, which runs during the parse, skips the marked read.
+            "a marked keyed read beside an in-scope read" to
+                ("Sum(Parties*/Count Having [Parties/Name] == [\$Orders/Note For \"A\"]) > 0" to setOf("MVK_SEMANTIC_INDEX_NOT_ALLOWED")),
+            "a marked keyed read alone" to ("Sum(Parties*/Count Having [\$Orders/Note For \"A\"] == \"x\") > 0" to NO_ITERATION),
             "(x) a marked read at the rule's coordinates inside a nested filter" to
                 ("Sum(Parties*/Count Having Sum(Parties*/Count Having [Parties/Name] == [\$Claims/Notes]) > 0) > 0" to DISALLOWED),
         )
@@ -222,6 +228,9 @@ class CheckerFilterBodyAgreementTest {
         val ADMITTED = emptySet<String>()
 
         /** The rows where the checker answers otherwise, with what it answers. */
-        val OURS: Map<String, Set<String>> = mapOf()
+        val OURS: Map<String, Set<String>> = mapOf(
+            // CONSISTENCY-GAPS DG107: the class is raised after the parse, and the checker files it as parse-time.
+            "a marked keyed read beside an in-scope read" to emptySet(),
+        )
     }
 }

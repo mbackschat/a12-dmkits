@@ -92,8 +92,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * question ([rulesOwnReadsIn]). So it clears no gate here: a body reading nothing else is the scope class, where
  * the same body unmarked, reading another repetition, is the iteration class. A marked read inside a nested
  * filter reaches the RULE, not the filter it stands in (`adapter.laws.CheckerFilterBodyAgreementTest`,
- * [KERNEL-FINDINGS KF487]). A body pairing the marker with a semantic index is left alone, that pair being
- * unmeasured.
+ * [KERNEL-FINDINGS KF487]). A marked read's semantic index is not the walk's either; A12 refuses it only once
+ * the parse is done, which is not reported here (CONSISTENCY-GAPS DG107).
  */
 internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
@@ -164,8 +164,7 @@ private fun TrackedFactBase.filterDefectOf(
     // cell for, carrying indices A12 reads and no path this reader can resolve. A starred bracket read is the
     // field-value read's star gate, which A12 raises as the bracket is read.
     val marked = markedReferenceSpansIn(filter.text)
-    if (marked.isNotEmpty() && indexKeyword != null && namesKeyword(filter.text, setOf(indexKeyword)) != null ||
-        namesRuleContext(filter.text, conditionLanguage) ||
+    if (namesRuleContext(filter.text, conditionLanguage) ||
         namesKeyword(filter.text, clauseKeywords) != null ||
         fieldValueReadsIn(filter.text, conditionLanguage).any { it.path?.contains('*') == true }
     ) {
@@ -188,13 +187,17 @@ private fun TrackedFactBase.filterDefectOf(
     if (iteratedLevels(filtered).any { it !in starred && !(iterated == it || iterated.startsWith("$it/")) }) {
         return null
     }
-    val uses = indexKeyword
+    // A marked read's index is not the walk's: the walk skips the marked spec, and A12 refuses the index only
+    // after the parse, which this family does not report (CONSISTENCY-GAPS DG107).
+    val (markedUses, uses) = indexKeyword
         ?.let { semanticIndexUsesIn(filter.text, conditionLanguage, it) }
         .orEmpty()
+        .partition { use -> marked.any { it.end <= use.keywordAt && filter.text.substring(it.end, use.keywordAt).isBlank() } }
     // An ENTITY key leaves the whole operand unjudged. A12 answers such a body from the index's own spec
     // gates, which run while the spec is parsed and so ahead of this walk — measured on two shapes, one
-    // answered by the key-kind gate and one by the filter branch, neither by anything this walk asks.
-    if (uses.any { it.keyLiteral == null || it.keyCategory != null || it.nested }) {
+    // answered by the key-kind gate and one by the filter branch, neither by anything this walk asks. On a
+    // marked read the same key is unmeasured.
+    if ((uses + markedUses).any { it.keyLiteral == null || it.keyCategory != null || it.nested }) {
         return null
     }
     val indexed = uses.mapNotNullTo(mutableSetOf()) { it.valuePath }

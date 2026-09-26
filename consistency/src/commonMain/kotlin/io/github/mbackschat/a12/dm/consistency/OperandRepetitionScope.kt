@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.clausedOperandsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.firstReferenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
+import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
@@ -135,6 +136,22 @@ internal fun TrackedFactBase.rulesOwnReferences(element: TrackedDeclaration): Se
     return conditionTexts(element.kind, declared)
         .flatMap { (_, text) -> referencesIn(rulesOwnReadsIn(text, conditionLanguage), conditionLanguage) }
         .toSet()
+}
+
+/**
+ * The spellings [element] reads as the rule's own that ITERATE by their path: [rulesOwnReferences] less every
+ * semantic index's value and key, which put an index at the level they key, never an ITERATION
+ * (`IterationChecker`, source-read; `adapter.laws.CheckerRuleReferenceSetAgreementTest`, [KERNEL-FINDINGS KF488]).
+ */
+internal fun TrackedFactBase.rulesOwnUnkeyedReferences(element: TrackedDeclaration): Set<String> {
+    val declared = element.body ?: return emptySet()
+    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
+    return conditionTexts(element.kind, declared).flatMap { (_, text) ->
+        val indexes = keyword?.let { semanticIndexUsesIn(text, conditionLanguage, it) }.orEmpty()
+        referenceSpansIn(rulesOwnReadsIn(text, conditionLanguage), conditionLanguage)
+            .filterNot { read -> indexes.any { it.keys(read.start, read.end) || it.indexes(read.end, text) } }
+            .map { it.written }
+    }.toSet()
 }
 
 /**

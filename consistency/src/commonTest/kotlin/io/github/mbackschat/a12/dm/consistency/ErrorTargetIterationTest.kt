@@ -147,6 +147,35 @@ class ErrorTargetIterationTest {
         )
     }
 
+    /**
+     * Only the rule's own iterating reads count: a starred, a keyed and an unmarked filter-body read are
+     * admitted, a marked body read is not, and the error field read only in a body is unreferenced. Mirrors
+     * `adapter.laws.CheckerRuleReferenceSetAgreementTest`, which measures every row on the kernel.
+     */
+    @Test
+    fun onlyTheRulesOwnIteratingReadsCount() {
+        val rows = linkedMapOf(
+            "GroupFilled(/Shipment) And Sum(/Shipment/Received*/Quantity) > 0" to emptyList(),
+            "GroupFilled(/Shipment) And Sum(/Shipment/Expected*/Quantity) > 0" to emptyList(),
+            "GroupFilled(/Shipment) And Sum(/Shipment/Returns*/Weight) > 0" to emptyList(),
+            "GroupFilled(/Shipment) And [/Shipment/Received/Quantity For \"L1\"] > 0" to emptyList(),
+            "GroupFilled(/Shipment) And [/Shipment/Expected/Quantity For \"L1\"] > 0" to emptyList(),
+            "GroupFilled(/Shipment) And Sum(/Shipment/Received*/Quantity Having [/Shipment/Received/Quantity] > 1) > 0" to
+                emptyList(),
+            "GroupFilled(/Shipment) And Sum(/Shipment/Returns*/Weight Having [/Shipment/Returns/Weight] > [\$Quantity]) > 0" to
+                listOf(ownGroup),
+            "Sum(/Shipment/Received*/Quantity Having [/Shipment/Received/Note] == \"x\") > 0" to
+                listOf("MVK_ERROR_FIELD_NOT_REFERENCED"),
+            "Sum(/Shipment/Received*/Quantity Having [/Shipment/Received/Quantity] > 1 And [\$Note] == \"x\") > 0" to
+                emptyList(),
+        )
+        val actual = rows.keys.associateWith { condition ->
+            check(ModelSource(model(condition, repeatableRoot = false))).findings
+                .filter { it.justifiesRejection }.map { it.code }
+        }
+        assertEquals(rows, actual, "which reads the post-parse gates count")
+    }
+
     private fun codes(condition: String, repeatableRoot: Boolean = true): List<String> =
         check(ModelSource(model(condition, repeatableRoot))).findings
             .filter { it.code == ownGroup || it.code == parallel }
@@ -164,13 +193,16 @@ class ErrorTargetIterationTest {
                     {"type":"Field","id":"f1","name":"Quantity","Field":{"fieldType":{"type":"NumberType"}}},
                     {"type":"Field","id":"f2","name":"Note","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Rule","id":"r0","name":"Reconcile","Rule":{
-                      "errorCondition":"$condition","errorEntityRelPath":"../Note",
+                      "errorCondition":"${condition.replace("\\", "\\\\").replace("\"", "\\\"")}","errorEntityRelPath":"../Note",
                       "errorCode":"NOTE","errorMessage":[{"locale":"en_US","text":"x"}]}}
                   ]}},
                 {"type":"Group","id":"g2","name":"Expected","Group":{"repeatability":10,
                   "indexFieldName":"LineNo","elements":[
                     {"type":"Field","id":"f3","name":"LineNo","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Field","id":"f4","name":"Quantity","Field":{"fieldType":{"type":"NumberType"}}}
+                  ]}},
+                {"type":"Group","id":"g3","name":"Returns","Group":{"repeatability":5,"elements":[
+                    {"type":"Field","id":"f5","name":"Weight","Field":{"fieldType":{"type":"NumberType"}}}
                   ]}}
               ]}}
              ]}}}

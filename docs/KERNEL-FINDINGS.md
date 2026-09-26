@@ -6602,7 +6602,7 @@ A rule's `errorEntityRelPath` must resolve AND its condition must name the targe
 
 **The containment relation runs one way, and both directions are load-bearing.** Naming the group a target field sits in reaches it, so comparing the target's own path is too strict; naming a field inside a target group does not, so treating containment as symmetric is too loose. The law is *the reference is the target or an ancestor of it*.
 
-**A `Having` filter's own reference does not satisfy the gate**, which is the row an implementation reading condition TEXT cannot act on: once the text is scanned, the names a filter contributed are indistinguishable from an operand's. Treating them as references is the direction that stays silent, so that is what the portable checker does — a disclosed under-report rather than a guessed refusal.
+**A `Having` filter's own reference does not satisfy the gate.** *Corrected 2026-09-26:* this said the row could not be acted on from condition text, so the portable checker treated a filter's names as references and stayed silent. Both halves have gone. `IterationChecker` decides the gate over the references created with the filter flag off or carrying the `$` marker, so a marked body read DOES satisfy it. And the checker now reads that set by position. It reports this row ([KF488](#kf488)).
 
 **The `RuleGroup` self-reference satisfies the gate OUTRIGHT** — whatever else the condition names, and however deep the target sits. The error field must lie under the rule's own group, so naming that group reaches every possible target. rulekit's builder already treated it so, citing the kernel; the rows above are this repository's own measurement of that claim rather than a citation of it.
 
@@ -9390,7 +9390,7 @@ Locked: `validate.laws.RepetitionNotUniqueFromScopeLawsTest`. The portable check
 
 **The root's own repeatability is NOT the variable.** It was repeatable throughout the first grid, so "the reaching reference is the root" and "the reaching reference is itself an unpinned repetition" were indistinguishable; re-measured on a non-repeatable root, both classes fire exactly as before.
 
-Locked: `validate.laws.RootOnlyErrorTargetIterationLawsTest`, across three carriers (repeatable root, fixed root, flat). Reported by the portable checker as `CheckFamily.ERROR_TARGET_ITERATION`; four mutants planted on its three conditions and its class selection, all killed.
+Locked: `validate.laws.RootOnlyErrorTargetIterationLawsTest`, across three carriers (repeatable root, fixed root, flat). Reported by the portable checker as `CheckFamily.ERROR_TARGET_ITERATION`; four mutants planted on its three conditions and its class selection, all killed. Every read in these grids was unstarred, unkeyed and outside any filter, a fourth constant: which reads count is [KF488](#kf488)'s.
 
 ## §9 supplement — what pre-empts `MVK_REPEATABLE_GROUP_MISSING` is a key OUTSIDE the rule group, and its carrier picks the class (measured, 2026-09-14) <a id="kf347"></a>
 
@@ -11438,9 +11438,38 @@ Measured on the claims policy of [KF485](#kf485) from three declarations. The fi
 | | the same read unmarked | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | containment asks a body read only when it is marked |
 | | `[Parties/Name]` after a nested filter | `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` | the flag-off tail is checked by the same chain |
 | | the unstarred nested base `Parties/Count Having [Parties/Name] == "x"` | `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` | a nested base is checked by the same chain once its filter clears the flag |
+| root · `Reference` | `[$Orders/Note For "A"] == "x"`, outside any filter | `MVK_INVALID_OUTER_ITERATION` | a keyed marked read, refused like any other |
+| root · `Claims/Notes` | `Parties*/Count Having [Parties/Name] == [$Orders/Note For "A"]` | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` | `ParserService.checkNormalRule` refuses any index in a filter condition after the parse, marked or not |
+| | `Parties*/Count Having [$Orders/Note For "A"] == "x"` | `MVK_NO_ITERATION_FOR_WILDCARD` | the walk, during the parse, answers first |
 
 The last row settles what [KF486](#kf486) had left to source reading. The containment class is raised while a spec's indices are checked, so it reads a nested base, which is checked after its filter ends. `IterationChecker` reads a reference's flag as the reference is created. It is a different consumer, whose classes come after the parse, and no row here measures it.
 
-The portable checker set every body carrying the marker aside, in the operand walk and the filter walk alike. For containment it read the flag-off regions only. The last row was a wrong class: the filter walk's `MVK_INVALID_ITERATION_IN_FILTER_CONDITION`, which A12 never reaches. Every family that asks for the rule's reads now reads one view, `rulesOwnReadsIn`: the flag-off regions, the filtered bases, and every marked read. The filter walk skips a marked read. A body that pairs the marker with a semantic index stays unjudged, since no row measures that pair.
+The portable checker set every body carrying the marker aside, in the operand walk and the filter walk alike. For containment it read the flag-off regions only. The last row was a wrong class: the filter walk's `MVK_INVALID_ITERATION_IN_FILTER_CONDITION`, which A12 never reaches. Every family that asks for the rule's reads now reads one view, `rulesOwnReadsIn`: the flag-off regions, the filtered bases, and every marked read. The filter walk skips a marked read, index included. The checker's marked-path reader also ran a name straight into the next one, so `$Orders/Note For "A"` named nothing and the keyed row outside a filter went unreported. The post-parse index row stays unreported, CONSISTENCY-GAPS DG107.
 
 *Locked by:* `adapter.laws.CheckerFilterBodyAgreementTest.aMarkedReadInAFilterBodyIsTheRulesOwnRead`, A12's class written out on every row and the checker required to name it. Mirrored by `consistency.FilterBodyComparisonTest.aMarkedReadInABodyIsTheRulesOwnRead` and by [KF353](#kf353)'s rows in `consistency.IndexFieldBaseTypeTest`.
+
+## §12 supplement — the post-parse error-field gates count only the rule's own ITERATING reads: a star, a semantic index and an unmarked filter-body read are not among them (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf488"></a>
+
+> Fold: not-foldable — a diagnostic-class law about which references two post-parse gates count, not an evaluation behaviour.
+
+**Two source facts decide it.** `IterationChecker.checkIteration` keeps a reference only when it was created with the filter flag off or carries the `$` marker. And the class choice asks each kept reference for an `ITERATION` index at a level, via `EntityRefUtils.getEntityWithIter`. A star sets `WILDCARD` there and a semantic index sets its own index kind, so neither iterates. `MVK_ERROR_FIELD_NOT_REFERENCED` ([KF324](#kf324)) and the `MVK_ERROR_FIELDGROUP_ITERATION{4,5}_INVALID` pair ([KF348](#kf348)) are both decided over that set. KF348's grids held every read unstarred, unkeyed and outside any filter, so none of these variables had a row.
+
+Measured on KF348's shape with a fixed root, plus an unkeyed repeatable `Returns`: a rule in `Received` reporting on `Note`. The iteration rows reach `Note` only through `GroupFilled(/Shipment)`.
+
+| the rest of the condition | A12 | what it separates |
+|---|---|---|
+| nothing; `[Quantity] > 0`; `[/Shipment/Expected/Quantity] > 0` | ADMITTED; `…ITERATION4_INVALID`; `…ITERATION5_INVALID` | KF348's controls |
+| `Sum(/Shipment/Received*/Quantity) > 0`, `Sum(/Shipment/Expected*/Quantity) > 0`, `Sum(/Shipment/Returns*/Weight) > 0` | ADMITTED | a star is not an iteration, on either carrier |
+| `[/Shipment/Received/Quantity For "L1"] > 0`, `[/Shipment/Expected/Quantity For "L1"] > 0` | ADMITTED | nor is a semantic index |
+| `Sum(/Shipment/Received*/Quantity Having [/Shipment/Received/Quantity] > 1) > 0` | ADMITTED | a body read created with the flag on is not kept |
+| `Sum(/Shipment/Returns*/Weight Having [/Shipment/Returns/Weight] > [$Quantity]) > 0` | `…ITERATION4_INVALID` | a marked one is, and the unmarked body read of `Returns` beside it does not make it the parallel class |
+
+| the whole condition | A12 | |
+|---|---|---|
+| `Sum(/Shipment/Received*/Quantity Having [/Shipment/Received/Note] == "x") > 0` | `MVK_ERROR_FIELD_NOT_REFERENCED` | the target read only in a body |
+| the same body with `[/Shipment/Received/Quantity] > 1 And [$Note] == "x"` | ADMITTED | marked, it references the target |
+| `FieldFilled(Note) And` the first body | ADMITTED | control |
+
+**The portable checker refused six of these models.** It counted every resolved reference as a read of its carrier: the three starred rows, both keyed rows and the unmarked body row. It named the parallel class on the marked row, from the unmarked `Returns` read. It stayed silent on the unreferenced row, counting a body read as reaching. It now reads the rule's own references (`rulesOwnReadsIn`). For the iteration pair it keeps only those that leave a repeatable level unstarred and are no index's value or key.
+
+*Locked by:* `adapter.laws.CheckerRuleReferenceSetAgreementTest`, A12's class written out on every row and the checker required to name it. Mirrored by `consistency.ErrorTargetIterationTest.onlyTheRulesOwnIteratingReadsCount` and by KF324's filter row in `consistency.ErrorFieldReferenceTest`.

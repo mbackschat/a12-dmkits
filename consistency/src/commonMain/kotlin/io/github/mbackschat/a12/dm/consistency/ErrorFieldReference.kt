@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
+import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -23,12 +24,12 @@ import kotlinx.serialization.json.JsonObject
  * than a member of it; [namesTheRulesOwnGroup] says why that distinction was invisible until a real model
  * paired the spelling with an ordinary operand.
  *
- * **One deliberate under-report and one closed, each stated rather than discovered later.** A reference
- * inside a `Having` filter does NOT satisfy A12's gate, and such a reference is still treated as REACHING, so
- * this family stays silent there. That silence rested on the names a filter contributes being
- * indistinguishable from an operand's, which stopped being true on 2026-09-15 — the filter BODY can now be
- * removed from the text — and it is kept because what SATISFIES the gate is a separate question needing its
- * own measured row. The ITERATION pre-emption no longer counts filter references, which is measured: an
+ * **Only the rule's own reads satisfy it.** `IterationChecker` decides the gate over the references created
+ * with the filter flag off or carrying the `$` marker (source-read), so the target read only in a filter's body
+ * is this class and the same read marked is not (`adapter.laws.CheckerRuleReferenceSetAgreementTest`,
+ * [KERNEL-FINDINGS KF488]); both the reach test and the name backstop below read that text alone
+ * ([rulesOwnReadsIn]). Until 2026-09-26 a body reference counted as reaching, which kept this family silent
+ * there. The ITERATION pre-emption does not count filter references either, which is measured: an
  * unstarred leaf inside a filter does not draw the iteration class, and treating it as if it did silenced
  * this family on three corpus mutants A12 answers with its own class ([KERNEL-FINDINGS KF424]).
  *
@@ -64,7 +65,7 @@ internal fun TrackedFactBase.errorFieldReferenceFindings(): List<Finding> {
             // one mistake. And a condition that mentions the target's name in some spelling is left alone.
             if (references.isEmpty() ||
                 references.any { it.target !is Reference.Resolved } ||
-                references.any { it.reaches(target) } ||
+                references.any { it.written in rulesOwn && it.reaches(target) } ||
                 declared.declaredAt in answeredByTheFilterGate ||
                 references.any { it.written in rulesOwn && iteratesPastTheTarget(it, target) } ||
                 namesTheRulesOwnGroup(declared) ||
@@ -158,7 +159,7 @@ internal fun ConditionReference.reaches(target: String): Boolean {
 }
 
 /**
- * Whether the target's own NAME appears in this rule's condition text other than as a path PREFIX.
+ * Whether the target's own NAME appears in this rule's own reads other than as a path PREFIX.
  *
  * The backstop that keeps a gap in the reference extractor from producing a refusal: a condition mentioning
  * the name in a spelling nothing here parsed is left to A12 rather than judged on a reading this checker
@@ -173,7 +174,8 @@ private fun TrackedFactBase.mentions(declared: DeclaredReference, target: String
     val name = target.substringAfterLast('/')
     val element = declarationAt(declared.declaredAt) ?: return true
     val body = element.body ?: return true
-    return conditionTexts(element.kind, body).any { (_, text) -> text.namesOtherThanAsAPrefix(name) }
+    return conditionTexts(element.kind, body)
+        .any { (_, text) -> rulesOwnReadsIn(text, conditionLanguage).namesOtherThanAsAPrefix(name) }
 }
 
 private fun String.namesOtherThanAsAPrefix(name: String): Boolean {

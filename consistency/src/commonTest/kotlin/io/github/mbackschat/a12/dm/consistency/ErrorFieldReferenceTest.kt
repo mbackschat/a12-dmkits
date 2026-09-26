@@ -57,6 +57,8 @@ class ErrorFieldReferenceTest {
             codes("../Parcels/Weight", "GroupFilled(Parcels)")
         actual["a GROUP as the error target, with a field INSIDE it named"] =
             codes("../Parcels", "FieldFilled(Parcels/Weight)")
+        actual["the target inside a HAVING filter only"] =
+            codes("../Parcels/Weight", "Sum(Parcels*/Contents Having [Parcels/Weight] > 0) > 0")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["the bare name — the control"] = emptyList()
@@ -69,14 +71,15 @@ class ErrorFieldReferenceTest {
         // does not. Either one alone licenses the wrong implementation.
         expected["the enclosing GROUP rather than the field"] = emptyList()
         expected["a GROUP as the error target, with a field INSIDE it named"] = listOf(notReferenced)
+        // A filter body's read is not the rule's own: A12 decides the gate over the rule's reads alone.
+        expected["the target inside a HAVING filter only"] = listOf(notReferenced)
         assertEquals(expected, actual, "which spellings count as referencing the error field")
     }
 
     /**
      * The shapes this family stays SILENT on, each for a stated reason rather than by omission.
      *
-     * A filter's own reference does not satisfy A12's gate and is indistinguishable from an operand's once
-     * the text is scanned, so it is treated as reaching — an under-report. An unresolvable reference is
+     * An unresolvable reference is
      * another family's finding and pre-empts this gate in A12 too. A condition naming no entity at all has
      * nothing to compare. And a condition that MENTIONS the target's name in a spelling the extractor did
      * not recognise is left alone, so a gap in the extractor can never become a refusal here.
@@ -84,8 +87,6 @@ class ErrorFieldReferenceTest {
     @Test
     fun theShapesItDeliberatelyDoesNotReport() {
         val actual = mutableMapOf<String, List<String>>()
-        actual["the target inside a HAVING filter only"] =
-            codes("../Parcels/Weight", "Sum(Parcels*/Contents Having [Parcels/Weight] > 0) > 0")
         actual["a condition naming nothing that resolves"] =
             codes("../Carrier", "FieldFilled(NoSuchField)")
         actual["the rule's own group via the self-reference"] =
@@ -96,7 +97,6 @@ class ErrorFieldReferenceTest {
             codes("../Customs/Declaration", "GroupFilled(RuleGroup) And FieldFilled(Carrier)")
 
         val expected = mutableMapOf<String, List<String>>()
-        expected["the target inside a HAVING filter only"] = emptyList()
         expected["a condition naming nothing that resolves"] = listOf("MVK_INVALID_ENTITY")
         // `RuleGroup` is a KEYWORD rather than an entity, so the condition names nothing and this family has
         // nothing to compare. A12 admits the rule — the error field must lie under the rule's group — so a

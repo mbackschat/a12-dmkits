@@ -225,4 +225,17 @@ class ConditionReferenceTest {
             referencesIn("FieldFilled(Code) And FieldNotFilled(Code)", ConditionLanguage.EN),
         )
     }
+
+    /**
+     * A marked path ends where a name follows a name: the keyword after it belongs to the next production. The
+     * run once swallowed it, so `$Orders/Note For "A"` named nothing and its marker went unjudged.
+     */
+    @Test
+    fun aMarkedPathEndsAtTheKeywordAfterIt() {
+        val text = "[\$ Orders / Note For \"A\"] == [\$Reference]"
+        assertEquals(
+            listOf("Orders/Note" to "\$ Orders / Note", "Reference" to "\$Reference"),
+            markedReferenceSpansIn(text).map { it.written to text.substring(it.start, it.end) },
+        )
+    }
 }
