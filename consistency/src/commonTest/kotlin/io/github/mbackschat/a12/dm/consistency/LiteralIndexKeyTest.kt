@@ -9,7 +9,7 @@ import kotlin.test.assertEquals
  * constant the index field's own validation judges, or a digit sequence the grammar reads as an entity name
  * ([KERNEL-FINDINGS KF479]).
  *
- * Every row mirrors one measured against the kernel, and all but one name A12's class. Each runs under both
+ * Every row mirrors one measured against the kernel and names A12's class. Each runs under both
  * condition languages, because the key readers find the index by the language's own keyword, and a reader that
  * knew only `For` would be silent on every German key. The kernel measured the German spelling on four rows.
  */
@@ -118,9 +118,7 @@ class LiteralIndexKeyTest {
             "a leading zero" to listOf("MVK_INVALID_ENTITY"),
             "over an enumeration index" to listOf("MVK_INVALID_ENTITY"),
             "over a Number index" to listOf("MVK_INVALID_ENTITY"),
-            // A12 admits the key and names the arity class; the index chain judges a constant only against an
-            // enumeration and leaves this key unjudged, so every gate stands down (CONSISTENCY-GAPS DG102).
-            "quoted, over a Number index" to emptyList(),
+            "quoted, over a Number index" to listOf("MVK_PARAMSIZE_INVALIDN"),
             "ahead of an unaddressed read" to listOf("MVK_INVALID_ENTITY"),
             "behind an unaddressed read" to listOf("MVK_NO_WILDCARD"),
             "a decimal, which is no digit sequence" to listOf("MVK_UNEXPECTED_TOKEN"),

@@ -366,6 +366,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerClassAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerPathGridAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerKeyedOperandAgreementTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerIndexKeyConstantAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
@@ -599,8 +600,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
     // size the committed trees cannot reach, and its own inputs are test sources this task already declares.
     // The path grid joins on the same footing: its disagreement ledger is a test RESOURCE, so the task's runtime
     // classpath already carries it as an input and a ledger edit re-runs it.
-    // The keyed-operand grid joins beside it: the same both-engine claim over spellings of one construct, and it
-    // reads no repo file at all.
+    // The keyed-operand and constant-index-key grids join beside it: the same both-engine claim over spellings of
+    // one construct, and neither reads a repo file.
     filter {
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnCleanModelsTest')
@@ -612,6 +613,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerPathGridAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerKeyedOperandAgreementTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.CheckerIndexKeyConstantAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnSynthesizedModelsTest')
     }

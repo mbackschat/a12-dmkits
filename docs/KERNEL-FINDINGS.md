@@ -11132,7 +11132,7 @@ The portable checker pinned "the one repetition crossed" whenever a key stood on
 
 So the enumeration admits exactly its tokens, case-sensitively, and never a label. The case and label rows are what separate that from a looser match. A digit sequence of any length, a leading zero included, names an entity called by its digits, over a String, an enumeration and a Number index alike; quoted, the same digit is a key the Number index admits. A decimal is neither an entity name nor a string, so it does not parse. The order rows are the control that each key class is observable where it stands: A12 names whichever read it meets first. The same rows hold under the German keyword `Fuer` on a `de_DE` model, measured on the `"OPEN"`, `"open"`, `5` and `5.5` keys.
 
-The portable checker had left a constant key over an enumeration index unjudged. It reported nothing on a digit key, because its reference scan stepped over the key, and it read `For 5.5` as an expression. It now judges a constant key against the declared tokens, reads a lone digit key as the entity reference it is, and refuses a decimal key in its shape parser. `consistency.LiteralIndexKeyTest` runs every row under both condition languages. It stays silent on the quoted Number key, which its index chain leaves unjudged ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG102).
+The portable checker had left a constant key over an enumeration index unjudged. It reported nothing on a digit key, because its reference scan stepped over the key, and it read `For 5.5` as an expression. It now judges a constant key against the declared tokens, reads a lone digit key as the entity reference it is, and refuses a decimal key in its shape parser. `consistency.LiteralIndexKeyTest` runs every row under both condition languages. It judges the quoted Number key by the Number rule of [KF481](#kf481).
 
 *Locked by:* `rulekit.validate.laws.LiteralIndexKeyLawsTest`; the checker mirror: `consistency.LiteralIndexKeyTest`; the checker against A12 on the operand gates of [KF476](#kf476): `adapter.laws.CheckerKeyedOperandAgreementTest`.
 
@@ -11154,3 +11154,35 @@ So a climb names the level it lands on and is judged as that level's read: the r
 The portable checker had been silent on `../<x>` and `../../Claims/<x>` in ten families beside DG96's own, and named `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` in the pattern comparison. On the keyed climb it was silent in twenty-six of the twenty-seven; the rounding-digits gate, which never reads the operand, was the one that answered. One mechanism did all of it: its bare-spec test did not admit the `..` token, so every family typing an operand through it, and the key reader reducing a keyed value, took a climb for an expression. Admitting `..` there cleared every row but the three of [CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG96's family, which is the discriminator against a rival in the scope walk or the resolver, both of which the fix left untouched.
 
 *Locked by:* `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest.aClimbingReadIsJudgedAtTheLevelItReaches`; the checker against A12: `adapter.laws.CheckerKeyedOperandAgreementTest`.
+
+## §9 supplement — a constant index key meets its index field's value validation as a SHAPE test, one rule per index kind (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf481"></a>
+
+> Fold: not-foldable — a diagnostic-class law about which constant keys an index admits, not an evaluation behaviour.
+
+`CheckSemanticIndexImpl` refuses an empty constant key outright and runs the index field type's `isValueApplicable` over any other (source-read). [KF479](#kf479) measured the enumeration's rule; these rows measure the rest. The type is built from the DECLARED members alone on this path: `TypeConverter` reads the `notInDCustom*` ones only when told to (`considerNotInD`). One fixture: `/Policy` holds seventeen repeatable groups, each indexed by a field `K` of one kind and holding a Number `Amount`; each probe is `Sum(<group>/Amount For "<constant>") > 0` from the root, which names `MVK_PARAMSIZE_INVALIDN` once the key is admitted and `MVK_INDEX_VALUE_INVALID` when it is not.
+
+| index field `K` | admitted | refused |
+|---|---|---|
+| String | `ANY` | `""` |
+| String, length 2 to 3 | `AB` | `ABCD`, `A` |
+| String, pattern `[A-Z]{2}[0-9]` | `AB1` | `ab1` |
+| Number, 0 fraction digits | `5`, `-5`, `05` | `5.0`, `+5`, `x` |
+| Number, 0 to 2 | `5`, `5.5`, `5,55` | `5.555` |
+| Number, 2 to 2 | `5.00`, `5,00` | `5`, `5.0` |
+| Number, no fraction declared | `5` | `5.5` |
+| Number, 2 integer digits | `12345` | — |
+| Boolean | `true`, `false` | `yes`, `TRUE` |
+| Boolean declaring `J`/`N` | `true` | `J`, `N` |
+| Confirm | `true` | `false` |
+| Date `yyyy-MM-dd` | `2020-01-31`, `2020-13-45` | `31.01.2020`, `2020-1-31` |
+| Date `dd.MM.yyyy` | `31.01.2020` | `31-01-2020` |
+| DateTime `yyyy-MM-dd'T'HH:mm:ss` | `2020-01-31T10:15:00` | `2020-01-31` |
+| Time `HH:mm:ss` | `10:15:00` | `10:15` |
+| DateFragment `yyyy-MM` | `2020-01` | `01.2020` |
+| DateRange `dd.MM.yyyy`, separator `-` | `01.01.2020-31.01.2020` | `01.01.2020` |
+
+The empty constant is refused ahead of the type's rule on every kind by source; this fixture measures it on the String row. So every kind's rule is a shape, and the rows a value-level reading would decide differently are what show it. A Number admits an optional minus and ASCII digits, then a fraction after `.` or `,`, absent unless the maximum is positive and required when the minimum is; nothing else it declares is asked, neither the integer digits nor a forbidden leading zero. A temporal kind matches its format with each component letter read as one digit, so `2020-13-45` is admitted; a date range is two such dates around its separator. A Boolean admits exactly `true` and `false` whatever custom values it declares, and a Confirm only `true`. A String asks a positive length bound and matches a declared pattern with Java's `String.matches`.
+
+The portable checker had judged a constant only against an enumeration. It now reproduces every rule above except the pattern, which it leaves unjudged because a Java pattern does not evaluate identically on its JavaScript target ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG102). It reproduces each shape without a regex, so both targets decide it alike.
+
+*Locked by:* `adapter.laws.CheckerIndexKeyConstantAgreementTest`, A12's class written out on every row and the checker required to name it; the checker's shape rules: `consistency.IndexKeyConstantShapeTest`.

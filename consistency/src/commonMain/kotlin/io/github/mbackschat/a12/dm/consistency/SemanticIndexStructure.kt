@@ -4,10 +4,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORD
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
 
 /**
  * What a semantic index may CARRY, and where the indexed group has to be.
@@ -44,10 +40,10 @@ import kotlinx.serialization.json.intOrNull
  * or an unspecified field — leaves the whole index unjudged rather than guessing whether A12 calls it
  * consistent.
  *
- * **Silent on a NON-EMPTY literal key A12 refuses on applicability.** `isValueApplicable` runs the index
- * field's own value validation over the constant, so `[Endorsements/Amount For "not-a-grade"]` is
- * `MVK_INDEX_VALUE_INVALID` on an enumeration-keyed group; this family reads only the empty case, and a
- * later class it names on such an index would be the wrong class on a correct rejection.
+ * **Silent on a literal key whose index field this reader cannot judge.** `isValueApplicable` runs the index
+ * field's own value validation over the constant, and [admitsIndexConstant] reproduces it per kind except where
+ * the kind's rule is not one it can reproduce, such as a declared String pattern; a later class named on such an
+ * index would be the wrong class on a correct rejection.
  */
 internal fun TrackedFactBase.semanticIndexStructureFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
@@ -157,7 +153,7 @@ private fun TrackedFactBase.classOf(
  * star is this block's class and not the star's.
  *
  * A CONSTANT key meets the first of the three as an applicability test — A12 runs the index field's own
- * value validation over the constant — and this reader decides it where [admitsConstant] can, leaving every
+ * value validation over the constant — and this reader decides it where [admitsIndexConstant] can, leaving every
  * other constant-keyed index unjudged rather than naming a class A12 reaches past.
  */
 private fun TrackedFactBase.keyClassOf(
@@ -168,7 +164,7 @@ private fun TrackedFactBase.keyClassOf(
     element: TrackedDeclaration,
 ): IndexVerdict? {
     use.keyLiteral?.let { literal ->
-        val admitted = literal.isNotEmpty() && (indexField.admitsConstant(literal) ?: return IndexVerdict.Opaque)
+        val admitted = literal.isNotEmpty() && (indexField.admitsIndexConstant(literal) ?: return IndexVerdict.Opaque)
         return if (admitted) null else IndexVerdict.Reported("MVK_INDEX_VALUE_INVALID")
     }
     val key = element(use.keyPath?.let { written -> resolveField(written, declaringGroup, element) })
@@ -183,41 +179,6 @@ private fun TrackedFactBase.keyClassOf(
     }
     return if (key.waivesValueValidation()) IndexVerdict.Reported("MVK_INVALID_RAW_TYPE") else null
 }
-
-/**
- * Whether this index field's own value validation admits the non-empty [constant], or null where this reader
- * cannot say.
- *
- * An enumeration without a table admits exactly the tokens its values declare, in their case and never a
- * label ([KERNEL-FINDINGS KF479], `IEnumerationType.isValueApplicable`); a table-backed one admits the
- * table's values, which a model does not carry. A12 strips the CR of a CRLF from the constant before the
- * test, so a constant holding one is left unjudged rather than compared in a spelling A12 never sees.
- */
-private fun TrackedDeclaration.admitsConstant(constant: String): Boolean? {
-    if (admitsEveryConstant()) {
-        return true
-    }
-    val enumeration = enumerationBody()?.takeIf { it["tableName"] == null && '\r' !in constant } ?: return null
-    return enumeration.declaredEnumValues()?.takeIf { it.isNotEmpty() }?.let { constant in it }
-}
-
-/**
- * Whether this declaration's own value validation admits every non-empty constant.
- *
- * Only a string declaration can: `isValueApplicable` is a per-type member, and every other type reads the
- * constant as one of its own values. A string that declares no length and no pattern constrains nothing, and
- * a declaration carrying no type body at all declares none of the three.
- */
-private fun TrackedDeclaration.admitsEveryConstant(): Boolean {
-    if (declaredFieldType() != FieldType.STRING) {
-        return false
-    }
-    val string = FieldType.STRING.bodyIn(body?.get("fieldType") as? JsonObject) ?: return true
-    return LENGTH_MEMBERS.none { member -> ((string[member] as? JsonPrimitive)?.intOrNull ?: 0) > 0 } &&
-        (string["pattern"] as? JsonPrimitive)?.contentOrNull.isNullOrEmpty()
-}
-
-private val LENGTH_MEMBERS = listOf("minLength", "maxLength")
 
 /** The field a group declares as its index, or null where the declaration names none this reader can find. */
 private fun TrackedFactBase.indexFieldOf(indexGroup: String): TrackedDeclaration? {
