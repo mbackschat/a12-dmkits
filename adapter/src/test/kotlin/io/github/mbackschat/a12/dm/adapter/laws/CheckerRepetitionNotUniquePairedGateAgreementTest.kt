@@ -93,6 +93,12 @@ class CheckerRepetitionNotUniquePairedGateAgreementTest {
         rows += inPolicy("Claims/ClaimRef @From Vacant*", "MVK_GROUP_IS_EMPTY")
         rows += inPolicy("Claims/ClaimRef @From Insured*", "MVK_INVALID_WILDCARD")
         rows += inPolicy("Claims/ClaimRef @From Claims* For \"C-1\"", "MVK_SEMANTIC_INDEX_AND_WILDCARD")
+        rows += unique("/Policy", "../Reference", "Reference, Claims/ClaimRef", setOf("MVK_NO_WILDCARD"))
+        for (defect in listOf("Insured", "Tier -> Band", "Insured, Insured")) {
+            for (keys in listOf("Reference, Claims/ClaimRef, $defect", "Reference, $defect, Claims/ClaimRef")) {
+                rows += unique("/Policy", "../Reference", keys, setOf("MVK_NO_WILDCARD"))
+            }
+        }
         for (scope in listOf("Claims", "Riders", "Vacant")) {
             rows += unique("/Policy", "../Reference", "Reference @From $scope", setOf("MVK_NO_WILDCARD"))
         }

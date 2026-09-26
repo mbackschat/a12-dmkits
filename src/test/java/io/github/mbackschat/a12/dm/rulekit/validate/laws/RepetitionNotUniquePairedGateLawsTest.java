@@ -210,6 +210,26 @@ class RepetitionNotUniquePairedGateLawsTest {
     }
 
     /**
+     * A key whose repetition the rule leaves unbound, beside a key-list defect, from a rule reporting at the root.
+     * Rival: the missing star is asked after the parse, with the construct's iteration, which gives the list
+     * gate's class on every paired row.
+     */
+    @Test
+    void aKeysMissingStarAnswersAheadOfEveryKeyListGate() {
+        String unbound = "Claims/ClaimRef";
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Reference, " + unbound, "MVK_NO_WILDCARD");
+        for (String defect : new String[] {"Insured", "Tier -> Band", "Insured, Insured"}) {
+            expected.put("Reference, " + unbound + ", " + defect, "MVK_NO_WILDCARD");
+            expected.put("Reference, " + defect + ", " + unbound, "MVK_NO_WILDCARD");
+        }
+        Map<String, String> actual = new LinkedHashMap<>();
+        expected.keySet().forEach(keys -> actual.put(keys,
+                KernelLaws.verdictModel(MODEL, "/Policy", "../Reference", "RepetitionNotUnique(" + keys + ")")));
+        assertEquals(expected, actual);
+    }
+
+    /**
      * A starred scope. Rival: the scope's own wildcard gate, which the check source asks after the field gate,
      * answers on every row; the read answers instead wherever the star is itself a read defect or the scope is
      * empty. A star beside an index is such a read defect, so no row orders the scope's wildcard gate against its
