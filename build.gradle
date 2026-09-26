@@ -649,6 +649,7 @@ tasks.register('deliveryGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.TestEvidenceScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.InfographicFreshnessLocaleTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TypeScriptRuntimeLauncherTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.MutantScriptTest'
     }
     guardInputs(it, [
             'release perf gate'       : file('scripts/release-perf-gate.sh'),
@@ -701,6 +702,10 @@ tasks.register('deliveryGuardTest', Test) {
             'evidence reporter'       : file('scripts/test-evidence.sh'),
             'evidence implementation': file('scripts/typescript/test-evidence.ts'),
             'evidence self-test'      : file('scripts/selftest-test-evidence.sh'),
+            // MutantScriptTest runs the public mutant command through Dash, so the wrapper and its implementation
+            // are runtime inputs; a refusal that stopped being exit 2 would read as a SURVIVED verdict.
+            'mutant command'          : file('scripts/mutant.sh'),
+            'mutant implementation'   : file('scripts/typescript/mutant.ts'),
             'native build contract'   : file('cli/build.gradle'),
             'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),
             'Codex activation smoke'  : file('scripts/codex-plugin-activation-smoke.sh'),

@@ -89,7 +89,6 @@ class ShellPortabilityGuardTest {
             "scripts/interpreter-release-github.sh",
             "scripts/interpreter-release-publisher-core.sh",
             "scripts/interpreter-release-rehearsal-host.sh",
-            "scripts/mutant.sh",
             "scripts/native-battery.sh",
             "scripts/native-gate.sh",
             "scripts/native-no-java-smoke.sh",
