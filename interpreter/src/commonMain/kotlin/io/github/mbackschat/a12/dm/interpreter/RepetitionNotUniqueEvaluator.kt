@@ -211,6 +211,12 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
         val parts = pathParts(keyGroup)
         var d = rule.group.trim('/').split('/').size + 1     // first group strictly below the rule group
         while (d <= parts.size && "/" + parts.take(d).joinToString("/") !in model.repeatable) d++
+        if (d > parts.size && keyGroup == rule.group && rule.group in model.repeatable) {
+            // A repeatable ROOT whose keys all sit in it is the one rule group A12 admits with no repetition below
+            // it (KERNEL-FINDINGS KF355), and its own rows are the ones compared: the reference group is the root,
+            // which has no parent row, so the scope is the whole document (RepetitionNotUniqueRepeatableRootDiffTest).
+            return 0
+        }
         return d - 1                                          // parent(referenceGroup) depth
     }
 

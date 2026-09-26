@@ -9268,7 +9268,7 @@ Locked: `validate.laws.RepetitionNotUniqueGateOrderLawsTest`, and the rows above
 | in `Claims` reporting at the root: `ClaimRef`; `/Policy/Reference @From /Policy/Claims` | `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` | on a key and on a scope |
 | `Insured, Insured`; `/Policy, Claims/ClaimRef`, both orders; `Insured, Insured/InsuredName` | `MVK_DUPLICATE_PARAM1`; `MVK_DUPLICATE_PARAM2`; `MVK_DUPLICATE_PARAM2` | the duplicate gate answers ahead of the fields-only gate |
 
-The indexed repeatable pair had first been placed inside the indexed `Claims`, and drew `MVK_MULTIPLE_INDEX_FIELDS` before any gate of this construct ([KF332](#kf332)), so the pair sits in an index-free frame. *(Locked: `validate.laws.RepetitionNotUniquePairedGateLawsTest`, and every row in `adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest` beside the portable checker's class.)*
+The indexed repeatable pair had first been placed inside the indexed `Claims`, and drew `MVK_MULTIPLE_INDEX_FIELDS` before any gate of this construct ([KF332](#kf332)), so the pair sits in an index-free frame. **At runtime** the admitted repeatable-root rule compares the root's own rows across the document, as an explicit `@From` of the root does, while a key in a repeatable subgroup of the root is compared per root row (both strategies; `adapter.laws.RepetitionNotUniqueRepeatableRootDiffTest`, [IF343](INTERPRETER-FINDINGS.md#if343)). *(Locked: `validate.laws.RepetitionNotUniquePairedGateLawsTest`, and every row in `adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest` beside the portable checker's class.)*
 
 ## §14 supplement — four `MVK_*` members are message LABELS and can never be a verdict, and one command enumerates them (source-verified, 2026-09-14) <a id="kf354"></a>
 

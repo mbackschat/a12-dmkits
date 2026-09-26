@@ -4289,3 +4289,11 @@ The absent instances are checked on one representative per class of indices rath
 A mutant that dropped the `Field` arm's check survived the whole `:interpreter:jvmTest` lane. The star and scan sites keep their `cellState` reads, because no `invalid` gate stands beside them.
 
 *Locked by:* `adapter.laws.EnumCategoryIndexRelevanceDiffTest`, run against both kernel strategies. It reads the category beside the value read of the same cell over four documents: a duplicated key, a distinct-key control, a missing key and a row above capacity. Before the fix, the duplicated rows ran red in validation and in computation. The missing-key and over-capacity rows were written together with the fix and have only run against it.
+
+### IF343: a `RepetitionNotUnique` rule at a repeatable root compares the root's rows across the document (MEASURED 2026-09-26) <a id="if343"></a>
+
+**The defect.** The default reference group is the first repeatable group strictly below the rule group, and the evaluator grouped rows by that group's parent row. At a repeatable root whose keys sit in it, no such group exists, so the search ran out and grouped by the key group's own row. Every scope then held one row, and the rule never fired. It reported nothing unsupported, so the miss was silent. A12 admits exactly this shape ([KF355](KERNEL-FINDINGS.md#kf355)), and both kernel strategies fire on a duplicate across root rows.
+
+**The fix.** When the search runs out at a repeatable root that is the keys' own group, the reference group is the root, which has no parent row, so the scope is the whole document. That is the scope an explicit `@From` of the root already gave. A key in a repeatable subgroup of the root still finds that subgroup and is compared per root row. The one site that derives this scope is `RepetitionNotUniqueEvaluator.scopePrefixLen`.
+
+*Locked by:* `adapter.laws.RepetitionNotUniqueRepeatableRootDiffTest`, against both kernel strategies. It covers a duplicate tuple, a shared empty component that makes the pair an omission, a distinct control, the explicit `@From` scope, and a key in a repeatable subgroup of the root. Before the fix, the interpreter fired nothing on the duplicate rows. Kernel-free JVM + Node `interpreter.RepetitionNotUniqueRepeatableRootTest` locks the duplicate and its control.
