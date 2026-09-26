@@ -110,6 +110,7 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
     enum entry ELEMENT_NAME_UNIQUENESS // io.github.mbackschat.a12.dm.consistency/CheckFamily.ELEMENT_NAME_UNIQUENESS|null[0]
     enum entry EMPTY_GROUP_OPERAND // io.github.mbackschat.a12.dm.consistency/CheckFamily.EMPTY_GROUP_OPERAND|null[0]
     enum entry ENTITY_LIST_ARITY // io.github.mbackschat.a12.dm.consistency/CheckFamily.ENTITY_LIST_ARITY|null[0]
+    enum entry ENTITY_LIST_CATEGORY_GATE // io.github.mbackschat.a12.dm.consistency/CheckFamily.ENTITY_LIST_CATEGORY_GATE|null[0]
     enum entry ENTITY_LIST_PRE_GATES // io.github.mbackschat.a12.dm.consistency/CheckFamily.ENTITY_LIST_PRE_GATES|null[0]
     enum entry ENUM_CATEGORY_ALIGNMENT // io.github.mbackschat.a12.dm.consistency/CheckFamily.ENUM_CATEGORY_ALIGNMENT|null[0]
     enum entry ENUM_COMPUTATION_SOURCE // io.github.mbackschat.a12.dm.consistency/CheckFamily.ENUM_COMPUTATION_SOURCE|null[0]

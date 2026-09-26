@@ -19,9 +19,13 @@ import kotlinx.serialization.json.contentOrNull
  * every categorized reference as undeclared. What the law needs is the PAIRING, which is why the reader
  * yields both halves together.
  *
- * **Two shapes are left to the families that own them**, each measured rather than assumed: an arrow on a
- * GROUP answers `MVK_NO_GROUPS_ALLOWED` and an arrow on a name nothing declares answers `MVK_INVALID_ENTITY`,
- * so resolution and kind both run ahead of these two gates.
+ * **An arrow on a GROUP is refused ahead of both**: `CheckEntitySpecImpl.checkCategory` asks `checkIsField`
+ * first (source-read), so a group draws `MVK_NO_GROUPS_ALLOWED` wherever the spec stands — a bracket, a
+ * membership subject, an entity list, where it answers ahead of the list's own duplicate walk (measured in
+ * `adapter.laws.CheckerEntityListCategoryAgreementTest` and `…CheckerFieldValueReadCarrierAgreementTest`).
+ * That arm judges only a group the reference reader addresses, because an unstarred repeatable one is the
+ * reader's `MVK_NO_WILDCARD` first. An arrow on a name nothing declares is the reference family's
+ * `MVK_INVALID_ENTITY`.
  *
  * **And the category's VALUE domain is a different law with a different class.** `[Tier -> Band] == "NOPE"`
  * draws `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`, measured in the same grid; it is about the
@@ -50,8 +54,20 @@ private fun TrackedFactBase.categoryFinding(
     if (resolved !is Reference.Resolved) {
         return null
     }
-    val target = declarationAt(resolved.path)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
-        ?: return null
+    val named = declarationAt(resolved.path) ?: return null
+    if (named.declaredKind == DeclaredKind.GROUP) {
+        addressedTargetOf(path, declaringGroup, element, indexSelected = false, everyLevelAddressed = false)
+            ?: return null
+        return finding(
+            "MVK_NO_GROUPS_ALLOWED",
+            "in `$member`: `->` reads a category attribute, and a category belongs to an Enumeration rather " +
+                "than to a group, so `${named.path}` cannot carry one — name the enumerated field inside it, or " +
+                "drop the access",
+            element.path,
+            span,
+        )
+    }
+    val target = named.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null
     val declaredType = target.declaredFieldType() ?: return null
     // A field typed by REFERENCE to a type definition, whose body this checker never reads. Preparation keeps
     // type definitions' IDS alone, which `Check.kt` already declares as a coverage gap — so such a field may

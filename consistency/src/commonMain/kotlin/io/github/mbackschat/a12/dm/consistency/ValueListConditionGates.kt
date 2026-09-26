@@ -23,7 +23,6 @@ import kotlinx.serialization.json.contentOrNull
  *
  * | the gate, in order | class |
  * |---|---|
- * | an operand puts a category access on a GROUP, on either side | `MVK_NO_GROUPS_ALLOWED` |
  * | the FIELD list's entries do not all share a base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
  * | `AtLeastOneDateRangeOverlaps`: the field list is not exactly one plain field | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` |
  * | the other three: an entry is neither text, enumeration nor number | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
@@ -58,13 +57,12 @@ import kotlinx.serialization.json.contentOrNull
  * (KERNEL-FINDINGS KF380, measured on the rows that repeat and fail a gate at once). A12's duplicate classes
  * are not this family's to name, so a repeat makes it silent from its own position on.
  *
- * **The category access is asked FIRST, and its other arms belong to another family.** An access demands an
- * enumeration declaring the named category; a GROUP under one is this construct's share of that law
- * ([KERNEL-FINDINGS] KF359 left it to "the families that own them"), measured on either side of the
- * comparison, in both operand orders, and ahead of both gates below — a group beside a number field draws
- * this class rather than `MVK_VARYING_TYPES_NOT_ALLOWED`. Where the access names a FIELD it cannot ride,
- * `CheckFamily.CATEGORY_REFERENCE` answers (`MVK_NO_ENUMERATION`, `MVK_CATEGORY_UNKOWN` — the kernel's
- * spelling) and A12 reports nothing after it, so this family stays SILENT there rather than adding the class
+ * **The category access is asked FIRST, and it belongs to another family.** An access demands a field that
+ * is an enumeration declaring the named category, and the spec's own gate asks that as the operand is read
+ * (`CheckEntitySpecImpl.checkCategory`), so `CheckFamily.CATEGORY_REFERENCE` answers — `MVK_NO_GROUPS_ALLOWED`
+ * for a GROUP under an access, measured on either side of the comparison, in both operand orders and ahead of
+ * both gates below, and `MVK_NO_ENUMERATION` or `MVK_CATEGORY_UNKOWN` (the kernel's spelling) for a field it
+ * cannot ride. A12 reports nothing after it, so this family stays SILENT there rather than adding the class
  * its own lists would draw.
  *
  * **Silent on a `TypeDefType` or `UnspecifiedType` declaration**, whose effective type this reader does not
@@ -122,7 +120,6 @@ private const val NO_CONST = "MVK_NO_CONST"
 
 private const val BAD_CONSTANT = "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY"
 
-private const val NO_GROUPS = "MVK_NO_GROUPS_ALLOWED"
 
 private const val RAW = "MVK_INVALID_RAW_TYPE"
 
@@ -139,20 +136,12 @@ private fun TrackedFactBase.gateFinding(
 ): Finding? {
     val (written, opposite) = call.splitAtIn() ?: return null
 
-    // A category access demands a FIELD, and this is asked BEFORE either list's own gates: a group under an
-    // access draws its own class whatever it would expand to and on either side of the comparison, measured
-    // in both operand orders and against a group whose field the kind gate would refuse anyway
-    // (`rulekit.validate.laws.ValueListConditionOperandLawsTest`). Without it this family answered with the
-    // class the EXPANSION happens to draw — a domain class, a kind class or a varying-types class depending
-    // on what the group holds — which is a wrong class rather than silence.
-    groupUnderACategoryAccess(written + opposite, declaringGroup, element)
-        ?.let { return gate(NO_GROUPS, call.operator, it, member, element, call.spanIn(member)) }
-
-    // …and where the access names a FIELD it cannot ride, the class is the ACCESS's own
-    // (`MVK_NO_ENUMERATION`, `MVK_CATEGORY_UNKOWN` — the kernel's spelling) and A12 reports nothing after
-    // it, so this family must stay SILENT rather than add the class its own lists would draw. Both field
-    // arms were measured beside a number field, where the varying-types gate would otherwise answer, and
-    // both still draw the access's class — so the silence is as wide as the pre-emption, not wider.
+    // A category access on a GROUP, or on a FIELD it cannot ride, draws the ACCESS's own class — raised as
+    // the operand is read, whatever the group would expand to and on either side of the comparison
+    // (`rulekit.validate.laws.ValueListConditionOperandLawsTest`) — and A12 reports nothing after it, so this
+    // family must stay SILENT rather than add the class its own lists would draw. The group and both field
+    // arms were measured beside a number field, where the varying-types gate would otherwise answer, and all
+    // three still draw the access's class — so the silence is as wide as the pre-emption, not wider.
     if (aCategoryAccessAnotherFamilyOwns(written + opposite, declaringGroup, element)) {
         return null
     }
@@ -317,30 +306,13 @@ private fun TrackedFactBase.listedFields(
 }
 
 /**
- * The first operand that puts a category access on a GROUP, or null when none does.
- *
- * Both lists are asked in one call because A12 refuses the shape on either side, and the first offender is
- * enough: this is one class about one operand, not a per-entry walk.
- */
-private fun TrackedFactBase.groupUnderACategoryAccess(
-    operands: List<String>,
-    declaringGroup: String,
-    element: TrackedDeclaration,
-): TrackedDeclaration? = operands.firstNotNullOfOrNull { operand ->
-    if (categoryAccessesIn(operand, conditionLanguage).isEmpty()) {
-        null
-    } else {
-        declaredTargetOf(operand, declaringGroup, element)?.takeIf { it.declaredKind == DeclaredKind.GROUP }
-    }
-}
-
-/**
  * Whether an operand's category access is one another family already answers for.
  *
- * It asks [ListedField.contributedValues], so the answer is exactly "this reader cannot settle what the
- * access contributes" — a field that is no enumeration, an enumeration declaring no such category, or a
- * table-backed one whose values are not in the model. The first two are classes A12 reports from the
- * access's own gates; the third is beyond any reader here, and silence is the safe direction for it too.
+ * A GROUP under an access is one, and for a field it asks [ListedField.contributedValues], so the answer is
+ * exactly "this reader cannot settle what the access contributes" — a field that is no enumeration, an
+ * enumeration declaring no such category, or a table-backed one whose values are not in the model. The group
+ * and the first two are classes A12 reports from the access's own gates; the third is beyond any reader
+ * here, and silence is the safe direction for it too.
  */
 private fun TrackedFactBase.aCategoryAccessAnotherFamilyOwns(
     operands: List<String>,
@@ -349,7 +321,8 @@ private fun TrackedFactBase.aCategoryAccessAnotherFamilyOwns(
 ): Boolean = operands.any { operand ->
     val category = categoryAccessesIn(operand, conditionLanguage).singleOrNull()?.category ?: return@any false
     val target = declaredTargetOf(operand, declaringGroup, element) ?: return@any false
-    target.declaredKind == DeclaredKind.FIELD && ListedField(target, category).contributedValues() == null
+    target.declaredKind == DeclaredKind.GROUP ||
+        target.declaredKind == DeclaredKind.FIELD && ListedField(target, category).contributedValues() == null
 }
 
 /** The same expansion where only the declarations matter — the value list, which carries no category law. */
@@ -379,10 +352,6 @@ private fun gate(
     FindingSeverity.ERROR,
     code,
     when (code) {
-        NO_GROUPS ->
-            "in `$member`: `$operator` reads `->` as a category access, and a category belongs to an " +
-                "enumeration rather than to a group, so `${field.path}` cannot carry one — name the " +
-                "enumerated field inside it, or drop the access and let the group expand"
         VARYING_TYPES ->
             "in `$member`: `$operator` compares one list against another, so every entry has to be " +
                 "declared alike, and `${field.path}` is `${field.declaredFieldType()}` where the entry " +

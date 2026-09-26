@@ -327,17 +327,7 @@ class CheckerFieldValueReadCarrierAgreementTest {
 
         /** The rows where the checker answers otherwise, keyed `scope | row`, with what it answers. */
         val OURS: Map<String, Set<String>> = mapOf(
-            // A category subject's group gate runs when its spec ends, ahead of the members (CONSISTENCY-GAPS DG103).
-            "a membership | a group's category subject, a raw member" to RAW,
-            // The target's own group passes the walk from the target's scope (DG104).
-            "a Lines target | a Number from the target's own group" to ADMITTED,
-            "a Lines target | a String from the target's own group" to setOf("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD"),
-            "a Lines target | an Enumeration from the target's own group" to
-                setOf("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD"),
-            // `checkNoCategories` on an entity list has no checker family (DG105).
-            "a category | an Enumeration's category in NumberOfFilledFields" to ADMITTED,
-            "a category | an Enumeration's category in FieldValuesNotUnique" to ADMITTED,
-            // A computation's comparison against its target has no checker family (DG106).
+            // A computation's comparison against its target has no checker family (CONSISTENCY-GAPS DG106).
             "a root target | an Enumeration from a Number" to ADMITTED,
             "the origin | declared in the target's group" to ADMITTED,
         )

@@ -109,6 +109,10 @@ private fun TrackedFactBase.operandFinding(
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
+    // `NumberOfFilledGroups` asks its category gate before it builds the list ([entityListCategoryFindings]).
+    if (categoryGateAnswersBeforeTheList(call, declaringGroup, element)) {
+        return null
+    }
     val bound = call.operands.map { it to it.resolvedBy(this, declaringGroup, element.origin) }
     // A12 reports the entity and says nothing about the duplicate, so this family has nothing to add.
     if (bound.any { (operand, reference) -> operand.path != null && reference !is Reference.Resolved }) {

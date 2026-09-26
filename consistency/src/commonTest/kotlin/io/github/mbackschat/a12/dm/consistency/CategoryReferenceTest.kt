@@ -57,25 +57,36 @@ class CategoryReferenceTest {
     }
 
     /**
-     * The shapes it leaves alone, because A12 answers each with a class from an earlier gate.
+     * The shapes it leaves alone, because A12 answers each with a class from an earlier gate or another law.
      *
-     * Resolution and the operand's kind both run ahead of `checkCategory`, so an arrow on a group is
-     * `MVK_NO_GROUPS_ALLOWED` and one on an undeclared name is `MVK_INVALID_ENTITY`. And the category's own
-     * VALUE domain is a third law with a third class — `[Tier -> Band] == "NOPE"` is
+     * Resolution runs ahead of `checkCategory`, so an arrow on an undeclared name is `MVK_INVALID_ENTITY`. And
+     * the category's own VALUE domain is a third law with a third class — `[Tier -> Band] == "NOPE"` is
      * `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`, which this family deliberately does not reproduce.
      */
     @Test
     fun theShapesItLeavesAlone() {
         val actual = mutableMapOf<String, List<String>>()
-        actual["an arrow on a GROUP"] = arrow("[Insured -> Band] == \\\"LOW\\\"")
         actual["an arrow on an UNRESOLVABLE name"] = arrow("[NoSuchField -> Band] == \\\"LOW\\\"")
         actual["a declared category, undeclared classification"] = arrow("[Tier -> Band] == \\\"NOPE\\\"")
 
         assertEquals(
-            mapOf("an arrow on a GROUP" to emptyList(),
-                "an arrow on an UNRESOLVABLE name" to emptyList(),
+            mapOf("an arrow on an UNRESOLVABLE name" to emptyList(),
                 "a declared category, undeclared classification" to emptyList()),
             actual,
+        )
+    }
+
+    /**
+     * An arrow on a GROUP is the spec's own `checkIsField`, asked ahead of both category gates, and it is
+     * named ONCE: the bracket around it asks the same question and yields to this family, which raises it
+     * where A12 does ([KERNEL-FINDINGS KF482]).
+     */
+    @Test
+    fun anArrowOnAGroupIsTheGroupClassOnce() {
+        val groupClass = "MVK_NO_GROUPS_ALLOWED"
+        assertEquals(
+            listOf(groupClass),
+            codes("FieldFilled(Reference) And [Insured -> Band] == \\\"LOW\\\"").filter { it == groupClass },
         )
     }
 

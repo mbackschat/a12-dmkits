@@ -363,6 +363,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.FIELD_OPERAND_KIND) { it.fieldOperandKindFindings() },
     produces(CheckFamily.FILTERED_OPERAND_KIND) { it.filteredOperandKindFindings() },
     perDeclarationWalk(CheckFamily.CATEGORY_REFERENCE) { it.categoryReferenceFindings() },
+    perDeclarationWalk(CheckFamily.ENTITY_LIST_CATEGORY_GATE) { it.entityListCategoryFindings() },
     produces(CheckFamily.SCALAR_VALUE_LIST_GATES) { it.scalarValueListGateFindings() },
     produces(CheckFamily.DATE_ARGUMENT_SLOT) { it.dateArgumentSlotFindings() },
     produces(CheckFamily.DATE_RANGE_OPERAND_LIST) { it.dateRangeOperandListFindings() },

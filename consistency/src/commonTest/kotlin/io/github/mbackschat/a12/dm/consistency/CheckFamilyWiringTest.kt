@@ -86,6 +86,10 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../NoSuchField",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r101","name":"CategoryInACount","Rule":{
+              "errorCondition":"FieldFilled(Price) And NumberOfFilledFields(MiscategorisedTier -> Band, Price) > 0",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C101","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r100","name":"ReadOfAnUnparsedText","Rule":{
               "errorCondition":"FieldFilled(Price) And [Opaque] == \"X\"","errorEntityRelPath":"../Price",
               "errorCode":"C100","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -721,6 +725,10 @@ class CheckFamilyWiringTest {
         // pre-empting and makes this row about the reference rather than about the declaration.
         CheckFamily.CATEGORY_REFERENCE to
             ("MVK_CATEGORY_UNKOWN" to "/Catalog/UndeclaredCategory"),
+        // `MiscategorisedTier` declares the category `Band`, so the spec's own category gate passes and only
+        // the count's list gate is left to refuse it.
+        CheckFamily.ENTITY_LIST_CATEGORY_GATE to
+            ("MVK_CATEGORY_NOT_ALLOWED" to "/Catalog/CategoryInACount"),
         // `LowercaseTier` declares exactly one value, so the list carries one constant A12 admits and one it
         // does not — which keeps the row about the CONSTANT rather than about an empty or unreadable domain.
         CheckFamily.SCALAR_VALUE_LIST_GATES to

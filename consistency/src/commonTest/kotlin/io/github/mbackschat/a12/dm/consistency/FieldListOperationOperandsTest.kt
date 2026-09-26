@@ -183,7 +183,7 @@ class FieldListOperationOperandsTest {
             subject("NumberOfDifferentValues(Ledger, Notes) > 0")
         actual["a lone unstarred field, which the arity gate answers"] =
             subject("NumberOfDifferentValues(Settled) > 0")
-        actual["a category access, an UNDER-REPORT this family discloses"] =
+        actual["a category access, which the list's category gate answers"] =
             subject("NumberOfDifferentValues(Severity -> Band, Notes, Notes) > 0")
 
         val expected = mutableMapOf<String, List<String>>()
@@ -212,10 +212,9 @@ class FieldListOperationOperandsTest {
         expected["a GROUP leader, read from its first EXPANDED field"] = listOf("MVK_NUMBER_AND_NON_NUMBER")
         expected["a lone unstarred field, which the arity gate answers"] = listOf("MVK_PARAMSIZE_INVALIDN")
         // A12 answers `MVK_CATEGORY_NOT_ALLOWED` — from the FIRST statement of the method, ahead even of
-        // the duplicate this row also carries. Nothing here reports it: the shared operand reducer declines
-        // a categorized operand, so the call never reaches a gate. Under-reporting, and disclosed rather
-        // than left to look like agreement.
-        expected["a category access, an UNDER-REPORT this family discloses"] = emptyList()
+        // the duplicate this row also carries. The list category gate's family names it; this one never sees
+        // the call, the shared operand reducer declining a categorized operand.
+        expected["a category access, which the list's category gate answers"] = listOf("MVK_CATEGORY_NOT_ALLOWED")
         assertEquals(expected, actual, "the distinct count's four arms, and what outruns the leader")
     }
 }

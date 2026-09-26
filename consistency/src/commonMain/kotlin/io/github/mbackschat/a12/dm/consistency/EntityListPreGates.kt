@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 
@@ -129,6 +130,9 @@ private const val NESTED_DUPLICATE = "MVK_DUPLICATE_PARAM2"
 
 private const val ROOT_GROUP = "MVK_ROOT_GROUP_REFERENCED"
 
+/** How an operand's category joins its identity key, beside the clauses as spelled. */
+private const val CATEGORY_KEY = "->"
+
 private fun TrackedFactBase.preGateFinding(
     call: ConditionCall,
     gate: RootGroupGate,
@@ -242,7 +246,15 @@ private fun TrackedFactBase.entityListOperandsOf(
     val indexKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
     return call.operands.map { operand ->
         if (operand.clauses.isEmpty()) {
-            return@map ListOperand(operand.path ?: return null, "")
+            operand.path?.let { return@map ListOperand(it, "") }
+            // A carrier that asks its category gate only once the list is built compares a categorized operand
+            // like any other, its category being part of its identity; one that asks it first leaves the list
+            // to that gate ([entityListCategoryFindings]).
+            if (categoryGateOf(call.operator) != CategoryGate.AFTER_THE_LIST) {
+                return null
+            }
+            val access = categoryAccessesIn(operand.text, conditionLanguage).singleOrNull() ?: return null
+            return@map ListOperand(access.path, "$CATEGORY_KEY${access.category}")
         }
         val keyed = operand.clauses.any { it.keyword == indexKeyword }
         // A key A12 refuses answers ahead of every list gate, the duplicates included ([KERNEL-FINDINGS KF476]),
@@ -305,7 +317,11 @@ internal fun entityListPreGateAnswers(reads: List<OperandReference>, targets: Li
     // Each identity carries the key its read was admitted with, so `Claims For "X"` and `Claims/Amount For "Y"`
     // are neither nested nor repeated, and the operator's own gate answers — `MVK_NO_NUMBER` for a `Sum` over
     // them (`adapter.laws.CheckerKeyedOperandAgreementTest`). Comparing on path alone read that list as nested.
-    val operands = reads.map { ListOperand(it.reference, it.key.orEmpty(), it.indexSelected) }
+    // The category is the identity's other clause (kf439), so `Tier -> Level` beside `Tier` repeats nothing.
+    val operands = reads.map { read ->
+        ListOperand(read.reference, read.key.orEmpty() + read.category?.let { "$CATEGORY_KEY$it" }.orEmpty(),
+            read.indexSelected)
+    }
     return targets.firstDirectDuplicate(operands) != null ||
         targets.firstNestedEntity(operands) != null ||
         targets.any { it.isRootGroup() }

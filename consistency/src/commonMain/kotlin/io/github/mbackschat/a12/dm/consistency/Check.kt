@@ -602,6 +602,13 @@ enum class CheckFamily {
     CATEGORY_REFERENCE,
 
     /**
+     * That an entity list whose carrier calls `checkNoCategories` projects no category. Its own constant
+     * rather than part of [CATEGORY_REFERENCE] because that family judges the spec as it is read and this
+     * judges the LIST once its carrier asks, which is behind or ahead of the duplicate gates by carrier.
+     */
+    ENTITY_LIST_CATEGORY_GATE,
+
+    /**
      * Everything the two SCALAR value-list predicates demand of their subject field and of the list it is
      * compared against — `CheckFeldUndWerteListenBedingungImpl.check`, whose gates run in one order. Its own
      * constant rather than part of [ENUM_VALUE_CHARACTERS] because that family judges a declared value's

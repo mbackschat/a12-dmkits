@@ -22,9 +22,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
  * compared with a string literal draws the star's class and not a kind mismatch, and a value list's entry is
  * judged before the list's own subject ([scalarValueListGateFindings] asks nothing an entry's bracket asks).
  *
- * **It judges only a spec the reference reader passes**: one that resolves, stars no level that does not
- * repeat, and leaves unstarred only repeatable levels that both the declaring group and the rule's iteration
- * bind. Every other spec meets the reader's own class first — `MVK_INVALID_ENTITY`, `MVK_INVALID_WILDCARD`,
+ * **It judges only a spec the reference reader passes** ([addressedTargetOf]): one that resolves, stars no
+ * level that does not repeat, and leaves unstarred only repeatable levels the declaration's TARGET iterates. A
+ * computation's target counts as a rule's error field does, so into `Lines/Qty` the target's own group
+ * `[Lines]` passes and draws the group class (`adapter.laws.CheckerFieldValueReadCarrierAgreementTest`). Every
+ * other spec meets the reader's own class first — `MVK_INVALID_ENTITY`, `MVK_INVALID_WILDCARD`,
  * `MVK_NO_WILDCARD`, or `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` where the target lies outside the declaring group.
  * A star on a level the rule binds still counts, because `hasWildCards` asks the spelling. **A filter's body
  * is the exception**: there no unstarred level stops the read, the filter's own level or any other, since the
@@ -37,7 +39,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
  * filtered spec has been read.
  *
  * **A category behind the path leaves the star gate standing.** The spec's category gates run when the spec
- * ends and so ahead of the bracket's (`CheckEntitySpecImpl.checkCategory`, [categoryReferenceFindings]), but
+ * ends and so ahead of the bracket's (`CheckEntitySpecImpl.checkCategory`, [categoryReferenceFindings]). They
+ * refuse a group themselves, so this family leaves a categorized group to that family, but
  * a category an enumeration declares passes them, and a read of one through a starred `Claims` level then
  * draws the star's class — measured as a computation's whole operation, where it also answers ahead of the
  * enumeration-source gate (`adapter.laws.CheckerKeyedOperandAgreementTest`). This family judges such a read
@@ -66,20 +69,15 @@ private fun TrackedFactBase.readDefect(
     element: TrackedDeclaration,
 ): ReadDefect? {
     val written = read.path ?: return null
-    val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
-        as? Reference.Resolved ?: return null
-    val target = declarationAt(resolved.path) ?: return null
-    val starred = starredLevelsOf(written, declaringGroup, element) ?: return null
-    val iterated = iterationGroupOf(element) ?: declaringGroup
-    val bound = { level: String -> declaringGroup.isAtOrBelow(level) && iterated.isAtOrBelow(level) }
     // In a filter's body the levels a read crosses are the filter chain's question, asked only after the body
     // has been read, so a group there meets its bracket first — whether or not the filter iterates it
     // (`rulekit.validate.laws.FieldValueReadOperandLawsTest.theGatesReachEveryCarrierOfTheRead`).
-    if (!read.inAFilterBody && iteratedLevels(target.path).any { it !in starred && !bound(it) }) {
-        return null
-    }
+    val addressed = addressedTargetOf(written, declaringGroup, element, indexSelected = false,
+        everyLevelAddressed = read.inAFilterBody) ?: return null
+    val target = declarationAt(addressed) ?: return null
     when (target.declaredKind) {
-        DeclaredKind.GROUP -> return ReadDefect(
+        // The spec's own category gate asks the group question first ([categoryReferenceFindings]).
+        DeclaredKind.GROUP -> return if (read.category != null) null else ReadDefect(
             "MVK_NO_GROUPS_ALLOWED", written,
             "names the group `${target.path}`, and a field-value read takes one field",
         )

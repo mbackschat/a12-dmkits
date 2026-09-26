@@ -53,12 +53,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * `MVK_PARAMSIZE_INVALIDN`. All five carriers take that same arity gate. Naming a kind class on any of those
  * would be the wrong class on a correct rejection.
  *
- * **`NumberOfDifferentValues` meets a SIXTH gate the other four never do, and NOBODY reports it.**
- * `checkNoCategories` is the first statement of its method, ahead of the reference list being built, so a
- * `->` access anywhere in its list is `MVK_CATEGORY_NOT_ALLOWED` whatever else is wrong with it — measured,
- * on a list that also carries a duplicate. The shared operand reducer declines a categorized operand, so
- * this family never sees such a call and no other reads this carrier: an under-report, stated here rather
- * than left to read as agreement.
+ * **`NumberOfDifferentValues` meets a SIXTH gate the other four never do, and it is another family's.**
+ * `checkNoCategories` is the first statement of its method, ahead of the reference list being built, so an
+ * Enumeration's category anywhere in its list is `MVK_CATEGORY_NOT_ALLOWED` whatever else is wrong with it —
+ * measured, on a list that also carries a duplicate. [entityListCategoryFindings] reports it for every carrier
+ * that calls the gate; the shared operand reducer declines a categorized operand, so this family never sees
+ * such a call.
  *
  * **Type MATCHING is deliberately not reported.** `MVK_VARYING_TYPES_NOT_ALLOWED`, which `FirstFilledValue`
  * draws behind the confirm gate, rests on `OperationResultType.matches` — a comparison that reads a date's

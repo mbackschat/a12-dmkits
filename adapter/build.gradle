@@ -368,6 +368,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerKeyedOperandAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerIndexKeyConstantAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerFieldValueReadCarrierAgreementTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerEntityListCategoryAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
@@ -601,8 +602,9 @@ tasks.register('checkerSilenceGuardTest', Test) {
     // size the committed trees cannot reach, and its own inputs are test sources this task already declares.
     // The path grid joins on the same footing: its disagreement ledger is a test RESOURCE, so the task's runtime
     // classpath already carries it as an input and a ledger edit re-runs it.
-    // The keyed-operand, constant-index-key and field-value-read carrier grids join beside it: the same
-    // both-engine claim over spellings of one construct, and none of them reads a repo file.
+    // The keyed-operand, constant-index-key, field-value-read carrier and entity-list category grids join
+    // beside it: the same both-engine claim over spellings of one construct, and none of them reads a repo
+    // file.
     filter {
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnCleanModelsTest')
@@ -618,6 +620,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerIndexKeyConstantAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerFieldValueReadCarrierAgreementTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.CheckerEntityListCategoryAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnSynthesizedModelsTest')
     }
