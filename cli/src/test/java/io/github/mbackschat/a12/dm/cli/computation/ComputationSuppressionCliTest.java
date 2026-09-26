@@ -120,6 +120,25 @@ class ComputationSuppressionCliTest {
         assertEquals(before, Files.readString(model), "a rejected suppression must not mutate the model");
     }
 
+    /**
+     * The schema's {@code maxItems: 1} is enforced by A12 itself, which renders the list into a one-code pragma
+     * and fails on the comma (KERNEL-FINDINGS KF298), so even the supported code twice is refused unwritten.
+     */
+    @Test
+    void aSecondSuppressionEntryIsRefusedUnwritten(@TempDir Path dir) throws Exception {
+        Path model = write(dir, "model.json", CliTestSupport.subscriptionJson());
+        String before = Files.readString(model);
+        Path spec = write(dir, "spec.json", spec(true).replace(
+                "\"" + SUPPRESSION + "\"", "\"" + SUPPRESSION + "\",\"" + SUPPRESSION + "\""));
+
+        var add = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
+
+        assertEquals(1, add.code(), add::err);
+        assertTrue(MAPPER.readTree(add.out()).path("diagnostics").findValuesAsText("code")
+                .contains("MVK_UNEXPECTED_TOKEN"), add::out);
+        assertEquals(before, Files.readString(model), "a two-entry list must not mutate the model");
+    }
+
     @Test
     void modifyAndTargetSpecificSpecsCannotSilentlyDropKeys(@TempDir Path dir) throws Exception {
         Path model = write(dir, "model.json", CliTestSupport.subscriptionJson());

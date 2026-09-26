@@ -88,14 +88,34 @@ class ComputationSuppressionTest {
 
     /**
      * The class is withheld wherever the entry alone does not decide it: a keyword is a token in one condition
-     * language and a name in the other, a digit-led spelling is no name at all, and a list's comma answers
-     * ahead of any entry A12 would have compared.
+     * language and a name in the other, and a digit-led spelling is no name at all.
      */
     @Test
     void theClassIsWithheldWhereTheEntryAloneDoesNotDecideIt() {
         assertEquals(null, citedBy("Sum"), "a keyword in English models, a name in German ones");
         assertEquals(null, citedBy("7_DAYS"), "a digit-led spelling, which A12 cannot read as a name");
-        assertEquals(null, citedBy("MVK_INVALID_COMPARE_DEC_PLACES", "MVK_NO_WILDCARD"), "two entries");
+    }
+
+    /**
+     * A second entry is refused whatever it spells, because A12 renders the list into a one-code pragma and
+     * fails on the comma. The class is cited where the first entry is a name A12 reads, which puts its parser
+     * at that comma: the supported code twice or three times, and a bogus code on either side of it, are all
+     * {@code MVK_UNEXPECTED_TOKEN} ({@code validate.laws.ComputationSuppressionLawsTest}, KERNEL-FINDINGS KF298).
+     */
+    @Test
+    void aSecondEntryIsRefusedWithTheParseClass() {
+        String supported = "MVK_INVALID_COMPARE_DEC_PLACES";
+        assertEquals(KernelCode.MVK_UNEXPECTED_TOKEN, citedBy(supported, supported));
+        assertEquals(KernelCode.MVK_UNEXPECTED_TOKEN, citedBy(supported, supported, supported));
+        assertEquals(KernelCode.MVK_UNEXPECTED_TOKEN, citedBy(supported, "MVK_NO_WILDCARD"));
+        assertEquals(KernelCode.MVK_UNEXPECTED_TOKEN, citedBy("MVK_NO_WILDCARD", supported));
+        assertEquals(null, citedBy("Sum", supported), "a keyword first: which token fails depends on the language");
+        IllegalArgumentException twoCalls = assertThrows(IllegalArgumentException.class,
+                () -> m.computation(m.num("/Order/BackorderQuantity")).name("C")
+                        .calc(m.num("/Order/UnitPrice").value())
+                        .errorCodesToSuppress(supported).errorCodesToSuppress(supported));
+        assertEquals(KernelCode.MVK_UNEXPECTED_TOKEN, ((KernelCodeRefusal) twoCalls).code(),
+                "the list a second call extends is the one A12 renders");
     }
 
     /**

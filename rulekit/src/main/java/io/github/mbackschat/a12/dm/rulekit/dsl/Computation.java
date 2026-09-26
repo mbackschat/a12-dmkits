@@ -233,15 +233,26 @@ public record Computation(
          * (currently only {@code MVK_INVALID_COMPARE_DEC_PLACES}, the static assignment-scale gate that lets
          * a scale-mismatched operation load — IF92); an unsupported code is refused fail-fast, not written.
          *
-         * <p>The refusal cites A12's class only where the entry alone decides it, because A12 judges the pragma
-         * the list renders into rather than the list (KERNEL-FINDINGS KF298): a lone code-shaped entry is a name
-         * it reads and then refuses, while a keyword's class depends on the model's condition language, which a
-         * computation does not carry, and a second entry fails on its comma first. The supported code padded
-         * with whitespace is the one spelling refused where A12 admits it, since its lexer discards the
-         * padding; refusing it keeps the member to the one spelling every consumer compares.
+         * <p>The refusal cites A12's class only where the entries decide it, because A12 judges the pragma the
+         * list renders into rather than the list (KERNEL-FINDINGS KF298): a lone code-shaped entry is a name it
+         * reads and then refuses, while a keyword's class depends on the model's condition language, which a
+         * computation does not carry. A SECOND entry is refused whatever it spells, the pragma taking one code:
+         * behind a code-shaped first entry the parser fails on the comma with {@code MVK_UNEXPECTED_TOKEN},
+         * measured with the supported code and a bogus one on either side. The supported code padded with
+         * whitespace is the one spelling refused where A12 admits it, since its lexer discards the padding;
+         * refusing it keeps the member to the one spelling every consumer compares.
          */
         public Builder errorCodesToSuppress(String... codes) {
-            boolean lone = errorCodesToSuppress.isEmpty() && codes.length == 1;
+            var entries = new ArrayList<>(errorCodesToSuppress);
+            entries.addAll(List.of(codes));
+            if (entries.size() > 1) {
+                String message = "errorCodesToSuppress takes one code, since A12 renders it into a one-code "
+                        + "@SuppressWarning pragma — got " + entries;
+                throw CODE_SHAPED.matcher(entries.getFirst()).matches()
+                        ? Refusals.of(KernelCode.MVK_UNEXPECTED_TOKEN, message)
+                        : new IllegalArgumentException(message);
+            }
+            boolean lone = codes.length == 1;
             for (String code : codes) {
                 if (!supportedErrorCodesToSuppress().contains(code)) {
                     String message = "errorCodesToSuppress only accepts the kernel's supported set "

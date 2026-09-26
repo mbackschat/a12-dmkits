@@ -72,6 +72,9 @@ class ComputationSuppressionLawsTest {
         actual.put("the supported code TWICE — the control that isolates the comma",
                 verdict("[\"" + SUPPORTED + "\",\"" + SUPPORTED + "\"]"));
         actual.put("the supported code beside a bogus one", verdict("[\"" + SUPPORTED + "\",\"MVK_TOTALLY_BOGUS\"]"));
+        actual.put("a bogus code AHEAD of the supported one", verdict("[\"MVK_TOTALLY_BOGUS\",\"" + SUPPORTED + "\"]"));
+        actual.put("the supported code three times",
+                verdict("[\"" + SUPPORTED + "\",\"" + SUPPORTED + "\",\"" + SUPPORTED + "\"]"));
         actual.put("an empty string entry", verdict("[\"\"]"));
 
         Map<String, String> expected = new LinkedHashMap<>();
@@ -89,6 +92,10 @@ class ComputationSuppressionLawsTest {
         // control carries the supported code twice, so nothing about validity can explain it.
         expected.put("the supported code TWICE — the control that isolates the comma", "MVK_UNEXPECTED_TOKEN");
         expected.put("the supported code beside a bogus one", "MVK_UNEXPECTED_TOKEN");
+        // The row that separates "the comma answers first" from "the name gate answers first": a name A12
+        // refuses, read before the comma, still leaves the parse failure as the class.
+        expected.put("a bogus code AHEAD of the supported one", "MVK_UNEXPECTED_TOKEN");
+        expected.put("the supported code three times", "MVK_UNEXPECTED_TOKEN");
         // …and an empty entry renders `@SuppressWarning()`, which is the same parse failure.
         expected.put("an empty string entry", "MVK_UNEXPECTED_TOKEN");
         assertEquals(expected, actual, "what A12 does with each shape of errorCodesToSuppress");

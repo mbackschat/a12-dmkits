@@ -33,7 +33,8 @@
     "errorCodesToSuppress": {
       "type": "array",
       "items": { "type": "string", "enum": ["MVK_INVALID_COMPARE_DEC_PLACES"] },
-      "description": "A12 IComputation.errorCodesToSuppress, serialized unchanged as an array. The kernel currently accepts only MVK_INVALID_COMPARE_DEC_PLACES; use it when a numeric operation is intentionally valid despite the static assignment-scale gate. Omit (or pass []) for no suppression."
+      "maxItems": 1,
+      "description": "A12 IComputation.errorCodesToSuppress, serialized unchanged as an array. The kernel currently accepts only MVK_INVALID_COMPARE_DEC_PLACES; use it when a numeric operation is intentionally valid despite the static assignment-scale gate. At most one entry: A12 renders the list into a one-code @SuppressWarning pragma, so a second entry, even the same code again, is refused with MVK_UNEXPECTED_TOKEN. Omit (or pass []) for no suppression."
     },
     "roundingMode": {
       "type": "string",
