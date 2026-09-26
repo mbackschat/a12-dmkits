@@ -92,7 +92,7 @@ class GroupCountScopeOperandLawsTest {
                 new Row("Keyed For \"k\", Grading", "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
                         count(List.of(M.flattenGroup("/Item/Keyed").forIndex("k"), grading)), REFUSED),
                 // a group written without the star it repeats with, as a stored text may hold it: at a rule that
-                // does not iterate it the missing star answers, so its class depends on the rule
+                // does not iterate it the missing star answers (the control at a rule that does is below)
                 new Row("Keyed", "MVK_NO_WILDCARD", count(List.of(M.flattenGroup("/Item/Keyed"))), REFUSED),
                 new Row("Grading, Keyed", "MVK_NO_WILDCARD", count(List.of(grading, M.flattenGroup("/Item/Keyed"))), ADMITTED),
                 new Row("/Lot", "MVK_NO_WILDCARD", count(List.of(M.flattenGroup("/Lot"))), REFUSED),
@@ -119,6 +119,25 @@ class GroupCountScopeOperandLawsTest {
             expected.put(row.operands(), row.recordVerdict());
             actual.put(row.operands(), verdict(row.record(), row.kernel()));
         }
+        assertEquals(expected, actual);
+    }
+
+    /**
+     * The within-model control for the four unstarred rows above: the same texts at a rule that iterates
+     * {@code Keyed}, where the rule's own row binds the level. Predicted: the missing star no longer answers,
+     * so beside another group the count is admitted, and alone it meets the arity law a fixed group meets. The
+     * rival reading, that a repeatable group without its star is refused wherever it is written, gives
+     * {@code MVK_NO_WILDCARD} on both.
+     */
+    @Test
+    void anUnstarredRepeatableGroupIsBoundByARuleThatIteratesIt() {
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("/Item/Grading, /Item/Keyed", ADMITTED);
+        expected.put("/Item/Keyed", "MVK_PARAMSIZE_INVALIDGN");
+        expected.put("/Item/Keyed*", ADMITTED);
+        Map<String, String> actual = new LinkedHashMap<>();
+        expected.keySet().forEach(operands -> actual.put(operands, KernelLaws.verdictModel(MODEL, "/Item/Keyed",
+                "../Amount", "FieldFilled(/Item/Keyed/Amount) And NumberOfFilledGroups(" + operands + ") > 0")));
         assertEquals(expected, actual);
     }
 
