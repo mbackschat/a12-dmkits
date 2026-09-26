@@ -68,6 +68,367 @@ Caveats that hold across all four paths:
 - **A resolution is three things, not one:** the bucket, the own-words treatment in the row, and — wherever the row claims a behavior — a law lock (`validate/laws/` accept-reject or `adapter/laws/` fires/does-not-fire). A bucket flip without its lock is an unguarded fact.
 - **Batch by family, not row-by-row.** The metamodel section clusters naturally (`DISPLAY_VALUES_*`, `INTERNAL_VALUES_*`, `SORT_*`, …); one explanation pass per cluster beats 103 single experiments.
 
+## Checker stage map (R0, 2026-09-27)
+
+This map adds the stage axis to the typed-library dispositions below. The denominator is exactly the `MVK_` codes reported by the portable checker's main sources and the constants of `CheckFamily`: 215 codes and 110 families on 2026-09-27. `CheckerLedgerDispositionGuardTest.everyReportedCodeHasAStageAndRaisingSite` and `everyFamilyHasAStageAndReplacementPartition` derive those sets and require exact equality with these tables, including duplicate-row rejection. They do not prove the site assignments; those rest on the cited source reads and terminal review. Run the guard with `./build.sh --console=plain -Pfast :leakGuardTest --tests '*CheckerLedgerDispositionGuardTest'`.
+
+**Stage vocabulary.** Reader/build failures can happen before a model exists. For a built model, `DocumentModelConsistencyRulesProvider` runs all eight outer checks in order: schema-version pattern, schema version, ID uniqueness, Number value limits, attachment groups, multi-select groups, code generation, serializer basic checks. The seven checks beside code generation read the original model. Code generation alone converts the default variant, extracts all computations, then prepares validation code: `ValidationCodeGenerator.preCheck` collects metamodel data, runs `NoMetaModelChecks`, runs `MM_Common` validation, and calls `prepareRules` even when either precheck failed. `CodeGenData.removeRules` builds each `RuleInfo` through `RuleInfoBuilder`; a failed condition suppresses that rule's message check, not construction of the next rule's info. These are source-read sequencing claims, not an order-oracle result.
+
+The stages named **pre-parse**, **syntax**, **parse-action** and **post-parse** are those of [CHECKER-RECONSTRUCTION-PROPOSAL](CHECKER-RECONSTRUCTION-PROPOSAL.md) §2 and Appendix A. A computation reaches them through its joined condition; a message has its own parser. **Calculation** is the calculation module's additional validation. **Non-meta** and **metamodel** are code generation's two model checks. **Condition exception boundary** names the parser service's conversion of an unchecked exception, rather than a normal semantic action. **Code generation** includes the later dependency-cycle report. All of these consume the default-variant container; **serializer** means the final basic check of the original model.
+
+**Source estate and limits.** The code denominator is `CheckerReportedCodes.bySource()`: tracked `.kt` files under `consistency/src/commonMain`, excluding comments, declared `setOf` initializers and `KernelCorrectives.kt`. It does not scan untracked files or other source sets; an outside-set literal can still overcount a code that is never emitted, as that reader documents. Every resulting code is listed below. Action sites come from the proposal's Appendix A.2; this map does not promote its unmeasured action order into a specification. The metamodel sites were enumerated by traversing every rule in `../a12-kernel-mm/documentModels/MM_Common_v2/codegen-mm_common-v2-19.8.json`, selecting reported `errorCode` values and recording the containing element names; the table contains all those matches, including the extensible-enumeration carriers that stored DM-JSON cannot reach. Remaining sites were read in `../a12-kernel`'s `ParserService`, parser error handlers, `CalculationService`, calculation helper, `CodeGenCalcBuilder`, and `NoMetaModelChecks`. This is placement for the checker-reported classes, not an enumeration of every kernel diagnostic or every possible caller of a shared helper.
+
+### Reported codes and raising sites
+
+Metamodel paths are relative to `MM_Common_v2`; action names are the proposal's source names, retained here as citations rather than implementation names for the clean-room rebuild. A code can belong to more than one stage. In particular, `MVK_SEMANTIC_INDEX_NOT_ALLOWED` has both a parse action and a post-parse site; class-based ordering alone cannot place it.
+
+<!-- checker-stage-codes:start -->
+| Stage | Reported code | Raising site |
+|---|---|---|
+| metamodel | `MVK_ADDITIONAL_CHECK_INVALID` | `MVK/Fields/FieldType/DateType/MVK_ADDITIONAL_CHECK_INVALID` |
+| metamodel | `MVK_ARITY_TOO_BIG` | `MVK/Fields/FieldType/NumberType/MVK_ARITY_TOO_BIG` |
+| parse-action | `MVK_BRACKET_MISSING` | `checkBedingung` |
+| parse-action | `MVK_CATEGORY_NOT_ALLOWED` | `checkFeldListenBedingung`, `checkKontextListenBedingung`, `checkWiederholungBedingung`, `checkFeldOp`, `checkRundenOp`, `checkFeldListenAnzahlOp`, `checkFeldOpMitParams`, `checkDatumKonstrukt`, `checkTimeKonstrukt`, `checkDatumBereichOp`, `checkDatumAngabe`, `checkFeldOpMitDatumSpecial` |
+| parse-action | `MVK_CATEGORY_UNKOWN` | `checkEntitySpec` |
+| metamodel | `MVK_CATEGORY_VALUE_DUPLICATE` | `MVK/Fields/FieldType/EnumerationType/Categories/MVK_CATEGORY_VALUE_DUPLICATE` |
+| metamodel | `MVK_CATEGORY_VALUE_INVALID` | `MVK/Fields/FieldType/EnumerationType/Categories/Values/MVK_CATEGORY_VALUE_INVALID` |
+| metamodel | `MVK_CONDITION_MISSING` | `MVK/Rules/MVK_CONDITION_MISSING` |
+| metamodel | `MVK_COUNT_OF_VALUES_INVALID` | `MVK/Fields/FieldType/EnumerationType/ValuesPerLanguage/MVK_COUNT_OF_VALUES_INVALID` |
+| parse-action | `MVK_DATEFORMATS_NOT_COMPATIBLE` | `checkFeldListenOp`, `checkFeldListenOperOp` (`Max`, `Min`) |
+| parse-action | `MVK_DATE_AND_NONDATE` | `checkFeldListenOp`, `checkFeldListenOperOp` (`Max`, `Min`) |
+| parse-action | `MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED` | `checkDatumKonstrukt`, `checkTimeKonstrukt` |
+| parse-action | `MVK_DATE_WITH_AND_WITHOUT_YEAR` | `checkFeldListenBedingung`, `checkFeldListeUndWerteListenBedingung`, `checkDatumDiffOp` |
+| parse-action | `MVK_DIFFERENT_GROUPS` | `checkFeldListenOp` |
+| parse-action | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` | `checkEntitySpec` |
+| metamodel | `MVK_DISPLAY_VALUES_DUPLICATE` | `MVK/Fields/FieldType/EnumerationType/ValuesPerLanguage/MVK_DISPLAY_VALUES_DUPLICATE`, `MVK/Fields/FieldType/ExtensibleEnumerationType/MVK_DISPLAY_VALUES_DUPLICATE` |
+| metamodel | `MVK_DISPLAY_VALUE_INVALID` | `MVK/Fields/FieldType/EnumerationType/ValuesPerLanguage/Values/MVK_DISPLAY_VALUE_INVALID`, `MVK/Fields/FieldType/ExtensibleEnumerationType/DisplayValues/MVK_DISPLAY_VALUE_INVALID` |
+| parse-action | `MVK_DUPLICATE_PARAM1` | CheckEntityListenUtils.checkDuplicatesInDirectRefs, called by the list actions in proposal A.2 |
+| parse-action | `MVK_DUPLICATE_PARAM2` | CheckEntityListenUtils.checkDuplicatesInIndirectRefs, called by the list actions in proposal A.2 |
+| non-meta | `MVK_ENUM_VALUE_WITH_INVALID_CHARACTER` | NoMetaModelChecks.checkEnumValue |
+| code generation | `MVK_ERROR_CALC_CYCLE` | CodeGenCalcBuilder.getCalculatedFields |
+| metamodel | `MVK_ERROR_CODE_MISSING` | `MVK/Rules/MVK_ERROR_CODE_MISSING` |
+| calculation | `MVK_ERROR_EMPTY_PRECONDITION` | NormalisierteBerechnungsFormHelper.checkTeilBerechnung |
+| post-parse | `MVK_ERROR_FIELDGROUP_ITERATION4_INVALID` | IterationChecker.checkIteration, called by ParserService.checkNormalRule |
+| post-parse | `MVK_ERROR_FIELDGROUP_ITERATION5_INVALID` | IterationChecker.checkIteration, called by ParserService.checkNormalRule |
+| parse-action | `MVK_ERROR_FIELD_INVALID_INDEX` | `checkEntitySpec` |
+| parse-action | `MVK_ERROR_FIELD_INVALID_INDEX_TYPE` | `checkEntitySpec` |
+| metamodel | `MVK_ERROR_FIELD_MISSING` | `MVK/Rules/MVK_ERROR_FIELD_MISSING` |
+| parse-action | `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` | `checkEntitySpec` |
+| post-parse | `MVK_ERROR_FIELD_NOT_REFERENCED` | IterationChecker.checkIteration, called by ParserService.checkNormalRule |
+| parse-action | `MVK_ERROR_FIELD_NO_INDEX` | `checkEntitySpec` |
+| calculation | `MVK_ERROR_INDEX_AS_CALCULATED_FIELD` | CalculationService.checkCalculationRule |
+| calculation | `MVK_ERROR_INVALID_ENUM_CALCULATION` | NormalisierteBerechnungsFormHelper.checkBerechnungsFunktion |
+| calculation | `MVK_ERROR_INVALID_LANGUAGE_FEATURE` | NormalisierteBerechnungsFormHelper.checkNormalisierteForm |
+| metamodel | `MVK_ERROR_MESSAGE_AND_NO_PATTERN` | `MVK/Fields/FieldType/StringType/MVK_ERROR_MESSAGE_AND_NO_PATTERN` |
+| metamodel | `MVK_ERROR_MESSAGE_AND_PATTERN_INVALID` | `MVK/Fields/FieldType/StringType/MVK_ERROR_MESSAGE_AND_PATTERN_INVALID` |
+| metamodel | `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` | `MVK/Fields/FieldType/StringType/MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`, `MVK/Rules/MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` |
+| metamodel | `MVK_ERROR_MESSAGE_MISSING` | `MVK/Rules/MVK_ERROR_MESSAGE_MISSING` |
+| calculation | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` | NormalisierteBerechnungsFormHelper.reportReferenceError |
+| calculation | `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD` | CalculationService.testRuleStructure |
+| calculation | `MVK_ERROR_WRONG_ROUNDING_MODE` | NormalisierteBerechnungsFormHelper.extractBerechnungsFeldOp |
+| syntax | `MVK_EXPECTED_TOKEN_NOT_FOUND` | AbstractDefaultErrorStrategy.reportError (condition and message parsers) |
+| parse-action | `MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS` | `checkDatumKonstrukt`, `checkTimeKonstrukt` |
+| parse-action | `MVK_FIELDNAME_NOT_UNIQUE` | `checkIdNameRef` (per segment) |
+| metamodel | `MVK_FRACT_DIGITS_INVALID` | `MVK/Fields/FieldType/NumberType/MVK_FRACT_DIGITS_INVALID` |
+| metamodel | `MVK_FRACT_DIGITS_MISSING` | `MVK/Fields/FieldType/NumberType/MVK_FRACT_DIGITS_MISSING` |
+| parse-action | `MVK_GROUP_IS_EMPTY` | `checkEntitySpec`, `checkRegelKontextEntity` |
+| parse-action | `MVK_GROUP_NOT_REPEATABLE` | `checkWiederholungBedingung` |
+| syntax | `MVK_INCOMPLETE_INPUT` | AbstractDefaultErrorStrategy.reportError (condition and message parsers) |
+| parse-action | `MVK_INCONSISTENT_TYPES_COMPARED` | `checkVergleichsBedingung` |
+| non-meta | `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` | NoMetaModelChecks.checkIndexField |
+| message | `MVK_INDEX_FOR_ERROR_TEXT_INVALID` | FullChecks_ErrorTextParameterParser semantic-index parameter check |
+| parse-action | `MVK_INDEX_TYPE_INCONSISTENT` | `checkSemanticIndex` |
+| parse-action | `MVK_INDEX_VALUE_INVALID` | `checkSemanticIndex` |
+| condition exception boundary | `MVK_INTERNAL_ERROR` | ParserService.reportMVKCoreErrorOrExceptionFromParsing; checker carrier: AnalyseService.extractConstant after the raw-Length shape check |
+| metamodel | `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` | `MVK/Fields/FieldType/EnumerationType/ValuesPerLanguage/Values/MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` |
+| metamodel | `MVK_INTERNAL_VALUES_DUPLICATE` | `MVK/Fields/FieldType/EnumerationType/ValuesPerLanguage/MVK_INTERNAL_VALUES_DUPLICATE`, `MVK/Fields/FieldType/EnumerationType/MVK_INTERNAL_VALUES_DUPLICATE` |
+| metamodel | `MVK_INTERNAL_VALUE_INVALID` | `MVK/Fields/FieldType/EnumerationType/InternalValues/MVK_INTERNAL_VALUE_INVALID`, `MVK/Fields/FieldType/EnumerationType/ValuesPerLanguage/Values/MVK_INTERNAL_VALUE_INVALID`, `MVK/Fields/FieldType/EnumerationType/Categories/Values/MVK_INTERNAL_VALUE_INVALID` |
+| post-parse | `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` | ParserService.checkNormalRule |
+| parse-action | `MVK_INVALID_COMPARE_DEC_PLACES` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_COMPARE_ENUM_TO_ENUM` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_COMPARE_ENUM_TO_STRING` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_COMPARE_TO_CONST` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_COMPARE_TO_DATE` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_COMPARE_TO_DATE_RANGE` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_COMPARE_TO_YES` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_COMPARE_TO_YESNO` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_CONST` | `checkAnzahlWertOp` |
+| parse-action | `MVK_INVALID_DATE_FOR_OP` | `checkDatumAngabe` |
+| parse-action | `MVK_INVALID_DATE_OR_TIME_EXTRACT_OP` | `checkDatumKonstrukt`, `checkTimeKonstrukt` |
+| parse-action | `MVK_INVALID_DATE_RANGE_FORMAT` | `checkFeldListenBedingung`, `checkFeldListeUndWerteListenBedingung` |
+| parse-action | `MVK_INVALID_DATE_STRING` | `checkDatumAngabe` |
+| parse-action | `MVK_INVALID_DATE_TYPE` | `checkFeldWertOp`, `checkDatumDiffOp`, `checkDatumAddOp`, `checkDatumExtractOp`, `checkDateTimeKonstrukt` |
+| parse-action | `MVK_INVALID_DATE_TYPE_FOR_OP` | `checkFeldOpMitDatumSpecial` |
+| parse-action | `MVK_INVALID_DIGIT_FOR_ROUNDING` | `checkRundenOp`, `checkRundenOperOp` |
+| parse-action | `MVK_INVALID_ENTITY` | `checkRelativeUp`, `checkIdNameRef` (per segment) |
+| non-meta | `MVK_INVALID_INDEX_FIELD` | NoMetaModelChecks.checkIndexField |
+| parse-action | `MVK_INVALID_INTERVAL` | `checkFeldOpMitParams` |
+| parse-action | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | `checkEntitySpec` |
+| post-parse | `MVK_INVALID_LENGTH_OF_RAW_TYPE` | ParserService.checkNormalRule |
+| parse-action | `MVK_INVALID_NUMBER_FOR_EXP` | `checkOperation` |
+| parse-action | `MVK_INVALID_OUTER_ITERATION` | `checkEntitySpec` |
+| parse-action | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` | `checkFeldListeUndWerteListenBedingung` |
+| parse-action | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_PATTERN` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_RAW_TYPE` | `checkFeldListenBedingung`, `checkFeldListeUndWerteListenBedingung`, `checkFeldUndWerteListenBedingung`, `checkPredefinedTypeValidityCondition`, `checkWiederholungBedingung`, `checkFeldWertOp`, `checkFeldOp`, `checkFeldListenAnzahlOp`, `checkAnzahlWertOp`, `checkFeldOpMitParams`, `checkSemanticIndex` |
+| parse-action | `MVK_INVALID_ROOT_GROUP` | `checkIdNameRef` (per segment) |
+| parse-action | `MVK_INVALID_ROOT_GROUP_CONSTR` | `checkFormularBedingungName`, `checkAnzahlAngegebenOpHModel` (ungated) |
+| metamodel | `MVK_INVALID_SORTINFO` | `MVK/Model/Rootgroups/MVK_INVALID_SORTINFO`, `MVK/Model/Groups/MVK_INVALID_SORTINFO` |
+| non-meta | `MVK_INVALID_SORT_FIELD` | NoMetaModelChecks.checkSortField |
+| parse-action | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` | `checkFeldUndWerteListenBedingung`, `checkAnzahlWertOp` |
+| parse-action | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_CATEGORY` | checkFeldUndWerteListenBedingung / checkAnzahlWertOp (proposal A.2) |
+| parse-action | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` | `checkFeldListeUndWerteListenBedingung` |
+| parse-action | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_SUPPRESSED_WARNING` | `checkPreamble` |
+| parse-action | `MVK_INVALID_TIME` | `checkDatumDiffOp`, `checkDatumAddOp` |
+| parse-action | `MVK_INVALID_TYPE` | `checkFeldOpMitParams` |
+| parse-action | `MVK_INVALID_TYPES_FOR_COMPARISON` | `checkFeldListeUndWerteListenBedingung`, `checkFeldUndWerteListenBedingung` |
+| parse-action | `MVK_INVALID_TYPE_FOR_COMPARISON` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` | `checkVergleichsBedingung` |
+| parse-action | `MVK_INVALID_WILDCARD` | `checkIdNameRef` (per segment) |
+| parse-action | `MVK_INVALID_WILDCARD_FOR_RULEGROUP` | `checkRegelKontextEntity` |
+| parse-action | `MVK_INVALID_WILDCARD_REL` | `checkRelativeUp` |
+| metamodel | `MVK_LANGUAGE_DUPLICATE` | `MVK/Rules/MVK_LANGUAGE_DUPLICATE` |
+| syntax | `MVK_LEXER_STANDARD_ERROR` | ErrorHandlerUtil.recover |
+| metamodel | `MVK_LINE_BREAK_AND_MAX_LENGTH_1_INVALID` | `MVK/Fields/FieldType/StringType/MVK_LINE_BREAK_AND_MAX_LENGTH_1_INVALID` |
+| metamodel | `MVK_MAX_LENGTH_TOO_BIG` | `MVK/Fields/FieldType/NumberType/MVK_MAX_LENGTH_TOO_BIG` |
+| metamodel | `MVK_MAX_LENGTH_TOO_SMALL` | `MVK/Fields/FieldType/NumberType/MVK_MAX_LENGTH_TOO_SMALL` |
+| metamodel | `MVK_MAX_TOO_BIG` | `MVK/Model/Rootgroups/MVK_MAX_TOO_BIG`, `MVK/Model/Groups/MVK_MAX_TOO_BIG` |
+| non-meta | `MVK_MAX_VALUES_INVALID` | NoMetaModelChecks.checkEntity |
+| metamodel | `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` | `MVK/Fields/FieldType/StringType/MVK_MIN_LENGTH_BIGGER_MAX_LENGTH`, `MVK/Fields/FieldType/NumberType/MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` |
+| metamodel | `MVK_MIN_LENGTH_TOO_BIG` | `MVK/Fields/FieldType/NumberType/MVK_MIN_LENGTH_TOO_BIG` |
+| metamodel | `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE` | `MVK/Fields/FieldType/NumberType/MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE` |
+| metamodel | `MVK_MISSING_CATEGORY_VALUE` | `MVK/Fields/FieldType/EnumerationType/Categories/Values/MVK_MISSING_CATEGORY_VALUE` |
+| parse-action | `MVK_MISSING_CONST_IN_PATTERN_COMP` | `checkVergleichsBedingung` |
+| pre-parse | `MVK_MISSING_ERROR_FIELD` | ParserService.checkErrorFieldSetAndValid |
+| metamodel | `MVK_MISSING_INTERNAL_VALUE` | `MVK/Fields/FieldType/EnumerationType/Categories/Values/MVK_MISSING_INTERNAL_VALUE` |
+| parse-action | `MVK_MISSING_YEAR` | `checkDatumKonstrukt`, `checkTimeKonstrukt` |
+| parse-action | `MVK_MULTIPLE_INDEX_FIELDS` | `checkEntitySpec`, `checkSemanticIndex` |
+| metamodel | `MVK_NAME_INVALID_A12_DV` | `MVK/Fields/MVK_NAME_INVALID_A12_DV` |
+| metamodel | `MVK_NAME_INVALID_DOT_COLON_A12_DV` | `MVK/Fields/MVK_NAME_INVALID_DOT_COLON_A12DV` |
+| metamodel | `MVK_NAME_STARTS_WITH_DIGIT` | `MVK/Model/Rootgroups/MVK_NAME_STARTS_WITH_DIGIT` |
+| metamodel | `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` | `MVK/Fields/MVK_NAME_STARTS_WITH_DIGIT_A12_DV` |
+| metamodel | `MVK_NAME_STARTS_WITH_XML` | `MVK/Model/Rootgroups/MVK_NAME_STARTS_WITH_XML`, `MVK/Model/Groups/MVK_NAME_STARTS_WITH_XML` |
+| metamodel | `MVK_NAME_STARTS_WITH_XML_A12_DV` | `MVK/Fields/MVK_NAME_STARTS_WITH_XML_A12_DV` |
+| parse-action | `MVK_NON_NUMERIC` | `checkDatumAddOp` |
+| parse-action | `MVK_NOT_IN_GROUP` | `checkWiederholungBedingung` |
+| parse-action | `MVK_NOT_IN_RULEGROUP` | `checkWiederholungBedingung` |
+| parse-action | `MVK_NOT_IN_SAME_PATH` | `checkWiederholungBedingung` |
+| parse-action | `MVK_NOT_SORTABLE` | `checkFeldListenOp`, `checkFeldListenOperOp` (`Max`, `Min`) |
+| parse-action | `MVK_NO_BASE_YEAR` | `checkKonstanteReferenzjahr` |
+| parse-action | `MVK_NO_BOOLY_ALLOWED` | `checkFeldListenOp` |
+| parse-action | `MVK_NO_CONST` | `checkFeldListeUndWerteListenBedingung`, `checkFeldOperOp`, `checkRundenOperOp`, `checkDatumExtractOp` |
+| parse-action | `MVK_NO_CONVERT_IN_NUMBER` | `checkFeldOp` |
+| parse-action | `MVK_NO_DATE` | `checkDatumAngabe` |
+| parse-action | `MVK_NO_DATE_CONSTANT` | `checkAnzahlWertOp` |
+| parse-action | `MVK_NO_DATE_RANGE` | `checkFeldListenBedingung`, `checkFeldListeUndWerteListenBedingung`, `checkDatumBereichOp` |
+| parse-action | `MVK_NO_DIGIT_PATTERN` | `checkDatumKonstrukt`, `checkTimeKonstrukt` |
+| parse-action | `MVK_NO_EMPTY` | `checkPredefinedTypeValidityCondition` |
+| parse-action | `MVK_NO_ENUMERATION` | `checkEntitySpec` |
+| parse-action | `MVK_NO_FIELDS_ALLOWED` | `checkKontextListenBedingung`, `checkWiederholungBedingung`, `checkFeldListenAnzahlOp`, `checkGroupOp` |
+| parse-action | `MVK_NO_GROUPS_ALLOWED` | `initFilterCondition`, `checkFeldListenBedingung`, `checkFieldAndValueListCondition`, `checkFeldUndWerteListenBedingung`, `checkPredefinedTypeValidityCondition`, `checkWiederholungBedingung`, `checkFeldWertOp`, `checkFeldListenOp`, `checkFeldOp`, `checkRundenOp`, `checkFeldOpMitParams`, `checkDatumKonstrukt`, `checkTimeKonstrukt`, `checkDatumBereichKonstrukt`, `checkDatumBereichOp`, `checkDatumAngabe`, `checkFeldOpMitDatumSpecial`, `checkEntitySpec` |
+| parse-action | `MVK_NO_INDEX_FIELD` | `checkSemanticIndex` |
+| parse-action | `MVK_NO_ITERATION_FOR_WILDCARD` | `checkEntitySpec` |
+| parse-action | `MVK_NO_NUMBER` | `checkFeldListenOp`, `checkFeldOp`, `checkFeldOperOp`, `checkRundenOp`, `checkRundenOperOp`, `checkAnzahlWertOp` |
+| parse-action | `MVK_NO_NUMBER_FOR_CALC` | `checkOperation` |
+| parse-action | `MVK_NO_STRING` | `checkFeldOp` |
+| parse-action | `MVK_NO_STRING_OR_ENUM` | `checkAnzahlWertOp` |
+| parse-action | `MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM` | `checkPredefinedTypeValidityCondition` |
+| parse-action | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` | `checkOperation` |
+| parse-action | `MVK_NO_TYPEYESNO` | `checkAnzahlWertOp` |
+| parse-action | `MVK_NO_TYPE_YES_OR_YESNO` | `checkAnzahlWertOp` |
+| metamodel | `MVK_NO_VAL_AND_HINT_LISTS` | `MVK/Fields/FieldType/StringType/MVK_NO_VAL_AND_HINT_LISTS` |
+| parse-action | `MVK_NO_WILDCARD` | `checkEntitySpec` |
+| parse-action | `MVK_NO_WILDCARDS_ALLOWED` | `checkFeldListenBedingung`, `checkKontextListenBedingung`, `checkFieldAndValueListCondition`, `checkFeldUndWerteListenBedingung`, `checkPredefinedTypeValidityCondition`, `checkWiederholungBedingung`, `checkFeldWertOp`, `checkFeldOp`, `checkRundenOp`, `checkFeldOpMitParams`, `checkDatumKonstrukt`, `checkTimeKonstrukt`, `checkDatumBereichKonstrukt`, `checkDatumBereichOp`, `checkDatumAngabe`, `checkFeldOpMitDatumSpecial`, `checkGroupOp` |
+| parse-action | `MVK_NO_WILDCARDS_G_ALLOWED` | `checkKontextListenBedingung` |
+| parse-action | `MVK_NUMBER_AND_NON_NUMBER` | `checkFeldListenAnzahlOp` |
+| parse-action | `MVK_ONLY_CONSTANTS_USED` | `checkDateValidityCondition` |
+| parse-action | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | `checkFeldListeUndWerteListenBedingung`, `checkFeldUndWerteListenBedingung` |
+| parse-action | `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` | `checkFeldListenAnzahlOp` |
+| parse-action | `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` | `checkFeldListenBedingung` |
+| metamodel | `MVK_OPTIONAL_DATE_TYPE_INVALID` | `MVK/Fields/FieldType/DateType/MVK_OPTIONAL_DATE_TYPE_INVALID` |
+| post-parse | `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED` | ParserService.checkNormalRule |
+| post-parse | `MVK_PARALLEL_ITERATION_NOT_ALLOWED` | ParserService.checkNormalRule |
+| parse-action | `MVK_PARAMSIZE_INVALID1` | `checkFeldListenBedingung`, `checkKontextListenBedingung` |
+| parse-action | `MVK_PARAMSIZE_INVALID2` | `checkKontextListenBedingung` |
+| parse-action | `MVK_PARAMSIZE_INVALIDFN` | `checkFeldListenBedingung` |
+| parse-action | `MVK_PARAMSIZE_INVALIDGN` | `checkFeldListenAnzahlOp` |
+| parse-action | `MVK_PARAMSIZE_INVALIDN` | `checkFeldListenBedingung`, `checkFeldListenOp`, `checkFeldListenAnzahlOp`, `checkAnzahlWertOp` |
+| parse-action | `MVK_PARAMSIZE_INVALID_2` | `checkFeldListenOp` |
+| parse-action | `MVK_PARTIAL_DATE_NOT_ALLOWED` | `checkFeldListenOp`, `checkFeldListenOperOp` (`Max`, `Min`) |
+| non-meta | `MVK_PATHS_INCONSISTENT` | NoMetaModelChecks.checkEntity |
+| non-meta | `MVK_PATH_INVALID` | NoMetaModelChecks.checkEntity |
+| metamodel | `MVK_PATTERN_INVALID` | `MVK/Fields/FieldType/StringType/MVK_PATTERN_INVALID` |
+| parse-action | `MVK_POINT_IN_A12_MODEL` | `checkIdNameRef` (per segment) |
+| parse-action | `MVK_REPEATABLE_GROUP_MISSING` | `checkWiederholungBedingung` |
+| parse-action | `MVK_REPEATABLE_LEVEL_REQUIRED` | `checkFeldListenOp` |
+| parse-action | `MVK_ROOT_GROUP_IS_EMPTY` | `checkEntitySpec`, `checkRegelKontextEntity` |
+| metamodel | `MVK_ROOT_GROUP_NAME_INVALID` | `MVK/Model/Rootgroups/MVK_ROOT_GROUP_NAME_INVALID` |
+| parse-action | `MVK_ROOT_GROUP_REFERENCED` | `checkKontextListenBedingung`, `checkFeldListenAnzahlOp`, `checkAnzahlWertOp` |
+| parse-action | `MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS` | `checkKontextListenBedingung`, `checkFeldListenAnzahlOp` |
+| metamodel | `MVK_RULE_NAME_INVALID` | `MVK/Rules/MVK_RULE_NAME_INVALID` |
+| parse-action | `MVK_SEMANTIC_INDEX_AND_WILDCARD` | `checkSemanticIndex` |
+| parse-action | `MVK_SEMANTIC_INDEX_BELOW_WILDCARD` | `checkEntitySpec` |
+| parse-action | `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX` | `checkSemanticIndex` |
+| parse-action | `MVK_SEMANTIC_INDEX_INVALID_ITER` | `checkEntitySpec` |
+| parse-action, post-parse | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` | parse-action: `checkWiederholungBedingung`, `checkFeldListenAnzahlOp`, `checkEntitySpec`; post-parse: ParserService.checkNormalRule |
+| parse-action | `MVK_SEMANTIC_INDEX_NO_FIELD` | `checkSemanticIndex` |
+| parse-action | `MVK_SEMANTIC_INDEX_WITH_CATEGORY` | `checkSemanticIndex` |
+| parse-action | `MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX` | `checkSemanticIndex` |
+| parse-action | `MVK_SEMANTIC_INDEX_WITH_WILDCARD` | `checkSemanticIndex` |
+| metamodel | `MVK_SORT_FIELD_DUPLICATE` | `MVK/Model/Rootgroups/SortInfo/MVK_SORT_FIELD_DUPLICATE`, `MVK/Model/Groups/SortInfo/MVK_SORT_FIELD_DUPLICATE` |
+| non-meta | `MVK_SORT_FIELD_NO_VALUE_VALIDATION` | NoMetaModelChecks.checkSortField |
+| parse-action | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | `checkFeldListenAnzahlOp` |
+| metamodel | `MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK` | `MVK/Fields/FieldType/StringType/MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK` |
+| metamodel | `MVK_STRING_TYPE_PARAMS_INCONSISTENT` | `MVK/Fields/FieldType/StringType/MVK_STRING_TYPE_PARAMS_INCONSISTENT` |
+| metamodel | `MVK_SUPP_LANGUAGES_MISSING` | `MVK/ModelProperties/MVK_SUPP_LANGUAGES_MISSING` |
+| metamodel | `MVK_S_VALUE_INVALID` | `MVK/Fields/FieldType/EnumerationType/MVK_S_VALUE_INVALID` |
+| parse-action | `MVK_TABLE_ENUM_EXPECTED` | `checkFieldAndValueListCondition` |
+| parse-action | `MVK_TOO_MANY_CONST_FOR_CALC_OP` | `checkFeldListenOperOp` (`Max`, `Min`) |
+| parse-action | `MVK_TOO_MANY_DIV_FOR_CALC` | `checkOperation` |
+| parse-action | `MVK_TOO_MANY_PARENT_GROUPS` | `checkRelativeUp`, `checkRelUp`, `checkIdNameRef` (per segment) |
+| parse-action | `MVK_TOO_MANY_POW_FOR_CALC` | `checkOperation` |
+| syntax | `MVK_UNEXPECTED_TOKEN` | AbstractDefaultErrorStrategy.reportError (condition and message parsers) |
+| metamodel | `MVK_UNSPECIFIED_TYPE_NO_CODEGEN` | `MVK/Fields/MVK_UNSPECIFIED_TYPE_NO_CODEGEN` |
+| metamodel | `MVK_VALUES_DUPLICATE` | `MVK/Fields/FieldType/StringType/HintLists/Values/MVK_VALUES_DUPLICATE` |
+| metamodel | `MVK_VALUE_TOO_LONG` | `MVK/Fields/FieldType/StringType/HintLists/Values/MVK_VALUE_TOO_LONG` |
+| metamodel | `MVK_VALUE_TOO_SHORT` | `MVK/Fields/FieldType/StringType/HintLists/Values/MVK_VALUE_TOO_SHORT` |
+| parse-action | `MVK_VARYING_TYPES_NOT_ALLOWED` | `checkFeldListenBedingung`, `checkFeldListeUndWerteListenBedingung`, `checkFeldUndWerteListenBedingung`, `checkFeldListenOp` |
+| parse-action | `MVK_WILDCARDS_REQUIRED` | `checkEntitySpec` |
+| parse-action | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` | `checkFeldListenOp` |
+| parse-action | `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED` | `checkFeldListenOp` |
+| parse-action | `MVK_WRONG_DATE_FORMAT_FOR_OP` | `checkDatumDiffOp`, `checkDatumAddOp`, `checkDatumExtractOp`, `checkDatumKonstrukt`, `checkTimeKonstrukt`, `checkDateTimeKonstrukt`, `checkDatumBereichKonstrukt` |
+<!-- checker-stage-codes:end -->
+
+### Families and replacement ownership
+
+A replacement landing is conditional ownership, not an instruction to rewrite every family in that stage. R3a keeps the family and report contracts; it replaces the syntax machinery underneath them. R3b may remove a family only for a measured duplicated gate or action-order/type mechanism. R4 may replace only the named model-stage mechanisms. Field filtering cannot be applied wholesale to a mixed-stage family: [KF494](KERNEL-FINDINGS.md#kf494) keeps the ingress and original-model counterexamples beside the disappearing container defects.
+
+<!-- checker-stage-families:start -->
+| Stage approximated | Family | Replacement ownership and model view |
+|---|---|---|
+| container, pre-parse, metamodel | `DECLARED_REFERENCES` | R4 owns target preparation; R3b owns reference checks; family retained in R3a |
+| parse-action | `CONDITION_REFERENCES` | R3b candidate; retained through R3a |
+| read/build, metamodel | `DECLARATION_SLOTS` | R4 candidate; original bindings and container rule slots |
+| message | `ERROR_TEXT_PRESENCE` | R4 candidate; message syntax is outside R3a |
+| read/build, syntax, metamodel, calculation | `COMPUTATION_ALTERNATIVES` | R4 candidate; R3a supplies joined-text syntax without deleting this family |
+| read/build, syntax, pre-parse, metamodel | `RULE_CONDITION_AND_TARGET` | R4 candidate; R3a supplies syntax without deleting this family |
+| container | `ELEMENT_NAME_UNIQUENESS` | R4 candidate; name collisions in the converted container (R0b witness) |
+| non-meta | `GROUP_ORDERING_REFERENCES` | R4 candidate; ordering references and field usability read the default container |
+| non-meta | `GROUP_ORDERING_FIELD_TYPE` | R4 candidate; ordering references and field usability read the default container |
+| metamodel | `GROUP_ORDERING_CARRIER` | R4 candidate; group declarations in the default container |
+| non-meta, metamodel | `GROUP_REPETITION_COUNT` | R4 candidate; group declarations in the default container |
+| read/build, calculation | `COMPUTATION_ROUNDING` | R4 candidate; malformed enum bindings and calculation constraints are separate |
+| read/build, syntax, parse-action | `SUPPRESSED_WARNINGS` | R4 owns the declared list; R3a syntax; R3b preamble action |
+| read/build, container | `VARIANT_FILTER` | R4 candidate; original filter binding precedes default-variant deletion |
+| read/build | `RULE_PRESENTATION_MEMBERS` | R4 candidate; original JSON, independent of default-variant filtering |
+| read/build, container, serializer | `STRING_SLOT_BINDING` | R4 candidate; field name witness crosses original binding, conversion and original serializer |
+| read/build, container, metamodel | `FIELD_TYPE_BINDING` | R4 candidate; unknown type reads original input, unspecified type is checked in the default container |
+| metamodel | `TEMPORAL_CONFIG` | R4 candidate; measured field arm reads the default container (KF494) |
+| non-meta, metamodel | `ELEMENT_NAME_ALPHABET` | R4 candidate; field and group names in the default container |
+| metamodel | `FIELD_NAME_RESERVED_SEGMENT` | R4 candidate; measured field arm reads the default container (KF494) |
+| metamodel | `ENUM_CATEGORY_ALIGNMENT` | R4 candidate; measured field arm reads the default container (KF494) |
+| non-meta | `ENUM_VALUE_CHARACTERS` | R4 candidate; enum values in the default container (KF494) |
+| metamodel | `ENUM_TEXT_FORBIDDEN_CHARACTERS` | R4 candidate; measured field arm reads the default container (KF494) |
+| metamodel | `MODEL_TEXT_REPERTOIRE` | R4 candidate; measured field arm reads the default container (KF494) |
+| metamodel | `HINT_LIST_VALUES` | R4 candidate; measured field arm reads the default container (KF494) |
+| parse-action | `TABLE_ENUM_OPERAND` | R3b candidate; retained through R3a |
+| parse-action | `H_MODEL_FORM_CONSTRUCT` | R3b candidate; retained through R3a |
+| metamodel | `ENUM_S_VALUE_DOMAIN` | R4 candidate; measured field arm reads the default container (KF494) |
+| metamodel | `STRING_PATTERN_ADMISSION` | R4 candidate; measured field arm reads the default container (KF494) |
+| metamodel | `STRING_PATTERN_MESSAGE` | R4 candidate; measured field arm reads the default container (KF494) |
+| non-meta | `FIELD_TYPE_MESSAGE_TEXT` | R4 candidate; field messages in the default container (KF490, KF494) |
+| metamodel | `STRING_TYPE_PARAMETERS` | R4 candidate; measured field arm reads the default container (KF494) |
+| metamodel | `NUMBER_TYPE_DIGITS` | R4 candidate; measured field arm reads the default container (KF494) |
+| metamodel | `ENUM_VALUE_LABELS` | R4 candidate; container value checks; original serializer duplicate rejection needs a separate stage (KF494) |
+| parse-action | `EMPTY_GROUP_OPERAND` | R3b candidate; retained through R3a |
+| post-parse | `ERROR_FIELD_REFERENCE` | R3b candidate; retained through R3a |
+| parse-action | `GROUP_LIST_OPERANDS` | R3b candidate; retained through R3a |
+| parse-action | `GROUP_LIST_ROOT_OPERAND` | R3b candidate; retained through R3a |
+| parse-action | `GROUP_LIST_OPERAND_KIND` | R3b candidate; retained through R3a |
+| parse-action | `REPETITION_WILDCARD_TARGET` | R3b candidate; retained through R3a |
+| container | `COMPUTED_TARGET_KIND` | R4 candidate; group-valued computation target during `ValidationModelConverter.getComputationStatement` ([KF329](KERNEL-FINDINGS.md#kf329), `ComputedFieldTargetKindLawsTest`) |
+| post-parse, condition exception boundary | `RAW_TYPE_LENGTH` | R3b candidate; raw-Length shape before constant conversion |
+| calculation | `COMPUTED_TARGET_INDEX_FIELD` | R4 candidate; joined-condition syntax remains R3a and actions R3b |
+| calculation | `COMPUTATION_PRECONDITION_FEATURES` | R4 candidate; joined-condition syntax remains R3a and actions R3b |
+| parse-action | `REPETITION_KEY_LIST` | R3b candidate; retained through R3a |
+| parse-action | `REPETITION_KEY_PLACEMENT` | R3b candidate; retained through R3a |
+| parse-action | `REPETITION_SCOPE_GROUP` | R3b candidate; retained through R3a |
+| parse-action | `REPETITION_KEY_CONTAINMENT` | R3b candidate; retained through R3a |
+| parse-action | `TEMPORAL_AGGREGATE_OPERANDS` | R3b candidate; retained through R3a |
+| parse-action | `FILTER_WILDCARD` | R3b candidate; retained through R3a |
+| parse-action, post-parse | `FILTER_BODY_GATES` | R3b candidate; both producers belong to this family |
+| parse-action | `OUTER_MARKER_POSITION` | R3b candidate; retained through R3a |
+| parse-action | `GROUP_CONDITION_WILDCARD` | R3b candidate; retained through R3a |
+| parse-action | `SUM_OF_PRODUCTS_OPERANDS` | R3b candidate; retained through R3a |
+| parse-action | `OPERAND_LIST_CONSTANT_BUDGET` | R3b candidate; retained through R3a |
+| parse-action | `SEMANTIC_INDEX_STRUCTURE` | R3b candidate; retained through R3a |
+| parse-action | `SEMANTIC_INDEX_KEY` | R3b candidate; retained through R3a |
+| post-parse | `REPETITION_NOT_UNIQUE_COMBINATION` | R3b candidate; retained through R3a |
+| post-parse | `PARALLEL_ITERATION_UNIQUENESS` | R3b candidate; retained through R3a |
+| post-parse | `FILTERED_ENTITY_ITERATION` | R3b candidate; retained through R3a |
+| parse-action | `ARITHMETIC_OPERATION_GATES` | R3b candidate; retained through R3a |
+| parse-action | `VALUE_IN_FIELDS_CONSTANT_KIND` | R3b candidate; retained through R3a |
+| parse-action | `VALUE_LIST_CONDITION_GATES` | R3b candidate; retained through R3a |
+| parse-action | `ENTITY_LIST_ARITY` | R3b candidate; retained through R3a |
+| parse-action | `ENTITY_LIST_PRE_GATES` | R3b candidate; retained through R3a |
+| parse-action | `FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND` | R3b candidate; retained through R3a |
+| parse-action | `FIELD_LIST_OPERATION_OPERANDS` | R3b candidate; retained through R3a |
+| parse-action | `DATE_ARITHMETIC_OPERANDS` | R3b candidate; retained through R3a |
+| parse-action | `ROUNDING_OPERANDS` | R3b candidate; retained through R3a |
+| parse-action | `FIELD_VALUE_OPERATOR_OPERANDS` | R3b candidate; retained through R3a |
+| parse-action | `FIELD_VALUE_READ_OPERAND` | R3b candidate; retained through R3a |
+| parse-action | `COMPARISON_OPERATOR_OPERANDS` | R3b candidate; retained through R3a |
+| parse-action | `BOOLEAN_COMPARISON_AGREEMENT` | R3b candidate; retained through R3a |
+| parse-action | `STRING_ENUM_COMPARISON_AGREEMENT` | R3b candidate; retained through R3a |
+| parse-action | `NUMBER_COMPARISON_SCALE` | R3b candidate; retained through R3a |
+| parse-action | `TEMPORAL_COMPARISON_AGREEMENT` | R3b candidate; retained through R3a |
+| parse-action | `PATTERN_COMPARISON_OPERANDS` | R3b candidate; retained through R3a |
+| parse-action | `OPERAND_REPETITION_SCOPE` | R3b candidate; retained through R3a |
+| parse-action | `DATE_CONSTRUCTION_SLOT` | R3b candidate; retained through R3a |
+| parse-action | `H_MODEL_PATH_SUFFIX` | R3b candidate; retained through R3a |
+| parse-action | `FIELD_OPERAND_KIND` | R3b candidate; retained through R3a |
+| parse-action | `FILTERED_OPERAND_KIND` | R3b candidate; retained through R3a |
+| parse-action | `CATEGORY_REFERENCE` | R3b candidate; retained through R3a |
+| parse-action | `ENTITY_LIST_CATEGORY_GATE` | R3b candidate; retained through R3a |
+| parse-action | `SCALAR_VALUE_LIST_GATES` | R3b candidate; retained through R3a |
+| parse-action | `DATE_ARGUMENT_SLOT` | R3b candidate; retained through R3a |
+| parse-action | `DATE_RANGE_OPERAND_LIST` | R3b candidate; retained through R3a |
+| parse-action | `VALIDITY_CONDITION_OPERANDS` | R3b candidate; retained through R3a |
+| parse-action | `BASE_YEAR_REQUIREMENT` | R3b candidate; retained through R3a |
+| parse-action | `RANGE_OPERAND_GATES` | R3b candidate; retained through R3a |
+| parse-action | `ENUM_DISPLAY_COMPARABILITY` | R3b candidate; retained through R3a |
+| parse-action | `VALUE_AS_DATE_OPERAND` | R3b candidate; retained through R3a |
+| calculation | `ENUM_COMPUTATION_SOURCE` | R4 candidate; joined-condition syntax remains R3a and actions R3b |
+| post-parse | `ERROR_TARGET_ITERATION` | R3b candidate; retained through R3a |
+| parse-action | `ERROR_TARGET_CONTAINMENT` | R3b candidate; retained through R3a |
+| code generation | `COMPUTATION_CYCLE` | R4 candidate; dependency ordering after calculation extraction |
+| calculation | `COMPUTATION_SELF_READ` | R4 candidate; joined-condition syntax remains R3a and actions R3b |
+| message | `MESSAGE_PARAMETER_REFERENCE` | R4 candidate; message syntax is outside R3a |
+| message | `ERROR_TEXT_SEMANTIC_INDEX` | R4 candidate; message syntax is outside R3a |
+| message | `ERROR_TEXT_CATEGORY_SUFFIX` | R4 candidate; message syntax is outside R3a |
+| message | `ERROR_TEXT_INDEX_TERMINAL` | R4 candidate; message syntax is outside R3a |
+| message | `MESSAGE_TEXT_CHARACTERS` | R4 candidate; message syntax is outside R3a |
+| message | `MESSAGE_PARAMETER_SYNTAX` | R4 candidate; message syntax is outside R3a |
+| message | `MESSAGE_GROUP_PARAMETER` | R4 candidate; message syntax is outside R3a |
+| message | `MESSAGE_VALUE_SUFFIX` | R4 candidate; message syntax is outside R3a |
+| message | `MESSAGE_BASE_YEAR` | R4 candidate; message syntax is outside R3a |
+| syntax | `CONDITION_LEXICALITY` | R3a replaces the syntax mechanism; family/report contract retained |
+| syntax | `CONDITION_COMPLETENESS` | R3a replaces the syntax mechanism; family/report contract retained |
+| parse-action | `CONNECTIVE_AGREEMENT` | R3b candidate; retained through R3a |
+| syntax | `CONDITION_GRAMMAR` | R3a replaces the syntax mechanism; family/report contract retained |
+<!-- checker-stage-families:end -->
+
+### What this map opens
+
+- **R3a stays the first implementation landing.** Its syntax mechanism and completed-path steps address the measured syntax clusters; none of the model-stage findings widens it.
+- **R3b opens narrowly for the action mechanisms already exposed.** `FieldValueReadOperand.readDefect` delegates the star gate inside a filter to `FilterWildcard.filterWildcardFindings`, while A12 owns it at the same bracket action in either position ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG94, KF473/KF97). The bottom-up operation-type gaps DG117 and DG118 name the other action mechanism. These are reasons to replace those mechanisms, not every parse-action family. R3b still requires its own measured action rows and order oracle before implementation.
+- **R4 opens for default-variant preparation and the named stage mismatches.** KF494 and KF495 show that field checks and even a container-build collision must see filtered declarations, while original-model checks still run. DG113 belongs to the non-meta path precheck; DG83 belongs to the condition/message boundary. This does not authorize a wholesale reconstruction of all eight outer model checks. Each R4 partition needs its own deletion and acceptance matrix.
+- **R5 remains dependent on an order oracle.** This inventory and the P3 ledger compare class sets; neither proves notification order, spans, multiplicity or deduplication.
+
+
 ## `ParserErrorTypesEnum` (kernel-core-parser, reflective CI check)
 
 | Code | Bucket | rulekit treatment / lock |
@@ -270,7 +631,7 @@ Caveats that hold across all four paths:
 | `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD` | pre-checked / checker-reported | corrected 2026-08-11 (was `erased` on a claim about the computed-field *slot*, which is not what the code checks): a *read* of the computed field carrying an enum category or a semantic index, in an operation or a precondition. `Computation.build()` names this class via `ConditionReferences.projectedFieldPaths`, and it pre-empts the plain self-reference class — kernel-measured, [KF182](KERNEL-FINDINGS.md#kf182) **Reported 2026-09-15** by `CheckFamily.COMPUTATION_SELF_READ`, on the same bound as its plain sibling: the scale gate answers ahead of this class too, so a NUMBER target is left alone unless the model suppresses the gate — measured on THIS class rather than transferred from the plain one ([KF182](KERNEL-FINDINGS.md#kf182), `validate.laws.ComputedTargetProjectedReadLawsTest`) |
 | `MVK_ERROR_WRONG_CALCULATED_FIELD` | n/a-structural, **unreachable from stored DM-JSON** | law: the calculated field must equal the rule’s error field. **Measured 2026-09-15** ([KF415](KERNEL-FINDINGS.md#kf415)): both sides of the comparison are `computation.getComputedField().getRelativePath()`, the same string resolved against the same parent |
 | `MVK_ERROR_WRONG_ROUNDING_MODE` | pre-checked / checker-reported | the rounding mode must match the comparison: `RoundUp`/`RoundDown` against an alternative with no `toleranceRangeOp` is refused, the same mode against a banded one is admitted ([KF297](KERNEL-FINDINGS.md#kf297)). **Re-bucketed 2026-09-25** (was `erased`, on the basis that `roundingMode` existed nowhere in the Java authoring surface): the typed `Computation.Builder.roundingMode` now authors the member, and `build()` refuses exactly the measured cell — a non-`EXACT` mode beside any unbanded alternative, in either position — with this code (locked: `rulekit.dsl.ComputationRoundingModeTest`). The CLI spec path writes a `DraftComputation`, never the typed object, so there the kernel reports it. **Corrected 2026-09-12** (was "normalized-form law — kernel-generated, unreachable from rulekit"): the comparison is generated, the *rounding mode* is an authored member of the stored model, so the old reason named the wrong shape — [KF182](KERNEL-FINDINGS.md#kf182)'s failure mode, and the second `erased` row to fall to the systematic pass. **Reachable in a STORED model and reported by the portable checker** (`CheckFamily.COMPUTATION_ROUNDING`; locked: `rulekit … ComputationRoundingModeLawsTest`, `consistency … ComputationRoundingTest`) **Row corrected 2026-09-14:** the portable checker has reported this since `CheckFamily.COMPUTATION_ROUNDING` landed and the cell had not said so — the bucket beside it classifies the TYPED LIBRARY surface, which is a separate question. One of 33 found by the sweep that added `CheckerLedgerDispositionGuardTest`, which now derives this column's checker half from the checker's own sources. |
-| `MVK_GROUP_AS_CALCULATED_FIELD` | erased, **measured unreachable from stored DM-JSON** | the computed-field slot is a field handle; the CLI pre-flight resolves the path against model fields — a group target is unrepresentable. **Measured 2026-09-13 ([KF329](KERNEL-FINDINGS.md#kf329)): A12 never reaches this key either** — its BUILDER refuses a group-valued computed field before `checkConsistency` runs, so the portable checker reports the shape as `CK_MODEL_NOT_BUILDABLE` (`CheckFamily.COMPUTED_TARGET_KIND`) rather than under this code |
+| `MVK_GROUP_AS_CALCULATED_FIELD` | erased, **measured unreachable from stored DM-JSON** | the computed-field slot is a field handle; the CLI pre-flight resolves the path against model fields — a group target is unrepresentable. **Measured 2026-09-13 ([KF329](KERNEL-FINDINGS.md#kf329)): A12 never reaches this key either** — its conversion of a group-valued computed field fails inside `checkConsistency`, so the portable checker reports the shape as `CK_MODEL_NOT_BUILDABLE` (`CheckFamily.COMPUTED_TARGET_KIND`) rather than under this code |
 
 ## `FehlertextErrorType` (kernel-core-service, reflective CI check; its non-`MVK_` members like `RULE_HAS_NO_ERRORTEXT` are out of ledger scope)
 

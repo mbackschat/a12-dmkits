@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -85,6 +86,41 @@ class CheckerLedgerDispositionGuardTest {
     @Test
     void theScanReachesTheLedger() {
         assertTrue(ledgerRows().size() >= 200, "the scan found only " + ledgerRows().size() + " ledger rows");
+    }
+
+    @Test
+    void everyReportedCodeHasAStageAndRaisingSite() {
+        assertEquals(CheckerReportedCodes.bySource().keySet(), stageRows("codes", "MVK_[A-Z_0-9]+").keySet());
+    }
+
+    @Test
+    void everyFamilyHasAStageAndReplacementPartition() {
+        String source = read(CHECKOUT.resolve(
+                "consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/Check.kt"));
+        String declaration = source.substring(source.indexOf("enum class CheckFamily {"));
+        declaration = declaration.substring(0, declaration.indexOf("\n}"));
+        Set<String> families = new TreeSet<>();
+        Matcher constant = Pattern.compile("^    ([A-Z_][A-Z_0-9]*),?$", Pattern.MULTILINE).matcher(declaration);
+        while (constant.find()) families.add(constant.group(1));
+        assertTrue(families.contains("CONDITION_GRAMMAR"), "family enumeration missed a known member");
+        assertEquals(families, stageRows("families", "[A-Z_][A-Z_0-9]*").keySet());
+    }
+
+    private static Map<String, String> stageRows(String section, String keyPattern) {
+        String ledger = read(CHECKOUT.resolve(LEDGER));
+        String begin = "<!-- checker-stage-" + section + ":start -->";
+        String end = "<!-- checker-stage-" + section + ":end -->";
+        int start = ledger.indexOf(begin);
+        int stop = ledger.indexOf(end);
+        assertTrue(start >= 0 && stop > start, "missing stage-map section: " + section);
+        Matcher row = Pattern.compile("^\\| ([^|]+) \\| `(" + keyPattern + ")` \\| ([^|]+) \\|$",
+                Pattern.MULTILINE).matcher(ledger.substring(start, stop));
+        Map<String, String> result = new TreeMap<>();
+        while (row.find()) {
+            assertTrue(!row.group(1).isBlank() && !row.group(3).isBlank(), "empty stage or site: " + row.group());
+            assertTrue(result.put(row.group(2), row.group(3)) == null, "duplicate stage row: " + row.group(2));
+        }
+        return result;
     }
 
     private static Map<String, String> ledgerRows() {

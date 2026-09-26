@@ -16,8 +16,16 @@ import java.io.File
 class FieldVariantStageLawsTest {
     @Test
     fun declarationChecksReadThePredictedStage() {
-        val rows = FieldVariantPopulation.rows()
-        assertEquals(123, rows.size, "R0a's frozen witness denominator")
+        assertPredictions(FieldVariantPopulation.initialRows(), 123)
+    }
+
+    @Test
+    fun remainingFieldFamiliesReadThePredictedStage() {
+        assertPredictions(FieldVariantPopulation.remainingRows(), 16)
+    }
+
+    private fun assertPredictions(rows: List<FieldVariantPopulation.Row>, expectedSize: Int) {
+        assertEquals(expectedSize, rows.size, "the partition's frozen witness denominator")
         assertEquals(rows.size, rows.map { it.label }.distinct().size, "each witness must have a distinct label")
         val differences = rows.mapNotNull { row ->
             val actual = kernelClasses(row.json)
@@ -40,7 +48,7 @@ class FieldVariantStageLawsTest {
             clusters[key] = clusters.getOrDefault(key, 0) + 1
             examples += "$key\t${row.label}"
         }
-        assertEquals(123, compared, "every R0a input must reach both oracles")
+        assertEquals(139, compared, "every R0 input must reach both oracles")
         val actual = clusters.entries.joinToString("") { "${it.value}\t${it.key}\n" }
         // Run output is disposable; the resource ledger below is the cross-run record.
         File("build/checker-variants").apply { mkdirs() }.also {
@@ -162,9 +170,15 @@ internal object FieldVariantPopulation {
         },
     )
 
-    fun rows(): List<Row> = declarationRows() + orderingRows()
+    fun rows(): List<Row> = initialRows() + remainingRows()
 
-    private fun declarationRows(): List<Row> = witnesses.flatMap { witness ->
+    fun initialRows(): List<Row> = declarationRows(witnesses) + orderingRows()
+
+    fun remainingRows(): List<Row> = declarationRows(listOf(
+        Witness("field name collision", "Code", "CK_MODEL_NOT_BUILDABLE") { _, e, _ -> e.put("name", "Reference") },
+    )) + bindingRows()
+
+    private fun declarationRows(witnesses: List<Witness>): List<Row> = witnesses.flatMap { witness ->
         listOf(false, true).flatMap { defective ->
             Filter.entries.map { filter ->
                 val root = mapper.readTree(order) as ObjectNode
@@ -183,6 +197,30 @@ internal object FieldVariantPopulation {
                 Row("${witness.name}/$defective/$filter", root.toString(), predicted)
             }
         }
+    }
+
+    private fun bindingRows(): List<Row> {
+        fun row(label: String, refused: Boolean = false, edit: (ObjectNode) -> Unit): Row {
+            val root = mapper.readTree(order) as ObjectNode
+            val field = root.path("content").path("modelRoot").path("rootGroups").get(0)
+                .path("Group").path("elements").single { it.path("name").asText() == "Code" }
+                .path("Field") as ObjectNode
+            edit(field)
+            return Row("filter binding/$label", root.toString(),
+                if (refused) setOf("CK_MODEL_NOT_BUILDABLE") else emptySet())
+        }
+        return listOf(
+            row("absent") { },
+            row("ONLY") { it.putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("premium") },
+            row("ALL_EXCEPT") { it.putObject("variantFilter").put("filterType", "ALL_EXCEPT").putArray("variants").add("premium") },
+            row("null") { it.putNull("variantFilter") },
+            row("unknown mode", true) { it.putObject("variantFilter").put("filterType", "SOMETIMES") },
+            row("absent mode", true) { it.putObject("variantFilter").putArray("variants").add("premium") },
+            row("string filter", true) { it.put("variantFilter", "ONLY") },
+            row("null mode", true) { it.putObject("variantFilter").putNull("filterType") },
+            row("object mode", true) { it.putObject("variantFilter").putObject("filterType") },
+            row("numeric mode", true) { it.putObject("variantFilter").put("filterType", 9) },
+        )
     }
 
     private fun orderingRows(): List<Row> {
