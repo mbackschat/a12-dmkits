@@ -22,7 +22,7 @@ internal class KeyPattern private constructor(private val atoms: List<Atom>) {
      * Whether the whole of [value] matches. Java matches code points, so a surrogate pair is one character to a
      * negated class and so is a lone surrogate.
      */
-    fun matches(value: String): Boolean = matchesFrom(codePoints(value), 0, 0)
+    fun matches(value: String): Boolean = matchesFrom(value.javaCodePoints(), 0, 0)
 
     private fun matchesFrom(value: List<Int>, at: Int, next: Int): Boolean {
         if (next == atoms.size) {
@@ -106,24 +106,6 @@ internal class KeyPattern private constructor(private val atoms: List<Atom>) {
                 if (min == null || max == null) null else Triple(min, max, close + 1)
             }
             else -> Triple(1, 1, at)
-        }
-
-        /** [value]'s code points, a lone surrogate standing for itself as `Character.codePointAt` reads it. */
-        private fun codePoints(value: String): List<Int> {
-            val points = mutableListOf<Int>()
-            var at = 0
-            while (at < value.length) {
-                val high = value[at]
-                val low = value.getOrNull(at + 1)
-                if (high.isHighSurrogate() && low != null && low.isLowSurrogate()) {
-                    points += 0x10000 + ((high.code - 0xD800) shl 10) + (low.code - 0xDC00)
-                    at += 2
-                } else {
-                    points += high.code
-                    at++
-                }
-            }
-            return points
         }
 
         private fun String.toCountOrNull(): Int? = takeIf { it.isNotEmpty() && it.all(Char::isDigit) }?.toIntOrNull()

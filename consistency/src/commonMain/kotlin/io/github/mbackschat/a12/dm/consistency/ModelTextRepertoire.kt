@@ -22,8 +22,10 @@ import kotlinx.serialization.json.JsonObject
  * one finding. A group name carrying the character is reported on the group and again on every element
  * beneath it, whose own names are plain, so this family judges each declaration's path rather than its name.
  *
- * **It stands beside every other class.** A12 lists it with a refused condition's class and with the
- * message's own classes, so report assembly withholds nothing behind it and it withholds nothing.
+ * **It stands beside every other class, and neither withholds the other.** A12 lists it with a refused
+ * condition's class, with the message's own classes and with a broken error target's, so report assembly
+ * holds it outside both the DSL's withholding and the error target's stop. An `ONLY` variant filter is the
+ * one thing that takes it away, with the rest of the rule.
  *
  * **What it leaves to A12**, all of it under-reporting: a mounted provider's declarations, whose reach through
  * the host was not measured, and every member not listed above — a field type's own members, a category, the
@@ -34,6 +36,9 @@ internal fun TrackedFactBase.modelTextRepertoireFindings(): List<Finding> =
         element.carriedTexts(declaredLocales).firstNotNullOfOrNull { it.unsupported() }
             ?.let { element.repertoireFinding(it) }
     }
+
+/** This family's own code, since A12's refusal carries none. */
+internal const val RK_UNSUPPORTED_CHARACTER = "RK_UNSUPPORTED_CHARACTER"
 
 /** One text A12 validates, and what to call it in a finding. */
 private data class CarriedText(val describe: String, val text: String) {
@@ -94,7 +99,7 @@ private fun JsonObject.enumTexts(declaredLocales: List<String>): List<CarriedTex
 private fun TrackedDeclaration.repertoireFinding(found: Unsupported): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
-    "RK_UNSUPPORTED_CHARACTER",
+    RK_UNSUPPORTED_CHARACTER,
     "${found.carrier.describe} carries a character outside the Basic Multilingual Plane at offset " +
         "${found.offset}, which A12 refuses with no class: \"The field contains one or several unsupported " +
         "signs.\" A12 admits no UTF-16 surrogate here, paired or alone",

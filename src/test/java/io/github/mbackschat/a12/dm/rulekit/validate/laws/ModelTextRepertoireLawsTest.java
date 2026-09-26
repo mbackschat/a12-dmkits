@@ -2,12 +2,17 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
@@ -228,4 +233,51 @@ class ModelTextRepertoireLawsTest {
         expected.put("an enum label in an undeclared locale", ADMITTED);
         assertEquals(expected, actual, "the carriers of A12's charset refusal, and its unit");
     }
+
+    /**
+     * Whether the two things that stop A12's examination of a rule stop this refusal too: an error target
+     * naming no field stops the condition and the message there (KERNEL-FINDINGS KF339) and leaves this one
+     * standing, while an {@code ONLY} variant filter takes it away with the rest of the rule (KF299). Each row
+     * has its plain twin, so the difference is the one character.
+     */
+    @Test
+    void anErrorTargetDoesNotStopItAndAVariantFilterDoes() throws IOException {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a broken error target, plain", targeting("../NoSuchField", "see the reference"));
+        actual.put("a broken error target", targeting("../NoSuchField", "see " + GRIN));
+        actual.put("an unreferenced error target, plain", targeting("../Summary", "see the reference"));
+        actual.put("an unreferenced error target", targeting("../Summary", "see " + GRIN));
+        actual.put("an ONLY variant filter, plain", filtered("see the reference"));
+        actual.put("an ONLY variant filter", filtered("see " + GRIN));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a broken error target, plain", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("a broken error target", RULE + ",MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("an unreferenced error target, plain", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("an unreferenced error target", RULE + ",MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("an ONLY variant filter, plain", KernelLaws.ADMITTED);
+        expected.put("an ONLY variant filter", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "whether what stops A12's examination of a rule stops the charset check");
+    }
+
+    private static String targeting(String errorTarget, String message) {
+        return render(VALIDATOR.check(PLAIN, new DraftRule("/Claim", "ProbeRule", errorTarget, READS, "PROBE",
+                "ERROR", List.of(new LocalizedText("en_US", message)))).diagnostics());
+    }
+
+    /** The probe rule under {@code ONLY ["premium"]}, judged whole since the filter is not a draft's member. */
+    private static String filtered(String message) throws IOException {
+        ObjectNode root = (ObjectNode) MAPPER.readTree(VALIDATOR.inject(PLAIN, new DraftRule("/Claim", "ProbeRule",
+                "../Reference", READS, "PROBE", "ERROR", List.of(new LocalizedText("en_US", message)))));
+        for (JsonNode element : root.path("content").path("modelRoot").path("rootGroups").get(0)
+                .path("Group").path("elements")) {
+            if ("ProbeRule".equals(element.path("name").asText())) {
+                ((ObjectNode) element.path("Rule")).set("variantFilter",
+                        MAPPER.readTree("{\"filterType\":\"ONLY\",\"variants\":[\"premium\"]}"));
+            }
+        }
+        return KernelLaws.verdictOf(root.toString());
+    }
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 }

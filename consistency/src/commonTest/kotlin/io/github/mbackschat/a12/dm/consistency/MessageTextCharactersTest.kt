@@ -60,6 +60,62 @@ class MessageTextCharactersTest {
         assertEquals(expected, actual, "which control characters this family reports")
     }
 
+    /**
+     * The characters the ISO blocks miss, each row one of `rulekit.validate.laws.ErrorTextCharacterGateLawsTest`
+     * on a rule's message. A12's two tests are LF, CR and the two Unicode separators, then `\p{C}` asked of each
+     * code point, so a supplementary character outside that category draws only the charset refusal.
+     */
+    @Test
+    fun theSetsAreA12sOwnPredicatesAskedOfCodePoints() {
+        val rows = linkedMapOf(
+            "U+2028 LINE SEPARATOR" to around(0x2028),
+            "U+2029 PARAGRAPH SEPARATOR" to around(0x2029),
+            "U+0085 NEXT LINE" to around(0x85),
+            "U+200B ZERO WIDTH SPACE" to around(0x200B),
+            "U+00AD SOFT HYPHEN" to around(0xAD),
+            "U+FEFF ZERO WIDTH NO-BREAK SPACE" to around(0xFEFF),
+            "U+200E LEFT-TO-RIGHT MARK" to around(0x200E),
+            "U+E000 private use" to around(0xE000),
+            "U+0378 unassigned" to around(0x378),
+            "a lone high surrogate" to around(0xD83D),
+            "a supplementary private-use character" to codes("see\uDB80\uDC00the reference"),
+            "a supplementary character outside \\p{C}" to codes("see\uD83D\uDE00the reference"),
+            "U+E0001 LANGUAGE TAG" to codes("see\uDB40\uDC01the reference"),
+            "U+2028 beside a tab" to codes("see" + 0x09.toChar() + "the" + 0x2028.toChar() + "reference"),
+        ).mapValues { it.value.toSet() }
+        val expected = linkedMapOf(
+            "U+2028 LINE SEPARATOR" to setOf(lineBreak),
+            "U+2029 PARAGRAPH SEPARATOR" to setOf(lineBreak),
+            "U+0085 NEXT LINE" to setOf(characters),
+            "U+200B ZERO WIDTH SPACE" to setOf(characters),
+            "U+00AD SOFT HYPHEN" to setOf(characters),
+            "U+FEFF ZERO WIDTH NO-BREAK SPACE" to setOf(characters),
+            "U+200E LEFT-TO-RIGHT MARK" to setOf(characters),
+            "U+E000 private use" to setOf(characters),
+            "U+0378 unassigned" to setOf(characters),
+            "a lone high surrogate" to setOf(unsupported, characters),
+            "a supplementary private-use character" to setOf(unsupported, characters),
+            "a supplementary character outside \\p{C}" to setOf(unsupported),
+            "U+E0001 LANGUAGE TAG" to setOf(unsupported, characters),
+            "U+2028 beside a tab" to setOf(lineBreak),
+        )
+        assertEquals(expected, rows, "the characters the ISO control blocks miss")
+    }
+
+    /** The wider set withholds the parameter classes as the ISO blocks did, since A12 stops at its first gate. */
+    @Test
+    fun theWiderSetWithholdsTheParameterClassesToo() {
+        assertEquals(
+            listOf(listOf("INVALID_ENTITY"), listOf(characters), listOf(lineBreak), listOf(characters)),
+            listOf(
+                codes("see \$NoSuchField\$"),
+                codes("see \$NoSuchField\$ a" + 0x200B.toChar() + "b"),
+                codes("see \$NoSuchField\$ a" + 0x2028.toChar() + "b"),
+                codes("see \$Reference a" + 0x200B.toChar() + "b"),
+            ),
+        )
+    }
+
     /** A COMPUTATION's message meets the same gate, so a family checking only rules would under-report. */
     @Test
     fun aComputationsMessageMeetsTheSameGate() {
@@ -67,11 +123,15 @@ class MessageTextCharactersTest {
         actual["printable — the control"] = computing("see the reference")
         actual["a line feed"] = computing("see" + 0x0A.toChar() + "the reference")
         actual["a tab"] = computing("see" + 0x09.toChar() + "the reference")
+        actual["a paragraph separator"] = computing("see" + 0x2029.toChar() + "the reference")
+        actual["a zero width no-break space"] = computing("see" + 0xFEFF.toChar() + "the reference")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["printable — the control"] = emptyList()
         expected["a line feed"] = listOf(lineBreak)
         expected["a tab"] = listOf(characters)
+        expected["a paragraph separator"] = listOf(lineBreak)
+        expected["a zero width no-break space"] = listOf(characters)
         assertEquals(expected, actual, "a computation's message meets the same gate")
     }
 
@@ -100,6 +160,7 @@ class MessageTextCharactersTest {
 
     private val lineBreak = "INVALID_LINEBREAK"
     private val characters = "INVALID_CHARACTERS"
+    private val unsupported = "RK_UNSUPPORTED_CHARACTER"
 
     private fun computing(text: String): List<String> =
         checkRead(ModelSource(model(text, computed = true))).findings

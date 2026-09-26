@@ -1280,8 +1280,13 @@ private val UNIMPLEMENTED_FAMILIES = listOf(
  *
  * It also keeps the measured variant-filter exemption reachable: a filter cannot rescue a model that fails
  * to BUILD, and that finding is anchored at the rule whose target may be the broken one.
+ *
+ * **The charset refusal survives too, though it is not about the target**: the stop is the rule parser's, and
+ * that check is not, so a broken target leaves it standing beside the target's codes
+ * (`rulekit.validate.laws.ModelTextRepertoireLawsTest.anErrorTargetDoesNotStopItAndAVariantFilterDoes`).
  */
-private val ERROR_TARGET_CODES = setOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD, CK_MODEL_NOT_BUILDABLE)
+private val ERROR_TARGET_CODES =
+    setOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD, CK_MODEL_NOT_BUILDABLE, RK_UNSUPPORTED_CHARACTER)
 
 /**
  * Whether an unresolvable name in the same declaration may stand ahead of this finding, which withholds it.
@@ -1621,11 +1626,14 @@ internal val MESSAGE_MEMBER_FAMILIES = setOf(
  * members and the variant filter are the same member kinds and are assumed alike. **The suppressions were
  * assumed alike too, and are not**: A12 parses them as the preamble of the condition it generates, so their
  * class is a DSL class and withholds the message ([withoutTheTextsBehindARefusedPreamble], measured
- * 2026-09-25).
+ * 2026-09-25). The charset refusal reads the DSL's text and is still not a DSL class: a lone surrogate in a
+ * message draws it beside the message's own `INVALID_CHARACTERS`, and an unreferenced error target's class
+ * stands beside it (`rulekit.validate.laws.ErrorTextCharacterGateLawsTest`,
+ * `…ModelTextRepertoireLawsTest`, 2026-09-26).
  */
 private val BESIDE_THE_DSL_FAMILIES = MESSAGE_MEMBER_FAMILIES + setOf(
     CheckFamily.DECLARATION_SLOTS, CheckFamily.ELEMENT_NAME_UNIQUENESS, CheckFamily.ELEMENT_NAME_ALPHABET,
-    CheckFamily.RULE_PRESENTATION_MEMBERS, CheckFamily.VARIANT_FILTER,
+    CheckFamily.RULE_PRESENTATION_MEMBERS, CheckFamily.VARIANT_FILTER, CheckFamily.MODEL_TEXT_REPERTOIRE,
 )
 
 /**

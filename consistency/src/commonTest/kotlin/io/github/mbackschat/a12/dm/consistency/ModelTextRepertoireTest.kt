@@ -21,8 +21,10 @@ class ModelTextRepertoireTest {
         message: String = "x",
         name: String = "ProbeRule",
         extraMessage: String = "",
-    ) = """{"type":"Rule","id":"r0","name":${q(name)},"Rule":{"errorCondition":${q(condition)},
-        "errorEntityRelPath":"../Reference","errorCode":${q(code)},
+        target: String = "../Reference",
+        extraMember: String = "",
+    ) = """{"type":"Rule","id":"r0","name":${q(name)},"Rule":{"errorCondition":${q(condition)},$extraMember
+        "errorEntityRelPath":${q(target)},"errorCode":${q(code)},
         "errorMessage":[{"locale":"en_US","text":${q(message)}}$extraMessage]}}"""
 
     private fun calc(common: String? = null, precondition: String? = null, operation: String = "[Note]",
@@ -146,8 +148,8 @@ class ModelTextRepertoireTest {
     }
 
     /**
-     * It stands beside the classes A12 lists with it. A lone surrogate is refused like a pair; A12 also names
-     * the message's `INVALID_CHARACTERS` there, which is CONSISTENCY-GAPS DG110.
+     * It stands beside the classes A12 lists with it. A lone surrogate is refused like a pair, and beside the
+     * message's own `INVALID_CHARACTERS`, since a lone surrogate is `\p{C}` to the message gate.
      */
     @Test
     fun itIsReportedBesideTheConditionClassAndForALoneSurrogate() {
@@ -155,14 +157,37 @@ class ModelTextRepertoireTest {
             listOf(
                 setOf(RULE, "MVK_LEXER_STANDARD_ERROR at /Claim/ProbeRule"),
                 setOf(RULE, "MVK_UNEXPECTED_TOKEN at /Claim/ProbeRule"),
-                setOf(RULE),
-                setOf(RULE),
+                setOf(RULE, "INVALID_CHARACTERS at /Claim/ProbeRule"),
+                setOf(RULE, "INVALID_CHARACTERS at /Claim/ProbeRule"),
             ),
             listOf(
                 reported(model(rule(condition = "$READS And $GRIN FieldFilled(Note)"))).toSet(),
                 reported(model(rule(condition = "$READS And And FieldFilled(Note)", message = "see $GRIN"))).toSet(),
                 reported(model(rule(message = "see \uD83D"))).toSet(),
                 reported(model(rule(message = "see \uDE00"))).toSet(),
+            ),
+        )
+    }
+
+    /**
+     * An error target naming no field stops A12's rule parser and leaves this refusal standing beside the
+     * target's classes; an `ONLY` variant filter takes it away with the rest of the rule, as it does every
+     * finding about the rule (`…ModelTextRepertoireLawsTest.anErrorTargetDoesNotStopItAndAVariantFilterDoes`).
+     */
+    @Test
+    fun anErrorTargetDoesNotStopItAndAVariantFilterDoes() {
+        val only = """"variantFilter":{"filterType":"ONLY","variants":["premium"]},"""
+        assertEquals(
+            listOf(
+                // A12 also names MVK_MISSING_ERROR_FIELD beside the target's code: CONSISTENCY-GAPS DG112.
+                setOf(RULE, "MVK_ERROR_FIELD_MISSING at /Claim/ProbeRule"),
+                setOf(RULE, "MVK_ERROR_FIELD_NOT_REFERENCED at /Claim/ProbeRule"),
+                emptySet(),
+            ),
+            listOf(
+                reported(model(rule(message = "see $GRIN", target = "../NoSuchField"))).toSet(),
+                reported(model(rule(message = "see $GRIN", target = "../Summary"))).toSet(),
+                reported(model(rule(message = "see $GRIN", extraMember = only))).toSet(),
             ),
         )
     }

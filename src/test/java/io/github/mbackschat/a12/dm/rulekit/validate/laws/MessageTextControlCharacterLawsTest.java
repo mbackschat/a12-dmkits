@@ -113,6 +113,8 @@ class MessageTextControlCharacterLawsTest {
         actual.put("printable — the control", computing("see the reference"));
         actual.put("a line feed", computing("see" + (char) 0x0A + "the reference"));
         actual.put("a tab", computing("see" + (char) 0x09 + "the reference"));
+        actual.put("a paragraph separator", computing("see" + (char) 0x2029 + "the reference"));
+        actual.put("a zero width no-break space", computing("see" + (char) 0xFEFF + "the reference"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("printable — the control", ADMITTED);
@@ -120,6 +122,9 @@ class MessageTextControlCharacterLawsTest {
         // class — that one belongs to the rule member rather than to the text.
         expected.put("a line feed", "INVALID_LINEBREAK");
         expected.put("a tab", "INVALID_CHARACTERS");
+        // The wider set of ErrorTextCharacterGateLawsTest, measured on this carrier rather than carried over.
+        expected.put("a paragraph separator", "INVALID_LINEBREAK");
+        expected.put("a zero width no-break space", "INVALID_CHARACTERS");
         assertEquals(expected, actual, "whether a computation's message meets the same gate");
     }
 

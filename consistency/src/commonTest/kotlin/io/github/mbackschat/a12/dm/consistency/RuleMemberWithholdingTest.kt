@@ -38,6 +38,7 @@ class RuleMemberWithholdingTest {
         val expected = mutableMapOf<String, List<String>>()
         expected["both members sound — the control"] = emptyList()
         expected["the CONDITION names nothing"] = listOf("MVK_INVALID_ENTITY")
+        // A12 names MVK_MISSING_ERROR_FIELD beside it on each broken-target row: CONSISTENCY-GAPS DG112.
         expected["the error TARGET names nothing"] = listOf("MVK_ERROR_FIELD_MISSING")
         // The condition's own class is GONE, which is the whole family: judging the members independently
         // and reporting both would name a verdict A12 withheld.
