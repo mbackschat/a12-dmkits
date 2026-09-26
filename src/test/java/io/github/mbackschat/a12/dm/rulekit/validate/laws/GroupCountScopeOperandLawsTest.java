@@ -57,12 +57,7 @@ class GroupCountScopeOperandLawsTest {
     private static final String REFUSED = "refused";
 
     /** One authored operand list: A12's verdict on the count over it, and whether the record admits it. */
-    private record Row(String name, String operands, String kernel, Supplier<Condition> record,
-            String recordVerdict) {
-
-        Row(String operands, String kernel, Supplier<Condition> record, String recordVerdict) {
-            this(operands, operands, kernel, record, recordVerdict);
-        }
+    private record Row(String operands, String kernel, Supplier<Condition> record, String recordVerdict) {
     }
 
     private static Supplier<Condition> count(List<AggregateOperand> operands) {
@@ -103,8 +98,8 @@ class GroupCountScopeOperandLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         Map<String, String> actual = new LinkedHashMap<>();
         for (Row row : rows()) {
-            expected.put(row.name(), row.kernel());
-            actual.put(row.name(), KernelLaws.verdictModel(MODEL, "/Item", "../Title",
+            expected.put(row.operands(), row.kernel());
+            actual.put(row.operands(), KernelLaws.verdictModel(MODEL, "/Item", "../Title",
                     "FieldFilled(Title) And NumberOfFilledGroups(" + row.operands() + ") > 0"));
         }
         assertEquals(expected, actual);
@@ -115,8 +110,8 @@ class GroupCountScopeOperandLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         Map<String, String> actual = new LinkedHashMap<>();
         for (Row row : rows()) {
-            expected.put(row.name(), row.recordVerdict());
-            actual.put(row.name(), verdict(row.record(), row.kernel()));
+            expected.put(row.operands(), row.recordVerdict());
+            actual.put(row.operands(), verdict(row.record(), row.kernel()));
         }
         assertEquals(expected, actual);
     }

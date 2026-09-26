@@ -524,7 +524,9 @@ public final class DslRenderer {
             case FieldRounding r -> keyword(r.operatorId()) + "(" + path(r.field())
                     + r.decimalPlaces().map(places -> ", " + places).orElse("") + ")";
             case DateRangeBound b -> keyword(b.operatorId()) + "(" + renderArg(b.source()) + ")";
-            case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path().value()) + "*)";
+            // The star goes in before relativizing: appended after, a rule inside the root rendered `..*`, which
+            // A12 refuses (validate.laws.StarredCountRenderBaseLawsTest)
+            case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path().value() + "*") + ")";
         };
     }
 

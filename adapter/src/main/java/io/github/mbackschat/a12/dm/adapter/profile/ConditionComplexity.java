@@ -412,15 +412,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
             for (AggregateOperand o : operands) {
                 max = Math.max(max, switch (o) {
                     case FieldOperand field -> operandDepth(field);
-                    case GroupListRef group -> {
-                        nodeCount++;
-                        // keyed with a trailing slash, as the group-list quantifiers' scope and the root-group
-                        // count are: SynthesisProfile reads the scanned chain from the key's parent, and a starred
-                        // group scans its own rows, where a field list's key is the field inside them
-                        group.flattened().forEach(starred -> collectionPaths.add(starred.path().value() + "/"));
-                        maxStarSegments = Math.max(maxStarSegments, group.flattened().size());
-                        yield 1;                    // no filter is possible here: MVK_NO_GROUPS_ALLOWED
-                    }
+                    case GroupListRef group -> groupScopeDepth(group);   // no filter here: MVK_NO_GROUPS_ALLOWED
                     case IndexedGroupValue ignored -> {
                         // Never starred (an index and a wildcard can't address the same group), so no
                         // collectionPaths/maxStarSegments contribution — just the one node.
@@ -432,16 +424,25 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
             return max;
         }
 
+        /**
+         * A group scope as one operand node. Each starred level it crosses is a scanned collection, keyed with a
+         * trailing slash as the group-list quantifiers' scope and the root-group count are: SynthesisProfile reads
+         * the scanned chain from the key's parent, and a starred group scans its own rows, where a field list's
+         * key is the field inside them. One helper for every carrier, because the two copies it replaces had
+         * drifted to different keys ({@code ConditionComplexityCountOperandTest}).
+         */
+        private int groupScopeDepth(GroupListRef scope) {
+            nodeCount++;
+            scope.flattened().forEach(starred -> collectionPaths.add(starred.path().value() + "/"));
+            maxStarSegments = Math.max(maxStarSegments, scope.flattened().size());
+            return 1;
+        }
+
         private int maxFirstFilledOperandDepth(List<? extends FirstFilledOperand> operands) {
             int max = 0;
             for (FirstFilledOperand operand : operands) {
-                int depth = operand.field().map(this::operandDepth).orElseGet(() -> {
-                    nodeCount++;
-                    var group = operand.group().orElseThrow();
-                    collectionPaths.add(group.path());
-                    maxStarSegments = Math.max(maxStarSegments, group.flattened().size());
-                    return 1;
-                });
+                int depth = operand.field().map(this::operandDepth)
+                        .orElseGet(() -> groupScopeDepth(operand.group().orElseThrow()));
                 if (operand.category().isPresent()) {
                     nodeCount++;
                     op("EnumCategory");

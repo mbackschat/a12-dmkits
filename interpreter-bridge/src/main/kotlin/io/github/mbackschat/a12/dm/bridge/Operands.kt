@@ -372,7 +372,7 @@ internal class Operands(private val mapping: Mapping) {
          * is mapped through. The record behind them holds each group as a scope, which could carry the marker
          * (DEV-API-GAPS DG108).
          *
-         * <p>Refusing there is the honest answer rather than a residual to close: dropping the marker would
+         * <p>Refusing there stays the honest answer until that route carries the marker: dropping it would
          * corrupt the read into a non-correlated rule, and `verifyOuterPreserved` would degrade the rule to a
          * verbatim `Opaque` anyway — the same outcome, reached without a diagnostic naming the cause.
          */
@@ -380,7 +380,7 @@ internal class Operands(private val mapping: Mapping) {
             if (source.outer) {
                 throw UnmappedConstructException(
                     "the \$-correlation on " + what + ", " + source.path +
-                        " — this slot takes a bare group reference, which carries no marker (a group-presence " +
+                        " — this slot maps it to a typed group reference, which carries no marker (a group-presence " +
                         "leaf does: GroupFilled(\$G) reads back with its marker)"
                 )
             }

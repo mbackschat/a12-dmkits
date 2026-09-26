@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -256,41 +257,38 @@ class HavingFilterConditionLeafLawsTest {
     }
 
     /**
-     * The same two positions for a group-operand LIST, which is the carrier {@code DG49} is about.
-     *
-     * <p><b>Why it is spelled by hand.</b> rulekit's {@code GroupQuantifierCondition} holds a bare
-     * {@code List<GroupRef>} with no per-operand marker, so {@code AllGroupsFilled($A, $B)} is not authorable
-     * through the typed surface at all — the same type-level erasure API-FINDINGS 135 closed for the scalar
-     * pair, one carrier over. Until that record grows the component, a raw condition is the only way to ask the
-     * kernel, exactly as {@code ShortNameTierLawsTest} does for a path form the renderer never emits.
+     * The same two positions for a group-operand LIST, which is the carrier {@code DG49} is about, and for the group
+     * COUNT, which takes the same list.
      *
      * <p><b>Why it needs to exist.</b> This admission is the measured basis on which {@code DG49} calls our
      * bridge's refusal over-strict rather than protective, and it was asserted on three prose surfaces — the
      * gap row, API-FINDINGS 135, and {@code Operands.requireNotCorrelated}'s javadoc — with no test anywhere,
      * which a cold review found by grepping for it (2026-09-04). A client-side refusal needs a measured kernel
-     * basis, and the measurement has to live somewhere a build can re-run.
+     * basis, and the measurement has to live somewhere a build can re-run. The rows are typed: a group scope
+     * carries the marker ({@code GroupListRef.outer()}), on the quantifiers and the count alike.
      */
     @Test
     void aMarkedGroupOperandLISTObeysTheSameTwoPositions() {
+        GroupListRef billing = M.flattenGroup("/Order/Billing");
+        GroupListRef shipping = M.flattenGroup("/Order/Shipping");
+        Condition inScope = M.num("/Order/Lines/Qty").gt(1);
+        Condition markedList = Dsl.allGroupsFilled(billing.outer(), shipping.outer());
+        Condition markedCount = Dsl.numberOfFilledGroups(billing.outer(), shipping.outer()).gt(0);
+        Condition plainCount = Dsl.numberOfFilledGroups(billing, shipping).gt(0);
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("MARKED list beside the in-scope conjunct", rawFilterVerdict(
-                "[/Order/Lines/Qty] > 1 And AllGroupsFilled($/Order/Billing, $/Order/Shipping)"));
-        actual.put("UNMARKED list beside the in-scope conjunct", rawFilterVerdict(
-                "[/Order/Lines/Qty] > 1 And AllGroupsFilled(/Order/Billing, /Order/Shipping)"));
-        actual.put("MARKED list as the SOLE filter condition",
-                rawFilterVerdict("AllGroupsFilled($/Order/Billing, $/Order/Shipping)"));
-        actual.put("UNMARKED list as the SOLE filter condition",
-                rawFilterVerdict("AllGroupsFilled(/Order/Billing, /Order/Shipping)"));
+        actual.put("MARKED list beside the in-scope conjunct", verdict(inScope.and(markedList)));
+        actual.put("UNMARKED list beside the in-scope conjunct",
+                verdict(inScope.and(Dsl.allGroupsFilled(billing, shipping))));
+        actual.put("MARKED list as the SOLE filter condition", verdict(markedList));
+        actual.put("UNMARKED list as the SOLE filter condition", verdict(Dsl.allGroupsFilled(billing, shipping)));
         // The negative quantifier, so the answer is about the group-LIST carrier rather than about one operator.
-        actual.put("MARKED negative list beside the in-scope conjunct", rawFilterVerdict(
-                "[/Order/Lines/Qty] > 1 And NoGroupFilled($/Order/Billing, $/Order/Shipping)"));
-        // The group COUNT takes the same group-operand list, so the marker question is asked of it too.
-        actual.put("MARKED group count beside the in-scope conjunct", rawFilterVerdict(
-                "[/Order/Lines/Qty] > 1 And NumberOfFilledGroups($/Order/Billing, $/Order/Shipping) > 0"));
-        actual.put("UNMARKED group count beside the in-scope conjunct", rawFilterVerdict(
-                "[/Order/Lines/Qty] > 1 And NumberOfFilledGroups(/Order/Billing, /Order/Shipping) > 0"));
-        actual.put("the in-scope conjunct alone, hand-spelled — live control",
-                rawFilterVerdict("[/Order/Lines/Qty] > 1"));
+        actual.put("MARKED negative list beside the in-scope conjunct",
+                verdict(inScope.and(Dsl.noGroupFilled(billing.outer(), shipping.outer()))));
+        actual.put("MARKED group count beside the in-scope conjunct", verdict(inScope.and(markedCount)));
+        actual.put("UNMARKED group count beside the in-scope conjunct", verdict(inScope.and(plainCount)));
+        actual.put("MARKED group count as the SOLE filter condition", verdict(markedCount));
+        actual.put("UNMARKED group count as the SOLE filter condition", verdict(plainCount));
+        actual.put("the in-scope conjunct alone — live control", verdict(inScope));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("MARKED list beside the in-scope conjunct", ADMITTED);
@@ -300,23 +298,25 @@ class HavingFilterConditionLeafLawsTest {
         expected.put("MARKED negative list beside the in-scope conjunct", ADMITTED);
         expected.put("MARKED group count beside the in-scope conjunct", ADMITTED);
         expected.put("UNMARKED group count beside the in-scope conjunct", ADMITTED);
-        expected.put("the in-scope conjunct alone, hand-spelled — live control", ADMITTED);
-        assertEquals(expected, actual, "the group-LIST carrier obeys the scalar pair's gate, marked or not — so "
+        expected.put("MARKED group count as the SOLE filter condition", NO_ITERATION);
+        expected.put("UNMARKED group count as the SOLE filter condition", NO_ITERATION);
+        expected.put("the in-scope conjunct alone — live control", ADMITTED);
+        assertEquals(expected, actual, "the group-LIST carriers obey the scalar pair's gate, marked or not — so "
                 + "the bridge's refusal of a marked list operand is over-strict, not protective (DG49)");
     }
 
-    // ---- fixtures --------------------------------------------------------------------------------
-
-    /**
-     * The same carrier as {@link #filteredCount}, with the filter spelled by hand for a shape the typed surface
-     * cannot express. The surrounding text is the ABSOLUTE form the renderer emits, so a raw row and a typed row
-     * differ only in the filter.
-     */
-    private static String rawFilterVerdict(String rawFilter) {
-        return codes(KernelLaws.checkModel(MODEL, GROUP, "../Marker",
-                "FieldFilled(/Order/Marker) And NumberOfFilledFields(/Order/Lines*/Sku Having ("
-                        + rawFilter + ")) > 0"));
+    /** The marker must reach the kernel, so the marked rows above are about {@code $} rather than a dropped one. */
+    @Test
+    void theMarkedGroupListRowsRenderTheirMarkers() {
+        GroupListRef billing = M.flattenGroup("/Order/Billing");
+        GroupListRef shipping = M.flattenGroup("/Order/Shipping");
+        assertEquals("NumberOfFilledFields(/Order/Lines*/Sku Having NumberOfFilledGroups($/Order/Billing, "
+                + "$/Order/Shipping) > 0) > 0",
+                KernelLaws.render(Dsl.numberOfFilledFields(M.flatten("/Order/Lines*/Sku")
+                        .having(Dsl.numberOfFilledGroups(billing.outer(), shipping.outer()).gt(0))).gt(0)));
     }
+
+    // ---- fixtures --------------------------------------------------------------------------------
 
     /** The carrier: a filtered FIELD list on the fill count, guarded by the error field's own presence. */
     private static String filteredCount(Condition filter) {

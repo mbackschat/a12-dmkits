@@ -21,9 +21,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
  * {@code ConditionConverter}'s single-group arm converts through {@code model.group(e.getFullName())} and thereby
  * "drops the star its own comment promises", so the round trip renders the unstarred form the kernel REJECTS
  * ({@code MVK_NO_WILDCARD}). Reading the converter alone supports that: {@code GroupRef} genuinely carries no
- * star. Reading one layer further does not — {@code DslRenderer.countOperands} re-derives the star from the
- * MODEL (<code>g.repeating() ? "*" : ""</code>), and its own comment records that being fixed on 2026-08-12 for
- * exactly this class of defect. Two adjacent reads, opposite conclusions, which is precisely the situation this
+ * star. Reading one layer further does not — the star is re-derived from the MODEL, today by
+ * {@code CountAggregate.scopeOf}, which stars a group exactly when it repeats, and the renderer's own comment
+ * records that being fixed on 2026-08-12 for exactly this class of defect. Two adjacent reads, opposite conclusions, which is precisely the situation this
  * repo's rules say to settle by executing rather than by reading.
  *
  * <p>The guard naming {@code PatientRef} is not decoration: a rule's error field must be referenced by

@@ -53,9 +53,12 @@ public record CountAggregate(CountOp op, List<AggregateOperand> operands) implem
     }
 
     /**
-     * A group as this carrier's operand: its scope, starred exactly when the group repeats, which is how the
-     * count factories have always rendered a {@link GroupRef}. The group-list quantifiers wrap the same reference
-     * unstarred, so the projection belongs to this carrier rather than to {@link GroupRef}.
+     * A group as this carrier's operand: its scope, starred exactly when the group repeats, the star the count
+     * factories have always put on a {@link GroupRef}. The group-list quantifiers wrap the same reference
+     * unstarred, so the projection belongs to this carrier rather than to {@link GroupRef}. The star now lives in
+     * the scope's path rather than being appended at rendering, so a rule inside the group renders
+     * {@code ../../G*} where the appended form gave {@code ..*}, which A12 refuses
+     * ({@code validate.laws.StarredCountRenderBaseLawsTest}).
      */
     static GroupListRef scopeOf(GroupRef group) {
         return new GroupListRef(group, group.repeating() ? List.of(group) : List.of());

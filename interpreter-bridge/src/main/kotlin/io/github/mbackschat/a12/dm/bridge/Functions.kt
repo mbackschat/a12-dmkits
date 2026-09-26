@@ -116,8 +116,9 @@ internal class Functions(private val mapping: Mapping) {
 
     private fun countOfFilledFields(args: List<Expr>): Calculation {
         // A MARKED group cannot ride the bare-GroupRef arm — a group reference carries no marker; the
-        // aggregate-operand arm below maps it to a `GroupListRef`, which does (DG49). Nor can a REPEATABLE one, which that arm renders starred while
-        // the author wrote it bare; the aggregate-operand arm keeps it as written.
+        // aggregate-operand arm below maps it to a `GroupListRef`, which does (DG49). Nor can a REPEATABLE one,
+        // which that arm renders starred while the author wrote it bare; the aggregate-operand arm keeps it as
+        // written.
         if (args.isNotEmpty() && args.all {
                 it is Expr.Field && mapping.isGroup(it.path) && !it.outer && !mapping.groupRef(it).repeating()
             }) {

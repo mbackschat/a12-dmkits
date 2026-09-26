@@ -13,18 +13,16 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
 /**
- * {@code NumberOfFilledGroups}' group list, whose duplicate arms the kernel has answered since 2026-08-10.
+ * {@code NumberOfFilledGroups}' group operands, whose duplicate arms the kernel has answered since 2026-08-10.
  *
- * <p>This carrier was sharper than an ungated one: {@code CountAggregate} called the dedup on its {@code
- * fields} list, which its own constructor forces EMPTY for this operator, so the call read as wiring and could
- * not fire while the {@code groups} list carrying the actual operands was never compared. A call-site scan
- * reports the carrier as gated, which is why the guard for this class has to be behavioural.
+ * <p>This carrier was sharper than an ungated one: the dedup once ran on an operand list the constructor forced
+ * EMPTY for this operator, so the call read as wiring and could not fire. A call-site scan reports the carrier as
+ * gated, which is why the guard for this class has to be behavioural.
  *
- * <p>The exemption is carrier-specific here for a measured reason, and it is the reason this list is projected
- * rather than gated in place: {@code CountAggregate} renders a group as {@code path + "*"} when the group
- * repeats, so a repeatable operand IS starred in the emitted text and the kernel's exact arm skips it — while
- * the group-list quantifiers wrap the same {@link GroupRef} unstarred and render it bare. Exemption is a
- * property of the rendered operand, not of the operand type.
+ * <p>The exemption is carrier-specific here for a measured reason: the count holds a repeatable group as its
+ * starred scope ({@code CountAggregate.scopeOf}), so the operand IS starred in the emitted text and the kernel's
+ * exact arm skips it — while the group-list quantifiers wrap the same {@link GroupRef} unstarred and render it
+ * bare. Exemption is a property of the rendered operand, not of the operand type.
  *
  * <p>Each arm's class is withheld, and the arm is told apart by its problem text: A12 reads a group's emptiness
  * ahead of every list gate, which a {@link GroupRef} does not show ({@code validate.laws.EntityListOperandReadLawsTest}).
