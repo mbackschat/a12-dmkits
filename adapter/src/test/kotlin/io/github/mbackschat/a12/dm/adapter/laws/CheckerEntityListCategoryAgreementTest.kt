@@ -91,6 +91,7 @@ class CheckerEntityListCategoryAgreementTest {
             "AtLeastOneGroupFilled, a group's category beside a duplicate" to
                 ("AtLeastOneGroupFilled(Billing -> Level, Contact, Contact)" to GROUP),
             "AllFieldsFilled, a group's category" to ("AllFieldsFilled(Billing -> Level, Label)" to GROUP),
+            "RepetitionNotUnique, a group's category" to ("RepetitionNotUnique(Billing -> Level, Label)" to GROUP),
             // The controls: the same lists without the category.
             "AllFieldsFilled, the control" to ("AllFieldsFilled(Tier, Label)" to ADMITTED),
             "NumberOfFilledGroups, the control" to ("NumberOfFilledGroups(Billing, Contact) > 0" to ADMITTED),

@@ -11256,10 +11256,10 @@ One carrier: `/Order` holds `Reference`, `Label`, an Enumeration `Tier` with the
 | rows | A12 |
 |---|---|
 | `Tier -> Level` in the eleven field-list operators, the three counts, the five group-list quantifiers and `RepetitionNotUnique`, beside `Label`, `Contact` or `Window`, or alone in `FieldFilled`, `FieldNotFilled`, `GroupFilled` and `GroupNotFilled` | `MVK_CATEGORY_NOT_ALLOWED` |
-| `AllFieldsFilled(Tier -> Level, Tier)` | `MVK_CATEGORY_NOT_ALLOWED` |
 | the same with a duplicate beside it, in `AllFieldsFilled`, `FieldValuesNotUnique`, `AtLeastOneGroupFilled` and `RepetitionNotUnique` | `MVK_DUPLICATE_PARAM1` |
 | the same with a duplicate beside it, in `NumberOfFilledFields`, `NumberOfDifferentValues` and `NumberOfFilledGroups` | `MVK_CATEGORY_NOT_ALLOWED` |
-| `Billing -> Level` in `NumberOfFilledGroups`, `AtLeastOneGroupFilled`, `AllGroupsFilled`, `GroupFilled`, `GroupNotFilled` and `AllFieldsFilled`, and beside a duplicate in `AtLeastOneGroupFilled` | `MVK_NO_GROUPS_ALLOWED` |
+| `AllFieldsFilled(Tier -> Level, Tier)` | `MVK_CATEGORY_NOT_ALLOWED` |
+| `Billing -> Level` in `NumberOfFilledGroups`, `AtLeastOneGroupFilled`, `AllGroupsFilled`, `GroupFilled`, `GroupNotFilled`, `AllFieldsFilled` and `RepetitionNotUnique`, and beside a duplicate in `AtLeastOneGroupFilled` | `MVK_NO_GROUPS_ALLOWED` |
 | the controls `AllFieldsFilled(Tier, Label)` and `NumberOfFilledGroups(Billing, Contact) > 0` | ADMITTED |
 | `RepetitionNotUnique(Tier, Label)`, which a root rule may not carry | `MVK_REPEATABLE_GROUP_MISSING` |
 | `GroupFilled(Tier)`, a field without its category | `MVK_NO_FIELDS_ALLOWED` |
