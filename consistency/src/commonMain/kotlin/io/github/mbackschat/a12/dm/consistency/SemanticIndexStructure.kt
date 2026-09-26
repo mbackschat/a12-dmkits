@@ -42,8 +42,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  *
  * **Silent on a literal key whose index field this reader cannot judge.** `isValueApplicable` runs the index
  * field's own value validation over the constant, and [admitsIndexConstant] reproduces it per kind except where
- * the kind's rule is not one it can reproduce, such as a declared String pattern; a later class named on such an
- * index would be the wrong class on a correct rejection.
+ * the kind's rule is not one it can reproduce, such as a declared String pattern outside [KeyPattern]'s subset; a
+ * later class named on such an index would be the wrong class on a correct rejection.
  */
 internal fun TrackedFactBase.semanticIndexStructureFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()

@@ -16,8 +16,8 @@ import kotlinx.serialization.json.intOrNull
  * test is a SHAPE test, measured row by row against the Kernel in
  * `adapter.laws.CheckerIndexKeyConstantAgreementTest` ([KERNEL-FINDINGS KF481]).
  *
- * Unjudged, and therefore safe to under-report: a declared String pattern, which is Java regex this checker
- * cannot evaluate identically on its JavaScript target; a table-backed enumeration, whose values a model does
+ * Unjudged, and therefore safe to under-report: a declared String pattern outside the subset [KeyPattern]
+ * evaluates as Java does on both targets; a table-backed enumeration, whose values a model does
  * not carry; a type definition, a custom type or an unspecified field, none of them measured; and a constant
  * holding a CR, which A12 strips from a CRLF before the test, so the spelling it tests is not the written one.
  */
@@ -64,14 +64,22 @@ private fun JsonObject?.constrainsNoString(): Boolean {
 
 private val LENGTH_MEMBERS = listOf("minLength", "maxLength")
 
-/** A length bound is asked only where it is positive, as `IStringType` asks it; a pattern leaves it unjudged. */
+/**
+ * A length bound is asked only where it is positive, then the pattern, as `IStringType` asks them; a pattern
+ * outside [KeyPattern]'s subset leaves the constant unjudged, the length included.
+ */
 private fun JsonObject.stringAdmits(constant: String): Boolean? {
-    if (!declaredText("pattern").isNullOrEmpty()) {
-        return null
-    }
+    val pattern = declaredText("pattern")?.takeIf { it.isNotEmpty() }?.let { KeyPattern.parse(it) ?: return null }
     val max = declaredInt("maxLength")?.takeIf { it > 0 }
     val min = declaredInt("minLength")?.takeIf { it > 0 }
-    return (max == null || constant.length <= max) && (min == null || constant.length >= min)
+    if ((max != null && constant.length > max) || (min != null && constant.length < min)) {
+        return false
+    }
+    return when {
+        pattern == null -> true
+        constant.any(Char::isSurrogate) -> null
+        else -> pattern.matches(constant)
+    }
 }
 
 /**

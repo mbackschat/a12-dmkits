@@ -29,6 +29,12 @@ class CheckerIndexKeyConstantAgreementTest {
             .group("Codes") { g -> keyed(g) { it.stringField("K") { } } }
             .group("Tags") { g -> keyed(g) { it.stringField("K") { s -> s.minLength(2).maxLength(3) } } }
             .group("Refs") { g -> keyed(g) { it.stringField("K") { s -> s.pattern("[A-Z]{2}[0-9]", "two letters, a digit") } } }
+            .group("Lots") { g -> keyed(g) { it.stringField("K") { s -> s.pattern("[A-Z]+-[0-9]{2,3}", "a lot number") } } }
+            .group("Words") { g -> keyed(g) { it.stringField("K") { s -> s.pattern("[^0-9]*", "no digits") } } }
+            .group("Mixed") { g -> keyed(g) { it.stringField("K") { s -> s.pattern("[a-z]?[0-9]*", "a letter, digits") } } }
+            .group("Runs") { g -> keyed(g) { it.stringField("K") { s -> s.pattern("[0-9]{3,}", "three digits or more") } } }
+            .group("Caps") { g -> keyed(g) { it.stringField("K") { s -> s.maxLength(3).pattern("[A-Z]+", "capitals") } } }
+            .group("Loose") { g -> keyed(g) { it.stringField("K") { s -> s.pattern(".{2}", "two characters") } } }
             .group("Seqs") { g -> keyed(g) { it.numberField("K") { n -> n.fractionDigits(0) } } }
             .group("Rates") { g -> keyed(g) { it.numberField("K") { n -> n.fractionDigits(0, 2) } } }
             .group("Prices") { g -> keyed(g) { it.numberField("K") { n -> n.fractionDigits(2, 2) } } }
@@ -81,6 +87,21 @@ class CheckerIndexKeyConstantAgreementTest {
             "String pattern, matching" to "Refs/Amount For \"AB1\"",
             "String pattern, not matching" to "Refs/Amount For \"ab1\"",
             "String pattern, a match inside a longer text" to "Refs/Amount For \"XAB1\"",
+            "String pattern with a literal dash, matching" to "Lots/Amount For \"AB-12\"",
+            "String pattern with a literal dash, too many digits" to "Lots/Amount For \"AB-1234\"",
+            "String pattern with a literal dash, no letters" to "Lots/Amount For \"-12\"",
+            "String pattern, a negated class" to "Words/Amount For \"abc\"",
+            "String pattern, a negated class meeting a digit" to "Words/Amount For \"a1\"",
+            "String pattern, optional letter and digits" to "Mixed/Amount For \"5\"",
+            "String pattern, the optional letter alone" to "Mixed/Amount For \"a\"",
+            "String pattern, two letters for one optional" to "Mixed/Amount For \"ab\"",
+            "String pattern, an open count met" to "Runs/Amount For \"123\"",
+            "String pattern, an open count short" to "Runs/Amount For \"12\"",
+            "String pattern and length, both met" to "Caps/Amount For \"AB\"",
+            "String pattern and length, the pattern met and the length not" to "Caps/Amount For \"ABCD\"",
+            "String pattern and length, the length met and the pattern not" to "Caps/Amount For \"ab\"",
+            "String pattern outside the subset, matching" to "Loose/Amount For \"ab\"",
+            "String pattern outside the subset, not matching" to "Loose/Amount For \"a\"",
             "Number 0 digits, a whole number" to "Seqs/Amount For \"5\"",
             "Number 0 digits, negative" to "Seqs/Amount For \"-5\"",
             "Number 0 digits, a leading zero" to "Seqs/Amount For \"05\"",
@@ -133,6 +154,14 @@ class CheckerIndexKeyConstantAgreementTest {
             "String 2..3, too short",
             "String pattern, not matching",
             "String pattern, a match inside a longer text",
+            "String pattern with a literal dash, too many digits",
+            "String pattern with a literal dash, no letters",
+            "String pattern, a negated class meeting a digit",
+            "String pattern, two letters for one optional",
+            "String pattern, an open count short",
+            "String pattern and length, the pattern met and the length not",
+            "String pattern and length, the length met and the pattern not",
+            "String pattern outside the subset, not matching",
             "Number 0 digits, a fraction",
             "Number 0 digits, a plus sign",
             "Number 0 digits, a word",
@@ -158,14 +187,13 @@ class CheckerIndexKeyConstantAgreementTest {
         val A12: Map<String, Set<String>> = ROWS.keys.associateWith { if (it in REFUSED_ROWS) REFUSED else ADMITTED }
 
         /**
-         * The rows where the checker answers otherwise, with what it answers. A declared pattern is Java regex,
-         * which this checker cannot evaluate identically on its JavaScript target, so it leaves the key unjudged
-         * and every gate behind it stands down (CONSISTENCY-GAPS DG102).
+         * The rows where the checker answers otherwise, with what it answers. A declared pattern outside the
+         * subset both targets evaluate alike is Java regex this checker does not evaluate, so it leaves the key
+         * unjudged and every gate behind it stands down.
          */
         val OURS: Map<String, Set<String>> = mapOf(
-            "String pattern, matching" to emptySet(),
-            "String pattern, not matching" to emptySet(),
-            "String pattern, a match inside a longer text" to emptySet(),
+            "String pattern outside the subset, matching" to emptySet(),
+            "String pattern outside the subset, not matching" to emptySet(),
         )
     }
 }

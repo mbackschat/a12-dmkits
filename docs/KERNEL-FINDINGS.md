@@ -11311,9 +11311,20 @@ The portable checker had been silent on `../<x>` and `../../Claims/<x>` in ten f
 
 The empty constant is refused ahead of the type's rule on every kind by source; this fixture measures it on the String row. So every kind's rule is a shape, and the rows a value-level reading would decide differently are what show it. A Number admits an optional minus and ASCII digits, then a fraction after `.` or `,`, absent unless the maximum is positive and required when the minimum is; nothing else it declares is asked, neither the integer digits nor a forbidden leading zero. A temporal kind matches its format with each component letter read as one digit, so `2020-13-45` is admitted; a date range is two such dates around its separator. A Boolean admits exactly `true` and `false` whatever custom values it declares, and a Confirm only `true`. A String asks its declared length bounds and matches a declared pattern against the whole key, so `XAB1` is refused though it contains a match.
 
-The portable checker had judged a constant only against an enumeration. It now reproduces every rule above except the pattern, which it leaves unjudged because a Java pattern does not evaluate identically on its JavaScript target ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG102). It reproduces each shape without a regex, so both targets decide it alike.
+**Extended 2026-09-26 — patterns beside the first, and a pattern beside a length.** `IStringType.isValueApplicable` asks the length bounds first and then `value.matches(pattern)` (source-read), and these rows follow it, each probe the same `Sum(<group>/Amount For "<constant>") > 0`:
 
-*Locked by:* `adapter.laws.CheckerIndexKeyConstantAgreementTest`, A12's class written out on every row and the checker required to name it; the checker's shape rules: `consistency.IndexKeyConstantShapeTest`.
+| index field `K`, String | admitted | refused |
+|---|---|---|
+| pattern `[A-Z]+-[0-9]{2,3}` | `AB-12` | `AB-1234`, `-12` |
+| pattern `[^0-9]*` | `abc` | `a1` |
+| pattern `[a-z]?[0-9]*` | `5`, `a` | `ab` |
+| pattern `[0-9]{3,}` | `123` | `12` |
+| pattern `[A-Z]+`, at most 3 long | `AB` | `ABCD` (the length), `ab` (the pattern) |
+| pattern `.{2}` | `ab` | `a` |
+
+The portable checker had judged a constant only against an enumeration. It now reproduces every rule above. It reproduces each shape without a regex, so both targets decide it alike, and it evaluates a declared pattern the same way: only in a subset it matches itself, of letters, digits, spaces, `_` and `-`, bracket classes of them, and the quantifiers `?`, `*`, `+` and the counted ones. `.{2}` is outside it, since Java's `.` excludes U+0085 where JavaScript's admits it, so that key stays unjudged ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG102).
+
+*Locked by:* `adapter.laws.CheckerIndexKeyConstantAgreementTest`, A12's class written out on every row and the checker required to name it; the checker's shape rules: `consistency.IndexKeyConstantShapeTest`; the pattern subset's boundary and its matches, the latter executed against Java's own `String.matches`: `consistency.KeyPatternTest`.
 
 ## §9 supplement — an entity list whose carrier calls `checkNoCategories` refuses an Enumeration's category, ahead of its duplicate walk on the counts and behind it elsewhere, and a category behind a group is the spec's group class on every carrier (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf482"></a>
 
