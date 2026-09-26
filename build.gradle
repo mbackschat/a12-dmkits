@@ -319,6 +319,10 @@ tasks.register('leakGuardTest', Test) {
         // state is not something an authored list can hold — the pair that bites is the one nobody thought
         // of, which is how the `vk_vk` law sat in two of its three sites for three months.
         includeTestsMatching 'io.github.mbackschat.a12.dm.BuilderCheckerDivergenceGuardTest'
+        // A scan of every tracked source for a kernel code spelled as a string rather than a KernelCode. In root
+        // :test alone, which no commit gate runs, a new literal stood red for a day (456832082); here the
+        // pre-commit hook's leak-lane requirement meets it on the kit change that adds one.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.KernelCodeLiteralRatchetTest'
         // Same derived-denominator reason: the subject is every tracked test source, and the grid that
         // collapses is the one nobody thought to declare. A repeated row name passes every assertion it has,
         // so only a scan that needs no list can see it.
