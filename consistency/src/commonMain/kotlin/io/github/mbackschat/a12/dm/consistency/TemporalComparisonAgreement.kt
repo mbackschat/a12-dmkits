@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
-import io.github.mbackschat.a12.dm.consistency.syntax.comparisonsIn
 
 /**
  * What a DATE or DATE-RANGE side of a comparison demands of its partner.
@@ -56,7 +55,7 @@ internal fun TrackedFactBase.temporalComparisonAgreementFindings(): List<Finding
     val body = element.body ?: return@mapNotNull null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-        comparisonsIn(text, conditionLanguage, syntaxEntryOf(member))
+        comparisonsOf(element, body, member, text)
             .firstNotNullOfOrNull { comparison -> temporalFinding(comparison, group, element, member) }
     }
 }

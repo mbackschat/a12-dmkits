@@ -20,7 +20,8 @@ class BlankDslSlotTest {
         {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-            {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxFractionalDigits":2}}}},
             {"type":"Field","id":"f1","name":"Listed","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Computation","id":"c0","name":"Calc","Computation":{
               "computedFieldRelPath":"../Price",
@@ -34,6 +35,9 @@ class BlankDslSlotTest {
 
     private fun codes(source: ModelSource) = check(source).findings.map { it.code }.distinct().sorted()
 
+    // `Price` is a scale-2 number, as the laws carrier's target is: A12 compares a computed field with its
+    // operation, so the scale-2 `42.00` into a text field is refused on every row, the controls included
+    // (`adapter.laws.CheckerComputationJoinedConditionAgreementTest`).
     // The guard reads a PEER of the computed field, never `Price` itself: a computation guarded by a read
     // of its own target is a shape A12 refuses outright (`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`), which
     // this fixture carried silently until `COMPUTATION_SELF_READ` landed and reported it on every row.

@@ -49,18 +49,43 @@ import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
  *
  * **Silent on a spec carrying a clause, the `$` marker or the rule-context keyword**, whose own gates run
  * first and are unmeasured beside these.
+ *
+ * **A computation's TARGET is read too**, as the `[<target>]` of the comparison each alternative is lowered
+ * to ([loweredComparisonOf]), ahead of the operation: into a partially known date it draws
+ * `MVK_INVALID_DATE_TYPE`, into a raw text `MVK_INVALID_RAW_TYPE`
+ * (`adapter.laws.CheckerComputationJoinedConditionAgreementTest`). Only those two gates can answer there, since
+ * A12's builder refuses a group target before any of them ([computedTargetKindFindings]) and a target carries
+ * no star.
  */
 internal fun TrackedFactBase.fieldValueReadOperandFindings(): List<Finding> = declarations().flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).flatMap { (member, text) ->
-        fieldValueReadsIn(text, conditionLanguage).mapNotNull { read ->
+        val target = loweredComparisonOf(element, body, member, text)?.targetRead?.let { read ->
+            readDefect(read, group, element)?.let { defect -> targetFinding(defect, element, member, read) }
+        }
+        listOfNotNull(target) + fieldValueReadsIn(text, conditionLanguage).mapNotNull { read ->
             readDefect(read, group, element)?.let { defect -> finding(defect, element, member, read) }
         }
     }
 }
 
-private class ReadDefect(val code: String, val written: String, val because: String)
+/** Whether one of the field-value read's gates refuses [read], as far as this family may judge it. */
+internal fun TrackedFactBase.fieldValueReadIsRefused(
+    read: FieldValueRead,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): Boolean = readDefect(read, declaringGroup, element) != null
+
+/** The field-value read's gates, in the order `CheckFeldWertOpImpl.check` asks them. */
+private enum class ReadGate(val code: String) {
+    GROUP("MVK_NO_GROUPS_ALLOWED"),
+    STAR("MVK_NO_WILDCARDS_ALLOWED"),
+    RAW("MVK_INVALID_RAW_TYPE"),
+    PARTIAL("MVK_INVALID_DATE_TYPE"),
+}
+
+private class ReadDefect(val gate: ReadGate, val written: String, val target: String)
 
 /** The first gate this read fails, in A12's own order, or null where none fails and where it may not judge. */
 private fun TrackedFactBase.readDefect(
@@ -77,10 +102,7 @@ private fun TrackedFactBase.readDefect(
     val target = declarationAt(addressed) ?: return null
     when (target.declaredKind) {
         // The spec's own category gate asks the group question first ([categoryReferenceFindings]).
-        DeclaredKind.GROUP -> return if (read.category != null) null else ReadDefect(
-            "MVK_NO_GROUPS_ALLOWED", written,
-            "names the group `${target.path}`, and a field-value read takes one field",
-        )
+        DeclaredKind.GROUP -> return if (read.category != null) null else ReadDefect(ReadGate.GROUP, written, target.path)
         DeclaredKind.FIELD -> Unit
         else -> return null
     }
@@ -91,33 +113,53 @@ private fun TrackedFactBase.readDefect(
         return if (read.inAFilterBody) {
             null
         } else {
-            ReadDefect(
-                "MVK_NO_WILDCARDS_ALLOWED", written,
-                "is read across a repetition, and a field-value read takes one addressed value — aggregate the " +
-                    "list, or let the rule iterate the repeating group",
-            )
+            ReadDefect(ReadGate.STAR, written, target.path)
         }
     }
     // A type definition or an unspecified type has no class this reader can know, so both type gates stay silent.
     target.baseTypeClass() ?: return null
     return when {
-        target.waivesValueValidation() -> ReadDefect(
-            "MVK_INVALID_RAW_TYPE", written,
-            "waives value validation, so A12 holds its content unparsed and there is no value to read",
-        )
-        declaresAPartialPrecision(target) -> ReadDefect(
-            "MVK_INVALID_DATE_TYPE", written,
-            "is a partially known date, which a field-value read cannot take — resolve it with `ValueAsDate`",
-        )
+        target.waivesValueValidation() -> ReadDefect(ReadGate.RAW, written, target.path)
+        declaresAPartialPrecision(target) -> ReadDefect(ReadGate.PARTIAL, written, target.path)
         else -> null
     }
 }
 
-private fun finding(defect: ReadDefect, element: TrackedDeclaration, member: String, read: FieldValueRead) = Finding(
-    FindingCategory.A12_CONSTRAINT,
-    FindingSeverity.ERROR,
-    defect.code,
-    "in `$member`: `[${defect.written}]` ${defect.because}",
-    element.path,
-    TextSpan(member, read.at, read.end),
-)
+private fun finding(defect: ReadDefect, element: TrackedDeclaration, member: String, read: FieldValueRead): Finding {
+    val because = when (defect.gate) {
+        ReadGate.GROUP -> "names the group `${defect.target}`, and a field-value read takes one field"
+        ReadGate.STAR -> "is read across a repetition, and a field-value read takes one addressed value — " +
+            "aggregate the list, or let the rule iterate the repeating group"
+        ReadGate.RAW -> "waives value validation, so A12 holds its content unparsed and there is no value to read"
+        ReadGate.PARTIAL -> "is a partially known date, which a field-value read cannot take — resolve it with " +
+            "`ValueAsDate`"
+    }
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        defect.gate.code,
+        "in `$member`: `[${defect.written}]` $because",
+        element.path,
+        TextSpan(member, read.at, read.end),
+    )
+}
+
+/** A computation target's own read, whose corrective is about what to compute INTO rather than how to read. */
+private fun targetFinding(defect: ReadDefect, element: TrackedDeclaration, member: String, read: FieldValueRead): Finding? {
+    val because = when (defect.gate) {
+        // A group target never reaches the read, and a target path is never starred.
+        ReadGate.GROUP, ReadGate.STAR -> return null
+        ReadGate.RAW -> "waives value validation, so there is no value to compare the result with — compute into " +
+            "a field that validates its value"
+        ReadGate.PARTIAL -> "is a partially known date, which a field-value read cannot take — compute into a " +
+            "date of full precision"
+    }
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        defect.gate.code,
+        "in `$member`: A12 compares the computed field `[${defect.written}]` with this operation, and it $because",
+        element.path,
+        TextSpan(member, read.at, read.end),
+    )
+}

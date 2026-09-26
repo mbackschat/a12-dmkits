@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
 import io.github.mbackschat.a12.dm.consistency.syntax.FALSE_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TRUE_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
-import io.github.mbackschat.a12.dm.consistency.syntax.comparisonsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
@@ -57,7 +56,7 @@ internal fun TrackedFactBase.booleanComparisonAgreementFindings(): List<Finding>
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            comparisonsIn(text, conditionLanguage, syntaxEntryOf(member))
+            comparisonsOf(element, body, member, text)
                 .firstNotNullOfOrNull { comparison ->
                     agreementFinding(comparison, spellings, group, element, member)
                 }

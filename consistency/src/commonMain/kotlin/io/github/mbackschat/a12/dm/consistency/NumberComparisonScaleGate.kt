@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
-import io.github.mbackschat.a12.dm.consistency.syntax.comparisonsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -51,7 +50,7 @@ internal fun TrackedFactBase.numberComparisonScaleFindings(): List<Finding> = de
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val suppressed = body.suppressesTheScaleGate()
     conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-        comparisonsIn(text, conditionLanguage, syntaxEntryOf(member))
+        comparisonsOf(element, body, member, text)
             .firstNotNullOfOrNull { comparison ->
                 scaleFinding(comparison, suppressed, group, element, member)
             }

@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -51,6 +53,20 @@ private val TOLERANCE_BANDS = setOf(
     "DiffersWithToleranceRange5",
     "DiffersWithToleranceRange10",
 )
+
+/**
+ * The operator this [alternative][JsonObject] is lowered to, as a model in [language] spells it: `!=` where it
+ * names no band, the band's own operator where it names one, and null where it names a band A12 cannot bind.
+ *
+ * `ComputationAlternativesJoiner.createComparison` chooses between exactly those two, and A12 never judges a
+ * model whose band it cannot bind, which is why that arm has no operator to give.
+ */
+internal fun JsonObject.loweredComparisonOperator(language: ConditionLanguage): String? =
+    when (val band = bound("toleranceRangeOp", TOLERANCE_BANDS)) {
+        Bound.Unset -> "!="
+        is Bound.Spelled -> CONDITION_OPERATOR_KEYWORDS[language]?.get(band.value)
+        is Bound.Refused -> null
+    }
 
 /**
  * One member bound to a closed set of strings, as far as A12 reads it.

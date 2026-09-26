@@ -1261,17 +1261,30 @@ private val ERROR_TARGET_CODES = setOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD,
  * Whether an unresolvable name in the same declaration may stand ahead of this finding, which withholds it.
  *
  * A [placed] finding answers to a name in its OWN member by position, which is
- * [withoutDefectsBehindAnEarlierOne]'s to decide, so here it is withheld only by a name in another member:
- * across members the order is not measured, and a name in a precondition is measured withholding the
- * operation's class (`rulekit.validate.laws.ComputationMemberVerdictLawsTest`). Everything else answers yes
- * wherever the declaration has such a name — the position-blind substitution [CONDITION_TEXT_CODES] discloses.
+ * [withoutDefectsBehindAnEarlierOne]'s to decide, so here it is withheld only by a name in a member A12 reads
+ * EARLIER ([joinedOrderOf]): a name in a precondition is measured withholding the operation's class, and a
+ * name in the operation is measured leaving the precondition's standing
+ * (`rulekit.validate.laws.ComputationMemberVerdictLawsTest`,
+ * `adapter.laws.CheckerComputationJoinedConditionAgreementTest`). A member outside the joined text has no
+ * order, so a name there still withholds. Everything else answers yes wherever the declaration has such a
+ * name — the position-blind substitution [CONDITION_TEXT_CODES] discloses.
  */
 private fun Finding.mayFollowAnUnresolvableName(unresolved: List<TextSpan>?, placed: TextSpan?): Boolean {
     if (unresolved == null) {
         return false
     }
     placed ?: return true
-    return unresolved.any { it.member != placed.member }
+    return unresolved.any { it.member != placed.member && joinedOrderPrecedes(it.member, placed.member) != false }
+}
+
+/**
+ * Whether A12 reads [earlier] ahead of [later] in the condition it joins their declaration's DSL into, or null
+ * where either member stands outside that text and so has no order.
+ */
+private fun joinedOrderPrecedes(earlier: String, later: String): Boolean? {
+    val first = joinedOrderOf(earlier) ?: return null
+    val second = joinedOrderOf(later) ?: return null
+    return first < second
 }
 
 /**
@@ -1305,8 +1318,14 @@ private fun List<Finding>.withoutTheTextsBehindARefusedPreamble(
 }
 
 /**
- * Drops a finding that an EARLIER defect in the same DSL member stands ahead of: A12 names the first defect in
- * a text and nothing after it.
+ * Drops a finding that an EARLIER defect in the same declaration's DSL stands ahead of: A12 names the first
+ * defect in a text and nothing after it.
+ *
+ * **A computation's members are ONE text**, in the order [joinedOrderOf] gives: A12 joins them into the one
+ * condition it parses, so a precondition's class withholds its operation's, the common precondition's an
+ * alternative's, and one alternative's operation the next alternative's precondition
+ * (`adapter.laws.CheckerComputationJoinedConditionAgreementTest`). Two members of which either stands outside
+ * that text are not ordered against each other.
  *
  * **Earlier means RAISED earlier, which is not where a span starts** ([RaisePoint]). Measured in both orders
  * on these pairs: two reference classes; a reference class against a lexer, grammar, wildcard, walk or
@@ -1329,13 +1348,17 @@ private fun List<Finding>.withoutDefectsBehindAnEarlierOne(
     conditionReferences: Set<Finding>,
     twinned: Set<String>,
 ): List<Finding> {
-    val placedByMember = mapNotNull { finding -> finding.placedIn(conditionReferences, twinned)?.let { finding to it } }
-        .groupBy { (finding, span) -> finding.at to span.member }
+    val placedByDeclaration = mapNotNull { finding ->
+        finding.placedIn(conditionReferences, twinned)?.let { finding to it }
+    }.groupBy { (finding, _) -> finding.at }
     return filterNot { finding ->
         val own = finding.placedIn(conditionReferences, twinned) ?: return@filterNot false
         val raised = finding.raisePoint(own, conditionReferences)
-        placedByMember.getValue(finding.at to own.member).any { (earlier, span) ->
-            earlier.code != finding.code && earlier.raisePoint(span, conditionReferences) < raised
+        placedByDeclaration.getValue(finding.at).any { (earlier, span) ->
+            earlier.code != finding.code && when (span.member) {
+                own.member -> earlier.raisePoint(span, conditionReferences) < raised
+                else -> joinedOrderPrecedes(span.member, own.member) == true
+            }
         }
     }
 }

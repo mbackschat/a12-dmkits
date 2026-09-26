@@ -149,11 +149,38 @@ internal fun draftableMembers(kind: String, body: JsonObject): List<String> = wh
     else -> emptyList()
 }
 
+/**
+ * Where [member] stands in the one condition A12 parses a declaration's DSL as, or null for a member outside it.
+ *
+ * `ComputationAlternativesJoiner` writes the common precondition first, then each alternative's precondition
+ * and operation in declaration order, which is the order [draftableMembers] lists them in; a rule's condition is
+ * its whole text. A12 names the first class in that text, so a precondition's class withholds its operation's,
+ * and one alternative's operation withholds the next alternative's precondition
+ * (`adapter.laws.CheckerComputationJoinedConditionAgreementTest`).
+ */
+internal fun joinedOrderOf(member: String): Int? {
+    if (member == "errorCondition" || member == "commonPrecondition") {
+        return 0
+    }
+    val (index, key) = alternativeMemberOf(member) ?: return null
+    return when (key) {
+        "precondition" -> 1 + 2 * index
+        "operation" -> 2 + 2 * index
+        else -> null
+    }
+}
+
 /** Read one member of [draftableMembers], or null when the declaration does not carry it. */
 private fun conditionText(body: JsonObject, member: String): String? {
-    val (index, key) = alternativeMemberOf(member) ?: return body.text(member)
+    val (_, key) = alternativeMemberOf(member) ?: return body.text(member)
+    return alternativeOf(body, member)?.text(key)
+}
+
+/** The computation alternative an alternative's member of [draftableMembers] belongs to, or null for any other. */
+internal fun alternativeOf(body: JsonObject, member: String): JsonObject? {
+    val (index, _) = alternativeMemberOf(member) ?: return null
     val alternatives = body["computationAlternatives"] as? JsonArray ?: return null
-    return (alternatives.getOrNull(index) as? JsonObject)?.text(key)
+    return alternatives.getOrNull(index) as? JsonObject
 }
 
 /**

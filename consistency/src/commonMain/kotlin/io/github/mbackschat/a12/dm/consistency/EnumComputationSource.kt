@@ -29,7 +29,9 @@ import kotlinx.serialization.json.contentOrNull
  * domain is `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`, a display-bearing source against an
  * unlabelled target is `MVK_INVALID_COMPARE_ENUM_TO_STRING` ([KF407]), and a NUMBER source is
  * `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`. A TEXT source is the discriminating case: the comparison walk
- * ADMITS a plain text against a textless enumeration, so this gate is the only thing that catches it.
+ * ADMITS a plain text against a textless enumeration, so this gate is the only thing that catches it. The three
+ * pre-empted shapes are the comparison families' to report, which read the lowered comparison
+ * ([loweredComparisonOf], [KERNEL-FINDINGS KF483]).
  *
  * **Silent on every operation shape this reader will not reduce**, which is a disclosed under-report: A12
  * refuses anything outside its three kinds, measured on a concatenation of the target's own declared value,

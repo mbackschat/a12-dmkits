@@ -72,11 +72,6 @@ private const val GROUP_FILLED = "GroupFilled"
 
 private const val CURRENT_REPETITION = "CurrentRepetition"
 
-/** The absolute path this computation writes, absent when the member does not resolve. */
-private fun TrackedFactBase.computedTargetOf(element: TrackedDeclaration): String? = declaredReferences()
-    .firstOrNull { it.role == ReferenceRole.COMPUTED_TARGET && it.declaredAt == element.path }
-    ?.let { (it.target as? Reference.Resolved)?.path }
-
 /**
  * Whether the implicit target-scale comparison cannot answer ahead of this class on [target].
  *

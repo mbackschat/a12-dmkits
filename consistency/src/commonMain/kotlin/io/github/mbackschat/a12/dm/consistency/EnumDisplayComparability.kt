@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
-import io.github.mbackschat.a12.dm.consistency.syntax.comparisonsIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
@@ -46,7 +45,7 @@ internal fun TrackedFactBase.enumDisplayComparabilityFindings(): List<Finding> =
     val body = element.body ?: return@mapNotNull null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-        comparisonsIn(text, conditionLanguage, syntaxEntryOf(member))
+        comparisonsOf(element, body, member, text)
             .firstNotNullOfOrNull { comparison -> displayFinding(comparison, group, element, member) }
     }
 }

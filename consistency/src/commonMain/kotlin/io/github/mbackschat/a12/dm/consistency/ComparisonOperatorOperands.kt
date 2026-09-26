@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
-import io.github.mbackschat.a12.dm.consistency.syntax.comparisonsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
@@ -48,7 +47,7 @@ internal fun TrackedFactBase.comparisonOperatorOperandFindings(): List<Finding> 
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            comparisonsIn(text, conditionLanguage, syntaxEntryOf(member))
+            comparisonsOf(element, body, member, text)
                 .firstNotNullOfOrNull { comparison ->
                     operandFinding(comparison, tolerance, temporal, booleans, group, element, member)
                 }

@@ -326,10 +326,6 @@ class CheckerFieldValueReadCarrierAgreementTest {
         val TO_ENUM = setOf("MVK_INVALID_COMPARE_TO_ENUM_OR_STRING")
 
         /** The rows where the checker answers otherwise, keyed `scope | row`, with what it answers. */
-        val OURS: Map<String, Set<String>> = mapOf(
-            // A computation's comparison against its target has no checker family (CONSISTENCY-GAPS DG106).
-            "a root target | an Enumeration from a Number" to ADMITTED,
-            "the origin | declared in the target's group" to ADMITTED,
-        )
+        val OURS: Map<String, Set<String>> = mapOf()
     }
 }

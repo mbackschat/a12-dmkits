@@ -1302,7 +1302,7 @@ A field's declared date **format** must be a **lowercase Java date pattern** fro
 
 **A full `DateTime(...)` result can only target the ISO DATE_TIME field — the compatibility is enforced at CODE GENERATION (probe, 2026-06-26).** Because every computation auto-generates an implicit validation rule `FieldFilled(F) And [F] != <op>` (the "every computation is also a validation rule" finding), a computation whose operation is a full `DateTime(D,T)` but whose target `F` is the **time-only `HH:mm:ss`** DATE_TIME field is rejected at codegen with **`MVK_INVALID_COMPARE_TO_DATE`** ("only allowed to compare dates with other fitting dates") — the implicit compare pits a full datetime against a time-only one, whose date-component sets don't fit (the same `formatsConsistentRegardingFormat` gate as the `Now` finding above). Net for **`compute()`**: every *authorable* computed-datetime target is the ISO `yyyy-MM-dd'T'HH:mm:ss` field, so the stored datetime is always ISO — exactly what a clean-room interpreter emits. There is no custom datetime target format to reformat to; a computed-DATE_TIME re-formatter would be dead code. *(This is why the IG19 residual closed as parity-by-construction, not a fix — INTERPRETER-FINDINGS IF33; locked by `adapter.laws.ComputeTargetFormatDiffTest.computedDateTimeUsesTargetFormatLikeKernel`.)*
 
-**A computation cannot target a partial DateType in kernel 30.8.1 (terminal static matrix, 2026-07-30; correction to SPEC-2026-07-27-01).** A modelkit/rulekit-authored computation that copies one FULL date into each precision passes for a FULL target and is rejected for `DAY_OPTIONAL`, `MONTH_OPTIONAL`, and `YEAR_OPTIONAL`, each with `MVK_INVALID_DATE_TYPE`. The discriminating mechanism is the computation's generated implicit validation comparison `[target] != operation`: `CheckFeldWertOpImpl` rejects reading any partially-known Date field as a plain value before runtime, even though each precision's stored-value domain itself admits fully known dates. The only supported warning suppression is `MVK_INVALID_COMPARE_DEC_PLACES`; attempting `errorCodesToSuppress: ["MVK_INVALID_DATE_TYPE"]` is rejected as `MVK_INVALID_SUPPRESSED_WARNING`. Therefore no maintained dynamic/static runtime matrix for a partial Date computation target can exist at this kernel version; treating the runtime store implementation in isolation as reachability was the error. *(Terminal kernel `RuleValidator.check` matrix plus full-model suppression defeat: `ComputedPartialDateTargetAdmissionDiffTest`; the diagnostic's actual terminal code is retained by API-FINDINGS 107.)*
+**A computation cannot target a partial DateType in kernel 30.8.1 (terminal static matrix, 2026-07-30; correction to SPEC-2026-07-27-01).** A modelkit/rulekit-authored computation that copies one FULL date into each precision passes for a FULL target and is rejected for `DAY_OPTIONAL`, `MONTH_OPTIONAL`, and `YEAR_OPTIONAL`, each with `MVK_INVALID_DATE_TYPE`. The discriminating mechanism is the computation's generated implicit validation comparison `[target] != operation`: `CheckFeldWertOpImpl` rejects reading any partially-known Date field as a plain value before runtime, even though each precision's stored-value domain itself admits fully known dates. The only supported warning suppression is `MVK_INVALID_COMPARE_DEC_PLACES`; attempting `errorCodesToSuppress: ["MVK_INVALID_DATE_TYPE"]` is rejected as `MVK_INVALID_SUPPRESSED_WARNING`. Therefore no maintained dynamic/static runtime matrix for a partial Date computation target can exist at this kernel version; treating the runtime store implementation in isolation as reachability was the error. *(Terminal kernel `RuleValidator.check` matrix plus full-model suppression defeat: `ComputedPartialDateTargetAdmissionDiffTest`; the diagnostic's actual terminal code is retained by API-FINDINGS 107.)* The portable checker reports it as the target's read ([KF483](#kf483)).
 
 **`DateType.youngerThan1900Check` is an opt-in additional basic check shared by stored and computed dates (tri-engine, 2026-07-30).** With the flag absent/false, `1899-12-31` remains valid because it is above the always-on Gregorian floor. With it true, a real date strictly before `1900-01-01` is `datumFalsch`; the boundary itself is valid. A FULL computed target retains the exact rendered pre-1900 attempt but classifies it ERRORED, while `1900-01-01` is a VALUE. Dynamic Groovy and generated Java agree on classification; the dynamic result and interpreter also agree on the exact attempted text. *(Kernel read-back: `FieldConfigExtrasTest`; runtime: `DateBefore1900DiffTest`; JVM+Node shared formal owner: `DateGregorianFloorFormalTest`; interpreter treatment IF237.)*
 
@@ -7165,7 +7165,7 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 
 Reported by the portable checker as a WITHHOLDING applied where the report is assembled, listed as the condition-text codes to DROP rather than the codes to keep: a family added later that reads that text is then an under-report until its code is listed, where a keep-list would silently start dropping it.
 
-**And it is per DECLARATION, not per text.** On a computation, a name that does not resolve in the PRECONDITION withholds the syntax class of the OPERATION beside it, and two bad names in the two members still draw one class — so the ordering spans a declaration's whole DSL rather than each text separately (`ComputationMemberVerdictLawsTest`).
+**And it is per DECLARATION, not per text.** On a computation, a name that does not resolve in the PRECONDITION withholds the syntax class of the OPERATION beside it, and two bad names in the two members still draw one class — so the ordering spans a declaration's whole DSL rather than each text separately (`ComputationMemberVerdictLawsTest`). The order is the joined text's, measured beyond the name case in [KF483](#kf483): the precondition's class withholds its operation's, and one alternative's operation the next alternative's precondition.
 
 *Locked by:* `rulekit.validate.laws.ConditionMultipleDefectLawsTest` and `…ComputationMemberVerdictLawsTest`.
 
@@ -7603,7 +7603,7 @@ A12 resolves an error-message parameter against the rule's own CONDITION, not ag
 
 **Every row is ADMITTED into a TEXT target**, which is the control that makes the table a law about the target's declared kind rather than about the operations.
 
-Reported by the portable checker (`CheckFamily.ENUM_COMPUTATION_SOURCE`), which stays silent on the three pre-empted shapes and on any operation it will not reduce to a read or a `FirstFilledValue` — a disclosed under-report rather than a guess at which class the walk would answer with.
+Reported by the portable checker (`CheckFamily.ENUM_COMPUTATION_SOURCE`), which stays silent on the three pre-empted shapes and on any operation it will not reduce to a read or a `FirstFilledValue` — a disclosed under-report rather than a guess at which class the walk would answer with. *Amended 2026-09-26:* the three pre-empted shapes are the comparison the computation is lowered to, which the comparison families now judge ([KF483](#kf483)).
 
 **Extended 2026-09-25 — a climbing source is judged like a local one.** From a rule declared in `Claims/Review`, computing `Outcome` (`OPEN`, `CLOSED`) from `Claims/Banded` (`OPEN`, `CLOSED`, `VOID`, with categories `Band` of `OPEN`, `CLOSED` and `Wide` of all three): `[../Banded]` and `[../Banded -> Wide]` draw `MVK_ERROR_INVALID_ENUM_CALCULATION`, and `[../Banded -> Band]` is admitted. A starred source never reaches this gate, because its bracket refuses it first ([KF473](#kf473)). The checker had been silent on `[../Banded]`, because its bare-spec reader refuses the `..` token. It now reads a source through the bracket's own reader (`adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerReadsAnEnumComputationSourceAsA12Does`). The same refusal had left other families silent on a climbing operand ([KF480](#kf480)).
 
@@ -11013,7 +11013,7 @@ What the rows separate:
 
 The rows re-measure a12-kernel-lean's report (their `SPEC-2026-09-25-09`, `-10` and `SPEC-2026-09-26-01`) on our own carrier, and A12 answers every row of theirs as they state it. The origin row's class is ours: their report names the pair's split, not its class.
 
-The portable checker names A12's class on every row but two: it is silent on both rows that copy a Number into an Enumeration ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG106). Until 2026-09-26 it also diverged on six more. It was silent on the Enumeration's category in the two entity lists, now [KF482](#kf482)'s family. On the target's own group it was silent into `Lines/Qty` and named `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` into the other two, because the bracket's family bound a level only where the declaring group did too; it now reads the spec through the shared reader, which binds from the target. On the categorized subject it named the member's raw class, because no family raised a category behind a group outside a bracket.
+The portable checker names A12's class on every row. Until 2026-09-26 it diverged on eight: it was silent on the two rows that copy a Number into an Enumeration, now read as the comparison each computation is lowered to ([KF483](#kf483)). It was silent on the Enumeration's category in the two entity lists, now [KF482](#kf482)'s family. On the target's own group it was silent into `Lines/Qty` and named `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` into the other two, because the bracket's family bound a level only where the declaring group did too; it now reads the spec through the shared reader, which binds from the target. On the categorized subject it named the member's raw class, because no family raised a category behind a group outside a bracket.
 
 *Locked by:* `adapter.laws.CheckerFieldValueReadCarrierAgreementTest`, A12's class written out on every row and the checker required to name it.
 
@@ -11275,3 +11275,53 @@ What the rows separate:
 Before the fix the portable checker was silent on every row drawing the category, duplicate or group class but two, and on those it named `MVK_DUPLICATE_PARAM1` where A12 names the class that answers ahead of the duplicate: `NumberOfFilledGroups(Tier -> Level, Contact, Contact) > 0` and `AtLeastOneGroupFilled(Billing -> Level, Contact, Contact)` (the lock run against the pre-fix sources, 2026-09-26). `CheckFamily.ENTITY_LIST_CATEGORY_GATE` now asks the list gate on the 22 operators at each carrier's position; `CATEGORY_REFERENCE` names a category behind a group; and the duplicate family keys a categorized operand by its category on the after-carriers, the category being part of the operand's identity. The value-list family's own arm for a group behind `->` retired into `CATEGORY_REFERENCE`, which raises it where A12 does.
 
 *Locked by:* `adapter.laws.CheckerEntityListCategoryAgreementTest`, A12's class written out on every row and the checker required to name it.
+
+## §12 supplement — A12 judges a computation as the one condition it joins it into: its members in that text's order, and each alternative ending in `[<target>] != <operation>`, whose target read and comparison draw the classes a rule's would (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf483"></a>
+
+> Fold: not-foldable — a diagnostic-class law about the text A12 parses a computation as, not an evaluation behaviour.
+
+`ComputationAlternativesJoiner` writes `FieldFilled(<target>) And (<common>) And (<precondition>) And [<target>] != <operation>`, each alternative wrapped and joined by `Or` when there are several ([KF471](#kf471)). The target is named relative to the computation's group where it lies below it and by its absolute path otherwise, and an alternative naming a tolerance band gets the band's operator in place of `!=` (source-read, `createComparison`). Two consequences follow, both measured on one carrier: an `/Order` holding one field of each kind, a fixed `Billing` and a repeatable `Lines`.
+
+**Every alternative is the comparison of its target with its operation.** Each row copies one declared kind into another from a root computation:
+
+| the operation | the target | A12 |
+|---|---|---|
+| a Number, a written-out number | a String, an Enumeration | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
+| a String, a written-out text | a Number | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
+| `"PLATINUM"`, which the target does not declare | an Enumeration | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` |
+| a labelled Enumeration | an unlabelled Enumeration | `MVK_INVALID_COMPARE_ENUM_TO_STRING` |
+| a Number of either other scale, `1.50` | a scale-0 or scale-2 Number | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `True` | a Number | `MVK_INCONSISTENT_TYPES_COMPARED` |
+| a Number, a String, a Time | a Date | `MVK_INVALID_COMPARE_TO_DATE` |
+| a Date | a Number, a DateRange | `MVK_INVALID_COMPARE_TO_DATE` |
+| a String | a DateRange | `MVK_INVALID_COMPARE_TO_DATE_RANGE` |
+| a Number; a Boolean | a Boolean; a String | `MVK_INVALID_COMPARE_TO_YESNO` |
+| a Boolean | a confirm | `MVK_INVALID_COMPARE_TO_YES` |
+| a String under a tolerance band | a String | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` |
+| `[Total] + 1` | a String | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
+| a Date | a partially known Date | `MVK_INVALID_DATE_TYPE` |
+| a String | a raw String | `MVK_INVALID_RAW_TYPE` |
+| a partially known Date; a raw String | a Number | `MVK_INVALID_DATE_TYPE`; `MVK_INVALID_RAW_TYPE` |
+| a field of the target's own kind and scale, a declared value, `True`, a written-out number of a smaller scale, a Number under a band | each kind | ADMITTED |
+
+The target's spelling was varied too: declared in `Billing` into a root String and into its own String, and declared at the root into `Lines/Qty` and in `Lines` into its own `Qty`, a String source draws `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` on all four.
+
+**The members are one text, and A12 names its first class.**
+
+| the classes, in joined order | A12 |
+|---|---|
+| a precondition's date class, then its operation's group read | `MVK_INVALID_COMPARE_TO_DATE` |
+| the common precondition's date class, then an alternative precondition's group read | `MVK_INVALID_COMPARE_TO_DATE` |
+| one alternative's operation's group read, then the next alternative's precondition's date class | `MVK_NO_GROUPS_ALLOWED` |
+| a precondition's date class, then a name its operation does not resolve | `MVK_INVALID_COMPARE_TO_DATE` |
+| a name a precondition does not resolve, then its operation's group read | `MVK_INVALID_ENTITY` |
+
+What the rows separate:
+
+- **The comparison, not a computation gate.** Every refused row draws the class its pair draws in a rule, and a copy between two fields of one kind is admitted on every kind. A gate owned by the calculation module would not track the comparison walk's arm order, which puts the date arms first: a Date into a DateRange is the date class, not the range's.
+- **The target is read before the operation.** A partially known or raw target draws its read class, which is the bracket's and no comparison's ([KF81](#kf81) measured the partial date). A source read that spans the whole operation answers ahead of the comparison it sits in.
+- **Joined order, not preconditions first.** One alternative's operation withholds the next alternative's precondition, which a reading that parsed every precondition first would get wrong; and a name in the operation leaves the precondition's class standing, where [KF340](#kf340)'s measured name in a precondition withholds the operation's.
+
+The portable checker was silent on every refused copy row, and named both classes on the first three joined rows and the unresolved name's on the fourth. It now reads a computation's lowered comparison through the same shape parser as an authored one (`comparisonsOf`), and the seven comparison families judge it. The field-value read family reads the target. Report assembly orders a declaration's members by their place in the joined text (`joinedOrderOf`). One row stays under-reported, the sum: the comparison families type a side only where it is one entity spec or a written-out constant, for rules and computations alike.
+
+*Locked by:* `adapter.laws.CheckerComputationJoinedConditionAgreementTest`, A12's class written out on every row and the checker required to name it; mirrored by `consistency.ComputationJoinedConditionTest`.
