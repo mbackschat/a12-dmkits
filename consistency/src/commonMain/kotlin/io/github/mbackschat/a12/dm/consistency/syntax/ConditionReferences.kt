@@ -185,9 +185,6 @@ private fun pathRunAt(tokens: List<Token>, from: Int): Pair<String, Int>? {
         ?.let { it to tokens[at - 1].end }
 }
 
-/** What a reference may end with — a trailing separator is a malformed tail, never part of the name. */
-private val PATH_SEPARATORS = setOf("/", ".")
-
 /**
  * Whether a run of path tokens names an entity: it carries a name, or an up-step, which names an ancestor
  * group on its own. A run of separators and stars alone — the `/` of `[A] / [B]` — names nothing.
@@ -359,37 +356,34 @@ private class ReferenceScan(
     }
 
     /**
-     * Read the run of path tokens starting at [at], ignoring whitespace between them.
+     * Read the reference starting at [at], as far as A12's `entity` production reaches ([entityRunAt]).
      *
      * **Whitespace is on the lexer's HIDDEN channel and is insignificant between ANY two tokens**
      * ([KERNEL-FINDINGS KF76]), so a space between `Group*` and its separator changes nothing, and `.. / seg`
-     * is `../seg`. An earlier
-     * version used adjacency as the discriminator against arithmetic and was wrong for exactly that reason.
-     * The real discriminator is the one KF76 names: a bare identifier is never an arithmetic operand — an
-     * operand is bracketed or parenthesized — so `/` and `*` following a bare path segment are always path
-     * syntax, and a run that names nothing (`[A] / [B]`, where `]` ends it) yields no reference at all.
+     * is `../seg`. What ends a reference is the grammar, not adjacency: a name directly after a step begins
+     * no continuation, so `Items Items* / Count` is two references, and a run that names nothing
+     * (`[A] / [B]`, where `[` follows the `/`) yields none.
+     *
+     * **A production that does not close records nothing.** A12 raises a reference's class when its
+     * production closes, so `Lines/` followed by `)` draws the parse error alone, while `BillingAddress*`
+     * followed by a name closes and draws its own class first (`adapter.laws.CheckerNearMissSweepTest`).
      */
     private fun readReference() {
         val begin = at
-        var end = at
-        while (end < tokens.size) {
-            val token = tokens[end]
-            when {
-                // A keyword ends the run: unquoted, the Kernel lexes it as the keyword, so it is not a segment.
-                token.kind == TokenKind.NAME && token.text in keywords -> break
-                token.isName() || token.kind == TokenKind.NUMBER || token.text in PATH_PUNCTUATION -> Unit
-                else -> break
-            }
-            end++
-        }
-        while (end > begin && tokens[end - 1].text in PATH_SEPARATORS) end--
-        if (tokens.subList(begin, end).namesAnEntity()) {
-            val path = normalizedPath(tokens.subList(begin, end))
-            record(ReferenceSpan(path, tokens[begin].start, tokens[end - 1].end), atKey = begin == keyBegins)
+        val run = entityRunAt(tokens, begin, ::startsSegment)
+        val path = tokens.subList(begin, run.end)
+        if (run.closes && path.namesAnEntity()) {
+            record(ReferenceSpan(normalizedPath(path), tokens[begin].start, tokens[run.end - 1].end),
+                atKey = begin == keyBegins)
         }
         // Even a run that named nothing consumed its first token, so the scan always advances.
-        at = maxOf(end, begin + 1)
+        at = maxOf(run.end, begin + 1)
     }
+
+    /** A segment is a quoted name, a digit sequence, or a name the lexer does not resolve as a keyword. */
+    private fun startsSegment(token: Token): Boolean =
+        token.kind == TokenKind.QUOTED_NAME || token.kind == TokenKind.NUMBER ||
+            (token.kind == TokenKind.NAME && token.text !in keywords)
 }
 
 internal fun Token.isName(): Boolean = kind == TokenKind.NAME || kind == TokenKind.QUOTED_NAME

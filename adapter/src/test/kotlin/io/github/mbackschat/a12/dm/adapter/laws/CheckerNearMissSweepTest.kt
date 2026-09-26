@@ -20,7 +20,7 @@ import kotlin.random.Random
 
 /**
  * Every seed rule, and single edits of it, through A12 and the checker, with every disagreement filed under a
- * cluster key in a committed ledger: milestone M1 of [CONFORMANCE-PLAN](../../../../../../../../../../docs/CONFORMANCE-PLAN.md).
+ * cluster key in a committed ledger: milestone M1 of [CONFORMANCE-PLAN](../../../../../../../../../../../docs/CONFORMANCE-PLAN.md).
  *
  * **This replaces discovery by hand.** Each hand grid measured one construct and uncovered its neighbours, so a
  * fix never closed a class for long. Here the neighbours are generated. The seeds are every rule in the three

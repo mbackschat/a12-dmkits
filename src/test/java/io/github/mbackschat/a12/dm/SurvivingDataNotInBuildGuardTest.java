@@ -86,6 +86,16 @@ class SurvivingDataNotInBuildGuardTest {
                             "the path grid's LIVE disagreements, written only when they differ from the committed "
                                     + "ledger so the diff can be reviewed; the ledger is the record, and the grid "
                                     + "regenerates this file on the next run")),
+            Map.entry("build/checker-near-miss/actual.tsv",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "the near-miss sweep's LIVE cluster keys, written only when they differ from the "
+                                    + "committed ledger so the diff can be reviewed; the ledger is the record, and the "
+                                    + "sweep regenerates this file on the next run")),
+            Map.entry("build/checker-near-miss/report.tsv",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "the near-miss sweep's per-cluster counts and example mutants, rewritten on every run "
+                                    + "from inputs the sweep regenerates deterministically; the committed ledger and "
+                                    + "the plan's results table carry what must survive")),
             Map.entry("build/rp-large.dm.json",
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "a generated fixture for a manual before/after CLI comparison under -Drp.perf=true; "

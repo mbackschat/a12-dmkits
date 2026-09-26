@@ -8,7 +8,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic
  *
  * Shared by every sweep that files checker-against-Kernel disagreements into a ledger, so one input gets one
  * verdict whichever sweep produced it. The words are the tiers of
- * [CONFORMANCE-PLAN](../../../../../../../../../../docs/CONFORMANCE-PLAN.md): `OVER-REJECT` and `WRONG-CLASS`
+ * [CONFORMANCE-PLAN](../../../../../../../../../../../docs/CONFORMANCE-PLAN.md): `OVER-REJECT` and `WRONG-CLASS`
  * are correctness, `SILENT` is coverage, and `EXTRA` is order, the classes A12's early stop never reached.
  *
  * One superset counts as agreement because the checker draws it by design: where A12 names only

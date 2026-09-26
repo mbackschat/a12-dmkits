@@ -88,7 +88,7 @@ class ConditionReferenceTest {
         assertEquals(listOf("Lines*/Amount"), referencesIn("Sum(Lines* / Amount)", ConditionLanguage.EN))
         assertEquals(listOf("Lines*/Amount"), referencesIn("Sum(Lines */Amount)", ConditionLanguage.EN))
         assertEquals(listOf("/Order/Code"), referencesIn("FieldFilled(/ Order / Code)", ConditionLanguage.EN))
-        assertEquals(listOf("../../Code"), referencesIn("FieldFilled(.. .. / Code)", ConditionLanguage.EN))
+        assertEquals(listOf("../../Code"), referencesIn("FieldFilled(.. / .. / Code)", ConditionLanguage.EN))
     }
 
     /**
@@ -112,13 +112,21 @@ class ConditionReferenceTest {
     /** A keyword ends a path run, because unquoted the Kernel lexes it as the keyword and not as a segment. */
     @Test
     fun aKeywordEndsAPathRun() {
-        assertEquals(listOf("A"), referencesIn("FieldFilled(A/And)", ConditionLanguage.EN))
+        assertEquals(listOf("Tier", "Premium"),
+            referencesIn("NoFieldValueIncludedInValueList(Tier In Premium)", ConditionLanguage.EN))
     }
 
-    /** A trailing separator is a malformed tail, never part of the name it follows. */
+    /**
+     * A path that stops at a separator is a production that never closed, so it is no reference at all: A12
+     * checks a reference only once its production closes, and `FieldFilled(NoSuch/)` draws the token class
+     * alone, where `FieldFilled(NoSuch Code)` draws `MVK_INVALID_ENTITY` for the closed `NoSuch`
+     * (`rulekit.validate.laws.EntityProductionCloseLawsTest`).
+     */
     @Test
-    fun aTrailingSeparatorIsNotPartOfTheName() {
-        assertEquals(listOf("A"), referencesIn("FieldFilled(A/)", ConditionLanguage.EN))
+    fun aPathThatStopsAtASeparatorIsNoReference() {
+        assertEquals(emptyList(), referencesIn("FieldFilled(A/)", ConditionLanguage.EN))
+        assertEquals(emptyList(), referencesIn("FieldFilled(A/And)", ConditionLanguage.EN))
+        assertEquals(listOf("A", "B"), referencesIn("FieldFilled(A B)", ConditionLanguage.EN))
     }
 
     /**

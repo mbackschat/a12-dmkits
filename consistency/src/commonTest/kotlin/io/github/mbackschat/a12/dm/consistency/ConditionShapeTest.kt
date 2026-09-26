@@ -85,16 +85,19 @@ class ConditionShapeTest {
      *
      * **The cross-language rows are the ones that matter.** The parser's spelling set is language-BLIND and
      * holds all six; what keeps `Zu` from being read as an infix in an English model is the keyword table
-     * lookup ahead of it, not the set. So each language gets the other's spelling as a row, and both are
-     * ADMITTED — as an ordinary NAME, which is exactly what A12 does with a word that is not its language's
-     * terminal. A row that refused would be the over-rejection this parser may not commit.
+     * lookup ahead of it, not the set. So each language gets the other's spelling as a row. `In` is a terminal
+     * of both languages and parses in both; the other language's `Zu`/`To` is an ordinary NAME, and a name
+     * juxtaposed to the entity before it is a token the grammar cannot use, so A12 refuses it
+     * (`ValueListInfixLanguageLawsTest`, measured 2026-09-26). Each infix is spelled inside an operator whose
+     * production takes it (`inOp` for the value-list quantifiers, `toOp` for `WertNichtKonsistent`), so a row
+     * measures the spelling and nothing else.
      */
     @Test
     fun theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther() {
         val actual = mutableMapOf<String, String>()
         for (spelling in listOf("In", "IN", "in")) {
-            actual["EN $spelling"] = verdict("""ValueNotConsistent(Tier $spelling Premium, "gold")""")
-            actual["DE $spelling"] = verdict("""WertNichtKonsistent(Tier $spelling Premium, "gold")""", ConditionLanguage.DE)
+            actual["EN $spelling"] = verdict("NoFieldValueIncludedInValueList(Tier $spelling Premium)")
+            actual["DE $spelling"] = verdict("KeinFeldWertInWerteListe(Tier $spelling Premium)", ConditionLanguage.DE)
         }
         for (spelling in listOf("To", "TO", "to")) {
             actual["EN $spelling"] = verdict("""ValueNotConsistent(Tier $spelling Premium, "gold")""")
@@ -109,9 +112,9 @@ class ConditionShapeTest {
         }
 
         assertEquals(
-            actual.keys.associateWith { ACCEPTS },
+            actual.keys.associateWith { if ("other language" in it) "MVK_UNEXPECTED_TOKEN" else ACCEPTS },
             actual,
-            "every value-list infix spelling parses, in both languages",
+            "each value-list infix parses in its own language and is a stray name in the other",
         )
     }
 

@@ -224,10 +224,6 @@ private class ShapeParser(
 
     private fun take(): Token = tokens[index++]
 
-    /** The repetition wildcard, which the tokenizer files as an operator symbol because `*` is also a product. */
-    private fun atWildcard(): Boolean =
-        peek().let { it != null && it.kind == TokenKind.OPERATOR_SYMBOL && it.text == "*" }
-
     /** The failure for the token under the cursor, or for the end of the text when there is none. */
     private fun unexpected(): ShapeFailure {
         val token = peek()
@@ -437,7 +433,7 @@ private class ShapeParser(
     private fun call(): ShapeFailure? {
         val operator = take()
         val operands = mutableListOf<List<Token>>()
-        val failure = grouped { arguments(operands) }
+        val failure = grouped { arguments(operands, admitsNone = operator.text in EMPTY_ARGUMENT_OPERATORS) }
         // Recorded only on success, so a caller never reads an argument list the parser abandoned half-way.
         if (failure == null) {
             calls?.add(CallShape(operator.text, operator.start, tokens[index - 1].end, operands, source))
@@ -445,10 +441,18 @@ private class ShapeParser(
         return failure
     }
 
-    /** An empty argument list is legal for at least one operator (`Zeit()`), so it is not required here. */
-    private fun arguments(operands: MutableList<List<Token>>?): ShapeFailure? = within(entitySpecs = true) {
+    /**
+     * The arguments between a call's parentheses, at least one unless [admitsNone].
+     *
+     * An empty list is a token the parser cannot use everywhere but the time constructor: of the grammar's
+     * productions only `timeKonstrukt` makes its whole argument list optional (`Zeit '(' (…)? ')'`, and `Time()`
+     * is midnight, [KERNEL-FINDINGS] KF78), so `FieldFilled()` is `MVK_UNEXPECTED_TOKEN`
+     * at the `)` (`adapter.laws.CheckerNearMissSweepTest`).
+     */
+    private fun arguments(operands: MutableList<List<Token>>?, admitsNone: Boolean): ShapeFailure? =
+        within(entitySpecs = true) {
         if (textIs(")")) {
-            return@within null
+            return@within if (admitsNone) null else unexpected()
         }
         argument(operands)?.let { return@within it }
         while (textIs(",")) {
@@ -566,42 +570,15 @@ private class ShapeParser(
 
 
     /**
-     * A path: an optional `$` marker, then segments joined by `/`, each optionally starred.
-     *
-     * Written permissively on purpose. The grammar separates a climb (`../`), a root-anchored path and a
-     * relative one into their own productions with their own checks; what they share is this shape, and the
-     * checks they do not share are about what a path RESOLVES to, which the reference family already owns.
+     * A path as A12's `entity` production spells it: an optional `$`, a first step (root-anchored by a leading
+     * `/`, or a climb), then further steps each after exactly ONE `/` ([entityRunAt], the walk the reference
+     * scanner shares). Every departure from that is a token the parser cannot use: a `/` with no step after
+     * it, two steps with no `/` between them, a `/` doubled (`adapter.laws.CheckerNearMissSweepTest`).
      */
     private fun entityReference(): ShapeFailure? {
-        if (isOuterMarker()) {
-            take()
-        }
-        var sawStep = false
-        while (true) {
-            when {
-                // `/` and `..` are both steps AND separators here. The grammar splits them across
-                // `entity`, `relativeUp`, `relUp` and `oneUp`, each with its own check about what the walk
-                // RESOLVES to — which is the reference family's question, not this one's. What they share is
-                // this shape, so one permissive loop reads all four and nothing about resolution is claimed.
-                textIs("/") -> { take(); sawStep = true }
-                // An up-step may carry the repetition wildcard, and A12 parses it — `GroupFilled(..*)` is
-                // refused with the SEMANTIC class `MVK_INVALID_WILDCARD_REL`, not a syntax one
-                // (`rulekit.validate.laws.StarredNonRepeatableReachLawsTest`). Without taking the star here
-                // `..` and `*` read as an arithmetic product, which fails outright with nothing after it and
-                // — worse — succeeds with a path after it, leaving this reader and the reference reader
-                // disagreeing about the same text.
-                textIs("..") -> {
-                    take()
-                    if (atWildcard()) {
-                        take()
-                    }
-                    sawStep = true
-                }
-                startsSegment() -> { segment()?.let { return it }; sawStep = true }
-                else -> break
-            }
-        }
-        if (!sawStep) {
+        val run = entityRunAt(tokens, index, ::startsSegment)
+        index = run.end
+        if (!run.closes) {
             return unexpected()
         }
         categoryTail()
@@ -609,7 +586,7 @@ private class ShapeParser(
     }
 
     /**
-     * Whether a path segment starts here.
+     * Whether a path segment starts at [token].
      *
      * A NAME the keyword table knows is a DIFFERENT TERMINAL from a name, in A12's lexer as here
      * (`setTypeInLexer` gives a keyword its own type and everything else `NameOhnePunktSTRAmAnfang`), so a
@@ -617,13 +594,10 @@ private class ShapeParser(
      * `In` that ends the path. A quoted name is the escape for the collision and always a segment. The one
      * keyword that IS an entity is the rule-context one, which the grammar gives its own production.
      */
-    private fun startsSegment(): Boolean {
-        val token = peek() ?: return false
-        return when (token.kind) {
-            TokenKind.QUOTED_NAME, TokenKind.NUMBER -> true
-            TokenKind.NAME -> kindOf(token) == null || RULE_CONTEXT_SPELLINGS.contains(token.text)
-            else -> false
-        }
+    private fun startsSegment(token: Token): Boolean = when (token.kind) {
+        TokenKind.QUOTED_NAME, TokenKind.NUMBER -> true
+        TokenKind.NAME -> kindOf(token) == null || RULE_CONTEXT_SPELLINGS.contains(token.text)
+        else -> false
     }
 
     /** `X -> Category`, the H-model category selector, which rides an ordinary reference. */
@@ -634,34 +608,6 @@ private class ShapeParser(
                 take()
             }
         }
-    }
-
-    /** One path step: a name, its dotted sub-names, and the `*` and `@*` markers a repetition may carry. */
-    private fun segment(): ShapeFailure? {
-        val token = peek() ?: return unexpected()
-        when (token.kind) {
-            TokenKind.NAME, TokenKind.QUOTED_NAME, TokenKind.NUMBER -> take()
-            else -> return unexpected()
-        }
-        while (textIs(".")) {
-            val dot = index
-            take()
-            val next = peek()
-            if (next != null && (next.kind == TokenKind.NAME || next.kind == TokenKind.QUOTED_NAME ||
-                    next.kind == TokenKind.NUMBER)
-            ) {
-                take()
-            } else if (atWildcard()) {
-                take()
-            } else {
-                index = dot
-                break
-            }
-        }
-        if (atWildcard()) {
-            take()
-        }
-        return null
     }
 
     // ── delimiters ───────────────────────────────────────────────────────────────────────────────────────
@@ -698,6 +644,9 @@ private class ShapeParser(
 
         /** `-` and `/` are filed as punctuation because each is also a path shape. */
         val PATH_SHAPED_ARITHMETIC = setOf("-", "/")
+
+        /** The operators whose whole argument list is optional: the time constructor, in both languages. */
+        val EMPTY_ARGUMENT_OPERATORS = setOf("Zeit", "Time")
 
         /** `In` and `To` join an operand to a value list; both languages, every case the lexer admits. */
         val LIST_KEYWORDS = setOf("In", "IN", "in", "To", "TO", "to", "Zu", "ZU", "zu")
