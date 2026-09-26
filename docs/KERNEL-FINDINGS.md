@@ -658,12 +658,12 @@ A field carries **two** kinds of custom validation error text, both the "Use Def
 | message | DM-JSON location | kernel accessor |
 |---|---|---|
 | **required-field** (shown when a required field is empty) | `Field.requirednessConfig.errorMessage` | `IRequirednessConfig.getErrorMessage(Locale)` |
-| **enum invalid-value** (shown for an out-of-domain value) | `EnumerationType.errorMessage` | (validated by `FieldErrorTextParser`) |
+| **enum invalid-value** (shown for an out-of-domain value) | `EnumerationType.errorMessage` | `IEnumerationType.getErrorMessage(Locale)` (validated by `FieldErrortextChecker`, [KF490](#kf490)) |
 
 - **"Use default" = absence.** There is **no** explicit `useDefaultErrorMessage` boolean — omitting the `errorMessage` array uses the kernel default; providing it is the custom case. (So the editor checkbox maps to presence/absence, not a stored flag.)
 - **Must cover every declared locale** (like enum value labels): a partial map is kernel-rejected. The required-message array also needs the field to *be* required (have a `requirednessConfig`).
 
-**The two producers do not share one checked/rendered template contract (EXP-2026-07-30-01).** For an `en_US` String pattern's own invalid-value text, `$field$` and `$field.value$` are accepted; `$Field$` and the actual field name `$Code$` are rejected respectively as `The error text parameter 'Field' is not valid. [INVALID_PARAMETER]` and `The error text parameter 'Code' is not valid. [INVALID_PARAMETER]`. `Cost $$ $field$` is rejected before code generation because `The error text parameter '' is not valid. [INVALID_PARAMETER]`; the rule-message `$$` escape therefore cannot be reused at this locus. For an accepted `Value [$field.value$]` template and stored invalid value `$field$`, both dynamic Groovy and generated Java render exactly `Value [$field$]`, proving one-pass opaque insertion.
+**The two producers do not share one checked/rendered template contract (EXP-2026-07-30-01).** For an `en_US` String pattern's own invalid-value text, `$field$` and `$field.value$` are accepted; `$Field$` and the actual field name `$Code$` are rejected respectively as `The error text parameter 'Field' is not valid. [INVALID_PARAMETER]` and `The error text parameter 'Code' is not valid. [INVALID_PARAMETER]`. `Cost $$ $field$` is rejected before code generation because `The error text parameter '' is not valid. [INVALID_PARAMETER]`; the rule-message `$$` escape therefore cannot be reused at this locus. *(Corrected 2026-09-26: an empty pair at the very END of the text, or `$$` alone, is admitted, since the parameters are Java's `split` and that drops trailing empty parts — [KF490](#kf490). The consistency path's checker is `FieldErrortextChecker`; `FieldErrorTextParser` is a service `checkConsistency` does not call.)* For an accepted `Value [$field.value$]` template and stored invalid value `$field$`, both dynamic Groovy and generated Java render exactly `Value [$field$]`, proving one-pass opaque insertion.
 
 The requiredness producer accepts the measured `Cost $$ $field$` template and preserves the doubled dollar pair in both strategies, refuting convergence with the String-pattern checker. Under the same explicit label-or-name provider profile, dynamic Groovy and generated Java both render exactly `Cost $$ Code`; there is no strategy split. An initial generated-Java `/Order/Code/1.1` observation was a harness configuration mismatch—the static service had no label provider while the dynamic service did—and is not kernel-strategy evidence. `RuntimeLaws` now supplies one shared provider to both routes. The experiment does not generalize this one case to a complete requiredness grammar, German fixed tokens, computation targets, or registered custom-field validators.
 
@@ -6344,13 +6344,15 @@ The last row generalizes the string-literal result above rather than repeating i
 
 | name | as a GROUP | as a FIELD |
 |---|---|---|
-| `Slöts` (a non-ASCII letter) | ADMITTED | `MVK_PATH_INVALID` |
+| `Slöts` (a German umlaut) | ADMITTED | `MVK_PATH_INVALID` |
 | `_Slots`, `__other` | `NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN` | **ADMITTED** |
 | `1Slots` | `MVK_PATH_INVALID` | `MVK_PATH_INVALID` **and** `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` |
 | `Slot:List` | `MVK_PATH_INVALID` | `MVK_NAME_INVALID_DOT_COLON_A12_DV` **instead** |
 | 61 characters | refused, codeless | ADMITTED |
 
-**Neither carrier is simply the stricter one**, which is what makes the transfer unsafe in both directions: the group refuses the leading underscore a field takes, and admits the non-ASCII letter a field refuses. The 60-character limit is the group's alone. The `_A12_DV` codes name the mechanism — a field's name answers to a second validator the group's name does not reach.
+**Neither carrier is simply the stricter one**, which is what makes the transfer unsafe in both directions: the group refuses the leading underscore a field takes, and admits the umlaut a field refuses. The 60-character limit is the group's alone. The `_A12_DV` codes name the mechanism — a field's name answers to a second validator the group's name does not reach.
+
+*Corrected 2026-09-26:* the group admits the German umlauts and `ß`, not non-ASCII letters in general. The `ö` row was the only one measured, and `Parté` as a group draws `MVK_PATH_INVALID` (`FieldTypeMessageTextLawsTest.anInvalidPathStopsTheCheck`), because the path alphabet names exactly those seven letters ([KF490](#kf490)).
 
 **On a field the CODE depends on the character, three ways**, which a checker naming A12's code has to reproduce rather than collapse: `.` and `:` draw `MVK_NAME_INVALID_DOT_COLON_A12_DV`; `/` draws `MVK_PATHS_INCONSISTENT`, because a name carrying the separator makes the element's own path disagree with the tree rather than being a bad name at all; `-`, space, `%`, `(`, `+`, `#`, `@`, `$`, `,`, `'` and `*` all draw `MVK_PATH_INVALID`. `_`, a digit in interior position, and both letter cases are the admitted controls.
 
@@ -11595,10 +11597,11 @@ Measured on KF348's shape with a fixed root, plus an unkeyed repeatable `Returns
 | a rule's condition (a literal, a `;;` comment, or outside a literal), error code, name, or message | refused, on the rule; outside a literal also `MVK_LEXER_STANDARD_ERROR` |
 | a computation's operation, common or alternative precondition, name, or message | refused, on the computation, which A12 calls a "Rule" |
 | a field's annotation (name or value), enum value, or enum label; a group's annotation (name or value) | refused, on the field or group |
+| a field type's own message: a String type's pattern message, an Enumeration's invalid-value message | refused, on the field |
 | a field's name | refused, beside `MVK_PATH_INVALID` |
 | a nested group's name | refused on the group, on its field and on a rule inside it, beside `MVK_PATH_INVALID` |
 | the model's label, a group's label, a field's label | **admitted** |
-| a message, or an enum label, for a locale the model does not declare | **admitted** |
+| a message, a field type's own message, or an enum label, for a locale the model does not declare | **admitted** |
 
 - **The unit is the element.** A rule with the character in both its condition and its message draws one finding, and so does a field with it in both an enum value and that value's label.
 - **The PATH is a carrier.** The field and the rule beneath a defective group have plain names of their own and are refused all the same.
@@ -11610,3 +11613,36 @@ Measured on KF348's shape with a fixed root, plus an unkeyed repeatable `Returns
 **The portable checker reports it as `RK_UNSUPPORTED_CHARACTER`**, a code of its own since A12 has none (`CheckFamily.MODEL_TEXT_REPERTOIRE`), on the measured carriers only. A mounted provider's declarations and the members not listed above are left to A12 and disclosed as a coverage gap.
 
 *Locked by:* `rulekit.validate.laws.ModelTextRepertoireLawsTest`, each finding by its text. Mirrored by `consistency.ModelTextRepertoireTest`; the condition-text carrier by the `😀` rows of `adapter.laws.CheckerIndexKeyConstantAgreementTest`.
+
+## §12 supplement — a field type's OWN message has a check of its own: the encoding first, then the two character gates, the dollar count and two fixed parameter names, one finding per field, and nothing for a field A12's element walk never reaches (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf490"></a>
+
+> Fold: not-foldable — a model-validation law about a field type's message text, outside KERNEL-SEMANTICS's evaluation scope.
+
+**The carrier is not the rule message's, and neither is its check.** A String type's pattern message and an Enumeration's invalid-value message are handed, one declared locale at a time, to `FieldErrortextChecker` (source-read, kernel `30.8.1`), which asks five questions in order and reports only the first that fails. Every row below was predicted from that source and put to the kernel. The characters are [KF337](#kf337)'s two predicates, and a rule's message never meets the encoding question at all:
+
+| the field's own message | A12 |
+|---|---|
+| plain; `$field$`; `$field.value$` | ADMITTED |
+| a lone surrogate, high or low | **`WRONG_ENCODING`** (a rule's message: `INVALID_CHARACTERS`) |
+| LF, U+2028, U+2029 | `INVALID_LINEBREAK` (LF also draws the codeless "Only values without line breaks are allowed.") |
+| a `\p{C}` code point: tab, NEL, a format character, private use, unassigned | `INVALID_CHARACTERS` |
+| an odd number of `$` | `WRONG_NUMBER_OF_DOLLARS` |
+| a tab beside an odd count | `INVALID_CHARACTERS` only |
+| an odd count beside a wrong name | `WRONG_NUMBER_OF_DOLLARS` only |
+| `$Field$`, `$Code$` (the field's own name), `cost $$ in capitals` | `INVALID_PARAMETER` |
+| `$Feld$` in an English model; `$field$` in a German one | `INVALID_PARAMETER` |
+| `$Feld$`, `$Feld.Wert$` in a German model | ADMITTED |
+| an empty pair at the END (`capitals only $$`), `$$` alone, `$field$$field.value$` | ADMITTED |
+| an empty pair at the START (`$$ capitals only`) | `INVALID_PARAMETER` |
+
+- **The parameter names follow the CONDITION language, not the message's locale.** The two admitted names are `CommonUtils.CONST_FIELD`'s pair for `modelConfig.conditionLanguage`, so a German condition language refuses `$field$` in an `en_US` text.
+- **The parts between two `$` are Java's `split`,** which drops TRAILING empty parts. So an empty pair at the very end of a text names no parameter, and the same pair anywhere else names the empty one. A reader pairing the dollars itself refuses a text A12 admits.
+- **One finding per FIELD, from the first DECLARED locale that fails.** `en_US` carrying a tab and `de_DE` a line feed draws `INVALID_CHARACTERS` when `en_US` is declared first and `INVALID_LINEBREAK` when `de_DE` is, whichever entry is written first: the two-by-two of declared order against entry order. The later of two entries for one locale is the one asked, and a text for an undeclared locale is never asked.
+- **A String message is asked with or without a pattern.** With none, the tab's `INVALID_CHARACTERS` stands beside the pairing's `MVK_ERROR_MESSAGE_AND_NO_PATTERN`.
+- **A required field's message is not a carrier**, although `FieldErrorTextParser.hasValidErrorTextInRequirednessConfig` would judge it: that service is not on `checkConsistency`'s path, and a tab there is ADMITTED.
+- **A field A12's element walk never reaches is never judged.** `NoMetaModelChecks.checkEntity` checks each element's path against an alphabet of its own and returns before the element's content and everything beneath it. So a field named `Codeé`, `1Code` or `Co.1de`, or any field under a group named `Parté` or `1Part`, draws the path class and nothing about its message. The alphabet is neither ASCII nor the name families' laws. A root or group segment takes letters, digits, `_`, the German umlauts and `ß`, and below the root it begins with a letter or `_`. A field segment takes ASCII letters, digits, `_` and `:`, in pieces joined by `.`, with each piece after a dot beginning with a letter, and it does not begin with a digit outside an H-model. So `Co.de`, `Co:de`, `_Code`, a group `Teilä`, and the roots `Schadenä` and `1Claim` are all reached and judged, `Co.de` and `Co:de` beside `MVK_NAME_INVALID_DOT_COLON_A12_DV` and `1Claim` beside `MVK_NAME_STARTS_WITH_DIGIT`.
+- **Its messages are carriers of [KF489](#kf489)'s charset refusal too,** on both types and for a declared locale only.
+
+**The portable checker reports it as `CheckFamily.FIELD_TYPE_MESSAGE_TEXT`,** one finding per field on those gates and in that order. It asks the encoding and the two character gates through the rule message's own predicates, and it withholds on the element walk's path alphabet. It does not recognise an H-model, so there a digit-initial field is withheld: an under-report. The codeless line-break sentence is not reported, as on a rule's message. A field type declared in `content.typeDefinitions` and a mounted provider's fields are left to A12.
+
+*Locked by:* `rulekit.validate.laws.FieldTypeMessageTextLawsTest`, and the field column of `…ErrorTextCharacterGateLawsTest`. Mirrored by `consistency.FieldTypeMessageTextTest`.

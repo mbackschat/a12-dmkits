@@ -21,8 +21,9 @@ package io.github.mbackschat.a12.dm.consistency
  *
  * **The character denominator is DERIVED and complete**: every printable ASCII character that is not a letter,
  * a digit or an underscore was put to the kernel on both carriers, and the code is written per outcome rather
- * than per character. A NON-ASCII character is never reported, on either carrier — legal on a group, and on a
- * field only one (`ö`) has been measured, so refusing the class would rest a rejection on one row.
+ * than per character. A NON-ASCII character is never reported, on either carrier, which under-reports: a group
+ * admits the German umlauts and `ß` and refuses other non-ASCII letters, and a field refuses them all
+ * ([reachedByTheElementWalk] states that alphabet; reporting from it is docs/CONSISTENCY-GAPS.md DG113).
  *
  * **The code depends on the character, three ways on a field and two on a group.** `/` is not a bad name at
  * all: it makes the element's own path disagree with the tree it sits in, which A12 reports as

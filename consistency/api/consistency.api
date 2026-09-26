@@ -87,6 +87,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field FIELD_NAME_RESERVED_SEGMENT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field FIELD_OPERAND_KIND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field FIELD_TYPE_BINDING Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field FIELD_TYPE_MESSAGE_TEXT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field FIELD_VALUE_OPERATOR_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field FIELD_VALUE_READ_OPERAND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;

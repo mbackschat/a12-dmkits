@@ -78,6 +78,7 @@
       "ENUM_S_VALUE_DOMAIN",
       "STRING_PATTERN_ADMISSION",
       "STRING_PATTERN_MESSAGE",
+      "FIELD_TYPE_MESSAGE_TEXT",
       "STRING_TYPE_PARAMETERS",
       "NUMBER_TYPE_DIGITS",
       "ENUM_VALUE_LABELS",
@@ -165,7 +166,7 @@
       },
       {
         "at": null,
-        "reason": "A12 refuses a character outside the Basic Multilingual Plane in every text it validates as part of the model, with no class; this checker judges the carriers measured for it (a rule's and a computation's texts, a field's and a group's annotations, enum values and labels, every element's path) and leaves the rest to A12 — a field type's own members, a category, the header, and a mounted provider's declarations"
+        "reason": "A12 refuses a character outside the Basic Multilingual Plane in every text it validates as part of the model, with no class; this checker judges the carriers measured for it (a rule's and a computation's texts, a field's and a group's annotations, enum values and labels, a field type's own message, every element's path) and leaves the rest to A12 — a field type's other members, a category, the header, and a mounted provider's declarations"
       },
       {
         "at": null,
@@ -227,6 +228,7 @@
       "ENUM_S_VALUE_DOMAIN",
       "STRING_PATTERN_ADMISSION",
       "STRING_PATTERN_MESSAGE",
+      "FIELD_TYPE_MESSAGE_TEXT",
       "STRING_TYPE_PARAMETERS",
       "NUMBER_TYPE_DIGITS",
       "ENUM_VALUE_LABELS",
@@ -314,7 +316,7 @@
       },
       {
         "at": null,
-        "reason": "A12 refuses a character outside the Basic Multilingual Plane in every text it validates as part of the model, with no class; this checker judges the carriers measured for it (a rule's and a computation's texts, a field's and a group's annotations, enum values and labels, every element's path) and leaves the rest to A12 — a field type's own members, a category, the header, and a mounted provider's declarations"
+        "reason": "A12 refuses a character outside the Basic Multilingual Plane in every text it validates as part of the model, with no class; this checker judges the carriers measured for it (a rule's and a computation's texts, a field's and a group's annotations, enum values and labels, a field type's own message, every element's path) and leaves the rest to A12 — a field type's other members, a category, the header, and a mounted provider's declarations"
       },
       {
         "at": null,

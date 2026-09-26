@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
@@ -82,6 +84,18 @@ class ModelTextRepertoireLawsTest {
     }
 
     private static final String PLAIN = model(Texts.plain());
+
+    /** A patterned {@code Code} field and an enumeration carrying the given invalid-value message. */
+    private static String fieldMessages(Consumer<StringFieldBuilder> code,
+            String statusMessage) {
+        return DocumentModelDraft.named("claims-repertoire").locale("en_US")
+                .rootGroup("Claim", c -> c
+                        .stringField("Reference", f -> { })
+                        .stringField("Note", f -> { })
+                        .stringField("Code", code)
+                        .enumField("Status", e -> e.value("OPEN").value("CLOSED").invalidValueMessage(statusMessage)))
+                .build().toJson();
+    }
 
     private static String rule(String json, String condition, String code, String message) {
         return render(VALIDATOR.check(json, new DraftRule("/Claim", "ProbeRule", "../Reference", condition, code,
@@ -175,6 +189,12 @@ class ModelTextRepertoireLawsTest {
                         .stringField("Note", f -> { })
                         .enumField("Status", e -> e.value("OPEN", l -> l.label("en_US", "Open").label("de_DE", "Offen " + GRIN))))
                 .build().toJson()));
+        actual.put("a string type's pattern message", rule(fieldMessages(
+                f -> f.pattern("[A-Z]+", "capitals only").patternMessage("en_US", "see " + GRIN), "OPEN only")));
+        actual.put("an enumeration's invalid-value message", rule(fieldMessages(
+                f -> f.pattern("[A-Z]+", "capitals only"), "see " + GRIN)));
+        actual.put("a pattern message in an undeclared locale", rule(fieldMessages(
+                f -> f.pattern("[A-Z]+", "capitals only").patternMessage("de_DE", "see " + GRIN), "OPEN only")));
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put(ACUTE + " message", ADMITTED);
         expected.put(ACUTE + " condition literal", ADMITTED);
@@ -231,6 +251,11 @@ class ModelTextRepertoireLawsTest {
         expected.put("a field's annotation name", unsupported("Field", "/Claim/Reference"));
         expected.put("computation name", unsupported("Rule", "/Claim/Calc" + GRIN));
         expected.put("an enum label in an undeclared locale", ADMITTED);
+        // A field type's own message is a carrier too, on both types that declare one, and like every other
+        // message only for a locale the model declares.
+        expected.put("a string type's pattern message", unsupported("Field", "/Claim/Code"));
+        expected.put("an enumeration's invalid-value message", STATUS);
+        expected.put("a pattern message in an undeclared locale", ADMITTED);
         assertEquals(expected, actual, "the carriers of A12's charset refusal, and its unit");
     }
 

@@ -130,6 +130,7 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
     enum entry FIELD_NAME_RESERVED_SEGMENT // io.github.mbackschat.a12.dm.consistency/CheckFamily.FIELD_NAME_RESERVED_SEGMENT|null[0]
     enum entry FIELD_OPERAND_KIND // io.github.mbackschat.a12.dm.consistency/CheckFamily.FIELD_OPERAND_KIND|null[0]
     enum entry FIELD_TYPE_BINDING // io.github.mbackschat.a12.dm.consistency/CheckFamily.FIELD_TYPE_BINDING|null[0]
+    enum entry FIELD_TYPE_MESSAGE_TEXT // io.github.mbackschat.a12.dm.consistency/CheckFamily.FIELD_TYPE_MESSAGE_TEXT|null[0]
     enum entry FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND // io.github.mbackschat.a12.dm.consistency/CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND|null[0]
     enum entry FIELD_VALUE_OPERATOR_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS|null[0]
     enum entry FIELD_VALUE_READ_OPERAND // io.github.mbackschat.a12.dm.consistency/CheckFamily.FIELD_VALUE_READ_OPERAND|null[0]

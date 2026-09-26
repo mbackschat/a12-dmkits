@@ -48,6 +48,8 @@ class CheckFamilyWiringTest {
               "StringType":{"pattern":"a++","errorMessage":[{"locale":"en_US","text":"x"}]}}}},
             {"type":"Field","id":"f8","name":"Unexplained","Field":{"fieldType":{"type":"StringType",
               "StringType":{"pattern":"[A-Z]+"}}}},
+            {"type":"Field","id":"f98","name":"Tagged","Field":{"fieldType":{"type":"StringType",
+              "StringType":{"pattern":"[A-Z]+","errorMessage":[{"locale":"en_US","text":"see ${'$'}Tag${'$'}"}]}}}},
             {"type":"Field","id":"f9","name":"Opaque","Field":{"fieldType":{"type":"StringType",
               "StringType":{"noValueValidation":true}}}},
             {"type":"Field","id":"f97","name":"Suggested","Field":{"fieldType":{"type":"StringType",
@@ -492,6 +494,7 @@ class CheckFamilyWiringTest {
         CheckFamily.STRING_PATTERN_ADMISSION to ("MVK_PATTERN_INVALID" to "/Catalog/Reference"),
         CheckFamily.STRING_PATTERN_MESSAGE to
             ("MVK_ERROR_MESSAGE_AND_PATTERN_INVALID" to "/Catalog/Unexplained"),
+        CheckFamily.FIELD_TYPE_MESSAGE_TEXT to ("INVALID_PARAMETER" to "/Catalog/Tagged"),
         CheckFamily.STRING_TYPE_PARAMETERS to
             ("MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK" to "/Catalog/Opaque"),
         CheckFamily.NUMBER_TYPE_DIGITS to ("MVK_FRACT_DIGITS_INVALID" to "/Catalog/Amount"),

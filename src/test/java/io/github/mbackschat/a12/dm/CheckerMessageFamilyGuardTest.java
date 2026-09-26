@@ -34,7 +34,8 @@ import org.junit.jupiter.api.Test;
  * each file hosts is read from {@code CheckProducers.kt}'s registrations; the withheld families from
  * {@code Check.kt}. A file stating a code must host a withheld family. Where it also hosts a family that is
  * NOT withheld, the literal's function must reach only the withheld family's entry, through the calls made
- * inside that file, which is exactly the shape the two historical cases had.
+ * inside that file, which is exactly the shape the two historical cases had. A family judging a carrier with no
+ * DSL at all is exempt by name, each with the measurement that says nothing withholds it.
  *
  * <p><b>What it does not see.</b> A call from a non-withheld family into a helper in ANOTHER file: the one
  * such helper, {@code ReferenceDiagnostic.kt}, picks its unprefixed codes by the reference's role and is named
@@ -53,6 +54,18 @@ class CheckerMessageFamilyGuardTest {
             "turns a reference outcome into a finding; the unprefixed codes belong to the message-parameter ROLE, "
                     + "which only the message-parameter family reads");
 
+    /**
+     * Families stating error-text codes about a carrier that has no DSL beside it, each with why nothing
+     * withholds them. Keyed by family rather than file, so a rule-message arm added to the same file still
+     * needs a withheld family of its own.
+     */
+    private static final Map<String, String> NO_DSL_FAMILIES = Map.of(
+            "FIELD_TYPE_MESSAGE_TEXT",
+            "judges a field type's own message, which A12's element walk checks in a pass of its own: a field has "
+                    + "no condition, and a refused condition or a broken error target on a rule of the same model "
+                    + "leaves the field's class standing (validate.laws.FieldTypeMessageTextLawsTest"
+                    + ".aRulesRefusalElsewhereWithholdsNothing)");
+
     private static final Pattern FAMILY = Pattern.compile("CheckFamily\\.([A-Z_]+)");
 
     private static final Pattern CALL = Pattern.compile("\\.([a-z]\\w*)\\(");
@@ -70,6 +83,8 @@ class CheckerMessageFamilyGuardTest {
         Set<String> withheld = familiesIn(block(read(SOURCES.resolve("Check.kt")),
                 "internal val MESSAGE_MEMBER_FAMILIES = setOf("));
         Map<String, List<Registration>> byFile = registrationsByFile();
+        Set<String> hosts = new TreeSet<>(withheld);
+        hosts.addAll(NO_DSL_FAMILIES.keySet());
 
         Map<String, String> leaks = new TreeMap<>();
         reported.forEach((code, sources) -> sources.forEach(source -> {
@@ -78,8 +93,8 @@ class CheckerMessageFamilyGuardTest {
                 return;
             }
             List<Registration> hosted = byFile.getOrDefault(file, List.of());
-            Set<String> entriesWithheld = entries(hosted, withheld, true);
-            Set<String> entriesNot = entries(hosted, withheld, false);
+            Set<String> entriesWithheld = entries(hosted, hosts, true);
+            Set<String> entriesNot = entries(hosted, hosts, false);
             if (entriesWithheld.isEmpty()) {
                 leaks.put(code + " in " + file, "the file hosts no family in MESSAGE_MEMBER_FAMILIES");
                 return;
@@ -109,6 +124,12 @@ class CheckerMessageFamilyGuardTest {
         Set<String> unregistered = new TreeSet<>(withheld);
         unregistered.removeAll(registered);
         assertEquals(Set.of(), unregistered, "a withheld family has no registration this guard can read");
+        Set<String> exemptUnregistered = new TreeSet<>(NO_DSL_FAMILIES.keySet());
+        exemptUnregistered.removeAll(registered);
+        assertEquals(Set.of(), exemptUnregistered, "an exempt family has no registration, so its exemption is stale");
+        Set<String> bothWays = new TreeSet<>(NO_DSL_FAMILIES.keySet());
+        bothWays.retainAll(withheld);
+        assertEquals(Set.of(), bothWays, "a family is both withheld and exempt from withholding");
         assertTrue(byFile.getOrDefault("DeclarationSlots.kt", List.of()).size() >= 2,
                 "DeclarationSlots.kt should host two families: " + byFile.get("DeclarationSlots.kt"));
     }

@@ -191,6 +191,28 @@ class ModelTextRepertoireTest {
         )
     }
 
+    /**
+     * A field type's own message is a carrier on both types that declare one, and like every other message only
+     * for a locale the model declares (`…ModelTextRepertoireLawsTest`, the three field-message rows).
+     */
+    @Test
+    fun aFieldTypesOwnMessageIsACarrier() {
+        fun patterned(messages: String) = """{"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{
+            "type":"StringType","StringType":{"pattern":"[A-Z]+","errorMessage":[$messages]}}}}"""
+        val status = """{"type":"Field","id":"f3","name":"Status","Field":{"fieldType":{"type":"EnumerationType",
+            "EnumerationType":{"values":[{"value":"OPEN"},{"value":"CLOSED"}],
+            "errorMessage":[{"locale":"en_US","text":${q("see $GRIN")}}]}}}}"""
+        assertEquals(
+            listOf(listOf("$CODE at /Claim/Reference"), listOf(STATUS), emptyList()),
+            listOf(
+                reported(model(reference = patterned("""{"locale":"en_US","text":${q("see $GRIN")}}"""))),
+                reported(model(status)),
+                reported(model(reference = patterned("""{"locale":"en_US","text":"capitals only"},
+                    {"locale":"de_DE","text":${q("see $GRIN")}}"""))),
+            ),
+        )
+    }
+
     private companion object {
         const val GRIN = "\uD83D\uDE00"
         const val READS = "FieldFilled(Reference) And FieldFilled(Note)"

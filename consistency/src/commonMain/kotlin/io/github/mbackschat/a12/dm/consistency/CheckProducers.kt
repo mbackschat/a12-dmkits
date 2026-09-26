@@ -412,6 +412,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclaration(CheckFamily.STRING_PATTERN_MESSAGE) { base, at ->
         base.stringTypeMessageFindings(at)
     },
+    produces(CheckFamily.FIELD_TYPE_MESSAGE_TEXT) { it.fieldTypeMessageTextFindings() },
     perDeclarationWalk(CheckFamily.STRING_TYPE_PARAMETERS) { it.stringTypeParameterFindings() },
     perDeclarationWalk(CheckFamily.NUMBER_TYPE_DIGITS) { it.numberTypeDigitFindings() },
     perDeclarationWalk(CheckFamily.ENUM_VALUE_LABELS) { it.enumValueLabelFindings() },

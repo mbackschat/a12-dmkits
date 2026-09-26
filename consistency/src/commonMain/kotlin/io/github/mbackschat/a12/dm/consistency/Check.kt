@@ -223,6 +223,15 @@ enum class CheckFamily {
     STRING_PATTERN_MESSAGE,
 
     /**
+     * That a field type's OWN error message — a String type's pattern message, an Enumeration's invalid-value
+     * message — is text A12's field-message check admits. The check is not the rule message's: it asks UTF-16
+     * encodability first, then the same two character gates, then an even `$` count, and admits only
+     * `field` and `field.value` between two `$`, spelled in the CONDITION language. One finding per field, from
+     * the first declared locale that fails, and none for a field whose path A12's element walk never reaches.
+     */
+    FIELD_TYPE_MESSAGE_TEXT,
+
+    /**
      * That a declared string type's own parameters agree with each other — what `noValueValidation`
      * excludes, the hint list it forbids, the line-break flag it requires, and the two length laws beside
      * them. The members are read the way A12 encodes them, so the sentinel `-1` is NO bound rather than a
@@ -1217,9 +1226,9 @@ private val UNREAD_MEMBERS = listOf(
         at = null,
         reason = "A12 refuses a character outside the Basic Multilingual Plane in every text it validates as " +
             "part of the model, with no class; this checker judges the carriers measured for it (a rule's " +
-            "and a computation's texts, a field's and a group's annotations, enum values and labels, every " +
-            "element's path) and leaves the rest to A12 — a field type's own members, a category, the " +
-            "header, and a mounted provider's declarations",
+            "and a computation's texts, a field's and a group's annotations, enum values and labels, a " +
+            "field type's own message, every element's path) and leaves the rest to A12 — a field type's " +
+            "other members, a category, the header, and a mounted provider's declarations",
     ),
     CoverageGap(
         at = null,
