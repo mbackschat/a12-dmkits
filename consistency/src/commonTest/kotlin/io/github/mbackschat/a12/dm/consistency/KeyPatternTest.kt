@@ -17,10 +17,11 @@ class KeyPatternTest {
     @Test
     fun theSubsetMatchesTheWholeValue() {
         assertEquals(
-            listOf(true, false, false, true, false, true, true, false, true, false, true, false),
+            listOf(true, false, false, true, false, false, true, true, false, true, false, true, false),
             listOf(
                 matches("[A-Z]{2}[0-9]", "AB1"), matches("[A-Z]{2}[0-9]", "XAB1"), matches("[A-Z]{2}[0-9]", "ab1"),
                 matches("[A-Z]+-[0-9]{2,3}", "AB-12"), matches("[A-Z]+-[0-9]{2,3}", "AB-1234"),
+                matches("[A-Z]+-[0-9]{2,3}", "-12"),
                 matches("[^0-9]*", "abc"), matches("[a-z]?[0-9]*", "5"), matches("[a-z]?[0-9]*", "ab"),
                 matches("[0-9]{3,}", "12345"), matches("[0-9]{3,}", "12"),
                 matches("a_b c", "a_b c"), matches("[a-c ]+", "abd"),
