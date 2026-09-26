@@ -7042,7 +7042,7 @@ Reported by the portable checker as `ReferenceRole.MESSAGE_PARAMETER`, inside `C
 
 **The last two rows are what an implementation turns on.** The gates run in ORDER rather than independently: the tab beside a line break draws nothing, so a reader reporting each kind it finds names a verdict A12 did not give — on exactly the text an author produces by pasting, which is the likeliest real input here. And the order is keyed on the KIND present, not on position: reversing the pair changes nothing, which is what separates "the line-break gate runs first" from "the first offending character decides". Both readings agree on every text where the break comes first, so a grid without the reversed row cannot tell them apart — measured here because a mutant swapping the two tests survived the row that had them in that order.
 
-**The refused set is the ISO control blocks**, both ends measured — `U+0000`–`U+001F` and `U+007F`–`U+009F`, with the space and the non-breaking space outside them. A repertoire restriction is a *different* law: the charset refusal for a supplementary-plane code point carries no class at all ([KF279](#kf279)), so a family keying on the charset would answer a different question with the wrong code.
+**The refused set is the ISO control blocks**, both ends measured — `U+0000`–`U+001F` and `U+007F`–`U+009F`, with the space and the non-breaking space outside them. **Corrected 2026-09-26: the set is wider than those blocks.** A lone surrogate of either half draws `INVALID_CHARACTERS` too ([KF489](#kf489)), and A12's predicate is `FehlertextUtil.CONTROL_CHARACTER_PATTERN`, `\p{C}` (source-read): every Unicode "Other" character, so format characters, private use and unassigned code points as well, none of them yet measured ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG110). A repertoire restriction is a *different* law: the charset refusal for a supplementary-plane code point carries no class at all ([KF279](#kf279)), so a family keying on the charset would answer a different question with the wrong code.
 
 **A COMPUTATION's message meets the same two classes**, and without the codeless runtime diagnostic the rule rows carry beside them — that one belongs to the rule member rather than to the text. So the law is the message member's, as [KF335](#kf335) found for membership.
 
@@ -11324,7 +11324,7 @@ The empty constant is refused ahead of the type's rule on every kind by source; 
 | pattern `.{2}` | `ab` | `a` |
 | pattern `.{2}`, at most 1 long | — | `ab` (the length) |
 
-The pattern counts code points, as Java's regex does, while the length counts UTF-16 units: `😀` is one character to `[^0-9]{2}`. Both `😀` rows also draw the codeless `The field contains one or several unsupported signs.`, beside the index class, which is the message repertoire's refusal ([KF449](#kf449)) met in a condition text.
+The pattern counts code points, as Java's regex does, while the length counts UTF-16 units: `😀` is one character to `[^0-9]{2}`. Both `😀` rows also draw the codeless `The field contains one or several unsupported signs.`, beside the index class: the charset refusal of [KF489](#kf489), met in a condition text.
 
 The portable checker had judged a constant only against an enumeration. It now reproduces every rule above. It reproduces each shape without a regex, so both targets decide it alike, and it evaluates a declared pattern the same way: only in a subset it matches itself, of letters, digits, spaces, `_` and `-`, bracket classes of them, and the quantifiers `?`, `*`, `+` and the counted ones. `.{2}` is outside it, since Java's `.` excludes U+0085 where JavaScript's admits it, so such a key stays unjudged once its length is met. A key must meet both, as the `[A-Z]+` rows show, so the `.{2}` row at most 1 long is refused on its length alone, `ab` matching `.{2}` ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG102).
 
@@ -11573,3 +11573,29 @@ Measured on KF348's shape with a fixed root, plus an unkeyed repeatable `Returns
 **The portable checker refused six of these models.** It counted every resolved reference as a read of its carrier: the three starred rows, both keyed rows and the unmarked body row. It named the parallel class on the marked row, from the unmarked `Returns` read. It stayed silent on the unreferenced row, counting a body read as reaching. It now reads the rule's own references (`rulesOwnReadsIn`). For the iteration pair it keeps only those that leave a repeatable level unstarred and are no index's value or key.
 
 *Locked by:* `adapter.laws.CheckerRuleReferenceSetAgreementTest`, A12's class written out on every row and the checker required to name it. Mirrored by `consistency.ErrorTargetIterationTest.onlyTheRulesOwnIteratingReadsCount` and by KF324's filter row in `consistency.ErrorFieldReferenceTest`.
+
+## §12 supplement — A12 refuses a character outside the Basic Multilingual Plane in the texts it validates as part of the model, with no class and once per element; the labels of the model, a group and a field are not among them (kernel `checkConsistency`, 2026-09-26) <a id="kf489"></a>
+
+> Fold: not-foldable — a model-validation law about which stored texts a charset check reaches, not an evaluation behaviour.
+
+**The mechanism is known, the carriers were not.** `checkConsistency` validates the model as a document of its metamodel ([KF146](#kf146)), and that runs the runtime formal charset check, whose legal set is the BMP when none is configured ([KF32](#kf32)). Source-verified: the refusal's sentence is `ZEICHEN_NICHT_IM_ZEICHENSATZ_FM_TEXT`, and a search of the kernel's Java sources for that class finds it raised by the runtime `FormalChecker` alone. So the refusal is `ZeichenNichtImZeichensatz`'s sentence, `The field contains one or several unsupported signs.`, with no class. [KF449](#kf449) had it on a message. Which other texts it reaches is a question about the metamodel, so each carrier was put to the kernel. Fourteen of them stand beside an `é` twin, admitted on each except outside a literal, where the lexer refuses it, and on the error code and the field name, which have an alphabet of their own:
+
+| a supplementary-plane character (`😀`) in | A12 |
+|---|---|
+| a rule's condition (a literal, a `;;` comment, or outside a literal), error code, name, or message | refused, on the rule; outside a literal also `MVK_LEXER_STANDARD_ERROR` |
+| a computation's operation, common or alternative precondition, name, or message | refused, on the computation, which A12 calls a "Rule" |
+| a field's annotation (name or value), enum value, or enum label; a group's annotation (name or value) | refused, on the field or group |
+| a field's name | refused, beside `MVK_PATH_INVALID` |
+| a nested group's name | refused on the group, on its field and on a rule inside it, beside `MVK_PATH_INVALID` |
+| the model's label, a group's label, a field's label | **admitted** |
+| a message, or an enum label, for a locale the model does not declare | **admitted** |
+
+- **The unit is the element.** A rule with the character in both its condition and its message draws one finding, and so does a field with it in both an enum value and that value's label.
+- **The PATH is a carrier.** The field and the rule beneath a defective group have plain names of their own and are refused all the same.
+- **Any surrogate is refused, paired or not.** A lone high or low surrogate in a message is refused too, and draws `INVALID_CHARACTERS` beside it, from the message gate's `\p{C}` ([KF337](#kf337)).
+- **It stands beside every other class, listed first.** A refused condition keeps its own class (`MVK_UNEXPECTED_TOKEN` on `… And And …`), and the codeless finding stays.
+- **Where a carrier has an alphabet of its own, the charset pre-empts it.** An error code or a field name with `é` draws that carrier's own codeless sentence ("only allowed to contain letters, digits, blanks and underscores", "A field name may only contain letters…"). With `😀` the charset sentence stands alone.
+
+**The portable checker reports it as `RK_UNSUPPORTED_CHARACTER`**, a code of its own since A12 has none (`CheckFamily.MODEL_TEXT_REPERTOIRE`), on the measured carriers only. A mounted provider's declarations and the members not listed above are left to A12 and disclosed as a coverage gap.
+
+*Locked by:* `rulekit.validate.laws.ModelTextRepertoireLawsTest`, each finding by its text. Mirrored by `consistency.ModelTextRepertoireTest`; the condition-text carrier by the `😀` rows of `adapter.laws.CheckerIndexKeyConstantAgreementTest`.

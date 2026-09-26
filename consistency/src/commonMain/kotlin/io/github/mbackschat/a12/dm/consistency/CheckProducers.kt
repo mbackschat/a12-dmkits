@@ -304,6 +304,10 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         gaps = { it.enumTextForbiddenCharacterGaps() },
     ),
     CheckProducer.ModelWide(
+        completes = setOf(CheckFamily.MODEL_TEXT_REPERTOIRE),
+        findings = { it.modelTextRepertoireFindings() },
+    ),
+    CheckProducer.ModelWide(
         completes = setOf(CheckFamily.HINT_LIST_VALUES),
         findings = { it.hintListValueFindings() },
         gaps = { it.hintListValueGaps() },

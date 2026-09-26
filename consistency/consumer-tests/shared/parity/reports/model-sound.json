@@ -29,6 +29,7 @@
     "ENUM_CATEGORY_ALIGNMENT",
     "ENUM_VALUE_CHARACTERS",
     "ENUM_TEXT_FORBIDDEN_CHARACTERS",
+    "MODEL_TEXT_REPERTOIRE",
     "HINT_LIST_VALUES",
     "TABLE_ENUM_OPERAND",
     "H_MODEL_FORM_CONSTRUCT",
@@ -119,6 +120,10 @@
     {
       "at": null,
       "reason": "a field type's body is judged on the member A12 constructs from and on the two CONTENT laws measured beyond it — a `DateRangeType`'s (format, separator) pair, and an `EnumerationType`'s values against its categories. What a member otherwise holds is left to A12: a declared `format` outside the admitted vocabulary is refused there and cannot be reported here, since the admitted set is explicitly not closed and the refused one is a probe's universe rather than a law; a `CustomFieldType`'s `name` is judged on presence alone, and A12 refuses a no-break-space name in prose with no class this checker could cite"
+    },
+    {
+      "at": null,
+      "reason": "A12 refuses a character outside the Basic Multilingual Plane in every text it validates as part of the model, with no class; this checker judges the carriers measured for it (a rule's and a computation's texts, a field's and a group's annotations, enum values and labels, every element's path) and leaves the rest to A12 — a field type's own members, a category, the header, and a mounted provider's declarations"
     },
     {
       "at": null,

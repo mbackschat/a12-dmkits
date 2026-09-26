@@ -111,6 +111,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field MESSAGE_PARAMETER_SYNTAX Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field MESSAGE_TEXT_CHARACTERS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field MESSAGE_VALUE_SUFFIX Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field MODEL_TEXT_REPERTOIRE Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field NUMBER_COMPARISON_SCALE Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field NUMBER_TYPE_DIGITS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field OPERAND_LIST_CONSTANT_BUDGET Lio/github/mbackschat/a12/dm/consistency/CheckFamily;

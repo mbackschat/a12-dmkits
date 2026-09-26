@@ -42,6 +42,8 @@ class CheckFamilyWiringTest {
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"q"}]}}}},
             {"type":"Field","id":"f95","name":"TabbedTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"A\tB"}]}}}},
+            {"type":"Field","id":"f94","name":"Glyph","annotations":[{"name":"mark","value":"\uD83D\uDE00"}],
+              "Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f7","name":"Reference","Field":{"fieldType":{"type":"StringType",
               "StringType":{"pattern":"a++","errorMessage":[{"locale":"en_US","text":"x"}]}}}},
             {"type":"Field","id":"f8","name":"Unexplained","Field":{"fieldType":{"type":"StringType",
@@ -484,6 +486,7 @@ class CheckFamilyWiringTest {
             ("MVK_ENUM_VALUE_WITH_INVALID_CHARACTER" to "/Catalog/LowercaseTier"),
         CheckFamily.ENUM_TEXT_FORBIDDEN_CHARACTERS to
             ("MVK_INTERNAL_VALUE_INVALID" to "/Catalog/TabbedTier"),
+        CheckFamily.MODEL_TEXT_REPERTOIRE to ("RK_UNSUPPORTED_CHARACTER" to "/Catalog/Glyph"),
         CheckFamily.HINT_LIST_VALUES to ("MVK_VALUE_TOO_LONG" to "/Catalog/Suggested"),
         CheckFamily.TABLE_ENUM_OPERAND to ("MVK_TABLE_ENUM_EXPECTED" to "/Catalog/TableSubject"),
         CheckFamily.STRING_PATTERN_ADMISSION to ("MVK_PATTERN_INVALID" to "/Catalog/Reference"),

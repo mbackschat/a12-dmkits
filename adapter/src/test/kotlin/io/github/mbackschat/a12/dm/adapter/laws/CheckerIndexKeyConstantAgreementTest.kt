@@ -66,7 +66,11 @@ class CheckerIndexKeyConstantAgreementTest {
         val draft = DraftRule("/Policy", "ProbeRule", "../Reference", "FieldFilled(Reference) And $probe", "PROBE",
             "ERROR")
         val a12 = validator.check(policy, draft).let { result ->
-            if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("(no code)") }.toSet()
+            if (result.ok()) emptySet() else result.diagnostics().map { d ->
+                // A12's codeless charset refusal, named by the code this checker owns for it; any other
+                // codeless finding stays unnamed, so it would show as a disagreement.
+                d.code().orElse(if (UNSUPPORTED_SIGNS in d.summary()) UNSUPPORTED else "(no code)")
+            }.toSet()
         }
         val ours = check(ModelSource(validator.inject(policy, draft))).findings
             .filter { it.justifiesRejection }.map { it.code }.toSet()
@@ -190,9 +194,12 @@ class CheckerIndexKeyConstantAgreementTest {
             "DateRange dd.MM.yyyy-, one day",
         )
 
+        const val UNSUPPORTED = "RK_UNSUPPORTED_CHARACTER"
+        const val UNSUPPORTED_SIGNS = "The field contains one or several unsupported signs."
+
         /**
          * The rows whose constant carries a supplementary-plane character, which A12 also refuses in a condition
-         * text with a finding carrying no code, beside the index class.
+         * text with a finding carrying no code, beside the index class ([KERNEL-FINDINGS KF489]).
          */
         val CODELESS_ROWS = setOf(
             "String pattern, a supplementary character counted once",
@@ -201,20 +208,17 @@ class CheckerIndexKeyConstantAgreementTest {
 
         /** A12's class on each row. */
         val A12: Map<String, Set<String>> = ROWS.keys.associateWith {
-            (if (it in REFUSED_ROWS) REFUSED else ADMITTED) + (if (it in CODELESS_ROWS) setOf("(no code)") else emptySet())
+            (if (it in REFUSED_ROWS) REFUSED else ADMITTED) + (if (it in CODELESS_ROWS) setOf(UNSUPPORTED) else emptySet())
         }
 
         /**
          * The rows where the checker answers otherwise, with what it answers. A declared pattern outside the
          * subset both targets evaluate alike is Java regex this checker does not evaluate, so it leaves the key
-         * unjudged and every gate behind it stands down. The checker names no codeless repertoire refusal of a
-         * condition text (CONSISTENCY-GAPS DG109), so it gives those rows their index class alone.
+         * unjudged and every gate behind it stands down.
          */
         val OURS: Map<String, Set<String>> = mapOf(
             "String pattern outside the subset, matching" to emptySet(),
             "String pattern outside the subset, not matching" to emptySet(),
-            "String pattern, a supplementary character counted once" to REFUSED,
-            "String pattern, a supplementary character and a letter" to ADMITTED,
         )
     }
 }

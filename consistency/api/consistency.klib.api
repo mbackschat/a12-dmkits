@@ -154,6 +154,7 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
     enum entry MESSAGE_PARAMETER_SYNTAX // io.github.mbackschat.a12.dm.consistency/CheckFamily.MESSAGE_PARAMETER_SYNTAX|null[0]
     enum entry MESSAGE_TEXT_CHARACTERS // io.github.mbackschat.a12.dm.consistency/CheckFamily.MESSAGE_TEXT_CHARACTERS|null[0]
     enum entry MESSAGE_VALUE_SUFFIX // io.github.mbackschat.a12.dm.consistency/CheckFamily.MESSAGE_VALUE_SUFFIX|null[0]
+    enum entry MODEL_TEXT_REPERTOIRE // io.github.mbackschat.a12.dm.consistency/CheckFamily.MODEL_TEXT_REPERTOIRE|null[0]
     enum entry NUMBER_COMPARISON_SCALE // io.github.mbackschat.a12.dm.consistency/CheckFamily.NUMBER_COMPARISON_SCALE|null[0]
     enum entry NUMBER_TYPE_DIGITS // io.github.mbackschat.a12.dm.consistency/CheckFamily.NUMBER_TYPE_DIGITS|null[0]
     enum entry OPERAND_LIST_CONSTANT_BUDGET // io.github.mbackschat.a12.dm.consistency/CheckFamily.OPERAND_LIST_CONSTANT_BUDGET|null[0]

@@ -48,6 +48,7 @@ class ConditionMultipleDefectLawsTest {
         actual.put("one unresolvable reference and a trailing operator",
                 verdict("FieldFilled(NoSuchField) And"));
         actual.put("a trailing operator alone", verdict("FieldFilled(Reference) And"));
+        actual.put("a doubled trailing operator", verdict("FieldFilled(Reference) And And"));
         // Which side wins is the mechanism, and the rows above only show one direction. A text that cannot
         // be PARSED at all carries a bad reference inside it here, so it asks whether resolution still runs.
         actual.put("an unbalanced delimiter around a bad reference", verdict("FieldFilled(NoSuchField"));
@@ -70,6 +71,8 @@ class ConditionMultipleDefectLawsTest {
         // and shows the account is text order instead.
         expected.put("one unresolvable reference and a trailing operator", "MVK_INVALID_ENTITY");
         expected.put("a trailing operator alone", "MVK_INCOMPLETE_INPUT");
+        // The text still ends early, but the second operator is the token the parser meets first.
+        expected.put("a doubled trailing operator", "MVK_UNEXPECTED_TOKEN");
         // …and resolution is not merely surviving a parse: this text cannot be parsed at all and the entity
         // class still wins, so the order is not "parse, then resolve".
         expected.put("an unbalanced delimiter around a bad reference", "MVK_INVALID_ENTITY");

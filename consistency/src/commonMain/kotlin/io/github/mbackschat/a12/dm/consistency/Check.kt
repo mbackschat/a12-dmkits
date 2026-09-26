@@ -166,6 +166,14 @@ enum class CheckFamily {
     ENUM_TEXT_FORBIDDEN_CHARACTERS,
 
     /**
+     * That no text A12 validates as part of the model carries a character outside the Basic Multilingual
+     * Plane. A12 reads the model as a document of its own metamodel and refuses such a character in it with
+     * a finding carrying no class, so the family owns a code for it. Its carriers are measured one by one,
+     * and the labels of the model, a group and a field are not among them.
+     */
+    MODEL_TEXT_REPERTOIRE,
+
+    /**
      * The VALUES inside a string type's hint list, against that type's own length bounds and each other.
      * Separate from [STRING_TYPE_PARAMETERS], which judges the parameters against one another and answers
      * whether the list may be there at all — A12 reports the list-level refusal and these value laws
@@ -1204,6 +1212,14 @@ private val UNREAD_MEMBERS = listOf(
             "reported here, since the admitted set is explicitly not closed and the refused one is a " +
             "probe's universe rather than a law; a `CustomFieldType`'s `name` is judged on presence alone, " +
             "and A12 refuses a no-break-space name in prose with no class this checker could cite",
+    ),
+    CoverageGap(
+        at = null,
+        reason = "A12 refuses a character outside the Basic Multilingual Plane in every text it validates as " +
+            "part of the model, with no class; this checker judges the carriers measured for it (a rule's " +
+            "and a computation's texts, a field's and a group's annotations, enum values and labels, every " +
+            "element's path) and leaves the rest to A12 — a field type's own members, a category, the " +
+            "header, and a mounted provider's declarations",
     ),
     CoverageGap(
         at = null,

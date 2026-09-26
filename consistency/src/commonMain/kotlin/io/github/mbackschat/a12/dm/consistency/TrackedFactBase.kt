@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -387,6 +388,18 @@ internal class TrackedDeclaration(
         get() {
             transcript.record(FactRead.DeclarationContent(element.path))
             return element.body
+        }
+
+    /**
+     * The element's own `annotations`, absent when it declares none as a list.
+     *
+     * They sit beside the kind's payload rather than in it, so [body] cannot reach them, and they are
+     * authored content all the same: a read of them is a read of this declaration.
+     */
+    val annotations: JsonArray?
+        get() {
+            transcript.record(FactRead.DeclarationContent(element.path))
+            return element.declaration["annotations"] as? JsonArray
         }
 
     /**
