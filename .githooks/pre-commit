@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Refuses four kinds of commit, each block below carrying its own reason:
+# Refuses five kinds of commit, each block below carrying its own reason:
 #   - one that stages build output or log files;
 #   - one whose staged files can drift a CI-gated doc, unless the doc guards have run green since;
+#   - one that leaves a derived doc regenerated but unstaged;
 #   - ANY commit, unless the repository-wide leak lane has run green since the newest staged change;
 #   - ANY commit, when any test run written since the newest staged change recorded a failure.
 #
@@ -187,6 +188,22 @@ able to make the repository wrong.
 DOCMESSAGE
     refused=1
   fi
+fi
+
+# ---------------------------------------------------------------------------------------------------------
+# Refuse a commit that leaves a DERIVED doc regenerated in the working tree but unstaged.
+#
+# The doc guards read the WORKING TREE, so once `:cli:dumpOperatorIndex` has regenerated the index they run
+# green against a file this commit does not carry, and the check above passes. CI checks out the commit, with
+# the KERNEL-FINDINGS edit and the old index, and fails. Measured 2026-09-26: a commit landed that way and was
+# caught only by reading `git status` afterwards. Only a derived file is refused, because it is never authored:
+# an unstaged change to one is always a regeneration the commit forgot, never a deliberate partial commit.
+derived_unstaged="$(git diff --name-only -- docs/OPERATOR-INDEX.md)"
+if [ -n "$derived_unstaged" ]; then
+  printf '\nA derived doc was regenerated but not staged, so the guards validated a file this commit lacks:\n\n' >&2
+  printf '  %s\n' $derived_unstaged >&2
+  printf '\nStage it with `git add %s` and commit again.\n' "$derived_unstaged" >&2
+  refused=1
 fi
 
 # ---------------------------------------------------------------------------------------------------------

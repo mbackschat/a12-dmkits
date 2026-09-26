@@ -187,6 +187,25 @@ git -C "$REPO" add -A
 git -C "$REPO" commit -qm "docs: bypass" --no-verify \
   || fail "--no-verify did not bypass the hook"
 
+# 9b. A DERIVED doc regenerated but left unstaged is refused with every lane green, because the guards read the
+#     working tree and the commit does not match it. Staging it clears the refusal, so the check is measuring the
+#     index rather than refusing every commit that touches a finding.
+echo "index v1" > "$REPO/docs/OPERATOR-INDEX.md"
+git -C "$REPO" add -A
+fabricate_guard_evidence
+fabricate_leak_evidence
+git -C "$REPO" commit -qm "docs: seed the index" || fail "a staged index with fresh evidence was refused"
+echo "a finding" > "$REPO/docs/finding.md"
+echo "index v2" > "$REPO/docs/OPERATOR-INDEX.md"
+git -C "$REPO" add docs/finding.md
+fabricate_guard_evidence
+fabricate_leak_evidence
+derived_out="$(commit_expecting_refusal "docs: finding without its index")"
+[[ "$derived_out" == *"OPERATOR-INDEX.md"* && "$derived_out" == *"not staged"* ]] \
+  || fail "the refusal did not name the unstaged derived doc: $derived_out"
+git -C "$REPO" add docs/OPERATOR-INDEX.md
+git -C "$REPO" commit -qm "docs: finding with its index" || fail "the staged index was still refused"
+
 # 10. THE `stat` DIALECT TRAP, locked on EVERY platform — the defect that shipped. `stat` speaks two
 #    incompatible dialects and picking the wrong one does NOT fail cleanly: GNU's `stat -f %m F` reads `%m`
 #    as a FILE, so it prints F's FILESYSTEM block on stdout and exits 1, and the original
@@ -254,4 +273,4 @@ set -e
 [[ $blind_status -ne 0 ]] || fail "an unusable stat let the commit through — the check passed without measuring"
 [[ "$blind_out" == *"mtime"* ]] || fail "the refusal did not say it could not read mtimes: $blind_out"
 
-echo "SELFTEST OK: doc check spares a non-trigger, missing/stale/red evidence refused, fresh green accepted; leak lane demanded for every file, stale and red refused; a red run of any lane since the change refused, an older one ignored; both stat dialects measured, an unusable stat refused, bypass works"
+echo "SELFTEST OK: doc check spares a non-trigger, missing/stale/red evidence refused, fresh green accepted; leak lane demanded for every file, stale and red refused; a red run of any lane since the change refused, an older one ignored; an unstaged derived doc refused; both stat dialects measured, an unusable stat refused, bypass works"
