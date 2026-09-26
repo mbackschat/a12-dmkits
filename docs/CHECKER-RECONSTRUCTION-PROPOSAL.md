@@ -123,7 +123,14 @@ The instrument lives in `:adapter`'s tests (the parser and ANTLR are already on 
 
 **Deletion runs against a finite matrix, never by family ownership.** Each test a landing deletes has a row naming its claim kind (class, site, order, or runtime) and the assertion that replaces it; identical inputs under a class-set comparison are not a replacement. For R3a the candidates are `consistency.ConditionShapeTest` and `ConditionCompletenessTest`, whose rows move into the trace's row list or a kernel law, and `CheckerParserCorpusSweepTest`, replaced by the syntax-only mode above. `consistency.syntax.ConditionCallTest`, `ConditionComparisonTest` and `ConditionReferenceTest` test the scanners, which R3a keeps.
 
-**One parser for the checker and the interpreter (S1) is not settled here.** The interpreter's dependency gate refuses every intra-repo edge ([interpreter/CLAUDE.md](../interpreter/CLAUDE.md)), so sharing a parser needs an owner decision on module ownership first. R3a lives in `:consistency`.
+**One parser for the checker and the interpreter (S1) is bounded by the interpreter's performance first (owner direction, 2026-09-27).** NFR #1 holds as written in [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md#nfr1-standing-anchor): no interpreter row may regress more than 5 % against its standing anchor, per row, with no compensation between rows, and missing or inconclusive evidence fails. The interpreter's own parser builds its evaluation tree directly, while a parser built for the checker produces what the checker needs: failure sites, tokens and recorded references. The owner reports that sharing such structures in the earlier checker implementation cost the interpreter more than 5 % in parsing. The attempt abandoned at `6b4c6838` recorded 23 comparison rows above 5 % in its full rerun ([archived proposal](archived/PORTABLE-CONSISTENCY-PROPOSAL.md), "Restart research and blast radius"), without establishing which shared representation caused each row.
+
+So S1 is admissible only where the interpreter demonstrably does not pay. Every row has to stay within 5 % on JVM and on JS, in both time and memory:
+
+- **memory** through the standing anchor's byte rows;
+- **time** through a paired measurement of parsing alone whose upper bound is below 5 %, since the gate lanes' timed rows cannot carry a 5 % bar ([INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md#nfr1-standing-anchor)).
+
+The shape that could pass is a recognizer that builds no structure of its own and lets each consumer build its own from the recognizer's events, the interpreter its tree as today. The interpreter's dependency gate refuses every intra-repo edge ([interpreter/CLAUDE.md](../interpreter/CLAUDE.md)), so the gate would also have to admit the leaf holding that recognizer. Until both hold, the two parsers stay separate and the interpreter's is untouched. R3a lives in `:consistency`.
 
 **Non-goals:** the H-model arm and the lenient parser. H-shaped syntax that decides an A12 model's prediction or rejection is not a non-goal: the entity spec's H path form, and decision 74 under the ungated German `AnzahlAngegebenerVordrucke`.
 
