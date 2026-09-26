@@ -329,6 +329,31 @@ class KeyedOperandFamilyGateLawsTest {
     }
 
     /**
+     * A read that CLIMBS out of the fixed {@code Review} names the level it lands on, so it is judged as the read
+     * of that level would be: into {@code Claims}, which the rule iterates, the family's gate answers, with or
+     * without a key; past the root into the unaddressed {@code Riders}, the read is unaddressed. Each family's
+     * local read inside {@code Claims} is the control that its fields draw the family's class.
+     */
+    @Test
+    void aClimbingReadIsJudgedAtTheLevelItReaches() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String family : PROBES.keySet()) {
+            for (String form : new String[] {"../%s", "../%s For \"X\"", "../../Claims/%s"}) {
+                actual.put(family + " — " + form, inReview(probe(family, operands(family, form))));
+                expected.put(family + " — " + form, CLASS.get(family));
+            }
+            actual.put(family + " — ../../Riders/%s", inReview(probe(family, operands(family, "../../Riders/%s"))));
+            expected.put(family + " — ../../Riders/%s", "MVK_NO_WILDCARD");
+        }
+        assertEquals(expected, actual, "a climbing read from the fixed Review inside Claims");
+    }
+
+    private static String inReview(String probe) {
+        return KernelLaws.verdictModel(POLICY, "/Policy/Claims/Review", "../Note", "FieldFilled(Note) And " + probe);
+    }
+
+    /**
      * A string key followed by a `Having` gives the operand a filter, since a string key takes none of its own:
      * the filter then demands its star, and on the one gate that reads a group the group gate answers instead.
      */

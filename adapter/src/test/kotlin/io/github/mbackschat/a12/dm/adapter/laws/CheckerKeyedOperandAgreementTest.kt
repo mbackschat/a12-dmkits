@@ -97,6 +97,10 @@ class CheckerKeyedOperandAgreementTest {
                 "a refused enumeration constant ahead of an unaddressed read" to compare(AT_ROOT,
                     "${probe.with("Endorsements/%s For \"PENDING\"")} And $UNADDRESSED"),
                 "a second indexed ancestor" to compare(AT_ROOT, probe.with("Claims/%s For \"X\""), rootIndexed),
+                "a climbing read" to compare(IN_REVIEW, probe.with("../%s")),
+                "a climbing keyed read" to compare(IN_REVIEW, probe.with("../%s For \"X\"")),
+                "a climb to the root and back into Claims" to compare(IN_REVIEW, probe.with("../../Claims/%s")),
+                "a climb past the root into Riders" to compare(IN_REVIEW, probe.with("../../Riders/%s")),
             ) + DEFECTS.mapValues { (_, form) -> compare(AT_ROOT, probe.with(form)) }
             for ((row, comparison) in rows) {
                 compared++
@@ -224,6 +228,7 @@ class CheckerKeyedOperandAgreementTest {
         const val UNKEYED = "(no code)"
         val AT_ROOT = "/Policy" to "Reference"
         val IN_CLAIMS = "/Policy/Claims" to "ClaimRef"
+        val IN_REVIEW = "/Policy/Claims/Review" to "Note"
 
         /** The kernel grid's carriers, each probed on a field its own gate refuses. */
         val PROBES = linkedMapOf(
@@ -260,7 +265,7 @@ class CheckerKeyedOperandAgreementTest {
         const val UNADDRESSED = "[Riders/Memo] == \"a\""
 
         /** The rows each family is compared on: the named ones in the loop, then one per key defect. */
-        val ROWS_PER_FAMILY = 17 + 9
+        val ROWS_PER_FAMILY = 21 + 9
 
         /**
          * The rows that still disagree, all from one family that is neither the key's nor the body's (CONSISTENCY-GAPS
@@ -288,6 +293,10 @@ class CheckerKeyedOperandAgreementTest {
                 "[MVK_NO_WILDCARD] A12 [MVK_INVALID_COMPARE_TO_DATE]",
             "comparison against a constant — an enumeration constant key ahead of an unaddressed read: WRONG-CLASS " +
                 "[MVK_NO_WILDCARD] A12 [MVK_INVALID_COMPARE_TO_DATE]",
+            "comparison against a constant — a climbing read: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
+            "comparison against a constant — a climbing keyed read: SILENT [] A12 [MVK_INVALID_COMPARE_TO_DATE]",
+            "comparison against a constant — a climb to the root and back into Claims: SILENT [] " +
+                "A12 [MVK_INVALID_COMPARE_TO_DATE]",
         )
 
         /** The key defects, each as the operand form it is spelled with. */

@@ -512,7 +512,13 @@ internal val PLAINLY_NON_NUMBER_TYPES = setOf(
 private val REFERENCE_TOKENS = setOf(TokenKind.NAME, TokenKind.QUOTED_NAME, TokenKind.PUNCTUATION)
 
 /**
- * The punctuation an entity spec may carry: its brackets and its path steps.
+ * The punctuation an entity spec may carry: its brackets and its path steps, the climbing `..` included.
+ *
+ * A climb names the level it lands on and is judged as that level's read would be: `../Memo` from a fixed
+ * subgroup of `Claims` draws each operand gate's own class, keyed or not, and `../../Riders/Memo` the
+ * unaddressed read's `MVK_NO_WILDCARD` (`rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`, all
+ * twenty-seven gates; [KERNEL-FINDINGS KF480]). Without `..` here, every family typing through
+ * [bareReferenceField], and the key reader, took a climb for an expression and stood down.
  *
  * **No repetition star, and that is measured rather than intended.** This set listed `"*"` and could never
  * admit one: the tokenizer classifies a star as `OPERATOR_SYMBOL` (measured 2026-09-17,
@@ -525,7 +531,7 @@ private val REFERENCE_TOKENS = setOf(TokenKind.NAME, TokenKind.QUOTED_NAME, Toke
  * that needs a kernel basis first
  * (`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "a starred operand is never typed").
  */
-private val SPEC_PUNCTUATION = setOf("[", "]", "/", ".")
+private val SPEC_PUNCTUATION = setOf("[", "]", "/", ".", "..")
 
 /**
  * The field declaration [text] names on its own, or null wherever this reader will not say.

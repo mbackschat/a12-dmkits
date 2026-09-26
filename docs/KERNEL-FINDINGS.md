@@ -7605,7 +7605,7 @@ A12 resolves an error-message parameter against the rule's own CONDITION, not ag
 
 Reported by the portable checker (`CheckFamily.ENUM_COMPUTATION_SOURCE`), which stays silent on the three pre-empted shapes and on any operation it will not reduce to a read or a `FirstFilledValue` — a disclosed under-report rather than a guess at which class the walk would answer with.
 
-**Extended 2026-09-25 — a climbing source is judged like a local one.** From a rule declared in `Claims/Review`, computing `Outcome` (`OPEN`, `CLOSED`) from `Claims/Banded` (`OPEN`, `CLOSED`, `VOID`, with categories `Band` of `OPEN`, `CLOSED` and `Wide` of all three): `[../Banded]` and `[../Banded -> Wide]` draw `MVK_ERROR_INVALID_ENUM_CALCULATION`, and `[../Banded -> Band]` is admitted. A starred source never reaches this gate, because its bracket refuses it first ([KF473](#kf473)). The checker had been silent on `[../Banded]`, because its bare-spec reader refuses the `..` token. It now reads a source through the bracket's own reader (`adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerReadsAnEnumComputationSourceAsA12Does`). The same refusal leaves other families silent on a climbing operand, which is [CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG101.
+**Extended 2026-09-25 — a climbing source is judged like a local one.** From a rule declared in `Claims/Review`, computing `Outcome` (`OPEN`, `CLOSED`) from `Claims/Banded` (`OPEN`, `CLOSED`, `VOID`, with categories `Band` of `OPEN`, `CLOSED` and `Wide` of all three): `[../Banded]` and `[../Banded -> Wide]` draw `MVK_ERROR_INVALID_ENUM_CALCULATION`, and `[../Banded -> Band]` is admitted. A starred source never reaches this gate, because its bracket refuses it first ([KF473](#kf473)). The checker had been silent on `[../Banded]`, because its bare-spec reader refuses the `..` token. It now reads a source through the bracket's own reader (`adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerReadsAnEnumComputationSourceAsA12Does`). The same refusal had left other families silent on a climbing operand ([KF480](#kf480)).
 
 *Locked by:* `rulekit.validate.laws.EnumComputationSourceLawsTest`, mirrored by `consistency.EnumComputationSourceTest`.
 
@@ -11135,3 +11135,22 @@ So the enumeration admits exactly its tokens, case-sensitively, and never a labe
 The portable checker had left a constant key over an enumeration index unjudged. It reported nothing on a digit key, because its reference scan stepped over the key, and it read `For 5.5` as an expression. It now judges a constant key against the declared tokens, reads a lone digit key as the entity reference it is, and refuses a decimal key in its shape parser. `consistency.LiteralIndexKeyTest` runs every row under both condition languages. It stays silent on the quoted Number key, which its index chain leaves unjudged ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG102).
 
 *Locked by:* `rulekit.validate.laws.LiteralIndexKeyLawsTest`; the checker mirror: `consistency.LiteralIndexKeyTest`; the checker against A12 on the operand gates of [KF476](#kf476): `adapter.laws.CheckerKeyedOperandAgreementTest`.
+
+## §9 supplement — a climbing read is judged at the level it lands on, on every operand gate (kernel `checkConsistency`, 2026-09-26) <a id="kf480"></a>
+
+> Fold: not-foldable — a diagnostic-class law about which gate answers on a climbing operand, not an evaluation behaviour.
+
+[KF476](#kf476)'s grid reads every operand from the root or from the level it keys; none climbs. These rows declare the rule in the fixed `Review` inside the repeatable `Claims`, on the same twenty-seven gates and fixture, each probed on an operand it refuses.
+
+| read from `Claims/Review` | class, on all twenty-seven gates |
+|---|---|
+| `../<x>`, into `Claims`, which the rule iterates | the gate's own class |
+| `../<x> For "X"` | the gate's own class |
+| `../../Claims/<x>`, up to the root and back into `Claims` | the gate's own class |
+| `../../Riders/<x>`, up to the root and into the unaddressed `Riders` | `MVK_NO_WILDCARD` |
+
+So a climb names the level it lands on and is judged as that level's read: the rule's iteration addresses `Claims` however the path reaches it, and the `Riders` row is the control that an unaddressed landing is observable. Where an up-step may stand at all is [KF465](#kf465)'s.
+
+The portable checker had been silent on `../<x>` and `../../Claims/<x>` in ten families beside DG96's own, and named `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` in the pattern comparison. On the keyed climb it was silent in twenty-six of the twenty-seven; the rounding-digits gate, which never reads the operand, was the one that answered. One mechanism did all of it: its bare-spec test did not admit the `..` token, so every family typing an operand through it, and the key reader reducing a keyed value, took a climb for an expression. Admitting `..` there cleared every row but the three of [CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG96's family, which is the discriminator against a rival in the scope walk or the resolver, both of which the fix left untouched.
+
+*Locked by:* `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest.aClimbingReadIsJudgedAtTheLevelItReaches`; the checker against A12: `adapter.laws.CheckerKeyedOperandAgreementTest`.

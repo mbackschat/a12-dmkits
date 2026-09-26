@@ -147,12 +147,6 @@ private fun defectOf(
     return PatternDefect(BAD_PATTERN, comparison.right, listed)
 }
 
-/** The token kinds one entity spec may be made of; anything else makes the side an expression. */
-private val SPEC_TOKENS = setOf(TokenKind.NAME, TokenKind.QUOTED_NAME, TokenKind.PUNCTUATION)
-
-/** The punctuation an entity spec may carry: its brackets, its path steps, and a repetition star. */
-private val SPEC_PUNCTUATION = setOf("[", "]", "/", "*", ".")
-
 /**
  * What this side is, or null wherever this reader will not say.
  *
@@ -176,9 +170,7 @@ private fun TrackedFactBase.sideOf(
     }
     // A keyed read is ONE field read once A12 admits its key, which it judges before this walk, so its string
     // or number key is no sign of an expression; the shared reader answers for it ([KERNEL-FINDINGS KF476]).
-    val outsideASpec = !writesASemanticIndex(side) && tokens.any {
-        it.kind !in SPEC_TOKENS || (it.kind == TokenKind.PUNCTUATION && it.text !in SPEC_PUNCTUATION)
-    }
+    val outsideASpec = !writesASemanticIndex(side) && !isBareEntitySpec(side)
     if (tokens.isEmpty() || outsideASpec) {
         return PatternSide.Expression
     }
