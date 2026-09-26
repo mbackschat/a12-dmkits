@@ -80,6 +80,7 @@ class CheckerIndexKeyConstantAgreementTest {
             "String 2..3, too short" to "Tags/Amount For \"A\"",
             "String pattern, matching" to "Refs/Amount For \"AB1\"",
             "String pattern, not matching" to "Refs/Amount For \"ab1\"",
+            "String pattern, a match inside a longer text" to "Refs/Amount For \"XAB1\"",
             "Number 0 digits, a whole number" to "Seqs/Amount For \"5\"",
             "Number 0 digits, negative" to "Seqs/Amount For \"-5\"",
             "Number 0 digits, a leading zero" to "Seqs/Amount For \"05\"",
@@ -131,6 +132,7 @@ class CheckerIndexKeyConstantAgreementTest {
             "String 2..3, too long",
             "String 2..3, too short",
             "String pattern, not matching",
+            "String pattern, a match inside a longer text",
             "Number 0 digits, a fraction",
             "Number 0 digits, a plus sign",
             "Number 0 digits, a word",
@@ -163,6 +165,7 @@ class CheckerIndexKeyConstantAgreementTest {
         val OURS: Map<String, Set<String>> = mapOf(
             "String pattern, matching" to emptySet(),
             "String pattern, not matching" to emptySet(),
+            "String pattern, a match inside a longer text" to emptySet(),
         )
     }
 }

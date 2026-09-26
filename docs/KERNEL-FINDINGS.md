@@ -11165,7 +11165,7 @@ The portable checker had been silent on `../<x>` and `../../Claims/<x>` in ten f
 |---|---|---|
 | String | `ANY` | `""` |
 | String, length 2 to 3 | `AB` | `ABCD`, `A` |
-| String, pattern `[A-Z]{2}[0-9]` | `AB1` | `ab1` |
+| String, pattern `[A-Z]{2}[0-9]` | `AB1` | `ab1`, `XAB1` |
 | Number, 0 fraction digits | `5`, `-5`, `05` | `5.0`, `+5`, `x` |
 | Number, 0 to 2 | `5`, `5.5`, `5,55` | `5.555` |
 | Number, 2 to 2 | `5.00`, `5,00` | `5`, `5.0` |
@@ -11181,7 +11181,7 @@ The portable checker had been silent on `../<x>` and `../../Claims/<x>` in ten f
 | DateFragment `yyyy-MM` | `2020-01` | `01.2020` |
 | DateRange `dd.MM.yyyy`, separator `-` | `01.01.2020-31.01.2020` | `01.01.2020` |
 
-The empty constant is refused ahead of the type's rule on every kind by source; this fixture measures it on the String row. So every kind's rule is a shape, and the rows a value-level reading would decide differently are what show it. A Number admits an optional minus and ASCII digits, then a fraction after `.` or `,`, absent unless the maximum is positive and required when the minimum is; nothing else it declares is asked, neither the integer digits nor a forbidden leading zero. A temporal kind matches its format with each component letter read as one digit, so `2020-13-45` is admitted; a date range is two such dates around its separator. A Boolean admits exactly `true` and `false` whatever custom values it declares, and a Confirm only `true`. A String asks a positive length bound and matches a declared pattern with Java's `String.matches`.
+The empty constant is refused ahead of the type's rule on every kind by source; this fixture measures it on the String row. So every kind's rule is a shape, and the rows a value-level reading would decide differently are what show it. A Number admits an optional minus and ASCII digits, then a fraction after `.` or `,`, absent unless the maximum is positive and required when the minimum is; nothing else it declares is asked, neither the integer digits nor a forbidden leading zero. A temporal kind matches its format with each component letter read as one digit, so `2020-13-45` is admitted; a date range is two such dates around its separator. A Boolean admits exactly `true` and `false` whatever custom values it declares, and a Confirm only `true`. A String asks its declared length bounds and matches a declared pattern against the whole key, so `XAB1` is refused though it contains a match.
 
 The portable checker had judged a constant only against an enumeration. It now reproduces every rule above except the pattern, which it leaves unjudged because a Java pattern does not evaluate identically on its JavaScript target ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG102). It reproduces each shape without a regex, so both targets decide it alike.
 
