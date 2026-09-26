@@ -210,6 +210,24 @@ class RepetitionNotUniquePairedGateLawsTest {
     }
 
     /**
+     * A starred scope. Rival: the scope's own wildcard gate, which the check source asks after the field gate,
+     * answers on every row; the read answers instead wherever the star is itself a read defect or the scope is
+     * empty. A star beside an index is such a read defect, so no row orders the scope's wildcard gate against its
+     * index gate; the prediction here was the wildcard gate's class before the run refuted it.
+     */
+    @Test
+    void aStarredScopeIsRefusedAsTheOperatorForbidsAStar() {
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Claims/ClaimRef @From Claims*", "MVK_NO_WILDCARDS_ALLOWED");
+        expected.put("Claims/ClaimRef @From Vacant*", "MVK_GROUP_IS_EMPTY");
+        expected.put("Claims/ClaimRef @From Insured*", "MVK_INVALID_WILDCARD");
+        expected.put("Claims/ClaimRef @From Claims* For \"C-1\"", "MVK_SEMANTIC_INDEX_AND_WILDCARD");
+        Map<String, String> actual = new LinkedHashMap<>();
+        expected.keySet().forEach(keys -> actual.put(keys, inPolicy("RepetitionNotUnique(" + keys + ")")));
+        assertEquals(expected, actual);
+    }
+
+    /**
      * A rule declared in {@code Claims} and reporting at the root reads a row of {@code Claims} per row, which
      * A12 refuses with {@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP}: on a key, and on a scope. Rival for the scope
      * row: a scope is no per-row read, so the key outside it gives {@code MVK_NOT_IN_GROUP}.

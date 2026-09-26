@@ -89,6 +89,10 @@ class CheckerRepetitionNotUniquePairedGateAgreementTest {
         rows += inPolicy("Claims/ClaimRef @From Claims For \"C-1\"", "MVK_SEMANTIC_INDEX_NOT_ALLOWED")
         // The scope's own gate answers ahead of containment, so a key outside a keyed scope is not the question.
         rows += inPolicy("Payments/PayRef @From Claims For \"C-1\"", "MVK_SEMANTIC_INDEX_NOT_ALLOWED")
+        rows += inPolicy("Claims/ClaimRef @From Claims*", "MVK_NO_WILDCARDS_ALLOWED")
+        rows += inPolicy("Claims/ClaimRef @From Vacant*", "MVK_GROUP_IS_EMPTY")
+        rows += inPolicy("Claims/ClaimRef @From Insured*", "MVK_INVALID_WILDCARD")
+        rows += inPolicy("Claims/ClaimRef @From Claims* For \"C-1\"", "MVK_SEMANTIC_INDEX_AND_WILDCARD")
         for (scope in listOf("Claims", "Riders", "Vacant")) {
             rows += unique("/Policy", "../Reference", "Reference @From $scope", setOf("MVK_NO_WILDCARD"))
         }

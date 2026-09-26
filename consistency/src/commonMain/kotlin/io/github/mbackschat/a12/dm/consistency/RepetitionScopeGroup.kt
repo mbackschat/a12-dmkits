@@ -16,8 +16,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * containment declaration, so the group a reader reaches for first is the one everything sits under.
  *
  * **The KIND gate comes first**, so a scope naming a FIELD draws `MVK_NO_FIELDS_ALLOWED` rather than this
- * class — measured, after the opposite was predicted. A scope selecting one repetition by a semantic index that
- * reads draws `MVK_SEMANTIC_INDEX_NOT_ALLOWED` next, and one whose index does not read draws the index's own
+ * class — measured, after the opposite was predicted. A starred scope draws `MVK_NO_WILDCARDS_ALLOWED` wherever
+ * the star reads at all: on a group that does not repeat the read answers `MVK_INVALID_WILDCARD`, on an empty scope
+ * its emptiness, and beside an index `MVK_SEMANTIC_INDEX_AND_WILDCARD`, so no row orders the star against the index
+ * gate and the order here is the check source's. A scope selecting one repetition by a semantic index that
+ * reads draws `MVK_SEMANTIC_INDEX_NOT_ALLOWED`, and one whose index does not read draws the index's own
  * class, raised while the scope is read and so ahead of every gate of the construct
  * (`rulekit.validate.laws.RepetitionNotUniquePairedGateLawsTest`). "Not a repeatable group" is true of every field, so a
  * family testing repeatability alone would name the wrong defect on each of them; this one asks both gates,
@@ -109,6 +112,17 @@ private fun TrackedFactBase.scopeFinding(
             "MVK_NO_FIELDS_ALLOWED",
             "this $member scopes `$REPETITION_NOT_UNIQUE` to `${declared.path}`, which is a field — the scope " +
                 "names the repeatable group whose repetitions are compared",
+            element.path,
+            span,
+        )
+    }
+    if ('*' in scope.reference) {
+        return Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_NO_WILDCARDS_ALLOWED",
+            "this $member scopes `$REPETITION_NOT_UNIQUE` to `${scope.reference}`, which carries a repetition star " +
+                "— the scope names the whole repeatable group whose rows are compared, so drop the star",
             element.path,
             span,
         )
