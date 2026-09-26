@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
+
 /**
  * A group-list quantifier over the kernel's common <em>entity list</em>, e.g.
  * {@code AtLeastOneGroupFilled(a, b)} (PROJECT-DESIGN §5). Despite the group-list names, an operand
@@ -33,7 +35,11 @@ public final class GroupListPredicate implements Condition {
         if (this.operands.isEmpty()) {
             throw new IllegalArgumentException("a group-list predicate needs at least one operand");
         }
-        DuplicateGate.rejectDuplicates(quantifier.operatorId(), this.operands);
+        try {
+            DuplicateGate.rejectDuplicates(quantifier.operatorId(), this.operands);
+        } catch (KernelCodeRefusal refusal) {
+            throw OperandRead.cited(refusal, this.operands);
+        }
     }
 
     static GroupListPredicate overScopes(

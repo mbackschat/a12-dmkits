@@ -57,7 +57,7 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
             // which only the rule binds, and the $ marker, which only a filter admits
             // (FirstFilledValueGateOrderLawsTest, EntityListReadStageLawsTest). So on a list holding such an
             // operand the refusal stands and its class does not.
-            throw all.stream().anyMatch(FirstFilledOperand::readMayAnswerFirst) ? refusal.withheld() : refusal;
+            throw OperandRead.cited(refusal, all);
         }
     }
 

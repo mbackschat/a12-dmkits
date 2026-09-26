@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.List;
 
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
+
 /**
  * A quantifier over the kernel's <b>entity list</b> — {@code AllFieldsFilled(a, b)},
  * {@code AtLeastOneFieldFilled(Group*)}, {@code FieldValuesNotUnique(a, Group)} — where each member is a
@@ -27,7 +29,11 @@ public record EntityListPredicate(Quantifier quantifier, List<AggregateOperand> 
         if (operands.isEmpty()) {
             throw new IllegalArgumentException(quantifier + " needs at least one operand");
         }
-        DuplicateGate.rejectDuplicates(quantifier.operatorId(), operands);
+        try {
+            DuplicateGate.rejectDuplicates(quantifier.operatorId(), operands);
+        } catch (KernelCodeRefusal refusal) {
+            throw OperandRead.cited(refusal, operands);
+        }
     }
 
     @Override

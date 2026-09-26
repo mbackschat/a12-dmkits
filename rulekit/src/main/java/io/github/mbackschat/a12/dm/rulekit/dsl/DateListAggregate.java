@@ -64,7 +64,7 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
         try {
             requireDateLikeList(mode, kind, operands);
         } catch (KernelCodeRefusal refusal) {
-            throw EntityListRoute.cited(refusal, operands);
+            throw OperandRead.cited(refusal, operands);
         }
     }
 

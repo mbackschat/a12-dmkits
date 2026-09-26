@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.List;
 
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
+
 /**
  * {@code FieldValueIncludedInValueList(field, v1, v2, …)} / {@code FieldValueNotIncludedInValueList(…)}
  * — membership of a single field's value in a literal list. The kernel's slot rules (verified
@@ -24,7 +26,12 @@ public record ValueListCondition(FieldRef field, boolean included, List<Calculat
         if (values.isEmpty()) {
             throw new IllegalArgumentException("a value list needs at least one value");
         }
-        DuplicateGate.rejectExactDuplicates(operatorId(included), union(field, values));
+        List<DuplicateOperand> union = union(field, values);
+        try {
+            DuplicateGate.rejectExactDuplicates(operatorId(included), union);
+        } catch (KernelCodeRefusal refusal) {
+            throw OperandRead.cited(refusal, union);
+        }
     }
 
     /**

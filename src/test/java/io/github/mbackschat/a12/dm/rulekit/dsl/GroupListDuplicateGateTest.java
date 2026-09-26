@@ -51,8 +51,11 @@ class GroupListDuplicateGateTest {
         GroupRef handler = CLAIM.group("/Claim/Handler");
         var refusal = assertThrows(IllegalArgumentException.class,
                 () -> Dsl.noGroupFilled(handler, handler));
-        assertTrue(refusal.getMessage().contains("MVK_DUPLICATE_PARAM1"),
-                () -> "expected the kernel's own code in: " + refusal.getMessage());
+        // the exact arm, whose class is withheld: A12 reads each group before its duplicate gate, and an empty
+        // group answers there (validate.laws.EntityListQuantifierReadLawsTest)
+        String message = refusal.getMessage();
+        assertTrue(message.contains("is listed more than once") && !message.contains("MVK_"),
+                () -> "the exact arm, uncoded: " + message);
     }
 
     @Test
@@ -60,8 +63,9 @@ class GroupListDuplicateGateTest {
         var refusal = assertThrows(IllegalArgumentException.class,
                 () -> Dsl.allGroupsFilled(
                         CLAIM.group("/Claim/Vehicle"), CLAIM.group("/Claim/Vehicle/Registration")));
-        assertTrue(refusal.getMessage().contains("MVK_DUPLICATE_PARAM2"),
-                () -> "an overlap is the OTHER code, not the exact-duplicate one: " + refusal.getMessage());
+        String message = refusal.getMessage();
+        assertTrue(message.contains("is already included through") && !message.contains("MVK_"),
+                () -> "the containment arm, not the exact one, uncoded: " + message);
     }
 
     @Test

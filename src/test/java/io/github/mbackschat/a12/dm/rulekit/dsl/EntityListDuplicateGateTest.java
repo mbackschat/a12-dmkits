@@ -44,7 +44,10 @@ class EntityListDuplicateGateTest {
         String message = refusal(() -> new EntityListPredicate(Quantifier.ALL_FIELDS_FILLED,
                 List.of(ORDER.flattenGroup("/Order/ShippingAddress"),
                         ORDER.field("/Order/ShippingAddress/City"))));
-        assertTrue(message.contains("MVK_DUPLICATE_PARAM2"), () -> "overlap is the other code: " + message);
+        // the containment arm, whose class is withheld: A12 reads the group before its duplicate gate, and an
+        // empty group answers there (validate.laws.EntityListQuantifierReadLawsTest)
+        assertTrue(message.contains("is already included through") && !message.contains("MVK_"),
+                () -> "overlap, uncoded: " + message);
     }
 
     /** A repeated STARRED list is the kernel's own exemption — refusing it would over-reject. */
@@ -110,7 +113,8 @@ class EntityListDuplicateGateTest {
         String refused = refusal(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
                 List.of(new SemanticIndexValue(field, "a"),
                         group.forIndex("a"))));
-        assertTrue(refused.contains("MVK_DUPLICATE_PARAM2"),
+        // uncoded, since a key's resolution answers ahead of the duplicate gate
+        assertTrue(refused.contains("is already included through") && !refused.contains("MVK_"),
                 () -> "the same key makes this a containment: " + refused);
 
         assertDoesNotThrow(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
@@ -135,13 +139,14 @@ class EntityListDuplicateGateTest {
 
         String repeatedField = refusal(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
                 List.of(new SemanticIndexValue(field, "a"), new SemanticIndexValue(field, "a"))));
-        assertTrue(repeatedField.contains("MVK_DUPLICATE_PARAM1"),
+        // uncoded, since a key's resolution answers ahead of the duplicate gate
+        assertTrue(repeatedField.contains("is listed more than once") && !repeatedField.contains("MVK_"),
                 () -> "one field under one key twice is an exact duplicate: " + repeatedField);
 
         String repeatedGroup = refusal(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,
                 List.of(group.forIndex("a"),
                         group.forIndex("a"))));
-        assertTrue(repeatedGroup.contains("MVK_DUPLICATE_PARAM1"),
+        assertTrue(repeatedGroup.contains("is listed more than once") && !repeatedGroup.contains("MVK_"),
                 () -> "one group under one key twice is an exact duplicate: " + repeatedGroup);
 
         assertDoesNotThrow(() -> new EntityListPredicate(Quantifier.MORE_THAN_ONE_FIELD_FILLED,

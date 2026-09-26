@@ -16,7 +16,7 @@ import io.github.mbackschat.a12.dm.core.Refusals;
  * than one field or a repetition list ({@code MVK_PARAMSIZE_INVALIDN}), no repeated DIRECT field
  * ({@code MVK_DUPLICATE_PARAM1}) — an <em>identical</em> wildcarded operand may repeat, mirroring the kernel
  * skipping wildcarded refs in {@code checkDuplicatesInDirectRefs} — all pre-checked here, and cited only where
- * no operand's read may answer first ({@link EntityListRoute#cited}). What the star
+ * no operand's read may answer first ({@link OperandRead#cited}). What the star
  * exempts is that one gate and no more: a star does not make an operand exempt from duplicate checking as
  * such, and the indirect-overlap arm ({@code MVK_DUPLICATE_PARAM2}) still refuses two operands where one
  * strictly contains the other, whichever side carries it. That side-symmetry is measured in both argument
@@ -55,7 +55,7 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
         try {
             requireList(op, operands);
         } catch (KernelCodeRefusal refusal) {
-            throw EntityListRoute.cited(refusal, operands);
+            throw OperandRead.cited(refusal, operands);
         }
     }
 

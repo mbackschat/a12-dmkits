@@ -87,14 +87,18 @@ class PredicatesTest {
         assertEquals("/Order/Items", c.scope().orElseThrow().path().value())
     }
 
-    /** MVK_GROUP_NOT_REPEATABLE — the @From reference group must repeat. */
+    /**
+     * The @From reference group must repeat. The refusal is uncoded: A12 reads the scope before it asks whether
+     * it repeats, so an empty group would answer `MVK_GROUP_IS_EMPTY` first, and the record's `GroupRef` does
+     * not show whether it holds a field (`rulekit.validate.laws.EntityListQuantifierReadLawsTest`).
+     */
     @Test
     fun aNonRepeatableFromScopeIsRejected() {
         val e = assertThrows<IllegalArgumentException> {
             translate("RepetitionNotUnique(Items/Sku @From /Order/ShippingAddress)")
         }
-        assertTrue(e.message!!.contains("MVK_GROUP_NOT_REPEATABLE")) {
-            "expected the kernel's own code in: ${e.message}"
+        assertTrue(e.message!!.contains("must be repeatable") && !e.message!!.contains("MVK_")) {
+            "expected the uncoded repeat refusal in: ${e.message}"
         }
     }
 
@@ -310,8 +314,10 @@ class PredicatesTest {
         val thrown = assertThrows<IllegalArgumentException> {
             translate("AtLeastOneGroupFilled(/Order, CustomerName)")
         }
-        assertTrue(thrown.message!!.contains("MVK_DUPLICATE_PARAM2")) {
-            "expected the kernel's own overlap code in: ${thrown.message}"
+        // uncoded: A12 reads each group before its duplicate gate, and an empty group answers there
+        // (`rulekit.validate.laws.EntityListQuantifierReadLawsTest`)
+        assertTrue(thrown.message!!.contains("is already included through") && !thrown.message!!.contains("MVK_")) {
+            "expected the uncoded overlap refusal in: ${thrown.message}"
         }
     }
 

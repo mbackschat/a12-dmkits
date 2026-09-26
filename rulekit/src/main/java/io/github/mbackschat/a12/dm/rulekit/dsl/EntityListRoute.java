@@ -13,7 +13,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * the carriers whose kind gate depends on it: {@code MaxValue}, {@code MinValue} and
  * {@code NumberOfDifferentValues}.
  *
- * <p>A12 reads each operand first ({@link #cited}), asks duplicates, the root-group gate and the param law next, then types the whole list by its FIRST EXPANDED field
+ * <p>A12 reads each operand first ({@link OperandRead}), asks duplicates, the root-group gate and the param law next, then types the whole list by its FIRST EXPANDED field
  * ({@code CheckEntityListenUtils.firstType}). A date-like leader sends the list through one walk that asks
  * each operand in turn for a date-like base type, a fully known date and the leader's component set
  * ([KF389]); any other leader sends it through a kind check whose one class answers for every operand. So the
@@ -49,45 +49,26 @@ final class EntityListRoute {
 
     /**
      * A root group is refused on these carriers wherever it stands, beside other operands too, and ahead of the
-     * param law and every kind gate ([KF388], {@code validate.laws.EntityListLeaderRouteLawsTest}). Only a
-     * plain group scope is asked here; an index-selected root is left to the kernel (DEV-API-GAPS DG72).
+     * param law and every kind gate ([KF388], {@code validate.laws.EntityListLeaderRouteLawsTest}), an
+     * index-selected root as much as a plain one ({@code validate.laws.EntityListQuantifierReadLawsTest}).
      */
     static void rejectRootGroups(String operatorId, List<? extends AggregateOperand> operands) {
         for (AggregateOperand operand : operands) {
-            if (operand instanceof GroupListRef list && list.group().path().value().indexOf('/', 1) < 0) {
+            if (rootNamedBy(operand).isPresent()) {
                 throw Refusals.of(KernelCode.MVK_ROOT_GROUP_REFERENCED,
-                        operatorId + " does not accept a root group: " + list.renderedPath());
+                        operatorId + " does not accept a root group: " + operand.renderedPath());
             }
         }
     }
 
-    /**
-     * A list gate's refusal as these records may cite it: withheld when an operand's READ may answer first.
-     *
-     * <p>A12 checks each operand as it reads it, ahead of every list gate: a semantic index that does not
-     * resolve (no index field, an empty or ill-typed key) and a group holding no field, an empty root included.
-     * The first such operand in list order answers, on every entity-list aggregate
-     * ({@code validate.laws.EntityListOperandReadLawsTest}). An index handle never sees the model and a group
-     * scope does not carry its expansion, so on a list holding either the class is not the record's to claim. Nor
-     * on one holding a {@code $}-marked operand, which is {@code MVK_INVALID_OUTER_ITERATION} outside a filter
-     * ({@code validate.laws.EntityListReadStageLawsTest}). A plain field's read can still answer first where it
-     * crosses a repeatable level the rule does not iterate, which a {@link FieldRef} does not show (DEV-API-GAPS
-     * DG75). {@link BoundModel}'s walk reads the expansion and answers for groups itself
-     * ({@link Dsl#requireComparableTemporalList}).
-     */
-    static IllegalArgumentException cited(KernelCodeRefusal refusal, List<? extends AggregateOperand> operands) {
-        return operands.stream().anyMatch(EntityListRoute::readMayRefuse) ? refusal.withheld() : refusal;
-    }
-
-    /** Whether A12 may refuse this operand while reading it — see {@link #cited}. */
-    static boolean readMayRefuse(AggregateOperand operand) {
-        return switch (operand) {
-            case IndexedFieldValue ignored -> true;
-            case FieldRef field -> field.correlated();
-            case FieldListRef list -> list.correlated();
-            case GroupListRef ignored -> true;
-            case IndexedGroupValue ignored -> true;
+    /** The root group an operand names, plain or index-selected; A12's root gates ask both alike. */
+    static Optional<GroupRef> rootNamedBy(AggregateOperand operand) {
+        Optional<GroupRef> group = switch (operand) {
+            case GroupListRef plain -> Optional.of(plain.group());
+            case IndexedGroupValue indexed -> Optional.of(indexed.group().group());
+            case FieldOperand ignored -> Optional.empty();
         };
+        return group.filter(candidate -> candidate.path().value().indexOf('/', 1) < 0);
     }
 
     /**

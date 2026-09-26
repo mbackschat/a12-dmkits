@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.List;
 
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
+
 /**
  * {@code AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In v1, v2)} — a quantifier
  * over several fields' membership in one literal list. The kernel requires the field list to be
@@ -26,7 +28,11 @@ public record FieldListValueListCondition(
         if (values.isEmpty()) {
             throw new IllegalArgumentException("a value list needs at least one value");
         }
-        DuplicateGate.rejectDuplicates(quantifier.operatorId(), fields);
+        try {
+            DuplicateGate.rejectDuplicates(quantifier.operatorId(), fields);
+        } catch (KernelCodeRefusal refusal) {
+            throw OperandRead.cited(refusal, fields);
+        }
     }
 
     @Override

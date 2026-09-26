@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.List;
 
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -29,7 +30,11 @@ public record NumberOfValueInFields(Calculation value, List<AggregateOperand> fi
         if (fields.isEmpty()) {
             throw new IllegalArgumentException("NumberOfValueInFields needs at least one field");
         }
-        DuplicateGate.rejectDuplicates("NumberOfValueInFields", fields);
+        try {
+            DuplicateGate.rejectDuplicates("NumberOfValueInFields", fields);
+        } catch (KernelCodeRefusal refusal) {
+            throw OperandRead.cited(refusal, fields);
+        }
     }
 
     @Override

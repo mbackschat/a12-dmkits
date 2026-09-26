@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.ArrayList;
 import java.util.List;
 import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
@@ -29,16 +30,21 @@ public record FieldListEntityListCondition(
         if (valueFields.isEmpty()) {
             throw new IllegalArgumentException("the value field list needs at least one field");
         }
-        if (quantifier == ValueListQuantifier.AT_LEAST_ONE_DATE_RANGE_OVERLAPS) {
-            requireUnstarredSingleRange(fields);
-        }
-        // The kernel checks each list alone and then their UNION, so a reference repeated ACROSS the two
-        // lists is a duplicate as much as one repeated within either. Gated here rather than in the Dsl
-        // factory because the check is intrinsic — it needs no model — and one factory built this record
-        // directly, which left the AtLeastOneDateRangeOverlaps arm with no gate at all.
         var combined = new ArrayList<ValueListOperand>(fields);
         combined.addAll(valueFields);
-        DuplicateGate.rejectDuplicates(quantifier.operatorId(), combined);
+        try {
+            if (quantifier == ValueListQuantifier.AT_LEAST_ONE_DATE_RANGE_OVERLAPS) {
+                requireUnstarredSingleRange(fields);
+            }
+            // The kernel checks each list alone and then their UNION, so a reference repeated ACROSS the two
+            // lists is a duplicate as much as one repeated within either. Gated here rather than in the Dsl
+            // factory because the check is intrinsic — it needs no model — and one factory built this record
+            // directly, which left the AtLeastOneDateRangeOverlaps arm with no gate at all.
+            DuplicateGate.rejectDuplicates(quantifier.operatorId(), combined);
+        } catch (KernelCodeRefusal refusal) {
+            // Both gates wait for every operand of both slots to read (validate.laws.EntityListQuantifierReadLawsTest).
+            throw OperandRead.cited(refusal, combined);
+        }
     }
 
     /**

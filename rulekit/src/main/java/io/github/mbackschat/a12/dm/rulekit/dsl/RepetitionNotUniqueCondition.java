@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.List;
 import java.util.Optional;
 import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
@@ -25,15 +26,22 @@ public record RepetitionNotUniqueCondition(List<FieldRef> keys, Optional<GroupRe
         // Only the exact arm applies, and by signature rather than by choice: List<FieldRef> erases the
         // star that would exempt an operand, admits no category or index, and a field's path is a strict
         // prefix of nothing (MVK_DUPLICATE_PARAM1, KERNEL-FINDINGS kf439 and kf186).
-        DuplicateGate.rejectExactDuplicates("RepetitionNotUnique", keys);
+        try {
+            DuplicateGate.rejectExactDuplicates("RepetitionNotUnique", keys);
+        } catch (KernelCodeRefusal refusal) {
+            throw OperandRead.cited(refusal, keys);
+        }
     }
 
 
     /** Scopes the uniqueness check to each repetition of {@code reference} ({@code @From}). catalog:FromScope */
     public RepetitionNotUniqueCondition from(GroupRef reference) {
         if (!reference.repeating()) {
+            // Withheld: A12 reads the scope before it asks whether the scope repeats, so a group holding no field
+            // answers MVK_GROUP_IS_EMPTY first, and a GroupRef does not show whether it holds one
+            // (validate.laws.EntityListQuantifierReadLawsTest).
             throw Refusals.of(KernelCode.MVK_GROUP_NOT_REPEATABLE, "the @From reference group must be repeatable: "
-                    + reference.path());
+                    + reference.path()).withheld();
         }
         return new RepetitionNotUniqueCondition(keys, Optional.of(reference));
     }

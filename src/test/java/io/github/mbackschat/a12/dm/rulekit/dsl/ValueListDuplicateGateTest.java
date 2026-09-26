@@ -46,7 +46,10 @@ class ValueListDuplicateGateTest {
                 List.<ValueListOperand>of(ORDER.flattenGroup("/Order/ShippingAddress"),
                         ORDER.field("/Order/ShippingAddress/City")),
                 List.of(new StringLiteral("x"))));
-        assertTrue(message.contains("MVK_DUPLICATE_PARAM2"), () -> "overlap is the other code: " + message);
+        // the containment arm, whose class is withheld: A12 reads the group before its duplicate gate, and an
+        // empty group answers there (validate.laws.EntityListQuantifierReadLawsTest)
+        assertTrue(message.contains("is already included through") && !message.contains("MVK_"),
+                () -> "overlap, uncoded: " + message);
     }
 
     /**
@@ -90,8 +93,8 @@ class ValueListDuplicateGateTest {
                 ValueListQuantifier.NO_FIELD_VALUE_INCLUDED,
                 List.<ValueListOperand>of(root, ORDER.field("/Order/Priority")),
                 List.of(new StringLiteral("x"))));
-        assertTrue(refused.contains("MVK_DUPLICATE_PARAM2"),
-                () -> "a plain read inside the root group is contained: " + refused);
+        assertTrue(refused.contains("is already included through") && !refused.contains("MVK_"),
+                () -> "a plain read inside the root group is contained, uncoded behind the group: " + refused);
 
         assertDoesNotThrow(() -> new FieldListValueListCondition(
                 ValueListQuantifier.NO_FIELD_VALUE_INCLUDED,
@@ -114,8 +117,8 @@ class ValueListDuplicateGateTest {
                 ValueListQuantifier.NO_FIELD_VALUE_INCLUDED,
                 List.<ValueListOperand>of(ORDER.flattenGroup("/Order/ShippingAddress")),
                 List.<ValueListOperand>of(ORDER.field("/Order/ShippingAddress/City"))));
-        assertTrue(message.contains("MVK_DUPLICATE_PARAM2"),
-                () -> "containment across the union is this record's own arm: " + message);
+        assertTrue(message.contains("is already included through") && !message.contains("MVK_"),
+                () -> "containment across the union is this record's own arm, uncoded behind the group: " + message);
     }
 
     @Test

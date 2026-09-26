@@ -45,7 +45,7 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
         try {
             requireList(op, fields, groups);
         } catch (KernelCodeRefusal refusal) {
-            throw EntityListRoute.cited(refusal, allOperands(fields, groups));
+            throw OperandRead.cited(refusal, allOperands(fields, groups));
         }
     }
 
@@ -85,10 +85,11 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
                 // under a class of its own (KERNEL-FINDINGS KF388, validate.laws.GroupListDiagnosticIdentityLawsTest).
                 if (entities.size() > 1) {
                     for (AggregateOperand entity : entities) {
-                        if (entity instanceof GroupListRef scope && isRoot(scope.group())) {
+                        Optional<GroupRef> root = EntityListRoute.rootNamedBy(entity);
+                        if (root.isPresent()) {
                             throw Refusals.of(KernelCode.MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS,
                                     "NumberOfFilledGroups takes a root group only as its sole operand: "
-                                            + scope.group().path());
+                                            + root.get().path());
                         }
                     }
                 }
