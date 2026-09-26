@@ -993,6 +993,8 @@ m2.writeTo(path);                                          // DM-JSON write path
 
 Both `rule.draft()` and `computation.draft()` preserve their authored localized messages, including when rendering conditions in German. `RuleValidator` checks supplied text for the model's declared locales; an explicitly message-free draft retains the per-locale placeholders, and a partial draft replaces only the supplied locales. `CandidateMessageFidelityTest` locks message-only acceptance/rejection through the real kernel; `CandidateMessageCheckTest` covers rule/computation specs and pattern scaffolds. The older `DraftComputation` constructors remain message-free compatibility forms. See [AF144](API-FINDINGS.md#af144).
 
+To vary one part of a draft, as a near-miss sweep does, use `draft.withErrorCondition(text)` or `draft.withMessages(texts)`. Each returns a copy with that component replaced and every other one kept. `withMessages` replaces the list, where the builder's `messages(…)` appends to it. `DraftRuleWitherTest` locks both.
+
 Ancestor group operands end on the parent-navigation segment: from `/Shipment/Parcels/Labels`, its parent renders as `..` and its root as `../..`. Neither carries a trailing slash. `AncestorGroupRenderingTest` checks both rendered forms against the kernel ([AF145](API-FINDINGS.md#af145)).
 
 Relative paths never escape their root group: a rule under `/Dashboard` renders a typed reference to `/Dashboard/Status` as `Status`, while a typed reference to `/Application/Approved` remains `/Application/Approved`. The latter cannot be rendered as `../Application/Approved`; the DSL's parent navigation does not cross root-group boundaries.

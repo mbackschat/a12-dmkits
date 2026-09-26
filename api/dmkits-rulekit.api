@@ -2865,6 +2865,8 @@ public record io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
   public java.lang.String name()
   public java.lang.String severity()
   public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule withErrorCondition(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule withMessages(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
 
 public static final class io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule build()

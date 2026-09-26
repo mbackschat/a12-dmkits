@@ -46,6 +46,19 @@ public record DraftRule(
         return new Builder();
     }
 
+    /** This draft with another condition, every other component kept: one candidate of a near-miss sweep. */
+    public DraftRule withErrorCondition(String condition) {
+        return new DraftRule(groupPath, name, errorEntityRelPath, condition, errorCode, severity, messages);
+    }
+
+    /**
+     * This draft with {@code messages} in place of its own, every other component kept. The builder's
+     * {@link Builder#messages} adds rather than replaces, which is why this is not spelled through it.
+     */
+    public DraftRule withMessages(List<LocalizedText> messages) {
+        return new DraftRule(groupPath, name, errorEntityRelPath, errorCondition, errorCode, severity, messages);
+    }
+
     /** The fluent construction path; a null/empty argument means "leave this aspect unset". */
     public static final class Builder {
         private String groupPath;
