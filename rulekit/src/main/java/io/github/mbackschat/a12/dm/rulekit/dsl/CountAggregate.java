@@ -79,67 +79,65 @@ public record CountAggregate(CountOp op, List<AggregateOperand> operands) implem
         // answers a duplicate before the param-size, fields-allowed and comparability bars, so our
         // order reported those instead on input both sides refuse.
         DuplicateGate.rejectDuplicates(op.operatorId(), operands);
-        if (op == CountOp.DIFFERENT_VALUES) {
-            // A12 asks the root-group gate after duplicates and before the param law on this operator.
-            EntityListRoute.rejectRootGroups(op.operatorId(), operands);
-        }
         switch (op) {
-            case FILLED_FIELDS, DIFFERENT_VALUES -> {
-                if (op == CountOp.FILLED_FIELDS) {
-                    // DIFFERENT_VALUES asked this above, where A12 asks it on that operator.
-                    EntityListRoute.rejectRootGroups(op.operatorId(), operands);
-                }
-                // a single flattened repetition list or group scope also satisfies the param law (verified)
-                if (operands.size() < 2 && operands.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
-                    throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, op.operatorId() + " needs more than one field,"
-                            + " a repetition list, or a group");
-                }
+            case FILLED_FIELDS -> requireFieldCount(op, operands);
+            case DIFFERENT_VALUES -> {
+                requireFieldCount(op, operands);
+                checkValueComparable(operands);
             }
-            case FILLED_GROUPS -> {
-                // A12 asks these gates in this order over the one list it reads
-                // (CheckFeldListenAnzahlOpImpl; validate.laws.GroupCountScopeOperandLawsTest).
-                // A root is legal here only ALONE, and A12 asks that after duplicates
-                // under a class of its own (KERNEL-FINDINGS KF388, validate.laws.GroupListDiagnosticIdentityLawsTest).
-                if (operands.size() > 1) {
-                    for (AggregateOperand entity : operands) {
-                        Optional<GroupRef> root = EntityListRoute.rootNamedBy(entity);
-                        if (root.isPresent()) {
-                            throw Refusals.of(KernelCode.MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS,
-                                    "NumberOfFilledGroups takes a root group only as its sole operand: "
-                                            + root.get().path());
-                        }
-                    }
-                }
-                for (AggregateOperand entity : operands) {
-                    if (indexSelected(entity)) {
-                        throw Refusals.of(KernelCode.MVK_SEMANTIC_INDEX_NOT_ALLOWED,
-                                "NumberOfFilledGroups takes no index-selected operand: " + entity.renderedPath());
-                    }
-                }
-                for (AggregateOperand entity : operands) {
-                    if (!(entity instanceof GroupListRef)) {
-                        throw Refusals.of(KernelCode.MVK_NO_FIELDS_ALLOWED,
-                                "NumberOfFilledGroups takes groups only, no fields: " + entity.renderedPath());
-                    }
-                }
-                // ≥2 group operands, OR a sole one whose path carries a star on any level, its own or an
-                // ancestor's (KERNEL-FINDINGS KF462); `Group*` counts that group's instantiated repetitions (KF463).
-                boolean soleStarred = operands.size() == 1
-                        && !((GroupListRef) operands.getFirst()).flattened().isEmpty();
-                if (operands.size() < 2 && !soleStarred) {
-                    throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDGN,
-                            "NumberOfFilledGroups needs more than one group, or a single starred group scope");
-                }
-                GroupRef sole = soleStarred ? ((GroupListRef) operands.getFirst()).group() : null;
-                if (sole != null && isRoot(sole)) {
-                    // A12 admits this text; it is the root-group count, a record of its own.
-                    throw new IllegalArgumentException("NumberOfFilledGroups over the repeatable root group "
-                            + sole.path() + " counts its repetitions: build it with Dsl.numberOfFilledRootGroups");
+            case FILLED_GROUPS -> requireGroupCount(operands);
+        }
+    }
+
+    /** The root-group gate, then the param law, which A12 asks in that order on both field counts (KF388). */
+    private static void requireFieldCount(CountOp op, List<? extends AggregateOperand> operands) {
+        EntityListRoute.rejectRootGroups(op.operatorId(), operands);
+        // a single flattened repetition list or group scope also satisfies the param law (verified)
+        if (operands.size() < 2 && operands.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
+            throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, op.operatorId() + " needs more than one field,"
+                    + " a repetition list, or a group");
+        }
+    }
+
+    /**
+     * {@code NumberOfFilledGroups}' gates, in the order A12 asks them over the one list it reads
+     * ({@code CheckFeldListenAnzahlOpImpl}; {@code validate.laws.GroupCountScopeOperandLawsTest}).
+     */
+    private static void requireGroupCount(List<? extends AggregateOperand> operands) {
+        // A root is legal here only ALONE, and A12 asks that after duplicates
+        // under a class of its own (KERNEL-FINDINGS KF388, validate.laws.GroupListDiagnosticIdentityLawsTest).
+        if (operands.size() > 1) {
+            for (AggregateOperand entity : operands) {
+                Optional<GroupRef> root = EntityListRoute.rootNamedBy(entity);
+                if (root.isPresent()) {
+                    throw Refusals.of(KernelCode.MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS,
+                            "NumberOfFilledGroups takes a root group only as its sole operand: " + root.get().path());
                 }
             }
         }
-        if (op == CountOp.DIFFERENT_VALUES) {
-            checkValueComparable(operands);
+        for (AggregateOperand entity : operands) {
+            if (indexSelected(entity)) {
+                throw Refusals.of(KernelCode.MVK_SEMANTIC_INDEX_NOT_ALLOWED,
+                        "NumberOfFilledGroups takes no index-selected operand: " + entity.renderedPath());
+            }
+        }
+        for (AggregateOperand entity : operands) {
+            if (!(entity instanceof GroupListRef)) {
+                throw Refusals.of(KernelCode.MVK_NO_FIELDS_ALLOWED,
+                        "NumberOfFilledGroups takes groups only, no fields: " + entity.renderedPath());
+            }
+        }
+        // ≥2 group operands, OR a sole one whose path carries a star on any level, its own or an
+        // ancestor's (KERNEL-FINDINGS KF462); `Group*` counts that group's instantiated repetitions (KF463).
+        if (operands.size() == 1 && operands.getFirst() instanceof GroupListRef sole && !sole.flattened().isEmpty()) {
+            if (isRoot(sole.group())) {
+                // A12 admits this text; it is the root-group count, a record of its own.
+                throw new IllegalArgumentException("NumberOfFilledGroups over the repeatable root group "
+                        + sole.path() + " counts its repetitions: build it with Dsl.numberOfFilledRootGroups");
+            }
+        } else if (operands.size() < 2) {
+            throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDGN,
+                    "NumberOfFilledGroups needs more than one group, or a single starred group scope");
         }
     }
 
