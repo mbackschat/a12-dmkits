@@ -276,6 +276,15 @@ public final class ModelIndex {
         return reader.computations();
     }
 
+    /**
+     * The model's authored rules, in model order, each with its content as written and its error entity
+     * resolvable through {@link RuleInfo#errorEntityPath()}. A rule mounted from an included model is listed
+     * at its mounted path with its condition as the include expansion rewrote it.
+     */
+    public List<RuleInfo> rules() {
+        return reader.rules();
+    }
+
     /** The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable). */
     public int maxRepetitions(String groupPath) {
         return groupNode(groupPath).path(ElementType.GROUP.wireName()).path(DmKeys.REPEATABILITY).asInt(1);

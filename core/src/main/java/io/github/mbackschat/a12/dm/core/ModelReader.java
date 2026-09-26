@@ -81,6 +81,9 @@ public final class ModelReader {
             .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
             .build();
 
+    /** The severity of a rule that declares none: A12's {@code a12internal.Rule} initializes it to ERROR. */
+    private static final String DEFAULT_RULE_SEVERITY = "ERROR";
+
     /** The expanded, self-contained, name-path-keyed DM-JSON tree. */
     private final ObjectNode expanded;
     private final Map<String, JsonNode> byPath;
@@ -89,6 +92,7 @@ public final class ModelReader {
     /** Surviving mounted rules/computations whose fragments retain a genuine unmappable reference. */
     private final List<String> includedElementsWithUnmappedReferences;
     private final List<ComputationInfo> computations;
+    private final List<RuleInfo> rules;
     /** Include-mount group path → included model id. Kept separately from the expanded wire format. */
     private final Map<String, String> originsByPath;
     /** Field path → authored type-definition id. Kept separately after effective-type inlining. */
@@ -101,6 +105,7 @@ public final class ModelReader {
         this.baseYear = state.model().baseYear();
         this.includedElementsWithUnmappedReferences = state.model().unmappedReferences();
         this.computations = state.index().computations();
+        this.rules = state.index().rules();
         this.originsByPath = state.provenance().originsByPath();
         this.typeRefsByPath = state.provenance().typeRefsByPath();
     }
@@ -130,12 +135,11 @@ public final class ModelReader {
         Map<String, String> typeRefsByPath = provenanceByPath(typeRefs);
         List<String> unmappedReferences = residualElementPaths(modelRoot, elementsWithResiduals);
         stripVestigialModelReferences(root);
-        Map<String, JsonNode> byPath = new LinkedHashMap<>();
-        List<ComputationInfo> computations = new ArrayList<>();
-        indexRootGroups(modelRoot, byPath, computations);
+        IndexState index = new IndexState(new LinkedHashMap<>(), new ArrayList<>(), new ArrayList<>());
+        indexRootGroups(modelRoot, index);
         Provenance provenance = new Provenance(Map.copyOf(originsByPath), Map.copyOf(typeRefsByPath));
         return new ModelReader(new State(root,
-                new IndexState(byPath, List.copyOf(computations)),
+                index.frozen(),
                 new ModelState(readLocales(root), readBaseYear(root), unmappedReferences),
                 provenance));
     }
@@ -201,10 +205,20 @@ public final class ModelReader {
         return computations;
     }
 
+    /** The model's authored rules, in model order (ModelIndex's view). */
+    List<RuleInfo> rules() {
+        return rules;
+    }
+
     private record State(ObjectNode expanded, IndexState index, ModelState model, Provenance provenance) {
     }
 
-    private record IndexState(Map<String, JsonNode> byPath, List<ComputationInfo> computations) {
+    /** The name-path index and the model-order element lists, filled by one walk and then frozen. */
+    private record IndexState(Map<String, JsonNode> byPath, List<ComputationInfo> computations,
+            List<RuleInfo> rules) {
+        IndexState frozen() {
+            return new IndexState(byPath, List.copyOf(computations), List.copyOf(rules));
+        }
     }
 
     private record ModelState(List<String> locales, Integer baseYear, List<String> unmappedReferences) {
@@ -519,7 +533,7 @@ public final class ModelReader {
         if (type == ElementType.RULE) {
             ObjectNode element = (ObjectNode) node;
             boolean residual = remapConditionKey((ObjectNode) node.path(ElementType.RULE.wireName()),
-                    "errorCondition", referenceContext(prefixMap, symbols, parentPath,
+                    DmKeys.ERROR_CONDITION, referenceContext(prefixMap, symbols, parentPath,
                             conditionLanguages.get(element)));
             updateResidual(elementsWithResiduals, element, residual);
         } else if (type == ElementType.COMPUTATION) {
@@ -727,28 +741,28 @@ public final class ModelReader {
 
     /** Index the top-level groups' subtrees by name-path (fields + groups), starting one level below the
      *  synthetic root — a top-level group named {@code Order} is {@code /Order}, not {@code /RootGroup/Order}. */
-    private static void indexRootGroups(JsonNode modelRoot, Map<String, JsonNode> byPath,
-            List<ComputationInfo> computations) {
+    private static void indexRootGroups(JsonNode modelRoot, IndexState index) {
         for (JsonNode group : modelRoot.path(DmKeys.ROOT_GROUPS)) {
-            indexElement(group, "", byPath, computations);
+            indexElement(group, "", index);
         }
     }
 
-    private static void indexElement(JsonNode node, String prefix, Map<String, JsonNode> byPath,
-            List<ComputationInfo> computations) {
+    /** Rules and computations are listed, not keyed: the name-path index holds fields and groups only. */
+    private static void indexElement(JsonNode node, String prefix, IndexState index) {
         ElementType type = ElementType.of(node);
-        if (type == ElementType.COMPUTATION) {
-            computations.add(computationInfo(node, prefix));
+        if (type == null) {
             return;
         }
-        if (type != ElementType.GROUP && type != ElementType.FIELD) {
-            return;   // rules carry no index entry (ModelIndex reads fields + groups)
-        }
-        String path = prefix + "/" + node.path(DmKeys.NAME).asText();
-        byPath.put(path, node);
-        if (type == ElementType.GROUP) {
-            for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
-                indexElement(child, path, byPath, computations);
+        switch (type) {
+            case COMPUTATION -> index.computations().add(computationInfo(node, prefix));
+            case RULE -> index.rules().add(ruleInfo(node, prefix));
+            case FIELD -> index.byPath().put(prefix + "/" + node.path(DmKeys.NAME).asText(), node);
+            case GROUP -> {
+                String path = prefix + "/" + node.path(DmKeys.NAME).asText();
+                index.byPath().put(path, node);
+                for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
+                    indexElement(child, path, index);
+                }
             }
         }
     }
@@ -760,6 +774,23 @@ public final class ModelReader {
         String elementPath = groupPath + "/" + name;
         String relPath = node.path(ElementType.COMPUTATION.wireName()).path("computedFieldRelPath").asText("");
         return new ComputationInfo(elementPath, groupPath, name, resolveRelPath(elementPath, relPath));
+    }
+
+    /** Map a Rule element in the group at {@code groupPath} to its {@link RuleInfo}, the text as written. */
+    private static RuleInfo ruleInfo(JsonNode node, String groupPath) {
+        String name = node.path(DmKeys.NAME).asText();
+        JsonNode body = node.path(ElementType.RULE.wireName());
+        Map<String, String> messages = new LinkedHashMap<>();
+        for (JsonNode message : body.path(DmKeys.ERROR_MESSAGE)) {
+            messages.put(message.path(DmKeys.LOCALE).asText(), message.path(DmKeys.TEXT).asText());
+        }
+        return RuleInfo.builder().path(groupPath + "/" + name).groupPath(groupPath).name(name)
+                .errorEntityRelPath(body.path(DmKeys.ERROR_ENTITY_REL_PATH).asText(""))
+                .errorCondition(body.path(DmKeys.ERROR_CONDITION).asText(""))
+                .errorCode(body.path(DmKeys.ERROR_CODE).asText(""))
+                .severity(body.path(DmKeys.SEVERITY).asText(DEFAULT_RULE_SEVERITY))
+                .messages(messages)
+                .build();
     }
 
     /**

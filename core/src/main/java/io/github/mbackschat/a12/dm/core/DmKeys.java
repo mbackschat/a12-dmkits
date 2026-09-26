@@ -66,6 +66,12 @@ public final class DmKeys {
     public static final String ORDER = "order";
     public static final String DESCRIPTION = "description";
 
+    // --- rule body ---
+    public static final String ERROR_ENTITY_REL_PATH = "errorEntityRelPath";
+    public static final String ERROR_CONDITION = "errorCondition";
+    public static final String ERROR_CODE = "errorCode";
+    public static final String SEVERITY = "severity";
+
     // --- model-level config (modelConfig / modelInfo settings) ---
     public static final String CONDITION_LANGUAGE = "conditionLanguage";
     public static final String SUPPORTED_CHARACTERS = "supportedCharacters";

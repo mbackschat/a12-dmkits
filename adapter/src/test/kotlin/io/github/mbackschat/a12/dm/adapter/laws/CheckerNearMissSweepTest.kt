@@ -1,10 +1,9 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ModelIndex
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.Severity
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText
@@ -24,9 +23,9 @@ import kotlin.io.path.relativeTo
  * **This replaces discovery by hand.** Each hand grid measured one construct and uncovered its neighbours, so a
  * fix never closed a class for long. Here the neighbours are generated. The seeds come from two ARMS:
  *
- * - every rule of the committed single-file models ([CorpusFiles.committedModels]), copied as a probe beside
- *   the rule it copies. The probe carries the rule's target, condition, severity and messages; a variant filter
- *   is not copied, so the probe is checked in every variant;
+ * - every rule [ModelIndex.rules] lists for a committed model ([CorpusFiles.committedModels]), a mounted one
+ *   included, copied as a probe beside the rule it copies. The probe carries the rule's target, condition,
+ *   severity and messages; a variant filter is not copied, so the probe is checked in every variant;
  * - every catalog `validExample` but those of the three consumer-SPI operators, whose conditions name host code
  *   rather than the model ([CatalogHosting.SPECIALISTS]), hosted on the fixture and error field
  *   [CatalogHosting] chooses.
@@ -152,19 +151,16 @@ class CheckerNearMissSweepTest {
         val root = CorpusFiles.repoRoot()
         return CorpusFiles.committedModels().flatMap { file ->
             val host = file.readText()
-            rulesWithGroupPaths(MAPPER.readTree(host)).map { (groupPath, rule) ->
-                val body = rule.path("Rule")
+            ModelIndex.of(host, ReferenceResolvers.directory(file.parent)).rules().map { rule ->
                 Seed(
                     Arm.COMMITTED,
-                    "${file.relativeTo(root)}#$groupPath/${rule.path("name").asText()}",
+                    "${file.relativeTo(root)}#${rule.path()}",
                     host,
-                    DraftRule.builder().groupPath(groupPath).name(PROBE)
-                        .errorEntityRelPath(body.path("errorEntityRelPath").asText())
-                        .errorCondition(body.path("errorCondition").asText()).errorCode(PROBE_CODE)
-                        .severity(body.path("severity").asText("ERROR"))
-                        .messages(body.path("errorMessage").map {
-                            LocalizedText(it.path("locale").asText(), it.path("text").asText())
-                        })
+                    DraftRule.builder().groupPath(rule.groupPath()).name(PROBE)
+                        .errorEntityRelPath(rule.errorEntityRelPath())
+                        .errorCondition(rule.errorCondition()).errorCode(PROBE_CODE)
+                        .severity(rule.severity())
+                        .messages(rule.messages().map { (locale, text) -> LocalizedText(locale, text) })
                         .build(),
                 )
             }
@@ -253,24 +249,6 @@ class CheckerNearMissSweepTest {
         }
     }
 
-    /**
-     * Each rule element of the model with the absolute path of the group that declares it. Read off the DM-JSON
-     * because no kit enumerates a model's rules yet (DEV-API-GAPS DG116).
-     */
-    private fun rulesWithGroupPaths(root: JsonNode): List<Pair<String, JsonNode>> {
-        val found = mutableListOf<Pair<String, JsonNode>>()
-        fun walk(group: JsonNode, path: String) {
-            group.path("Group").path("elements").forEach { element ->
-                when (element.path("type").asText()) {
-                    "Rule" -> found += path to element
-                    "Group" -> walk(element, "$path/${element.path("name").asText()}")
-                }
-            }
-        }
-        root.path("content").path("modelRoot").path("rootGroups").forEach { walk(it, "/${it.path("name").asText()}") }
-        return found
-    }
-
     /** The committed ledger: each row a count, then its cluster key. */
     private fun ledger(): Map<String, Int> =
         checkNotNull(javaClass.getResource(LEDGER)) { "missing $LEDGER" }.readText().lines()
@@ -288,8 +266,6 @@ class CheckerNearMissSweepTest {
 
         /** How many condition edits each seed contributes; its message edits come on top. */
         const val CONDITION_EDITS = 30
-
-        val MAPPER = ObjectMapper()
 
         /** A string or a comment whole, a number, a name, a two-character operator, or any other one character. */
         val TOKEN = Regex("\"[^\"]*\"|;;[^\\n]*|\\d+(?:\\.\\d+)?|[\\p{L}_][\\p{L}\\p{N}_]*|\\.\\.|<=|>=|<>|!=|==|->|\\S")

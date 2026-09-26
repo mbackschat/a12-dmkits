@@ -1960,6 +1960,19 @@ payout.targetFieldPath();   // "/Claim/Payout"      — "../Payout" resolved (re
 String resolved = ModelIndex.resolvePath(payout.path(), "../Payout"); // shared rule/computation anchor resolver
 ```
 
+**So are rules.** `ModelIndex.rules()` lists every authored rule with what A12's own `Rule` holds: its error entity, condition, code, severity and error message, the message as a locale-to-text map. The text is the model's as written, a severity the model leaves out reads as `ERROR` (A12's default), and `errorEntityPath()` resolves the error entity against the rule element. A rule mounted from an included model is listed at its mounted path, with its condition as the include expansion rewrote it:
+
+<!-- snippet: model-rules -->
+```java
+// every authored rule, in model order, with its content as written:
+List<RuleInfo> rules = ModelIndex.ofSelfContained(model).rules();
+RuleInfo damage = rules.get(1);
+damage.errorCondition();    // "FieldNotFilled(Damage)"
+damage.severity();          // "WARNING"; "ERROR" where none is declared, A12's default
+damage.messages();          // {en_US=Enter the damage.}, locale to text
+damage.errorEntityPath();   // Optional[/Claim/Damage]: "../Damage" resolved (rel base = the element)
+```
+
 ### 6d. Extract a performance-calibration profile
 
 `ModelProfiles` reduces a model to the deterministic, identifier-free axes that determine reporting and evaluation cost. The public boundary is deliberately the bare JSON artifact rather than the internal profile records, so consumers can persist or transport a profile without coupling to the profiler's planning representation:

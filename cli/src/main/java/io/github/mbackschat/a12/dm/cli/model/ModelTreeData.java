@@ -25,6 +25,7 @@ import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelReader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.RuleInfo;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -114,7 +115,7 @@ final class ModelTreeData {
 
         List<String> selectedPaths = selectedPaths(root, maxDepth, elementPaths);
         Set<String> emitted = new LinkedHashSet<>(selectedPaths);
-        Map<String, List<RuleSource>> rulesByAnchor = rulesByAnchor(expandedRoot);
+        Map<String, List<RuleInfo>> rulesByAnchor = rulesByAnchor(index);
         Map<String, ComputationSource> computationsByAnchor = computationsByAnchor(computationsByPath.values());
 
         ObjectNode data = MAPPER.createObjectNode();
@@ -292,13 +293,10 @@ final class ModelTreeData {
         values.forEach(out::put);
     }
 
-    private static Map<String, List<RuleSource>> rulesByAnchor(JsonNode expandedRoot) {
-        List<RuleSource> rules = new ArrayList<>();
-        collectRuleSources(rootGroups(expandedRoot), rules);
-        Map<String, List<RuleSource>> out = new LinkedHashMap<>();
-        for (RuleSource rule : rules) {
-            String anchor = rule.errorEntity() == null ? "/" : rule.errorEntity();
-            out.computeIfAbsent(anchor, ignored -> new ArrayList<>()).add(rule);
+    private static Map<String, List<RuleInfo>> rulesByAnchor(ModelIndex index) {
+        Map<String, List<RuleInfo>> out = new LinkedHashMap<>();
+        for (RuleInfo rule : index.rules()) {
+            out.computeIfAbsent(rule.errorEntityPath().orElse("/"), ignored -> new ArrayList<>()).add(rule);
         }
         return out;
     }
@@ -329,23 +327,6 @@ final class ModelTreeData {
         return root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
     }
 
-    private static void collectRuleSources(JsonNode elements, List<RuleSource> out) {
-        for (JsonNode element : elements) {
-            ElementType type = ElementType.fromWire(element.path(DmKeys.TYPE).asText(null));
-            if (type == ElementType.GROUP) {
-                collectRuleSources(element.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS), out);
-            } else if (type == ElementType.RULE) {
-                String path = element.path(DmKeys.ID).asText();
-                JsonNode body = element.path(ElementType.RULE.wireName());
-                String relativeErrorEntity = body.path("errorEntityRelPath").asText("");
-                String errorEntity = relativeErrorEntity.isEmpty()
-                        ? null
-                        : ModelIndex.resolvePath(path, relativeErrorEntity);
-                out.add(new RuleSource(path, errorEntity, body.path("errorCondition").asText()));
-            }
-        }
-    }
-
     private static void collectComputationBodies(JsonNode elements, Map<String, JsonNode> out) {
         for (JsonNode element : elements) {
             ElementType type = ElementType.fromWire(element.path(DmKeys.TYPE).asText(null));
@@ -358,13 +339,13 @@ final class ModelTreeData {
         }
     }
 
-    private static void putRules(ObjectNode node, List<RuleSource> rules) {
+    private static void putRules(ObjectNode node, List<RuleInfo> rules) {
         if (rules.isEmpty()) {
             return;
         }
         ArrayNode out = node.putArray("rules");
-        for (RuleSource rule : rules) {
-            out.addObject().put("name", rule.name()).put("dsl", rule.dsl());
+        for (RuleInfo rule : rules) {
+            out.addObject().put("name", rule.path()).put("dsl", rule.errorCondition());
         }
     }
 
@@ -389,7 +370,7 @@ final class ModelTreeData {
         return commonPrecondition.isEmpty() ? table : commonPrecondition + " => (" + table + ")";
     }
 
-    private static int countAnchoredRules(Map<String, List<RuleSource>> rules, Set<String> emitted) {
+    private static int countAnchoredRules(Map<String, List<RuleInfo>> rules, Set<String> emitted) {
         int count = 0;
         for (String path : emitted) {
             count += rules.getOrDefault(path, List.of()).size();
@@ -406,9 +387,6 @@ final class ModelTreeData {
             }
         }
         return count;
-    }
-
-    private record RuleSource(String name, String errorEntity, String dsl) {
     }
 
     private record ComputationSource(String name, String target, String dsl) {

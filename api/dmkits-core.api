@@ -47,6 +47,9 @@ public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String DESCRIPTION
   public static final java.lang.String DOCUMENT
   public static final java.lang.String ELEMENTS
+  public static final java.lang.String ERROR_CODE
+  public static final java.lang.String ERROR_CONDITION
+  public static final java.lang.String ERROR_ENTITY_REL_PATH
   public static final java.lang.String ERROR_MESSAGE
   public static final java.lang.String EXTERNAL_DESCRIPTION
   public static final java.lang.String FIELD_REF_BY_SHORT_NAME_ALLOWED
@@ -73,6 +76,7 @@ public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String REPEATABILITY
   public static final java.lang.String REQUIREDNESS_CONFIG
   public static final java.lang.String ROOT_GROUPS
+  public static final java.lang.String SEVERITY
   public static final java.lang.String SORT_FIELDS
   public static final java.lang.String SUPPORTED_CHARACTERS
   public static final java.lang.String TEXT
@@ -495,6 +499,7 @@ public final class io.github.mbackschat.a12.dm.core.ModelIndex
   public static io.github.mbackschat.a12.dm.core.ModelIndex ofSelfContained(java.lang.String)
   public java.util.Optional<java.lang.String> originOf(java.lang.String)
   public static java.lang.String resolvePath(java.lang.String, java.lang.String)
+  public java.util.List<io.github.mbackschat.a12.dm.core.RuleInfo> rules()
   public java.util.OptionalInt stringMaxLength(java.lang.String)
   public java.util.OptionalInt stringMinLength(java.lang.String)
   public boolean stringNoValueValidation(java.lang.String)
@@ -538,6 +543,33 @@ public final class io.github.mbackschat.a12.dm.core.ReferenceResolvers
 public final class io.github.mbackschat.a12.dm.core.Refusals
   public static java.lang.String message(io.github.mbackschat.a12.dm.core.KernelCode, java.lang.String)
   public static io.github.mbackschat.a12.dm.core.KernelCodeRefusal of(io.github.mbackschat.a12.dm.core.KernelCode, java.lang.String)
+
+public record io.github.mbackschat.a12.dm.core.RuleInfo
+  public RuleInfo(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.Map<java.lang.String, java.lang.String>)
+  public static io.github.mbackschat.a12.dm.core.RuleInfo.Builder builder()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String errorCode()
+  public java.lang.String errorCondition()
+  public java.util.Optional<java.lang.String> errorEntityPath()
+  public java.lang.String errorEntityRelPath()
+  public java.lang.String groupPath()
+  public final int hashCode()
+  public java.util.Map<java.lang.String, java.lang.String> messages()
+  public java.lang.String name()
+  public java.lang.String path()
+  public java.lang.String severity()
+  public final java.lang.String toString()
+
+public static final class io.github.mbackschat.a12.dm.core.RuleInfo.Builder
+  public io.github.mbackschat.a12.dm.core.RuleInfo build()
+  public io.github.mbackschat.a12.dm.core.RuleInfo.Builder errorCode(java.lang.String)
+  public io.github.mbackschat.a12.dm.core.RuleInfo.Builder errorCondition(java.lang.String)
+  public io.github.mbackschat.a12.dm.core.RuleInfo.Builder errorEntityRelPath(java.lang.String)
+  public io.github.mbackschat.a12.dm.core.RuleInfo.Builder groupPath(java.lang.String)
+  public io.github.mbackschat.a12.dm.core.RuleInfo.Builder messages(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.core.RuleInfo.Builder name(java.lang.String)
+  public io.github.mbackschat.a12.dm.core.RuleInfo.Builder path(java.lang.String)
+  public io.github.mbackschat.a12.dm.core.RuleInfo.Builder severity(java.lang.String)
 
 public enum io.github.mbackschat.a12.dm.core.Severity
   public static final io.github.mbackschat.a12.dm.core.Severity ERROR
