@@ -364,17 +364,16 @@ internal class Operands(private val mapping: Mapping) {
         /**
          * Refuse a `$`-marked source in a slot that has no representation for the marker.
          *
-         * <p><b>The message names the SLOT, not the API</b>, because what the API can hold has changed twice.
-         * `GroupPresenceCondition` gained the marker (API-FINDINGS 135), then `GroupListRef` did and
-         * `CurrentRepetition`'s own `outer` component was threaded (API-FINDINGS 138) — so the group scopes,
-         * the group lists and the repetition index all reconstruct their marker now, and this refusal is down
-         * to the ONE route that has nowhere to put one: the typed `GroupRef` factories `NumberOfFilledGroups`
-         * is mapped through. The record behind them holds each group as a scope, which could carry the marker
-         * (DEV-API-GAPS DG108).
+         * <p><b>The message names the SLOT, not the API</b>, because what the API can hold has changed three
+         * times. `GroupPresenceCondition` gained the marker (API-FINDINGS 135), then `GroupListRef` did and
+         * `CurrentRepetition`'s own `outer` component was threaded (API-FINDINGS 138), and `NumberOfFilledGroups`
+         * now reads each operand as its scope (AF173). What still reaches this refusal is a slot whose operand
+         * is a bare `GroupRef`: a group-presence leaf written over a starred source, which `Predicates` maps
+         * unchanged because only the plain reference form has a marker it reconstructs.
          *
-         * <p>Refusing there stays the honest answer until that route carries the marker: dropping it would
-         * corrupt the read into a non-correlated rule, and `verifyOuterPreserved` would degrade the rule to a
-         * verbatim `Opaque` anyway — the same outcome, reached without a diagnostic naming the cause.
+         * <p>Refusing there is the honest answer: dropping the marker would corrupt the read into a
+         * non-correlated rule, and `verifyOuterPreserved` would degrade the rule to a verbatim `Opaque` anyway —
+         * the same outcome, reached without a diagnostic naming the cause.
          */
         private fun requireNotCorrelated(source: Expr.EntitySource, what: String) {
             if (source.outer) {

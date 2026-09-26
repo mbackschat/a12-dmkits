@@ -39,8 +39,8 @@ internal class Predicates(private val mapping: Mapping) {
             "FieldNotFilled" -> filled(soleFilledOperand(args, name), false)
             // The `$` marker is part of the group-presence SHAPE, not a field-only spelling: the kernel admits
             // `GroupFilled($G)` in a Having filter and `GroupPresenceCondition` can carry it since 2026-09-04
-            // (API-FINDINGS 135), so this reconstructs it rather than refusing a legal model. Every other group
-            // slot still refuses a marker — see Operands.requireNotCorrelated for which and why.
+            // (API-FINDINGS 135), so this reconstructs it rather than refusing a legal model. A slot with no
+            // place for a marker refuses it — see Operands.requireNotCorrelated for which and why.
             "GroupFilled" -> groupPresence(single(args, name), name, filled = true)
             "GroupNotFilled" -> groupPresence(single(args, name), name, filled = false)
             // The same node Dsl.fieldList builds, reached directly: the Dsl overloads for these three are

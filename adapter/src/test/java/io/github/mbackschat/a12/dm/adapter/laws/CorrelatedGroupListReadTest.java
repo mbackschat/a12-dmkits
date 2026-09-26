@@ -86,6 +86,27 @@ class CorrelatedGroupListReadTest {
         assertEquals(RuntimeLaws.render(plain), RuntimeLaws.render(readPlain));
     }
 
+    /**
+     * The group-count operator, whose operands the record holds as scopes since DEV-API-GAPS DG77, so a marked
+     * group has somewhere to keep its marker; A12 admits this text beside the in-scope conjunct
+     * ({@code validate.laws.HavingFilterConditionLeafLawsTest}). The unmarked row is the control that the flag
+     * tracks the source (API-FINDINGS AF173).
+     */
+    @Test
+    void aMarkedFILLEDGROUPSCountReadsBackWithBothMarkers() {
+        BoundModel model = renewalModel();
+        Condition marked = filtered(model,
+                Dsl.numberOfFilledGroups(marked(model, BILLING), marked(model, SHIPPING)).gt(0));
+        Condition plain = filtered(model, Dsl.numberOfFilledGroups(
+                model.flattenGroup(BILLING), model.flattenGroup(SHIPPING)).gt(0));
+
+        Condition readMarked = readCondition(model, "MarkedGroupCount", marked);
+        Condition readPlain = readCondition(model, "PlainGroupCount", plain);
+
+        assertEquals(marked, readMarked, () -> "both $ markers must survive read-back: " + RuntimeLaws.render(readMarked));
+        assertEquals(plain, readPlain, () -> "an unmarked source must stay unmarked: " + RuntimeLaws.render(readPlain));
+    }
+
     /** The control: an unmarked source must not acquire a marker on the way back. */
     @Test
     void theUnmarkedSpellingReadsBackUnmarked() {

@@ -136,53 +136,25 @@ internal class Functions(private val mapping: Mapping) {
             .expression()
     }
 
+    /**
+     * Each operand is the scope its author wrote, stars and `$` marker included, since that is what the record
+     * holds (API-FINDINGS AF172, AF173). A `GroupRef` would carry neither: read through one, the unstarred
+     * `NumberOfFilledGroups(Keyed)`, which A12 refuses, came back as the admitted `Keyed*`.
+     */
     private fun countOfFilledGroups(args: List<Expr>): Calculation {
-        val soleOperand = args.size == 1
-        val operands = inReadOrder(args) { CountedGroup(mapping.groupRef(it), mapping.aggregateOperand(it) as GroupListRef) }
-        if (operands.any { it.starredAboveItself() }) {
-            // A group below a starred level keeps that star only as a scope (KERNEL-FINDINGS KF462).
-            val scopes = operands.map { it.scope }
-            return mapping.model().numberOfFilledGroups(scopes[0], *scopes.drop(1).toTypedArray()).expression()
+        val operands = aggregateOperands(args)
+        val scopes = operands.filterIsInstance<GroupListRef>()
+        if (scopes.size < operands.size) {
+            // A field among the operands, which A12 refuses (MVK_NO_FIELDS_ALLOWED) and no typed factory takes.
+            // The record asks the gates, and withholds the class because it cannot read the groups beside it.
+            return CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, operands)
         }
-        val groups = operands.map { it.asTyped(soleOperand) }
-        if (groups.size == 1) {
-            // A root group is banned in the ordinary count and legal as the sole starred operand, and rulekit
-            // splits that across two nodes: CountAggregate refuses any root group, RootGroupCount exists for
-            // exactly this shape. Picking the node is the bridge's job; the ban is still rulekit's.
-            val only = groups[0]
-            return if (isRootGroup(only)) {
-                mapping.model().numberOfFilledRootGroups(only).expression()
-            } else {
-                mapping.model().numberOfFilledGroups(only).expression()
-            }
+        val sole = scopes.singleOrNull()
+        if (sole != null && isRootGroup(sole.group()) && sole.flattened() == listOf(sole.group())) {
+            // `/Root*` alone counts the root's repetitions, which rulekit holds as a node of its own.
+            return mapping.model().numberOfFilledRootGroups(sole.group()).expression()
         }
-        return mapping.model().numberOfFilledGroups(groups[0], groups[1], *groups.drop(2).toTypedArray()).expression()
-    }
-
-    /** One operand of `NumberOfFilledGroups`: the group, and the scope its author wrote, stars included. */
-    private class CountedGroup(val group: GroupRef, val scope: GroupListRef) {
-
-        /** Whether the written path stars a level above the group, which only the scope form can carry. */
-        fun starredAboveItself(): Boolean = scope.flattened().any { it.path() != group.path() }
-
-        /**
-         * The operand as the [GroupRef] the typed count factories take, which render it starred exactly when the
-         * group repeats, and always as a sole root. A group the author wrote otherwise has no typed form here:
-         * `NumberOfFilledGroups(Keyed)`, refused by A12 at a rule that does not iterate `Keyed`, would read as
-         * the admitted `Keyed*` (`rulekit.validate.laws.EntityListOperandReadLawsTest`). A star written on a
-         * group that does not repeat is refused while resolving it, with A12's class for it.
-         */
-        fun asTyped(soleOperand: Boolean): GroupRef {
-            val written = scope.flattened().map { it.path() }
-            val rendersStarred = group.repeating() || soleOperand && isRootGroup(group)
-            if (written != (if (rendersStarred) listOf(group.path()) else listOf())) {
-                throw NoTypedOperationException(
-                    "NumberOfFilledGroups over " + group.path() + " as written: the typed count stars a group" +
-                        " exactly when it repeats, and a sole root always"
-                )
-            }
-            return group
-        }
+        return mapping.model().numberOfFilledGroups(scopes[0], *scopes.drop(1).toTypedArray()).expression()
     }
 
     /**

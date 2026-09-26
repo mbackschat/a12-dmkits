@@ -16,11 +16,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 
 /**
- * A stored entity list keeps the stars its author wrote. A `GroupRef` carries none, and the typed group count
- * stars a group exactly when it repeats and a sole root always, so a group written otherwise would come back
- * as a different text: `NumberOfFilledGroups(Keyed)`, which A12 refuses with `MVK_NO_WILDCARD`, read as the
- * admitted `Keyed*`. Such a list has no typed form. A star written on a group that does not repeat is
- * `MVK_INVALID_WILDCARD` ahead of the rest of that operand's read.
+ * A stored entity list keeps the stars its author wrote. A `GroupRef` carries none, and a factory over one stars
+ * a group exactly when it repeats, so the group count reads each operand as its scope instead: read through a
+ * `GroupRef`, `NumberOfFilledGroups(Keyed)`, which A12 refuses with `MVK_NO_WILDCARD`, came back as the admitted
+ * `Keyed*`. A star written on a group that does not repeat is `MVK_INVALID_WILDCARD` ahead of the rest of that
+ * operand's read.
  *
  * A12 reads the operands in list order, and the first that fails answers, so a refusal the bridge meets while
  * BUILDING a later operand keeps its class only when every earlier operand is a plain field that cannot fail.
@@ -73,13 +73,31 @@ class EntityListStarFidelityTest {
         assertCited(KernelCode.MVK_INVALID_WILDCARD, "NumberOfFilledGroups(Grading*, Specs) > 0")
     }
 
-    /** A group written without the star the typed count would give it has no typed form. */
+    /**
+     * A group written without the star it repeats with reads as written, and never as the admitted `Keyed*`.
+     * At this rule A12 refuses each text with `MVK_NO_WILDCARD`, and only `/Item` with the arity class
+     * (`rulekit.validate.laws.GroupCountScopeOperandLawsTest`); a sole unstarred repeatable group would meet
+     * the arity gate here, so its refusal is withheld rather than cited under a class A12 does not name. Beside
+     * another group the text translates, the kernel's verdict depending on whether the rule iterates the group.
+     */
     @Test
-    fun aRepeatableGroupWrittenWithoutItsStarHasNoTypedCount() {
-        for (condition in listOf("NumberOfFilledGroups(Keyed) > 0", "NumberOfFilledGroups(Grading, Keyed) > 0",
-                "NumberOfFilledGroups(/Lot) > 0", "NumberOfFilledGroups(/Item) > 0")) {
-            assertThrows(NoTypedOperationException::class.java, { translate(condition) }, condition)
-        }
+    fun aRepeatableGroupWrittenWithoutItsStarReadsAsWritten() {
+        assertWithheld("NumberOfFilledGroups(Keyed) > 0")
+        assertWithheld("NumberOfFilledGroups(/Lot) > 0")
+        assertCited(KernelCode.MVK_PARAMSIZE_INVALIDGN, "NumberOfFilledGroups(/Item) > 0")
+        assertEquals("NumberOfFilledGroups(/Item/Grading, /Item/Keyed) > 0",
+            rendered("NumberOfFilledGroups(Grading, Keyed) > 0"))
+    }
+
+    /**
+     * A field among the operands is refused, and A12 names it `MVK_NO_FIELDS_ALLOWED`
+     * (`rulekit.validate.laws.GroupCountScopeOperandLawsTest`). No typed factory takes a field here, so the
+     * record asks the gate and withholds the class: it cannot read whether the group beside the field answers
+     * first.
+     */
+    @Test
+    fun aFieldOperandIsRefusedWithItsClassWithheld() {
+        assertWithheld("NumberOfFilledGroups(Grading, Weight) > 0")
     }
 
     /** The controls: a group written as the typed count renders it translates, and reads back unchanged. */

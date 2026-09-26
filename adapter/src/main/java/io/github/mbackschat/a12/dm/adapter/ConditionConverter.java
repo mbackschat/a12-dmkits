@@ -70,6 +70,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoolExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp;
+import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Now;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
@@ -1407,25 +1408,12 @@ final class ConditionConverter {
         if (name == EntityListOperationName.FirstFilledValue) {
             return new NumberExpr(convertFirstFilledValue(aggregate));
         }
-        // A group below a starred level keeps that star only as a scope: a GroupRef is starred exactly when the
-        // group itself repeats (KERNEL-FINDINGS KF462), so reading one here renders a different, refused rule.
-        if (name == EntityListOperationName.NumberOfFilledGroups
-                && entities.stream().noneMatch(IEntityId::isField)
-                && entities.stream().anyMatch(this::starredAboveItself)) {
-            GroupListRef[] scopes = entities.stream()
-                    .map(e -> groupScopeOf(e, reconstructStarPath(e))).toArray(GroupListRef[]::new);
-            return Dsl.numberOfFilledGroups(scopes[0], Arrays.copyOfRange(scopes, 1, scopes.length));
-        }
-        // NumberOfFilledGroups(Group*): a single repeatable group, all reps — a group scope, not a field.
-        if (name == EntityListOperationName.NumberOfFilledGroups
-                && entities.size() == 1 && !entities.get(0).isField()) {
-            return Dsl.numberOfFilledGroups(model.group(entities.get(0).getFullName()));
-        }
-        // NumberOfFilledGroups(g1, g2, …): two or more distinct groups — count how many are filled.
-        if (name == EntityListOperationName.NumberOfFilledGroups
-                && entities.size() > 1 && entities.stream().noneMatch(IEntityId::isField)) {
-            GroupRef[] g = entities.stream().map(e -> model.group(e.getFullName())).toArray(GroupRef[]::new);
-            return Dsl.numberOfFilledGroups(g[0], g[1], Arrays.copyOfRange(g, 2, g.length));
+        // NumberOfFilledGroups over groups: each operand is the scope its author wrote, its stars and `$` marker
+        // included, which is what the record holds (API-FINDINGS AF172, AF173). Read as a GroupRef, a group lost
+        // both: a star above it (KERNEL-FINDINGS KF462), and the marker A12 admits in a Having filter (KF242).
+        if (name == EntityListOperationName.NumberOfFilledGroups && entities.stream().noneMatch(IEntityId::isField)) {
+            List<AggregateOperand> scopes = entities.stream().map(e -> groupScope(e, aggregate)).toList();
+            return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, scopes));
         }
         // Multi-operand explicit scope, e.g. Sum(a, b) or NumberOfFilledFields(Group*, a) — each operand a plain
         // field, a wildcard list, or a group scope, index-selected or not. The group member is kept as the group
@@ -1578,12 +1566,6 @@ final class ConditionConverter {
             throw unsupported("group-scope aggregate with a Having filter", origin);
         }
         return groupAggregateOperand(groupEntity, reconstructStarPath(groupEntity), origin);
-    }
-
-    /** Whether the group's stored path stars a level above the group itself, which a {@link GroupRef} cannot carry. */
-    private boolean starredAboveItself(IEntityId group) {
-        GroupListRef scope = model.flattenGroup(reconstructStarPath(group));
-        return scope.flattened().stream().anyMatch(level -> !level.path().equals(scope.group().path()));
     }
 
     /**

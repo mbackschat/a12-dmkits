@@ -90,7 +90,13 @@ class GroupCountScopeOperandLawsTest {
                 new Row("Grading, Weight", "MVK_NO_FIELDS_ALLOWED",
                         count(List.of(grading, M.field("/Item/Weight"))), REFUSED),
                 new Row("Keyed For \"k\", Grading", "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
-                        count(List.of(M.flattenGroup("/Item/Keyed").forIndex("k"), grading)), REFUSED));
+                        count(List.of(M.flattenGroup("/Item/Keyed").forIndex("k"), grading)), REFUSED),
+                // a group written without the star it repeats with, as a stored text may hold it: at a rule that
+                // does not iterate it the missing star answers, so its class depends on the rule
+                new Row("Keyed", "MVK_NO_WILDCARD", count(List.of(M.flattenGroup("/Item/Keyed"))), REFUSED),
+                new Row("Grading, Keyed", "MVK_NO_WILDCARD", count(List.of(grading, M.flattenGroup("/Item/Keyed"))), ADMITTED),
+                new Row("/Lot", "MVK_NO_WILDCARD", count(List.of(M.flattenGroup("/Lot"))), REFUSED),
+                new Row("/Item", "MVK_PARAMSIZE_INVALIDGN", count(List.of(M.flattenGroup("/Item"))), REFUSED));
     }
 
     @Test

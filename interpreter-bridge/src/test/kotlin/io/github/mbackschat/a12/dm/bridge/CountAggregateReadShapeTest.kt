@@ -63,4 +63,26 @@ class CountAggregateReadShapeTest {
         }
         assertEquals(spellings.mapValues { 0 }, unequal)
     }
+
+    /**
+     * A `$`-marked group keeps its marker, since the record holds a count's group as its scope (API-FINDINGS
+     * AF173). The text sits where A12 admits it, beside the filter's in-scope conjunct
+     * (`rulekit.validate.laws.HavingFilterConditionLeafLawsTest`); the unmarked text is the control.
+     */
+    @Test
+    fun aMarkedGroupCountKeepsItsMarkers() {
+        fun filtered(count: NumberExpr) = Dsl.numberOfFilledFields(model.flatten("/Order/Parcels*/Weight")
+            .having(model.num("/Order/Parcels/Weight").gt(1).and(count.gt(0)))).gt(0)
+        val billing = model.flattenGroup("/Order/Billing")
+        val shipping = model.flattenGroup("/Order/Shipping")
+        val expected = mapOf(
+            "\$Billing, \$Shipping" to filtered(Dsl.numberOfFilledGroups(billing.outer(), shipping.outer())),
+            "Billing, Shipping" to filtered(Dsl.numberOfFilledGroups(billing, shipping)),
+        )
+        val read = expected.mapValues { (operands, _) ->
+            bridge.translate("NumberOfFilledFields(Parcels*/Weight Having Parcels/Weight > 1" +
+                " And NumberOfFilledGroups($operands) > 0) > 0", "/Order", ConditionLanguage.EN)
+        }
+        assertEquals(expected, read)
+    }
 }
