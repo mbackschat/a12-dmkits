@@ -11307,7 +11307,7 @@ Before the fix the portable checker was silent on every row drawing the category
 
 The target's spelling was varied too: declared in `Billing` into a root String and into its own String, and declared at the root into `Lines/Qty` and in `Lines` into its own `Qty`, a String source draws `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` on all four.
 
-**The members are one text, and A12 names its first class.**
+**The members are one text, and of the classes raised while it is parsed, A12 names the first.** *Corrected 2026-09-26:* this said A12 names the text's first class, which is broader than the rows. The calculation module's stage classes are not raised while the text is parsed. Mixed alternatives stand beside an enumeration source or a read of the computed field in the other alternative, and each such class stands beside `MVK_ERROR_MESSAGE_MISSING`, as [KF375](#kf375)'s complete class sets show. a12-kernel-lean's `SPEC-2026-09-26-02` drew the narrowing from those rows (their report).
 
 | the classes, in joined order | A12 |
 |---|---|
