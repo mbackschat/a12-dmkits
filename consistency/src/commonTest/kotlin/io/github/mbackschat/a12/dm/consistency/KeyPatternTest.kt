@@ -37,7 +37,8 @@ class KeyPatternTest {
             listOf(false, true, true, true, true),
             listOf(
                 matches("[^0-9]{2}", grin), matches("[^0-9]", grin), matches("[^0-9]{2}", grin + "a"),
-                matches("[^0-9]", "\uD83D"), matches("[^0-9]{2}", "\uD83Da"),
+                // A lone surrogate is built at run time: Kotlin/JS compiles one written as a literal to `?`.
+                matches("[^0-9]", Char(0xD83D).toString()), matches("[^0-9]{2}", Char(0xD83D) + "a"),
             ),
         )
     }

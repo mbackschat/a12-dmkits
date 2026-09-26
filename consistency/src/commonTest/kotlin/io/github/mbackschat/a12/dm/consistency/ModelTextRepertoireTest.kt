@@ -163,8 +163,10 @@ class ModelTextRepertoireTest {
             listOf(
                 reported(model(rule(condition = "$READS And $GRIN FieldFilled(Note)"))).toSet(),
                 reported(model(rule(condition = "$READS And And FieldFilled(Note)", message = "see $GRIN"))).toSet(),
-                reported(model(rule(message = "see \uD83D"))).toSet(),
-                reported(model(rule(message = "see \uDE00"))).toSet(),
+                // Built at run time: Kotlin/JS compiles a lone-surrogate LITERAL to `?`, so the JS arm would
+                // judge a plain text (CheckerFixtureReadGuardTest.noMultiplatformSourceSpellsALoneSurrogate).
+                reported(model(rule(message = "see " + Char(0xD83D)))).toSet(),
+                reported(model(rule(message = "see " + Char(0xDE00)))).toSet(),
             ),
         )
     }
