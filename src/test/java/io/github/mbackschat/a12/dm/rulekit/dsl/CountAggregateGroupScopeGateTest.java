@@ -56,7 +56,7 @@ class CountAggregateGroupScopeGateTest {
     /** The expected fragment when the refusal's text carries it, else the whole text. */
     private static String problem(List<AggregateOperand> operands, String fragment) {
         var refusal = assertThrows(IllegalArgumentException.class,
-                () -> new CountAggregate(CountOp.FILLED_GROUPS, operands, List.of()));
+                () -> new CountAggregate(CountOp.FILLED_GROUPS, operands));
         assertFalse(refusal instanceof KernelCodeRefusal, refusal::getMessage);
         return refusal.getMessage().contains(fragment) ? fragment : refusal.getMessage();
     }

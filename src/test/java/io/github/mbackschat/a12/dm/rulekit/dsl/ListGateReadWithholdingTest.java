@@ -181,7 +181,7 @@ class ListGateReadWithholdingTest {
     void anIndexSelectedRootBesideAGroupIsRefusedByTheRootGate() {
         IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class, () -> new CountAggregate(
                 CountAggregate.CountOp.FILLED_GROUPS,
-                List.of(M.flattenGroup("/Lot*").forIndex("k"), M.flattenGroup("/Item/Grading")), List.of()));
+                List.of(M.flattenGroup("/Lot*").forIndex("k"), M.flattenGroup("/Item/Grading"))));
         assertTrue(refusal.getMessage().contains("a root group only as its sole operand"), refusal::getMessage);
         assertEquals(UNCODED, verdict(() -> {
             throw refusal;

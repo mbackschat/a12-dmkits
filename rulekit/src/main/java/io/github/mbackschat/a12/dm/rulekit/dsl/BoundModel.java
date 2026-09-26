@@ -903,23 +903,23 @@ public final class BoundModel {
     public NumberExpr numberOfFilledFields(AggregateOperand first, AggregateOperand second, AggregateOperand... rest) {
         List<AggregateOperand> operands = listOf(first, second, rest);
         Dsl.readOperandsThen("NumberOfFilledFields", this, operands,
-                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_FIELDS, operands, List.of()));
+                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_FIELDS, operands));
         return Dsl.numberOfFilledFields(first, second, rest);
     }
 
     /** {@code NumberOfFilledFields(group, …)}, checked against this model as {@link #sum} is. */
     public NumberExpr numberOfFilledFields(GroupRef first, GroupRef... rest) {
-        List<GroupRef> groups = listOf(first, rest);
-        Dsl.readOperandsThen("NumberOfFilledFields", this, CountAggregate.allOperands(List.of(), groups),
-                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_FIELDS, List.of(), groups));
+        List<AggregateOperand> scopes = CountAggregate.scopesOf(listOf(first, rest));
+        Dsl.readOperandsThen("NumberOfFilledFields", this, scopes,
+                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_FIELDS, scopes));
         return Dsl.numberOfFilledFields(first, rest);
     }
 
     /** {@code NumberOfFilledGroups(g1, g2, …)}, checked against this model as {@link #sum} is. */
     public NumberExpr numberOfFilledGroups(GroupRef first, GroupRef second, GroupRef... rest) {
-        List<GroupRef> groups = listOf(first, second, rest);
-        Dsl.readOperandsThen("NumberOfFilledGroups", this, CountAggregate.allOperands(List.of(), groups),
-                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, List.of(), groups));
+        List<AggregateOperand> scopes = CountAggregate.scopesOf(listOf(first, second, rest));
+        Dsl.readOperandsThen("NumberOfFilledGroups", this, scopes,
+                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, scopes));
         return Dsl.numberOfFilledGroups(first, second, rest);
     }
 
@@ -929,9 +929,9 @@ public final class BoundModel {
      * which is why only a model-bound factory can cite either (KERNEL-FINDINGS KF458). catalog:NumberOfFilledGroups
      */
     public NumberExpr numberOfFilledGroups(GroupRef repeatableGroup) {
-        List<GroupRef> groups = List.of(repeatableGroup);
-        Dsl.readOperandsThen("NumberOfFilledGroups", this, CountAggregate.allOperands(List.of(), groups),
-                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, List.of(), groups));
+        List<AggregateOperand> scopes = CountAggregate.scopesOf(List.of(repeatableGroup));
+        Dsl.readOperandsThen("NumberOfFilledGroups", this, scopes,
+                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, scopes));
         return Dsl.numberOfFilledGroups(repeatableGroup);
     }
 
@@ -943,7 +943,7 @@ public final class BoundModel {
     public NumberExpr numberOfFilledGroups(GroupListRef first, GroupListRef... rest) {
         List<AggregateOperand> scopes = List.copyOf(listOf(first, rest));
         Dsl.readOperandsThen("NumberOfFilledGroups", this, scopes,
-                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, scopes, List.of()));
+                () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, scopes));
         return Dsl.numberOfFilledGroups(first, rest);
     }
 
@@ -954,8 +954,7 @@ public final class BoundModel {
      */
     public NumberExpr numberOfFilledRootGroups(GroupRef rootGroup) {
         RootGroupCount.requireRepeatable(rootGroup);
-        Dsl.readOperandsThen("NumberOfFilledGroups", this, CountAggregate.allOperands(List.of(), List.of(rootGroup)),
-                () -> { });
+        Dsl.readOperandsThen("NumberOfFilledGroups", this, CountAggregate.scopesOf(List.of(rootGroup)), () -> { });
         return Dsl.numberOfFilledRootGroups(rootGroup);
     }
 

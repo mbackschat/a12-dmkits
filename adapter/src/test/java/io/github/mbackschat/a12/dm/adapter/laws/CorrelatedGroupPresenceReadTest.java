@@ -100,7 +100,7 @@ class CorrelatedGroupPresenceReadTest {
     private static Condition filterConditionOf(Condition count) {
         CountAggregate aggregate = assertInstanceOf(CountAggregate.class,
                 assertInstanceOf(ComparisonCondition.class, count).left());
-        return assertInstanceOf(FieldListRef.class, aggregate.fields().getFirst()).filter().orElseThrow();
+        return assertInstanceOf(FieldListRef.class, aggregate.operands().getFirst()).filter().orElseThrow();
     }
 
     private static Condition readCondition(BoundModel model, String name, Condition authored) {

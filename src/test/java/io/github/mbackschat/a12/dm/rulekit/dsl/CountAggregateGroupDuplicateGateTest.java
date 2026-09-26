@@ -87,21 +87,14 @@ class CountAggregateGroupDuplicateGateTest {
                 DEPOT.group("/Depot/Alpha"), DEPOT.group("/Depot/Beta")));
     }
 
-    /**
-     * A pair spanning the record's TWO lists — a field in one, its containing group in the other.
-     *
-     * <p>The kernel sees one operand list, so this is an overlap; checking our two lists separately would
-     * miss it. No factory populates both lists, but the canonical constructor is public and the kernel→AST
-     * read path uses it, which is what makes the shape reachable.
-     */
+    /** A field beside its containing group is an overlap, as it is in the one list the kernel reads. */
     @Test
-    void aFieldBesideItsContainingGroupAcrossTheTwoListsIsRefused() {
+    void aFieldBesideItsContainingGroupIsRefused() {
         String message = withheld(assertThrows(IllegalArgumentException.class,
                 () -> new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
-                        List.of(DEPOT.field("/Depot/Alpha/Label")),
-                        List.of(DEPOT.group("/Depot/Alpha")))));
+                        List.of(DEPOT.field("/Depot/Alpha/Label"), DEPOT.flattenGroup("/Depot/Alpha")))));
         assertTrue(message.contains("is already included through"),
-                () -> "the two lists are one list to the kernel: " + message);
+                () -> "a field beside its containing group: " + message);
     }
 
     /**

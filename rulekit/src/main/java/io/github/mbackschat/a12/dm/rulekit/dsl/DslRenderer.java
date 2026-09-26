@@ -291,7 +291,8 @@ public final class DslRenderer {
 
     /**
      * The operand list of a count aggregate. <b>A repeatable group operand is always a wildcard scope</b>,
-     * whichever count operator holds it, and mixing it with fixed groups is fine.
+     * whichever count operator holds it, and mixing it with fixed groups is fine; the record holds a group as
+     * that scope ({@code CountAggregate.scopeOf}), so it renders as any other scope does.
      *
      * <p>It used to be starred for {@code NumberOfFilledGroups} only, which made
      * {@code Dsl.numberOfFilledFields(GroupRef)} emit a condition the kernel refuses outright —
@@ -300,10 +301,7 @@ public final class DslRenderer {
      * not of the operator ({@code rulekit.validate.laws.AggregateGroupOperandLawsTest}).
      */
     private String countOperands(CountAggregate a) {
-        return Stream.concat(
-                        a.fields().stream().map(this::aggregateOperand),
-                        a.groups().stream().map(g -> path(g.path().value()) + (g.repeating() ? "*" : "")))
-                .collect(Collectors.joining(", "));
+        return a.operands().stream().map(this::aggregateOperand).collect(Collectors.joining(", "));
     }
 
     /**

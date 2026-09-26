@@ -206,10 +206,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case EnumValueLiteral e -> { }
             case BoolLiteral b -> { }
             case EnumCategoryAccess c -> refs.projectedField(c.field().path().value());
-            case CountAggregate a -> {
-                a.fields().forEach(f -> collectAggregateOperand(f, refs));
-                a.groups().forEach(g -> refs.group(g.path().value()));
-            }
+            case CountAggregate a -> a.operands().forEach(o -> collectAggregateOperand(o, refs));
             case ListAggregate a -> a.operands().forEach(o -> collectAggregateOperand(o, refs));
             case CurrentRepetition r -> refs.group(r.group().path().value());
             case Today ignored -> { }

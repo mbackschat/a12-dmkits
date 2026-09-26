@@ -80,7 +80,7 @@ public final class OperatorUsage {
             case EnumCategoryAccess c -> ops.add(c.operatorId());
             case CountAggregate a -> {
                 ops.add(a.operatorId());
-                a.fields().forEach(f -> collectAggregateOperand(f, ops));
+                a.operands().forEach(o -> collectAggregateOperand(o, ops));
             }
             case ListAggregate a -> {
                 ops.add(a.operatorId());

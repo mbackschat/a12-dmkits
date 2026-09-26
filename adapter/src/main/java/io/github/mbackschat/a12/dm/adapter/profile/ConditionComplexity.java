@@ -222,11 +222,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 case CountAggregate a -> {
                     op(a.operatorId());
                     constructs.add(Construct.AGGREGATE);
-                    a.groups().stream()
-                            .filter(GroupRef::repeating)
-                            .map(group -> group.path() + "/")
-                            .forEach(collectionPaths::add);
-                    yield 1 + maxAggregateOperandDepth(a.fields());
+                    yield 1 + maxAggregateOperandDepth(a.operands());
                 }
                 case ListAggregate a -> {
                     op(a.operatorId());
@@ -418,7 +414,10 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                     case FieldOperand field -> operandDepth(field);
                     case GroupListRef group -> {
                         nodeCount++;
-                        group.flattened().forEach(starred -> collectionPaths.add(starred.path().value()));
+                        // keyed with a trailing slash, as the group-list quantifiers' scope and the root-group
+                        // count are: SynthesisProfile reads the scanned chain from the key's parent, and a starred
+                        // group scans its own rows, where a field list's key is the field inside them
+                        group.flattened().forEach(starred -> collectionPaths.add(starred.path().value() + "/"));
                         maxStarSegments = Math.max(maxStarSegments, group.flattened().size());
                         yield 1;                    // no filter is possible here: MVK_NO_GROUPS_ALLOWED
                     }

@@ -284,6 +284,11 @@ class HavingFilterConditionLeafLawsTest {
         // The negative quantifier, so the answer is about the group-LIST carrier rather than about one operator.
         actual.put("MARKED negative list beside the in-scope conjunct", rawFilterVerdict(
                 "[/Order/Lines/Qty] > 1 And NoGroupFilled($/Order/Billing, $/Order/Shipping)"));
+        // The group COUNT takes the same group-operand list, so the marker question is asked of it too.
+        actual.put("MARKED group count beside the in-scope conjunct", rawFilterVerdict(
+                "[/Order/Lines/Qty] > 1 And NumberOfFilledGroups($/Order/Billing, $/Order/Shipping) > 0"));
+        actual.put("UNMARKED group count beside the in-scope conjunct", rawFilterVerdict(
+                "[/Order/Lines/Qty] > 1 And NumberOfFilledGroups(/Order/Billing, /Order/Shipping) > 0"));
         actual.put("the in-scope conjunct alone, hand-spelled — live control",
                 rawFilterVerdict("[/Order/Lines/Qty] > 1"));
 
@@ -293,6 +298,8 @@ class HavingFilterConditionLeafLawsTest {
         expected.put("MARKED list as the SOLE filter condition", NO_ITERATION);
         expected.put("UNMARKED list as the SOLE filter condition", NO_ITERATION);
         expected.put("MARKED negative list beside the in-scope conjunct", ADMITTED);
+        expected.put("MARKED group count beside the in-scope conjunct", ADMITTED);
+        expected.put("UNMARKED group count beside the in-scope conjunct", ADMITTED);
         expected.put("the in-scope conjunct alone, hand-spelled — live control", ADMITTED);
         assertEquals(expected, actual, "the group-LIST carrier obeys the scalar pair's gate, marked or not — so "
                 + "the bridge's refusal of a marked list operand is over-strict, not protective (DG49)");

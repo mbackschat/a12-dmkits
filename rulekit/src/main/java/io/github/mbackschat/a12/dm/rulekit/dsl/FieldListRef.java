@@ -100,7 +100,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
 
     private static void rejectNestedHavingIn(Calculation value) {
         switch (value) {
-            case CountAggregate a -> a.fields().forEach(FieldListRef::rejectNestedHavingInOperand);
+            case CountAggregate a -> a.operands().forEach(FieldListRef::rejectNestedHavingInOperand);
             case ListAggregate a -> a.operands().forEach(FieldListRef::rejectNestedHavingInOperand);
             default -> { }
         }

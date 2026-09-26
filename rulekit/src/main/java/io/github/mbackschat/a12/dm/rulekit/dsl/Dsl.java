@@ -115,7 +115,7 @@ public final class Dsl {
         fields.add(first);
         fields.add(second);
         fields.addAll(List.of(rest));
-        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, fields, List.of()));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, fields));
     }
 
     /**
@@ -137,7 +137,7 @@ public final class Dsl {
                             + " — a single repetition list or group scope has its own overload");
         }
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
-                List.copyOf(fields), List.of()));
+                List.copyOf(fields)));
     }
 
     /**
@@ -148,7 +148,7 @@ public final class Dsl {
      */
     public static NumberExpr numberOfFilledFields(FieldListRef scope) {
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
-                List.of(scope), List.of()));
+                List.of(scope)));
     }
 
     /**
@@ -162,7 +162,7 @@ public final class Dsl {
      */
     public static NumberExpr numberOfFilledFields(GroupListRef scope) {
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
-                List.of(scope), List.of()));
+                List.of(scope)));
     }
 
     /**
@@ -171,7 +171,7 @@ public final class Dsl {
      */
     public static NumberExpr numberOfFilledFields(IndexedGroupValue scope) {
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
-                List.of(scope), List.of()));
+                List.of(scope)));
     }
 
     /** {@code NumberOfFilledFields(group, …)} — counts the filled fields inside the group(s). */
@@ -179,7 +179,8 @@ public final class Dsl {
         var groups = new ArrayList<GroupRef>();
         groups.add(first);
         groups.addAll(List.of(rest));
-        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, List.of(), groups));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
+                CountAggregate.scopesOf(groups)));
     }
 
     /** {@code Sum(…)} over number fields/repetition lists — unspecified fields count as 0 (§9). catalog:Sum */
@@ -1724,7 +1725,7 @@ public final class Dsl {
         var fields = new ArrayList<AggregateOperand>();
         fields.add(first);
         fields.addAll(List.of(rest));
-        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.DIFFERENT_VALUES, fields, List.of()));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.DIFFERENT_VALUES, fields));
     }
 
     /**
@@ -1737,7 +1738,7 @@ public final class Dsl {
                     + " group (its wildcard scope): " + repeatableGroup.path());
         }
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS,
-                List.of(), List.of(repeatableGroup)));
+                List.of(CountAggregate.scopeOf(repeatableGroup))));
     }
 
     /** {@code NumberOfFilledGroups(g1, g2, …)} — ≥2 groups by signature. */
@@ -1746,7 +1747,8 @@ public final class Dsl {
         groups.add(first);
         groups.add(second);
         groups.addAll(List.of(rest));
-        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, List.of(), groups));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS,
+                CountAggregate.scopesOf(groups)));
     }
 
     /**
@@ -1759,7 +1761,7 @@ public final class Dsl {
         var scopes = new ArrayList<AggregateOperand>();
         scopes.add(first);
         scopes.addAll(List.of(rest));
-        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, scopes, List.of()));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, scopes));
     }
 
     // --- field-list × value-list quantifiers — Name(f1, f2 In v1, v2) --------------------------

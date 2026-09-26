@@ -115,9 +115,8 @@ internal class Functions(private val mapping: Mapping) {
     }
 
     private fun countOfFilledFields(args: List<Expr>): Calculation {
-        // A MARKED group cannot ride the bare-GroupRef arm — `CountAggregate.groups` is a `List<GroupRef>`
-        // and a group reference carries no marker; the aggregate-operand arm below maps it to a
-        // `GroupListRef`, which does (DG49). Nor can a REPEATABLE one, which that arm renders starred while
+        // A MARKED group cannot ride the bare-GroupRef arm — a group reference carries no marker; the
+        // aggregate-operand arm below maps it to a `GroupListRef`, which does (DG49). Nor can a REPEATABLE one, which that arm renders starred while
         // the author wrote it bare; the aggregate-operand arm keeps it as written.
         if (args.isNotEmpty() && args.all {
                 it is Expr.Field && mapping.isGroup(it.path) && !it.outer && !mapping.groupRef(it).repeating()
@@ -130,7 +129,7 @@ internal class Functions(private val mapping: Mapping) {
         // pre-empt the very check being measured. Construct the node instead: its compact constructor is where
         // the arity law lives, so MVK_PARAMSIZE_INVALIDN still comes from rulekit.
         if (operands.size == 1) {
-            return CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, operands, listOf())
+            return CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, operands)
         }
         return mapping.model().numberOfFilledFields(operands[0], operands[1], *operands.drop(2).toTypedArray())
             .expression()
@@ -166,8 +165,8 @@ internal class Functions(private val mapping: Mapping) {
         fun starredAboveItself(): Boolean = scope.flattened().any { it.path() != group.path() }
 
         /**
-         * The operand as the [GroupRef] the count holds, which renders starred exactly when the group repeats,
-         * and always as a sole root. A group the author wrote otherwise has no typed form here:
+         * The operand as the [GroupRef] the typed count factories take, which render it starred exactly when the
+         * group repeats, and always as a sole root. A group the author wrote otherwise has no typed form here:
          * `NumberOfFilledGroups(Keyed)`, refused by A12 at a rule that does not iterate `Keyed`, would read as
          * the admitted `Keyed*` (`rulekit.validate.laws.EntityListOperandReadLawsTest`). A star written on a
          * group that does not repeat is refused while resolving it, with A12's class for it.

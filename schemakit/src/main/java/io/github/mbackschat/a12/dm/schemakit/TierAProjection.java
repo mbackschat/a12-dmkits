@@ -12,10 +12,12 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -84,10 +86,13 @@ final class TierAProjection {
         if (condition instanceof ComparisonCondition c && c.operator() == CompareOp.LT
                 && c.left() instanceof CountAggregate agg
                 && agg.op() == CountAggregate.CountOp.FILLED_GROUPS
-                && agg.fields().isEmpty() && agg.groups().size() == 1
+                && agg.operands().size() == 1
+                && agg.operands().getFirst() instanceof GroupListRef scope
+                // G* alone: a star on an ancestor counts G across that ancestor's rows, which is no bound on G
+                && scope.flattened().equals(List.of(scope.group()))
                 && c.right() instanceof NumberLiteral n) {
             // keep the raw bound; the integer-ness guard + skip-and-report live at the projection site
-            return Optional.of(new MinItemsHit(agg.groups().get(0).path().value(), n.value()));
+            return Optional.of(new MinItemsHit(scope.path(), n.value()));
         }
         if (condition instanceof LogicCondition logic && logic.op() == LogicCondition.Op.AND) {
             Optional<MinItemsHit> left = findMinItemsConstraint(logic.left());

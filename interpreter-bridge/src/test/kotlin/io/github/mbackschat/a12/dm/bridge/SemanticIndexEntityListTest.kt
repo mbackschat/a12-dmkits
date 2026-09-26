@@ -190,7 +190,7 @@ class SemanticIndexEntityListTest {
             CountAggregate::class.java,
             left("NumberOfFilledFields(Items/Count For \"S-1\", Items/Sku For \"S-2\") > 0"),
         )
-        assertInstanceOf(SemanticIndexValue::class.java, count.fields().get(0))
+        assertInstanceOf(SemanticIndexValue::class.java, count.operands().get(0))
     }
 
     /**

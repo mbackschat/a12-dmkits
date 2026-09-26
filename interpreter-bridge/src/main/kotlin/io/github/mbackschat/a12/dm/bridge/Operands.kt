@@ -368,8 +368,9 @@ internal class Operands(private val mapping: Mapping) {
          * `GroupPresenceCondition` gained the marker (API-FINDINGS 135), then `GroupListRef` did and
          * `CurrentRepetition`'s own `outer` component was threaded (API-FINDINGS 138) — so the group scopes,
          * the group lists and the repetition index all reconstruct their marker now, and this refusal is down
-         * to the ONE slot with genuinely nowhere to put one: a bare `GroupRef` in `CountAggregate.groups`,
-         * which `NumberOfFilledGroups` uses.
+         * to the ONE route that has nowhere to put one: the typed `GroupRef` factories `NumberOfFilledGroups`
+         * is mapped through. The record behind them holds each group as a scope, which could carry the marker
+         * (DEV-API-GAPS DG108).
          *
          * <p>Refusing there is the honest answer rather than a residual to close: dropping the marker would
          * corrupt the read into a non-correlated rule, and `verifyOuterPreserved` would degrade the rule to a

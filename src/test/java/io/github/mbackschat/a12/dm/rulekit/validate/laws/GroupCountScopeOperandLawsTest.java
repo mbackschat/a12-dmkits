@@ -17,13 +17,12 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
 /**
- * DEV-API-GAPS DG76 — {@code NumberOfFilledGroups} takes any GROUP entity, so a group scope in the record's
- * operand list is an operand like a {@link GroupRef} in its group list.
+ * {@code NumberOfFilledGroups} takes any GROUP entity, so a group scope is an operand whether it names a fixed
+ * group, a starred one, or one below a starred level.
  *
  * <p>A12 checks this operator's operands after reading them, in this order: a root only alone
  * ({@code MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS}), no semantic index, groups only ({@code MVK_NO_FIELDS_ALLOWED},
@@ -66,8 +65,8 @@ class GroupCountScopeOperandLawsTest {
         }
     }
 
-    private static Supplier<Condition> count(List<AggregateOperand> fields, List<GroupRef> groups) {
-        return () -> new NumberExpr(new CountAggregate(CountOp.FILLED_GROUPS, fields, groups)).gt(0);
+    private static Supplier<Condition> count(List<AggregateOperand> operands) {
+        return () -> new NumberExpr(new CountAggregate(CountOp.FILLED_GROUPS, operands)).gt(0);
     }
 
     private static List<Row> rows() {
@@ -78,28 +77,25 @@ class GroupCountScopeOperandLawsTest {
         var lot = M.flattenGroup("/Lot*");
         return List.of(
                 new Row("Grading, Specs", ADMITTED,
-                        count(List.of(grading, specs), List.of()), ADMITTED),
-                new Row("Keyed*", ADMITTED, count(List.of(keyed), List.of()), ADMITTED),
+                        count(List.of(grading, specs)), ADMITTED),
+                new Row("Keyed*", ADMITTED, count(List.of(keyed)), ADMITTED),
                 new Row("Batches*/Seal", ADMITTED,
-                        count(List.of(seal), List.of()), ADMITTED),
+                        count(List.of(seal)), ADMITTED),
                 // the duplicate gate skips a starred operand, so the same scope twice is two positions
                 new Row("Batches*/Seal, Batches*/Seal", ADMITTED,
-                        count(List.of(seal, seal), List.of()), ADMITTED),
+                        count(List.of(seal, seal)), ADMITTED),
                 new Row("Grading, Grading", "MVK_DUPLICATE_PARAM1",
-                        count(List.of(grading, grading), List.of()), REFUSED),
-                // a scope in the operand list beside a group in the group list: one list to A12
-                new Row("Grading, Specs split across both lists", "Grading, Specs", ADMITTED,
-                        count(List.of(grading), List.of(M.group("/Item/Specs"))), ADMITTED),
+                        count(List.of(grading, grading)), REFUSED),
                 new Row("Grading", "MVK_PARAMSIZE_INVALIDGN",
-                        count(List.of(grading), List.of()), REFUSED),
+                        count(List.of(grading)), REFUSED),
                 new Row("Grading, /Lot*", "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS",
-                        count(List.of(grading, lot), List.of()), REFUSED),
+                        count(List.of(grading, lot)), REFUSED),
                 new Row("Batches*/Seal, /Lot*", "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS",
-                        count(List.of(seal, lot), List.of()), REFUSED),
+                        count(List.of(seal, lot)), REFUSED),
                 new Row("Grading, Weight", "MVK_NO_FIELDS_ALLOWED",
-                        count(List.of(grading, M.field("/Item/Weight")), List.of()), REFUSED),
+                        count(List.of(grading, M.field("/Item/Weight"))), REFUSED),
                 new Row("Keyed For \"k\", Grading", "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
-                        count(List.of(M.flattenGroup("/Item/Keyed").forIndex("k"), grading), List.of()), REFUSED));
+                        count(List.of(M.flattenGroup("/Item/Keyed").forIndex("k"), grading)), REFUSED));
     }
 
     @Test

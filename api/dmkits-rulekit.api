@@ -898,13 +898,12 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
-  public CountAggregate(io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public CountAggregate(io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand>)
   public final boolean equals(java.lang.Object)
-  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand> fields()
-  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> groups()
   public final int hashCode()
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
   public io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp op()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand> operands()
   public java.lang.String operatorId()
   public final java.lang.String toString()
 

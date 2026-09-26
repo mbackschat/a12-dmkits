@@ -15,13 +15,17 @@ import io.github.mbackschat.a12.dm.core.Refusals;
  * at least one group ({@code MVK_PARAMSIZE_INVALIDN}); {@code NumberOfFilledGroups} needs more than
  * one group <em>or</em> a sole group whose path carries a star ({@code Group*} counting that group's
  * instantiated repetitions, empty ones included, or a star on an ancestor level), groups only ({@code MVK_PARAMSIZE_INVALIDGN}, {@code
- * MVK_NO_FIELDS_ALLOWED}), and a group scope in {@link #fields} counts as a group; a root group is banned in {@code NumberOfFilledFields} ({@code
+ * MVK_NO_FIELDS_ALLOWED}); a root group is banned in {@code NumberOfFilledFields} ({@code
  * MVK_ROOT_GROUP_REFERENCED}) and admitted by {@code NumberOfFilledGroups} only alone ({@code
  * MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS}). The
  * {@link Dsl} entry points enforce all of that by signature + pre-check; field kinds may be mixed.
+ *
+ * <p>The operands are ONE list in authored order, because A12 reads one ({@code getRefList}), and a group is held
+ * as the scope it renders as. So one text is one value however it was spelled: a {@link GroupRef} passed to a
+ * factory becomes {@link #scopeOf}, equal to the scope a reader builds from the same text (DEV-API-GAPS DG77,
+ * {@code dsl.CountAggregateCanonicalShapeTest}).
  */
-public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<GroupRef> groups)
-        implements Calculation {
+public record CountAggregate(CountOp op, List<AggregateOperand> operands) implements Calculation {
 
     public enum CountOp {
         FILLED_FIELDS("NumberOfFilledFields"),
@@ -40,13 +44,26 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
     }
 
     public CountAggregate {
-        fields = List.copyOf(fields);
-        groups = List.copyOf(groups);
+        operands = List.copyOf(operands);
         try {
-            requireList(op, fields, groups);
+            requireList(op, operands);
         } catch (KernelCodeRefusal refusal) {
-            throw OperandRead.cited(refusal, allOperands(fields, groups));
+            throw OperandRead.cited(refusal, operands);
         }
+    }
+
+    /**
+     * A group as this carrier's operand: its scope, starred exactly when the group repeats, which is how the
+     * count factories have always rendered a {@link GroupRef}. The group-list quantifiers wrap the same reference
+     * unstarred, so the projection belongs to this carrier rather than to {@link GroupRef}.
+     */
+    static GroupListRef scopeOf(GroupRef group) {
+        return new GroupListRef(group, group.repeating() ? List.of(group) : List.of());
+    }
+
+    /** {@link #scopeOf} over a list, keeping its order. */
+    static List<AggregateOperand> scopesOf(List<GroupRef> groups) {
+        return groups.stream().<AggregateOperand>map(CountAggregate::scopeOf).toList();
     }
 
     /**
@@ -54,37 +71,34 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
      * constructor withholds them where a read may answer first, and {@link BoundModel}'s count factories ask
      * them after their own read.
      */
-    static void requireList(CountOp op, List<AggregateOperand> fields, List<GroupRef> groups) {
+    static void requireList(CountOp op, List<? extends AggregateOperand> operands) {
         // Ahead of the arity and kind gates, matching the kernel: its routine for this operator
         // answers a duplicate before the param-size, fields-allowed and comparability bars, so our
         // order reported those instead on input both sides refuse.
-        DuplicateGate.rejectDuplicates(op.operatorId(), allOperands(fields, groups));
+        DuplicateGate.rejectDuplicates(op.operatorId(), operands);
         if (op == CountOp.DIFFERENT_VALUES) {
             // A12 asks the root-group gate after duplicates and before the param law on this operator.
-            EntityListRoute.rejectRootGroups(op.operatorId(), fields);
+            EntityListRoute.rejectRootGroups(op.operatorId(), operands);
         }
         switch (op) {
             case FILLED_FIELDS, DIFFERENT_VALUES -> {
                 if (op == CountOp.FILLED_FIELDS) {
                     // DIFFERENT_VALUES asked this above, where A12 asks it on that operator.
-                    EntityListRoute.rejectRootGroups(op.operatorId(), allOperands(fields, groups));
+                    EntityListRoute.rejectRootGroups(op.operatorId(), operands);
                 }
                 // a single flattened repetition list or group scope also satisfies the param law (verified)
-                if (fields.size() < 2 && groups.isEmpty()
-                        && fields.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
+                if (operands.size() < 2 && operands.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
                     throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, op.operatorId() + " needs more than one field,"
                             + " a repetition list, or a group");
                 }
             }
             case FILLED_GROUPS -> {
-                // Any GROUP entity is an operand here, a group scope in the field list as much as a group in
-                // the group list, and A12 asks these gates in this order over the one list it reads
+                // A12 asks these gates in this order over the one list it reads
                 // (CheckFeldListenAnzahlOpImpl; validate.laws.GroupCountScopeOperandLawsTest).
-                List<AggregateOperand> entities = allOperands(fields, groups);
                 // A root is legal here only ALONE, and A12 asks that after duplicates
                 // under a class of its own (KERNEL-FINDINGS KF388, validate.laws.GroupListDiagnosticIdentityLawsTest).
-                if (entities.size() > 1) {
-                    for (AggregateOperand entity : entities) {
+                if (operands.size() > 1) {
+                    for (AggregateOperand entity : operands) {
                         Optional<GroupRef> root = EntityListRoute.rootNamedBy(entity);
                         if (root.isPresent()) {
                             throw Refusals.of(KernelCode.MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS,
@@ -93,27 +107,27 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
                         }
                     }
                 }
-                for (AggregateOperand entity : entities) {
+                for (AggregateOperand entity : operands) {
                     if (indexSelected(entity)) {
                         throw Refusals.of(KernelCode.MVK_SEMANTIC_INDEX_NOT_ALLOWED,
                                 "NumberOfFilledGroups takes no index-selected operand: " + entity.renderedPath());
                     }
                 }
-                for (AggregateOperand entity : entities) {
+                for (AggregateOperand entity : operands) {
                     if (!(entity instanceof GroupListRef)) {
                         throw Refusals.of(KernelCode.MVK_NO_FIELDS_ALLOWED,
                                 "NumberOfFilledGroups takes groups only, no fields: " + entity.renderedPath());
                     }
                 }
-                // ≥2 group entities, OR a sole one whose path carries a star on any level, its own or an
+                // ≥2 group operands, OR a sole one whose path carries a star on any level, its own or an
                 // ancestor's (KERNEL-FINDINGS KF462); `Group*` counts that group's instantiated repetitions (KF463).
-                boolean soleStarred = entities.size() == 1
-                        && !((GroupListRef) entities.getFirst()).flattened().isEmpty();
-                if (entities.size() < 2 && !soleStarred) {
+                boolean soleStarred = operands.size() == 1
+                        && !((GroupListRef) operands.getFirst()).flattened().isEmpty();
+                if (operands.size() < 2 && !soleStarred) {
                     throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDGN,
                             "NumberOfFilledGroups needs more than one group, or a single starred group scope");
                 }
-                GroupRef sole = soleStarred ? ((GroupListRef) entities.getFirst()).group() : null;
+                GroupRef sole = soleStarred ? ((GroupListRef) operands.getFirst()).group() : null;
                 if (sole != null && isRoot(sole)) {
                     // A12 admits this text; it is the root-group count, a record of its own.
                     throw new IllegalArgumentException("NumberOfFilledGroups over the repeatable root group "
@@ -122,7 +136,7 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
             }
         }
         if (op == CountOp.DIFFERENT_VALUES) {
-            checkValueComparable(fields);
+            checkValueComparable(operands);
         }
     }
 
@@ -139,35 +153,6 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
 
     private static boolean isRoot(GroupRef group) {
         return group.path().value().indexOf('/', 1) < 0;
-    }
-
-    /**
-     * Both lists as ONE list of operands, because the kernel's own {@code getRefList} sees one: a field in
-     * this record's field list and its containing group in the group list are an overlap, and checking the
-     * two lists separately would miss the pair. No factory populates both — each passes an empty list for
-     * the other — but the canonical constructor is public and the read path uses it. It is also the order in
-     * which A12 reads them.
-     */
-    static List<AggregateOperand> allOperands(List<AggregateOperand> fields, List<GroupRef> groups) {
-        var all = new java.util.ArrayList<AggregateOperand>(fields);
-        all.addAll(groupOperands(groups));
-        return all;
-    }
-
-    /**
-     * This carrier's group list as duplicate operands, each starred exactly when the group repeats.
-     *
-     * <p>The star is applied here because it is applied when RENDERING — {@code countOperands} emits
-     * {@code path + "*"} for a repeatable group — and the kernel's exact-duplicate arm skips whatever carries
-     * a star in the emitted text. Projecting rather than gating the {@link GroupRef}s in place keeps one
-     * exemption rule: the group-list quantifiers wrap the same reference UNSTARRED and render it bare, so the
-     * identical {@link GroupRef} is exempt on this carrier and not on that one. Exemption belongs to the
-     * rendered operand.
-     */
-    private static List<GroupListRef> groupOperands(List<GroupRef> groups) {
-        return groups.stream()
-                .map(group -> new GroupListRef(group, group.repeating() ? List.of(group) : List.of()))
-                .toList();
     }
 
     /**
