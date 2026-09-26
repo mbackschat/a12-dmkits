@@ -345,8 +345,8 @@ public final class StructuralKernelFix {
                             + "whole number (RoundUp toward +infinity, RoundDown toward -infinity), not to the computed "
                             + "field's digits; to round to digits, keep Exact and round inside the operation "
                             + "(RoundUp([op], 2)).",
-                    "MVK_ERROR_WRONG_ROUNDING_MODE (\"When using exact calculation comparisons only the rounding mode "
-                            + "'exact' is allowed\") judges a PAIR: an alternative without a band compares the computed "
+                    "A12's check (\"When using exact calculation comparisons only the rounding mode 'exact' is "
+                            + "allowed\") judges a PAIR: an alternative without a band compares the computed "
                             + "field exactly, and A12 refuses a non-Exact mode against that comparison, while the same "
                             + "mode beside a band is admitted (kernel-measured, KF297; what the admitted pair writes: "
                             + "KF474).")),
