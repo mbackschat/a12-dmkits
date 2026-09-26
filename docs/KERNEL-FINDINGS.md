@@ -11321,8 +11321,9 @@ The empty constant is refused ahead of the type's rule on every kind by source; 
 | pattern `[0-9]{3,}` | `123` | `12` |
 | pattern `[A-Z]+`, at most 3 long | `AB` | `ABCD` (the length), `ab` (the pattern) |
 | pattern `.{2}` | `ab` | `a` |
+| pattern `.{2}`, at most 1 long | — | `ab` (the length) |
 
-The portable checker had judged a constant only against an enumeration. It now reproduces every rule above. It reproduces each shape without a regex, so both targets decide it alike, and it evaluates a declared pattern the same way: only in a subset it matches itself, of letters, digits, spaces, `_` and `-`, bracket classes of them, and the quantifiers `?`, `*`, `+` and the counted ones. `.{2}` is outside it, since Java's `.` excludes U+0085 where JavaScript's admits it, so that key stays unjudged ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG102).
+The portable checker had judged a constant only against an enumeration. It now reproduces every rule above. It reproduces each shape without a regex, so both targets decide it alike, and it evaluates a declared pattern the same way: only in a subset it matches itself, of letters, digits, spaces, `_` and `-`, bracket classes of them, and the quantifiers `?`, `*`, `+` and the counted ones. `.{2}` is outside it, since Java's `.` excludes U+0085 where JavaScript's admits it, so such a key stays unjudged once its length is met; the last row is refused on the length, which A12 asks without reading the pattern ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG102).
 
 *Locked by:* `adapter.laws.CheckerIndexKeyConstantAgreementTest`, A12's class written out on every row and the checker required to name it; the checker's shape rules: `consistency.IndexKeyConstantShapeTest`; the pattern subset's boundary and its matches, the latter executed against Java's own `String.matches`: `consistency.KeyPatternTest`.
 

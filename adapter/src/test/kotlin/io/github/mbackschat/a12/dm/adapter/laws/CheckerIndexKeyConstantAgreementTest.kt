@@ -35,6 +35,7 @@ class CheckerIndexKeyConstantAgreementTest {
             .group("Runs") { g -> keyed(g) { it.stringField("K") { s -> s.pattern("[0-9]{3,}", "three digits or more") } } }
             .group("Caps") { g -> keyed(g) { it.stringField("K") { s -> s.maxLength(3).pattern("[A-Z]+", "capitals") } } }
             .group("Loose") { g -> keyed(g) { it.stringField("K") { s -> s.pattern(".{2}", "two characters") } } }
+            .group("Brief") { g -> keyed(g) { it.stringField("K") { s -> s.maxLength(1).pattern(".{2}", "two characters") } } }
             .group("Seqs") { g -> keyed(g) { it.numberField("K") { n -> n.fractionDigits(0) } } }
             .group("Rates") { g -> keyed(g) { it.numberField("K") { n -> n.fractionDigits(0, 2) } } }
             .group("Prices") { g -> keyed(g) { it.numberField("K") { n -> n.fractionDigits(2, 2) } } }
@@ -102,6 +103,7 @@ class CheckerIndexKeyConstantAgreementTest {
             "String pattern and length, the length met and the pattern not" to "Caps/Amount For \"ab\"",
             "String pattern outside the subset, matching" to "Loose/Amount For \"ab\"",
             "String pattern outside the subset, not matching" to "Loose/Amount For \"a\"",
+            "String pattern outside the subset, the length not met" to "Brief/Amount For \"ab\"",
             "Number 0 digits, a whole number" to "Seqs/Amount For \"5\"",
             "Number 0 digits, negative" to "Seqs/Amount For \"-5\"",
             "Number 0 digits, a leading zero" to "Seqs/Amount For \"05\"",
@@ -162,6 +164,7 @@ class CheckerIndexKeyConstantAgreementTest {
             "String pattern and length, the pattern met and the length not",
             "String pattern and length, the length met and the pattern not",
             "String pattern outside the subset, not matching",
+            "String pattern outside the subset, the length not met",
             "Number 0 digits, a fraction",
             "Number 0 digits, a plus sign",
             "Number 0 digits, a word",
