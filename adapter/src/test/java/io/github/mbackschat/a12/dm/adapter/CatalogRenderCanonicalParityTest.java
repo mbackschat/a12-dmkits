@@ -3,8 +3,6 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +44,7 @@ class CatalogRenderCanonicalParityTest {
     private static final Map<String, String> ORDER_GROUP_FIELDS = Map.of(
             "ShippingAddress", "ShippingAddress/Street", "BillingAddress", "BillingAddress/PostalCode");
 
-    private static final String MODEL = read("models/order.dm.json");
+    private static final String MODEL = TestResources.text("models/order.dm.json");
     private static final Set<String> MULTI_STAR_IDS = Set.of("Having", "CurrentRepetition");
     private static final String MULTI_STAR_MODEL = DocumentModelDraft.named("warehouse").locale("en_US")
             .rootGroup("Warehouse", warehouse -> warehouse
@@ -147,14 +145,6 @@ class CatalogRenderCanonicalParityTest {
     private record Fixture(String modelJson, String group, String errorField, String renderBase) {
         String rulePath(String name) {
             return group + "/" + name;
-        }
-    }
-
-    private static String read(String path) {
-        try (InputStream in = CatalogRenderCanonicalParityTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
         }
     }
 }

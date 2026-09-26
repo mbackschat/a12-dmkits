@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +40,7 @@ class EntityListValueListReadTest {
 
     @Test
     void roundTripsStringFieldListValueListQuantifiers() {
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         List<String> values = List.of("ACME", "BETA");
         StringRef name = m.str("/Order/CustomerName");
         StringRef code = m.str("/Order/ProductCode");
@@ -77,10 +75,10 @@ class EntityListValueListReadTest {
 
     @Test
     void theFieldListValueListConditionIsKernelValid() {
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         Condition c = Dsl.atLeastOneFieldValueIncludedInValueList(List.of("ACME", "BETA"),
                 m.str("/Order/CustomerName"), m.str("/Order/ProductCode"));
-        ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
+        ValidationResult r = new RuleValidator().check(TestResources.text("models/order.dm.json"),
                 new DraftRule("/Order", "AtLeastOneInListRule", "../CustomerName", RENDER.render(c), "C", "ERROR"));
         assertTrue(r.ok(), () -> "expected kernel acceptance, got: " + r.diagnostics());
     }
@@ -104,13 +102,5 @@ class EntityListValueListReadTest {
     private static Condition converted(ReadResult result) {
         return assertInstanceOf(ReadResult.Converted.class, result,
                 () -> "expected a converted read, got: " + result).condition();
-    }
-
-    private static String read(String path) {
-        try (InputStream in = EntityListValueListReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

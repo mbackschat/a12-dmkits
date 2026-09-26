@@ -5,9 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -31,7 +28,7 @@ class OuterCorrelationReadTest {
 
     @Test
     void numberOuterCorrelationConvertsAndRoundTrips() {
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         // sum the counts of the items sharing the current row's overall Quantity (outer correlation)
         Condition authored = m.field("/Order/CustomerName").filled().and(
                 Dsl.sum(m.flatten("/Order/Items*/Count")
@@ -46,7 +43,7 @@ class OuterCorrelationReadTest {
 
     @Test
     void stringOuterCorrelationConvertsAndRoundTrips() {
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         // keep only the items whose Sku equals the current row's outer ProductCode
         Condition authored = m.field("/Order/CustomerName").filled().and(
                 Dsl.sum(m.flatten("/Order/Items*/Count")
@@ -61,7 +58,7 @@ class OuterCorrelationReadTest {
 
     @Test
     void wholeModelReadConvertsTheCorrelatedRule() {
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         Condition authored = m.field("/Order/CustomerName").filled().and(
                 Dsl.sum(m.flatten("/Order/Items*/Count")
                         .having(m.num("/Order/Quantity").outer().eq(m.num("/Order/Items/Count")))).gt(5));
@@ -77,7 +74,7 @@ class OuterCorrelationReadTest {
 
     /** Inject a raw-text rule into the /Order group. */
     private static String orderWith(String rawCondition) {
-        String base = read("models/order.dm.json");
+        String base = TestResources.text("models/order.dm.json");
         String escaped = rawCondition.replace("\\", "\\\\").replace("\"", "\\\"");
         String rule = "{ \"type\": \"Rule\", \"id\": \"/Order/OuterRule\", \"name\": \"OuterRule\","
                 + " \"Rule\": { \"errorEntityRelPath\": \"../CustomerName\", \"errorCode\": \"OUTER\","
@@ -86,13 +83,5 @@ class OuterCorrelationReadTest {
         int idx = base.indexOf("\"elements\"");
         int br = base.indexOf('[', idx);
         return base.substring(0, br + 1) + "\n" + rule + base.substring(br + 1);
-    }
-
-    private static String read(String path) {
-        try (InputStream in = OuterCorrelationReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

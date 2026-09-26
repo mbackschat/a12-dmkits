@@ -8,8 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -37,7 +35,7 @@ class ReadRoundTripTest {
     private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN);
 
     private static BoundModel base() {
-        return BoundModel.ofJson(read("models/subscription.dm.json"));
+        return BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
     }
 
     @Test
@@ -163,7 +161,7 @@ class ReadRoundTripTest {
     @Test
     void roundTripsAggregatesAndHaving() {
         // Aggregates validate in the order model (Items*/Count, Sku); its only declared locale is en_US.
-        BoundModel base = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel base = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         var cases = new LinkedHashMap<String, Condition>();
         String cust = "/Order/CustomerName";
         Condition sumC = base.field(cust).filled().and(Dsl.sum(base.flatten("/Order/Items*/Count")).gt(100));
@@ -195,7 +193,7 @@ class ReadRoundTripTest {
 
     @Test
     void roundTripsDates() {
-        BoundModel base = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel base = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         var cases = new LinkedHashMap<String, Condition>();
         String cust = "/Order/CustomerName";
         Condition todayC = base.field(cust).filled()
@@ -304,13 +302,5 @@ class ReadRoundTripTest {
                 .code("C").severity(Severity.ERROR).message(en("x"), de("y")).build();
         sink.put(group + "/" + name, cond);
         return r;
-    }
-
-    private static String read(String path) {
-        try (InputStream in = ReadRoundTripTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

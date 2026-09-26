@@ -8,9 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -35,7 +32,7 @@ class CustomConditionReadTest {
     private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN);
 
     private static BoundModel subscription() {
-        return BoundModel.ofJson(read("models/subscription.dm.json"));
+        return BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
     }
 
     @Test
@@ -74,7 +71,7 @@ class CustomConditionReadTest {
     void xAndCustomConditionIsKernelValid() {
         BoundModel m = subscription();
         Condition c = m.field("/Subscription/Tier").filled().and(Dsl.customCondition("ExternalEligibility"));
-        ValidationResult r = new RuleValidator().check(read("models/subscription.dm.json"),
+        ValidationResult r = new RuleValidator().check(TestResources.text("models/subscription.dm.json"),
                 new DraftRule("/Subscription", "EligibilityRule", "../Tier", RENDER.render(c), "C", "ERROR"));
         assertTrue(r.ok(), () -> "expected kernel acceptance, got: " + r.diagnostics());
     }
@@ -87,13 +84,5 @@ class CustomConditionReadTest {
     private static Condition converted(ReadResult result) {
         return assertInstanceOf(ReadResult.Converted.class, result,
                 () -> "expected a converted read, got: " + result).condition();
-    }
-
-    private static String read(String path) {
-        try (InputStream in = CustomConditionReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -6,9 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -41,7 +38,7 @@ class PointInTimeSourceReadTest {
 
     @Test
     void pointInTimeSourcesAreKernelValid() {
-        String model = read("models/order.dm.json");
+        String model = TestResources.text("models/order.dm.json");
         var cases = new String[] {
             "FieldFilled(OrderDate) And YearFromDate(OrderDate) != YearFromDate(BaseYear)",   // extraction: BaseYear
             "FieldFilled(OrderDate) And MonthFromDate(OrderDate) != MonthFromDate(Now)",       // extraction: Now
@@ -57,7 +54,7 @@ class PointInTimeSourceReadTest {
 
     @Test
     void roundTripsPointInTimeSources() {
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         Condition extractBaseYear = m.date("/Order/OrderDate").filled()
                 .and(Dsl.yearFromDate(m.date("/Order/OrderDate")).ne(Dsl.yearFromDate(Dsl.baseYear())));
         Condition extractNow = m.date("/Order/OrderDate").filled()
@@ -92,13 +89,5 @@ class PointInTimeSourceReadTest {
     private static Condition converted(ReadResult result) {
         return assertInstanceOf(ReadResult.Converted.class, result,
                 () -> "expected a converted read, got: " + result).condition();
-    }
-
-    private static String read(String path) {
-        try (InputStream in = PointInTimeSourceReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -2,11 +2,7 @@ package io.github.mbackschat.a12.dm.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,7 +56,7 @@ class CatalogReadBackParityTest {
     private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN);
 
     /** The N7 fixtures: the shared order model, and the two-star warehouse the multi-star examples need. */
-    private static final String ORDER_JSON = resource("models/order.dm.json");
+    private static final String ORDER_JSON = TestResources.text("models/order.dm.json");
     private static final String WAREHOUSE_JSON = DocumentModelDraft.named("warehouse").locale("en_US")
             .rootGroup("Warehouse", warehouse -> warehouse
                     .group("Aisles", aisles -> aisles.repeatable(20)
@@ -247,17 +243,6 @@ class CatalogReadBackParityTest {
             }
         }
         return opaque;
-    }
-
-    private static String resource(String path) {
-        try (InputStream in = CatalogReadBackParityTest.class.getClassLoader().getResourceAsStream(path)) {
-            if (in == null) {
-                throw new IllegalStateException("fixture not on the test classpath: " + path);
-            }
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (java.io.IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 
     /** Measured, then pinned — see {@link #theSetOfCatalogExamplesTheBridgeCannotConvertIsPinned}. */

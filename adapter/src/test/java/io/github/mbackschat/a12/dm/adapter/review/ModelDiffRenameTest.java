@@ -3,12 +3,11 @@ package io.github.mbackschat.a12.dm.adapter.review;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.adapter.TestResources;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ChangeKind;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ElementChange;
 import io.github.mbackschat.a12.dm.edit.EditSession;
@@ -29,7 +28,7 @@ class ModelDiffRenameTest {
     private static final String BILLING = "/Subscription/Billing";
 
     private static String base() {
-        return readResource("models/subscription.dm.json");
+        return TestResources.text("models/subscription.dm.json");
     }
 
     /** {@code base} + one field of {@code kind} at {@code parent/name} (default config — so fingerprints match). */
@@ -124,14 +123,5 @@ class ModelDiffRenameTest {
     private static ModelDiff.Delta pathDelta(ElementChange change) {
         return change.deltas().stream().filter(d -> d.aspect().equals("path")).findFirst()
                 .orElseThrow(() -> new AssertionError("no 'path' delta in " + change.deltas()));
-    }
-
-    private static String readResource(String path) {
-        try (InputStream in = ModelDiffRenameTest.class.getClassLoader().getResourceAsStream(path)) {
-            assertTrue(in != null, "missing test resource: " + path);
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.adapter.laws;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -80,6 +79,7 @@ import com.mgmtp.a12.kernel.md.rt.api.IModelCode;
 import com.mgmtp.a12.kernel.md.rt.api.IModelCodeCache;
 import com.mgmtp.a12.kernel.md.serializer.MDSerializerFactory;
 
+import io.github.mbackschat.a12.dm.adapter.TestResources;
 import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
@@ -143,11 +143,7 @@ public final class RuntimeLaws {
 
     /** Load a model JSON fixture from the adapter test resources (e.g. {@code "models/order.dm.json"}). */
     public static String model(String resourcePath) {
-        try (InputStream in = RuntimeLaws.class.getClassLoader().getResourceAsStream(resourcePath)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException("failed to read " + resourcePath, e);
-        }
+        return TestResources.text(resourcePath);
     }
 
     /**

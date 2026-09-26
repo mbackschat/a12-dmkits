@@ -6,9 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -34,7 +31,7 @@ class AggregateToleranceReadTest {
 
     @Test
     void roundTripsAnAggregateToleranceComparison() {
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         Condition c = m.num("/Order/Quantity").filled()
                 .and(Dsl.sum(m.flatten("/Order/Items*/Count"))
                         .differsWithTolerance(Tolerance.RANGE_1, m.num("/Order/Quantity").asNumber()));
@@ -51,13 +48,5 @@ class AggregateToleranceReadTest {
     private static Condition converted(ReadResult result) {
         return assertInstanceOf(ReadResult.Converted.class, result,
                 () -> "expected a converted read, got: " + result).condition();
-    }
-
-    private static String read(String path) {
-        try (InputStream in = AggregateToleranceReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

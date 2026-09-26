@@ -6,9 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -69,7 +66,7 @@ class ComparisonTailReadTest {
         // rulekit handles are field-first, so a constant-left comparison can't be DSL-authored; the kernel
         // accepts it, and the converter normalizes "X" != [field] → [field] != "X" (proven end-to-end by
         // the kernel-mm coverage harness, where the SMM_FieldTypeChecks rules use this form).
-        ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
+        ValidationResult r = new RuleValidator().check(TestResources.text("models/order.dm.json"),
                 new DraftRule("/Order", "ConstLeftRule", "../ProductCode",
                         "\"BANNED\" != [/Order/ProductCode]", "C", "ERROR"));
         assertTrue(r.ok(), () -> "expected kernel acceptance of constant-on-left, got: " + r.diagnostics());
@@ -78,13 +75,5 @@ class ComparisonTailReadTest {
     private static Condition converted(ReadResult result) {
         return assertInstanceOf(ReadResult.Converted.class, result,
                 () -> "expected a converted read, got: " + result).condition();
-    }
-
-    private static String read(String path) {
-        try (InputStream in = ComparisonTailReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

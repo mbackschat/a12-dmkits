@@ -6,9 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -32,7 +29,7 @@ class LengthReadTest {
     private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN);
 
     private static BoundModel order() {
-        return BoundModel.ofJson(read("models/order.dm.json"));
+        return BoundModel.ofJson(TestResources.text("models/order.dm.json"));
     }
 
     @Test
@@ -62,7 +59,7 @@ class LengthReadTest {
     void lengthComparisonIsKernelValid() {
         BoundModel m = order();
         Condition c = m.str("/Order/CustomerName").length().gt(5);
-        ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
+        ValidationResult r = new RuleValidator().check(TestResources.text("models/order.dm.json"),
                 new DraftRule("/Order", "LenLeftRule", "../CustomerName", RENDER.render(c), "C", "ERROR"));
         assertTrue(r.ok(), () -> "expected kernel acceptance, got: " + r.diagnostics());
     }
@@ -75,13 +72,5 @@ class LengthReadTest {
     private static Condition converted(ReadResult result) {
         return assertInstanceOf(ReadResult.Converted.class, result,
                 () -> "expected a converted read, got: " + result).condition();
-    }
-
-    private static String read(String path) {
-        try (InputStream in = LengthReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

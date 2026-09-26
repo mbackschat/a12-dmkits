@@ -6,12 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.adapter.TestResources;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ChangeKind;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ElementChange;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ElementKind;
@@ -29,7 +28,7 @@ class ModelDiffTest {
     private static final String FEE_CAP = "/Subscription/Addons/FeeCapRule";
 
     private static String base() {
-        return readResource("models/subscription.dm.json");
+        return TestResources.text("models/subscription.dm.json");
     }
 
     /** A valid head: {@code base} + one rulekit-authored rule (the proven valid-model idiom). */
@@ -178,14 +177,5 @@ class ModelDiffTest {
     private static ModelDiff.Delta delta(ElementChange change, String aspect) {
         return change.deltas().stream().filter(d -> d.aspect().equals(aspect)).findFirst()
                 .orElseThrow(() -> new AssertionError("no '" + aspect + "' delta in " + change.deltas()));
-    }
-
-    private static String readResource(String path) {
-        try (InputStream in = ModelDiffTest.class.getClassLoader().getResourceAsStream(path)) {
-            assertTrue(in != null, "missing test resource: " + path);
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

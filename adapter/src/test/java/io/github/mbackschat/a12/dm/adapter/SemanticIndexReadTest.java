@@ -6,9 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -35,7 +32,7 @@ class SemanticIndexReadTest {
 
     @Test
     void roundTripsAFieldKeyedSemanticIndex() {
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         Condition c = m.field("/Order/CustomerName").filled()
                 .and(m.num("/Order/Items/Count").forIndex(m.field("/Order/CustomerName")).gt(0));
         KernelAdapter adapter = KernelAdapter.of(m.add(rule(m, "FieldKeyedIdx", "/Order/CustomerName", c)));
@@ -45,7 +42,7 @@ class SemanticIndexReadTest {
 
     @Test
     void stillReadsAConstantKeyedSemanticIndex() {
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         Condition c = m.field("/Order/CustomerName").filled()
                 .and(m.num("/Order/Items/Count").forIndex("SKU-1").gt(0));
         KernelAdapter adapter = KernelAdapter.of(m.add(rule(m, "ConstIdx", "/Order/CustomerName", c)));
@@ -60,13 +57,5 @@ class SemanticIndexReadTest {
     private static Condition converted(ReadResult result) {
         return assertInstanceOf(ReadResult.Converted.class, result,
                 () -> "expected a converted read, got: " + result).condition();
-    }
-
-    private static String read(String path) {
-        try (InputStream in = SemanticIndexReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -1,14 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.profile;
 
+import io.github.mbackschat.a12.dm.adapter.TestResources;
 import io.github.mbackschat.a12.dm.rulekit.dsl.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +18,7 @@ import io.github.mbackschat.a12.dm.adapter.profile.ConditionComplexity.Construct
  */
 class ConditionComplexityTest {
 
-    private static final BoundModel m = BoundModel.ofJson(readResource("models/subscription.dm.json"));
+    private static final BoundModel m = BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
     private static final String FEE = "/Subscription/Addons/MonthlyFee";
     private static final String BASE = "/Subscription/Billing/BaseFee";
 
@@ -86,16 +83,5 @@ class ConditionComplexityTest {
         assertTrue(cx.constructs().contains(Construct.AGGREGATE));
         assertFalse(cx.constructs().contains(Construct.QUANTIFIER));
         assertTrue(cx.operatorHistogram().containsKey("Sum"));
-    }
-
-    private static String readResource(String path) {
-        try (var input = ConditionComplexityTest.class.getClassLoader().getResourceAsStream(path)) {
-            if (input == null) {
-                throw new IllegalArgumentException("missing test resource: " + path);
-            }
-            return new String(input.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 }

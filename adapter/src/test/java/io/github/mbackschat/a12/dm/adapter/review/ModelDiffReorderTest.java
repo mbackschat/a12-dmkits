@@ -6,12 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.adapter.TestResources;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ChangeKind;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ElementChange;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ElementKind;
@@ -34,7 +33,7 @@ class ModelDiffReorderTest {
     private static final String FEE_FLOOR = ADDONS + "/FeeFloorRule";
 
     private static String base() {
-        return readResource("models/subscription.dm.json");
+        return TestResources.text("models/subscription.dm.json");
     }
 
     /** {@code base} + the named rules on {@code MonthlyFee}, added in the given order (document order = add order). */
@@ -120,14 +119,5 @@ class ModelDiffReorderTest {
         assertTrue(c.reasons().contains("POSITION_CHANGED"), () -> "position folded in: " + c.reasons());
         assertTrue(c.deltas().stream().anyMatch(d -> d.aspect().equals("position")), () -> "position delta: " + c.deltas());
         assertTrue(c.deltas().stream().anyMatch(d -> d.aspect().equals("condition")), () -> "condition delta: " + c.deltas());
-    }
-
-    private static String readResource(String path) {
-        try (InputStream in = ModelDiffReorderTest.class.getClassLoader().getResourceAsStream(path)) {
-            assertTrue(in != null, "missing test resource: " + path);
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

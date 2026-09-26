@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -31,7 +29,7 @@ class ExplainReadRuleTest {
 
     @Test
     void explainsAForeignAggregateRuleAfterRead() {
-        BoundModel base = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel base = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
         Rule rule = base.rule(base.group("/Order")).name("BigOrderRule")
                 .errorField(base.field("/Order/CustomerName"))
                 .when(base.field("/Order/CustomerName").filled()
@@ -63,13 +61,5 @@ class ExplainReadRuleTest {
         // a one-line gloss + JSON projection for an agent
         assertFalse(explanation.gloss().isBlank());
         assertTrue(explanation.toJson().contains("\"operators\""), explanation.toJson());
-    }
-
-    private static String read(String path) {
-        try (InputStream in = ExplainReadRuleTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

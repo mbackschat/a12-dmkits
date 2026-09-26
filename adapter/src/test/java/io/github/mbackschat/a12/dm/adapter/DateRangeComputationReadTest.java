@@ -5,9 +5,6 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -26,7 +23,7 @@ class DateRangeComputationReadTest {
     private static final String COVERAGE = "/Order/CoverageWindow";
 
     private static BoundModel order() {
-        return BoundModel.ofJson(read("models/order.dm.json"));
+        return BoundModel.ofJson(TestResources.text("models/order.dm.json"));
     }
 
     @Test
@@ -101,13 +98,5 @@ class DateRangeComputationReadTest {
         Computation got = assertInstanceOf(ReadComputation.Converted.class, result,
                 () -> "expected a converted computation, got: " + result).computation();
         assertEquals(comp.draft(), got.draft());
-    }
-
-    private static String read(String path) {
-        try (InputStream in = DateRangeComputationReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

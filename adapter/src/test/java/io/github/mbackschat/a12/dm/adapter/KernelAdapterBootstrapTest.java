@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -31,7 +29,7 @@ class KernelAdapterBootstrapTest {
 
     /** A model containing one rulekit-authored rule — the foreign-rule the adapter then reads. */
     private static String modelWithRule() {
-        BoundModel m = BoundModel.ofJson(readResource("models/subscription.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
         NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
         Rule rule = m.rule(m.group("/Subscription/Addons"))
                 .name("FeeCapRule")
@@ -76,14 +74,5 @@ class KernelAdapterBootstrapTest {
         ValidationResult bad = adapter.diagnose(RULE_PATH, "[MonthlyFee] PatternMatched \"abc\"");
         assertFalse(bad.ok(), () -> "a type-illegal candidate must produce diagnostics, got: " + bad.diagnostics());
         assertFalse(bad.diagnostics().isEmpty(), "the kernel problem must map to at least one Diagnostic");
-    }
-
-    private static String readResource(String path) {
-        try (InputStream in = KernelAdapterBootstrapTest.class.getClassLoader().getResourceAsStream(path)) {
-            assertNotNull(in, () -> "missing test resource: " + path);
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -4,11 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.adapter.TestResources;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -26,7 +24,7 @@ class ModelSynthesizerTest {
 
     @Test
     void synthesizedModelIsKernelValid() {
-        SynthesisProfile target = SynthesisProfile.of(readResource("models/subscription.dm.json"));
+        SynthesisProfile target = SynthesisProfile.of(TestResources.text("models/subscription.dm.json"));
         String json = ModelSynthesizer.synthesize(target, 42L);
         // strict load = full kernel checkConsistency; it must not throw (validity by construction)
         assertDoesNotThrow(() -> BoundModel.ofJson(json), "synthesized model must be kernel-valid");
@@ -34,7 +32,7 @@ class ModelSynthesizerTest {
 
     @Test
     void roundTripMatchesStructureAxes() {
-        SynthesisProfile target = SynthesisProfile.of(readResource("models/subscription.dm.json"));
+        SynthesisProfile target = SynthesisProfile.of(TestResources.text("models/subscription.dm.json"));
         SynthesisProfile synth = SynthesisProfile.of(ModelSynthesizer.synthesize(target, 42L));
 
         assertEquals(target.structure().fieldCount(), synth.structure().fieldCount(), "field count");
@@ -48,7 +46,7 @@ class ModelSynthesizerTest {
 
     @Test
     void fieldKindsAreReproducedInProportion() {
-        SynthesisProfile target = SynthesisProfile.of(readResource("models/order.dm.json"));
+        SynthesisProfile target = SynthesisProfile.of(TestResources.text("models/order.dm.json"));
         SynthesisProfile synth = SynthesisProfile.of(ModelSynthesizer.synthesize(target, 7L));
 
         int synthTotal = synth.structure().fieldKinds().values().stream().mapToInt(Integer::intValue).sum();
@@ -61,7 +59,7 @@ class ModelSynthesizerTest {
 
     @Test
     void roundTripMatchesRuleCountAndScope() {
-        SynthesisProfile target = SynthesisProfile.of(readResource("models/subscription.dm.json"));
+        SynthesisProfile target = SynthesisProfile.of(TestResources.text("models/subscription.dm.json"));
         SynthesisProfile synth = SynthesisProfile.of(ModelSynthesizer.synthesize(target, 42L));
 
         assertEquals(target.rules().count(), synth.rules().count(), "rule count");
@@ -77,7 +75,7 @@ class ModelSynthesizerTest {
     void reproducesConstructMixAndShapesArity_stayingValid() {
         // a construct-bearing target: a model-level value-list rule of arity 2 (an AND of two clauses)
         BoundModel base =
-                BoundModel.ofJson(readResource("models/subscription.dm.json"));
+                BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
         var vl = base.rule(base.group("/Subscription")).name("Vl").errorField(base.enumOf("/Subscription/Tier"))
                 .when(base.enumOf("/Subscription/Tier").in("PRO", "ENTERPRISE")
                         .and(base.field("/Subscription/AutoRenew").filled()))
@@ -304,7 +302,7 @@ class ModelSynthesizerTest {
 
     @Test
     void isDeterministicForAGivenSeed() {
-        SynthesisProfile target = SynthesisProfile.of(readResource("models/subscription.dm.json"));
+        SynthesisProfile target = SynthesisProfile.of(TestResources.text("models/subscription.dm.json"));
         assertEquals(ModelSynthesizer.synthesize(target, 99L), ModelSynthesizer.synthesize(target, 99L),
                 "same (profile, seed) reproduces the same model");
     }
@@ -525,14 +523,5 @@ class ModelSynthesizerTest {
     private static String topKind(SynthesisProfile p) {
         return p.structure().fieldKinds().entrySet().stream()
                 .max((a, b) -> a.getValue() - b.getValue()).orElseThrow().getKey();
-    }
-
-    private static String readResource(String path) {
-        try (InputStream in = ModelSynthesizerTest.class.getClassLoader().getResourceAsStream(path)) {
-            assertTrue(in != null, "missing test resource: " + path);
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

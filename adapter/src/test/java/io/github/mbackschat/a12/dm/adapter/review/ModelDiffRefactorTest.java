@@ -5,12 +5,11 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.adapter.TestResources;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ChangeKind;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.Refactor;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.RefactorKind;
@@ -34,7 +33,7 @@ class ModelDiffRefactorTest {
     private static final String RULE = ADDONS + "/SurchargeRule";
 
     private static String base() {
-        return readResource("models/subscription.dm.json");
+        return TestResources.text("models/subscription.dm.json");
     }
 
     /** {@code subscription} + a NUMBER field {@code fieldName} in Addons + a rule guarding it. */
@@ -129,14 +128,5 @@ class ModelDiffRefactorTest {
                 .when(fee.gt(100).and(sur.gt(0))).code("SURCHARGE").severity(Severity.ERROR)
                 .message(en("Fee or surcharge invalid."), de("Gebühr oder Zuschlag ungültig.")).build();
         return m.add(r).toJson();
-    }
-
-    private static String readResource(String path) {
-        try (InputStream in = ModelDiffRefactorTest.class.getClassLoader().getResourceAsStream(path)) {
-            assertTrue(in != null, "missing test resource: " + path);
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

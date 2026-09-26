@@ -7,9 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -31,7 +28,7 @@ class KernelAdapterFormatTest {
 
     /** A model whose rule uses a compound (And) condition — a keyword that differs EN↔DE, so the translation shows. */
     private static String modelWithCompoundRule() {
-        BoundModel m = BoundModel.ofJson(readResource("models/subscription.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
         NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
         Rule rule = m.rule(m.group("/Subscription/Addons"))
                 .name("FeeCapRule")
@@ -64,14 +61,5 @@ class KernelAdapterFormatTest {
         KernelAdapter adapter = KernelAdapter.ofJson(modelWithCompoundRule());
         String canonical = adapter.canonicalConditionText(RULE_PATH);   // no locale → the model's own (EN) language
         assertTrue(canonical.contains("And"), () -> "format-only keeps the model's EN keywords, got: " + canonical);
-    }
-
-    private static String readResource(String path) {
-        try (InputStream in = KernelAdapterFormatTest.class.getClassLoader().getResourceAsStream(path)) {
-            assertNotNull(in, () -> "missing test resource: " + path);
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

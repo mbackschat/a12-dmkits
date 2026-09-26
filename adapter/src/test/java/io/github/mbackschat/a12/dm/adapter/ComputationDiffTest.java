@@ -7,9 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -29,7 +26,7 @@ class ComputationDiffTest {
     private static final String BASE = "/Subscription/Billing/BaseFee";
 
     private static BoundModel base() {
-        return BoundModel.ofJson(read("models/subscription.dm.json"));
+        return BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
     }
 
     /** A model carrying EffectiveFee = BaseFee. */
@@ -76,13 +73,5 @@ class ComputationDiffTest {
                 .calc(withComp.num(BASE).value()).message(en("x"), de("y")).build();
         assertThrows(RuntimeException.class,
                 () -> KernelAdapter.of(withComp).diffComputation("/Subscription/Billing/NoSuchComp", any));
-    }
-
-    private static String read(String path) {
-        try (InputStream in = ComputationDiffTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

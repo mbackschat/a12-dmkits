@@ -5,9 +5,6 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -35,7 +32,7 @@ class CrossGroupComputationReadTest {
     private static final String COMPUTATION = "/Subscription/EffectiveFeeComp";
 
     private static BoundModel base() {
-        return BoundModel.ofJson(resource("models/subscription.dm.json"));
+        return BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
     }
 
     private static Computation crossGroup(BoundModel m) {
@@ -89,13 +86,5 @@ class CrossGroupComputationReadTest {
         ReadComputation result = KernelAdapter.of(model).readComputation(fullName);
         return assertInstanceOf(ReadComputation.Converted.class, result,
                 () -> "expected a converted computation, got: " + result).computation();
-    }
-
-    private static String resource(String path) {
-        try (InputStream in = CrossGroupComputationReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

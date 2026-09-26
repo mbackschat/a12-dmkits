@@ -7,9 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -35,7 +32,7 @@ class ModifyAndDiffTest {
 
     @Test
     void readReExpressDiffValidate() {
-        BoundModel base = BoundModel.ofJson(read("models/subscription.dm.json"));
+        BoundModel base = BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
         Rule original = base.rule(base.group("/Subscription/Addons")).name("FeeCapRule")
                 .errorField(base.field(FEE)).when(base.num(FEE).gt(1000))
                 .code("FEE").severity(Severity.ERROR).message(en("Too high."), de("Zu hoch.")).build();
@@ -71,13 +68,5 @@ class ModifyAndDiffTest {
                 KernelAdapter.of(applied).read(RULE)).condition();
         assertEquals(new DslRenderer(ConditionLanguage.EN).render(modified),
                 new DslRenderer(ConditionLanguage.EN).render(reread));
-    }
-
-    private static String read(String path) {
-        try (InputStream in = ModifyAndDiffTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

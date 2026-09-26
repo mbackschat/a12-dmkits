@@ -3,9 +3,6 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -30,7 +27,7 @@ class OuterCorrelationAuthoringTest {
 
     @Test
     void authoredOuterCorrelationRendersTheDollarAndIsKernelValid() {
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
 
         // "the count of items sharing the current row's overall Quantity sums above 5" — the inner
         // [Items/Count] is correlated to the outer [$/Order/Quantity] inside the Having filter.
@@ -42,16 +39,8 @@ class OuterCorrelationAuthoringTest {
         assertTrue(rendered.contains("[$/Order/Quantity]"),
                 () -> "the $ outer-correlation marker must render: " + rendered);
 
-        ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
+        ValidationResult r = new RuleValidator().check(TestResources.text("models/order.dm.json"),
                 new DraftRule("/Order", "OuterAuthored", "../CustomerName", rendered, "C", "ERROR"));
         assertTrue(r.ok(), () -> "the kernel must accept an authored $ correlation, got: " + r.diagnostics());
-    }
-
-    private static String read(String path) {
-        try (InputStream in = OuterCorrelationAuthoringTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

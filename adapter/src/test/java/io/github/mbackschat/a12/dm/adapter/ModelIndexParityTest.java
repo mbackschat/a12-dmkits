@@ -1,11 +1,9 @@
 package io.github.mbackschat.a12.dm.adapter;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -57,7 +55,7 @@ class ModelIndexParityTest {
         for (String fixture : List.of("models/order.dm.json", "models/subscription.dm.json",
                 "models/person.dm.json", "models/project.dm.json", "models/appointment.dm.json",
                 "models/membership.dm.json", "models/staffing.dm.json")) {
-            assertParity(classpath(fixture), ReferenceResolvers.selfContained());
+            assertParity(TestResources.text(fixture), ReferenceResolvers.selfContained());
         }
     }
 
@@ -192,15 +190,6 @@ class ModelIndexParityTest {
                 .rootGroup("Rider", r -> r.numberField("Amount", n -> n.fractionDigits(2)))
                 .build().toJson();
         return ref -> "rider".equals(ref) ? rider : null;
-    }
-
-    private static String classpath(String resource) {
-        try (InputStream in = ModelIndexParityTest.class.getClassLoader().getResourceAsStream(resource)) {
-            assertNotNull(in, "fixture not found on classpath: " + resource);
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 
     /** The 3-candidate sibling-clone locate for a12-kernel-mm (mirrors CorpusShrinkSupport). */

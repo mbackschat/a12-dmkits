@@ -5,8 +5,6 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.github.mbackschat.a12.dm.adapter.TestResources;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -29,7 +28,7 @@ class SynthesisProfileExtractionTest {
 
     /** subscription + a per-row rule that walks up to Tier + an aggregate rule over the repeatable group. */
     private static String modelWithRules() {
-        BoundModel m = BoundModel.ofJson(readResource("models/subscription.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
         NumberRef fee = m.num(FEE);
         // per-repeatable-row rule (scoped to Addons) that references a root-group field -> a walk-up
         var walkUp = m.rule(m.group("/Subscription/Addons"))
@@ -94,7 +93,7 @@ class SynthesisProfileExtractionTest {
 
     /** subscription + a computed field that Sums the repeatable fees — an AGGREGATE-archetype computation. */
     private static String modelWithComputation() {
-        BoundModel m = BoundModel.ofJson(readResource("models/subscription.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
         var comp = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
                 .name("EffectiveFeeCalc")
                 .calc(Dsl.sum(m.flatten("/Subscription/Addons*/MonthlyFee")).expression())
@@ -310,14 +309,5 @@ class SynthesisProfileExtractionTest {
         assertTrue(p.rules().depth().max() >= 2, "the And-of-comparisons rule nests");
         assertTrue(p.rules().nodeCount().max() >= 3, "conditions have operand leaves");
         assertTrue(p.rules().booleanArity().max() >= 2, "the And rule has fan-out 2");
-    }
-
-    private static String readResource(String path) {
-        try (InputStream in = SynthesisProfileExtractionTest.class.getClassLoader().getResourceAsStream(path)) {
-            assertTrue(in != null, "missing test resource: " + path);
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

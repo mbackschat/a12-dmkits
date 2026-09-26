@@ -6,9 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -37,7 +34,7 @@ class TimeAndDateTimeReadTest {
     private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN);
 
     private static BoundModel appointment() {
-        return BoundModel.ofJson(read("models/appointment.dm.json"));
+        return BoundModel.ofJson(TestResources.text("models/appointment.dm.json"));
     }
 
     @Test
@@ -120,7 +117,7 @@ class TimeAndDateTimeReadTest {
                                     .ne(Dsl.timeFromDateTime(m.dateTime("/Appointment/ScheduledAt"))))),
         };
         for (Case c : cases) {
-            ValidationResult r = new RuleValidator().check(read("models/appointment.dm.json"),
+            ValidationResult r = new RuleValidator().check(TestResources.text("models/appointment.dm.json"),
                     new DraftRule("/Appointment", c.name() + "V", c.errorField(), RENDER.render(c.cond()), "C", "ERROR"));
             assertTrue(r.ok(), () -> "expected kernel acceptance for " + c.name() + ", got: " + r.diagnostics());
         }
@@ -134,13 +131,5 @@ class TimeAndDateTimeReadTest {
     private static Condition converted(ReadResult result) {
         return assertInstanceOf(ReadResult.Converted.class, result,
                 () -> "expected a converted read, got: " + result).condition();
-    }
-
-    private static String read(String path) {
-        try (InputStream in = TimeAndDateTimeReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

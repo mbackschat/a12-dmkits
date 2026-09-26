@@ -5,9 +5,6 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -30,7 +27,7 @@ class CustomTypeValidityReadTest {
     private static final String NAME = "/Order/CustomerName";
 
     private static BoundModel order() {
-        return BoundModel.ofJson(read("models/order.dm.json"));
+        return BoundModel.ofJson(TestResources.text("models/order.dm.json"));
     }
 
     @Test
@@ -60,13 +57,5 @@ class CustomTypeValidityReadTest {
         Condition converted = assertInstanceOf(ReadResult.Converted.class, adapter.read("/Order/NameTypeRule"),
                 () -> "expected a converted read").condition();
         assertEquals(RENDER.render(cond), RENDER.render(converted));
-    }
-
-    private static String read(String path) {
-        try (InputStream in = CustomTypeValidityReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

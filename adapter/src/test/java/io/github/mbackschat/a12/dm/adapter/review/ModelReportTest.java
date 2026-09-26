@@ -6,11 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.adapter.TestResources;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -29,7 +27,7 @@ class ModelReportTest {
 
     /** subscription + one rulekit-authored rule that references MonthlyFee (so usage has a referrer). */
     private static String modelWithRule() {
-        BoundModel m = BoundModel.ofJson(readResource("models/subscription.dm.json"));
+        BoundModel m = BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
         NumberRef fee = m.num(FEE);
         Rule rule = m.rule(m.group("/Subscription/Addons"))
                 .name("FeeCapRule").errorField(fee).when(fee.gt(1000))
@@ -110,14 +108,5 @@ class ModelReportTest {
         assertEquals("violation", ModelReport.VIOLATION_POLARITY.firesOn(),
                 "an A12 rule fires on the violation — carried once at the model level, not duplicated per rule");
         assertFalse(ModelReport.VIOLATION_POLARITY.note().isBlank(), "the polarity note explains the trap");
-    }
-
-    private static String readResource(String path) {
-        try (InputStream in = ModelReportTest.class.getClassLoader().getResourceAsStream(path)) {
-            assertTrue(in != null, "missing test resource: " + path);
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

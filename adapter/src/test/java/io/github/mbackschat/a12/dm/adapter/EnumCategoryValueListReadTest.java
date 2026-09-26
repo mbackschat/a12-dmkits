@@ -4,8 +4,6 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -32,7 +30,7 @@ class EnumCategoryValueListReadTest {
     private static final String PRIORITY = "/Order/Priority";
     private static final String RUSH = "/Order/RushLevel";
 
-    private final BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+    private final BoundModel m = BoundModel.ofJson(TestResources.text("models/order.dm.json"));
 
     @Test
     void literalFieldListRetainsADirectRefAndACategoryRefAsDistinctMembers() {
@@ -65,13 +63,5 @@ class EnumCategoryValueListReadTest {
                 () -> "expected a converted read, got: " + result).condition();
         assertEquals(RENDER.render(original), RENDER.render(back),
                 () -> "category projection lost on round-trip for " + name);
-    }
-
-    private static String read(String path) {
-        try (InputStream in = EnumCategoryValueListReadTest.class.getClassLoader().getResourceAsStream(path)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }
