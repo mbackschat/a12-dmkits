@@ -92,4 +92,5 @@ scripts/perf-trend.sh --ratio "$pattern"
 
 rule "5. BARS — what an anchor refresh would change" \
      "the committed absolute bar per lane. 'show' changes nothing; a refresh is a deliberate, reviewable diff (scripts/perf-anchor.sh refresh)."
-scripts/perf-anchor.sh show
+# perf-anchor.sh spells the same seam RESULTS_DIR; without it, section 5 alone would read the live record.
+RESULTS_DIR="$results" scripts/perf-anchor.sh show
