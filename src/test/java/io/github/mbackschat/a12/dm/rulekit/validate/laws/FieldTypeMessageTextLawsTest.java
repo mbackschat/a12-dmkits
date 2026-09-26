@@ -216,6 +216,10 @@ class FieldTypeMessageTextLawsTest {
         actual.put("a field name with a leading underscore, a tab", placed(null, "_Code", "a\tb"));
         actual.put("beneath a digit-initial group, a tab", placed("1Part", "Code", "a\tb"));
         actual.put("a field name with a digit after its dot, a tab", placed(null, "Co.1de", "a\tb"));
+        actual.put("a field name carrying a slash, a tab",
+                KernelLaws.verdictOf(renamed(placedJson("Claim", null, "Code", "a\tb"), "Code", "Co/de")));
+        actual.put("beneath a group whose name carries a slash, a tab",
+                KernelLaws.verdictOf(renamed(placedJson("Claim", "Part", "Code", "a\tb"), "Part", "Pa/rt")));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a field name outside the path alphabet, a tab", "MVK_PATH_INVALID");
@@ -234,6 +238,9 @@ class FieldTypeMessageTextLawsTest {
         expected.put("beneath a digit-initial group, a tab", "MVK_PATH_INVALID");
         // After a dot the path alphabet wants a letter, so this dot fails the PATH where `Co.de` passes it.
         expected.put("a field name with a digit after its dot, a tab", "MVK_PATH_INVALID");
+        // A name carrying the separator makes the path disagree with the tree, and that stops the walk too.
+        expected.put("a field name carrying a slash, a tab", "MVK_PATHS_INCONSISTENT");
+        expected.put("beneath a group whose name carries a slash, a tab", "MVK_PATHS_INCONSISTENT");
         assertEquals(expected, actual, "whether an invalid path stops the check");
     }
 
@@ -268,8 +275,12 @@ class FieldTypeMessageTextLawsTest {
     }
 
     private static String placed(String root, String group, String field, String message) {
+        return KernelLaws.verdictOf(placedJson(root, group, field, message));
+    }
+
+    private static String placedJson(String root, String group, String field, String message) {
         Consumer<StringFieldBuilder> patterned = f -> f.pattern("[A-Z]+", message);
-        return KernelLaws.verdictOf(DocumentModelDraft.named("claims-field-messages").locale("en_US")
+        return DocumentModelDraft.named("claims-field-messages").locale("en_US")
                 .rootGroup(root, c -> {
                     c.stringField("Reference", f -> { });
                     if (group == null) {
@@ -278,7 +289,29 @@ class FieldTypeMessageTextLawsTest {
                         c.group(group, g -> g.stringField(field, patterned));
                     }
                 })
-                .build().toJson());
+                .build().toJson();
+    }
+
+    /**
+     * The model with the element named {@code from} renamed to {@code to}, wherever it sits: a name carrying
+     * {@code /} is written into the tree, since the typed builder composes paths from names.
+     */
+    private static String renamed(String json, String from, String to) {
+        try {
+            JsonNode root = MAPPER.readTree(json);
+            rename(root, from, to);
+            return root.toString();
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the builder's own output must parse", unreadable);
+        }
+    }
+
+    private static void rename(JsonNode node, String from, String to) {
+        if (node instanceof ObjectNode object && from.equals(object.path("name").asText(null))
+                && object.has("type")) {
+            object.put("name", to);
+        }
+        node.forEach(child -> rename(child, from, to));
     }
 
     /** The field type's {@code errorMessage} entries in reverse, leaving the declared locales alone. */

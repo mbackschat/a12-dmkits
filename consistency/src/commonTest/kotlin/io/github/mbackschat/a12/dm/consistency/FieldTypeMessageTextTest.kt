@@ -153,6 +153,8 @@ class FieldTypeMessageTextTest {
             "a field name with a leading underscore" to ours(model(tabbed, field = "_Code"), "_Code"),
             "beneath a digit-initial group" to ours(model(tabbed, group = "1Part"), "1Part/Code"),
             "a field name with a digit after its dot" to ours(model(tabbed, field = "Co.1de"), "Co.1de"),
+            "a field name carrying a slash" to ours(model(tabbed, field = "Co/de"), "Co/de"),
+            "beneath a group whose name carries a slash" to ours(model(tabbed, group = "Pa/rt"), "Pa/rt/Code"),
         )
         val expected = linkedMapOf(
             "a field name outside the path alphabet" to none,
@@ -167,6 +169,9 @@ class FieldTypeMessageTextTest {
             "a field name with a leading underscore" to listOf(CHARACTERS),
             "beneath a digit-initial group" to none,
             "a field name with a digit after its dot" to none,
+            // The separator in a name stops the walk as MVK_PATHS_INCONSISTENT, the enclosing group's included.
+            "a field name carrying a slash" to none,
+            "beneath a group whose name carries a slash" to none,
         )
         assertEquals(expected, actual, "whether an invalid path stops the check")
     }
