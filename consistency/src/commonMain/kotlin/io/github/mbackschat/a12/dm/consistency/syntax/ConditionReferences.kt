@@ -372,9 +372,11 @@ private class ReferenceScan(
      * **A production that does not close records nothing, unless A12 walks it as it reads it.** A12 raises a
      * reference's class when its production closes, so `Lines/` followed by `)` draws the parse error alone,
      * while `BillingAddress*` followed by a name closes and draws its own class first. A path that is `$`-marked,
-     * opens with an up-run, or carries a star is resolved segment by segment as it is read instead, so the part
-     * read before the failure is recorded: `Items* / NoSuch /` draws `MVK_INVALID_ENTITY` for `NoSuch`
-     * ([KERNEL-FINDINGS KF491], `rulekit.validate.laws.EntityProductionCloseLawsTest`).
+     * opens with an up-run, or carries a star is walked instead: A12 checks each step as that step's production
+     * completes, so the part read before the failure is recorded, and `Items* / NoSuch /` draws
+     * `MVK_INVALID_ENTITY` for `NoSuch` ([KERNEL-FINDINGS KF491], `rulekit.validate.laws.EntityProductionCloseLawsTest`).
+     * A step the parser stopped inside, `NoSuch` in `Items* / NoSuch.`, is recorded as well, although A12 never
+     * checks it: the sweep ledger's token-against-entity cluster.
      */
     private fun readReference() {
         val begin = at
@@ -393,7 +395,7 @@ private class ReferenceScan(
         at = maxOf(run.end, begin + 1)
     }
 
-    /** Whether A12 resolves the path at [begin] segment by segment as it reads it: `$`-marked, up-run-led or starred. */
+    /** Whether A12 walks the path at [begin], checking each step as it completes: `$`-marked, up-run-led or starred. */
     private fun walksAsItReads(begin: Int, end: Int): Boolean =
         tokens.getOrNull(begin - 1)?.text == OUTER_MARKER_TOKEN || tokens[begin].text == UP_STEP ||
             tokens.subList(begin, end).any { it.text == WILDCARD_TOKEN }

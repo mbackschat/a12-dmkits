@@ -82,7 +82,7 @@ Patching those families is whack-a-mole. The checker is instead rebuilt along A1
 | **M3** | tier 1 is empty | no OVER-REJECT or WRONG-CLASS cluster in O1, and no tier-1 cluster in O2 or O3 | open; reached through R3a–R5 and M2 |
 | **M4** | tier 2 is closed | every SILENT cluster fixed or declared | open |
 | **M5** | widen and repeat | the P3 populations added one at a time, each re-running M3 and M4 | open |
-| **X1** | a12-kernel-lean `SPEC-2026-09-26-05` | its three rows become seeds (the sole-operand `NumberOfFilledGroups` arity, the overlap `In`-list gate order, a field message `$fïeld$` → `INVALID_PARAMETER`) and are answered from the sweep | open |
+| **X1** | a12-kernel-lean `SPEC-2026-09-26-05` | its three rows (the sole-operand `NumberOfFilledGroups` arity, the overlap `In`-list gate order, a field message `$fïeld$` → `INVALID_PARAMETER`) are measured on our own fixture and answered | **done** 2026-09-26: all three confirmed on the kernel ([KF185](KERNEL-FINDINGS.md#kf185), [KF380](KERNEL-FINDINGS.md#kf380), [KF490](KERNEL-FINDINGS.md#kf490)), answered in letter `-26q`; the checker's side of those shapes needs P3's count-placement and overlap-list hosts, so it waits for M5 |
 | **D1** | doc corrections carried from the batch-S review | KF492's under-report sentence, KF491's mechanism line and KF76's comment note, each corrected in place from the trace | **done** 2026-09-26 |
 
 Batches G1, G2 and S (2026-09-26, [KF491](KERNEL-FINDINGS.md#kf491), [KF492](KERNEL-FINDINGS.md#kf492)) patched the old syntax layer. Their measured rows stay as seeds, and their code retires with R3a.

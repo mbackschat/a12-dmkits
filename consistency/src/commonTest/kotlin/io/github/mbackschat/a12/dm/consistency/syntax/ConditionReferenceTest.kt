@@ -130,8 +130,8 @@ class ConditionReferenceTest {
     }
 
     /**
-     * The exception: a path A12 resolves as it reads it — starred, up-run-led or `$`-marked — keeps what it had
-     * read, since A12 checks those segments before it stops (`rulekit.validate.laws.EntityProductionCloseLawsTest`).
+     * The exception: a path A12 walks — starred, up-run-led or `$`-marked — keeps what it had read, since A12
+     * checks each completed step before it stops (`rulekit.validate.laws.EntityProductionCloseLawsTest`).
      */
     @Test
     fun aWalkedPathThatStopsAtASeparatorKeepsWhatItHadRead() {

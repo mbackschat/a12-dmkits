@@ -109,7 +109,7 @@ The instrument lives in `:adapter`'s tests (the parser and ANTLR are already on 
   - the positions of A.1's mid-rule events, where a later partition's checks hook in.
 
   R3a runs no check action. Where A12 raises a check before the syntax failure, today's families still answer, ordered as today.
-- **Its consumers:** the report reads the shape verdict through `ConditionShape`'s entry points, unchanged. The scanners are untouched.
+- **Its consumers:** the report reads the shape verdict through `ConditionShape`'s entry points, unchanged. The scanners are untouched but for one rule: which steps of a path that never closes the reference scanner records. A12 checks a step of a walked path only once that step's production completes ([KF491](KERNEL-FINDINGS.md#kf491)), and the scanner keeps a step the parser stopped inside. The sweep's cluster of 14 inputs where A12 names `MVK_UNEXPECTED_TOKEN` and the checker `MVK_INVALID_ENTITY` has that shape in all three of its sampled inputs: a `.` written after a starred path's last step, before `Having`. R3a supplies the completed steps.
 - **JVM and JS:** one common-code implementation, green on both of `:consistency:check`'s targets.
 
 **Clean-room procedure.** The parser is exact in behaviour and original in expression. It matches what A12 observably does: which texts it accepts, which class it names, at which token. It does not match how A12's grammar file or generated parser is written. Copyright protects a program's expression and not its functionality, language or formats (Directive 2009/24/EC Art. 1(2); CJEU C-406/10 *SAS Institute v World Programming*). A translation of the source, however, is an adaptation (Art. 4), which would bring EUPL-1.2's copyleft into MIT code. So:

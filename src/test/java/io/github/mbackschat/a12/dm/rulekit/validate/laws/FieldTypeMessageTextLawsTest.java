@@ -82,6 +82,7 @@ class FieldTypeMessageTextLawsTest {
         actual.put("the field's own name", onThePattern("$Code$ takes capitals"));
         actual.put("an empty pair", onThePattern("cost $$ in capitals"));
         actual.put("the German spelling in an English model", onThePattern("$Feld$ takes capitals"));
+        actual.put("a non-ASCII letter in the name", onThePattern("$f\u00efeld$ takes capitals"));
         actual.put("a tab beside an odd dollar count", onThePattern("$field\ttakes capitals"));
         actual.put("an odd count beside a wrong name", onThePattern("$Code$ and $field"));
         actual.put("German: $Feld$", inGerman("$Feld$ takes capitals"));
@@ -97,6 +98,7 @@ class FieldTypeMessageTextLawsTest {
         expected.put("the field's own name", "INVALID_PARAMETER");
         expected.put("an empty pair", "INVALID_PARAMETER");
         expected.put("the German spelling in an English model", "INVALID_PARAMETER");
+        expected.put("a non-ASCII letter in the name", "INVALID_PARAMETER");
         expected.put("a tab beside an odd dollar count", "INVALID_CHARACTERS");
         expected.put("an odd count beside a wrong name", "WRONG_NUMBER_OF_DOLLARS");
         expected.put("German: $Feld$", KernelLaws.ADMITTED);

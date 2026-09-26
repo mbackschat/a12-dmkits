@@ -56,13 +56,21 @@ class EntityProductionCloseLawsTest {
     }
 
     /**
-     * The exception to "an open path raises nothing": a path A12 WALKS as it reads it. A {@code $}-marked path,
-     * one that opens with an up-run, and one carrying a star anywhere in what was read are resolved segment by
-     * segment, so a bad segment read before the parser stops draws its class even though the path never closes.
-     * Each walked row has an unwalked control that differs in the one trigger and draws the token class.
+     * The exception to "an open path raises nothing": a path A12 WALKS. While the H-model and the A12 path forms
+     * both continue, nothing is checked; {@code $} then a name, a leading up-run, or a {@code *} directly after a
+     * name leaves only the A12 form, and from there each step is checked as ITS production completes
+     * ([KERNEL-FINDINGS KF491], [KF493]). So a bad step completed before the parser stops draws its class even
+     * though the path never closes, and each walked row has an unwalked control differing in the one trigger.
+     *
+     * <p>One row separates this from "a path with a star read before the stop is resolved as it is read", which
+     * a12-kernel-lean's spec took from our letter {@code -26p}: {@code Items*}{@code /NoSuch.} stops inside the
+     * {@code NoSuch} step, which waits for the {@code *} of a {@code .*} suffix, so that step is never checked.
+     * A {@code .*} star followed by a separator is walked like any other star: the open {@code NoSuch.*}{@code
+     * /Items/} draws the entity class as its closed twin does, and {@code Items.*}{@code /Count} shows the star's
+     * own class once its step is checked.
      */
     @Test
-    void aWalkedPathIsResolvedAsItIsReadEvenWhenItNeverCloses() {
+    void aWalkedPathChecksEachStepItCompletesEvenWhenItNeverCloses() {
         Map<String, List<String>> actual = new LinkedHashMap<>();
         Map<String, List<String>> expected = new LinkedHashMap<>();
         BiConsumer<String, List<String>> row = (condition, predicted) -> {
@@ -75,6 +83,10 @@ class EntityProductionCloseLawsTest {
         row.accept("FieldFilled(NoSuch/Items*/)", List.of("MVK_INVALID_ENTITY"));
         row.accept("FieldFilled(/NoRoot/Items*/)", List.of("MVK_INVALID_ROOT_GROUP"));
         row.accept("FieldFilled(/NoRoot/)", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("FieldFilled(Items*/NoSuch.)", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("FieldFilled(NoSuch.*/Items/)", List.of("MVK_INVALID_ENTITY"));
+        row.accept("FieldFilled(NoSuch.*/Items)", List.of("MVK_INVALID_ENTITY"));
+        row.accept("FieldFilled(Items.*/Count)", List.of("MVK_POINT_IN_A12_MODEL"));
         row.accept("AtLeastOneFieldFilled(Items*/Count Having [Items/Count] == [$NoSuch/])",
                 List.of("MVK_INVALID_ENTITY"));
         row.accept("AtLeastOneFieldFilled(Items*/Count Having [Items/Count] == [NoSuch/])",
@@ -83,7 +95,7 @@ class EntityProductionCloseLawsTest {
                 List.of("MVK_UNEXPECTED_TOKEN"));
         actual.put("FieldFilled(../NoSuch/), from /Policy/Claim/Cover", codes("FieldFilled(Limit) And FieldFilled(../NoSuch/)"));
         expected.put("FieldFilled(../NoSuch/), from /Policy/Claim/Cover", List.of("MVK_INVALID_ENTITY"));
-        assertEquals(expected, actual, "which open paths A12 resolves as it reads them");
+        assertEquals(expected, actual, "which steps of an open path A12 checks");
     }
 
     /**
