@@ -11290,6 +11290,8 @@ Before the fix the portable checker was silent on every row drawing the category
 | a String, a written-out text | a Number | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
 | `"PLATINUM"`, which the target does not declare | an Enumeration | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` |
 | a labelled Enumeration | an unlabelled Enumeration | `MVK_INVALID_COMPARE_ENUM_TO_STRING` |
+| a String | a labelled Enumeration | `MVK_INVALID_COMPARE_ENUM_TO_STRING` |
+| a String | an unlabelled Enumeration | `MVK_ERROR_INVALID_ENUM_CALCULATION` |
 | a Number of either other scale, `1.50` | a scale-0 or scale-2 Number | `MVK_INVALID_COMPARE_DEC_PLACES` |
 | `True` | a Number | `MVK_INCONSISTENT_TYPES_COMPARED` |
 | a Number, a String, a Time | a Date | `MVK_INVALID_COMPARE_TO_DATE` |
@@ -11304,6 +11306,8 @@ Before the fix the portable checker was silent on every row drawing the category
 | a String | a raw String | `MVK_INVALID_RAW_TYPE` |
 | a partially known Date; a raw String | a Number | `MVK_INVALID_DATE_TYPE`; `MVK_INVALID_RAW_TYPE` |
 | a field of the target's own kind and scale, a declared value, `True`, a written-out number of a smaller scale, a Number under a band | each kind | ADMITTED |
+
+*Amended 2026-09-26:* a String into an Enumeration is the one pair measured here where the comparison may admit the copy. A labelled target refuses the text in the comparison ([KF407](#kf407)). An unlabelled one admits it there, so the calculation's own class answers ([KF411](#kf411)). So on that pair the comparison's class is the answer only where the comparison has one. a12-kernel-lean's `SPEC-2026-09-26-03` drew the narrowing from a keyed String source (their report); the two rows above are ours.
 
 The target's spelling was varied too: declared in `Billing` into a root String and into its own String, and declared at the root into `Lines/Qty` and in `Lines` into its own `Qty`, a String source draws `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` on all four.
 

@@ -21,8 +21,10 @@ import org.junit.jupiter.api.Test
  * the first class in the joined order is the only one A12 names. And every alternative ends in a comparison of
  * its target with its operation, so a copy of one declared kind into another draws the class
  * `CheckVergleichsBedingungImpl` raises for that pair in a rule, after the target's own `[<target>]` read has
- * passed the field-value read's gates. The controls separate the lowering from a computation-specific gate: a
- * copy between two fields of one kind is admitted on every kind.
+ * passed the field-value read's gates. Where the comparison admits the pair, a later gate may answer: a String
+ * into an unlabelled Enumeration draws the calculation's own class ([KERNEL-FINDINGS KF411]). The controls
+ * separate the lowering from a computation-specific gate: a copy between two fields of one kind is admitted on
+ * every kind.
  *
  * Own domain (an order with a billing block and repeatable lines).
  */
@@ -72,6 +74,10 @@ class CheckerComputationJoinedConditionAgreementTest {
             "a Number from a written-out text" to (Copy("../Total", "\"abc\"") to TO_ENUM),
             "an Enumeration from a value it does not declare" to (Copy("../TierCopy", "\"PLATINUM\"") to OUTSIDE_DOMAIN),
             "an Enumeration from a labelled Enumeration" to (Copy("../TierCopy", "[Plan]") to setOf("MVK_INVALID_COMPARE_ENUM_TO_STRING")),
+            // A String into an Enumeration: the comparison admits a text against a textless target, so the
+            // calculation's own class answers ([KF411]); a labelled target refuses the text first ([KF407]).
+            "an Enumeration from a String" to (Copy("../TierCopy", "[Label]") to setOf("MVK_ERROR_INVALID_ENUM_CALCULATION")),
+            "a labelled Enumeration from a String" to (Copy("../Plan", "[Label]") to setOf("MVK_INVALID_COMPARE_ENUM_TO_STRING")),
             "an Enumeration from a value it declares, the control" to (Copy("../TierCopy", "\"GOLD\"") to ADMITTED),
             "an Enumeration from an Enumeration, the control" to (Copy("../TierCopy", "[Tier]") to ADMITTED),
             "a String from a String, the control" to (Copy("../Label", "[Note]") to ADMITTED),
