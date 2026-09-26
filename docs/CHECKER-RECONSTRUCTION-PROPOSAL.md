@@ -2,7 +2,7 @@
 
 > **What this is.** The design for rebuilding the portable checker (`:consistency`) along A12 Kernel `30.8.1`'s own check structure, replacing its one-family-per-class implementation. It holds the model the rebuild follows and the rebuild's design; **the state lives in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md)'s work-item table** (items R0–R5), never here. Opened 2026-09-26.
 >
-> **Status of the model.** Everything in §1–§3 and the appendices is **source-read**: the kernel's `ParserService`, the grammar `GrammarOnly_ConditionParser.g4`, the generated parser (ANTLR 4.13.2), `AbstractDefaultErrorStrategy`, the `Check*Impl` classes and the consistency-rule provider, all under `../a12-kernel`. ANTLR's runtime behaviour is taken from its documented algorithm. Each claim is a hypothesis until plan item R2's trace confirms it on A12 itself; nothing is built on an unconfirmed row.
+> **Status of the model.** §1 and the appendices are **source-read**: the kernel's `ParserService`, the grammar `GrammarOnly_ConditionParser.g4`, the generated parser (ANTLR 4.13.2), `AbstractDefaultErrorStrategy`, the `Check*Impl` classes and the consistency-rule provider, all under `../a12-kernel`. **§2's parse model is confirmed on A12 itself** by plan item R2's trace over 9 063 conditions ([KF493](KERNEL-FINDINGS.md#kf493)), which corrected one sentence of it, on predicate timing. Decisions the population never failed at stay source-read.
 
 ## Why
 
@@ -65,7 +65,7 @@ The generated parser has 84 decisions: 52 are LL(1) (32 optional `if`, 8 loop `w
 | adaptive decision whose alternatives share **no** prefix (16: ANTLR chose adaptive prediction only because a model predicate is reachable) | `NoViableAlt` | the decision's first token |
 | adaptive decision whose alternatives **share** a prefix (16) | `NoViableAlt` | the first token no alternative survives, possibly many tokens ahead |
 
-Two runtime rules shape the last row. **An alternative that has already completed the decision's rule wins** when nothing survives the next token, so the failure moves to whatever follows that rule, as a match or a later decision. And **predicates are applied where prediction starts**, while a predicate met after the first token is treated as true. The overlap decisions an A12 model can reach, with their windows, are in Appendix B.
+Two runtime rules shape the last row. **An alternative that has already completed the decision's rule wins** when nothing survives the next token, so the failure moves to whatever follows that rule, as a match or a later decision. And **prediction runs as if every predicate held**: a model predicate is evaluated only where the prediction resolves. So the entity spec's H-model path form stays alive through any path it could spell, and the decision fails wherever neither form continues, measured up to nine tokens past its start. *(Corrected by the trace, 2026-09-26: this read "predicates are applied where prediction starts".)* The overlap decisions an A12 model can reach, with their windows, are in Appendix B.
 
 ## 3. What the model already explains
 
@@ -73,7 +73,7 @@ Two runtime rules shape the last row. **An alternative that has already complete
 |---|---|
 | [KF300](KERNEL-FINDINGS.md#kf300), the four phase codes | §2.3 plus the lexer's own error |
 | [KF311](KERNEL-FINDINGS.md#kf311), the earlier failure wins | §2.2, lexing on demand |
-| [KF491](KERNEL-FINDINGS.md#kf491), walked against unwalked paths | Appendix B, the entity-spec window: while it predicts, no segment check has run; a `$`, a leading climb or a star directly after a name ends the window, and only then do the segment checks run. KF491's own wording ("resolved segment by segment as it is read") is the rival reading; the trace decides |
+| [KF491](KERNEL-FINDINGS.md#kf491), walked against unwalked paths | Appendix B, the entity-spec window: while it predicts, no segment check has run; `$` then a name, a leading climb or a star directly after a name ends the window, and only then do the segment checks run. Confirmed by the trace: `FieldFilled(Items*/NoSuch.)` fails at `)` before `NoSuch` is checked, where KF491's earlier "resolved segment by segment as it is read" predicted `MVK_INVALID_ENTITY` |
 | [KF492](KERNEL-FINDINGS.md#kf492), typed argument slots | §2.4: a place count or a day keyword is a match, an operation slot a decision |
 | DG83, a message class beside a refused condition | §1, the message's parameters: a refused condition becomes `INVALID_CONDITION` for the message |
 | DG117 and DG118, operation types | §2.2: every operation's type is computed bottom-up by the check actions, so a comparison and an extremum see the type of an arithmetic side |
@@ -83,6 +83,8 @@ Two runtime rules shape the last row. **An alternative that has already complete
 ## 4. The trace (plan item R2)
 
 A12 keeps nothing of the recognition exception: `MVKParserError` carries a message and a span, no cause, and the parse tree is discarded after a failure. So the trace captures at the moment of failure. `ParserService.checkSnippet(rule, text, grammarRule, reporter, parserInit)` is public; its `parserInit` hook runs after the kernel installs its error strategy and before parsing, so a test can install a subclass of `MVKDefaultErrorStrategy` that records the exception and then calls `super.reportError`, which leaves the production behaviour unchanged. With `Lenient_ConditionParser::bedingung_start` it is the same parser class, lexer, strictness and entry rule as `checkConsistency`, without the post-parse checks. Record the exception kind, the ATN decision (`atn.states[e.offendingState]` as a `DecisionState`), the start and offending tokens, and `getRuleInvocationStack(e.ctx)`; add a lexer error listener for lexical errors. A semantic failure is an `MVKParserError` with no recorded recognition exception.
+
+**Result (2026-09-26):** built as `adapter.A12ParseTraceTest` in the sweep's lane; no signature fell outside the model, and the trace agreed with `checkConsistency` on every input ([KF493](KERNEL-FINDINGS.md#kf493)).
 
 The instrument lives in `:adapter`'s tests (the parser and ANTLR are already on that compile classpath through `kernel-md-model`), in package `io.github.mbackschat.a12.dm.adapter` to reach `KernelModelPreparation.expand`, and gets an `MVKService` the way `KernelAdapter.buildService` does. It runs the whole near-miss population and groups the parse-stage refusals by signature. **Acceptance:** every signature is predicted by §2.3–§2.4 and Appendix B; a signature the model does not predict is a model defect, fixed in this document before any parser code is written. The batch-S seed rows (Appendix C) are part of its input.
 
@@ -194,7 +196,7 @@ Before step 1, `setParallelIterationIndices` turns some iterations into parallel
 
 | decision | alternatives that share a prefix | window |
 |---|---|---|
-| entity spec (dec 56) | the H path form and the A12 path form share any `'/'? name ('/' name)*` prefix and are told apart only by their predicates, which prediction applies at the start; the rule-context form and the path form share `$` | the whole path, until a token only one form takes: `$` then a name, a leading `..`, a `*` directly after a name, `For`, `Mit`, … |
+| entity spec (dec 56) | the H path form and the A12 path form share any `'/'? name ('/' name)*` prefix and are told apart only by their predicates, which prediction evaluates only where it resolves; the rule-context form and the path form share `$` | the whole path, until a token only one form takes: `$` then a name, a leading `..`, a `*` directly after a name, `For`, `Mit`, …; measured 0–9 tokens |
 | filter after a key (dec 55) | `Mit` may follow an entity spec ending in `Fuer` *key* | ambiguous by design |
 | simple condition (dec 6) | the two validity conditions share `Valid (` | three tokens |
 | relative climb (dec 63, 66) | `../..` against `../x` | three tokens |
@@ -204,9 +206,9 @@ Before step 1, `setParallelIterationIndices` turns some iterations into parallel
 
 Matches and switches that can fail in practice: the set matches `tagSpec` (first/last day), `inOp`, `toOp` and `nameOhnePunkt` (after the application-condition keyword, after `->`, and after `/` inside a path); the switches `commonKonstante` (a count's constant), `vglOp` (after a comparison's left side) and `wertListenSpezifier2` (after a value list's comma). Every other set match and switch is pre-checked by an earlier prediction. The 16 predicate-only decisions are 0, 4, 7, 9, 16, 23, 25, 31, 37, 38, 39, 40, 41, 57, 59 and 69.
 
-## Appendix C — seed rows (from the batch-S review, 2026-09-26; predicted, unmeasured)
+## Appendix C — seed rows (from the batch-S review, 2026-09-26)
 
-Each row is an input for R2's trace and the sweep, with A12's class as the model predicts it.
+Each row was predicted from the model before R2's trace ran. **Measured 2026-09-26** (`A12ParseTraceTest`): 18 of 21 held. The three misses were misapplications of the model. `$Code/` is a mismatch, because `$` then a name ends the window. The unstarred `CurrentRepetition` row is `MVK_NO_WILDCARD`, because the completed spec's check runs first. `Abs(-1)` meets a constant check. The comment row settled that a comment is refused inside an argument list. The test's row list is the measured record; the table below keeps the reasoning.
 
 | input (host: the sweep fixtures) | predicted A12 class | why |
 |---|---|---|

@@ -379,6 +379,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerFirstFilledValueTypeAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerNearMissSweepTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.A12ParseTraceTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
@@ -614,6 +615,7 @@ tasks.register('checkerSilenceGuardTest', Test) {
     // classpath already carries it as an input and a ledger edit re-runs it.
     // The near-miss sweep joins on both grounds: it reads the committed model trees at runtime and keeps its
     // cluster ledger as a resource.
+    // The parse trace joins it: A12's own parser on the same population, so it reads the same model trees.
     // The keyed-operand, constant-index-key, field-value-read carrier, entity-list category, computation
     // comparison, field-copy cross, argument slot, comparison-constant, filter-body, rule-reference-set, RepetitionNotUnique gate and paired-gate,
     // and FirstFilledValue type grids join
@@ -655,6 +657,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerFirstFilledValueTypeAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerNearMissSweepTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.A12ParseTraceTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnSynthesizedModelsTest')
     }
