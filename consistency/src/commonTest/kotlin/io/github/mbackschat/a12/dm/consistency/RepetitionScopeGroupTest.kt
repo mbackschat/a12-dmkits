@@ -52,22 +52,35 @@ class RepetitionScopeGroupTest {
     }
 
     /**
-     * A malformed KEY does not silence this family, and the choice is deliberate.
+     * A malformed KEY silences this family, because A12 never reaches the scope.
      *
-     * <p>A12 checks the whole key list before it looks at the scope at all, so a group key beside a scope
-     * that does not repeat draws `MVK_NO_GROUPS_ALLOWED` and this class is never seen
-     * (`rulekit.validate.laws.RepetitionNotUniqueGateOrderLawsTest`). The scope's defect is nonetheless
-     * REAL and independent — fixing the key leaves it — so reporting it is the accumulation this checker is
-     * for, not a wrong class. The line it must not cross is a second "defect" that only exists because of
-     * the first, which is why the combination family stops counting a call inside a filter.
+     * A12 checks the whole key list before it looks at the scope at all, so a group key beside a scope that
+     * does not repeat draws `MVK_NO_GROUPS_ALLOWED` alone (`rulekit.validate.laws.RepetitionNotUniqueGateOrderLawsTest`,
+     * `adapter.laws.CheckerRepetitionNotUniqueGateAgreementTest`). The scope's defect is real, but a report is
+     * A12's verdict, and both classes span the whole call, so the report's text-order rule cannot drop the
+     * second: the family has to stand down itself. The fixed key is the control that the scope class is live.
      */
     @Test
-    fun aMalformedKeyDoesNotSilenceTheScopeClass() {
+    fun aMalformedKeySilencesTheScopeClass() {
+        assertEquals(
+            emptyList(),
+            codes("../Crates/CrateRef", "RepetitionNotUnique(Crates @From Office)"),
+            "the group key answers first, so the scope class is never drawn",
+        )
         assertEquals(
             listOf(notRepeatable),
-            codes("../Crates/CrateRef", "RepetitionNotUnique(Crates @From Office)"),
-            "the scope still does not repeat once the key is fixed, so the finding stands",
+            codes("../Crates/CrateRef", "RepetitionNotUnique(Crates/CrateRef @From Office)"),
+            "with the key fixed, the scope that does not repeat is the class",
         )
+    }
+
+    /** The kind gate this family asks ahead of repeatability, over the same field scope as the grid's row. */
+    @Test
+    fun aFieldScopeDrawsTheKindClass() {
+        val rejections = check(ModelSource(model("../Crates/CrateRef",
+            "RepetitionNotUnique(Crates/CrateRef @From Crates/CrateRef)"))).findings
+            .filter { it.justifiesRejection }.map { it.code }
+        assertEquals(listOf("MVK_NO_FIELDS_ALLOWED"), rejections, "a scope naming a field")
     }
 
     /** Every code this family draws, which is the only thing these models are built to defect in. */

@@ -313,7 +313,15 @@ private fun List<String>.firstNestedEntity(written: List<ListOperand>): Int? =
  * The root-group arm is read as PLAIN here because a family that yields on a root group is silent either
  * way — under-reporting where the caller asks no gate, never over-reporting.
  */
-internal fun entityListPreGateAnswers(reads: List<OperandReference>, targets: List<String>): Boolean {
+internal fun entityListPreGateAnswers(reads: List<OperandReference>, targets: List<String>): Boolean =
+    entityListDuplicateAnswers(reads, targets) || targets.any { it.isRootGroup() }
+
+/**
+ * Whether a duplicate gate answers this list — the half of [entityListPreGateAnswers] EVERY caller asks,
+ * `RepetitionNotUnique` included, whose own group gate then refuses a sole root group
+ * (`rulekit.validate.laws.EntityListPreGateLawsTest.theOneCallerThatAsksNoRootGroupGate`).
+ */
+internal fun entityListDuplicateAnswers(reads: List<OperandReference>, targets: List<String>): Boolean {
     // Each identity carries the key its read was admitted with, so `Claims For "X"` and `Claims/Amount For "Y"`
     // are neither nested nor repeated, and the operator's own gate answers — `MVK_NO_NUMBER` for a `Sum` over
     // them (`adapter.laws.CheckerKeyedOperandAgreementTest`). Comparing on path alone read that list as nested.
@@ -322,7 +330,5 @@ internal fun entityListPreGateAnswers(reads: List<OperandReference>, targets: Li
         ListOperand(read.reference, read.key.orEmpty() + read.category?.let { "$CATEGORY_KEY$it" }.orEmpty(),
             read.indexSelected)
     }
-    return targets.firstDirectDuplicate(operands) != null ||
-        targets.firstNestedEntity(operands) != null ||
-        targets.any { it.isRootGroup() }
+    return targets.firstDirectDuplicate(operands) != null || targets.firstNestedEntity(operands) != null
 }

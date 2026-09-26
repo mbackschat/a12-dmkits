@@ -14,10 +14,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * is the shape that draws it, which is also the easiest one to author by accident: the scope reads like a
  * containment declaration, so the group a reader reaches for first is the one everything sits under.
  *
- * **The KIND gate comes first, and that is why this family reports on groups alone.** A scope naming a FIELD
- * draws `MVK_NO_FIELDS_ALLOWED`, not this class — measured, after the opposite was predicted. "Not a
- * repeatable group" is true of every field, so a family testing repeatability alone would have named the
- * wrong defect on each of them and handed its author a fix for a different gate.
+ * **The KIND gate comes first**, so a scope naming a FIELD draws `MVK_NO_FIELDS_ALLOWED` rather than this
+ * class — measured, after the opposite was predicted. "Not a repeatable group" is true of every field, so a
+ * family testing repeatability alone would name the wrong defect on each of them; this one asks both gates,
+ * in that order.
+ *
+ * **Behind the key list**: every key-list class answers ahead of the scope's gates ([KERNEL-FINDINGS KF355],
+ * `adapter.laws.CheckerRepetitionNotUniqueGateAgreementTest`), so a list [repetitionKeyListIsSound] does not
+ * pass leaves the scope unjudged.
  *
  * **Silent wherever the scope IS repeatable, whatever else is wrong.** The containment classes A12 draws
  * when a key sits outside a repeatable scope — `MVK_NOT_IN_GROUP`, `MVK_NOT_IN_SAME_PATH`, and the
@@ -41,7 +45,7 @@ internal fun TrackedFactBase.repetitionScopeGroupFindings(): List<Finding> {
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator == spelling }
+                .filter { it.operator == spelling && repetitionKeyListIsSound(it, declaringGroup, element) }
                 .flatMap { call ->
                     call.operands.mapNotNull { operand ->
                         operand.clauses.firstOrNull { it.keyword == scopeKeyword }?.path?.let { it to call }
@@ -59,10 +63,9 @@ internal fun TrackedFactBase.repetitionScopeGroupFindings(): List<Finding> {
 /**
  * The finding one scope draws, or null for every shape A12 answers with another class.
  *
- * Three silences, each resting on a measured row rather than on a reading: a scope that does not RESOLVE
- * (`MVK_INVALID_ENTITY`, the reference family's), a scope naming a FIELD (`MVK_NO_FIELDS_ALLOWED`, gated
- * before repeatability), and a scope that repeats, where every remaining defect is about containment —
- * [repetitionKeyContainmentFindings]', which models the joint iteration those classes turn on.
+ * Silent on a scope the reference reader answers for — one that does not RESOLVE (`MVK_INVALID_ENTITY`) or
+ * crosses a repetition nothing addresses — and on one that repeats, where every remaining defect is about
+ * containment: [repetitionKeyContainmentFindings]', which models the joint iteration those classes turn on.
  */
 private fun TrackedFactBase.scopeFinding(
     scope: String,
@@ -71,18 +74,28 @@ private fun TrackedFactBase.scopeFinding(
     member: String,
     span: TextSpan,
 ): Finding? {
-    val resolved = resolveEntity(declaringGroup, scope, element.origin) as? Reference.Resolved
+    val target = addressedTargetOf(scope, declaringGroup, element, indexSelected = false, everyLevelAddressed = false)
         ?: return null
-    val group = declarationAt(resolved.path, DeclaredKind.GROUP)
-        ?: return null
-    if (group.isRepeatable) {
+    val declared = declarationAt(target) ?: return null
+    if (declared.declaredKind == DeclaredKind.FIELD) {
+        return Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_NO_FIELDS_ALLOWED",
+            "this $member scopes `$REPETITION_NOT_UNIQUE` to `${declared.path}`, which is a field — the scope " +
+                "names the repeatable group whose repetitions are compared",
+            element.path,
+            span,
+        )
+    }
+    if (declared.isRepeatable) {
         return null
     }
     return Finding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         "MVK_GROUP_NOT_REPEATABLE",
-        "this $member scopes `$REPETITION_NOT_UNIQUE` to `${group.path}`, which does not repeat — the " +
+        "this $member scopes `$REPETITION_NOT_UNIQUE` to `${declared.path}`, which does not repeat — the " +
             "operator compares one repetition of the scope against another, so the scope has to be a " +
             "repeatable group",
         element.path,

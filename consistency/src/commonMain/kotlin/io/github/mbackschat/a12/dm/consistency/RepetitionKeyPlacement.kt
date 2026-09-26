@@ -59,13 +59,10 @@ internal fun TrackedFactBase.repetitionKeyPlacementFindings(): List<Finding> {
 /**
  * The one finding this call draws, or null for every shape the grid left to A12.
  *
- * Four silences, each a shape A12 answers with a class of its own rather than this one: an operand this
- * reader cannot reduce to a path (a nested call, an expression, or the `@From` scope form, which the reader
- * already declines), an operand that does not RESOLVE (`MVK_INVALID_ENTITY`), a STARRED key
- * (`MVK_NO_WILDCARDS_ALLOWED`), and a key repeated in the list (`MVK_DUPLICATE_PARAM1`). The duplicate case
- * is the one that is silent on an UNMEASURED basis rather than a measured one: the repeated key was measured
- * only where it also had its repetition, so whether the duplicate class still wins when the key lacks one is
- * unknown, and emitting here would be a rejection resting on a reading.
+ * Silent until the key list passes its own gates ([repetitionKeyListIsSound]) — a key that does not read, a
+ * duplicate, a category and the four key-list classes all answer ahead of this branch
+ * ([KERNEL-FINDINGS KF355]) — and on a SCOPED list, whose last key carries the `@From` clause and so reduces
+ * to no bare path: the scope selects the other branch.
  */
 private fun TrackedFactBase.placementFinding(
     call: ConditionCall,
@@ -73,14 +70,12 @@ private fun TrackedFactBase.placementFinding(
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
-    if (call.operands.isEmpty() || call.operands.any { it.path == null || it.path.contains('*') }) {
+    if (!repetitionKeyListIsSound(call, declaringGroup, element)) {
         return null
     }
-    val keys = call.operands.mapNotNull { operand ->
-        (operand.path?.let { resolveEntity(declaringGroup, it, element.origin) } as? Reference.Resolved)?.path
-    }
-    if (keys.size != call.operands.size || keys.size != keys.distinct().size) {
-        return null
+    val keys = call.operands.map { operand ->
+        (resolveEntity(declaringGroup, operand.path ?: return null, element.origin) as? Reference.Resolved)?.path
+            ?: return null
     }
     // MEASURED: a key outside the rule group hands the verdict to the outsider's own class, never this one.
     if (keys.any { !it.startsWith("$declaringGroup/") }) {

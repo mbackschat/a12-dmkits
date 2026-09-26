@@ -29,17 +29,19 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * the same condition against the SCOPE rather than against another key, which is why a key with no
  * repetition at all — above the scope entirely — is silent here and answered there.
  *
- * **A key with no repeatable group of its own is still judged against the rule group**, and that is the one
- * shape the joint-iteration rule must not swallow: a second key in a NON-repeatable group crosses no
- * repetition, so no wildcard gate has anything to say and `MVK_NOT_IN_RULEGROUP` is what A12 draws.
+ * **The rule-group gate asks only where the key list is sound**, every key read without a wildcard class
+ * ([repetitionKeyListIsSound]). A key outside the rule group then draws `MVK_NOT_IN_RULEGROUP` whether it
+ * crosses no repetition at all or one iterated jointly with the rule's own — both measured
+ * (`adapter.laws.CheckerRepetitionNotUniqueGateAgreementTest`). Taking ANY repetition of the outsider's as
+ * the wildcard gate's is the trap: the rule's iteration reaches a jointly iterated one.
  *
  * **Silent once the rule group CONTAINS every key**, where [repetitionKeyPlacementFindings] takes over with
  * `MVK_REPEATABLE_GROUP_MISSING`: the two families partition the no-`@From` arm at exactly the gate A12
  * partitions it, containment first and the repetition demand after.
  *
- * **Silent on every scope defect**, which A12 gates ahead of containment: a scope naming a field draws
- * `MVK_NO_FIELDS_ALLOWED` and a non-repeatable one `MVK_GROUP_NOT_REPEATABLE`, both
- * [repetitionScopeGroupFindings]'.
+ * **Silent on every key-list and scope defect**, which A12 gates ahead of containment: the key list's own
+ * classes are [repetitionKeyListFindings]', and a scope naming a field draws `MVK_NO_FIELDS_ALLOWED` and a
+ * non-repeatable one `MVK_GROUP_NOT_REPEATABLE`, both [repetitionScopeGroupFindings]'.
  *
  * **Rules only**, for the reason its two siblings are: A12's calculation module refuses the operator in a
  * computation outright ([KERNEL-FINDINGS KF333]), so a computation carrying one has a different defect.
@@ -67,8 +69,8 @@ private data class ContainmentDefect(val code: String, val key: String, val boun
 /**
  * The first containment gate this call fails, in A12's own order.
  *
- * The key list is taken whole or not at all: a shape this reader cannot reduce to a resolved path is one A12
- * answers with its own class, and guessing which would attach a containment fix to a different defect.
+ * The key list is taken whole or not at all: one that does not pass its own gates is answered by an earlier
+ * class, and guessing which would attach a containment fix to a different defect.
  */
 private fun TrackedFactBase.containmentDefect(
     call: ConditionCall,
@@ -76,16 +78,13 @@ private fun TrackedFactBase.containmentDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): ContainmentDefect? {
-    if (call.operands.isEmpty()) {
+    if (!repetitionKeyListIsSound(call, declaringGroup, element)) {
         return null
     }
     val scopeSpelling = call.operands.firstNotNullOfOrNull { operand ->
         operand.clauses.firstOrNull { it.keyword == scopeKeyword }?.path
     }
     val written = call.operands.map { it.base ?: return null }
-    if (written.any { it.contains('*') }) {
-        return null
-    }
     val keys = written.mapNotNull {
         (resolveEntity(declaringGroup, it, element.origin) as? Reference.Resolved)?.path
     }
@@ -141,14 +140,9 @@ private fun TrackedFactBase.withoutScope(keys: List<String>, declaringGroup: Str
             chain = repetition
         }
     }
+    // Every key read cleanly, so an outsider in a repetition of its own is one the rule's iteration reaches.
     val outside = keys.firstOrNull { !parentOf(it).startsWith("$declaringGroup/") } ?: return null
-    // A key whose own branch repeats is refused at the wildcard gate first, so only one with no repetition
-    // of its own — or one sharing an index field with the rule's branch — reaches this class.
-    return if (lowestRepetitionOf(outside) == null) {
-        ContainmentDefect("MVK_NOT_IN_RULEGROUP", outside, declaringGroup)
-    } else {
-        null
-    }
+    return ContainmentDefect("MVK_NOT_IN_RULEGROUP", outside, declaringGroup)
 }
 
 /** The parent path of [path], with the trailing separator A12's own comparison carries. */

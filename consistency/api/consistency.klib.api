@@ -164,6 +164,7 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
     enum entry RANGE_OPERAND_GATES // io.github.mbackschat.a12.dm.consistency/CheckFamily.RANGE_OPERAND_GATES|null[0]
     enum entry RAW_TYPE_LENGTH // io.github.mbackschat.a12.dm.consistency/CheckFamily.RAW_TYPE_LENGTH|null[0]
     enum entry REPETITION_KEY_CONTAINMENT // io.github.mbackschat.a12.dm.consistency/CheckFamily.REPETITION_KEY_CONTAINMENT|null[0]
+    enum entry REPETITION_KEY_LIST // io.github.mbackschat.a12.dm.consistency/CheckFamily.REPETITION_KEY_LIST|null[0]
     enum entry REPETITION_KEY_PLACEMENT // io.github.mbackschat.a12.dm.consistency/CheckFamily.REPETITION_KEY_PLACEMENT|null[0]
     enum entry REPETITION_NOT_UNIQUE_COMBINATION // io.github.mbackschat.a12.dm.consistency/CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION|null[0]
     enum entry REPETITION_SCOPE_GROUP // io.github.mbackschat.a12.dm.consistency/CheckFamily.REPETITION_SCOPE_GROUP|null[0]

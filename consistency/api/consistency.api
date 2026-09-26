@@ -121,6 +121,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field RANGE_OPERAND_GATES Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field RAW_TYPE_LENGTH Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field REPETITION_KEY_CONTAINMENT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field REPETITION_KEY_LIST Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field REPETITION_KEY_PLACEMENT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field REPETITION_NOT_UNIQUE_COMBINATION Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field REPETITION_SCOPE_GROUP Lio/github/mbackschat/a12/dm/consistency/CheckFamily;

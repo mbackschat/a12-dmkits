@@ -321,6 +321,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     },
     produces(CheckFamily.COMPUTATION_CYCLE) { it.computationCycleFindings() },
     perDeclarationWalk(CheckFamily.COMPUTATION_SELF_READ) { it.computationSelfReadFindings() },
+    perDeclarationWalk(CheckFamily.REPETITION_KEY_LIST) { it.repetitionKeyListFindings() },
     perDeclarationWalk(CheckFamily.REPETITION_KEY_PLACEMENT) { it.repetitionKeyPlacementFindings() },
     perDeclarationWalk(CheckFamily.REPETITION_SCOPE_GROUP) { it.repetitionScopeGroupFindings() },
     produces(CheckFamily.REPETITION_KEY_CONTAINMENT) { it.repetitionKeyContainmentFindings() },

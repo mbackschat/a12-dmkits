@@ -20,10 +20,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * finished parse tree after the condition parses, so two calls in opposite arms of an `Or` are counted
  * together even though no evaluation reaches both — measured, because the plausible reading is per branch.
  *
- * **It reports even where A12 would name a construct's own class instead**, which is deliberate and is this
- * checker's standing difference from A12: a construct gate reports ahead of this one, so a condition with
- * two calls and a bad `@From` scope draws `MVK_GROUP_NOT_REPEATABLE` from A12 alone. Both defects are real
- * and A12 simply stops at the first; suppressing the second would hide a defect the author still has to fix.
+ * **A construct class answers ahead of it**: A12 runs this gate only once the condition parsed, so a
+ * condition with two calls and a bad `@From` scope draws `MVK_GROUP_NOT_REPEATABLE` alone. This family judges
+ * the count as if the text were sound, and the report withholds its class behind any positioned one
+ * (`POST_PARSE_CONDITION_CODES`).
  *
  * **A call inside a `Having` filter is NOT counted**, and that is a correction rather than a simplification:
  * the call scanner does descend into a filter body, so counting naively named this class on a condition A12

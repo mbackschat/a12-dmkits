@@ -315,6 +315,14 @@ enum class CheckFamily {
     COMPUTATION_PRECONDITION_FEATURES,
 
     /**
+     * What each `RepetitionNotUnique` key has to be before either branch runs: one field, unstarred, unkeyed,
+     * validated. Its own constant rather than part of [REPETITION_KEY_PLACEMENT] because A12 asks these four
+     * gates over the whole list ahead of the scope and the placement alike, and each of the three branch
+     * families stays silent until they pass.
+     */
+    REPETITION_KEY_LIST,
+
+    /**
      * That a `RepetitionNotUnique` key has a repetition to be asked about — a repeatable group strictly
      * between the rule's own group and the key. Its own constant rather than part of the wildcard family
      * because the demand is on the KEY's placement rather than on a spelling: the class collapses three

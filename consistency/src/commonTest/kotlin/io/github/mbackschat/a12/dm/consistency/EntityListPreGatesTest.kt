@@ -95,9 +95,9 @@ class EntityListPreGatesTest {
         expected["NumberOfValueInFields"] = listOf("MVK_ROOT_GROUP_REFERENCED")
         expected["GroupFilled"] = emptyList()
         expected["GroupNotFilled"] = emptyList()
-        // The uniqueness carrier's own placement class, from another family — what matters is that no
-        // root-group class joins it, `CheckWiederholungBedingungImpl` asking no such gate.
-        expected["RepetitionNotUnique"] = listOf("MVK_NOT_IN_RULEGROUP")
+        // No root-group class: `CheckWiederholungBedingungImpl` asks no such gate, and its own key-list gate
+        // refuses the group (`rulekit.validate.laws.EntityListPreGateLawsTest`) before any placement class.
+        expected["RepetitionNotUnique"] = listOf("MVK_NO_GROUPS_ALLOWED")
         assertEquals(expected, actual, "which carriers ask the root-group gate")
     }
 

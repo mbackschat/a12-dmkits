@@ -9181,7 +9181,7 @@ A string key is no spec and takes no filter, so its `Having` is the operand's: t
 
 Every table carries an admitted control. **The discriminators are the rows with a gated segment AHEAD of a miss**: a reader resolving the whole path first predicts `MVK_INVALID_ENTITY` on each, and a reader judging every star first predicts the landing class on `Nope*/ClaimRef`. A starred key is resolved before the key list's own wildcard gate reads it ([KF355](#kf355)).
 
-**It exposed a second wrong-class defect in the portable checker, on the rows the first fix could not see.** The checker resolved a reference as one lookup, so a gated segment ahead of a miss read as a missing name: it named `MVK_INVALID_ENTITY` for `Insured*` then `Nope` on every carrier, and its first-defect withholding then dropped the landing class it had found. `RepetitionWildcardTest` had locked that substitution as a disclosed price. The reference walk now asks each prefix's gate (`earlierSegmentGate`), so those rows name A12's class. One row stays an under-report: the checker does not carry the key list's own wildcard gate, so `Claims*/ClaimRef` is silent ([CONSISTENCY-GAPS DG80](CONSISTENCY-GAPS.md)).
+**It exposed a second wrong-class defect in the portable checker, on the rows the first fix could not see.** The checker resolved a reference as one lookup, so a gated segment ahead of a miss read as a missing name: it named `MVK_INVALID_ENTITY` for `Insured*` then `Nope` on every carrier, and its first-defect withholding then dropped the landing class it had found. `RepetitionWildcardTest` had locked that substitution as a disclosed price. The reference walk now asks each prefix's gate (`earlierSegmentGate`), so those rows name A12's class. The one row that stayed an under-report, `Claims*/ClaimRef`, is closed: **corrected 2026-09-26**, the checker carries the key list's own gates in [KF355](#kf355)'s order, so a starred key that resolves names `MVK_NO_WILDCARDS_ALLOWED` (`consistency.GroupOperandAndKeyResolverClassTest`).
 
 Locked: `validate.laws.ReferenceSegmentGateOrderLawsTest`, and the 2026-09-24 carriers by `validate.laws.GroupOperandAndKeyResolverClassLawsTest` with `consistency`'s `GroupOperandAndKeyResolverClassTest` as the checker mirror. **Fixed in the portable checker on 2026-09-14** — `Reference.Undeclared` now carries whether the root segment resolved, because only the resolver knows which roots a model declares.
 
@@ -9209,7 +9209,19 @@ Keys on parallel paths draw `MVK_NOT_IN_SAME_PATH` with no scope and `MVK_NOT_IN
 
 **The carrier fact that had to be discovered before any placement row could be measured.** A key in a second repeatable group is read by a rule whose error field sits in the first, so unless the two groups are INDEX-KEYED on the same field the read iterates past the target and `MVK_NO_WILDCARD` answers first — on every placement row at once. That is [KF350](#kf350)'s gate again, and it is what [KF349](#kf349) recorded narrowly for `MVK_NOT_IN_GROUP`: the requirement is the carrier's, not that class's.
 
-Locked: `validate.laws.RepetitionNotUniqueGateOrderLawsTest`. `MVK_CATEGORY_NOT_ALLOWED` and `MVK_NOT_IN_RULEGROUP` had no measurement anywhere in this estate before it.
+**Amended 2026-09-26: "every gate over the whole list" now has its discriminator, and `MVK_NOT_IN_RULEGROUP` a wider reach.** The grid above never put two key defects on one list, so "each gate over the whole list" and "each key through every gate" fitted every row. They separate on a list with a starred field FIRST and a group second, and the list's own duplicate gate has to be kept out of the row, or it answers ahead of both:
+
+| the condition, rule in `/Policy` unless named | A12 |
+|---|---|
+| `RepetitionNotUnique(Claims*/ClaimRef, Insured)` | `MVK_NO_GROUPS_ALLOWED` — the group gate reads the second key before the wildcard gate reads the first |
+| `RepetitionNotUnique(Claims*/ClaimRef, Claims)` | `MVK_DUPLICATE_PARAM2` — the nested duplicate answers ahead of all five key gates |
+| `RepetitionNotUnique(/Policy)` | `MVK_NO_GROUPS_ALLOWED` — this carrier asks no root-group gate, so the root is one more group ([KF388](#kf388)) |
+| `RepetitionNotUnique(/Policy/Payments/PayRef)`, rule in `/Policy/Claims`, `Payments` keyed on `Claims`' index field | `MVK_NOT_IN_RULEGROUP` |
+| `RepetitionNotUnique(/Policy/Claims/ClaimRef)`, rule in `/Policy/Claims/Items` | `MVK_NOT_IN_RULEGROUP` |
+
+The last two rows are why the rule-group gate is not "a key outside the rule group with no repetition of its own": an outsider in a repetition the rule's own iteration reaches — one iterated jointly with it, or the one that contains the rule group — passes the reference reader's wildcard gate and is refused here. Only an outsider in a repetition nothing addresses is the wildcard gate's (`MVK_NO_WILDCARD`).
+
+Locked: `validate.laws.RepetitionNotUniqueGateOrderLawsTest`, and the rows above in `adapter.laws.CheckerRepetitionNotUniqueGateAgreementTest`, which holds A12's class on every row beside the portable checker's. `MVK_CATEGORY_NOT_ALLOWED` and `MVK_NOT_IN_RULEGROUP` had no measurement anywhere in this estate before it.
 
 ## §14 supplement — four `MVK_*` members are message LABELS and can never be a verdict, and one command enumerates them (source-verified, 2026-09-14) <a id="kf354"></a>
 

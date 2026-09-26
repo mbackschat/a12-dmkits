@@ -326,6 +326,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"RepetitionNotUnique(Shelf/ShelfCode @From Shelf)",
               "errorEntityRelPath":"../Shelf/ShelfCode",
               "errorCode":"C24","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r102","name":"GroupAsAUniquenessKey","Rule":{
+              "errorCondition":"RepetitionNotUnique(Shelf)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C102","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r22","name":"KeyWithNoRepetition","Rule":{
               "errorCondition":"RepetitionNotUnique(Price)",
               "errorEntityRelPath":"../Price",
@@ -521,6 +525,10 @@ class CheckFamilyWiringTest {
             ("MVK_NO_FIELDS_ALLOWED" to "/Catalog/FieldWhereAGroupBelongs"),
         CheckFamily.REPETITION_WILDCARD_TARGET to
             ("MVK_INVALID_WILDCARD" to "/Catalog/StarOnAFixedGroup"),
+        // A group as the key: the key list refuses it ahead of the placement gate, which `Shelf` — not
+        // repeating — would fail too, so this row also shows the placement family deferring.
+        CheckFamily.REPETITION_KEY_LIST to
+            ("MVK_NO_GROUPS_ALLOWED" to "/Catalog/GroupAsAUniquenessKey"),
         // `Price` sits directly in the rule's own group, so no repeatable group separates the two — the
         // shape the class collapses onto, and the one that needs no second group to express.
         CheckFamily.REPETITION_KEY_PLACEMENT to
