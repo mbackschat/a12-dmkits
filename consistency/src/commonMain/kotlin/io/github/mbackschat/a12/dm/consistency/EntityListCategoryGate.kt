@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * `CheckEntityListenUtils.checkNoCategories` refuses a list any of whose operands projects a category, and on
  * an A12 model four carriers call it (source-read; the two other callers are H-model constructs). They differ
  * in WHERE they call it against the list `getRefList` builds, which is where the duplicate gates are asked, and
- * that position is the whole of this family's per-carrier knowledge ([KERNEL-FINDINGS KF473],
+ * that position is the whole of this family's per-carrier knowledge ([KERNEL-FINDINGS KF482],
  * `adapter.laws.CheckerEntityListCategoryAgreementTest`):
  *
  * | carrier | its operators | the category gate |

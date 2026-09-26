@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test
 /**
  * The entity lists that refuse a category, each operator on the four A12-model carriers that call
  * `CheckEntityListenUtils.checkNoCategories`, with A12's class written out and the portable checker required to
- * name the same one ([KERNEL-FINDINGS KF473]).
+ * name the same one ([KERNEL-FINDINGS KF482]).
  *
  * Only an Enumeration's own category reaches a list gate. The spec's category gate runs first
  * (`CheckEntitySpecImpl.checkCategory`, source-read): it refuses a field declaring no enumeration with
@@ -72,6 +72,11 @@ class CheckerEntityListCategoryAgreementTest {
             "GroupsNotCollectivelyFilled" to ("GroupsNotCollectivelyFilled(Tier -> Level, Contact)" to CATEGORY),
             "AtLeastOneGroupFilled, beside a duplicate" to
                 ("AtLeastOneGroupFilled(Tier -> Level, Contact, Contact)" to DUPLICATE),
+            // The single-group pair refuses a field with `checkOnlyGroups`, which the carrier asks after the
+            // category gate, so a field's category draws the category class and the bare field the field class.
+            "GroupFilled" to ("GroupFilled(Tier -> Level)" to CATEGORY),
+            "GroupNotFilled" to ("GroupNotFilled(Tier -> Level)" to CATEGORY),
+            "GroupFilled, a field without its category" to ("GroupFilled(Tier)" to setOf("MVK_NO_FIELDS_ALLOWED")),
             // `CheckWiederholungBedingungImpl`: after the duplicate walk.
             "RepetitionNotUnique" to ("RepetitionNotUnique(Tier -> Level, Label)" to CATEGORY),
             "RepetitionNotUnique, beside a duplicate" to ("RepetitionNotUnique(Tier -> Level, Label, Label)" to DUPLICATE),

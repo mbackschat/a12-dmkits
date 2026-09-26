@@ -11255,19 +11255,23 @@ One carrier: `/Order` holds `Reference`, `Label`, an Enumeration `Tier` with the
 
 | rows | A12 |
 |---|---|
-| `Tier -> Level` in the eleven field-list operators, the three counts, the five group-list quantifiers and `RepetitionNotUnique`, beside `Label`, `Contact` or `Window`, or alone in `FieldFilled` and `FieldNotFilled` | `MVK_CATEGORY_NOT_ALLOWED` |
+| `Tier -> Level` in the eleven field-list operators, the three counts, the five group-list quantifiers and `RepetitionNotUnique`, beside `Label`, `Contact` or `Window`, or alone in `FieldFilled`, `FieldNotFilled`, `GroupFilled` and `GroupNotFilled` | `MVK_CATEGORY_NOT_ALLOWED` |
+| `AllFieldsFilled(Tier -> Level, Tier)` | `MVK_CATEGORY_NOT_ALLOWED` |
 | the same with a duplicate beside it, in `AllFieldsFilled`, `FieldValuesNotUnique`, `AtLeastOneGroupFilled` and `RepetitionNotUnique` | `MVK_DUPLICATE_PARAM1` |
-| the same with a duplicate beside it, in `NumberOfFilledFields` and `NumberOfDifferentValues` | `MVK_CATEGORY_NOT_ALLOWED` |
+| the same with a duplicate beside it, in `NumberOfFilledFields`, `NumberOfDifferentValues` and `NumberOfFilledGroups` | `MVK_CATEGORY_NOT_ALLOWED` |
 | `Billing -> Level` in `NumberOfFilledGroups`, `AtLeastOneGroupFilled`, `AllGroupsFilled`, `GroupFilled`, `GroupNotFilled` and `AllFieldsFilled`, and beside a duplicate in `AtLeastOneGroupFilled` | `MVK_NO_GROUPS_ALLOWED` |
 | the controls `AllFieldsFilled(Tier, Label)` and `NumberOfFilledGroups(Billing, Contact) > 0` | ADMITTED |
 | `RepetitionNotUnique(Tier, Label)`, which a root rule may not carry | `MVK_REPEATABLE_GROUP_MISSING` |
+| `GroupFilled(Tier)`, a field without its category | `MVK_NO_FIELDS_ALLOWED` |
 
 What the rows separate:
 
-- **The position is the carrier's.** A category beside a duplicate draws the duplicate on the three after-carriers measured and the category on both counts measured, which is the order the source writes on each side of the line.
+- **The position is the carrier's.** A category beside a duplicate draws the duplicate on the three after-carriers measured and the category on all three counts, which is the order the source writes on each side of the line.
 - **A category behind a group never reaches a list.** `CheckEntitySpecImpl.checkCategory` asks `checkIsField` ahead of both of [KF359](#kf359)'s gates (source-read), so `Billing -> Level` draws the group class on every carrier measured, ahead of a duplicate too. The bracket's and the membership subject's group rows in [KF473](#kf473) are the same gate. So only an Enumeration's own declared category reaches the list gate, since a field declaring no enumeration is the spec's `MVK_NO_ENUMERATION`.
+- **The category is part of an operand's identity.** `AllFieldsFilled(Tier -> Level, Tier)` repeats nothing, so the category class answers rather than the duplicate.
+- **On the single-group pair the category gate runs ahead of `checkOnlyGroups`.** `GroupFilled(Tier -> Level)` draws the category class and `GroupFilled(Tier)` the field class, the order `CheckKontextListenBedingungImpl` asks them in (source-read).
 - **`RepetitionNotUnique`'s category and duplicate gates run ahead of its repeatable-group gate.** The rows are root rules, and the category-free twin draws `MVK_REPEATABLE_GROUP_MISSING`.
 
-The portable checker was silent on every `MVK_CATEGORY_NOT_ALLOWED` row and on both after-carrier duplicate rows, and on the group rows it named `MVK_DUPLICATE_PARAM1` where the group's category answers first. `CheckFamily.ENTITY_LIST_CATEGORY_GATE` now asks the list gate on the 22 operators at each carrier's position; `CATEGORY_REFERENCE` names a category behind a group; and the duplicate family keys a categorized operand by its category on the after-carriers, the category being part of the operand's identity. The value-list family's own arm for a group behind `->` retired into `CATEGORY_REFERENCE`, which raises it where A12 does.
+Before the fix the portable checker was silent on every row drawing the category, duplicate or group class but two, and on those it named `MVK_DUPLICATE_PARAM1` where A12 names the class that answers ahead of the duplicate: `NumberOfFilledGroups(Tier -> Level, Contact, Contact) > 0` and `AtLeastOneGroupFilled(Billing -> Level, Contact, Contact)` (the lock run against the pre-fix sources, 2026-09-26). `CheckFamily.ENTITY_LIST_CATEGORY_GATE` now asks the list gate on the 22 operators at each carrier's position; `CATEGORY_REFERENCE` names a category behind a group; and the duplicate family keys a categorized operand by its category on the after-carriers, the category being part of the operand's identity. The value-list family's own arm for a group behind `->` retired into `CATEGORY_REFERENCE`, which raises it where A12 does.
 
 *Locked by:* `adapter.laws.CheckerEntityListCategoryAgreementTest`, A12's class written out on every row and the checker required to name it.
