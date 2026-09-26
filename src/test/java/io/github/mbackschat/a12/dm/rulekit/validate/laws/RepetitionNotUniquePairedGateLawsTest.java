@@ -26,6 +26,7 @@ class RepetitionNotUniquePairedGateLawsTest {
     private static final String MODEL = DocumentModelDraft.named("policy-uniqueness-pairs").locale("en_US")
             .rootGroup("Policy", p -> p
                     .stringField("Reference", f -> { })
+                    .stringField("Memo", f -> f.lineBreaks().noValueValidation())
                     .enumField("Tier", e -> e.value("BRONZE").value("GOLD").category("Band", "LOW", "HIGH"))
                     .group("Insured", i -> i.stringField("InsuredName", f -> { }))
                     .group("Claims", c -> c.repeatable(20).indexField("ClaimRef")
@@ -73,7 +74,8 @@ class RepetitionNotUniquePairedGateLawsTest {
     @Test
     void aKeyThatCannotBeReadAnswersAheadOfEveryKeyListGate() {
         Map<String, String> expected = new LinkedHashMap<>();
-        for (String defect : new String[] {"Insured", "Claims/RawNote", "Tier -> Band", "Claims*/ClaimRef"}) {
+        for (String defect : new String[] {"Insured", "Claims/RawNote", "Tier -> Band", "Claims*/ClaimRef",
+                "Claims/Amount For \"C-1\""}) {
             expected.put(defect + ", " + UNREAD, "MVK_NO_INDEX_FIELD");
             expected.put(UNREAD + ", " + defect, "MVK_NO_INDEX_FIELD");
         }
@@ -219,7 +221,8 @@ class RepetitionNotUniquePairedGateLawsTest {
         String unbound = "Claims/ClaimRef";
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("Reference, " + unbound, "MVK_NO_WILDCARD");
-        for (String defect : new String[] {"Insured", "Tier -> Band", "Insured, Insured"}) {
+        for (String defect : new String[] {"Insured", "Tier -> Band", "Riders*/RiderRef", "Claims/Amount For \"C-1\"",
+                "Memo", "Insured, Insured"}) {
             expected.put("Reference, " + unbound + ", " + defect, "MVK_NO_WILDCARD");
             expected.put("Reference, " + defect + ", " + unbound, "MVK_NO_WILDCARD");
         }

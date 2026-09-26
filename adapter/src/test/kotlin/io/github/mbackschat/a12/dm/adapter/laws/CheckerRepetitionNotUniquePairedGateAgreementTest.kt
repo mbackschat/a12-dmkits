@@ -20,6 +20,7 @@ class CheckerRepetitionNotUniquePairedGateAgreementTest {
     private val model = DocumentModelDraft.named("policy-uniqueness-pairs").locale("en_US")
         .rootGroup("Policy") { p -> p
             .stringField("Reference") { }
+            .stringField("Memo") { s -> s.lineBreaks().noValueValidation() }
             .enumField("Tier") { e -> e.value("BRONZE").value("GOLD").category("Band", "LOW", "HIGH") }
             .group("Insured") { i -> i.stringField("InsuredName") { } }
             .group("Claims") { c -> c.repeatable(20).indexField("ClaimRef")
@@ -54,14 +55,15 @@ class CheckerRepetitionNotUniquePairedGateAgreementTest {
     fun theCheckerNamesTheClassA12NamesOnEveryPairedRow() {
         val unread = "Insured/InsuredName For \"k\""
         val rows = mutableListOf<Row>()
-        for (defect in listOf("Insured", "Claims/RawNote", "Tier -> Band", "Claims*/ClaimRef")) {
+        val indexed = "Claims/Amount For \"C-1\""
+        for (defect in listOf("Insured", "Claims/RawNote", "Tier -> Band", "Claims*/ClaimRef", indexed)) {
             rows += inPolicy("$defect, $unread", "MVK_NO_INDEX_FIELD")
             rows += inPolicy("$unread, $defect", "MVK_NO_INDEX_FIELD")
         }
         bothOrders("Tier -> Band", "Insured") { rows += inPolicy(it, "MVK_CATEGORY_NOT_ALLOWED") }
         bothOrders("Insured", "Claims*/ClaimRef") { rows += inPolicy(it, "MVK_NO_GROUPS_ALLOWED") }
-        bothOrders("Claims*/ClaimRef", "Claims/Amount For \"C-1\"") { rows += inPolicy(it, "MVK_NO_WILDCARDS_ALLOWED") }
-        bothOrders("Claims/Amount For \"C-1\"", "Claims/RawNote") { rows += inPolicy(it, "MVK_SEMANTIC_INDEX_NOT_ALLOWED") }
+        bothOrders("Claims*/ClaimRef", indexed) { rows += inPolicy(it, "MVK_NO_WILDCARDS_ALLOWED") }
+        bothOrders(indexed, "Claims/RawNote") { rows += inPolicy(it, "MVK_SEMANTIC_INDEX_NOT_ALLOWED") }
         bothOrders("Insured", "Claims/RawNote") { rows += inPolicy(it, "MVK_NO_GROUPS_ALLOWED") }
         bothOrders("ClaimRef", "/Policy/Payments/PayRef") { rows += inClaims(it, "MVK_NOT_IN_SAME_PATH") }
         rows += inClaims("/Policy/Payments/PayRef", "MVK_NOT_IN_RULEGROUP")
@@ -94,7 +96,7 @@ class CheckerRepetitionNotUniquePairedGateAgreementTest {
         rows += inPolicy("Claims/ClaimRef @From Insured*", "MVK_INVALID_WILDCARD")
         rows += inPolicy("Claims/ClaimRef @From Claims* For \"C-1\"", "MVK_SEMANTIC_INDEX_AND_WILDCARD")
         rows += unique("/Policy", "../Reference", "Reference, Claims/ClaimRef", setOf("MVK_NO_WILDCARD"))
-        for (defect in listOf("Insured", "Tier -> Band", "Insured, Insured")) {
+        for (defect in listOf("Insured", "Tier -> Band", "Riders*/RiderRef", indexed, "Memo", "Insured, Insured")) {
             for (keys in listOf("Reference, Claims/ClaimRef, $defect", "Reference, $defect, Claims/ClaimRef")) {
                 rows += unique("/Policy", "../Reference", keys, setOf("MVK_NO_WILDCARD"))
             }

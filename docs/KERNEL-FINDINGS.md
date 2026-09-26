@@ -9251,8 +9251,8 @@ Locked: `validate.laws.RepetitionNotUniqueGateOrderLawsTest`, and the rows above
 
 | rows | A12 | what it settles |
 |---|---|---|
-| `U` beside a group, a raw, a categorized or a starred key, in both orders | `MVK_NO_INDEX_FIELD` | every key is read before any key-list gate |
-| reporting at the root: `Reference, Claims/ClaimRef` beside `Insured`, `Tier -> Band` or `Insured, Insured`, after it and before it | `MVK_NO_WILDCARD` | a key's missing star is asked as the key is read, so the walk too answers ahead of every key-list gate |
+| `U` beside a group, a raw, a categorized, a starred or an indexed key, in both orders | `MVK_NO_INDEX_FIELD` | every key is read before any key-list gate |
+| reporting at the root: `Reference, Claims/ClaimRef` beside `Insured`, `Tier -> Band`, `Riders*/RiderRef`, `Claims/Amount For "C-1"`, a raw root field or `Insured, Insured`, after it and before it | `MVK_NO_WILDCARD` | a key's missing star is asked as the key is read, so the walk too answers ahead of every key-list gate |
 | each adjacent pair of the five key-list gates, and group beside raw, in both orders | the earlier gate's class | the gates run one over the whole list at a time, whatever the key order |
 | in `Claims`: `ClaimRef, /Policy/Payments/PayRef`, both orders | `MVK_NOT_IN_SAME_PATH` | the shared-path gate is asked ahead of the rule-group gate |
 | `Claims/Adjuster/AdjusterRef, Claims/Assessor/AssessorRef`, two sibling fixed groups of one repeatable group, with and without `@From Claims` | admitted | the shared path is the keys' lowest repeatable group |
