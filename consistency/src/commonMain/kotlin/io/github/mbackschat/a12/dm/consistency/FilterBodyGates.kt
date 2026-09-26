@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORD
 import io.github.mbackschat.a12.dm.consistency.syntax.CUSTOM_CONDITION
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.OperandClause
 import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
@@ -61,6 +62,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * disagree with the order [semanticIndexKeyFindings] applies outside one. Judging such a body here would
  * name a third class beside a pair that is already one too many.
  *
+ * **A filter an entity key owns is walked against the KEY.** A `Having` after an entity key is the key's
+ * ([OperandClause.filtersKey]), so A12 asks every gate here of the key's spec while the key is parsed, ahead
+ * of the index gates the outer spec asks of the key once it is complete: `[Orders/Note]` in the body of a
+ * filter the starred key `Parties* / Name` owns is the iteration class, not the key's star class. An index in such a body sits
+ * inside the key's own index and is refused as a nested one while the body is parsed, so it is
+ * [semanticIndexStructureFindings]' (`adapter.laws.CheckerFilterBodyAgreementTest`, [KERNEL-FINDINGS KF485]).
+ *
  * **A level is "ridden" by ending at it as much as by passing through it.** `CurrentRepetition(Legs)`
  * resolves to the group itself and carries the same iteration marker a field beneath `Legs` does, so a walk
  * over ancestors alone would find no level at all on the carrier the catalog line is about.
@@ -93,9 +101,10 @@ internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> {
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
                 .flatMap { it.operands }
                 .firstNotNullOfOrNull { operand ->
-                    filterDefectOf(operand, filterKeyword, indexKeyword, clauseKeywords, callable,
-                        keywords, group, element)
-                        ?.let { filterFinding(it, element, member, operand.spanIn(member)) }
+                    val filter = operand.clauses.firstOrNull { it.keyword == filterKeyword }
+                        ?: return@firstNotNullOfOrNull null
+                    filterDefectOf(operand, filter, indexKeyword, clauseKeywords, callable, keywords, group, element)
+                        ?.let { filterFinding(it, element, member, ownerSpanOf(operand, filter, member)) }
                 }
         }
     }
@@ -113,7 +122,7 @@ private data class FilterDefect(val code: String, val wrote: String, val level: 
  */
 private fun TrackedFactBase.filterDefectOf(
     operand: CallOperand,
-    filterKeyword: String,
+    filter: OperandClause,
     indexKeyword: String?,
     clauseKeywords: Set<String>,
     callable: Set<String>,
@@ -121,10 +130,10 @@ private fun TrackedFactBase.filterDefectOf(
     group: String,
     element: TrackedDeclaration,
 ): FilterDefect? {
-    // A filter written after an index key filters the KEY ([OperandClause.filtersKey]), which this walk over
-    // the operand's own starred levels has no cell for.
-    val filter = operand.clauses.firstOrNull { it.keyword == filterKeyword && it.filtersKey == null } ?: return null
-    val written = operand.base ?: return null
+    // A filter written after an entity key filters the KEY ([OperandClause.filtersKey]): A12 asks every gate
+    // below of the key's spec, while the key is parsed, so the key is the filtered entity here.
+    val key = filter.filtersKey
+    val written = (if (key == null) operand.base else key.path) ?: return null
     // A nested clause, the rule-context keyword, and the outer marker each put a shape in the body that this
     // walk has no measured cell for — the first two because they carry indices A12 reads and no path this
     // reader can resolve, the third because the marker is invisible in a normalized reference.
@@ -154,6 +163,11 @@ private fun TrackedFactBase.filterDefectOf(
     val uses = indexKeyword
         ?.let { semanticIndexUsesIn(filter.text, conditionLanguage, it) }
         .orEmpty()
+    // An index in a key's filter body sits inside the key's own index, so A12 refuses it as a nested index
+    // while the body is parsed, before this walk runs — [semanticIndexStructureFindings]' class.
+    if (key != null && uses.isNotEmpty()) {
+        return null
+    }
     // An ENTITY key leaves the whole operand unjudged. A12 answers such a body from the index's own spec
     // gates, which run while the spec is parsed and so ahead of this walk — measured on two shapes, one
     // answered by the key-kind gate and one by the filter branch, neither by anything this walk asks.
@@ -205,6 +219,16 @@ private fun TrackedFactBase.filterDefectOf(
 private fun disallowedConstructIn(text: String, keywords: Map<String, String>): String? =
     listOfNotNull(keywords[CUSTOM_CONDITION], keywords[REPETITION_NOT_UNIQUE])
         .firstOrNull { namesKeyword(text, setOf(it)) != null }
+
+/**
+ * Where A12 raises this filter's classes: at the end of the spec that owns it, which for a key's filter is the
+ * key itself — enclosed by the index span, so report assembly places the body's class ahead of the index
+ * classes A12 asks of the key once it is complete (`adapter.laws.CheckerFilterBodyAgreementTest`).
+ */
+private fun ownerSpanOf(operand: CallOperand, filter: OperandClause, member: String): TextSpan {
+    val key = filter.filtersKey ?: return operand.spanIn(member)
+    return TextSpan(member, key.at, filter.at + filter.text.length)
+}
 
 private const val INVALID_ITERATION = "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
 

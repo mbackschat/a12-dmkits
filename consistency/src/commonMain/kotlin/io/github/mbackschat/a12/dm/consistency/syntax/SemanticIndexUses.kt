@@ -15,7 +15,9 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * @param keyCategory the name behind a `->` on the key, which is a value CATEGORY rather than an entity.
  * @param nested whether this index sits inside another's key, which is what the second `For` of
  *     `[A For B For C]` is: A12's grammar nests to the RIGHT, so `B For C` is the key of the index on `A`,
- *     and the check of the index on `B` finds an index enclosing it (`CheckEntityUtils.isSemanticIndex`).
+ *     and the check of the index on `B` finds an index enclosing it (`CheckEntityUtils.isSemanticIndex`,
+ *     which walks every parent up to the root). An index in the body of a filter an entity key owns sits
+ *     inside that key's production too, measured (`adapter.laws.CheckerFilterBodyAgreementTest`).
  * @param keywordAt where the keyword begins. A class of the index is published from here to [end], so its span
  *     encloses its key's, which is how report assembly knows the key's own gates run first where the two end
  *     together.
@@ -70,7 +72,10 @@ internal fun semanticIndexUsesIn(
             use.key.path,
             use.key.literal,
             use.key.category,
-            nested = found.any { other -> other !== use && other.key.begin == use.value.begin },
+            // A key or value that names nothing has no position, and -1 must enclose nothing.
+            nested = use.value.begin >= 0 && found.any { other ->
+                other !== use && other.key.begin >= 0 && use.value.begin in other.key.begin until other.key.end
+            },
             keywordAt = use.keywordAt,
             start = if (use.key.begin < 0) tokens[use.key.end - 1].end else tokens[use.key.begin].start,
             end = tokens[found.chainEndOf(use)].end,

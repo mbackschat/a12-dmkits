@@ -77,10 +77,10 @@ class FilterBodyComparisonTest {
                 "MVK_SEMANTIC_INDEX_WITH_WILDCARD",
             "Sum(Orders*/Units For Parties*/Name Having [Parties/Name] < [Parties/Count]) > 0" to
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
-            // Divergence lock, CONSISTENCY-GAPS DG91: the body gates skip a filter an index key owns, so the key's
-            // own star class stands where A12 names the body's iteration.
+            // A filter an index key owns is walked against the key, while the key is parsed and so ahead of
+            // the key's own star class.
             "Sum(Orders*/Units For Parties*/Name Having [Orders/Note] == \"x\") > 0" to
-                "MVK_SEMANTIC_INDEX_WITH_WILDCARD",
+                "MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
             "Sum(Orders*/Units For Parties*/Name Having [Orders/Note] < [Orders/Units]) > 0" to
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
             "Sum(Orders*/Units For Reference Having [Orders/Note] == \"x\") > 0" to "MVK_WILDCARDS_REQUIRED",

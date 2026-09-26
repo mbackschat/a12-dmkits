@@ -10817,7 +10817,7 @@ The misplaced star, refused as the spec's path is read, is one class the body do
 | two nested filters over `Orders` and `Orders/Lines`, either way round, the inner body comparing `Lines` fields | `MVK_INVALID_TYPE_FOR_COMPARISON` |
 | an aggregate with no filter of its own in a body, `Sum(Claims*/Paid Having Sum(Claims*/Units) > 0) > 0` | `MVK_NO_ITERATION_FOR_WILDCARD` |
 
-The key rows order two spec-end classes as well: on one key spec, the body's iteration class comes before the key's star class. So the checker types a body's side whatever repetition it crosses, and raises the kind class at the `Having` keyword, finding the filtered operand by its delimiters so a text that breaks later in the body still draws it. It is silent on the nested-filter and body-aggregate controls ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG90), and names a key's star class where A12 names what the key's body reads (DG91).
+The key rows order two spec-end classes as well: on one key spec, the body's iteration class comes before the key's star class. So the checker types a body's side whatever repetition it crosses, and raises the kind class at the `Having` keyword, finding the filtered operand by its delimiters so a text that breaks later in the body still draws it. It is silent on the nested-filter and body-aggregate controls ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG90), and named a key's star class where A12 names what the key's body reads until [KF485](#kf485) walked a key-owned body.
 
 **Extended 2026-09-25 — a sign stands on a number literal alone.** The grammar has no unary minus: `-` is part of `commonKonstante : minus='-'? ZiffernFolge …`. So `[BaseFee] > -1` and `[BaseFee] - -1 > 1` are admitted, while `-[BaseFee] < 0`, `[BaseFee] > -[EffectiveFee]`, `[BaseFee] > -{[EffectiveFee] + 1}`, `[BaseFee] > -Abs([EffectiveFee])` and `[BaseFee] > --1` are each `MVK_UNEXPECTED_TOKEN`. The checker had signed any operand and admitted all five; it now signs a literal only. The same holds on the operation carrier and in an operation argument: into `EffectiveFee`, `-5`, `0 - [BaseFee]`, `[BaseFee] * -1` and `RoundUp(0 - [BaseFee], 2)` are admitted, while `-[BaseFee]`, `[BaseFee] * -[BaseFee]`, `{-[BaseFee]}` and `RoundUp(-[BaseFee], 2)` are each `MVK_UNEXPECTED_TOKEN`, as the checker also answers.
 
@@ -11364,3 +11364,25 @@ The portable checker was silent on every refused copy row, and named both classe
 The portable checker had read a quoted literal as text and ignored `Today`, `Now`, `True`, `False` and every number opposite a date. It was silent on every refused row above but the enumeration's, named `MVK_INVALID_TYPE_FOR_COMPARISON` on the five orderable dated-literal rows A12 admits, and named the enumeration domain class, the text-kind class and the ordering class on three date-class rows. It now types a constant as A12 does in one reader (`writtenConstantOf`) that all six comparison families share, where five had kept a private one, and asks the constant gate as A12 does (`constantGateAdmits`). The keyed-operand grid's fourteen rows of this class now agree too.
 
 *Locked by:* `adapter.laws.CheckerComparisonConstantAgreementTest`, A12's class written out on every row and the checker required to name it; mirrored by `consistency.ComparisonConstantTest`.
+
+## §9 supplement — a filter an entity key owns is walked against the KEY, while the key is parsed, and an index in its body is a NESTED index (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf485"></a>
+
+> Fold: not-foldable — a diagnostic-class law about the filter walk's carrier, not an evaluation behaviour.
+
+`checkFilterCondition` runs on the spec that owns the filter, and a `Having` after an entity key belongs to the key's spec ([KF358](#kf358)). So the key's own star gate, then [KF374](#kf374)'s body walk, are asked with the KEY as the filtered entity, when the key's spec is checked — which is before the outer spec's index checks ask the key for a star (`CheckSemanticIndexImpl`), source-read. And `CheckEntityUtils.isSemanticIndex` walks every parent up to the root, so an index anywhere inside another index's production is refused as nested while it is parsed, ahead of any walk. Measured on a root rule over a claims policy with repeatable `Claims` and `Parties`, and `Orders` indexed by its `OrderNo`:
+
+| the operand | A12 | what it separates |
+|---|---|---|
+| `Orders*/Units For Parties*/Name Having [Orders/Note] == "x"`, `… Having [Claims/Notes] …`, `… Having [Orders/Lines/Memo] …` | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | the body is walked against `Parties`, not `Orders`, and ahead of the key's star class |
+| `… Having [Parties/Name] == "x" And [Orders/Note] == "y"` | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | an in-scope read does not clear an out-of-scope one |
+| `… Having [Reference] == "x"` | `MVK_NO_ITERATION_FOR_WILDCARD` | no read in the key's starred level |
+| `… Having [Parties/Name] == "x"`; `Orders*/Units For Claims*/ClaimNo Having [Claims/Notes] == "x"` | `MVK_SEMANTIC_INDEX_WITH_WILDCARD` | a body the walk admits leaves the key's star class |
+| `… For Claims*/ClaimNo Having [Parties/Name] == "x"` | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | the carrier moves with the key |
+| `… Having [Orders/Note For "A"] == "x"`; `… Having [Claims/Notes] == "x" And [Orders/Note For "A"] == "y"` | `MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX` | nested, and parsed before the walk: the out-of-scope read ahead of it does not answer |
+| `Orders*/Units Having [Orders/Note For "A"] == "x"` | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` | the operand's own filter is inside no index ([KF377](#kf377)) |
+| `… Having [Orders/Note] < [Orders/Units]` | `MVK_INVALID_TYPE_FOR_COMPARISON` | a body comparison is raised as the body is parsed ([KF467](#kf467)) |
+| `Orders*/Units For Parties/Name Having …`; `… For Reference Having …` | `MVK_SEMANTIC_INDEX_INVALID_ITER`; `MVK_WILDCARDS_REQUIRED` | an unstarred key's own gates answer first |
+
+The portable checker walked only a filter the operand owns, so on a key's filter it named the key's star class where A12 names the body's, and on an index in that body it named the star class too. It now walks a key-owned body against the key and spans the class on the key, which places it ahead of the index classes, and it reads an index nested anywhere inside another's key as nested (`SemanticIndexUse.nested`).
+
+*Locked by:* `adapter.laws.CheckerFilterBodyAgreementTest`, A12's class written out on every row and the checker required to name it; the first row is mirrored by `consistency.FilterBodyComparisonTest`.
