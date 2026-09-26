@@ -73,7 +73,7 @@ Two runtime rules shape the last row. **An alternative that has already complete
 |---|---|
 | [KF300](KERNEL-FINDINGS.md#kf300), the four phase codes | §2.3 plus the lexer's own error |
 | [KF311](KERNEL-FINDINGS.md#kf311), the earlier failure wins | §2.2, lexing on demand |
-| [KF491](KERNEL-FINDINGS.md#kf491), walked against unwalked paths | Appendix B, the entity-spec window: while it predicts, no segment check has run; `$` then a name, a leading climb or a star directly after a name ends the window, and only then do the segment checks run. Confirmed by the trace: `FieldFilled(Items*/NoSuch.)` fails at `)` before `NoSuch` is checked, where KF491's earlier "resolved segment by segment as it is read" predicted `MVK_INVALID_ENTITY` |
+| [KF491](KERNEL-FINDINGS.md#kf491), walked against unwalked paths | Appendix B, the entity-spec window: while it predicts, no segment check has run. `$` then a name, a leading climb, a star directly after a name, or a `.*` star followed by `/` (measured) ends the window, and from there each step is checked as its production completes. Confirmed by the trace and by `checkConsistency`: `FieldFilled(Items*/NoSuch.)` fails at `)` before `NoSuch` is checked, where KF491's earlier "resolved segment by segment as it is read" predicted `MVK_INVALID_ENTITY` |
 | [KF492](KERNEL-FINDINGS.md#kf492), typed argument slots | §2.4: a place count or a day keyword is a match, an operation slot a decision |
 | DG83, a message class beside a refused condition | §1, the message's parameters: a condition that fails withholds its rule's message check |
 | DG117 and DG118, operation types | §2.2: every operation's type is computed bottom-up by the check actions, so a comparison and an extremum see the type of an arithmetic side |
@@ -242,7 +242,7 @@ Before step 1, `setParallelIterationIndices` turns some iterations into parallel
 
 | decision | alternatives that share a prefix | window |
 |---|---|---|
-| entity spec (dec 56) | the H path form and the A12 path form share any `'/'? name ('/' name)*` prefix and are told apart only by their predicates, which prediction evaluates only where it resolves; the rule-context form and the path form share `$` | the whole path, until a token only one form takes: `$` then a name, a leading `..`, a `*` directly after a name, `For`, `Mit`, …; measured 0–9 tokens |
+| entity spec (dec 56) | the H path form and the A12 path form share any `'/'? name ('/' name)*` prefix and are told apart only by their predicates, which prediction evaluates only where it resolves; the rule-context form and the path form share `$` | the whole path, until a token only one form takes: `$` then a name, a leading `..`, a `*` directly after a name, `For`, `Mit`, …; measured 0–9 tokens. A `.*` star followed by `/` ends it too, measured through `checkConsistency` ([KF491](KERNEL-FINDINGS.md#kf491)); whether the `.*` or the `/` decides is not separated |
 | filter after a key (dec 55) | `Mit` may follow an entity spec ending in `Fuer` *key* | ambiguous by design |
 | simple condition (dec 6) | the two validity conditions share `Valid (` | three tokens |
 | relative climb (dec 63, 66) | `../..` against `../x` | three tokens |
