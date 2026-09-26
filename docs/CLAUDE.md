@@ -19,7 +19,7 @@ The knowledge docs total ~4.6 MB (~1.15M tokens at 4 bytes each); `INTERPRETER-F
 | **a fact by keyword** | `grep -n '<term>' docs/KERNEL-FINDINGS.md docs/KERNEL-SEMANTICS.md \| cut -c1-200` — the kernel-truth pair. **The truncation is not optional:** these docs are one-paragraph-per-line, so an untruncated `repetition` returns 115 lines and ~99 KB in a single call. Headings are claim-rich but not subject-rich — most operator names appear only in bodies, so a heading grep alone will miss them; for an operator specifically, go through [OPERATOR-INDEX.md](OPERATOR-INDEX.md) instead |
 | **how certain a claim is** | **KERNEL-FINDINGS:** the heading's oracle token (`probe` / `source-verified` / `source-read` / `differential` / `measured` / `tri-lock` / `runtime`) — about two thirds of its headings carry one, so **a third do not and you must fetch the entry**. **INTERPRETER-FINDINGS: almost none do** (a twentieth), so always read the entry's provenance rather than the heading. Either way the lock is prose-embedded (195 of 212 KF entries name a `*Test`/`*Laws` class inline, 2026-08-29), so pipe the entry range through `grep -i lock` and extract it; don't expect a fixed slot |
 | **whether a kernel fact is current** | `grep -A2 '^## <heading>'` — the `> Fold:` marker is the first body line of every KERNEL-FINDINGS entry, **after a blank line**, so `-A1` silently matches nothing: `folded → §n` (canonical claim now lives in [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §n) · `not-foldable` · `pending` |
-| **what remains** | `grep -H '^_None open._' docs/*GAPS*.md` — the drained ledgers, out of nine; any ledger the grep does NOT return carries rows under its `Open` section, so run it rather than trusting a count here |
+| **what remains** | `grep -H '^_None open._' docs/*GAPS*.md` — the drained ledgers; any ledger the grep does NOT return carries rows under its `Open` section, so run it rather than trusting a count here |
 
 ## Addressing — cite by id, never by title text
 
@@ -65,7 +65,7 @@ File-scope inheritance is **not** a safe general rule and was rejected on measur
 
 ## The `-GAPS` template
 
-All nine ledgers share one shape, so a single grep answers "what remains?" across the family. Guarded by `GapLedgerTemplateGuardTest`.
+Every `-GAPS` ledger shares one shape, so a single grep answers "what remains?" across the family. Guarded by `GapLedgerTemplateGuardTest`.
 
 ```markdown
 # <scope> — gaps
