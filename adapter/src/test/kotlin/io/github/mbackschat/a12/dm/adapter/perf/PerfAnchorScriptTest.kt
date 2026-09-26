@@ -313,6 +313,27 @@ class PerfAnchorScriptTest {
             "a refused refresh must write nothing")
     }
 
+    /**
+     * **`show` previews a contended run instead of refusing it.** The refusal guards what a refresh WRITES, and
+     * `show` writes nothing, so refusing there only hid the diff and failed `perf-report.sh`, whose contract is
+     * to exit 0 on a readable record. The preview still names the refusal a refresh would meet.
+     */
+    @Test
+    fun showPreviewsAContendedRunAndNamesTheRefusalARefreshWouldMeet() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+        val before = Files.readString(anchor)
+
+        val run = run("show", anchor, listOf(observations("busy.jsonl", laneA to 2.0, laneB to 4.0,
+            environment = "darwin-aarch64", machine = "local-a", loadAverage = 9.0)))
+
+        assertEquals(0, run.status, "show changes nothing, so a contended input is no reason to fail: ${run.stderr}")
+        assertTrue(laneA in run.stdout) { "the preview must still show the diff: ${run.stdout}" }
+        assertTrue("9.00" in run.stdout && "refresh would refuse" in run.stdout) {
+            "the preview must name the refusal a refresh would meet: ${run.stdout}"
+        }
+        assertEquals(before, Files.readString(anchor), "show must leave the anchor byte-identical")
+    }
+
     /** The control: the same run at a quiet load folds normally, so the bar is the load and not the fixture. */
     @Test
     fun aLocalRunCapturedOnAQuietMachineStillSetsTheAnchor() {

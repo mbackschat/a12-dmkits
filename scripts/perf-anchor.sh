@@ -98,7 +98,7 @@ import json, os, statistics, sys
 mode, anchor_path = os.environ["MODE"], os.environ["ANCHOR"]
 inputs = sys.argv[1:]
 
-run, samples, headers = None, {}, []
+run, samples, headers, contended = None, {}, [], []
 for input_path in inputs:
     header = None
     with open(input_path) as handle:
@@ -163,16 +163,23 @@ for input_path in inputs:
     # that class is already a flag-not-fail bar over the runner CLASS rather than over a machine.
     # An ABSENT loadAverage is trusted, on the same precedent as a record predating the status field: every
     # current gate run writes it, so only imported history lacks it.
+    # The refusal guards what a refresh WRITES. `show` writes nothing, so there it is only noted: refusing
+    # hid the diff and failed perf-report.sh, whose section 5 is this `show` and whose contract is to exit 0
+    # on a readable record. Measured 2026-09-26: the run committed in 1eec90e28 sits at 1.29 runnable threads
+    # per core, and the report failed on the live record.
     load, cores = header.get("loadAverage"), header.get("processors")
     if not hosted and load is not None and cores and load / cores > 1.0 \
             and not os.environ.get("ALLOW_CONTENDED"):
-        sys.exit(
+        refusal = (
             f"{input_path} was captured at load {load:.2f} on {cores} processors"
             f" ({load / cores:.2f} runnable threads per core), so it measured a machine it was competing with."
             " Folding it would bar every later run against a contended number, and the per-key median cannot"
             " undo that when the whole capture session was contended."
             " Re-capture on a quiet machine, or re-run with ALLOW_CONTENDED=1 if that load was not CPU work."
         )
+        if mode != "show":
+            sys.exit(refusal)
+        contended.append(refusal)
     identity = [("environment", "absolute times are only comparable within one runner class"),
                 ("commit", "folding revisions would average away the change one of them introduced")]
     if not hosted:
@@ -247,6 +254,8 @@ if not (added or changed or missing):
     print("  (no change)")
 
 if mode == "show":
+    for refusal in contended:
+        print(f"\na refresh would refuse this input: {refusal}")
     print("\nshow only — pass 'refresh' to write it")
     raise SystemExit(0)
 

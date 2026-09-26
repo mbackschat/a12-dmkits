@@ -44,6 +44,20 @@ class PerfReportScriptTest {
     }
 
     /**
+     * A CONTENDED record is still a readable one. §5 delegates to `perf-anchor.sh show`, which once refused a run
+     * captured above one runnable thread per core and so failed the whole report on the committed record.
+     */
+    @Test
+    fun aContendedRecordIsStillAReport() {
+        val run = run(record(listOf(10.0, 10.2, 9.9), loadAverage = 24.0))
+
+        assertEquals(0, run.status, "a contended record is readable, so it is not a failure: ${run.output}")
+        assertTrue("refresh would refuse" in run.output.substringAfter("5. BARS")) {
+            "§5 must still say what a refresh would meet: ${run.output}"
+        }
+    }
+
+    /**
      * The newest run's identity and observation tally — the §1 projection. Asserted on the NEWEST run
      * specifically: reading an older one would look identical on a stable series, which is how a
      * newest-vs-first mistake survives.
@@ -106,6 +120,7 @@ class PerfReportScriptTest {
         runs: List<Double>,
         commits: List<String>? = null,
         status: String = "accepted",
+        loadAverage: Double = 2.0,
     ): Path {
         val root = work.resolve("results")
         val dir = root.resolve("darwin-aarch64").also { Files.createDirectories(it) }
@@ -114,8 +129,8 @@ class PerfReportScriptTest {
             Files.writeString(
                 dir.resolve("$stamp.jsonl"),
                 """
-                {"kind":"run","environment":"darwin-aarch64","capturedAt":"$stamp","commit":"${commits?.get(i) ?: "c%04d".format(i)}","os":"Mac OS X","arch":"aarch64","jdk":"21.0.12","processors":8,"machine":"Macmini9,1 Apple M1","loadAverage":2.0,"ci":false,"runId":null,"runnerName":null}
-                {"kind":"observation","environment":"darwin-aarch64","key":"$KEY","scenario":"diagnostic/B1@1 fingerprint=abc","lane":"B1 sub-quadratic check","n":5000,"engine":"interpreter","clock":"cpu","medianMs":$ms,"status":"$status","loadAverage":2.0}
+                {"kind":"run","environment":"darwin-aarch64","capturedAt":"$stamp","commit":"${commits?.get(i) ?: "c%04d".format(i)}","os":"Mac OS X","arch":"aarch64","jdk":"21.0.12","processors":8,"machine":"Macmini9,1 Apple M1","loadAverage":$loadAverage,"ci":false,"runId":null,"runnerName":null}
+                {"kind":"observation","environment":"darwin-aarch64","key":"$KEY","scenario":"diagnostic/B1@1 fingerprint=abc","lane":"B1 sub-quadratic check","n":5000,"engine":"interpreter","clock":"cpu","medianMs":$ms,"status":"$status","loadAverage":$loadAverage}
                 """.trimIndent() + "\n",
             )
         }
