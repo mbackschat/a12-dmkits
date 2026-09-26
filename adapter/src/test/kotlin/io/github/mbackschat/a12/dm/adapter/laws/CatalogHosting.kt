@@ -8,9 +8,11 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry
 /**
  * Where a catalog example becomes a rule: the fixture it is hosted in, the rule group, and the error field.
  *
- * This is how the N7 guard (`rulekit.catalog.CatalogExamplesAreKernelValidTest`) proves each example
- * admitted, so a sweep that seeds from the catalog starts from inputs the Kernel is known to accept rather
- * than from a hosting of its own.
+ * The scheme follows the N7 guard (`rulekit.catalog.CatalogExamplesAreKernelValidTest`): an `Order` fixture,
+ * and a two-level repeatable `Warehouse` for the multi-star examples. It is not N7's hosting, though. The
+ * adapter's `models/order.dm.json` declares four fields the root copy lacks, and the error field is picked here
+ * in model order rather than from N7's priority list. So N7's verdict does not carry over, and a consumer that
+ * needs an admitted example asks A12 about it on this hosting.
  */
 internal object CatalogHosting {
 
@@ -58,6 +60,9 @@ internal object CatalogHosting {
                 }
                 ?: error("no $ruleGroup field or group is referenced by catalog example: $condition")
         }
+
+        /** [errorFieldOf] as a rule's `errorEntityRelPath`, which is relative to the rule element, one level down. */
+        fun errorEntityRelPathOf(condition: String): String = "../${errorFieldOf(condition)}"
     }
 
     private fun String.references(pathOrName: String): Boolean =

@@ -172,7 +172,7 @@ class CheckerKeyedOperandAgreementTest {
             val draft = DraftComputation(group, "DerivedOutcome", target, null,
                 listOf(DraftComputation.Alternative(null, operation)))
             val a12 = validator.check(desk, draft).let { result ->
-                if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse(UNKEYED) }.toSet()
+                if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse(UNKEYED_A12_CLASS) }.toSet()
             }
             val ours = check(ModelSource(validator.inject(desk, draft))).findings
                 .filter { it.justifiesRejection }.map { it.code }.toSet()
@@ -211,7 +211,7 @@ class CheckerKeyedOperandAgreementTest {
         val draft = DraftRule(group, "ProbeRule", "../$errorLeaf", "FieldFilled($errorLeaf) And $probe", "PROBE",
             "ERROR")
         val a12 = validator.check(model, draft).let { result ->
-            if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse(UNKEYED) }.toSet()
+            if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse(UNKEYED_A12_CLASS) }.toSet()
         }
         val ours = check(ModelSource(validator.inject(model, draft))).findings
             .filter { it.justifiesRejection }.map { it.code }.toSet()
@@ -225,7 +225,6 @@ class CheckerKeyedOperandAgreementTest {
 
     private companion object {
         const val SILENT = "SILENT"
-        const val UNKEYED = "(no code)"
         val AT_ROOT = "/Policy" to "Reference"
         val IN_CLAIMS = "/Policy/Claims" to "ClaimRef"
         val IN_REVIEW = "/Policy/Claims/Review" to "Note"

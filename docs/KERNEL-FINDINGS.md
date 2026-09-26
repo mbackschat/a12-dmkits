@@ -11680,8 +11680,20 @@ Measured on KF348's shape with a fixed root, plus an unkeyed repeatable `Returns
 
 Each rival gets a row it predicts wrongly: "any parse error pre-empts the reference classes" fails on `NoSuch Code`, and "the whole run of path tokens is the reference" fails on `NoSuch/`.
 
+**…unless A12 walks the path as it reads it.** *Corrected 2026-09-26:* the paragraph above said an open production raises no reference class, and every row it rested on was an unstarred, unmarked relative or absolute path. A path that is `$`-marked, opens with an up-run, or carries a star anywhere in what was read is resolved segment by segment as it is read, so a bad segment read before the parser stops draws its class. The walk's trigger is what was read, not where the bad segment sits:
+
+| operand, from `/Policy` (unless noted) | A12 | the unwalked control |
+|---|---|---|
+| `FieldFilled(Items*/NoSuch/)` | `MVK_INVALID_ENTITY` | `FieldFilled(Items/NoSuch/)`: `MVK_UNEXPECTED_TOKEN` |
+| `FieldFilled(NoSuch/Items*/)` | `MVK_INVALID_ENTITY` | — |
+| `FieldFilled(/NoRoot/Items*/)` | `MVK_INVALID_ROOT_GROUP` | `FieldFilled(/NoRoot/)`: `MVK_UNEXPECTED_TOKEN` |
+| `… Having [Items/Count] == [$NoSuch/]` | `MVK_INVALID_ENTITY` | `… == [NoSuch/]`: `MVK_UNEXPECTED_TOKEN` |
+| `FieldFilled(../NoSuch/)`, from `/Policy/Claim/Cover` | `MVK_INVALID_ENTITY` | `FieldFilled(NoSuch/)`: `MVK_UNEXPECTED_TOKEN` |
+
+A walked prefix that resolves still ends in the token class: `FieldFilled(Items*/Count/)` and `[$Items/]` draw `MVK_UNEXPECTED_TOKEN`. This is the "whole prefix is walked first" law of a12-kernel-lean's spec `08` for a misplaced up-step, measured here on a path that stops at a separator instead.
+
 **The same holds for an operation.** `checkOperation` runs once an arithmetic chain is read, so `[Code] * 2 == "ABC"` draws `MVK_NO_NUMBER_FOR_CALC` while `[Code] * == "ABC"`, `[Code] + * "x" == "ABC"` and `[Code] - PatternViolated "[0-9]{5}"` draw the token class alone. After a bare reference, `*` is the reference's own repetition star (`idNameRef … stern='*'?`), so `FieldFilled(Premium * 2)` is the starred single field `Premium*`, refused as `MVK_INVALID_WILDCARD` before the stray `2`, and `FieldFilled(NoSuch * 2)` is `MVK_INVALID_ENTITY`. Every other operator after one is the token class (`MinValue(Items*/Count - 1)`, `… ^ 2`, `MinValue(Items**Count)`), as [KF76](#kf76) states. The category after `->` is a name, so `[Code -> ]` and `[Code -> And X]` draw the token class too. And only the time constructor's argument list may be empty (`timeKonstrukt: 'Zeit' '(' (…)? ')'`): `FieldFilled()`, `Abs() > 1`, `MinValue() > 1` and `Today() > 1` draw the token class, while `Time() == Time()` is admitted.
 
-**The portable checker reads a path with one walk of that production** (`consistency.syntax.entityRunAt`), which the shape parser uses for where the parse fails and the reference scanner for where a reference closes. A reference whose production does not close is not recorded, and one that closes is placed at its end, ahead of the parse error after it ([KF375](#kf375)'s raise-point order). Its arithmetic family raises nothing for a chain that does not close, and its shape parser refuses an operator beside a bare reference.
+**The portable checker reads a path with one walk of that production** (`consistency.syntax.entityRunAt`), which the shape parser uses for where the parse fails and the reference scanner for where a reference closes. A reference whose production does not close is not recorded unless it is walked, when the part it had read is, and one that closes is placed at its end, ahead of the parse error after it ([KF375](#kf375)'s raise-point order). Its arithmetic family raises nothing for a chain that does not close, and its shape parser refuses an operator beside a bare reference.
 
-*Locked by:* `rulekit.validate.laws.EntityProductionCloseLawsTest`. Mirrored by `consistency.ConditionReferenceTest.aPathThatStopsAtASeparatorIsNoReference` and `adapter.laws.CheckerNearMissSweepTest`.
+*Locked by:* `rulekit.validate.laws.EntityProductionCloseLawsTest`. Mirrored by `consistency.ConditionReferenceTest.aPathThatStopsAtASeparatorIsNoReference`, `…aWalkedPathThatStopsAtASeparatorKeepsWhatItHadRead` and `adapter.laws.CheckerNearMissSweepTest`.

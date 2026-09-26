@@ -61,7 +61,7 @@ class CheckerSilenceOnMutatedModelsTest {
     @Test
     fun noFamilyReportsOnAMutantTheKernelStillBuilds() {
         val survivors = mutableListOf<Mutant>()
-        for (model in committedModels()) {
+        for (model in CorpusFiles.committedModels()) {
             val text = model.readText()
             for (mutation in MUTATIONS) {
                 val mutated = mutation.applyTo(text) ?: continue
@@ -236,17 +236,5 @@ class CheckerSilenceOnMutatedModelsTest {
         )
 
         /** The same three committed trees the clean sweep reads; the reference corpora have their own arms. */
-        private fun committedModels(): List<Path> {
-            val root = CorpusFiles.repoRoot()
-            return listOf(
-                root.resolve("corpus/models"),
-                root.resolve("cli/src/test/resources/models"),
-                root.resolve("src/test/resources/models"),
-            ).filter { Files.isDirectory(it) }.flatMap { dir ->
-                Files.list(dir).use { stream ->
-                    stream.filter { Files.isRegularFile(it) && it.name.endsWith(".json") }.sorted().toList()
-                }
-            }
-        }
     }
 }

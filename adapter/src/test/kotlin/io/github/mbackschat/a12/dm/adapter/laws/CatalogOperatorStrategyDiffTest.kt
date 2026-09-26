@@ -24,9 +24,9 @@ class CatalogOperatorStrategyDiffTest {
 
     @Test
     fun everyOrdinaryCatalogOperatorRunsThroughBothKernelStrategies() {
-        val entries = catalog.entries().filter { it.validExample() != null && it.id() !in SPECIALISTS }
-        assertStrategyEvidence(CatalogHosting.order, entries.filter { it.id() !in MULTI_STAR_IDS })
-        assertStrategyEvidence(CatalogHosting.warehouse, entries.filter { it.id() in MULTI_STAR_IDS })
+        val entries = catalog.entries().filter { it.validExample() != null && it.id() !in CatalogHosting.SPECIALISTS }
+        assertStrategyEvidence(CatalogHosting.order, entries.filter { it.id() !in CatalogHosting.MULTI_STAR_IDS })
+        assertStrategyEvidence(CatalogHosting.warehouse, entries.filter { it.id() in CatalogHosting.MULTI_STAR_IDS })
     }
 
     private fun assertStrategyEvidence(fixture: CatalogHosting.Fixture, entries: List<OperatorEntry>) {
@@ -56,7 +56,7 @@ class CatalogOperatorStrategyDiffTest {
     fun liveCatalogIsExactlyPartitionedIntoOrdinaryAndSpecialistStrategyEvidence() {
         val operatorIds = catalog.entries().map { it.id() }.toSet()
         val ordinary = catalog.entries()
-            .filter { it.validExample() != null && it.id() !in SPECIALISTS }
+            .filter { it.validExample() != null && it.id() !in CatalogHosting.SPECIALISTS }
             .map { it.id() }
             .toSet()
         // Computation-ONLY means exactly that: no rule-context example, so this lane is the only one covering it.
@@ -70,17 +70,14 @@ class CatalogOperatorStrategyDiffTest {
             .map { it.id() }
             .toSet()
 
-        assertEquals(SPECIALISTS, operatorIds intersect SPECIALISTS)
-        assertEquals(operatorIds, ordinary + SPECIALISTS + computationOnly)
-        assertTrue((ordinary intersect SPECIALISTS).isEmpty())
+        assertEquals(CatalogHosting.SPECIALISTS, operatorIds intersect CatalogHosting.SPECIALISTS)
+        assertEquals(operatorIds, ordinary + CatalogHosting.SPECIALISTS + computationOnly)
+        assertTrue((ordinary intersect CatalogHosting.SPECIALISTS).isEmpty())
         assertTrue((ordinary intersect computationOnly).isEmpty())
-        assertTrue((SPECIALISTS intersect computationOnly).isEmpty())
+        assertTrue((CatalogHosting.SPECIALISTS intersect computationOnly).isEmpty())
     }
 
     companion object {
-        val SPECIALISTS: Set<String> = CatalogHosting.SPECIALISTS
-        val MULTI_STAR_IDS: Set<String> = CatalogHosting.MULTI_STAR_IDS
-
         fun evidenceCode(operatorId: String): String = "EVIDENCE_$operatorId"
     }
 }

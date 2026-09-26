@@ -59,7 +59,7 @@ class CheckerSilenceOnCleanModelsTest {
 
     @Test
     fun noFamilyReportsOnAModelTheKernelAccepts() {
-        val census = committedModels().map { it to kernelBuilds(it) }
+        val census = CorpusFiles.committedModels().map { it to kernelBuilds(it) }
         val clean = census.filter { (_, builds) -> builds }.map { (path, _) -> path }
 
         assertTrue(
@@ -169,12 +169,12 @@ class CheckerSilenceOnCleanModelsTest {
      */
     @Test
     fun noFamilyReportsWhenTheCheckerMountsTheIncludesItself() {
-        val providersById = committedModels().groupBy { modelIdOf(it) }
+        val providersById = CorpusFiles.committedModels().groupBy { modelIdOf(it) }
         val offenders = mutableListOf<String>()
         val unresolved = mutableListOf<String>()
         var swept = 0
         var mounts = 0
-        for (entry in committedModels()) {
+        for (entry in CorpusFiles.committedModels()) {
             val references = includeReferences(entry)
             if (references.isEmpty()) {
                 continue
@@ -251,16 +251,4 @@ class CheckerSilenceOnCleanModelsTest {
      * Kernel builds them without a resolver — and the kits' and CLI's fixture trees add the shapes those
      * suites needed. A tree that disappears is caught by the floor rather than by a path assertion here.
      */
-    private fun committedModels(): List<Path> {
-        val root = CorpusFiles.repoRoot()
-        return listOf(
-            root.resolve("corpus/models"),
-            root.resolve("cli/src/test/resources/models"),
-            root.resolve("src/test/resources/models"),
-        ).filter { Files.isDirectory(it) }.flatMap { dir ->
-            Files.list(dir).use { stream ->
-                stream.filter { Files.isRegularFile(it) && it.name.endsWith(".json") }.sorted().toList()
-            }
-        }
-    }
 }

@@ -158,6 +158,11 @@ internal fun markedReferenceSpansIn(text: String): List<ReferenceSpan> {
 
 private const val OUTER_MARKER_TOKEN = "$"
 
+private const val WILDCARD_TOKEN = "*"
+
+/** The separators an open path can stop after, which are no part of what it had read. */
+private val DANGLING_SEPARATORS = setOf("/", ".")
+
 /**
  * The path written by the run of tokens beginning at [from], with the offset just past it, or null where none
  * begins there.
@@ -364,20 +369,40 @@ private class ReferenceScan(
      * no continuation, so `Items Items* / Count` is two references, and a run that names nothing
      * (`[A] / [B]`, where `[` follows the `/`) yields none.
      *
-     * **A production that does not close records nothing.** A12 raises a reference's class when its
-     * production closes, so `Lines/` followed by `)` draws the parse error alone, while `BillingAddress*`
-     * followed by a name closes and draws its own class first (`adapter.laws.CheckerNearMissSweepTest`).
+     * **A production that does not close records nothing, unless A12 walks it as it reads it.** A12 raises a
+     * reference's class when its production closes, so `Lines/` followed by `)` draws the parse error alone,
+     * while `BillingAddress*` followed by a name closes and draws its own class first. A path that is `$`-marked,
+     * opens with an up-run, or carries a star is resolved segment by segment as it is read instead, so the part
+     * read before the failure is recorded: `Items* / NoSuch /` draws `MVK_INVALID_ENTITY` for `NoSuch`
+     * ([KERNEL-FINDINGS KF491], `rulekit.validate.laws.EntityProductionCloseLawsTest`).
      */
     private fun readReference() {
         val begin = at
         val run = entityRunAt(tokens, begin, ::startsSegment)
-        val path = tokens.subList(begin, run.end)
-        if (run.closes && path.namesAnEntity()) {
-            record(ReferenceSpan(normalizedPath(path), tokens[begin].start, tokens[run.end - 1].end),
+        val end = when {
+            run.closes -> run.end
+            walksAsItReads(begin, run.end) -> readPrefixEnd(begin, run.end)
+            else -> begin
+        }
+        val path = tokens.subList(begin, end)
+        if (path.namesAnEntity()) {
+            record(ReferenceSpan(normalizedPath(path), tokens[begin].start, tokens[end - 1].end),
                 atKey = begin == keyBegins)
         }
         // Even a run that named nothing consumed its first token, so the scan always advances.
         at = maxOf(run.end, begin + 1)
+    }
+
+    /** Whether A12 resolves the path at [begin] segment by segment as it reads it: `$`-marked, up-run-led or starred. */
+    private fun walksAsItReads(begin: Int, end: Int): Boolean =
+        tokens.getOrNull(begin - 1)?.text == OUTER_MARKER_TOKEN || tokens[begin].text == UP_STEP ||
+            tokens.subList(begin, end).any { it.text == WILDCARD_TOKEN }
+
+    /** The end of what an open path had read: its tokens up to [end], without the separator it stopped after. */
+    private fun readPrefixEnd(begin: Int, end: Int): Int {
+        var prefix = end
+        while (prefix > begin && tokens[prefix - 1].text in DANGLING_SEPARATORS) prefix--
+        return prefix
     }
 
     /** A segment is a quoted name, a digit sequence, or a name the lexer does not resolve as a keyword. */

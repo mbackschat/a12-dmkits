@@ -56,6 +56,37 @@ class EntityProductionCloseLawsTest {
     }
 
     /**
+     * The exception to "an open path raises nothing": a path A12 WALKS as it reads it. A {@code $}-marked path,
+     * one that opens with an up-run, and one carrying a star anywhere in what was read are resolved segment by
+     * segment, so a bad segment read before the parser stops draws its class even though the path never closes.
+     * Each walked row has an unwalked control that differs in the one trigger and draws the token class.
+     */
+    @Test
+    void aWalkedPathIsResolvedAsItIsReadEvenWhenItNeverCloses() {
+        Map<String, List<String>> actual = new LinkedHashMap<>();
+        Map<String, List<String>> expected = new LinkedHashMap<>();
+        BiConsumer<String, List<String>> row = (condition, predicted) -> {
+            actual.put(condition, policyCodes("FieldFilled(Code) And " + condition));
+            expected.put(condition, predicted);
+        };
+        row.accept("FieldFilled(Items*/NoSuch/)", List.of("MVK_INVALID_ENTITY"));
+        row.accept("FieldFilled(Items/NoSuch/)", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("FieldFilled(Items*/Count/)", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("FieldFilled(NoSuch/Items*/)", List.of("MVK_INVALID_ENTITY"));
+        row.accept("FieldFilled(/NoRoot/Items*/)", List.of("MVK_INVALID_ROOT_GROUP"));
+        row.accept("FieldFilled(/NoRoot/)", List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("AtLeastOneFieldFilled(Items*/Count Having [Items/Count] == [$NoSuch/])",
+                List.of("MVK_INVALID_ENTITY"));
+        row.accept("AtLeastOneFieldFilled(Items*/Count Having [Items/Count] == [NoSuch/])",
+                List.of("MVK_UNEXPECTED_TOKEN"));
+        row.accept("AtLeastOneFieldFilled(Items*/Count Having [Items/Count] == [$Items/])",
+                List.of("MVK_UNEXPECTED_TOKEN"));
+        actual.put("FieldFilled(../NoSuch/), from /Policy/Claim/Cover", codes("FieldFilled(Limit) And FieldFilled(../NoSuch/)"));
+        expected.put("FieldFilled(../NoSuch/), from /Policy/Claim/Cover", List.of("MVK_INVALID_ENTITY"));
+        assertEquals(expected, actual, "which open paths A12 resolves as it reads them");
+    }
+
+    /**
      * The same law for an operation, and the one arithmetic spelling a bare reference has.
      *
      * {@code checkOperation} runs once an arithmetic chain is read, so a chain the parser stops inside draws the

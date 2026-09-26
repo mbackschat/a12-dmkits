@@ -130,6 +130,18 @@ class ConditionReferenceTest {
     }
 
     /**
+     * The exception: a path A12 resolves as it reads it — starred, up-run-led or `$`-marked — keeps what it had
+     * read, since A12 checks those segments before it stops (`rulekit.validate.laws.EntityProductionCloseLawsTest`).
+     */
+    @Test
+    fun aWalkedPathThatStopsAtASeparatorKeepsWhatItHadRead() {
+        assertEquals(listOf("Items*/NoSuch"), referencesIn("FieldFilled(Items*/NoSuch/)", ConditionLanguage.EN))
+        assertEquals(listOf("../NoSuch"), referencesIn("FieldFilled(../NoSuch/)", ConditionLanguage.EN))
+        assertEquals(listOf("NoSuch"), referencesIn("[\$NoSuch/] == 1", ConditionLanguage.EN))
+        assertEquals(emptyList(), referencesIn("FieldFilled(Items/NoSuch/)", ConditionLanguage.EN))
+    }
+
+    /**
      * The lexer's `STR` alphabet is letters plus `_`, the German umlauts and eszett, and `:` — not just
      * ASCII letters. A narrower alphabet splits a legal German field name into two references.
      */

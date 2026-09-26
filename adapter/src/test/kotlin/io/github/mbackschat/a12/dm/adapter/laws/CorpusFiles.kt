@@ -11,11 +11,34 @@ import kotlin.io.path.readText
 /** Locates and reads the committed conformance corpus (the `corpus/cases` tree + shared `corpus/models`) from the repo root. */
 object CorpusFiles {
 
-    /** The repo root — walk up from the test working dir to the dir carrying `settings.gradle`. */
+    /**
+     * The repo root — walk up from the test working dir to the dir carrying `settings.gradle`.
+     *
+     * Fails where none carries it, rather than answering the filesystem root: every tree below is then missing,
+     * and a sweep reading them would pass on the trees it still has.
+     */
     fun repoRoot(): Path {
         var d: Path = Paths.get(System.getProperty("user.dir")).toAbsolutePath()
         while (d.parent != null && !Files.exists(d.resolve("settings.gradle"))) d = d.parent
+        check(Files.exists(d.resolve("settings.gradle"))) { "no directory above ${System.getProperty("user.dir")} carries settings.gradle" }
         return d
+    }
+
+    /**
+     * The committed single-file models the checker sweeps read: the top level of the three trees that hold
+     * them, sorted. The subdirectories (`roles/`, `inheritance/`, `multifile/` and their like) are not read,
+     * since their models reference one another and a sweep checks one file at a time.
+     */
+    fun committedModels(): List<Path> {
+        val root = repoRoot()
+        return listOf("corpus/models", "cli/src/test/resources/models", "src/test/resources/models")
+            .map(root::resolve)
+            .onEach { check(Files.isDirectory(it)) { "committed model tree $it is missing" } }
+            .flatMap { dir ->
+                Files.list(dir).use { stream ->
+                    stream.filter { Files.isRegularFile(it) && it.name.endsWith(".json") }.sorted().toList()
+                }
+            }
     }
 
     /** The corpus root (`corpus/`), against which a case's `modelRef` resolves. */

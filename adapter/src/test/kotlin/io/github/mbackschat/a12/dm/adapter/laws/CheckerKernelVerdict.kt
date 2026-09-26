@@ -6,13 +6,14 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic
  * How the checker's classes on one input stand against A12's, in the words the disagreement ledgers use; null
  * where the two agree.
  *
- * Shared by every sweep that files checker-against-Kernel disagreements into a ledger, so one input gets one
- * verdict whichever sweep produced it. The words are the tiers of
+ * Shared by every sweep that files checker-against-Kernel disagreements into a ledger, so a tier means the same
+ * in each ledger. Each sweep collects the two class sets its own way (the near-miss sweep keeps A12's `ERROR`
+ * findings only), so one input may still land in different tiers under two sweeps. The words are the tiers of
  * [CONFORMANCE-PLAN](../../../../../../../../../../../docs/CONFORMANCE-PLAN.md): `OVER-REJECT` and `WRONG-CLASS`
  * are correctness, `SILENT` is coverage, and `EXTRA` is order, the classes A12's early stop never reached.
  *
  * One superset counts as agreement because the checker draws it by design: where A12 names only
- * `MVK_POINT_IN_A12_MODEL`, the checker adds `MVK_INVALID_WILDCARD` beside it (the path grid's ledger header).
+ * `MVK_POINT_IN_A12_MODEL`, the checker adds `MVK_INVALID_WILDCARD` beside it, for the reason [CheckerPathGridAgreementTest] gives.
  */
 internal fun checkerVerdict(a12: Set<String>, ours: Set<String>): String? = when {
     a12 == ours -> null
@@ -27,7 +28,7 @@ internal fun checkerVerdict(a12: Set<String>, ours: Set<String>): String? = when
  * The class a ledger records for one A12 diagnostic: its key, or for a codeless one the checker's name for it.
  *
  * Only one codeless refusal has a name here: the charset sentence, which the checker reports as its own
- * `RK_UNSUPPORTED_CHARACTER` because A12 gives it no class ([KERNEL-FINDINGS KF489]). Any other codeless
+ * `RK_UNSUPPORTED_CHARACTER` because A12 gives it no class ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)). Any other codeless
  * diagnostic stays [UNKEYED_A12_CLASS], so it shows as a disagreement rather than matching by accident.
  */
 internal fun Diagnostic.ledgerClass(): String =

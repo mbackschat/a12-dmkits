@@ -22,8 +22,8 @@
 
 | population | contents | status |
 |---|---|---|
-| **P1 seeds** | every rule in the committed model trees (`corpus/models`, `cli/…/models`, `src/test/resources/models`) and every catalog `validExample`, hosted as N7 hosts it (`CatalogExamplesAreKernelValidTest`) | M1 |
-| **P2 near-misses** | single edits of each P1 seed: delete, duplicate or swap a token; substitute an operator or a model name; insert a connective, bracket, comma or star; and for messages, insert `$`, a parameter, a tab or a supplementary character. Deterministic, seeded, capped per seed | M1 |
+| **P1 seeds** | every rule in the committed model trees (`corpus/models`, `cli/…/models`, `src/test/resources/models`) and every catalog `validExample`, hosted on N7's scheme (`CatalogHosting`) and asked of A12 again there, since the hosting is not N7's own | M1 |
+| **P2 near-misses** | single edits of each P1 seed: delete, duplicate or swap a token; substitute an operator or a model name; insert a connective, bracket, comma, star or sign; and on a rule with a message, append `$`, an unresolvable parameter, `$$`, a tab or a supplementary character to its first message. Deterministic, seeded per seed, 30 condition edits per seed | M1 |
 | **P3 widenings** | element-name edits, computations, typedef and custom index hosts, deeper and sibling shapes, and, locally only, the reference corpora (`a12-kernel-mm`, the A12 Tools workspaces, never committed) | M5 |
 
 | oracle | compares | tiers |
@@ -55,7 +55,7 @@
 | id | milestone | exit criterion | state |
 |---|---|---|---|
 | **M0** | clean baseline | C5 committed; the JS-only lone-surrogate test defect fixed and its class guarded; C4b's tier-1 review item fixed and its false claims corrected; hand batches C7–C10 folded into this plan; letter `-26n` sent | **done** 2026-09-26 (`13a02c3e1`, `6635b7664`, `acaf16a29`) |
-| **M1** | **the checker's frontier is known** | `CheckerNearMissSweepTest` runs P1 + P2 through O1; its ledger is committed; the cluster count per tier is recorded below | **done** 2026-09-26: the conditions and rule messages of P1 + P2. The field arm (variant filter, element names, a field type's own message) is M5's first widening |
+| **M1** | **the checker's frontier is known** | `CheckerNearMissSweepTest` runs P1 + P2 through O1; its ledger is committed; the cluster count per tier is recorded below | **done** 2026-09-26: the conditions and rule messages of P1 + P2. The field arm (a variant filter, a field type's own message) lands before M3 closes, because DG114 is tier 1. Element-name edits are M5's first widening (DG113) |
 | **M2** | the interpreter's and dmkits' frontier is known | O2 and O3 run on M1's accepted population; ledgers committed; counts recorded | open |
 | **M3** | tier 1 is empty | no OVER-REJECT or WRONG-CLASS cluster in O1, and no O2 or O3 tier-1 cluster | open. **Batch G (grammar)**: where A12's parser refuses a text the checker's shape parser admits, or a reference class stands where the parse stopped. G1 landed: one walk of the `entity` production for both readers, empty argument lists, the infix language rows ([KF491](KERNEL-FINDINGS.md#kf491)). G2 landed: a bare entity spec is never an arithmetic operand, `->` needs a name, an arithmetic chain that never closes raises no class. **Batch S (slots)**, next: a bare name in an operation slot, a signed number in a literal slot, a digit sequence read as an entity in an entity slot, and a keyword constant followed by `(`, which all need each operator's slot kinds (DG93). **Then batch R (residue)**: the wildcard, token and error-field clusters |
 | **M4** | tier 2 is closed | every SILENT cluster is fixed or declared | open |
@@ -66,7 +66,7 @@
 | item | oracle · tier | disposition |
 |---|---|---|
 | DG93 — per-operator argument slots in the shape parser | O1 · 1 | surfaced as P2 clusters (10 + 2 inputs): batch S |
-| DG83 — a message class beside a condition the checker leaves to A12 | O1 · 1–2 | not seen as a cluster yet: the message arm appends to messages of admitted rules only |
+| DG83 — a message class beside a condition the checker leaves to A12 | O1 · 1–2 | not seen as a cluster yet: the message arm appends to the first message of an admitted rule only, so it never pairs a message class with a condition the checker leaves to A12 |
 | DG94 — fold `FILTER_WILDCARD`'s star gate into the bracket family | O1 · 3 | worked only if a cluster shows it |
 | DG102 residue — a constant key over a typedef or custom index field | O1 · 2 | needs typedef hosts: M5 |
 | DG113 — element-name family from A12's path alphabet (three rows) | O1 · 1–2 | the name-edit operator in M5, first widening |
@@ -84,3 +84,4 @@
 | 2026-09-26 | O1, conditions and rule messages (`CheckerNearMissSweepTest`, first freeze) | 139 admitted as written | 4 469 inputs, 362 divergent | 23 WRONG-CLASS, 0 OVER-REJECT | 4 SILENT | 0 EXTRA |
 | 2026-09-26 | O1, after batch G1 | 139 | 4 469 inputs, 75 divergent | 11 WRONG-CLASS, 0 OVER-REJECT | 4 SILENT | 0 EXTRA |
 | 2026-09-26 | O1, after batch G2 | 139 | 4 469 inputs, 31 divergent | 6 WRONG-CLASS, 0 OVER-REJECT | 4 SILENT | 0 EXTRA |
+| 2026-09-26 | O1, after the M1 review: edits resampled per seed, walked open paths fixed ([KF491](KERNEL-FINDINGS.md#kf491)) | 139 | 4 469 inputs, 21 divergent | 10 WRONG-CLASS, 0 OVER-REJECT | 3 SILENT | 0 EXTRA |

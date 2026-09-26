@@ -251,7 +251,7 @@ class CheckerClassAgreementTest {
         val silentClasses = mutableMapOf<String, Int>()
         val silentRows = mutableListOf<String>()
         val coFired = mutableListOf<String>()
-        for (model in committedModels()) {
+        for (model in CorpusFiles.committedModels()) {
             val text = model.readText()
             for (mutation in MUTATIONS) {
                 val mutated = mutation.applyTo(text) ?: continue
@@ -431,7 +431,7 @@ class CheckerClassAgreementTest {
         var unrejected = 0
         var overlapping = 0
         val missed = mutableListOf<String>()
-        for (model in committedModels()) {
+        for (model in CorpusFiles.committedModels()) {
             val text = model.readText()
             // Memoised per (model, kind): a pair only ever adds the COMPOSED model's classification, so the
             // sweep costs one kernel run per pair rather than three.
@@ -780,17 +780,5 @@ class CheckerClassAgreementTest {
             messageMutation("name-the-rule-group-shorthand", " ${'$'}RuleGroup${'$'}"),
         )
 
-        private fun committedModels(): List<Path> {
-            val root = CorpusFiles.repoRoot()
-            return listOf(
-                root.resolve("corpus/models"),
-                root.resolve("cli/src/test/resources/models"),
-                root.resolve("src/test/resources/models"),
-            ).filter { Files.isDirectory(it) }.flatMap { dir ->
-                Files.list(dir).use { stream ->
-                    stream.filter { Files.isRegularFile(it) && it.name.endsWith(".json") }.sorted().toList()
-                }
-            }
-        }
     }
 }
