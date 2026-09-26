@@ -707,8 +707,9 @@ internal fun isBareEntitySpec(text: String): Boolean {
  *
  * @param indexSelected whether the operand carries a semantic-index key the chain admits. It addresses the
  *     level of the group declaring the index and no other ([KERNEL-FINDINGS KF478]): an unindexed repetition
- *     above it still needs a star or the rule's iteration, and an index group that is the root or a fixed
- *     group addresses no repetition at all. A path with a second indexed group is never admitted.
+ *     above it is addressed only by the rule's iteration, a star there being `MVK_SEMANTIC_INDEX_BELOW_WILDCARD`
+ *     ([KERNEL-FINDINGS KF351]), and an index group that is the root or a fixed group addresses no repetition
+ *     at all. A path with a second indexed group is never admitted.
  * @param everyLevelAddressed whether the read sits in a `Having` body, where the repetitions it crosses are the
  *     filter chain's question, asked after everything in the body ([ConditionComparison.inAFilterBody]).
  *
