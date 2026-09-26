@@ -101,6 +101,11 @@ class SurvivingDataNotInBuildGuardTest {
                             "every divergent input of the near-miss sweep under its cluster key, rewritten on every "
                                     + "run from inputs the sweep regenerates deterministically; the committed ledger "
                                     + "carries what must survive")),
+            Map.entry("build/checker-variants",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "the variant population's live clusters and witness labels, regenerated on every run; "
+                                    + "adapter/src/test/resources/checker-near-miss/variants.tsv is the committed "
+                                    + "comparison record, while KERNEL-FINDINGS records the measured claims")),
             Map.entry("build/parse-trace/report.tsv",
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "A12's parse-failure signatures over the near-miss population, rewritten on every run "

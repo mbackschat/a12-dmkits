@@ -73,6 +73,7 @@ Lock-tree classes whose subject is not one kernel-semantics section — the conc
 
 | Lane | Guards |
 |---|---|
+| Default-variant field filtering across consistency stages and the P3 checker population | `FieldVariantStageLawsTest` |
 | Operator name resolution — the AST name → operator-enum lookup every strategy shares | `OperatorLookupTest` |
 | `modelConfig` READ coercions that decide reference resolution — the short-name flag's quoted form, and an unsupported `conditionLanguage` (a refusal, not a fallback) | `ModelConfigCoercionLawsTest` |
 | Condition concrete syntax (lexing, comments, directives — KERNEL-FINDINGS "Condition lexing"/"Condition comments"/"Condition directives") | `DirectiveLawsTest`, `CommentConditionDiffTest`, `ParserDiffTest`, `ParserCorpusSweepTest`, `CheckerParserCorpusSweepTest`, `ParserCorporaTest`, `KeywordCaseVariantParseTest`, `ConditionLanguageParseTest`, `CommentSkipParseTest`, `ForIndexArgParseTest`, `QuotedPathSegmentParseTest`, `ValueListLiteralParseTest`, `ValueListQuantifierHavingParseTest`, `RuleGroupEntitySuffixParseTest`, `ToInfixParseTest`, `ToInfixDegradeTest`, `StarredSemanticIndexKeyParseTest` |

@@ -11758,3 +11758,39 @@ The source-read model is [CHECKER-RECONSTRUCTION-PROPOSAL](CHECKER-RECONSTRUCTIO
 - A comment inside an argument list is refused ([KF76](#kf76), corrected).
 
 *Locked by:* `adapter.A12ParseTraceTest` — the population trace, with a floor per failure kind and witnesses for the deep entity-spec failures, the simple condition's and the three switches; and the predicted rows, locked at site and offending token (21 predicted before the run, 18 held, the three misses being misapplications of the model; see its row list).
+
+## §13 supplement — field filters distinguish code generation's declarations from original-model refusals (kernel `checkConsistency`, 2026-09-27) <a id="kf494"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §13's model checks.
+
+R0a in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md) measures 20 declaration defects and their valid controls under three field-filter modes, plus three filtered-index rows: 123 inputs. The host is an own-domain Order model authored through `DocumentModelDraft`, with inline String, Enumeration, Number and Date fields, English conditions, locale `en_US`, and variant `premium`. `ONLY premium` removes the field from code generation's default-variant container; absent and `ALL_EXCEPT premium` keep it. This is a carrier measurement, not a claim about every gate grouped under the same checker family, typedefs, nested groups or other locales.
+
+| defective declaration | absent / `ALL_EXCEPT premium` | `ONLY premium` |
+|---|---|---|
+| unspecified field type | `MVK_UNSPECIFIED_TYPE_NO_CODEGEN` | admitted |
+| unknown field type | cannot load/build (`CK_MODEL_NOT_BUILDABLE` in the differential) | same |
+| partial Date precision with `yyyy-MM` | `MVK_OPTIONAL_DATE_TYPE_INVALID` | admitted |
+| field name `xmlCode` | `MVK_NAME_STARTS_WITH_XML_A12_DV` | admitted |
+| field name `Code.value` | `MVK_NAME_INVALID_A12_DV`, `MVK_NAME_INVALID_DOT_COLON_A12_DV` | admitted |
+| enum category shorter than its internal values | `MVK_MISSING_CATEGORY_VALUE` | admitted |
+| enum value outside the model's supported-character range | `MVK_ENUM_VALUE_WITH_INVALID_CHARACTER` | admitted |
+| enum value containing a pipe | `MVK_INTERNAL_VALUE_INVALID` | admitted |
+| String pattern message containing a supplementary-plane character | unsupported-character refusal (codeless; `RK_UNSUPPORTED_CHARACTER` in the differential) | admitted |
+| String hint value longer than its declared maximum | `MVK_VALUE_TOO_LONG` | admitted |
+| enum special value outside its internal values | `MVK_S_VALUE_INVALID` | admitted |
+| String pattern `a{2}+` | `MVK_PATTERN_INVALID` | admitted |
+| String pattern message with no pattern | `MVK_ERROR_MESSAGE_AND_NO_PATTERN` | admitted |
+| String pattern message containing a tab | `INVALID_CHARACTERS` | admitted |
+| String minimum length greater than maximum | `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` | admitted |
+| Number minimum fractional digits greater than maximum | `MVK_FRACT_DIGITS_INVALID` | admitted |
+| Number maximum fractional digits 15 | codeless refusal | admitted |
+| Number maximum value `99999999999999999999` | codeless refusal | codeless refusal |
+| duplicate enum internal value, with a category | `MVK_INTERNAL_VALUES_DUPLICATE`, `MVK_CATEGORY_VALUE_DUPLICATE`, plus codeless serializer refusal | codeless refusal |
+| object-valued field name | cannot build (`CK_MODEL_NOT_BUILDABLE` in the differential) | codeless refusal |
+| otherwise valid group indexed by the filtered field | admitted | `MVK_INVALID_INDEX_FIELD` |
+
+All 60 valid declaration controls are admitted. The predictions that failed matter: fractional scale 15 was predicted to fail before filtering, but disappears with its field; duplicate enum values were predicted to disappear, but the serializer still refuses them; an object-valued name was predicted to fail ingress in every mode, but filtering leaves the serializer's empty-name refusal. Fixture corrections were also required: `a{2}` is admitted and A12's supported-character range is `A-M`, not a regex.
+
+**Source placement, separately from the measurements.** `DocumentModelConsistencyRulesProvider` runs the Number-value-limit rule on the original model, then code generation, then the serializer's basic check. `CodeGenerationRule` uses the default-variant conversion; `ValidationCodeGenerator.preCheck` runs `NoMetaModelChecks` and the `MM_Common` validation over that container. The Number fractional-digit ceiling is a metamodel field constraint. `BasicConsistencyCheck.checkEnumerationType` and `visitElement` inspect the original model's duplicate values and empty names. Thus a family containing both container and ingress/serializer checks cannot be filtered wholesale. The complete reported-code and family inventory remains R0b's work.
+
+*Locked by:* `adapter.laws.FieldVariantStageLawsTest` — predicted kernel class sets and valid controls; the same 123 inputs go through the portable checker and shared `checkerVerdict` classification. `adapter/src/test/resources/checker-near-miss/variants.tsv` records 27 divergent inputs in 21 clusters: 15 over-rejections, seven silent inputs and five wrong-class inputs. The codeless cases share a sentinel in this class-set oracle; it does not assert message identity, order or multiplicity. These over-rejections justify R4's default-variant view; R0a changes no production checker behavior.
