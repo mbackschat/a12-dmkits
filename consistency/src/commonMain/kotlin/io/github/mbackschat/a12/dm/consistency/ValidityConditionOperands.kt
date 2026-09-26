@@ -78,9 +78,6 @@ private val VALIDITY_CONDITIONS = listOf("ValidType", "InvalidType")
 /** The two declarations `isStringEnumOrExtensibleEnum` admits — the third disjunct is a string-type FLAG. */
 private val CODE_BEARING_TYPES = setOf(FieldType.STRING, FieldType.ENUMERATION)
 
-/** The declarations whose effective type this reader does not resolve, so the kind gate may not judge them. */
-private val UNRESOLVED_TYPES = setOf(FieldType.TYPE_DEF, FieldType.UNSPECIFIED)
-
 /** What a BARE path may carry besides names; a star, an arrow or a filter each brings another family's gate. */
 private val SUBJECT_PATH_PUNCTUATION = setOf("/", "..")
 
@@ -147,7 +144,8 @@ private fun TrackedFactBase.predefinedTypeArmDefect(
         )
     }
     val type = field.declaredFieldType() ?: return null
-    if (type in UNRESOLVED_TYPES) {
+    // A type this reader cannot resolve has no base-type class, so the kind gate may not judge it.
+    if (type.baseTypeClass == null) {
         return null
     }
     if (type !in CODE_BEARING_TYPES) {

@@ -119,9 +119,6 @@ private enum class ConstantArm(val code: String, val admitted: Set<FieldType>) {
     POINT_IN_TIME("MVK_INVALID_CONST", emptySet()),
 }
 
-/** The declarations whose effective type this reader does not resolve, so no arm may judge them. */
-private val UNRESOLVED_TYPES = setOf(FieldType.TYPE_DEF, FieldType.UNSPECIFIED)
-
 private fun TrackedFactBase.constantKindFinding(
     call: ConditionCall,
     spellings: ConstantSpellings,
@@ -259,7 +256,8 @@ private fun typeWalkVerdict(
 ): ListVerdict {
     fields.forEach { field ->
         val type = field.declaredFieldType() ?: return ListVerdict.Opaque
-        if (type in UNRESOLVED_TYPES) {
+        // A type this reader cannot resolve has no base-type class, so no arm may judge it.
+        if (type.baseTypeClass == null) {
             return ListVerdict.Opaque
         }
         if (arm == ConstantArm.TEXT && type == FieldType.ENUMERATION) {

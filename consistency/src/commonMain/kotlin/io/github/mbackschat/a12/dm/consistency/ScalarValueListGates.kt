@@ -94,9 +94,6 @@ private val SCALAR_VALUE_LISTS = setOf("FieldValueIncludedInValueList", "FieldVa
 private val SUBJECT_TYPES =
     setOf(FieldType.STRING, FieldType.CUSTOM_FIELD, FieldType.ENUMERATION, FieldType.NUMBER)
 
-/** The declarations whose effective type this reader does not resolve, so no gate here may judge them. */
-private val UNRESOLVED_TYPES = setOf(FieldType.TYPE_DEF, FieldType.UNSPECIFIED)
-
 private const val NO_GROUPS = "MVK_NO_GROUPS_ALLOWED"
 
 private const val NO_WILDCARDS = "MVK_NO_WILDCARDS_ALLOWED"
@@ -148,7 +145,8 @@ private fun TrackedFactBase.gateFindings(
         return listOf(gate(NO_WILDCARDS, call.operator, subject, member, element, call.spanIn(member)))
     }
     val declared = subject.declaredFieldType() ?: return null
-    if (declared in UNRESOLVED_TYPES) {
+    // A type this reader cannot resolve has no base-type class, so no gate here may judge it.
+    if (declared.baseTypeClass == null) {
         return null
     }
     if (declared !in SUBJECT_TYPES) {

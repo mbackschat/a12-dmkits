@@ -4,7 +4,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORD
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
-import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive

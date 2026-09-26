@@ -345,7 +345,9 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclarationWalk(CheckFamily.VALUE_LIST_CONDITION_GATES) { it.valueListConditionGateFindings() },
     produces(CheckFamily.ENTITY_LIST_ARITY) { it.entityListArityFindings() },
     perDeclarationWalk(CheckFamily.ENTITY_LIST_PRE_GATES) { it.entityListPreGateFindings() },
-    perDeclarationWalk(CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND) { it.fieldValuesNotUniqueOperandKindFindings() },
+    perDeclarationWalk(CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND) {
+        it.fieldValuesNotUniqueOperandKindFindings()
+    },
     produces(CheckFamily.FIELD_LIST_OPERATION_OPERANDS) { it.fieldListOperationOperandFindings() },
     perDeclarationWalk(CheckFamily.DATE_ARITHMETIC_OPERANDS) { it.dateArithmeticOperandFindings() },
     perDeclarationWalk(CheckFamily.ROUNDING_OPERANDS) { it.roundingOperandFindings() },
