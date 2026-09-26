@@ -892,10 +892,19 @@ class CheckFamilyWiringTest {
      * A registration is run raw here, ahead of `checkPrepared`'s post-filters, so its output is a superset
      * of what the report carries — which is the right side to be on: a claimed row must appear, and a row
      * belonging to another family must not, whether or not a later filter would have dropped it.
+     *
+     * **A producer that raises after the parse answers for one site of its family, not for the family's row.**
+     * The row is a parse-time class, which such a producer never raises, so the first direction asks instead
+     * that a parse-time producer claims the same family, and the second direction applies unchanged.
      */
     @Test
     fun eachRegistrationProducesExactlyTheFamiliesItClaims() {
         val misattributed = mutableListOf<String>()
+        val claimedBeforeTheParse = CHECK_PRODUCERS.filterNot { it.raisesAfterTheParse }
+            .flatMapTo(mutableSetOf()) { it.completes }
+        CHECK_PRODUCERS.filter { it.raisesAfterTheParse }.flatMap { it.completes }
+            .filterNot { it in claimedBeforeTheParse }
+            .forEach { misattributed += "$it is claimed only by a producer that raises after the parse" }
         (listOf(source to evidence) + sideModels).forEach { (model, rows) ->
             val admitted = admit(model)
             assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")
@@ -907,7 +916,7 @@ class CheckFamilyWiringTest {
                 val produced = findings.map { it.code to it.at }.toSet()
                 rows.forEach { (family, row) ->
                     val claimed = family in producer.completes
-                    if (claimed && row !in produced) {
+                    if (claimed && !producer.raisesAfterTheParse && row !in produced) {
                         misattributed += "$family is claimed by a producer that does not report it"
                     }
                     if (!claimed && row in produced) {

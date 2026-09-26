@@ -1041,18 +1041,20 @@ internal fun checkRun(
     val preamble = scheduled.filter { it.key.producer.completes == setOf(CheckFamily.SUPPRESSED_WARNINGS) }
         .flatMapTo(mutableSetOf()) { cells.getValue(it.key).findings }
     val aboutTheDsl = (conditionReferences + dslVerdicts).toSet() - preamble
+    val afterTheParse = scheduled.filter { it.key.producer.raisesAfterTheParse }
+        .flatMapTo(mutableSetOf()) { cells.getValue(it.key).findings }
     // A reference's own class is what withholds the text classes, so it is never withheld behind itself —
     // which matters because a misplaced up-step's class is a token error, spelled like one of those it withholds.
     val textClasses = scheduled.flatMap { cells.getValue(it.key).findings }
         .filterNot {
             it.inConditionText(CONDITION_TEXT_CODES, aboutTheDsl) &&
-                it.mayFollowAnUnresolvableName(unresolved[it.at], it.placedIn(placedReferences, twinned))
+                it.mayFollowAnUnresolvableName(unresolved[it.at], it.placedIn(placedReferences, twinned, afterTheParse))
         }
     val judged = (references + textClasses)
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .withoutTheTextsBehindARefusedPreamble(preamble, aboutTheDsl, twinned)
-        .withoutDefectsBehindAnEarlierOne(placedReferences, twinned)
-        .withoutPostParseClassesBehindAPositionedDefect(aboutTheDsl)
+        .withoutDefectsBehindAnEarlierOne(placedReferences, twinned, afterTheParse)
+        .withoutPostParseClassesBehindAPositionedDefect(aboutTheDsl, afterTheParse)
         .withoutMessageVerdictsBehindARefusedDsl(messageVerdicts, dslVerdicts = references + dslVerdicts)
         .withoutCalculationClassesBehindAnEarlierStage(dslVerdicts = references + dslVerdicts)
     // After the variant filter, because a declaration A12 never examines draws no class that could stop it.
@@ -1298,10 +1300,16 @@ private fun joinedOrderPrecedes(earlier: String, later: String): Boolean? {
 /**
  * This finding's span when it can be PLACED in its text, or null: a positioned class carrying its span, or a
  * condition reference's own class ([conditionReferences]), at a path only one declaration has ([twinned]),
- * that justifies rejection. The one statement of which findings take part in the text order.
+ * that justifies rejection. The one statement of which findings take part in the text order. A class raised
+ * [afterTheParse] takes no part whatever its code, since nothing it could stand ahead of is still being read.
  */
-private fun Finding.placedIn(conditionReferences: Set<Finding>, twinned: Set<String>): TextSpan? = span?.takeIf {
-    at !in twinned && justifiesRejection && (code in POSITIONED_CONDITION_CODES || this in conditionReferences)
+private fun Finding.placedIn(
+    conditionReferences: Set<Finding>,
+    twinned: Set<String>,
+    afterTheParse: Set<Finding>,
+): TextSpan? = span?.takeIf {
+    this !in afterTheParse && at !in twinned && justifiesRejection &&
+        (code in POSITIONED_CONDITION_CODES || this in conditionReferences)
 }
 
 /**
@@ -1355,12 +1363,13 @@ private fun List<Finding>.withoutTheTextsBehindARefusedPreamble(
 private fun List<Finding>.withoutDefectsBehindAnEarlierOne(
     conditionReferences: Set<Finding>,
     twinned: Set<String>,
+    afterTheParse: Set<Finding>,
 ): List<Finding> {
     val placedByDeclaration = mapNotNull { finding ->
-        finding.placedIn(conditionReferences, twinned)?.let { finding to it }
+        finding.placedIn(conditionReferences, twinned, afterTheParse)?.let { finding to it }
     }.groupBy { (finding, _) -> finding.at }
     return filterNot { finding ->
-        val own = finding.placedIn(conditionReferences, twinned) ?: return@filterNot false
+        val own = finding.placedIn(conditionReferences, twinned, afterTheParse) ?: return@filterNot false
         val raised = finding.raisePoint(own, conditionReferences)
         placedByDeclaration.getValue(finding.at).any { (earlier, span) ->
             earlier.code != finding.code && when (span.member) {
@@ -1437,10 +1446,15 @@ private val PARSER_CONDITION_CODES = setOf(
  * splitting it is what left the whole-rule half a single member while three more classes of the same phase
  * were live ([KERNEL-FINDINGS KF375]).
  */
-private fun List<Finding>.withoutPostParseClassesBehindAPositionedDefect(aboutTheDsl: Set<Finding>): List<Finding> {
-    val defective = filter { it.inConditionText(POSITIONED_CONDITION_CODES, aboutTheDsl) }
+private fun List<Finding>.withoutPostParseClassesBehindAPositionedDefect(
+    aboutTheDsl: Set<Finding>,
+    afterTheParse: Set<Finding>,
+): List<Finding> {
+    val defective = filter { it !in afterTheParse && it.inConditionText(POSITIONED_CONDITION_CODES, aboutTheDsl) }
         .mapTo(mutableSetOf()) { it.at }
-    return filterNot { it.at in defective && it.inConditionText(POST_PARSE_CONDITION_CODES, aboutTheDsl) }
+    return filterNot {
+        it.at in defective && (it in afterTheParse || it.inConditionText(POST_PARSE_CONDITION_CODES, aboutTheDsl))
+    }
 }
 
 /**
@@ -1711,12 +1725,14 @@ private val POSITIONED_CONDITION_CODES = setOf(
  *
  * **One member moved OUT on 2026-09-14: `MVK_SEMANTIC_INDEX_NOT_ALLOWED`.** The method draws it, but the
  * code has three sites and the other two are parse-time — `CheckEntitySpecImpl.checkIndicesInFilterCondition`
- * and `CheckEntityUtils.checkNoSemanticIndex`. Every shape measured for it reaches the filter walk, which
+ * and `CheckEntityUtils.checkNoSemanticIndex`. Nearly every shape measured for it reaches the filter walk, which
  * throws during the parse and so erases the whole-rule branch of the same name
  * ([KERNEL-FINDINGS KF377]); it is therefore POSITIONED here. A code is not owned by the phase that happens
  * to name it — a second site of the same class can sit in the other phase and win every race. **Both sets
  * were swept for that on 2026-09-14, and again on 2026-09-25 once they grew, and it is the only split
- * class**: no member of [POSITIONED_CONDITION_CODES] throws from the post-parse phase.
+ * class**: no other member of [POSITIONED_CONDITION_CODES] throws from the post-parse phase. Its post-parse
+ * instance is a `$`-marked keyed read in a filter body, which the walk skips ([KERNEL-FINDINGS KF487]); the
+ * producer that reports it is marked [CheckProducer.raisesAfterTheParse], which assembly reads before the code.
  *
  * **Four members joined on 2026-09-25 from outside that method.** The calculation module's three classes
  * about what the texts READ — a read of the computed field, plain or projected, and a source an enumeration

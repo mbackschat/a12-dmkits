@@ -93,9 +93,52 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * the same body unmarked, reading another repetition, is the iteration class. A marked read inside a nested
  * filter reaches the RULE, not the filter it stands in (`adapter.laws.CheckerFilterBodyAgreementTest`,
  * [KERNEL-FINDINGS KF487]). A marked read's semantic index is not the walk's either; A12 refuses it only once
- * the parse is done, which is not reported here (CONSISTENCY-GAPS DG107).
+ * the parse is done ([filterBodyPostParseIndexFindings]).
  */
-internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> {
+internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> = walkedFilters().mapNotNull { (element, filters) ->
+    filters.firstNotNullOfOrNull { walked ->
+        walked.verdict?.defect?.let { filterFinding(it, element, walked.member, walked.span) }
+    }
+}
+
+/**
+ * The index gate's POST-PARSE site: a `$`-marked read in a filter body that selects one row by a semantic index.
+ *
+ * The walk skips a marked read, so its index passes the parse, and `ParserService.checkNormalRule` then refuses
+ * any semantic index in a filter condition, marked or not ([KERNEL-FINDINGS KF487],
+ * `adapter.laws.CheckerFilterBodyAgreementTest`). It is the walk's own code raised in the other phase, so it
+ * answers only where nothing in the parse did: a parse-time class later in the same text wins against it. Report
+ * assembly applies that because this producer is registered as raising after the parse
+ * ([CheckProducer.raisesAfterTheParse]), and so this reports every such read and leaves the order to assembly.
+ * It stands down where any filter of the declaration goes unjudged, since that filter may hold a parse-time
+ * class this checker does not report. No measured row reaches that stand-down, and it can only withhold: a
+ * control would need a parse-time class that no family reports.
+ */
+internal fun TrackedFactBase.filterBodyPostParseIndexFindings(): List<Finding> =
+    walkedFilters().mapNotNull { (element, filters) ->
+        if (filters.any { it.verdict == null }) {
+            return@mapNotNull null
+        }
+        filters.firstNotNullOfOrNull { walked ->
+            walked.verdict?.markedKeyedRead?.let { read ->
+                Finding(
+                    FindingCategory.A12_CONSTRAINT,
+                    FindingSeverity.ERROR,
+                    "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
+                    "in `${walked.member}`: the filter reads `$read` through a semantic index — a filter condition " +
+                        "takes no semantic index, `$OUTER_MARKER`-marked or not; select the row outside the filter",
+                    element.path,
+                    walked.span,
+                )
+            }
+        }
+    }
+
+/** One filter in a declaration's texts: the member it stands in, its span, and the walk's verdict, null if unjudged. */
+private class WalkedFilter(val member: String, val span: TextSpan, val verdict: FilterVerdict?)
+
+/** Every declaration's filters, in text order, each with what the walk decides about it. */
+private fun TrackedFactBase.walkedFilters(): List<Pair<TrackedDeclaration, List<WalkedFilter>>> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
     val callable = keywords.values.toSet()
@@ -106,15 +149,15 @@ internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> {
     return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .flatMap { it.operands }
-                .firstNotNullOfOrNull { operand ->
-                    val filter = operand.clauses.firstOrNull { it.keyword == filterKeyword }
-                        ?: return@firstNotNullOfOrNull null
-                    filterDefectOf(operand, filter, indexKeyword, clauseKeywords, callable, keywords, group, element)
-                        ?.let { filterFinding(it, element, member, ownerSpanOf(operand, filter, member)) }
-                }
+        element to conditionTexts(element.kind, body).flatMap { (member, text) ->
+            callsIn(text, conditionLanguage, syntaxEntryOf(member)).flatMap { it.operands }.mapNotNull { operand ->
+                val filter = operand.clauses.firstOrNull { it.keyword == filterKeyword } ?: return@mapNotNull null
+                WalkedFilter(
+                    member,
+                    ownerSpanOf(operand, filter, member),
+                    filterVerdictOf(operand, filter, indexKeyword, clauseKeywords, callable, keywords, group, element),
+                )
+            }
         }
     }
 }
@@ -141,12 +184,19 @@ private enum class FilterGate(val code: String) {
 private data class FilterDefect(val gate: FilterGate, val wrote: String, val level: String? = null)
 
 /**
- * The first of the two gates this operand's filter fails, in A12's own order.
+ * What the walk decides about one filter: the gate it fails, or null where it fails none, and the first
+ * `$`-marked keyed read the walk skipped, which A12 refuses after the parse.
+ */
+private data class FilterVerdict(val defect: FilterDefect?, val markedKeyedRead: String?)
+
+/**
+ * What the walk decides about this operand's filter, or null where it leaves the filter unjudged: the first
+ * gate the filter fails, in A12's own order, and a marked keyed read it skipped.
  *
  * The walk runs reference by reference and level by level, so an out-of-path level anywhere pre-empts the
  * scope gate — which is checked only once every reference has been read, exactly as the kernel does.
  */
-private fun TrackedFactBase.filterDefectOf(
+private fun TrackedFactBase.filterVerdictOf(
     operand: CallOperand,
     filter: OperandClause,
     indexKeyword: String?,
@@ -155,7 +205,7 @@ private fun TrackedFactBase.filterDefectOf(
     keywords: Map<String, String>,
     group: String,
     element: TrackedDeclaration,
-): FilterDefect? {
+): FilterVerdict? {
     // A filter written after an entity key filters the KEY ([OperandClause.filtersKey]): A12 asks every gate
     // below of the key's spec, while the key is parsed, so the key is the filtered entity here.
     val key = filter.filtersKey
@@ -188,7 +238,7 @@ private fun TrackedFactBase.filterDefectOf(
         return null
     }
     // A marked read's index is not the walk's: the walk skips the marked spec, and A12 refuses the index only
-    // after the parse, which this family does not report (CONSISTENCY-GAPS DG107).
+    // after the parse ([filterBodyPostParseIndexFindings]).
     val (markedUses, uses) = indexKeyword
         ?.let { semanticIndexUsesIn(filter.text, conditionLanguage, it) }
         .orEmpty()
@@ -201,6 +251,8 @@ private fun TrackedFactBase.filterDefectOf(
         return null
     }
     val indexed = uses.mapNotNullTo(mutableSetOf()) { it.valuePath }
+    val markedKeyedRead = markedUses.firstOrNull()?.let { filter.text.substring(it.start, it.end).trim() }
+    fun verdict(defect: FilterDefect?) = FilterVerdict(defect, markedKeyedRead)
     var boundSeen = false
     // Every spec in the body is walked, a nested aggregate's operand and a nested filter's body included
     // (`extractFilterIterationEntityRefs` visits the whole parse tree), each level by level: a starred level
@@ -217,7 +269,7 @@ private fun TrackedFactBase.filterDefectOf(
             // scope question — and the walk reads references in authored order, which is what decides
             // between the two classes when the body carries one of each.
             if (reference in indexed) {
-                return FilterDefect(FilterGate.INDEX_NOT_ALLOWED, reference)
+                return verdict(FilterDefect(FilterGate.INDEX_NOT_ALLOWED, reference))
             }
             var belowAStar = false
             iteratedLevels(resolved).forEach { level ->
@@ -226,10 +278,10 @@ private fun TrackedFactBase.filterDefectOf(
                     return@forEach
                 }
                 if (!(filtered == level || filtered.startsWith("$level/"))) {
-                    return FilterDefect(FilterGate.INVALID_ITERATION, reference, level)
+                    return verdict(FilterDefect(FilterGate.INVALID_ITERATION, reference, level))
                 }
                 if (belowAStar) {
-                    return FilterDefect(FilterGate.ITERATION_BELOW_A_STAR, reference, level)
+                    return verdict(FilterDefect(FilterGate.ITERATION_BELOW_A_STAR, reference, level))
                 }
                 if (level in starred) {
                     boundSeen = true
@@ -237,12 +289,12 @@ private fun TrackedFactBase.filterDefectOf(
             }
         }
     if (!boundSeen) {
-        return FilterDefect(FilterGate.NO_ITERATION, written)
+        return verdict(FilterDefect(FilterGate.NO_ITERATION, written))
     }
     // A12's LAST gate over the body, and it runs only here: `checkNoDisallowedConstructsInFilterCondition`
     // sits after the index walk in `checkFilterCondition`, so every class above pre-empts it and it is
     // reachable only from a filter that is otherwise legal.
-    return disallowedConstructIn(filter.text, keywords)?.let { FilterDefect(FilterGate.DISALLOWED_CONSTRUCT, it) }
+    return verdict(disallowedConstructIn(filter.text, keywords)?.let { FilterDefect(FilterGate.DISALLOWED_CONSTRUCT, it) })
 }
 
 /**

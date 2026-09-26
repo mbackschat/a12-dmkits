@@ -141,6 +141,9 @@ class CheckerFilterBodyAgreementTest {
                 ("Sum(Claims*/Paid Having [Claims/Units] > 1 And [\$Claims*/Units] > 1) > 0" to setOf("MVK_NO_WILDCARDS_ALLOWED")),
             "a marked starred bracket outside any filter" to ("[\$Claims*/Units] > 1" to OUTER),
             "a marked keyed read outside any filter" to ("[\$Orders/Note For \"A\"] == \"x\"" to OUTER),
+            "a marked keyed read in a body, from the root" to
+                ("Sum(Claims*/Paid Having [Claims/Units] > 1 And [\$Orders/Note For \"A\"] == \"x\") > 0" to
+                    setOf("MVK_SEMANTIC_INDEX_NOT_ALLOWED")),
         )
 
         // The rule iterates `Claims`, so a marked read of it is at the rule's own coordinates.
@@ -159,6 +162,10 @@ class CheckerFilterBodyAgreementTest {
             // done, marked or not (source-read); the walk, which runs during the parse, skips the marked read.
             "a marked keyed read beside an in-scope read" to
                 ("Sum(Parties*/Count Having [Parties/Name] == [\$Orders/Note For \"A\"]) > 0" to setOf("MVK_SEMANTIC_INDEX_NOT_ALLOWED")),
+            // The index class is raised after the parse, so a parse-time class LATER in the text answers instead.
+            "a marked keyed read ahead of a later filter the walk refuses" to
+                ("Sum(Parties*/Count Having [Parties/Name] == [\$Orders/Note For \"A\"]) > 0 And " +
+                    "Sum(Parties*/Count Having [Orders/Note] == \"y\") > 0" to ITERATION),
             "an out-of-path read of the path a marked keyed read names" to
                 ("Sum(Parties*/Count Having [Orders/Note] == \"y\" And [\$Orders/Note For \"A\"] == \"x\") > 0" to ITERATION),
             "a marked keyed read alone" to ("Sum(Parties*/Count Having [\$Orders/Note For \"A\"] == \"x\") > 0" to NO_ITERATION),
@@ -230,9 +237,6 @@ class CheckerFilterBodyAgreementTest {
         val ADMITTED = emptySet<String>()
 
         /** The rows where the checker answers otherwise, with what it answers. */
-        val OURS: Map<String, Set<String>> = mapOf(
-            // CONSISTENCY-GAPS DG107: the class is raised after the parse, and the checker files it as parse-time.
-            "a marked keyed read beside an in-scope read" to emptySet(),
-        )
+        val OURS: Map<String, Set<String>> = emptyMap()
     }
 }

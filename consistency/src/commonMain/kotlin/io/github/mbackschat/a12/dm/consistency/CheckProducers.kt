@@ -31,6 +31,16 @@ internal sealed interface CheckProducer {
     val completes: Set<CheckFamily>
 
     /**
+     * Whether A12 raises this producer's classes only once the condition has PARSED, whatever their codes.
+     *
+     * A code does not own its phase: the filter walk raises `MVK_SEMANTIC_INDEX_NOT_ALLOWED` during the parse, and
+     * `ParserService.checkNormalRule` raises it again after the parse for a read the walk skipped
+     * ([KERNEL-FINDINGS KF487]). So report assembly reads a finding's phase off the producer that raised it
+     * before it reads it off the code.
+     */
+    val raisesAfterTheParse: Boolean get() = false
+
+    /**
      * A family whose verdict is about the whole model, cached against one transcript.
      *
      * @param findings its findings, empty for a producer whose whole output is a coverage gap.
@@ -40,6 +50,7 @@ internal sealed interface CheckProducer {
         override val completes: Set<CheckFamily>,
         val findings: (TrackedFactBase) -> List<Finding> = { emptyList() },
         val gaps: (TrackedFactBase) -> List<CoverageGap> = { emptyList() },
+        override val raisesAfterTheParse: Boolean = false,
     ) : CheckProducer
 
     /**
@@ -189,6 +200,12 @@ private fun produces(
     findings: (TrackedFactBase) -> List<Finding>,
 ): CheckProducer = CheckProducer.ModelWide(setOf(family), findings)
 
+/** …and its twin for classes A12 raises only once the condition has parsed ([CheckProducer.raisesAfterTheParse]). */
+private fun producesAfterTheParse(
+    family: CheckFamily,
+    findings: (TrackedFactBase) -> List<Finding>,
+): CheckProducer = CheckProducer.ModelWide(setOf(family), findings, raisesAfterTheParse = true)
+
 /** …and its per-declaration twin, for a family whose verdict is about one declaration at a time. */
 private fun perDeclaration(
     family: CheckFamily,
@@ -327,6 +344,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.REPETITION_KEY_CONTAINMENT) { it.repetitionKeyContainmentFindings() },
     perDeclarationWalk(CheckFamily.FILTER_WILDCARD) { it.filterWildcardFindings() },
     produces(CheckFamily.FILTER_BODY_GATES) { it.filterBodyGateFindings() },
+    producesAfterTheParse(CheckFamily.FILTER_BODY_GATES) { it.filterBodyPostParseIndexFindings() },
     perDeclarationWalk(CheckFamily.OUTER_MARKER_POSITION) { it.outerMarkerPositionFindings() },
     perDeclarationWalk(CheckFamily.GROUP_CONDITION_WILDCARD) { it.groupConditionWildcardFindings() },
     perDeclarationWalk(CheckFamily.SUM_OF_PRODUCTS_OPERANDS) { it.sumOfProductsOperandFindings() },
