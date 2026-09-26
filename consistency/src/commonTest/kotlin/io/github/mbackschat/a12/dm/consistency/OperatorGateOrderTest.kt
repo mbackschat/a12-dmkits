@@ -122,7 +122,7 @@ class OperatorGateOrderTest {
     }
 
     private fun codes(condition: String, errorTarget: String = "../Reference"): List<String> =
-        check(ModelSource(model(condition, errorTarget))).findings
+        checkRead(ModelSource(model(condition, errorTarget))).findings
             .filter { it.category == FindingCategory.A12_CONSTRAINT && it.at == "/Policy/Probe" }
             .map { it.code }.distinct().sorted()
 

@@ -20,7 +20,7 @@ class ChecksCompletedScopeTest {
 
     @Test
     fun aSourceThatDeclaresNothingCompletesOnlyTheChecksThatCouldRun() {
-        val report = check(ModelSource(NO_DECLARATIONS))
+        val report = checkRead(ModelSource(NO_DECLARATIONS))
         val perDeclarationOnly = CHECK_PRODUCERS
             .filterNot { it is CheckProducer.ModelWide }
             .flatMap { it.completes }
@@ -40,7 +40,7 @@ class ChecksCompletedScopeTest {
 
     @Test
     fun aSourceThatDeclaresSomethingStillCompletesEveryFamily() {
-        val report = check(ModelSource(ONE_OF_EACH))
+        val report = checkRead(ModelSource(ONE_OF_EACH))
 
         assertEquals(CheckFamily.entries.toSet(), report.checksCompleted,
             "deriving from the schedule may not narrow the ordinary case: every producer is asked at least " +

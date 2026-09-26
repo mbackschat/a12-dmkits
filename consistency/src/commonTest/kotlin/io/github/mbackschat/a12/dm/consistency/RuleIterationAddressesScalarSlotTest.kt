@@ -23,7 +23,7 @@ class RuleIterationAddressesScalarSlotTest {
         val atRoot = if (ruleGroup == ROOT) ",$rule" else ""
         val inClaims = if (ruleGroup == CLAIMS) ",$rule" else ""
         val inRiders = if (ruleGroup == RIDERS) ",$rule" else ""
-        return check(
+        return checkRead(
             ModelSource(
                 """
                 {"header":{"id":"policy-iterated-slot","locales":[{"code":"en_US"}]},

@@ -36,7 +36,7 @@ class UnreadableEnvelopeTest {
 
     @Test
     fun eachUnbindableDeclarationDrawsOneFindingAndNoMore() {
-        val report = check(source)
+        val report = checkRead(source)
         val byPath = report.findings.groupBy { it.at }.mapValues { (_, found) -> found.map { it.code } }
 
         val expected = mapOf<String?, List<String>>(
@@ -59,7 +59,7 @@ class UnreadableEnvelopeTest {
      */
     @Test
     fun aGroupsUnbindableEnvelopeIsNotYetReported() {
-        val report = check(source)
+        val report = checkRead(source)
         assertEquals(emptyList(), report.findings.filter { it.at == "/Catalog/BadGroup" }.map { it.code })
     }
 
@@ -80,6 +80,6 @@ class UnreadableEnvelopeTest {
             """.trimIndent(),
         )
         assertIs<Admission.Admitted>(admit(sound))
-        assertEquals(emptyList(), check(sound).findings.map { it.code })
+        assertEquals(emptyList(), checkRead(sound).findings.map { it.code })
     }
 }

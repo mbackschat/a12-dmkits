@@ -14,7 +14,7 @@ import kotlin.test.assertEquals
  */
 class ValueListConditionGatesTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},
@@ -169,7 +169,7 @@ class ValueListConditionGatesTest {
     /** The finding names the offending field and its declared type, since the fix is to split the list. */
     @Test
     fun theFindingNamesTheOffendingFieldAndItsType() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"order","locales":[{"code":"en_US"}]},

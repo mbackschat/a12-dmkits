@@ -33,7 +33,7 @@ class BlankDslSlotTest {
         """.trimIndent(),
     )
 
-    private fun codes(source: ModelSource) = check(source).findings.map { it.code }.distinct().sorted()
+    private fun codes(source: ModelSource) = checkRead(source).findings.map { it.code }.distinct().sorted()
 
     // `Price` is a scale-2 number, as the laws carrier's target is: A12 compares a computed field with its
     // operation, so the scale-2 `42.00` into a text field is refused on every row, the controls included
@@ -78,7 +78,7 @@ class BlankDslSlotTest {
      */
     @Test
     fun aBlankErrorConditionIsNotReportedTwice() {
-        val codes = check(
+        val codes = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

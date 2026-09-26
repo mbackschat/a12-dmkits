@@ -133,7 +133,7 @@ class WhereAConditionMayStandTest {
               "errorMessage":[{"locale":"en_US","text":"see it"}]}}""",
     )
 
-    private fun codes(declaration: String): List<String> = check(ModelSource(model(declaration))).findings
+    private fun codes(declaration: String): List<String> = checkRead(ModelSource(model(declaration))).findings
         .filter { it.category == FindingCategory.A12_CONSTRAINT && it.at == "/Policy/Probe" }
         .map { it.code }.distinct().sorted()
 

@@ -100,7 +100,7 @@ class UnsoundDslDrawsARejectionTest {
     }
 
     private fun verdict(declaration: String): String {
-        val findings = check(ModelSource(model(declaration))).findings.filter { it.at == AT }
+        val findings = checkRead(ModelSource(model(declaration))).findings.filter { it.at == AT }
         // Classified by the two classes the messages here can draw, not by a code prefix: A12's error-text
         // checker draws `MVK_` keys too, so a prefix would count a leaked one as the DSL's rejection.
         val message = findings.map { it.code }.filter { it in MESSAGE_CLASSES }.sorted()

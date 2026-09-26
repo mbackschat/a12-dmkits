@@ -32,7 +32,7 @@ class SemanticIndexPinnedLevelTest {
         val inRiders = if (ruleGroup == RIDERS) ",$rule" else ""
         val rootIndex = if (rootIndexed) "\"indexFieldName\":\"Reference\"," else ""
         val coverIndex = if (coverIndexed) "\"indexFieldName\":\"CoverRef\"," else ""
-        return check(
+        return checkRead(
             ModelSource(
                 """
                 {"header":{"id":"policy-pinned-level","locales":[{"code":"en_US"}]},

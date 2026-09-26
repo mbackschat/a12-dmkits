@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  */
 class EntityListPreGatesTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},
@@ -148,7 +148,7 @@ class EntityListPreGatesTest {
     /** The finding names the operator and the entity, so a reader can find the operand to drop. */
     @Test
     fun theFindingNamesTheOperatorAndTheEntity() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"order","locales":[{"code":"en_US"}]},

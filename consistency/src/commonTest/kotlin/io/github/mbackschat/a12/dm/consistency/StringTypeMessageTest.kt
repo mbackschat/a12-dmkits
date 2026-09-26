@@ -18,7 +18,7 @@ class StringTypeMessageTest {
     private val languageMissing = "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING"
 
     /** A model declaring [locales] whose one string field carries [stringType] as its type body. */
-    private fun codes(stringType: String, vararg locales: String = arrayOf("en_US")): List<String> = check(
+    private fun codes(stringType: String, vararg locales: String = arrayOf("en_US")): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[${locales.joinToString(",") { """{"code":"$it"}""" }}]},
@@ -124,7 +124,7 @@ class StringTypeMessageTest {
     /** The finding says which member is missing and where, since the two codes read almost alike. */
     @Test
     fun eachFindingNamesTheMemberTheDeclarationLacks() {
-        val missingMessage = check(
+        val missingMessage = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

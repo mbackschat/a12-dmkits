@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
  */
 class FilterBodyPostParseIndexTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"claims-policy","locales":[{"code":"en_US"}]},

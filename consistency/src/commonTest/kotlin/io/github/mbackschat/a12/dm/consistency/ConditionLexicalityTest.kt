@@ -231,7 +231,7 @@ class ConditionLexicalityTest {
         assertEquals(rows.mapValues { (_, row) -> row.second }, actual, "which characters a condition comment holds")
     }
 
-    private fun reportCodes(condition: String): List<String> = check(
+    private fun reportCodes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
@@ -250,7 +250,7 @@ class ConditionLexicalityTest {
     /** One illegal character draws ONE finding across the whole report, not one per syntax family. */
     @Test
     fun anIllegalCharacterIsReportedOnceAcrossTheWholeReport() {
-        val codes = check(
+        val codes = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

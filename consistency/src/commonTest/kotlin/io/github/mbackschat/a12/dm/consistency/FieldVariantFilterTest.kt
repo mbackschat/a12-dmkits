@@ -109,7 +109,7 @@ class FieldVariantFilterTest {
         """.trimIndent(),
     )
 
-    private fun codes(source: ModelSource): List<String> = check(source).findings.map { it.code }.distinct()
+    private fun codes(source: ModelSource): List<String> = checkRead(source).findings.map { it.code }.distinct()
 
     @Test
     fun aConditionNamingAnOnlyFilteredFieldNamesNothing() {
@@ -200,7 +200,7 @@ class FieldVariantFilterTest {
      */
     @Test
     fun anOnlyFilteredFieldIsNotReportedAsASuppressedDeclaration() {
-        val fieldGaps = check(mentioning(only)).gaps.filter { it.at != null }
+        val fieldGaps = checkRead(mentioning(only)).gaps.filter { it.at != null }
         assertEquals(emptyList(), fieldGaps, "a deleted field is not an unexamined declaration")
 
         val ruleFiltered = ModelSource(
@@ -217,7 +217,7 @@ class FieldVariantFilterTest {
              ]}}}
             """.trimIndent(),
         )
-        assertEquals(listOf("/Catalog/FilteredRule"), check(ruleFiltered).gaps.mapNotNull { it.at },
+        assertEquals(listOf("/Catalog/FilteredRule"), checkRead(ruleFiltered).gaps.mapNotNull { it.at },
             "the control: the same spelling on a rule IS a suppression and must still say so")
     }
 

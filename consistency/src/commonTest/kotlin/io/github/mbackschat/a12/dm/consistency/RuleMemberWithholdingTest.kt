@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 class RuleMemberWithholdingTest {
 
     private fun codes(condition: String, target: String): List<String> =
-        check(ModelSource(model(condition, target))).findings
+        checkRead(ModelSource(model(condition, target))).findings
             .filter { it.at == "/Policy/Probe" }.map { it.code }.sorted()
 
     @Test
@@ -24,15 +24,15 @@ class RuleMemberWithholdingTest {
         actual["the error TARGET names nothing"] = codes("FieldFilled(Reference)", "../NoSuchField")
         actual["BOTH name nothing"] = codes("FieldFilled(NoSuchField)", "../NoSuchField")
         actual["the target names nothing, a message parameter beside it"] =
-            check(ModelSource(model("FieldFilled(Reference)", "../NoSuchField", "see \$Premium\$")))
+            checkRead(ModelSource(model("FieldFilled(Reference)", "../NoSuchField", "see \$Premium\$")))
                 .findings.filter { it.at == "/Policy/Probe" }.map { it.code }.sorted()
         // Both error-text families, because the withholding is applied once for all of them: a gate wired
         // into only one of them passes every other row here.
         actual["the target names nothing, a control character in the text"] =
-            check(ModelSource(model("FieldFilled(Reference)", "../NoSuchField", "see" + 0x09.toChar() + "it")))
+            checkRead(ModelSource(model("FieldFilled(Reference)", "../NoSuchField", "see" + 0x09.toChar() + "it")))
                 .findings.filter { it.at == "/Policy/Probe" }.map { it.code }.sorted()
         actual["a sound target, the same control character — the control"] =
-            check(ModelSource(model("FieldFilled(Reference)", "../Reference", "see" + 0x09.toChar() + "it")))
+            checkRead(ModelSource(model("FieldFilled(Reference)", "../Reference", "see" + 0x09.toChar() + "it")))
                 .findings.filter { it.at == "/Policy/Probe" }.map { it.code }.sorted()
 
         val expected = mutableMapOf<String, List<String>>()
@@ -75,7 +75,7 @@ class RuleMemberWithholdingTest {
      */
     @Test
     fun aFieldSharingARulesPathKeepsItsOwnFindings() {
-        val codes = check(ModelSource(collidingModel())).findings
+        val codes = checkRead(ModelSource(collidingModel())).findings
             .filter { it.at == "/Policy/Twin" }.map { it.code }.toSet()
         assertEquals(true, "MVK_FRACT_DIGITS_INVALID" in codes, codes.toString())
     }

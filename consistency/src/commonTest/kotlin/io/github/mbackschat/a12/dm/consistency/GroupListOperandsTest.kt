@@ -24,7 +24,7 @@ class GroupListOperandsTest {
      * a three-deep nest, and `Claims` is repeatable. Every condition is conjoined with a reference to the
      * rule's own error field, so no row also draws the unreferenced-error-field finding.
      */
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"policy","locales":[{"code":"en_US"}]},
@@ -244,7 +244,7 @@ class GroupListOperandsTest {
      */
     @Test
     fun aGermanModelDrawsTheSameFinding() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"police","locales":[{"code":"de_DE"}]},
@@ -283,7 +283,7 @@ class GroupListOperandsTest {
                   "errorCondition":"FieldFilled(${if (inAgencies) "AgencyCode" else "PolicyNumber"}) And ${'$'}CONDITION",
                   "errorEntityRelPath":"../${if (inAgencies) "AgencyCode" else "PolicyNumber"}",
                   "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
-        return check(
+        return checkRead(
             ModelSource(
                 """
                 {"header":{"id":"policy","locales":[{"code":"en_US"}]},
@@ -395,7 +395,7 @@ class GroupListOperandsTest {
     /** The finding names both operands and the carrier, since a condition can hold several calls. */
     @Test
     fun theFindingNamesTheOperandsAndTheCarrier() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"policy","locales":[{"code":"en_US"}]},

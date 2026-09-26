@@ -386,7 +386,7 @@ class StarBindingContainmentTest {
     private fun ruleCodes(sheet: Sheet, group: String, condition: String): List<String> =
         a12Codes(sheet.json(group, rule("../../Summary/Result", condition)))
 
-    private fun a12Codes(source: String): List<String> = check(ModelSource(source)).findings
+    private fun a12Codes(source: String): List<String> = checkRead(ModelSource(source)).findings
         .filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }.distinct()
 
     private fun computation(computedField: String, operation: String) = """

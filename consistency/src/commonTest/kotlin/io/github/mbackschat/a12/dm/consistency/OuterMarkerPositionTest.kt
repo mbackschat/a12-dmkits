@@ -58,7 +58,7 @@ class OuterMarkerPositionTest {
     fun aMarkerOutsideIsRefusedEvenWhereItsConjunctSpellsTheFilterBody() {
         val body = "([\$/Claim/ExcessDue] > 0 And [Assessments/Code] == \\\"X\\\")"
         val filtered = "FieldFilled(Reference) And Sum(Assessments*/Amount Having $body) > 0"
-        fun codes(condition: String) = check(ModelSource(model(condition))).findings
+        fun codes(condition: String) = checkRead(ModelSource(model(condition))).findings
             .filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }.distinct()
 
         assertEquals(emptyList(), codes(filtered), "the filter alone — the control")
@@ -68,14 +68,14 @@ class OuterMarkerPositionTest {
     /** The finding names the marked path, since dropping the marker is the repair. */
     @Test
     fun theFindingNamesTheMarkedPath() {
-        val finding = check(ModelSource(model("FieldFilled(Reference) And [\$/Claim/ExcessDue] > 0")))
+        val finding = checkRead(ModelSource(model("FieldFilled(Reference) And [\$/Claim/ExcessDue] > 0")))
             .findings.single { it.code == outer }
         assertEquals("/Claim/Probe", finding.at)
         assertEquals(true, finding.explain.contains("/Claim/ExcessDue"), finding.explain)
     }
 
     private fun reporting(condition: String): List<String> =
-        check(ModelSource(model(condition))).findings.filter { it.code == outer }.map { it.code }
+        checkRead(ModelSource(model(condition))).findings.filter { it.code == outer }.map { it.code }
 
     /** An insurance claims desk mirroring the laws test's carrier. */
     private fun model(condition: String): String = """

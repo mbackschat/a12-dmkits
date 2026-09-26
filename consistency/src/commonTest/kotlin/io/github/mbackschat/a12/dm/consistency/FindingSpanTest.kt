@@ -114,7 +114,7 @@ class FindingSpanTest {
     @Test
     fun aFindingAboutTheDECLARATIONCarriesNoSpanAtAll() {
         val noTarget = model(condition = "FieldFilled(Code)", errorTarget = "../NoSuchField")
-        val finding = check(ModelSource(noTarget)).findings.single()
+        val finding = checkRead(ModelSource(noTarget)).findings.single()
 
         assertEquals("MVK_ERROR_FIELD_MISSING", finding.code)
         assertNull(finding.span, "`errorEntityRelPath` is a structured member, not text with an offset")
@@ -135,7 +135,7 @@ class FindingSpanTest {
         assertEquals(emptyList(), report.resolved)
         // The control that keeps this row honest: the span DID move, so the findings are genuinely unequal
         // and only the defect-keyed comparison can see past it.
-        val spans = listOf(before, after).map { check(ModelSource(it)).findings.single().span?.start }
+        val spans = listOf(before, after).map { checkRead(ModelSource(it)).findings.single().span?.start }
         assertTrue(spans[0] != spans[1], "the two spans must differ, or this row measures nothing: $spans")
     }
 
@@ -149,7 +149,7 @@ class FindingSpanTest {
     }
 
     private fun single(condition: String): Finding {
-        val findings = check(ModelSource(model(condition = condition))).findings
+        val findings = checkRead(ModelSource(model(condition = condition))).findings
         assertEquals(1, findings.size, "this fixture must isolate ONE finding: ${findings.map { it.code }}")
         return findings.single()
     }

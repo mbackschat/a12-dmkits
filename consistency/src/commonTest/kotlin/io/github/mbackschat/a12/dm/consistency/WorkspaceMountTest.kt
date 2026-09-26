@@ -65,8 +65,17 @@ class WorkspaceMountTest {
             """,
         )
 
+    /**
+     * The workspace's report, refusing a fixture that is not JSON, for the reason [checkRead] states.
+     *
+     * The signal is narrower than [checkRead]'s, since a suspended mount leaves nothing completed and is what
+     * many rows here are about. The one row that feeds a malformed source on purpose calls the workspace itself.
+     */
     private fun check(vararg sources: ModelSource, entry: String = "order") =
-        ConsistencyWorkspace.fromSources(sources.toList()).check(entry)
+        ConsistencyWorkspace.fromSources(sources.toList()).check(entry).also { report ->
+            assertTrue(report.diagnostics.none { it.code == DiagnosticCode.SOURCE_NOT_WELL_FORMED },
+                "a fixture is not well-formed JSON: ${report.diagnostics}")
+        }
 
     /**
      * The placement fact everything else rests on: the provider's root group DISAPPEARS. Its children become
@@ -970,7 +979,7 @@ class WorkspaceMountTest {
      */
     @Test
     fun anUnadmittableProviderIsReportedBesideTheMountItBlocked() {
-        val report = check(host(), source("{ not json"))
+        val report = ConsistencyWorkspace.fromSources(listOf(host(), source("{ not json"))).check("order")
 
         assertEquals(listOf(DiagnosticCode.SOURCE_NOT_WELL_FORMED), report.diagnostics.map { it.code })
         assertTrue(report.gaps.any { it.at == "/Order/ShipTo" }, report.gaps.toString())

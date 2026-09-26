@@ -16,7 +16,7 @@ class HModelPathSuffixTest {
     private val suffix = "MVK_POINT_IN_A12_MODEL"
 
     /** A policy model whose one rule carries [condition]; `Insured` is the only group that does not repeat. */
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"policy-paths","locales":[{"code":"en_US"}]},

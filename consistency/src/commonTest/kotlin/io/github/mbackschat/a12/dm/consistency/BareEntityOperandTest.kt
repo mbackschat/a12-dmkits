@@ -55,6 +55,6 @@ class BareEntityOperandTest {
           "errorCode":"P","errorMessage":[{"locale":"en_US","text":"x"}]}}
     """.trimIndent()
 
-    private fun codes(declaration: String): List<String> = check(basketModel(inBasket = declaration))
+    private fun codes(declaration: String): List<String> = checkRead(basketModel(inBasket = declaration))
         .findings.filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }.sorted()
 }

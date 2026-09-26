@@ -49,7 +49,7 @@ class ComparisonConstantTest {
     }
 
     private fun codes(condition: String): List<String> =
-        check(ModelSource(model(condition))).findings.filter { it.justifiesRejection }.map { it.code }
+        checkRead(ModelSource(model(condition))).findings.filter { it.justifiesRejection }.map { it.code }
 
     /** An order desk: one field of each kind the rows compare, and the rule under test. */
     private fun model(condition: String): String = """

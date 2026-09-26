@@ -75,7 +75,7 @@ class HintListValueTest {
     @Test
     fun theUnreadableEntriesArePublishedAsCoverageGaps() {
         val mine = { body: String ->
-            check(ModelSource(order(body))).gaps
+            checkRead(ModelSource(order(body))).gaps
                 .filter { it.reason.contains("was not judged against the type's own bounds") }
                 .map { it.at to it.reason.substringAfterLast(": ") }
         }
@@ -96,7 +96,7 @@ class HintListValueTest {
         """"hintList":[{"locale":"$locale","values":[${values.joinToString(",") { "\"$it\"" }}]}]"""
 
     private fun codes(body: String): List<String> =
-        check(ModelSource(order(body))).findings
+        checkRead(ModelSource(order(body))).findings
             .filter { it.code in setOf(tooLong, tooShort, duplicate) }
             .map { it.code }
 

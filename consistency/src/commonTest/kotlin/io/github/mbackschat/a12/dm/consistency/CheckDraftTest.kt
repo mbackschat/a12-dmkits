@@ -22,7 +22,7 @@ class CheckDraftTest {
 
     @Test
     fun theBaselineIsClean() {
-        assertEquals(emptyList(), check(ModelSource(base)).findings.map { "${it.code}@${it.at}" })
+        assertEquals(emptyList(), checkRead(ModelSource(base)).findings.map { "${it.code}@${it.at}" })
     }
 
     @Test
@@ -55,7 +55,7 @@ class CheckDraftTest {
         val drafted = checkDraft(ModelSource(base), "/Order/CodeRequired", "errorCondition", completed)
         // The same text SAVED into the source, checked from scratch — the agreement that makes a draft answer
         // worth acting on rather than an approximation of one.
-        val saved = check(ModelSource(base.replace("FieldFilled(Code)", completed)))
+        val saved = checkRead(ModelSource(base.replace("FieldFilled(Code)", completed)))
 
         assertEquals(saved.findings, drafted.edited.findings)
         assertEquals(saved.status, drafted.edited.status)
@@ -102,7 +102,7 @@ class CheckDraftTest {
         assertEquals(emptyList(), report.edited.findings.map { "${it.code}@${it.at}" },
             "and nothing is left over from the text it replaced")
         // Against saving the same text, which is what makes the draft answer worth acting on.
-        assertEquals(check(ModelSource(base)).findings, report.edited.findings)
+        assertEquals(checkRead(ModelSource(base)).findings, report.edited.findings)
     }
 
     /**

@@ -21,7 +21,7 @@ import kotlin.test.assertTrue
 class ConditionMultipleDefectTest {
 
     private fun codes(condition: String, errorTarget: String = "../Reference"): List<String> =
-        check(ModelSource(model(condition, errorTarget))).findings
+        checkRead(ModelSource(model(condition, errorTarget))).findings
             .filter { it.at == "/Policy/Probe" }.map { it.code }.distinct().sorted()
 
     @Test
@@ -195,7 +195,7 @@ class ConditionMultipleDefectTest {
      */
     @Test
     fun twoRulesAtOnePathAreNeverPlacedAgainstEachOther() {
-        fun reported(first: String) = check(ModelSource(twins(first, "GroupFilled(/Policy/Assessment*)")))
+        fun reported(first: String) = checkRead(ModelSource(twins(first, "GroupFilled(/Policy/Assessment*)")))
             .findings.filter { it.at == "/Policy/Probe" }.map { it.code }.toSet()
         val control = reported("FieldFilled(Reference)")
         val beside = reported("FieldFilled(Reference) And FieldFilled(NoSuchField)")
@@ -211,7 +211,7 @@ class ConditionMultipleDefectTest {
      */
     @Test
     fun aRepeatOfOneCodeIsKeptForEachPlaceToFix() {
-        val reported = check(ModelSource(model("FieldFilled(NoSuchField) And FieldFilled(NorThisOne)", "../Reference")))
+        val reported = checkRead(ModelSource(model("FieldFilled(NoSuchField) And FieldFilled(NorThisOne)", "../Reference")))
             .findings.filter { it.at == "/Policy/Probe" }.map { it.code }
 
         assertEquals(listOf("MVK_INVALID_ENTITY", "MVK_INVALID_ENTITY"), reported)
@@ -277,7 +277,7 @@ class ConditionMultipleDefectTest {
     )
 
     private fun computing(precondition: String, operation: String): List<String> =
-        check(ModelSource(computationModel(precondition, operation))).findings
+        checkRead(ModelSource(computationModel(precondition, operation))).findings
             .filter { it.at == "/Depot/WeightCalc" }.map { it.code }.distinct().sorted()
 
     private fun computationModel(precondition: String, operation: String): String = """

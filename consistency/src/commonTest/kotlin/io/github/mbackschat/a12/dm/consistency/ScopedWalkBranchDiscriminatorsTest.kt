@@ -87,7 +87,7 @@ class ScopedWalkBranchDiscriminatorsTest {
     }
 
     private fun codesAt(json: String, at: String): List<String> =
-        check(ModelSource(json)).findings.filter { it.at == at }.map { it.code }
+        checkRead(ModelSource(json)).findings.filter { it.at == at }.map { it.code }
 
     private companion object {
 

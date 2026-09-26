@@ -91,12 +91,12 @@ class ErrorTargetIterationTest {
     }
 
     private fun outsideGroup(condition: String): List<String> =
-        check(ModelSource(outsideGroupModel(condition))).findings
+        checkRead(ModelSource(outsideGroupModel(condition))).findings
             .filter { it.code == ownGroup || it.code == parallel }
             .map { it.code }
 
     private fun allCodes(source: String): List<String> =
-        check(ModelSource(source)).findings.map { it.code }
+        checkRead(ModelSource(source)).findings.map { it.code }
 
     /** The reconciliation shape with the rule declared in `Expected`, reporting on `Received/Note`. */
     private fun outsideGroupModel(condition: String): String = """
@@ -141,7 +141,7 @@ class ErrorTargetIterationTest {
         """.trimIndent()
         assertEquals(
             emptyList(),
-            check(ModelSource(flat)).findings.filter { it.code == ownGroup || it.code == parallel }
+            checkRead(ModelSource(flat)).findings.filter { it.code == ownGroup || it.code == parallel }
                 .map { it.code },
             "a flat model has no repetition to disambiguate — kernel-measured ADMITTED",
         )
@@ -172,14 +172,14 @@ class ErrorTargetIterationTest {
                 listOf("MVK_ERROR_FIELD_NOT_REFERENCED"),
         )
         val actual = rows.keys.associateWith { condition ->
-            check(ModelSource(model(condition, repeatableRoot = false))).findings
+            checkRead(ModelSource(model(condition, repeatableRoot = false))).findings
                 .filter { it.justifiesRejection }.map { it.code }
         }
         assertEquals(rows, actual, "which reads the post-parse gates count")
     }
 
     private fun codes(condition: String, repeatableRoot: Boolean = true): List<String> =
-        check(ModelSource(model(condition, repeatableRoot))).findings
+        checkRead(ModelSource(model(condition, repeatableRoot))).findings
             .filter { it.code == ownGroup || it.code == parallel }
             .map { it.code }
 

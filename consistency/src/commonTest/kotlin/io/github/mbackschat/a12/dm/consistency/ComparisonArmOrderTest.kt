@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
  */
 class ComparisonArmOrderTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"parcel-arm-order","locales":[{"code":"en_US"}]},

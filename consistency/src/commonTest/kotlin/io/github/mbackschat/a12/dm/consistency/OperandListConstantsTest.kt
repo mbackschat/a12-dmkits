@@ -51,7 +51,7 @@ class OperandListConstantsTest {
 
     /** Only this family's code, so another family's finding cannot make a row look right. */
     private fun codes(operation: String): List<String> =
-        check(ModelSource(model(operation))).findings
+        checkRead(ModelSource(model(operation))).findings
             .filter { it.code == tooMany }
             .map { it.code }
 

@@ -110,7 +110,7 @@ class EnumTextForbiddenCharactersTest {
     @Test
     fun theUnreadableShapesArePublishedAsCoverageGaps() {
         val mine = { source: String ->
-            check(ModelSource(source)).gaps
+            checkRead(ModelSource(source)).gaps
                 .filter { it.reason.contains("the characters A12 refuses in one") }
                 .map { it.at to it.reason.substringAfterLast(": ") }
         }
@@ -131,7 +131,7 @@ class EnumTextForbiddenCharactersTest {
     }
 
     private fun codes(values: String, categories: String = ""): List<String> =
-        check(ModelSource(policy(values, categories))).findings
+        checkRead(ModelSource(policy(values, categories))).findings
             .filter { it.code in setOf(internal, display, category, lineBreak) }
             .map { it.code }
 

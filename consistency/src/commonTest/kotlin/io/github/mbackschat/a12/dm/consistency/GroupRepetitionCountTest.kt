@@ -18,7 +18,7 @@ class GroupRepetitionCountTest {
     private val invalid = "MVK_MAX_VALUES_INVALID"
 
     /** A catalog whose root group carries [root] and whose nested `Pallets` carries [nested]. */
-    private fun codes(root: String = "", nested: String = ""): List<String> = check(
+    private fun codes(root: String = "", nested: String = ""): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

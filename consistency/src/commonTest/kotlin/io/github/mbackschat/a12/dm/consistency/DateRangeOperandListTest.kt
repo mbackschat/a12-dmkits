@@ -18,7 +18,7 @@ class DateRangeOperandListTest {
     private val mixedYear = listOf("MVK_DATE_WITH_AND_WITHOUT_YEAR")
     private val varyingTypes = listOf("MVK_VARYING_TYPES_NOT_ALLOWED")
 
-    private fun codes(condition: String, baseYear: Boolean): List<String> = check(
+    private fun codes(condition: String, baseYear: Boolean): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"policy-coverage-windows","locales":[{"code":"en_US"}]},

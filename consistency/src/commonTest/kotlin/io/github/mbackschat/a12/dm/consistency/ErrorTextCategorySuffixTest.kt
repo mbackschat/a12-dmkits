@@ -45,7 +45,7 @@ class ErrorTextCategorySuffixTest {
     }
 
     private fun reporting(text: String): List<String> =
-        check(ModelSource(model(text))).findings.filter { it.code in OWNED }.map { it.code }
+        checkRead(ModelSource(model(text))).findings.filter { it.code in OWNED }.map { it.code }
 
     /** An e-commerce catalogue desk mirroring the laws test's carrier. */
     private fun model(text: String): String = """

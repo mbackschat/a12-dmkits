@@ -22,7 +22,7 @@ class FilteredEntityIterationTest {
      * [group] picks where the probe rule sits: inside `Lines`, whose own repetitions the error field is
      * addressed by, or at the root, which is the only anchoring `RepetitionNotUnique` is reachable from.
      */
-    private fun codes(group: String, errorField: String, condition: String): List<String> = check(
+    private fun codes(group: String, errorField: String, condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"fulfilment","locales":[{"code":"en_US"}]},
@@ -141,7 +141,7 @@ class FilteredEntityIterationTest {
     /** The finding names the filtered operand and the target, since either end is where the fix goes. */
     @Test
     fun theFindingNamesTheFilteredOperandAndTheTarget() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"fulfilment","locales":[{"code":"en_US"}]},

@@ -24,7 +24,7 @@ class ArithmeticOperationGatesTest {
     private val mixedAdd = "MVK_NO_STRING_OR_NUMBER_FOR_ADD"
 
     /** A billing model whose `BaseFee` declares two fractional digits and `Loose` declares none at all. */
-    private fun codes(declaration: String): List<String> = check(
+    private fun codes(declaration: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"billing","locales":[{"code":"en_US"}]},

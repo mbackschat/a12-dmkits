@@ -72,7 +72,7 @@ class EnumDisplayComparabilityTest {
 
     /** Only this family's two codes, so another family's finding cannot make a row look right. */
     private fun compare(probe: String): List<String> =
-        check(ModelSource(model(probe))).findings
+        checkRead(ModelSource(model(probe))).findings
             .filter { it.code in OWNED }
             .map { it.code }
 

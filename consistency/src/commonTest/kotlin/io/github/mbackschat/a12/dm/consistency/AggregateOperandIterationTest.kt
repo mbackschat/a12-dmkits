@@ -54,7 +54,7 @@ class AggregateOperandIterationTest {
         assertEquals(expected, actual, "which class an unstarred aggregate operand draws")
     }
 
-    private fun codes(errorField: String, call: String): List<String> = check(
+    private fun codes(errorField: String, call: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},

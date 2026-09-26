@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
  */
 class BooleanComparisonAgreementTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},
@@ -107,7 +107,7 @@ class BooleanComparisonAgreementTest {
     /** The message names the partner and the corrective, which is what an author acts on. */
     @Test
     fun theMessageNamesThePartnerAndTheCorrective() {
-        val findings = check(
+        val findings = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"order","locales":[{"code":"en_US"}]},

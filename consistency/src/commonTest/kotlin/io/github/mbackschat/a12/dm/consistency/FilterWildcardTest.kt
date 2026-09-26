@@ -53,7 +53,7 @@ class FilterWildcardTest {
 
     /** Every code this family draws, which is the only thing these models are built to defect in. */
     private fun codes(aggregate: String): List<String> =
-        check(ModelSource(model(aggregate))).findings
+        checkRead(ModelSource(model(aggregate))).findings
             .filter { it.code == noWildcards }
             .map { it.code }
 

@@ -31,7 +31,7 @@ class ConditionCorpusTest {
               "computationAlternatives":[{"operation":"$text"}]}}"""
     }
 
-    private fun report(text: String, member: String, language: String?) = check(
+    private fun report(text: String, member: String, language: String?) = checkRead(
         ModelSource(
             """
             {"header":{"id":"corpus","locales":[{"code":"en_US"}]},

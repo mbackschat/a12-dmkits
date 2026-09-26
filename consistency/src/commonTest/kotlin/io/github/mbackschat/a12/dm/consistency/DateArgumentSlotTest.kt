@@ -22,7 +22,7 @@ class DateArgumentSlotTest {
     private val noWildcards = listOf("MVK_NO_WILDCARDS_ALLOWED")
 
     /** An order model whose one rule carries [condition]; the field set is the laws test's, kind for kind. */
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order-date-arguments","locales":[{"code":"en_US"}]},

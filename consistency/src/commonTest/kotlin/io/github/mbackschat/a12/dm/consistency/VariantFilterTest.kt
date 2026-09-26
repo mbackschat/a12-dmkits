@@ -240,7 +240,7 @@ class VariantFilterTest {
      */
     @Test
     fun aFindingThatTheModelWillNotBuildSurvivesTheFilter() {
-        val report = check(source(ruleFilter = only, ruleErrorCode = "null"))
+        val report = checkRead(source(ruleFilter = only, ruleErrorCode = "null"))
         assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.filter { it.at == "/Catalog/PriceRule" }
             .map { it.code }, "a model that does not load is not a verdict the filter can hide")
     }
@@ -254,7 +254,7 @@ class VariantFilterTest {
      */
     @Test
     fun onlyTheFilteredDeclarationGoesUnjudged() {
-        val report = check(source(ruleCondition = "FieldFilled(Nonexistent)", ruleFilter = only))
+        val report = checkRead(source(ruleCondition = "FieldFilled(Nonexistent)", ruleFilter = only))
         assertEquals(emptyList(), report.findings.filter { it.at == "/Catalog/PriceRule" },
             "the filtered rule's findings are gone")
         assertTrue(
@@ -268,6 +268,6 @@ class VariantFilterTest {
     }
 
     private fun codesFor(condition: String, filter: String?) =
-        check(source(ruleCondition = condition, ruleFilter = filter)).findings
+        checkRead(source(ruleCondition = condition, ruleFilter = filter)).findings
             .filter { it.at == "/Catalog/PriceRule" }.map { it.code }
 }

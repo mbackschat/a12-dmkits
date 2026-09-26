@@ -26,7 +26,7 @@ class PatternAdmissionTest {
      * draws `MVK_ERROR_MESSAGE_AND_PATTERN_INVALID` from [stringTypeMessageFindings], and a fixture missing
      * it would measure that law here instead of this one.
      */
-    private fun codes(pattern: String?): List<String> = check(
+    private fun codes(pattern: String?): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
@@ -90,7 +90,7 @@ class PatternAdmissionTest {
     /** The finding names the construct, because the pattern alone does not say which adjacency was listed. */
     @Test
     fun theFindingNamesTheListedConstruct() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
@@ -119,7 +119,7 @@ class PatternAdmissionTest {
     @Test
     fun theUndecidableHalfIsPublishedAsACoverageGap() {
         val compilability = { pattern: String? ->
-            check(
+            checkRead(
                 ModelSource(
                     """
                     {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

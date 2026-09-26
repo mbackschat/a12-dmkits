@@ -26,7 +26,7 @@ class EmptyGroupOperandTest {
      * does it: without that conjunct each row would ALSO be unreferenced, and the control rows would report a
      * finding that has nothing to do with emptiness.
      */
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"store","locales":[{"code":"en_US"}]},
@@ -91,7 +91,7 @@ class EmptyGroupOperandTest {
     /** The finding names the group, since a condition can name several. */
     @Test
     fun theFindingNamesTheGroupAndWhereItWasWritten() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"store","locales":[{"code":"en_US"}]},

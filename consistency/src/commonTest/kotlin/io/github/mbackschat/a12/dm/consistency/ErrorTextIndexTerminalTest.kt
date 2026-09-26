@@ -151,7 +151,7 @@ class ErrorTextIndexTerminalTest {
     /** The finding names what the error entity's path DOES offer, since that is the repair. */
     @Test
     fun theFindingNamesTheIndexFieldsThatPathOffers() {
-        val finding = check(ModelSource(model("row \$index(Nope).value\$")))
+        val finding = checkRead(ModelSource(model("row \$index(Nope).value\$")))
             .findings.single { it.code == "INVALID_INDEX_FIELD" }
         assertEquals("/Policy/Claims/ClaimRule", finding.at)
         assertEquals(true, finding.explain.contains("ClaimNo"), finding.explain)
@@ -159,9 +159,9 @@ class ErrorTextIndexTerminalTest {
 
     /** An insurance claims desk mirroring the laws test's carrier. */
     private fun reporting(text: String): List<String> =
-        check(ModelSource(model(text))).findings.filter { it.at == "/Policy/Claims/ClaimRule" }.map { it.code }
+        checkRead(ModelSource(model(text))).findings.filter { it.at == "/Policy/Claims/ClaimRule" }.map { it.code }
 
-    private fun ambiguityIn(text: String): List<String> = check(ModelSource(ambiguousModel(text)))
+    private fun ambiguityIn(text: String): List<String> = checkRead(ModelSource(ambiguousModel(text)))
         .findings.filter { it.at == "/Policy/Claims/Items/ItemRule" }.map { it.code }
 
     private fun model(text: String): String = """
@@ -215,7 +215,7 @@ class ErrorTextIndexTerminalTest {
 
     /** The rule in the REPEATABLE indexed group, whose index field is an ordinary string. */
     private fun inWarehouse(condition: String, text: String): List<String> =
-        check(ModelSource(warehouse(condition, text, inBay = false, cleanBayIndex = false, withNamesake = false)))
+        checkRead(ModelSource(warehouse(condition, text, inBay = false, cleanBayIndex = false, withNamesake = false)))
             .findings.filter { it.at == "/Warehouse/Pallets/Probe" }.map { it.code }
 
     /** …and in the NON-repeatable one, whose index field is the Enumeration the gate reads. */
@@ -225,7 +225,7 @@ class ErrorTextIndexTerminalTest {
         cleanBayIndex: Boolean,
         withNamesake: Boolean = false,
     ): List<String> =
-        check(ModelSource(warehouse(condition, text, inBay = true, cleanBayIndex, withNamesake)))
+        checkRead(ModelSource(warehouse(condition, text, inBay = true, cleanBayIndex, withNamesake)))
             .findings.filter { it.at == "/Warehouse/Bays/Probe" }.map { it.code }
 
     /** The warehouse desk the repeatability laws test measures, with its three variables. */

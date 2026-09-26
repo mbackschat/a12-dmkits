@@ -59,7 +59,7 @@ class MessageParameterSyntaxTest {
      */
     @Test
     fun theTabRowIsSilencedByTheGateAndNotByAnUnreadableFixture() {
-        val codes = check(ModelSource(model("see\t \$Adjuster"))).findings.map { it.code }
+        val codes = checkRead(ModelSource(model("see\t \$Adjuster"))).findings.map { it.code }
         assertEquals(listOf("INVALID_CHARACTERS"), codes.filter { it.startsWith("INVALID_CHAR") })
         assertEquals(false, codes.contains(dollars), codes.toString())
     }
@@ -67,13 +67,13 @@ class MessageParameterSyntaxTest {
     /** The finding names the repair, since the escape is what an author who wanted a dollar sign needed. */
     @Test
     fun theFindingNamesTheEscape() {
-        val finding = check(ModelSource(model("see \$Premium"))).findings.single { it.code == dollars }
+        val finding = checkRead(ModelSource(model("see \$Premium"))).findings.single { it.code == dollars }
         assertEquals("/Policy/Probe", finding.at)
         assertEquals(true, finding.explain.contains("\$\$"), finding.explain)
     }
 
     private fun reporting(text: String): List<String> =
-        check(ModelSource(model(text))).findings.filter { it.code == dollars }.map { it.code }
+        checkRead(ModelSource(model(text))).findings.filter { it.code == dollars }.map { it.code }
 
     /** An insurance desk whose condition reads the one field the rows name. */
     private fun model(text: String): String = """

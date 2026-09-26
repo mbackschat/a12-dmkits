@@ -26,7 +26,7 @@ class LiteralIndexKeyTest {
             ConditionLanguage.DE -> condition.replace("Sum(", "Summe(").replace(" For ", " Fuer ")
                 .replace(" And ", " Und ")
         }
-        return check(
+        return checkRead(
             ModelSource(
                 """
                 {"header":{"id":"policy-literal-key","locales":[{"code":"en_US"}]},

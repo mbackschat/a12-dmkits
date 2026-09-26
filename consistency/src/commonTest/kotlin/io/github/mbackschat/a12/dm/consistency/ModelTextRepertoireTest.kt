@@ -55,7 +55,7 @@ class ModelTextRepertoireTest {
 
     /** Refuses a source the checker could not read, since an unread model reports nothing and every row passes. */
     private fun reported(json: String): List<String> {
-        val report = check(ModelSource(json))
+        val report = checkRead(ModelSource(json))
         assertTrue(report.diagnostics.isEmpty(), "the fixture was not read: ${report.diagnostics}")
         return report.findings.filter { it.justifiesRejection }.map { "${it.code} at ${it.at}" }
     }

@@ -18,7 +18,7 @@ class EnumValueLabelTest {
     private val displayShort = "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
 
     /** A model declaring [locales] whose one enumeration field carries [values] as its value list. */
-    private fun codes(values: String, vararg locales: String = arrayOf("en_US")): List<String> = check(
+    private fun codes(values: String, vararg locales: String = arrayOf("en_US")): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[${locales.joinToString(",") { """{"code":"$it"}""" }}]},
@@ -146,7 +146,7 @@ class EnumValueLabelTest {
     /** The finding says which locale is short, since a bilingual model has two candidates. */
     @Test
     fun theFindingNamesTheUnansweredLocale() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"catalog","locales":[{"code":"en_US"},{"code":"de_DE"}]},

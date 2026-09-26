@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
  */
 class ComparisonOperatorOperandsTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},
@@ -116,7 +116,7 @@ class ComparisonOperatorOperandsTest {
     /** The finding names both sides, since the fix is to change one of them or the operator. */
     @Test
     fun theFindingNamesBothSides() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"order","locales":[{"code":"en_US"}]},

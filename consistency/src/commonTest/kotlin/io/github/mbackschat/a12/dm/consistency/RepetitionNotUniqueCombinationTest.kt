@@ -14,7 +14,7 @@ class RepetitionNotUniqueCombinationTest {
 
     private val combination = "MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE"
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"depot","locales":[{"code":"en_US"}]},
@@ -78,7 +78,7 @@ class RepetitionNotUniqueCombinationTest {
     /** The finding names the count, since the fix is to merge the calls rather than to drop one. */
     @Test
     fun theFindingNamesHowManyCallsThereAre() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"depot","locales":[{"code":"en_US"}]},

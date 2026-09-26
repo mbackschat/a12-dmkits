@@ -107,7 +107,7 @@ class ComputationSelfReadTest {
     fun aParseTimeClassInAPreconditionWithholdsTheProjectedClass() {
         val keyedByTheTarget = "[/Routing/Legs/LegRef For /Routing/PlannedLeg]"
         fun declared(precondition: String) =
-            check(ModelSource(inRouting("../PlannedLeg", keyedByTheTarget, precondition))).findings
+            checkRead(ModelSource(inRouting("../PlannedLeg", keyedByTheTarget, precondition))).findings
                 .filter { it.category == FindingCategory.A12_CONSTRAINT && it.at == "/Routing/LegComp" }
                 .map { it.code }
         assertEquals(listOf("MVK_NO_NUMBER"), declared("RoundUpValue(/Routing/PreferredLeg, 2) > 0"))
@@ -115,7 +115,7 @@ class ComputationSelfReadTest {
     }
 
     private fun codes(source: String): List<String> =
-        check(ModelSource(source)).findings.filter { it.code in setOf(selfRead, projected) }.map { it.code }
+        checkRead(ModelSource(source)).findings.filter { it.code in setOf(selfRead, projected) }.map { it.code }
 
     /** The routing sheet with one computation declared inside the repeatable `Legs` group. */
     private fun inLegs(

@@ -25,7 +25,7 @@ class FilterBodyGatesTest {
     private fun codes(group: String, target: String, operand: String, filter: String?): List<String> {
         val filtered = filter?.let { " Having $it" } ?: ""
         val condition = "FieldFilled($target) And NumberOfFilledFields($operand$filtered) > 0"
-        return check(
+        return checkRead(
             ModelSource(
                 """
             {"header":{"id":"shipment","locales":[{"code":"en_US"}]},

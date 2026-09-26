@@ -76,7 +76,7 @@ class ValueInFieldsDateConstantTest {
     /** The finding names the constant, since respelling it is one of the two ways out. */
     @Test
     fun theFindingNamesTheConstant() {
-        val finding = check(ModelSource(model("""\"01.02.2024\"""", "Note, Memo")))
+        val finding = checkRead(ModelSource(model("""\"01.02.2024\"""", "Note, Memo")))
             .findings.single { it.code == "MVK_NO_DATE_CONSTANT" }
         assertEquals("/Endorsement/Probe", finding.at)
         assertEquals(true, finding.explain.contains("01.02.2024"), finding.explain)
@@ -88,7 +88,7 @@ class ValueInFieldsDateConstantTest {
 
     /** Only this family's codes, so another family's finding cannot make a row look right. */
     private fun counting(constant: String, list: String): List<String> =
-        check(ModelSource(model(constant, list))).findings.filter { it.code in OWNED }.map { it.code }
+        checkRead(ModelSource(model(constant, list))).findings.filter { it.code in OWNED }.map { it.code }
 
     /** An insurance endorsement desk mirroring the laws test's carrier. */
     private fun model(constant: String, list: String): String = """

@@ -16,7 +16,7 @@ class ComputationCycleTest {
     private val cycle = "MVK_ERROR_CALC_CYCLE"
 
     private fun codes(vararg calcs: Calc): List<String> =
-        check(ModelSource(model(calcs.toList()))).findings.map { it.code }
+        checkRead(ModelSource(model(calcs.toList()))).findings.map { it.code }
 
     @Test
     fun whichReadsBuildTheDependencyCircle() {
@@ -65,7 +65,7 @@ class ComputationCycleTest {
     /** The finding names the whole circle, since no single computation in it is the one to change. */
     @Test
     fun theFindingNamesEveryFieldInTheCircle() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 model(
                     listOf(
@@ -89,7 +89,7 @@ class ComputationCycleTest {
      */
     @Test
     fun aCircleIsReportedFromItsSmallestMemberWhicheverOneTheWalkMeetsFirst() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 model(
                     listOf(
@@ -108,7 +108,7 @@ class ComputationCycleTest {
     /** Two disjoint circles are two causes, so they are two findings rather than one merged report. */
     @Test
     fun twoDisjointCirclesAreTwoFindings() {
-        val findings = check(
+        val findings = checkRead(
             ModelSource(
                 model(
                     listOf(
@@ -136,7 +136,7 @@ class ComputationCycleTest {
      */
     @Test
     fun twoCirclesThroughOneFieldAreOrderedByTheCircleNotByTheText() {
-        val findings = check(
+        val findings = checkRead(
             ModelSource(
                 model(
                     listOf(

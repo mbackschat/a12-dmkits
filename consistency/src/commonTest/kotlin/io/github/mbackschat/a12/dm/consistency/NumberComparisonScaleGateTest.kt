@@ -35,7 +35,7 @@ class NumberComparisonScaleGateTest {
          ]}}}
         """.trimIndent().replace("RULES_HERE", rulesAndComputations)
 
-    private fun comparison(text: String): List<String> = check(
+    private fun comparison(text: String): List<String> = checkRead(
         ModelSource(
             model(
                 """
@@ -106,7 +106,7 @@ class NumberComparisonScaleGateTest {
         assertEquals(expected, actual, "a computation may suppress the scale gate")
     }
 
-    private fun computationCodes(suppressed: String): List<String> = check(
+    private fun computationCodes(suppressed: String): List<String> = checkRead(
         ModelSource(
             model(
                 """

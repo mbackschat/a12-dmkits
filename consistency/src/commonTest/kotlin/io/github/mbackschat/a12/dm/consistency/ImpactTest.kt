@@ -27,7 +27,7 @@ class ImpactTest {
     fun theBaselineIsClean() {
         // Every row below reads `introduced` and `resolved`, so a baseline carrying findings of its own would
         // make each of them measure noise rather than the change.
-        assertEquals(emptyList(), check(ModelSource(base)).findings.map { "${it.code}@${it.at}" })
+        assertEquals(emptyList(), checkRead(ModelSource(base)).findings.map { "${it.code}@${it.at}" })
     }
 
     @Test

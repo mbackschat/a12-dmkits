@@ -59,7 +59,7 @@ class ErrorTextSemanticIndexTest {
     /** The finding names the PAIRING, since writing the read into the condition is the fix. */
     @Test
     fun theFindingNamesThePairingTheConditionNeverWrote() {
-        val finding = check(ModelSource(model("\$Parcels/Volume For \\\"P-1\\\"\$")))
+        val finding = checkRead(ModelSource(model("\$Parcels/Volume For \\\"P-1\\\"\$")))
             .findings.single { it.code == "MVK_INDEX_FOR_ERROR_TEXT_INVALID" }
         assertEquals("/Fulfilment/ProbeRule", finding.at)
         assertEquals(true, finding.explain.contains("/Fulfilment/Parcels/Volume"), finding.explain)
@@ -67,7 +67,7 @@ class ErrorTextSemanticIndexTest {
     }
 
     private fun reporting(text: String): List<String> =
-        check(ModelSource(model(text))).findings.filter { it.code in OWNED }.map { it.code }
+        checkRead(ModelSource(model(text))).findings.filter { it.code in OWNED }.map { it.code }
 
     /** An e-commerce fulfilment desk mirroring the laws test's carrier. */
     private fun model(text: String): String = """

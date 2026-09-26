@@ -30,7 +30,7 @@ class OperandRepetitionScopeTest {
         } else {
             ""
         }
-        return check(
+        return checkRead(
             ModelSource(
                 """
                 {"header":{"id":"fulfilment","locales":[{"code":"en_US"}]},

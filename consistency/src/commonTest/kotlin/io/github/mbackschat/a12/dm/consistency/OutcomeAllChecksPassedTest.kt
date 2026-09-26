@@ -25,7 +25,7 @@ class OutcomeAllChecksPassedTest {
 
     @Test
     fun aPopulatedModelWithNothingWrongPassesEveryImplementedCheck() {
-        val report = check(ModelSource(CLEAN))
+        val report = checkRead(ModelSource(CLEAN))
 
         assertEquals(
             CheckOutcome.ALL_CHECKS_PASSED,
@@ -49,7 +49,7 @@ class OutcomeAllChecksPassedTest {
 
     @Test
     fun aSourceThatDeclaresNothingDoesNotPassEveryCheck() {
-        val report = check(ModelSource(NO_DECLARATIONS))
+        val report = checkRead(ModelSource(NO_DECLARATIONS))
 
         assertEquals(
             CheckOutcome.NO_REJECTION,
@@ -65,7 +65,7 @@ class OutcomeAllChecksPassedTest {
 
     @Test
     fun aRejectedModelIsNeverReportedAsPassing() {
-        val report = check(ModelSource(REJECTED))
+        val report = checkRead(ModelSource(REJECTED))
 
         assertEquals(
             CheckOutcome.REJECTED,
@@ -125,7 +125,7 @@ class OutcomeAllChecksPassedTest {
      */
     @Test
     fun anUnreadableDeclarationBlocksThePassThoughEveryFamilyCompleted() {
-        val report = check(ModelSource(UNREADABLE_DECLARATION))
+        val report = checkRead(ModelSource(UNREADABLE_DECLARATION))
 
         assertEquals(
             CheckOutcome.NO_REJECTION,

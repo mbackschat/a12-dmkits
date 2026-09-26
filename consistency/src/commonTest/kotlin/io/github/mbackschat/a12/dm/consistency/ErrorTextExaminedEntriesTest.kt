@@ -52,7 +52,7 @@ class ErrorTextExaminedEntriesTest {
         val entries = messages.joinToString(",") { (locale, text) ->
             """{"locale":"$locale","text":${JsonPrimitive(text)}}"""
         }
-        return check(
+        return checkRead(
             ModelSource(
                 """
                 {"header":{"id":"order","locales":[{"code":"en_US"},{"code":"de_DE"}]},

@@ -57,7 +57,7 @@ class DispatchOrderTest {
     fun aPerDeclarationFamilyReportsInDeclarationOrderAndFamiliesStayProducerMajor() {
         val ofInterest = setOf("MVK_INCOMPLETE_INPUT", "MVK_BRACKET_MISSING")
 
-        val reported = check(source).findings.filter { it.code in ofInterest }.map { it.code to it.at }
+        val reported = checkRead(source).findings.filter { it.code in ofInterest }.map { it.code to it.at }
 
         // The two claims in one list, which is why it is asserted as a list rather than as two properties:
         // completeness before connective agreement is the REGISTRY's order, and within each family the two

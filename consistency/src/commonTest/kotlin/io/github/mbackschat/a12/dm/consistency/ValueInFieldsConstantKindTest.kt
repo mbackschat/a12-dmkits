@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
  */
 class ValueInFieldsConstantKindTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},
@@ -74,7 +74,7 @@ class ValueInFieldsConstantKindTest {
         actual["a parenthesized number in the slot"] = count("(0)", "Quantity, Backordered")
         actual["an EMPTY slot"] = count("", "Quantity, Backordered")
         actual["a negative decimal — a legal spelling"] = count("-1.5", "Quantity, Backordered")
-        actual["an empty string — a legal spelling"] = count("\"\"", "GiftNote, Reference")
+        actual["an empty string — a legal spelling"] = count("\\\"\\\"", "GiftNote, Reference")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["Today"] = listOf("MVK_INVALID_CONST")
@@ -190,7 +190,7 @@ class ValueInFieldsConstantKindTest {
     /** The finding names the field and the constant, since the fix is to change one of the two. */
     @Test
     fun theFindingNamesTheFieldAndTheConstant() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"order","locales":[{"code":"en_US"}]},

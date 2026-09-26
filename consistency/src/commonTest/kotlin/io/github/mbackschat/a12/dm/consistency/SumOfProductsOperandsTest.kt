@@ -82,7 +82,7 @@ class SumOfProductsOperandsTest {
 
     /** Only this family's four codes, so another family's finding cannot make a row look right. */
     private fun codes(operands: String): List<String> =
-        check(ModelSource(model(operands))).findings
+        checkRead(ModelSource(model(operands))).findings
             .filter { it.code in OWNED }
             .map { it.code }
 

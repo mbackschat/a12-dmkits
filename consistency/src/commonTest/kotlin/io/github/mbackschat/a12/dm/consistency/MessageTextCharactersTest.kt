@@ -14,7 +14,7 @@ import kotlin.test.assertEquals
 class MessageTextCharactersTest {
 
     private fun codes(text: String): List<String> =
-        check(ModelSource(model(text))).findings.filter { it.at == "/Policy/Probe" }.map { it.code }
+        checkRead(ModelSource(model(text))).findings.filter { it.at == "/Policy/Probe" }.map { it.code }
 
     private fun around(codePoint: Int): List<String> = codes("see" + codePoint.toChar() + "the reference")
 
@@ -85,7 +85,7 @@ class MessageTextCharactersTest {
     @Test
     fun aDeclarationWhoseConditionIsUnsoundHasNoCharacterVerdict() {
         val text = "see" + 0x09.toChar() + "the reference"
-        assertEquals(emptyList(), check(ModelSource(model(text, condition = "FieldFilled(NoSuchField)")))
+        assertEquals(emptyList(), checkRead(ModelSource(model(text, condition = "FieldFilled(NoSuchField)")))
             .findings.filter { it.at == "/Policy/Probe" && it.code == characters }.map { it.code })
         assertEquals(listOf(characters), codes(text))
     }
@@ -93,7 +93,7 @@ class MessageTextCharactersTest {
     /** The finding names the code point, since a control character is invisible in the text it came from. */
     @Test
     fun theFindingNamesTheCodePointBecauseTheCharacterCannotBeSeen() {
-        val finding = check(ModelSource(model("see" + 0x07.toChar() + "x")))
+        val finding = checkRead(ModelSource(model("see" + 0x07.toChar() + "x")))
             .findings.single { it.code == characters }
         assertEquals(true, finding.explain.contains("U+0007"), finding.explain)
     }
@@ -102,7 +102,7 @@ class MessageTextCharactersTest {
     private val characters = "INVALID_CHARACTERS"
 
     private fun computing(text: String): List<String> =
-        check(ModelSource(model(text, computed = true))).findings
+        checkRead(ModelSource(model(text, computed = true))).findings
             .filter { it.at == "/Policy/Probe" }.map { it.code }
 
     private fun model(text: String, computed: Boolean = false,

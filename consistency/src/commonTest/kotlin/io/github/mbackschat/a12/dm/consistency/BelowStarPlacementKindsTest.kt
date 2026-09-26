@@ -65,7 +65,7 @@ class BelowStarPlacementKindsTest {
               ]}}
              ]}}}
         """.trimIndent()
-        return check(ModelSource(source)).findings
+        return checkRead(ModelSource(source)).findings
             .filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }.distinct().sorted()
     }
 

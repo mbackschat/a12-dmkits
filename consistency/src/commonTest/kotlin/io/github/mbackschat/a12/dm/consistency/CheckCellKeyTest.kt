@@ -215,7 +215,7 @@ class CheckCellKeyTest {
 
         // Each twin carries a defect of a DIFFERENT family, so the pair cannot pass by reporting one
         // declaration twice: a collapsed key would drop whichever code the surviving cell does not make.
-        val reported = check(source).findings.filter { it.at == TWIN }.map { it.code }.toSet()
+        val reported = checkRead(source).findings.filter { it.at == TWIN }.map { it.code }.toSet()
         assertEquals(
             emptyList(),
             listOf("MVK_INCOMPLETE_INPUT", "MVK_UNEXPECTED_TOKEN").filterNot { it in reported },

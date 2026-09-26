@@ -84,14 +84,14 @@ class EnumComputationSourceTest {
     /** The finding names the uncovered value, since widening the target or projecting the source is the fix. */
     @Test
     fun theFindingNamesTheUncoveredValue() {
-        val finding = check(ModelSource(model("[Wider]", "../Status")))
+        val finding = checkRead(ModelSource(model("[Wider]", "../Status")))
             .findings.single { it.code == "MVK_ERROR_INVALID_ENUM_CALCULATION" }
         assertEquals("/Policy/DerivedStatus", finding.at)
         assertEquals(true, finding.explain.contains("VOID"), finding.explain)
     }
 
     private fun computing(operation: String, target: String = "../Status"): List<String> =
-        check(ModelSource(model(operation, target))).findings
+        checkRead(ModelSource(model(operation, target))).findings
             .filter { it.code in OWNED }
             .map { it.code }
 

@@ -40,7 +40,7 @@ class HModelFormConstructTest {
     @Test
     fun theConstructsArgumentIsNotAReference() {
         val actual = listOf("Bestellung", "NoSuchForm").associateWith { argument ->
-            check(ModelSource(germanRule("VordruckAngegeben($argument) Oder FeldAngegeben(Kennzeichen)"))).findings
+            checkRead(ModelSource(germanRule("VordruckAngegeben($argument) Oder FeldAngegeben(Kennzeichen)"))).findings
                 .filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }
         }
         assertEquals(mapOf("Bestellung" to listOf(refused), "NoSuchForm" to listOf(refused)), actual,
@@ -59,22 +59,22 @@ class HModelFormConstructTest {
      */
     @Test
     fun theCountOperationInAConditionIsReportedAndOneCutShortIsDisclosed() {
-        val counted = check(ModelSource(germanRule("AnzahlAngegebenerVordrucke(Bestellung) > 0")))
+        val counted = checkRead(ModelSource(germanRule("AnzahlAngegebenerVordrucke(Bestellung) > 0")))
         assertEquals(listOf(refused),
             counted.findings.filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code })
         assertEquals(emptyList(), counted.gaps.filter { it.reason.contains("H-model form construct") })
-        val cutShort = check(ModelSource(germanRule(
+        val cutShort = checkRead(ModelSource(germanRule(
             "AnzahlAngegebenerVordrucke(Bestellung Oder FeldAngegeben(Kennzeichen)) > 0")))
         assertEquals(listOf<String?>("/Bestellung/Probe"),
             cutShort.gaps.filter { it.reason.contains("AnzahlAngegebenerVordrucke") }.map { it.at })
         // A call read ahead of the construct is not the construct: the disclosure asks about the construct.
-        val behindACall = check(ModelSource(germanRule(
+        val behindACall = checkRead(ModelSource(germanRule(
             "FeldAngegeben(Kennzeichen) Und AnzahlAngegebenerVordrucke(Bestellung Oder) > 0")))
         assertEquals(listOf<String?>("/Bestellung/Probe"),
             behindACall.gaps.filter { it.reason.contains("AnzahlAngegebenerVordrucke") }.map { it.at })
-        val condition = check(ModelSource(germanRule("VordruckAngegeben(Bestellung Oder FeldAngegeben(Kennzeichen))")))
+        val condition = checkRead(ModelSource(germanRule("VordruckAngegeben(Bestellung Oder FeldAngegeben(Kennzeichen))")))
         assertEquals(emptyList(), condition.gaps.filter { it.reason.contains("H-model form construct") })
-        assertEquals(emptyList(), check(ModelSource(germanRule("FeldAngegeben(Kennzeichen)")))
+        assertEquals(emptyList(), checkRead(ModelSource(germanRule("FeldAngegeben(Kennzeichen)")))
             .gaps.filter { it.reason.contains("H-model form construct") }.map { it.at })
     }
 
@@ -111,7 +111,7 @@ class HModelFormConstructTest {
             "FeldAngegeben(Kennzeichen) Oder (VordruckAngegeben(Bestellung Oder))",
         )
         val actual = rows.associateWith { condition ->
-            check(ModelSource(germanRule(condition))).findings
+            checkRead(ModelSource(germanRule(condition))).findings
                 .filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }
         }
         val expected = rows.associateWith { listOf(refused) }.toMutableMap()
@@ -156,7 +156,7 @@ class HModelFormConstructTest {
     }
 
     private fun codes(model: String): List<String> =
-        check(ModelSource(model)).findings.filter { it.code == refused }.map { it.code }
+        checkRead(ModelSource(model)).findings.filter { it.code == refused }.map { it.code }
 
     private fun germanRule(condition: String): String = german(
         """{"type":"Rule","id":"r0","name":"Probe","Rule":{

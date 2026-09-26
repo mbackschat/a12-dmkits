@@ -17,7 +17,7 @@ class ValidityConditionOperandsTest {
     private val emptyName = listOf("MVK_NO_EMPTY")
     private val onlyConstants = listOf("MVK_ONLY_CONSTANTS_USED")
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order-validity-conditions","locales":[{"code":"en_US"}]},

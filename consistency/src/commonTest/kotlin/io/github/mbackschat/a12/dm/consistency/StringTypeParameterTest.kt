@@ -24,7 +24,7 @@ class StringTypeParameterTest {
     private val hintList = """"hintList":[{"locale":"en_US","values":["AB"]}]"""
 
     /** A model whose one string field carries [stringType] as its type body. */
-    private fun codes(stringType: String): List<String> = check(
+    private fun codes(stringType: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
@@ -39,7 +39,7 @@ class StringTypeParameterTest {
     ).findings.map { it.code }
 
     /** …and the same, on the CUSTOM type that carries the identical two length members. */
-    private fun customCodes(customType: String): List<String> = check(
+    private fun customCodes(customType: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

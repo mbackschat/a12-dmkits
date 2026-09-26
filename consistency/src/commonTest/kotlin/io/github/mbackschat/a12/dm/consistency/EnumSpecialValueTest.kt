@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 class EnumSpecialValueTest {
 
     /** A catalog whose one enumeration carries [body] as its `EnumerationType`. */
-    private fun codes(body: String): List<String> = check(
+    private fun codes(body: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

@@ -836,7 +836,7 @@ class CheckFamilyWiringTest {
     @Test
     fun everySideModelFamilyReachesTheReport() {
         sideModels.forEach { (model, rows) ->
-            val present = check(model).findings.map { it.code to it.at }.toSet()
+            val present = checkRead(model).findings.map { it.code to it.at }.toSet()
             assertEquals(rows.mapValues { true }, rows.mapValues { (_, row) -> row in present },
                 "a family only a side model reaches reports nothing while checksCompleted still names it")
         }
@@ -844,11 +844,11 @@ class CheckFamilyWiringTest {
 
     @Test
     fun everyAdvertisedFamilyReachesTheReport() {
-        val report = check(source)
+        val report = checkRead(source)
         val present = report.findings.map { it.code to it.at }.toSet()
         val actual = evidence.mapValues { (_, row) -> row in present }
         assertEquals(evidence.mapValues { true }, actual,
-            "a family whose wire into check() is missing reports nothing while checksCompleted still names it")
+            "a family whose wire into checkRead() is missing reports nothing while checksCompleted still names it")
     }
 
     /**
@@ -857,7 +857,7 @@ class CheckFamilyWiringTest {
      */
     @Test
     fun theVariantFamilyReachesTheReportThroughItsGap() {
-        assertTrue(check(source).gaps.any { it.at == "/Catalog/Filtered" && it.reason.contains("ONLY") },
+        assertTrue(checkRead(source).gaps.any { it.at == "/Catalog/Filtered" && it.reason.contains("ONLY") },
             "the ONLY-filtered declaration must be disclosed as unexamined")
     }
 
@@ -872,7 +872,7 @@ class CheckFamilyWiringTest {
     /** …and `checksCompleted` names exactly the families this model proves ran. */
     @Test
     fun checksCompletedNamesTheFamiliesThatRan() {
-        assertEquals(CheckFamily.entries.toSet(), check(source).checksCompleted,
+        assertEquals(CheckFamily.entries.toSet(), checkRead(source).checksCompleted,
             "checksCompleted is evidence, so it may not name a family the report never carried")
     }
 

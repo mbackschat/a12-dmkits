@@ -33,7 +33,7 @@ class FieldTypeBindingTest {
     )
 
     private fun codes(fieldType: String?): List<String> =
-        check(typed(fieldType)).findings.map { it.code }.distinct()
+        checkRead(typed(fieldType)).findings.map { it.code }.distinct()
 
     private val unbuildable = listOf(CK_MODEL_NOT_BUILDABLE)
 
@@ -197,7 +197,7 @@ class FieldTypeBindingTest {
      */
     @Test
     fun aPairOutsideTheSweepIsPublishedAsACoverageGap() {
-        fun gapsFor(body: String) = check(typed("""{"type":"DateRangeType","DateRangeType":$body}"""))
+        fun gapsFor(body: String) = checkRead(typed("""{"type":"DateRangeType","DateRangeType":$body}"""))
             .gaps.filter { it.reason.contains("was left to A12") }.map { it.at }
 
         val actual = mutableMapOf<String, List<String?>>()
@@ -278,7 +278,7 @@ class FieldTypeBindingTest {
              ]}}}
             """.trimIndent(),
         )
-        assertEquals(emptyList(), check(withGroup).findings.map { it.code },
+        assertEquals(emptyList(), checkRead(withGroup).findings.map { it.code },
             "a group's stray fieldType is A12's to ignore, so reporting it would refuse a model A12 loads")
     }
 
@@ -306,16 +306,16 @@ class FieldTypeBindingTest {
 
         val money = """[{"id":"Money","name":"Money","fieldType":{"type":"StringType"}}]"""
         val actual = mutableMapOf<String, List<String>>()
-        actual["naming a DECLARED type definition — the control"] = check(
+        actual["naming a DECLARED type definition — the control"] = checkRead(
             typed("""{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"Money"}}""", money),
         ).findings.map { it.code }
-        actual["naming nothing, with one declared"] = check(
+        actual["naming nothing, with one declared"] = checkRead(
             typed("""{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"NoSuch"}}""", money),
         ).findings.map { it.code }
-        actual["naming nothing, with none declared"] = check(
+        actual["naming nothing, with none declared"] = checkRead(
             typed("""{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"NoSuch"}}""", null),
         ).findings.map { it.code }
-        actual["no typeDefinitionId at all"] = check(
+        actual["no typeDefinitionId at all"] = checkRead(
             typed("""{"type":"TypeDefType","TypeDefType":{}}""", money),
         ).findings.map { it.code }
 
@@ -331,12 +331,12 @@ class FieldTypeBindingTest {
         // the same report — the rows above resolve against it — which is why its absence has to be said.
         assertEquals(
             listOf<String?>(null),
-            check(typed("""{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"Money"}}""", money))
+            checkRead(typed("""{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"Money"}}""", money))
                 .gaps.filter { it.reason.contains("type definition") }.map { it.at },
         )
         assertEquals(
             emptyList(),
-            check(typed("""{"type":"StringType"}""", null))
+            checkRead(typed("""{"type":"StringType"}""", null))
                 .gaps.filter { it.reason.contains("type definition") },
             "a model declaring none must not carry the gap",
         )
@@ -345,12 +345,12 @@ class FieldTypeBindingTest {
     /**
      * One unbindable field draws ONE finding across the whole report, not one per family that reads it.
      *
-     * Counted through `check()` rather than off this family, because the mistake it guards against is a
+     * Counted through `checkRead()` rather than off this family, because the mistake it guards against is a
      * second family reporting the same unusable model — which is invisible from inside either one.
      */
     @Test
     fun anUnbindableFieldTypeIsReportedOnceAcrossTheWholeReport() {
-        val report = check(typed("""{"type":"NotAType","NotAType":{}}"""))
+        val report = checkRead(typed("""{"type":"NotAType","NotAType":{}}"""))
         assertEquals(1, report.findings.size, "findings for one unbindable fieldType: ${report.findings}")
         assertEquals(CK_MODEL_NOT_BUILDABLE, report.findings.single().code)
         assertEquals("/Catalog/Tier", report.findings.single().at)

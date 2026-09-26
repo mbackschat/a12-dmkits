@@ -253,7 +253,7 @@ class CalculationMemberWithholdingTest {
 
     /** The model's complete A12 class set, sorted, or [ADMITTED]; [inLines] are declared inside `Lines`. */
     private fun classes(calcs: List<Calc>, extra: String? = null, inLines: List<Calc> = emptyList()): String =
-        check(ModelSource(model((calcs.map(::computation) + listOfNotNull(extra)).joinToString(",\n"),
+        checkRead(ModelSource(model((calcs.map(::computation) + listOfNotNull(extra)).joinToString(",\n"),
             inLines.joinToString("") { ",\n" + computation(it) })))
             .findings.filter { it.category == FindingCategory.A12_CONSTRAINT }
             .map { it.code }.distinct().sorted().joinToString(",").ifEmpty { ADMITTED }

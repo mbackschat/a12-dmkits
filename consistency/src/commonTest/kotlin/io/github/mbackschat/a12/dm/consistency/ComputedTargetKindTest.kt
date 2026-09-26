@@ -21,12 +21,12 @@ class ComputedTargetKindTest {
      * `Station` is a fixed group and `Hires` a repeatable one, so both group kinds are reachable without a
      * second fixture — the axis A12 turns out not to distinguish, which is worth showing rather than assuming.
      */
-    private fun computingInto(target: String): List<String> = check(ModelSource(model(computedField = target)))
+    private fun computingInto(target: String): List<String> = checkRead(ModelSource(model(computedField = target)))
         .findings.map { it.code }
 
     /** The same model with a RULE reporting on [target] instead, under [condition]. */
     private fun reportingOn(target: String, condition: String): List<String> =
-        check(ModelSource(model(errorField = target, condition = condition))).findings.map { it.code }
+        checkRead(ModelSource(model(errorField = target, condition = condition))).findings.map { it.code }
 
     @Test
     fun aComputationMayNotComputeIntoAGroupAndARuleMayReportOnOne() {
@@ -60,7 +60,7 @@ class ComputedTargetKindTest {
     /** The finding names the resolved path, since the fix is to point the computation at a field. */
     @Test
     fun theFindingNamesTheGroupItResolvedTo() {
-        val finding = check(ModelSource(model(computedField = "../Station"))).findings.single()
+        val finding = checkRead(ModelSource(model(computedField = "../Station"))).findings.single()
         assertEquals("/Rental/HireTotal", finding.at)
         assertEquals(true, finding.explain.contains("/Rental/Station"), finding.explain)
         assertEquals(true, finding.explain.contains("computedFieldRelPath"), finding.explain)

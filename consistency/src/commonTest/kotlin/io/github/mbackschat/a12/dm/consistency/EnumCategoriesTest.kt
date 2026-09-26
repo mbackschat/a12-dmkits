@@ -17,7 +17,7 @@ import kotlin.test.assertEquals
 class EnumCategoriesTest {
 
     /** A model whose single field is an Enumeration carrying [body] verbatim. */
-    private fun report(body: String) = check(
+    private fun report(body: String) = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
@@ -69,7 +69,7 @@ class EnumCategoriesTest {
     /** The finding names the unpaired VALUE, which is the part an author cannot see in a long token list. */
     @Test
     fun theFindingNamesTheValueThatTookNoToken() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

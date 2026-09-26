@@ -373,6 +373,9 @@ tasks.register('leakGuardTest', Test) {
         // Same derived-denominator reason, on what a source HOLDS rather than what it says: the character a
         // reader cannot see arrives through whichever file an agent writes next, never one anybody would list.
         includeTestsMatching 'io.github.mbackschat.a12.dm.InvisibleSourceCharacterGuardTest'
+        // Same derived-denominator reason: the checker test whose fixture fails to load next is not one anybody
+        // would list, and its rows stay green either way.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerFixtureReadGuardTest'
     }
 }
 

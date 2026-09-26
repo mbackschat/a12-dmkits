@@ -15,7 +15,7 @@ import kotlin.test.assertEquals
  */
 class DateArithmeticOperandsTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"claim","locales":[{"code":"en_US"}]},

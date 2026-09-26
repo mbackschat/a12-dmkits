@@ -207,7 +207,7 @@ class CorrectiveTest {
 
     @Test
     fun aFindingWhoseCodeItsOwnerExplainsCarriesTheGuidance() {
-        val finding = check(reachability).findings.first { it.code == "MVK_INVALID_ENTITY" }
+        val finding = checkRead(reachability).findings.first { it.code == "MVK_INVALID_ENTITY" }
         val corrective = assertNotNull(finding.corrective, "MVK_INVALID_ENTITY is a served code")
         assertTrue(corrective.fix.isNotBlank(), corrective.fix)
         assertTrue(corrective.meaning.isNotBlank(), corrective.meaning)
@@ -259,7 +259,7 @@ class CorrectiveTest {
      */
     @Test
     fun everyProjectedEntryIsReachableExceptTheCodesTheCheckerNeverReports() {
-        val reported = check(reachability).findings.map { it.code }.toSet()
+        val reported = checkRead(reachability).findings.map { it.code }.toSet()
         assertEquals(
             spelledButNeverReported,
             KERNEL_CORRECTIVES.keys - reported,

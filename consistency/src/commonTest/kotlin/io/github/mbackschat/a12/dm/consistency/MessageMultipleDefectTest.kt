@@ -75,7 +75,7 @@ class MessageMultipleDefectTest {
     }
 
     private fun codes(text: String): List<String> =
-        check(ModelSource(model(text))).findings.filter { it.at == "/Policy/Probe" }.map { it.code }
+        checkRead(ModelSource(model(text))).findings.filter { it.at == "/Policy/Probe" }.map { it.code }
 
     private fun model(text: String): String {
         val escaped = text.map { character ->

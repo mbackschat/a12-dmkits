@@ -89,7 +89,7 @@ class RangeOperandGatesTest {
 
     /** Only this family's codes, so another family's finding cannot make a row look right. */
     private fun codes(probe: String): List<String> =
-        check(ModelSource(model(probe))).findings
+        checkRead(ModelSource(model(probe))).findings
             .filter { it.code in OWNED }
             .map { it.code }
 

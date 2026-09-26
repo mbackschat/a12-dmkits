@@ -102,7 +102,7 @@ class ValueAsDateOperandGatesTest {
 
     /** Only this family's codes, so another family's finding cannot make a row look right. */
     private fun codes(json: String): List<String> =
-        check(ModelSource(json)).findings.filter { it.code in OWNED }.map { it.code }
+        checkRead(ModelSource(json)).findings.filter { it.code in OWNED }.map { it.code }
 
     private fun formRule(condition: String): String =
         ruleElement("r0", condition, "../Reference")

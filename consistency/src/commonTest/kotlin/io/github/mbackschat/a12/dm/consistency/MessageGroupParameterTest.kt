@@ -132,10 +132,10 @@ class MessageGroupParameterTest {
     )
 
     private fun reporting(argument: String): List<String> =
-        check(ModelSource(model(argument, deep = true))).findings.filter { it.code in owned }.map { it.code }
+        checkRead(ModelSource(model(argument, deep = true))).findings.filter { it.code in owned }.map { it.code }
 
     /** The same deep rule, with its own group read through a repetition wildcard and nothing else. */
-    private fun starred(argument: String): List<String> = check(
+    private fun starred(argument: String): List<String> = checkRead(
         ModelSource(model(argument, deep = true, condition = "AtLeastOneFieldFilled(/Policy/Cover/Sections*/Amount)")),
     ).findings.filter { it.code in owned }.map { it.code }
 
@@ -145,7 +145,7 @@ class MessageGroupParameterTest {
      * behind ([KERNEL-FINDINGS KF338]) — a fixture that measured nothing about the parameter.
      */
     private fun atRoot(argument: String): List<String> =
-        check(ModelSource(model(argument, deep = false, condition = "FieldFilled(/Policy/Reference)")))
+        checkRead(ModelSource(model(argument, deep = false, condition = "FieldFilled(/Policy/Reference)")))
             .findings.filter { it.code in owned }.map { it.code }
 
     /** An insurance policy whose rule sits three levels down, or in the root group when [deep] is false. */

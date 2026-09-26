@@ -42,7 +42,7 @@ class CalculationModuleWithholdingTest {
     }
 
     private fun codes(precondition: String, operation: String, target: String): List<String> =
-        check(ModelSource(model(precondition, operation, target))).findings
+        checkRead(ModelSource(model(precondition, operation, target))).findings
             .filter { it.category == FindingCategory.A12_CONSTRAINT && it.at == "/Depot/Probe" }
             .map { it.code }.sorted()
 

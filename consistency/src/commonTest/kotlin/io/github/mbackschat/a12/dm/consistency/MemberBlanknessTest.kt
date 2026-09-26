@@ -68,7 +68,7 @@ class MemberBlanknessTest {
 
     /** The A12 classes the whole report rejects with, sorted, which is what the Kernel rows state. */
     private fun rejections(source: ModelSource) =
-        check(source).findings.filter { it.justifiesRejection }.map { it.code }.distinct().sorted()
+        checkRead(source).findings.filter { it.justifiesRejection }.map { it.code }.distinct().sorted()
 
     private fun Char.label() = "U+" + code.toString(16).uppercase().padStart(4, '0')
 

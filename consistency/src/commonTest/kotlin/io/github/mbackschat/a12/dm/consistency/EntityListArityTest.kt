@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
  */
 class EntityListArityTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},
@@ -137,7 +137,7 @@ class EntityListArityTest {
     /** The finding names the operator, what it wants, and what the call listed. */
     @Test
     fun theFindingNamesTheOperatorAndWhatItListed() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"order","locales":[{"code":"en_US"}]},

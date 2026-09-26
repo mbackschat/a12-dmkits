@@ -16,7 +16,7 @@ class BaseYearRequirementTest {
     private val noBaseYear = listOf("MVK_NO_BASE_YEAR")
     private val missingYear = listOf("MVK_MISSING_YEAR")
 
-    private fun codes(condition: String, baseYear: Boolean): List<String> = check(
+    private fun codes(condition: String, baseYear: Boolean): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order-base-year","locales":[{"code":"en_US"}]},

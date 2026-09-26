@@ -100,7 +100,7 @@ class RepetitionKeyPlacementTest {
 
     /** Every code this family draws about the rule, which is the only declaration these models defect in. */
     private fun codes(inGroup: String, errorField: String, condition: String): List<String> =
-        check(ModelSource(model(inGroup, errorField, condition))).findings
+        checkRead(ModelSource(model(inGroup, errorField, condition))).findings
             .filter { it.code == missing }
             .map { it.code }
 

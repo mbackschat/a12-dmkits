@@ -16,10 +16,10 @@ class MessageParameterReferenceTest {
     private val invalidField = "INVALID_FIELD"
 
     private fun ruleSaying(text: String): List<String> =
-        check(ModelSource(model(message = text))).findings.filter { it.at == "/Policy/Probe" }.map { it.code }
+        checkRead(ModelSource(model(message = text))).findings.filter { it.at == "/Policy/Probe" }.map { it.code }
 
     /** The same desk in German, with the model's condition language declared — the other arm of the keying. */
-    private fun germanSaying(text: String): List<String> = check(
+    private fun germanSaying(text: String): List<String> = checkRead(
         ModelSource(
             """
         {"header":{"id":"vertrag","locales":[{"code":"de_DE"}]},
@@ -36,7 +36,7 @@ class MessageParameterReferenceTest {
     ).findings.filter { it.at == "/Vertrag/Probe" }.map { it.code }
 
     private fun computing(operation: String, text: String): List<String> =
-        check(ModelSource(model(message = text, operation = operation)))
+        checkRead(ModelSource(model(message = text, operation = operation)))
             .findings.filter { it.at == "/Policy/Probe" }.map { it.code }
 
     @Test
@@ -249,10 +249,10 @@ class MessageParameterReferenceTest {
     fun aDeclarationWhoseConditionIsUnsoundHasNoParameterVerdict() {
         val actual = mutableMapOf<String, List<String>>()
         actual["a condition naming nothing"] =
-            check(ModelSource(model(message = "see \$Premium\$", condition = "FieldFilled(NoSuchField)")))
+            checkRead(ModelSource(model(message = "see \$Premium\$", condition = "FieldFilled(NoSuchField)")))
                 .findings.filter { it.at == "/Policy/Probe" }.map { it.code }
         actual["a condition that does not parse"] =
-            check(ModelSource(model(message = "see \$Premium\$", condition = "FieldFilled(")))
+            checkRead(ModelSource(model(message = "see \$Premium\$", condition = "FieldFilled(")))
                 .findings.filter { it.at == "/Policy/Probe" && it.code == invalidField }.map { it.code }
 
         assertEquals(true, actual.getValue("a condition naming nothing").none { it == invalidField },
@@ -263,7 +263,7 @@ class MessageParameterReferenceTest {
     /** The finding names the parameter and says what would satisfy it, since the fix is in one of two places. */
     @Test
     fun theFindingNamesTheParameterAndTheMemberItMustBeReadIn() {
-        val finding = check(ModelSource(model(message = "see \$Premium\$")))
+        val finding = checkRead(ModelSource(model(message = "see \$Premium\$")))
             .findings.single { it.code == invalidField }
         assertEquals("/Policy/Probe", finding.at)
         assertEquals(true, finding.explain.contains("Premium"), finding.explain)

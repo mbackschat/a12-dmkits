@@ -24,7 +24,7 @@ class ConsistencyCheckTest {
      */
     @Test
     fun aCompletedAnalysisRunsEveryFamilyTheEnumNames() {
-        val report = check(model(rule("../Code")))
+        val report = checkRead(model(rule("../Code")))
         assertEquals(CheckFamily.entries.toSet(), report.checksCompleted,
             "every family must either run or be removed from the enum")
     }
@@ -47,7 +47,7 @@ class ConsistencyCheckTest {
 
     @Test
     fun aResolvableModelIsInconclusiveWithItsReferenceCheckCompleted() {
-        val report = check(model(rule("../Code")))
+        val report = checkRead(model(rule("../Code")))
 
         assertEquals(ConsistencyStatus.Inconclusive, report.status)
         assertEquals(emptyList(), report.findings)
@@ -58,7 +58,7 @@ class ConsistencyCheckTest {
     /** Completing a check is not completing the analysis — the unimplemented families are stated, not implied. */
     @Test
     fun everyReportNamesTheFamiliesItCouldNotRun() {
-        val report = check(model(rule("../Code")))
+        val report = checkRead(model(rule("../Code")))
 
         assertEquals(false, report.status.complete)
         assertTrue(report.gaps.isNotEmpty(), "an incomplete verdict must say what it did not check")
@@ -66,7 +66,7 @@ class ConsistencyCheckTest {
 
     @Test
     fun anUnresolvedErrorTargetMakesTheModelInvalid() {
-        val report = check(model(rule("../Missing")))
+        val report = checkRead(model(rule("../Missing")))
 
         assertEquals(ConsistencyStatus.Invalid, report.status)
         assertEquals(listOf("MVK_ERROR_FIELD_MISSING"), report.findings.map { it.code })
@@ -98,7 +98,7 @@ class ConsistencyCheckTest {
      */
     @Test
     fun aSourceThatDeclaresNoElementsSaysSoRatherThanReadingAsClean() {
-        val empty = check(ModelSource("""{"header":{"id":"types","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[]}}}"""))
+        val empty = checkRead(ModelSource("""{"header":{"id":"types","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[]}}}"""))
 
         assertEquals(ConsistencyStatus.Inconclusive, empty.status)
         assertEquals(emptyList(), empty.findings)
@@ -107,7 +107,7 @@ class ConsistencyCheckTest {
             empty.gaps.toString(),
         )
         assertTrue(
-            check(model(rule("../Code"))).gaps.none { "declares no elements" in it.reason },
+            checkRead(model(rule("../Code"))).gaps.none { "declares no elements" in it.reason },
             "a model that declares elements must not carry the empty-fact-base gap",
         )
     }
@@ -115,7 +115,7 @@ class ConsistencyCheckTest {
     /** A declaration the checker could not read is a coverage gap, not a silent omission. */
     @Test
     fun anUnreadableDeclarationBecomesACoverageGap() {
-        val report = check(model("""{"type":"Rule","name":"Check","Rule":{}}"""))
+        val report = checkRead(model("""{"type":"Rule","name":"Check","Rule":{}}"""))
 
         assertEquals(
             listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED),

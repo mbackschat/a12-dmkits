@@ -35,7 +35,7 @@ class RootLevelIterationPinningTest {
         )
     }
 
-    private fun codes(json: String): List<String> = check(ModelSource(json)).findings.map { it.code }
+    private fun codes(json: String): List<String> = checkRead(ModelSource(json)).findings.map { it.code }
 
     /** An insurance claims register mirroring the laws test's carrier. */
     private fun model(indexedRoot: Boolean): String {

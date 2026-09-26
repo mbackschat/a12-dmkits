@@ -77,7 +77,7 @@ class RepetitionScopeGroupTest {
     /** The kind gate this family asks ahead of repeatability, over the same field scope as the grid's row. */
     @Test
     fun aFieldScopeDrawsTheKindClass() {
-        val rejections = check(ModelSource(model("../Crates/CrateRef",
+        val rejections = checkRead(ModelSource(model("../Crates/CrateRef",
             "RepetitionNotUnique(Crates/CrateRef @From Crates/CrateRef)"))).findings
             .filter { it.justifiesRejection }.map { it.code }
         assertEquals(listOf("MVK_NO_FIELDS_ALLOWED"), rejections, "a scope naming a field")
@@ -85,7 +85,7 @@ class RepetitionScopeGroupTest {
 
     /** Every code this family draws, which is the only thing these models are built to defect in. */
     private fun codes(errorField: String, condition: String): List<String> =
-        check(ModelSource(model(errorField, condition))).findings
+        checkRead(ModelSource(model(errorField, condition))).findings
             .filter { it.code == notRepeatable }
             .map { it.code }
 

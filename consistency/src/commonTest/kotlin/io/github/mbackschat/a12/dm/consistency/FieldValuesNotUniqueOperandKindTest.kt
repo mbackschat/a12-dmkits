@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  */
 class FieldValuesNotUniqueOperandKindTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"claim","locales":[{"code":"en_US"}]},
@@ -80,7 +80,7 @@ class FieldValuesNotUniqueOperandKindTest {
 
     @Test
     fun theFindingNamesBothFieldsAndTheirSpellings() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"claim","locales":[{"code":"en_US"}]},

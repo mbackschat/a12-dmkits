@@ -62,7 +62,7 @@ class TableEnumOperandTest {
     }
 
     private fun codes(condition: String): List<String> =
-        check(ModelSource(model(condition))).findings.filter { it.code in mine }.map { it.code }
+        checkRead(ModelSource(model(condition))).findings.filter { it.code in mine }.map { it.code }
 
     /**
      * An order with a group that repeats and one that does not, one enum field and two scalar kinds, so every

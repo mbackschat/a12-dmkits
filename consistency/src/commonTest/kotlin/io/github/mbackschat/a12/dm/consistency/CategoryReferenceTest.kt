@@ -16,7 +16,7 @@ class CategoryReferenceTest {
     private val notAnEnum = "MVK_NO_ENUMERATION"
 
     /** A policy model whose one rule carries [condition]; `Tier` declares the single category `Band`. */
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"policy-categories","locales":[{"code":"en_US"}]},
@@ -93,7 +93,7 @@ class CategoryReferenceTest {
     /** An Enumeration declaring NO categories still answers the reference, rather than falling silent. */
     @Test
     fun anEnumerationWithNoCategoriesAtAllStillRefusesTheName() {
-        val codes = check(
+        val codes = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"policy-plain","locales":[{"code":"en_US"}]},

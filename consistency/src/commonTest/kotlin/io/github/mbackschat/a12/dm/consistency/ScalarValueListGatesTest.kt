@@ -21,7 +21,7 @@ class ScalarValueListGatesTest {
     private val invalidTypes = "MVK_INVALID_TYPES_FOR_COMPARISON"
 
     /** A policy model whose one rule carries [condition]; `Tier` declares two values and one category. */
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"policy-scalar-value-lists","locales":[{"code":"en_US"}]},
@@ -225,7 +225,7 @@ class ScalarValueListGatesTest {
     /** A quote inside a constant is A12's doubled `""`, and the domain comparison is on the VALUE. */
     @Test
     fun anEmbeddedQuoteIsComparedAsOneCharacter() {
-        val codes = check(
+        val codes = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"policy-quoted","locales":[{"code":"en_US"}]},

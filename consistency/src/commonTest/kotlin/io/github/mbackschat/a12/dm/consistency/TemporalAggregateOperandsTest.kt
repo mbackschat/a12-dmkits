@@ -21,7 +21,7 @@ class TemporalAggregateOperandsTest {
     /** A policy carrier declaring, per component set, two spellings plus a same-spelling control. */
     private fun codes(condition: String, baseYear: Boolean = false): List<String> {
         val info = if (baseYear) """"modelInfo":{"baseYear":"2024"},""" else ""
-        return check(
+        return checkRead(
             ModelSource(
                 """
             {"header":{"id":"policy","locales":[{"code":"en_US"}]},

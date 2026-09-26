@@ -15,7 +15,7 @@ class SemanticIndexKeyTest {
     private val noField = "MVK_SEMANTIC_INDEX_NO_FIELD"
 
     /** A policy model whose one rule carries [condition]; `Insured` is the only group that does not repeat. */
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"policy","locales":[{"code":"en_US"}]},
@@ -119,7 +119,7 @@ class SemanticIndexKeyTest {
     /** The finding names the group, since the fix is to key on one of its fields instead. */
     @Test
     fun theFindingNamesTheGroupItWasKeyedOn() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"policy","locales":[{"code":"en_US"}]},

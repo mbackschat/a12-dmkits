@@ -117,7 +117,7 @@ class IndexFieldBaseTypeTest {
         val rule = """{"type":"Rule","id":"r0","name":"ProbeRule","Rule":{
               "errorCondition":"$condition","errorEntityRelPath":"$errorTarget",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"see it"}]}}"""
-        return check(ModelSource(model(group, rule))).findings
+        return checkRead(ModelSource(model(group, rule))).findings
             .filter { it.category == FindingCategory.A12_CONSTRAINT && it.at == "/Fulfilment/$group/ProbeRule" }
             .map { it.code }.distinct().sorted()
     }

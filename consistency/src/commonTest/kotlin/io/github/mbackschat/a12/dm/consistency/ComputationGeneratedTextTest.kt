@@ -98,7 +98,7 @@ class ComputationGeneratedTextTest {
         return "{$guarded$work}"
     }
 
-    private fun codes(common: String?, vararg alternatives: String): List<String> = check(
+    private fun codes(common: String?, vararg alternatives: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"subscription","locales":[{"code":"en_US"}]},

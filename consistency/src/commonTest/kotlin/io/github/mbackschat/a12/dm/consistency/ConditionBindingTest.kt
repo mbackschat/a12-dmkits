@@ -32,7 +32,7 @@ class ConditionBindingTest {
     )
 
     private fun codes(condition: String, language: String = "en_US") =
-        check(model(condition, language)).findings.map { it.code }
+        checkRead(model(condition, language)).findings.map { it.code }
 
     /**
      * The discriminating case for the whole slice. A rule at `/Order/Lines/Check` reaches `/Order/Code` as
@@ -68,7 +68,7 @@ class ConditionBindingTest {
 
     @Test
     fun anUndeclaredConditionEntityIsReportedAtItsRule() {
-        val report = check(model("FieldFilled(Nope)"))
+        val report = checkRead(model("FieldFilled(Nope)"))
 
         assertEquals(ConsistencyStatus.Invalid, report.status)
         assertEquals(listOf("MVK_INVALID_ENTITY"), report.findings.map { it.code })
@@ -205,7 +205,7 @@ class ConditionBindingTest {
             ),
             prepared.conditionReferences().map { it.member to it.written },
         )
-        val findings = check(source).findings.filter { it.code == "MVK_INVALID_ENTITY" }
+        val findings = checkRead(source).findings.filter { it.code == "MVK_INVALID_ENTITY" }
         assertEquals(3, findings.size)
         assertEquals(3, findings.map { it.explain }.toSet().size, "each finding must name its own member")
     }
@@ -256,7 +256,7 @@ class ConditionBindingTest {
             ]}}}
             """.trimIndent(),
         )
-        val report = check(source)
+        val report = checkRead(source)
 
         assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.map { it.code })
         assertTrue(

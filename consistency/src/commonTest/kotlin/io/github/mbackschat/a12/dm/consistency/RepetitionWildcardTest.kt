@@ -22,7 +22,7 @@ class RepetitionWildcardTest {
      * `Guest` is a FIXED group holding a number, `Stays` is repeatable, and `Stays/Rate` is a fixed group
      * nested inside the repeatable one — the shape that makes the law a question about each SEGMENT.
      */
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"stay","locales":[{"code":"en_US"}]},
@@ -200,7 +200,7 @@ class RepetitionWildcardTest {
      *
      * The rule reports on a field of its own group, so nothing but the row under test can draw a finding.
      */
-    private fun nestedCodes(condition: String): List<String> = check(
+    private fun nestedCodes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"stay","locales":[{"code":"en_US"}]},
@@ -225,7 +225,7 @@ class RepetitionWildcardTest {
     /** A computation's operation is read with the same reader, and A12 answers it with the same class. */
     @Test
     fun aComputationsOperationIsJudgedToo() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"stay","locales":[{"code":"en_US"}]},

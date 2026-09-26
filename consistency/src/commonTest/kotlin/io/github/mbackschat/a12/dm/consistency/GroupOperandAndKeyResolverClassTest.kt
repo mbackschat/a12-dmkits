@@ -137,7 +137,7 @@ class GroupOperandAndKeyResolverClassTest {
             PolicyPathSource.model(ruleInInsured = rules("../Remark")),
         ).flatMap { json ->
             val source = ModelSource(json)
-            val rejected = check(source).findings.filter { it.justifiesRejection }.mapNotNull { it.at }.toSet()
+            val rejected = checkRead(source).findings.filter { it.justifiesRejection }.mapNotNull { it.at }.toSet()
             prepare(admit(source) as Admission.Admitted).conditionReferences()
                 .filter { it.target !is Reference.Resolved }
                 .onEach { unresolved += it.written }

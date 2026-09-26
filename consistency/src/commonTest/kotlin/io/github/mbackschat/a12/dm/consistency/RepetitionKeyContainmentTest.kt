@@ -39,7 +39,7 @@ class RepetitionKeyContainmentTest {
         } else {
             ""
         }
-        return check(
+        return checkRead(
             ModelSource(
                 """
             {"header":{"id":"depot","locales":[{"code":"en_US"}]},

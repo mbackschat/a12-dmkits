@@ -127,7 +127,7 @@ class FilterBodyComparisonTest {
 
     /** The model's complete A12 class set, sorted, or [ADMITTED], for a rule reporting on [target]. */
     private fun classes(probe: String, target: String = "Reference"): String =
-        check(ModelSource(model(json("FieldFilled($target) And $probe"), target)))
+        checkRead(ModelSource(model(json("FieldFilled($target) And $probe"), target)))
             .findings.filter { it.category == FindingCategory.A12_CONSTRAINT }
             .map { it.code }.distinct().sorted().joinToString(",").ifEmpty { ADMITTED }
 

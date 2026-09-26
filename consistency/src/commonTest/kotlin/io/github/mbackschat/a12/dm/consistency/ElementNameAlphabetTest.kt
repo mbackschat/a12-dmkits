@@ -20,7 +20,7 @@ import kotlin.test.assertEquals
 class ElementNameAlphabetTest {
 
     /** A model whose one group holds one field, both named as given. */
-    private fun codes(groupName: String, fieldName: String = "Price"): List<String> = check(
+    private fun codes(groupName: String, fieldName: String = "Price"): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
@@ -34,7 +34,7 @@ class ElementNameAlphabetTest {
     ).findings.map { it.code }
 
     /** …and the same pair with [groupName] a group NESTED inside the root one, which is a third carrier. */
-    private fun nestedCodes(groupName: String): List<String> = check(
+    private fun nestedCodes(groupName: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
@@ -205,7 +205,7 @@ class ElementNameAlphabetTest {
     fun aRulesOwnNameIsNotJudged() {
         val actual = mutableMapOf<String, List<String>>()
         for (name in listOf("Sound", "xmlRule", "1Rule", "Some.Rule")) {
-            actual["a RULE named `$name`"] = check(
+            actual["a RULE named `$name`"] = checkRead(
                 ModelSource(
                     """
                     {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
@@ -232,7 +232,7 @@ class ElementNameAlphabetTest {
     /** The finding locates the character, which is the only part an author cannot see in a long name. */
     @Test
     fun theFindingNamesTheCharacterAndItsOffset() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

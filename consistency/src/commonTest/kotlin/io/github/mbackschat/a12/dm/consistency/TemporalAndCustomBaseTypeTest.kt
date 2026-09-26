@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
  */
 class TemporalAndCustomBaseTypeTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"parcel-shipment","locales":[{"code":"en_US"}]},

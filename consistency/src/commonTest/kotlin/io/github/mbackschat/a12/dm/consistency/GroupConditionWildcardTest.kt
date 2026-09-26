@@ -71,7 +71,7 @@ class GroupConditionWildcardTest {
 
     /** Only this family's two codes, so another family's finding cannot make a row look right. */
     private fun codes(condition: String): List<String> =
-        check(ModelSource(model(condition))).findings
+        checkRead(ModelSource(model(condition))).findings
             .filter { it.code == scalar || it.code == list }
             .map { it.code }
 

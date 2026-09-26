@@ -65,7 +65,7 @@ class GroupOrderingMultipleDefectTest {
      * because an opaque field is what this one needs to be defective.
      */
     private fun codes(opaque: Boolean, index: String?, sortFields: List<String>): List<String> =
-        check(ModelSource(model(opaque, index, sortFields))).findings
+        checkRead(ModelSource(model(opaque, index, sortFields))).findings
             .filter { it.at.orEmpty().startsWith("/Order/Items") }
             .map { it.code }
             .filterNot { it == "MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK" }

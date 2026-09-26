@@ -18,7 +18,7 @@ class ErrorFieldReferenceTest {
     private val noWildcard = "MVK_NO_WILDCARD"
 
     /** A shipment model whose one rule carries [condition] and points at [errorFieldRelPath]. */
-    private fun codes(errorFieldRelPath: String, condition: String): List<String> = check(
+    private fun codes(errorFieldRelPath: String, condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"shipment","locales":[{"code":"en_US"}]},
@@ -174,7 +174,7 @@ class ErrorFieldReferenceTest {
     }
 
     /** The shipment with a repeatable `Items` nested in the parcels; the rule reports on `../Carrier`. */
-    private fun nestedCodes(condition: String): List<String> = check(
+    private fun nestedCodes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"shipment-nested","locales":[{"code":"en_US"}]},
@@ -201,7 +201,7 @@ class ErrorFieldReferenceTest {
     /** The finding names the target, since the fix is to reference it or to point the rule elsewhere. */
     @Test
     fun theFindingNamesTheTargetItCouldNotFind() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"shipment","locales":[{"code":"en_US"}]},

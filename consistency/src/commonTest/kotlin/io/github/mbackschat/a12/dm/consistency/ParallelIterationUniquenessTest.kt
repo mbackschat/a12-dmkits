@@ -17,7 +17,7 @@ class ParallelIterationUniquenessTest {
     private val notAllowed = "MVK_PARALLEL_ITERATION_NOT_ALLOWED"
 
     /** A depot model whose `Lines` and `Picks` both key on `LineRef`, of [pickKeyType] on the Picks side. */
-    private fun codes(condition: String, pickKeyType: String = "StringType"): List<String> = check(
+    private fun codes(condition: String, pickKeyType: String = "StringType"): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"depot","locales":[{"code":"en_US"}]},
@@ -103,7 +103,7 @@ class ParallelIterationUniquenessTest {
     /** The finding names both groups and the shared key, since the fix is to break the pairing. */
     @Test
     fun theFindingNamesBothGroupsAndTheirSharedKey() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"depot","locales":[{"code":"en_US"}]},

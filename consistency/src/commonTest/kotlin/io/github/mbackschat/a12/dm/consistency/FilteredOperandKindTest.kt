@@ -17,7 +17,7 @@ class FilteredOperandKindTest {
     private val starRequired = "MVK_WILDCARDS_REQUIRED"
 
     /** A policy model whose one rule carries [condition]; `Claims` repeats and is keyed on `ClaimRef`. */
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"policy-filter","locales":[{"code":"en_US"}]},

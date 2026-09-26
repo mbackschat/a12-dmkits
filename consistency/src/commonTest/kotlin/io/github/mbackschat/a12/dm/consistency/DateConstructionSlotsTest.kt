@@ -28,7 +28,7 @@ class DateConstructionSlotsTest {
      */
     private fun codes(target: String, construction: String, component: String = ""): List<String> {
         val quoted = construction.replace("\"", "\\\"")
-        return check(
+        return checkRead(
             ModelSource(
                 """
             {"header":{"id":"booking","locales":[{"code":"en_US"}]},
@@ -341,7 +341,7 @@ class DateConstructionSlotsTest {
               "errorEntityRelPath":"../${locus.target}","errorCode":"C1",
               "errorMessage":[{"locale":"en_US","text":"x"}]}}
         """.trimIndent()
-        return check(
+        return checkRead(
             ModelSource(
                 """
             {"header":{"id":"booking-legs","locales":[{"code":"en_US"}]},

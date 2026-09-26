@@ -17,7 +17,7 @@ class RawTypeLengthTest {
     private val badConstant = "MVK_INTERNAL_ERROR"
 
     private fun ruleSaying(condition: String, target: String = "../IncidentNote"): List<String> =
-        check(ModelSource(model(condition = condition, errorField = target))).findings.map { it.code }
+        checkRead(ModelSource(model(condition = condition, errorField = target))).findings.map { it.code }
 
     @Test
     fun onlyTheWholeConditionMaxLengthDeclarationIsLeftAlone() {
@@ -99,7 +99,7 @@ class RawTypeLengthTest {
     /** The finding points at the declaration and names the member, since the fix is to rewrite that text. */
     @Test
     fun theFindingNamesTheMemberAndTheRawField() {
-        val finding = check(ModelSource(model(condition = "Length(IncidentNote) >= 5")))
+        val finding = checkRead(ModelSource(model(condition = "Length(IncidentNote) >= 5")))
             .findings.single()
         assertEquals("/Claim/Probe", finding.at)
         assertEquals(true, finding.explain.contains("errorCondition"), finding.explain)
@@ -110,7 +110,7 @@ class RawTypeLengthTest {
         operation: String,
         precondition: String? = null,
         commonPrecondition: String? = null,
-    ): List<String> = check(ModelSource(model(operation = operation, precondition = precondition,
+    ): List<String> = checkRead(ModelSource(model(operation = operation, precondition = precondition,
         commonPrecondition = commonPrecondition))).findings.map { it.code }
 
     /**

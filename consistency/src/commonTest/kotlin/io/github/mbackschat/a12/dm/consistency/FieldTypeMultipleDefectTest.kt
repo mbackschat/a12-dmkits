@@ -14,7 +14,7 @@ import kotlin.test.assertEquals
 class FieldTypeMultipleDefectTest {
 
     private fun codes(stringType: String): List<String> =
-        check(ModelSource(model(stringType))).findings
+        checkRead(ModelSource(model(stringType))).findings
             .filter { it.at == "/Policy/Reference" }.map { it.code }.distinct().sorted()
 
     @Test

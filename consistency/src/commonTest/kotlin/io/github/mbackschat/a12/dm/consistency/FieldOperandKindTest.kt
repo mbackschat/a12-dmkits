@@ -15,7 +15,7 @@ class FieldOperandKindTest {
     private val noGroups = "MVK_NO_GROUPS_ALLOWED"
 
     /** A policy model whose one rule carries [condition]; `Insured` neither repeats nor is the root. */
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"policy-operand-kind","locales":[{"code":"en_US"}]},

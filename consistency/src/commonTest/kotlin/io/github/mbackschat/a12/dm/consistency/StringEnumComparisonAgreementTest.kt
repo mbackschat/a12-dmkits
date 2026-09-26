@@ -14,7 +14,7 @@ import kotlin.test.assertEquals
  */
 class StringEnumComparisonAgreementTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},

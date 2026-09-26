@@ -209,12 +209,12 @@ class SemanticIndexStructureTest {
 
     /** Only this family's codes, so another family's finding cannot make a row look right. */
     private fun codes(probe: String): List<String> =
-        check(ModelSource(model(probe))).findings
+        checkRead(ModelSource(model(probe))).findings
             .filter { it.code in OWNED }
             .map { it.code }
 
     private fun depotCodes(probe: String, anchor: String): List<String> =
-        check(ModelSource(depot(probe, anchor))).findings
+        checkRead(ModelSource(depot(probe, anchor))).findings
             .filter { it.code in OWNED }
             .map { it.code }
 

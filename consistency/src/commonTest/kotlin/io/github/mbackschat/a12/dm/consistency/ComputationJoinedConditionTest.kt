@@ -64,7 +64,7 @@ class ComputationJoinedConditionTest {
         else """{"precondition":"$precondition","operation":"$operation"}"""
 
     private fun codes(target: String, vararg alternatives: String): List<String> =
-        check(ModelSource(model(target, alternatives.joinToString(",")))).findings
+        checkRead(ModelSource(model(target, alternatives.joinToString(",")))).findings
             .filter { it.justifiesRejection }
             .map { it.code }
 

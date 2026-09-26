@@ -108,11 +108,11 @@ class StringSlotBindingTest {
     fun anUnbindableSlotIsReportedOnceAcrossTheWholeReport() {
         val actual = mutableMapOf<String, Int>()
         actual["errorCondition as an object"] =
-            check(ruleSource(""","errorCondition":{"value":"x"}""")).findings.count { it.at == "/Catalog/PriceRule" }
+            checkRead(ruleSource(""","errorCondition":{"value":"x"}""")).findings.count { it.at == "/Catalog/PriceRule" }
         actual["errorEntityRelPath as a list"] =
-            check(ruleSource(""","errorEntityRelPath":["../Price"]""")).findings.count { it.at == "/Catalog/PriceRule" }
+            checkRead(ruleSource(""","errorEntityRelPath":["../Price"]""")).findings.count { it.at == "/Catalog/PriceRule" }
         actual["the control — nothing wrong"] =
-            check(ruleSource("")).findings.count { it.at == "/Catalog/PriceRule" }
+            checkRead(ruleSource("")).findings.count { it.at == "/Catalog/PriceRule" }
 
         val expected = mapOf(
             "errorCondition as an object" to 1,

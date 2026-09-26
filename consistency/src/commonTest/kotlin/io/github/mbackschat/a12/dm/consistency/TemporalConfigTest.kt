@@ -19,7 +19,7 @@ import kotlin.test.assertEquals
 class TemporalConfigTest {
 
     /** A model whose single field carries [fieldType] verbatim. */
-    private fun codes(fieldType: String): List<String> = check(
+    private fun codes(fieldType: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

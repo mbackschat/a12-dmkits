@@ -31,7 +31,7 @@ class SupportedCharactersTest {
     private val supplementary = "" + Char(0xd83d) + Char(0xde00)
 
     /** A model restricted to [definition], whose one enum field declares [values]. */
-    private fun report(definition: String?, vararg values: String) = check(
+    private fun report(definition: String?, vararg values: String) = checkRead(
         ModelSource(
             """
             {"header":{"id":"shop","locales":[{"code":"en_US"}]},
@@ -98,7 +98,7 @@ class SupportedCharactersTest {
     /** The finding names the character and the value, which is what an author has to change. */
     @Test
     fun theFindingNamesTheCharacterAndTheValueItSitsIn() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(
                 """
                 {"header":{"id":"shop","locales":[{"code":"en_US"}]},

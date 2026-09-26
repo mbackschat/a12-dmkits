@@ -163,6 +163,6 @@ class FieldValueReadOperandTest {
         )
     }
 
-    private fun codes(source: ModelSource): List<String> = check(source)
+    private fun codes(source: ModelSource): List<String> = checkRead(source)
         .findings.filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }.sorted()
 }

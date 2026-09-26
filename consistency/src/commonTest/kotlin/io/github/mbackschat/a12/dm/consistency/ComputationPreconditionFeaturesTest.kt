@@ -23,13 +23,13 @@ class ComputationPreconditionFeaturesTest {
         commonPrecondition: String? = null,
         operation: String = "1",
         target: String = "../Lines/Amount",
-    ): List<String> = check(
+    ): List<String> = checkRead(
         ModelSource(model(precondition = precondition, commonPrecondition = commonPrecondition,
             operation = operation, target = target)),
     ).findings.map { it.code }
 
     private fun ruleSaying(condition: String, target: String = "../Lines/Sku"): List<String> =
-        check(ModelSource(model(condition = condition, target = target))).findings.map { it.code }
+        checkRead(ModelSource(model(condition = condition, target = target))).findings.map { it.code }
 
     @Test
     fun aPreconditionMayNotUseAnApplicationConditionOrRepetitionNotUnique() {
@@ -108,7 +108,7 @@ class ComputationPreconditionFeaturesTest {
      */
     @Test
     fun aQuotedEntityNamedAfterThePredicateIsNotAUseOfIt() {
-        val findings = check(ModelSource(model(precondition = "FieldFilled('RepetitionNotUnique')")))
+        val findings = checkRead(ModelSource(model(precondition = "FieldFilled('RepetitionNotUnique')")))
             .findings.map { it.code }
         assertEquals(emptyList(), findings.filter { it == prohibited })
     }
@@ -116,7 +116,7 @@ class ComputationPreconditionFeaturesTest {
     /** The finding names the member and the predicate, since the fix is to move or drop that conjunct. */
     @Test
     fun theFindingNamesTheMemberAndThePredicate() {
-        val finding = check(
+        val finding = checkRead(
             ModelSource(model(precondition = "FieldFilled(Lines/Sku) And CustomCondition NotReverse")),
         ).findings.single { it.code == prohibited }
         assertEquals("/Basket/LineTotal", finding.at)

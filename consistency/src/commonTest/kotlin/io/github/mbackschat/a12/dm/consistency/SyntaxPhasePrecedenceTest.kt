@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
  * reaches a character the parser has not asked for ([KERNEL-FINDINGS KF311], measured in both orders for both
  * lexical classes by `rulekit.validate.laws.SyntaxPhasePrecedenceLawsTest`).
  *
- * **Every row goes through `check()` and asserts the whole report's codes**, because the two mistakes this
+ * **Every row goes through `checkRead()` and asserts the whole report's codes**, because the two mistakes this
  * guards against are invisible from inside any one family: reporting the wrong one of two real failures, and
  * two families each reporting their own. The second was live — `FieldFilled('Price) And` drew both
  * `MVK_LEXER_STANDARD_ERROR` and `MVK_INCOMPLETE_INPUT` until the completeness family was made to yield.
@@ -23,7 +23,7 @@ import kotlin.test.assertEquals
  */
 class SyntaxPhasePrecedenceTest {
 
-    private fun codes(condition: String): List<String> = check(
+    private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

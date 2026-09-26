@@ -242,7 +242,7 @@ class MessageBehindARefusedDslTest {
         "/Policy/PremiumCalc",
     )
 
-    private fun a12Codes(source: String, at: String): List<String> = check(ModelSource(source)).findings
+    private fun a12Codes(source: String, at: String): List<String> = checkRead(ModelSource(source)).findings
         .filter { it.category == FindingCategory.A12_CONSTRAINT && it.at == at }.map { it.code }.sorted()
 
     private fun model(declaration: String): String = """

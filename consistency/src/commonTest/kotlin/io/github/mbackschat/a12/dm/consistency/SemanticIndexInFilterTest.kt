@@ -16,7 +16,7 @@ class SemanticIndexInFilterTest {
     private val notAllowed = "MVK_SEMANTIC_INDEX_NOT_ALLOWED"
 
     /** Coverages and Endorsements key alike, which is the only pairing here that parallel-iterates. */
-    private fun codes(errorField: String, condition: String): List<String> = check(
+    private fun codes(errorField: String, condition: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"policy","locales":[{"code":"en_US"}]},

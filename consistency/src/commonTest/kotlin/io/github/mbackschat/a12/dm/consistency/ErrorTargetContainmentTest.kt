@@ -118,11 +118,11 @@ class ErrorTargetContainmentTest {
     }
 
     /** Every A12 class the checker reports, so a co-firing class — or a fixture that never parsed — shows. */
-    private fun codes(source: String): List<String> = check(ModelSource(source)).findings
+    private fun codes(source: String): List<String> = checkRead(ModelSource(source)).findings
         .filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }.distinct()
 
     private fun allCodes(source: String): List<String> =
-        check(ModelSource(source)).findings.map { it.code }
+        checkRead(ModelSource(source)).findings.map { it.code }
 
     /** The returns shape with one rule declared in [group], reporting on [errorField]. */
     private fun rule(group: String, errorField: String, condition: String): String = returns(

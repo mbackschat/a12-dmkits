@@ -73,7 +73,7 @@ class SuppressionPreambleWithholdingTest {
         suppressed: String?,
         target: String = "../Weight",
         message: String = "see it",
-    ): List<String> = check(ModelSource(model(precondition, operation, suppressed, target, message))).findings
+    ): List<String> = checkRead(ModelSource(model(precondition, operation, suppressed, target, message))).findings
         .filter { it.category == FindingCategory.A12_CONSTRAINT && it.at == "/Depot/Probe" }
         .map { it.code }.sorted()
 

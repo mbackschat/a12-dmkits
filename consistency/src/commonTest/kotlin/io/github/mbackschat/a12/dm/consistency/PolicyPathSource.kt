@@ -26,7 +26,7 @@ internal object PolicyPathSource {
         } else {
             model(ruleInPolicy = rule, claimsKeyed = claimsKeyed, recoveries = recoveries, parts = parts)
         }
-        return check(ModelSource(source)).findings.filter { it.justifiesRejection }.map { it.code }.distinct()
+        return checkRead(ModelSource(source)).findings.filter { it.justifiesRejection }.map { it.code }.distinct()
     }
 
     /** One rule named `Probe`, comma-led so it splices into [model]'s element lists. */

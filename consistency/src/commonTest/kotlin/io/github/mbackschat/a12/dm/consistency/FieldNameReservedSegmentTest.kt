@@ -52,12 +52,12 @@ class FieldNameReservedSegmentTest {
     fun theGateIsTheFieldCarriersAlone() {
         assertEquals(
             emptyList(),
-            check(ModelSource(binWithAGroupNamed("Slot.value"))).findings.filter { it.code == reserved },
+            checkRead(ModelSource(binWithAGroupNamed("Slot.value"))).findings.filter { it.code == reserved },
         )
     }
 
     private fun codes(fieldName: String): List<String> =
-        check(ModelSource(bin(fieldName))).findings.filter { it.code == reserved }.map { it.code }
+        checkRead(ModelSource(bin(fieldName))).findings.filter { it.code == reserved }.map { it.code }
 
     private fun bin(fieldName: String): String = """
         {"header":{"id":"warehouse-bin","locales":[{"code":"en_US"}]},

@@ -66,7 +66,7 @@ class EnumValueMultipleDefectTest {
     }
 
     private fun codes(values: List<String>, categories: List<List<String>>): List<String> =
-        check(ModelSource(model(values, categories))).findings
+        checkRead(ModelSource(model(values, categories))).findings
             .filter { it.at == "/Store/Tier" }.map { it.code }
 
     private fun model(values: List<String>, categories: List<List<String>>): String {

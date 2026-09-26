@@ -47,7 +47,7 @@ class FilterBodyTextRepeatedOutsideTest {
 
     private fun authored(escaped: String) = escaped.replace("\\\"", "\"")
 
-    private fun findings(conjunct: String): List<Finding> = check(
+    private fun findings(conjunct: String): List<Finding> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},

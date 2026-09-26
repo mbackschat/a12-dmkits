@@ -20,7 +20,7 @@ class NumberTypeDigitTest {
     private val arityTooBig = "MVK_ARITY_TOO_BIG"
 
     /** A model whose one number field carries [numberType] as its type body. */
-    private fun codes(numberType: String): List<String> = check(
+    private fun codes(numberType: String): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},

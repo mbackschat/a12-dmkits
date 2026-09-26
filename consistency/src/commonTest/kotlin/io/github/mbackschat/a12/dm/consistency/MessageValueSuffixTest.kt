@@ -22,7 +22,7 @@ class MessageValueSuffixTest {
      * declaration gate and the star gate can be moved independently, and the row where both hold is a real
      * intersection rather than one variable wearing two names.
      */
-    private fun codes(condition: String, message: String): List<String> = check(
+    private fun codes(condition: String, message: String): List<String> = checkRead(
         ModelSource(
             """
         {"header":{"id":"order","locales":[{"code":"en_US"}]},
