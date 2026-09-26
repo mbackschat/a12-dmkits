@@ -121,6 +121,8 @@ class CheckerComputationJoinedConditionAgreementTest {
                 (Copy("../Label", "[Total]", precondition = "[Shipped] > [Total]") to DATE),
             // A side the comparison families do not type: A12 still raises the kind class.
             "a String from a sum" to (Copy("../Label", "[Total] + 1") to TO_ENUM),
+            // The comparison closes before the parser meets a token it cannot use after it.
+            "a String from a Number, a stray read after it" to (Copy("../Label", "[Total] [Note]") to TO_ENUM),
         )
         val wrong = predicted.mapNotNull { (row, probe) ->
             val (copy, a12) = probe

@@ -21,8 +21,9 @@ import kotlinx.serialization.json.JsonObject
  * its read class, and a copy between two fields of one kind is admitted on every kind
  * (`adapter.laws.CheckerComputationJoinedConditionAgreementTest`, [KERNEL-FINDINGS KF483]).
  *
- * [targetRead] is spanned empty at the operation's first token and [comparison] over the whole operation, which
- * is where each is raised: the target is read before the operation is, and the comparison once it has been.
+ * [targetRead] is spanned empty at the operation's first token and [comparison] from there to where the
+ * comparison closes, which is where each is raised: the target is read before the operation is, and the
+ * comparison once its right side has been.
  *
  * **[comparison] is absent where the operation is ONE field-value read its gates refuse.** In A12's text the
  * comparison opens at `[<target>]`, ahead of the operation, so that read is the inner production and answers
@@ -61,35 +62,33 @@ internal fun TrackedFactBase.loweredComparisonOf(
     val answeredByTheRead = wholeRead != null && fieldValueReadIsRefused(wholeRead, group, element)
     return LoweredComparison(
         FieldValueRead(written, start, start, inAFilterBody = false),
-        if (answeredByTheRead) null else comparisonOfTheJoinedText(written, operator, text, start, end),
+        if (answeredByTheRead) null else comparisonOfTheJoinedText(written, operator, text, start),
     )
 }
 
 /**
  * The comparison A12 reads from `[<target>] <operator> <operation>`, placed in the operation's own text, or null
- * where that text does not read as one comparison spanning the whole operation.
+ * where that text reads no comparison of the target.
  *
  * Read through the same shape parser as an authored comparison rather than assembled from the parts, so the
  * operation must parse as that comparison's right side: an operation left with a `[` open never completes the
  * comparison, and A12 answers it with the token class it meets past the member instead
- * (`consistency.ComputationGeneratedTextTest`).
+ * (`consistency.ComputationGeneratedTextTest`). A comparison that closes before the operation's text ends is
+ * still raised, where it closes: `[Total] [Note]` into a String draws the kind class, not the token class of
+ * the stray read after it (`adapter.laws.CheckerComputationJoinedConditionAgreementTest`).
  */
 private fun TrackedFactBase.comparisonOfTheJoinedText(
     written: String,
     operator: String,
     text: String,
     start: Int,
-    end: Int,
 ): ConditionComparison? {
     val left = "[$written]"
     val prefix = "$left $operator "
     val shift = prefix.length - start
     val joined = comparisonsIn(prefix + text.substring(start), conditionLanguage, SyntaxEntry.CONDITION)
         .firstOrNull { it.start == 0 && it.left == left } ?: return null
-    if (joined.end - shift != end) {
-        return null
-    }
-    return ConditionComparison(left, joined.operator, start, joined.right, start, end)
+    return ConditionComparison(left, joined.operator, start, joined.right, start, joined.end - shift)
 }
 
 /** Every comparison A12 judges in [member] of [element]: those written there, then the one it is lowered to. */

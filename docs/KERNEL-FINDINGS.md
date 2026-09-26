@@ -11299,6 +11299,7 @@ Before the fix the portable checker was silent on every row drawing the category
 | a Boolean | a confirm | `MVK_INVALID_COMPARE_TO_YES` |
 | a String under a tolerance band | a String | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` |
 | `[Total] + 1` | a String | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
+| `[Total] [Note]`, a stray read after a Number | a String | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
 | a Date | a partially known Date | `MVK_INVALID_DATE_TYPE` |
 | a String | a raw String | `MVK_INVALID_RAW_TYPE` |
 | a partially known Date; a raw String | a Number | `MVK_INVALID_DATE_TYPE`; `MVK_INVALID_RAW_TYPE` |
@@ -11319,6 +11320,7 @@ The target's spelling was varied too: declared in `Billing` into a root String a
 What the rows separate:
 
 - **The comparison, not a computation gate.** Every refused row draws the class its pair draws in a rule, and a copy between two fields of one kind is admitted on every kind. A gate owned by the calculation module would not track the comparison walk's arm order, which puts the date arms first: a Date into a DateRange is the date class, not the range's.
+- **The comparison is raised where it closes.** A stray read after the Number draws the kind class, not the token class the parser meets at that read afterwards.
 - **The target is read before the operation.** A partially known or raw target draws its read class, which is the bracket's and no comparison's ([KF81](#kf81) measured the partial date). A source read that spans the whole operation answers ahead of the comparison it sits in.
 - **Joined order, not preconditions first.** One alternative's operation withholds the next alternative's precondition, which a reading that parsed every precondition first would get wrong; and a name in the operation leaves the precondition's class standing, where [KF340](#kf340)'s measured name in a precondition withholds the operation's.
 
