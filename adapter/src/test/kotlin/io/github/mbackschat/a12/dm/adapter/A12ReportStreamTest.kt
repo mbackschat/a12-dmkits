@@ -21,6 +21,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -30,6 +31,70 @@ import java.io.File
 
 /** R5 measures raw/public notification boundaries and member correspondence before report assembly is replaced. */
 class A12ReportStreamTest {
+    @Test
+    fun conditionFailuresWithholdOnlyTheMessageContentStage() {
+        val host = DocumentModelDraft.named("order-message-stages").locale("en_US")
+            .rootGroup("Order") { it.stringField("Reference") { }.numberField("Total") { n -> n.fractionDigits(0) } }
+            .build().toJson()
+        val model = BoundModel.ofJson(host)
+        val reference = model.str("/Order/Reference")
+        fun probe(condition: Condition) = model.rule(model.group("/Order")).name("MessageProbe").errorField(reference)
+            .`when`(condition).code("ORDER_MESSAGE").message(Dsl.en("Check order reference")).build().draft()
+        val rule = probe(reference.filled())
+        val valid = rule.errorCondition()
+        val unreferenced = probe(model.num("/Order/Total").filled()).errorCondition()
+        val conditions = linkedMapOf(
+            valid to null,
+            "$valid And % $valid" to "MVK_LEXER_STANDARD_ERROR",
+            "$valid And FieldFilled(Missing)" to "MVK_INVALID_ENTITY",
+            "FieldFilled(Reference" to "MVK_EXPECTED_TOKEN_NOT_FOUND",
+            "$valid And Abs([Total], [Total]) > 0" to "MVK_UNEXPECTED_TOKEN",
+            "$valid And AddDays([Total], 1) > 0" to "MVK_UNEXPECTED_TOKEN",
+            unreferenced to "MVK_ERROR_FIELD_NOT_REFERENCED",
+        )
+        val messages = linkedMapOf("plain" to rule.messages(), "tab" to listOf(LocalizedText("en_US", "Check\torder")),
+            "missing" to emptyList())
+        val predictions = mutableListOf<String>()
+        val clusters = sortedMapOf<String, Int>()
+        val examples = mutableListOf<String>()
+        val models = mutableSetOf<String>()
+        val validator = RuleValidator()
+        for ((condition, failure) in conditions) for ((message, texts) in messages) {
+            val id = "$condition:$message"
+            val injected = validator.inject(host, rule.withErrorCondition(condition).withMessages(texts))
+            // RuleValidator.inject supplies placeholders for omitted locales; missing input is a probe mutation.
+            val tree = ObjectMapper().readTree(injected)
+            val body = tree.at("/content/modelRoot/rootGroups/0/Group/elements")
+                .single { it.path("type").asText() == "Rule" }.get("Rule") as ObjectNode
+            if (message == "missing") body.remove("errorMessage")
+            assertEquals(message != "missing", body.has("errorMessage"), "$id message presence")
+            val json = tree.toString()
+            models += json
+            val expected = setOfNotNull(failure) + when {
+                message == "missing" -> setOf("MVK_ERROR_MESSAGE_MISSING") +
+                    if (failure == null) setOf("RULE_HAS_NO_ERRORTEXT") else emptySet()
+                message == "tab" && failure == null -> setOf("INVALID_CHARACTERS")
+                else -> emptySet()
+            }
+            val kernel = kernelModelClasses(json)
+            if (expected != kernel) predictions += "$id: predicted $expected, observed $kernel"
+            val portable = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            checkerVerdict(kernel, portable)?.let { verdict ->
+                val key = "$verdict\t${kernel.sorted().joinToString(",").ifEmpty { "(none)" }}\t" +
+                    portable.sorted().joinToString(",").ifEmpty { "(none)" }
+                clusters[key] = clusters.getOrDefault(key, 0) + 1
+                examples += "$key\t$id"
+            }
+        }
+        assertEquals(21, models.size, "every population member is a distinct whole-model input")
+        val ledger = clusters.entries.joinToString("") { "${it.value}\t${it.key}\n" }
+        val directory = File("build/checker-near-miss").apply { mkdirs() }
+        File(directory, "message-stages.tsv").writeText(ledger)
+        File(directory, "message-stages-examples.tsv").writeText(examples.joinToString("\n"))
+        assertEquals(emptyList<String>(), predictions, "kernel predictions")
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/message-stages.tsv")).readText(), ledger)
+    }
+
     @Test
     fun blankOperationsFollowEarlierReachedFailures() {
         val host = DocumentModelDraft.named("order-blank-work").locale("en_US")
