@@ -11912,3 +11912,25 @@ On [KF494](#kf494)'s own-domain Order host, hold each defective field fixed and 
 “Load/build refusal” is the harness's combined `CK_MODEL_NOT_BUILDABLE` category; “codeless refusal” is its `(no code)` sentinel. Neither category locates an exception within the kernel stages. In particular, missing and unresolved typedef IDs have different filtered outcomes, and a missing DateType body cannot inherit the missing-member rows' admission. The measurements concern these root-level carriers, English conditions and en_US locale; no nested, mounted, runtime or diagnostic-order claim follows. The BA documentation search for `variant`, `DateRangeType`, `typeDefinitionId` and `formatOfFragment` found two unrelated uses of “variant” and no descriptor/filter contract; the executable kernel is the basis here.
 
 *Locked by:* `adapter.laws.FieldVariantStageLawsTest.mixedFieldArmsHaveThePredictedFilterSensitivity`. Its companion `theMixedFieldPopulationHasOnlyLedgeredCheckerDifferences` sends the same 78 inputs through the portable checker and the shared O1 classification, with a separate [variants-mixed.tsv](../adapter/src/test/resources/checker-near-miss/variants-mixed.tsv) ledger. The pre-run predictions and all 11 misses are retained in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md); the fixed inputs were not changed to fit the predictions.
+
+## §12 supplement — code-generation and whole-model diagnostic streams retain different information (kernel notification callbacks, 2026-09-27) <a id="kf499"></a>
+
+> Fold: pending — consistency-report order, multiplicity and coordinate projection beside §12.
+
+`adapter.A12ReportStreamTest` measures 15 typed Order models on Kernel 30.8.1 through raw `generateValidationCode`, direct `checkConsistency`, the dmkits notification adapter and the portable checker. [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md)'s R5-E0 matrix retains the predictions and their corrections. In the table, ADD is `MVK_NO_STRING_OR_NUMBER_FOR_ADD`, CALC `MVK_NO_NUMBER_FOR_CALC`, ENTITY `MVK_INVALID_ENTITY`.
+
+| Input | Raw generation | Whole-model output |
+|---|---|---|
+| computation with a Number-plus-String operation | ADD, ADD | ADD |
+| multiplication-defective Zeta, Computed, missing-read Alpha | ADD, CALC, ADD, ENTITY | ADD, CALC, ENTITY |
+| Alpha, Computed, Zeta | ADD, ENTITY, ADD, CALC | ADD, ENTITY, CALC |
+| Zeta, Alpha; reversed | CALC, ENTITY; ENTITY, CALC | same respective lists |
+| two distinct rules with the same missing read | ENTITY, ENTITY | both retained |
+| one versus two locales with identical unterminated message text | one versus two WRONG_NUMBER_OF_DOLLARS | same respective counts |
+| unterminated message followed by a named-segment up-step in the other locale | WRONG_NUMBER_OF_DOLLARS, MVK_UNEXPECTED_TOKEN | both retained in that order |
+
+The repeated computation problems are distinct objects that compare equal, with equal diagnostic messages and the same source object. The identical-authored-message problems are distinct and unequal: their diagnostic messages differ despite a shared source. Thus neither object identity nor the class key alone describes the observed deduplication. These rows do not identify every field involved in kernel equality. `CodeGenerationRule`'s source-read equality filter agrees with these observations; they do not prove how many parser executions produced the raw occurrences.
+
+The syntax controls expose raw IProblem ranges `(line 1, columns 16–17)` for the offending `]` and `(line 2, columns 15–15)` for EOF. Whole-model callbacks still implement IProblem, but all their observed coordinates are `-1`; this is unknown location, distinct from a real zero-width range. The dmkits severity/message list preserves whole-model order and multiplicity on every row, while its Notification type omits source and coordinate fields. Raw message problems also have unknown coordinates. EN syntax, a fixed root, scalar Number/String fields, two display locales and default-variant self-contained ingress bound the result; other stages, declaration topologies, Unicode coordinate conversion and runtime behavior are unmeasured here. The parser trace's richer position evidence remains separate.
+
+*Locked by:* `adapter.A12ReportStreamTest.theReportOraclesPreserveTheirMeasuredInformation`. Its [ordered-code ledger](../adapter/src/test/resources/checker-near-miss/report-stream.tsv) retains four checker disagreements that a class-set comparison cannot see. It is an ordered-code baseline, not a complete source/span correspondence oracle or an implementation of R5.

@@ -383,6 +383,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.ConformanceFrontierTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.FieldVariantStageLawsTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.A12ParseTraceTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.A12ReportStreamTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
@@ -669,6 +670,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
             'io.github.mbackschat.a12.dm.adapter.laws.FieldVariantStageLawsTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.A12ParseTraceTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.A12ReportStreamTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnSynthesizedModelsTest')
     }
