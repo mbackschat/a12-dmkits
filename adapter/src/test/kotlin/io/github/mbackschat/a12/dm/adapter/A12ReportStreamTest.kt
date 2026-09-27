@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.node.ArrayNode
 import io.github.mbackschat.a12.dm.adapter.laws.HarvestedModels
 import io.github.mbackschat.a12.dm.adapter.laws.kernelModelClasses
 import io.github.mbackschat.a12.dm.adapter.laws.checkerVerdict
@@ -29,16 +30,26 @@ import java.io.File
 /** R5 measures raw/public notification boundaries and member correspondence before report assembly is replaced. */
 class A12ReportStreamTest {
     @Test
-    fun versionCompletedReportHostsKeepTheirDeclarations() {
+    fun versionCompletedReportHostsKeepTheirDeclarations() = reportHosts(HostCompletion.VERSION)
+
+    @Test
+    fun metadataCompletedReportHostsKeepTheirDeclarations() = reportHosts(HostCompletion.METADATA)
+
+    private fun reportHosts(completion: HostCompletion) {
         val mapper = ObjectMapper()
         val harvested = HarvestedModels.expand(mapper.readTree(checkNotNull(javaClass.getResource(
             "/checker-near-miss/harvested-report-checks.json")).readText())).associateBy { it["id"].asText() }
         val cases = listOf(
-            HostCase("repeat", "ConditionMultipleDefectTest.aRepeatOfOneCodeIsKeptForEachPlaceToFix#1", HostControl.CONDITION),
-            HostCase("twins-valid", "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#1", HostControl.FIRST_RULE_NAME),
-            HostCase("twins-invalid", "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#2", HostControl.FIRST_RULE_NAME),
-            HostCase("field-rule", "RuleMemberWithholdingTest.aFieldSharingARulesPathKeepsItsOwnFindings#1", HostControl.FIRST_RULE_NAME),
-            HostCase("dispatch", "DispatchOrderTest.aPerDeclarationFamilyReportsInDeclarationOrderAndFamiliesStayProducerMajor#1", HostControl.CONDITION),
+            HostCase("repeat", "ConditionMultipleDefectTest.aRepeatOfOneCodeIsKeptForEachPlaceToFix#1", HostControl.CONDITION,
+                listOf("MVK_INVALID_ENTITY"), emptyList()),
+            HostCase("twins-valid", "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#1", HostControl.FIRST_RULE_NAME,
+                null, listOf("MVK_INVALID_WILDCARD")),
+            HostCase("twins-invalid", "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#2", HostControl.FIRST_RULE_NAME,
+                null, listOf("MVK_INVALID_WILDCARD", "MVK_INVALID_ENTITY")),
+            HostCase("field-rule", "RuleMemberWithholdingTest.aFieldSharingARulesPathKeepsItsOwnFindings#1", HostControl.FIRST_RULE_NAME,
+                null, listOf("MVK_FRACT_DIGITS_INVALID", "MVK_ERROR_FIELD_MISSING", "MVK_MISSING_ERROR_FIELD")),
+            HostCase("dispatch", "DispatchOrderTest.aPerDeclarationFamilyReportsInDeclarationOrderAndFamiliesStayProducerMajor#1", HostControl.CONDITION,
+                listOf("MVK_INCOMPLETE_INPUT", "MVK_BRACKET_MISSING", "MVK_INCOMPLETE_INPUT", "MVK_BRACKET_MISSING"), emptyList()),
         )
         val version = mapper.readTree(host())["header"]["modelVersion"]
         val misses = mutableListOf<String>()
@@ -51,6 +62,24 @@ class A12ReportStreamTest {
             header.set<JsonNode>("modelVersion", version)
             val restored = completed.deepCopy().apply { (get("header") as ObjectNode).remove("modelVersion") }
             assertEquals(original, restored, "${case.id}: only the version is added")
+            if (completion == HostCompletion.METADATA) {
+                val template = mapper.readTree(DocumentModelDraft.named(original["header"]["id"].asText())
+                    .locale("en_US").rootGroup(original["content"]["modelRoot"]["rootGroups"][0]["name"].asText()) { }
+                    .build().toJson())
+                for (member in metadataHeaderMembers) {
+                    check(!original["header"].has(member))
+                    header.set<JsonNode>(member, template["header"][member])
+                }
+                for (member in listOf("modelInfo", "modelConfig")) {
+                    check(!original["content"].has(member))
+                    (completed["content"] as ObjectNode).set<JsonNode>(member, template["content"][member])
+                }
+                assertMetadataCompletion(original, template, completed)
+                val lostDeclaration = completed.deepCopy().apply {
+                    (get("content")["modelRoot"]["rootGroups"][0]["Group"]["elements"] as ArrayNode).remove(0)
+                }
+                assertThrows(AssertionError::class.java) { assertMetadataCompletion(original, template, lostDeclaration) }
+            }
             val control = completed.deepCopy()
             val elements = control["content"]["modelRoot"]["rootGroups"][0]["Group"]["elements"]
             val rules = elements.filter { it["type"].asText() == "Rule" }
@@ -70,10 +99,16 @@ class A12ReportStreamTest {
                 val reported = outcome.callbacks.map { code(it.message) }
                 val a12 = kernelModelClasses(json)
                 val ours = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }
-                val failureType = if (suffix == "completed" && case.control == HostControl.FIRST_RULE_NAME)
-                    IllegalArgumentException::class.java else NullPointerException::class.java
+                val expectedCodes = if (suffix == "completed") case.completedCodes else case.controlCodes
+                val failureType = when {
+                    suffix == "completed" && case.control == HostControl.FIRST_RULE_NAME -> IllegalArgumentException::class.java
+                    completion == HostCompletion.VERSION -> NullPointerException::class.java
+                    else -> null
+                }
+                val expectedReports = if (failureType != null) emptyList() else checkNotNull(expectedCodes)
+                val expectedClasses = if (failureType != null) setOf("CK_MODEL_NOT_BUILDABLE") else expectedReports.toSet()
                 if (outcome.phase != OriginalPhase.CHECK || outcome.failure?.javaClass != failureType ||
-                    reported.isNotEmpty() || a12 != setOf("CK_MODEL_NOT_BUILDABLE"))
+                    reported != expectedReports || a12 != expectedClasses)
                     misses += "$id: ${outcome.phase}, ${outcome.failure}, reports=$reported, O1=$a12"
                 ledger += listOf(id, outcome.phase.name, outcome.failure?.javaClass?.name ?: "completed",
                     reported.toString(), a12.sorted().toString(), ours.toString()).joinToString("\t")
@@ -81,10 +116,14 @@ class A12ReportStreamTest {
         }
         assertEquals(10, ledger.size)
         val text = ledger.joinToString("\n", postfix = "\n")
-        // Disposable observation; source identities, mutations and the committed ledger retain H1's ten inputs.
-        File("build/checker-near-miss/report-hosts.tsv").apply { parentFile.mkdirs(); writeText(text) }
-        assertEquals(emptyList<String>(), misses, "frozen minimal-completion predictions")
-        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/report-hosts.tsv")).readText(), text)
+        val output = when (completion) {
+            HostCompletion.VERSION -> File("build/checker-near-miss/report-hosts.tsv")
+            HostCompletion.METADATA -> File("build/checker-near-miss/report-hosts-metadata.tsv")
+        }
+        // Disposable observations; the harvest, fixed transformations and committed ledgers retain both populations.
+        output.apply { parentFile.mkdirs(); writeText(text) }
+        assertEquals(emptyList<String>(), misses, "$completion completion predictions")
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/${output.name}")).readText(), text)
     }
 
     private fun assertHostControl(case: HostCase, completed: ObjectNode, control: ObjectNode) {
@@ -109,8 +148,27 @@ class A12ReportStreamTest {
         assertEquals(completed, undone, "${case.id}: control changes only the named member")
     }
 
+    private val metadataHeaderMembers = listOf("modelType", "modelVersion", "labels", "annotations", "modelReferences")
+
+    private fun assertMetadataCompletion(original: ObjectNode, template: JsonNode, completed: ObjectNode) {
+        val expectedHeader = (original["header"] as ObjectNode).deepCopy()
+        metadataHeaderMembers.forEach { expectedHeader.set<JsonNode>(it, template["header"][it]) }
+        assertEquals(expectedHeader, completed["header"])
+        val restored = completed.deepCopy()
+        restored.set<JsonNode>("header", original["header"])
+        for (member in listOf("modelInfo", "modelConfig")) {
+            assertEquals(template["content"][member], completed["content"][member])
+            (restored["content"] as ObjectNode).remove(member)
+        }
+        assertEquals(original, restored, "metadata completion preserves the entire declaration tree")
+    }
+
+    private enum class HostCompletion { VERSION, METADATA }
     private enum class HostControl { CONDITION, FIRST_RULE_NAME }
-    private data class HostCase(val id: String, val source: String, val control: HostControl)
+    private data class HostCase(
+        val id: String, val source: String, val control: HostControl,
+        val completedCodes: List<String>?, val controlCodes: List<String>,
+    )
 
     @Test
     fun originalReportFixturesRetainTheirKernelDisposition() {

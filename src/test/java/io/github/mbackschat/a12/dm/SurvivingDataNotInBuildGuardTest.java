@@ -101,6 +101,11 @@ class SurvivingDataNotInBuildGuardTest {
                             "regenerated version-only report-host observations; the unchanged harvested-report-checks.json "
                                     + "and fixed test mutations reconstruct all inputs, while the committed report-hosts.tsv "
                                     + "retains the complete observation ledger")),
+            Map.entry("build/checker-near-miss/report-hosts-metadata.tsv",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "regenerated metadata-completed report-host observations; harvested-report-checks.json, "
+                                    + "typed metadata and fixed mutations reconstruct the inputs, while the committed "
+                                    + "report-hosts-metadata.tsv retains the complete observation ledger")),
             Map.entry("build/checker-near-miss/divergent.tsv",
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "every divergent input of the near-miss sweep under its cluster key, rewritten on every "
