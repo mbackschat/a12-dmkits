@@ -1,19 +1,29 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * The fold-status contract between the two kernel docs (DOC-DISCIPLINE §1): KERNEL-FINDINGS is the
@@ -41,8 +51,10 @@ import org.junit.jupiter.api.Test;
  * </ul>
  *
  * <p>Runs in the dedicated {@code semanticsMapGuardTest} task (TESTING-SPEC "Tests that read repo files
- * at runtime") — its input set already declares exactly these two docs, so a doc edit re-runs only this
- * lane and can never restore from the build cache into a false green.
+ * at runtime") — its input set declares both docs and the finding-adoption inventory. F-USE1 additionally
+ * binds new or revised findings to current, owned review records; the pinned legacy fingerprints disclose
+ * historical unassessed work without letting later amendments disappear into that backlog. Neither a fold
+ * marker nor a current review record proves adoption by a consumer.
  */
 class KernelDocsFoldContractTest {
 
@@ -68,6 +80,138 @@ class KernelDocsFoldContractTest {
         List<String> violations = check(Files.readString(KERNEL_FINDINGS), Files.readString(KERNEL_SEMANTICS));
         assertTrue(violations.isEmpty(), () -> "the KERNEL-FINDINGS ↔ KERNEL-SEMANTICS fold contract is broken:\n"
                 + String.join("\n", violations));
+    }
+
+    private record FindingReview(String sha256, String task) {}
+    private record FindingInventory(String baselineRevision, Map<String, String> legacy,
+                                    Map<String, FindingReview> reviews) {}
+
+    // F-USE1 freezes only the historical backlog at e67850c18; no consumer adoption is inferred.
+    private static final String LEGACY_FINDINGS_SHA256 = "239f09d3d08b5b4d90fdda50d32e7454eb3fe8558e306ed3612a10dc2568891a";
+    private static final Path FINDING_INVENTORY = Path.of("src/test/resources/kernel-finding-adoption.json");
+
+    @Test
+    void everyFindingHasACurrentReviewOrIsExplicitlyLegacyUnassessed() throws IOException {
+        var inventory = new ObjectMapper()
+                .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+                .readValue(Files.readString(FINDING_INVENTORY), FindingInventory.class);
+        var problems = findingInventoryProblems(Files.readString(KERNEL_FINDINGS), inventory, LEGACY_FINDINGS_SHA256);
+        assertTrue(problems.isEmpty(), () -> String.join("\n", problems));
+        System.out.println("Finding review inventory: " + inventory.legacy().size()
+                + " legacy entries (not adoption evidence), " + inventory.reviews().size() + " current review records");
+    }
+
+    @Test
+    void newAndRevisedFindingsCannotDisappearIntoTheHistoricalBacklog() {
+        String original = "## Original <a id=\"kf1\"></a>\n\nA fact.\n";
+        var baseline = new FindingInventory("baseline", findingRevisions(original), Map.of());
+        String pin = legacyFindingsDigest(baseline);
+        assertEquals(Map.of("kf1", sha256(original.stripTrailing())), findingRevisions(original));
+        assertEquals(List.of(), findingInventoryProblems(original, baseline, pin));
+        String added = original + "\n### New <a id=\"kf1001\"></a>\n\nAnother fact.\n";
+        assertTrue(findingInventoryProblems(added, baseline, pin).stream().anyMatch(p -> p.contains("kf1001")));
+        String revised = original.replace("A fact.", "A revised fact.");
+        assertTrue(findingInventoryProblems(revised, baseline, pin).stream().anyMatch(p -> p.contains("kf1")));
+        var rebaselined = new FindingInventory("baseline", findingRevisions(revised), Map.of());
+        assertTrue(findingInventoryProblems(revised, rebaselined, pin).stream().anyMatch(p -> p.contains("baseline")));
+        var reviewed = new FindingInventory("baseline", baseline.legacy(), Map.of(
+                "kf1", new FindingReview(findingRevisions(revised).get("kf1"), "F-USE2")));
+        assertEquals(List.of(), findingInventoryProblems(revised, reviewed, pin));
+        assertTrue(findingInventoryProblems(revised + "Later amendment.\n", reviewed, pin).stream()
+                .anyMatch(p -> p.contains("kf1")));
+        var ownerless = new FindingInventory("baseline", baseline.legacy(), Map.of(
+                "kf1", new FindingReview(findingRevisions(revised).get("kf1"), " ")));
+        assertTrue(findingInventoryProblems(revised, ownerless, pin).stream().anyMatch(p -> p.contains("task")));
+    }
+
+    @Test
+    void findingIdentityIsCompleteUniqueAndIndependentOfPositionAndLineEndings() {
+        String first = "## First <a id=\"kf1\"></a>\n\nOne.\n\n";
+        String second = "### Second <a id=\"kf1001\"></a>\n\nTwo.\n";
+        assertEquals(findingRevisions(first + second), findingRevisions(second + "\n" + first));
+        assertEquals(findingRevisions(first), findingRevisions(first.replace("\n", "\r\n")));
+        for (String invalid : List.of("", first + first, first + "## Without an anchor\n", first.replace("kf1", "kf01"))) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> findingRevisions(invalid), invalid);
+        }
+        var baseline = new FindingInventory("baseline", findingRevisions(first + second), Map.of());
+        String pin = legacyFindingsDigest(baseline);
+        assertTrue(findingInventoryProblems(first, baseline, pin).stream().anyMatch(p -> p.contains("kf1001")));
+        var ghost = new FindingInventory("baseline", baseline.legacy(), Map.of(
+                "kf9", new FindingReview("absent", "F-USE2")));
+        assertTrue(findingInventoryProblems(first + second, ghost, pin).stream().anyMatch(p -> p.contains("kf9")));
+    }
+
+    @Test
+    void explicitNullReviewIsNotAnAbsentReview() throws IOException {
+        String source = "## Original <a id=\"kf1\"></a>\n\nA fact.\n";
+        String json = """
+                {"baselineRevision":"baseline","legacy":{"kf1":"%s"},"reviews":{"kf1":null}}
+                """.formatted(findingRevisions(source).get("kf1"));
+        var mapper = new ObjectMapper();
+        var absent = mapper.readValue(json.replace("\"kf1\":null", ""), FindingInventory.class);
+        var explicitNull = mapper.readValue(json, FindingInventory.class);
+        String pin = legacyFindingsDigest(absent);
+        assertEquals(List.of(), findingInventoryProblems(source, absent, pin));
+        assertTrue(findingInventoryProblems(source, explicitNull, pin).stream().anyMatch(p -> p.contains("review")));
+    }
+
+    private static Map<String, String> findingRevisions(String markdown) {
+        String normalized = markdown.replace("\r\n", "\n");
+        var headings = Pattern.compile("^#{2,3} .+$", Pattern.MULTILINE).matcher(normalized).results().toList();
+        if (headings.isEmpty()) throw new IllegalArgumentException("no kernel findings found");
+        var anchor = Pattern.compile(".* <a id=\"(kf[1-9][0-9]*)\"></a>");
+        Map<String, String> revisions = new TreeMap<>();
+        for (int i = 0; i < headings.size(); i++) {
+            var heading = headings.get(i);
+            var id = anchor.matcher(heading.group());
+            if (!id.matches()) throw new IllegalArgumentException("finding needs a canonical KF anchor: " + heading.group());
+            int end = i + 1 < headings.size() ? headings.get(i + 1).start() : normalized.length();
+            String revision = sha256(normalized.substring(heading.start(), end).stripTrailing());
+            if (revisions.putIfAbsent(id.group(1), revision) != null) {
+                throw new IllegalArgumentException("duplicate finding " + id.group(1));
+            }
+        }
+        return revisions;
+    }
+
+    private static String legacyFindingsDigest(FindingInventory inventory) {
+        var text = new StringBuilder(inventory.baselineRevision()).append('\n');
+        new TreeMap<>(inventory.legacy()).forEach((id, revision) -> text.append(id).append('\t').append(revision).append('\n'));
+        return sha256(text.toString());
+    }
+
+    private static List<String> findingInventoryProblems(String markdown, FindingInventory inventory, String legacyPin) {
+        List<String> problems = new ArrayList<>();
+        if (!legacyPin.equals(legacyFindingsDigest(inventory))) {
+            problems.add("legacy finding baseline changed; do not absorb current obligations into historical backlog");
+        }
+        Map<String, String> live = findingRevisions(markdown);
+        Set<String> known = new TreeSet<>(inventory.legacy().keySet());
+        known.addAll(inventory.reviews().keySet());
+        known.removeAll(live.keySet());
+        known.forEach(id -> problems.add(id + ": recorded finding is absent from the live inventory"));
+        live.forEach((id, revision) -> {
+            FindingReview review = inventory.reviews().get(id);
+            if (review == null && inventory.reviews().containsKey(id)) {
+                problems.add(id + ": null review cannot stand for an owned assessment obligation");
+            } else if (review != null) {
+                if (!revision.equals(review.sha256())) problems.add(id + ": stale review; current revision " + revision);
+                if (review.task() == null || review.task().isBlank()) problems.add(id + ": review needs an owning task");
+            } else if (!revision.equals(inventory.legacy().get(id))) {
+                problems.add(id + ": new or revised finding needs a review record at " + revision);
+            }
+        });
+        return problems;
+    }
+
+    private static String sha256(String text) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(text.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new AssertionError(impossible);
+        }
     }
 
     // ---------------------------------------------------------------- the pure checker

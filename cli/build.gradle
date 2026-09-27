@@ -580,8 +580,8 @@ tasks.register('semanticsMapGuardTest', Test) {
     classpath = sourceSets.test.runtimeClasspath
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest'
-        // The fold-status contract between the two kernel docs (DOC-DISCIPLINE §1) reads exactly two of
-        // this task's declared inputs (KERNEL-FINDINGS + KERNEL-SEMANTICS), so it rides the same lane.
+        // Fold status and finding-review currency share the kernel docs and the manifest declared below,
+        // so documentation and inventory edits re-run their existing lane together.
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsFoldContractTest'
         // The basis contract reads the same two docs — a mechanism claim must name its oracle.
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsBasisContractTest'
@@ -591,6 +591,7 @@ tasks.register('semanticsMapGuardTest', Test) {
     rootProject.guardInputs(it, [
             'docs/SEMANTICS-MAP.md'   : rootProject.file('docs/SEMANTICS-MAP.md'),
             'docs/KERNEL-FINDINGS.md' : rootProject.file('docs/KERNEL-FINDINGS.md'),
+            'finding adoption inventory': file('src/test/resources/kernel-finding-adoption.json'),
             'docs/KERNEL-SEMANTICS.md': rootProject.file('docs/KERNEL-SEMANTICS.md'),
             'operator catalog'        : rootProject.fileTree('rulekit/src/main/resources/catalog'),
             'corpus cases'            : rootProject.fileTree('corpus/cases') { include '**/*.json' },
