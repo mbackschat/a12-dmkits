@@ -2,6 +2,9 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
+import java.security.MessageDigest
+import java.util.HexFormat
 import org.junit.jupiter.api.Assertions.assertEquals
 
 /** Source identities preserve repeated inputs from distinct assertions (proposal §5, R3b-T). */
@@ -56,9 +59,35 @@ internal object OperationHarvest {
         "PowerDerivedScaleWaiverLawsTest.theExponentGateReadsKnownScaleAndTheDerivedScaleReadsLiteralness" to 11,
     ))
 
+    internal fun expand(root: JsonNode): List<JsonNode> {
+        fun text(node: JsonNode, name: String): String {
+            val value = node[name]
+            require(value?.isTextual == true) { "Missing or non-text harvest $name" }
+            return value.asText()
+        }
+        val groups = root["groups"]
+        require(groups?.isArray == true) { "Missing harvest groups" }
+        return groups.flatMap { group ->
+            val prefix = text(group, "prefix")
+            val suffix = text(group, "suffix")
+            val rows = group["rows"]
+            require(rows?.isArray == true) { "Missing harvest rows" }
+            rows.map { row ->
+                require(row is ObjectNode && !row.has("model")) { "Expected factored harvest row" }
+                val model = prefix + text(row, "modelMiddle") + suffix
+                val digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(model.toByteArray(Charsets.UTF_8)))
+                require(digest == text(row, "modelSha256")) { "Harvest model bytes changed: ${row["id"]}" }
+                row.deepCopy().apply {
+                    remove(listOf("modelMiddle", "modelSha256"))
+                    put("model", model)
+                }
+            }
+        }
+    }
+
     private fun read(name: String, sources: Map<String, Int>): List<JsonNode> {
-        val rows = ObjectMapper().readTree(checkNotNull(javaClass.getResource(
-            "/checker-near-miss/harvested-operation-$name.json")).readText()).toList()
+        val rows = expand(ObjectMapper().readTree(checkNotNull(javaClass.getResource(
+            "/checker-near-miss/harvested-operation-$name.json")).readText()))
         assertEquals(sources.values.sum(), rows.size)
         assertEquals(sources.flatMap { (source, count) -> (1..count).map { "$source#$it" } }.toSet(),
             rows.map { it.get("id").asText() }.toSet())

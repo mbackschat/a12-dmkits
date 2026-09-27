@@ -379,6 +379,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerFirstFilledValueTypeAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerNearMissSweepTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.OperationHarvestStorageTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerCompositionSweepTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.ConformanceFrontierTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.FieldVariantStageLawsTest'
@@ -662,6 +663,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerFirstFilledValueTypeAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerNearMissSweepTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.OperationHarvestStorageTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerCompositionSweepTest')
         includeTestsMatching(

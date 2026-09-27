@@ -696,14 +696,35 @@ def generateSyntaxFixtures = tasks.register('generateSyntaxFixtures') {
     outputs.file(generatedSyntax)
     doLast {
         def parser = new groovy.json.JsonSlurper()
+        // A2 preserves the captured model bytes; decoding JSON models here would normalize evidence.
+        def operationRows = { file ->
+            def groups = parser.parse(file).groups
+            if (!(groups instanceof List)) throw new GradleException("Missing harvest groups")
+            groups.collectMany { group ->
+                if (!(group.prefix instanceof String) || !(group.suffix instanceof String) || !(group.rows instanceof List))
+                    throw new GradleException("Missing harvest fragments or rows")
+                group.rows.collect { row ->
+                    if (!(row.modelMiddle instanceof String) || !(row.modelSha256 instanceof String) || row.containsKey('model'))
+                        throw new GradleException("Expected factored harvest row")
+                    def model = group.prefix + row.modelMiddle + group.suffix
+                    def digest = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance('SHA-256').digest(model.getBytes('UTF-8')))
+                    if (digest != row.modelSha256) throw new GradleException("Harvest model bytes changed: ${row.id}")
+                    def expanded = new LinkedHashMap(row)
+                    expanded.remove('modelMiddle')
+                    expanded.remove('modelSha256')
+                    expanded.model = model
+                    expanded
+                }
+            }
+        }
         def literal = { value -> groovy.json.JsonOutput.toJson(value).replace('$', '\\$') }
         def rows = { values -> values.collect { literal(groovy.json.JsonOutput.toJson(it)) }.join(',\n') }
         generatedSyntax.parentFile.mkdirs()
         generatedSyntax.text = """package io.github.mbackschat.a12.dm.consistency
 
 internal object SyntaxFixtureData {
-    val operationLaws = listOf(${rows(parser.parse(operationLawInputs))})
-    val operationChecks = listOf(${rows(parser.parse(operationCheckInputs))})
+    val operationLaws = listOf(${rows(operationRows(operationLawInputs))})
+    val operationChecks = listOf(${rows(operationRows(operationCheckInputs))})
     val inputs = listOf(${rows(parser.parse(syntaxInputs).rows)})
     val verdicts = listOf(${rows(parser.parse(syntaxVerdicts))})
     val computations = listOf(${rows(parser.parse(computationInputs))})
