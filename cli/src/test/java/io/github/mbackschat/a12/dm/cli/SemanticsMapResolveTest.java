@@ -69,6 +69,7 @@ class SemanticsMapResolveTest {
             Path.of("../consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/FieldReadContractTest.kt"),
             Path.of("../consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/NumericNameContractTest.kt"),
             Path.of("../consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/OperationContractTest.kt"),
+            Path.of("../consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ReportHarvestContractTest.kt"),
             Path.of("../consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/SyntaxVerdictTest.kt"),
             Path.of("../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/A12ParseTraceTest.kt"),
             Path.of("../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/A12ReportStreamTest.kt"));

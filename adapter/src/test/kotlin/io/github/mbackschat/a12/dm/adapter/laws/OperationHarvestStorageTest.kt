@@ -14,7 +14,7 @@ class OperationHarvestStorageTest {
     fun fragmentsRestoreBytesAndLeaveAssertionMetadataAlone() {
         val expected = mapper.readTree("""{"id":"sample#1","classes":["X","X"],"onlyCodes":null}""") as ObjectNode
         expected.put("model", "{\"policy\":\"🛒\"}\r\n")
-        assertEquals(listOf(expected), OperationHarvest.expand(fixture()))
+        assertEquals(listOf(expected), HarvestedModels.expand(fixture()))
     }
 
     @Test
@@ -29,7 +29,7 @@ class OperationHarvestStorageTest {
         for ((index, mutate) in mutations.withIndex()) {
             val root = fixture()
             mutate(root["groups"][0] as ObjectNode)
-            assertThrows(IllegalArgumentException::class.java, { OperationHarvest.expand(root) }, "mutation $index")
+            assertThrows(IllegalArgumentException::class.java, { HarvestedModels.expand(root) }, "mutation $index")
         }
     }
 

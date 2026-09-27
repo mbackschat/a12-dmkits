@@ -1,5 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import io.github.mbackschat.a12.dm.adapter.laws.HarvestedModels
+import io.github.mbackschat.a12.dm.adapter.laws.kernelModelClasses
+import io.github.mbackschat.a12.dm.adapter.laws.checkerVerdict
+import io.github.mbackschat.a12.dm.core.ModelInputException
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.error.IProblem
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.IRule
 import com.mgmtp.a12.kernel.md.model.internal.service.codegen.GroovyCodeGeneratorConfig
@@ -19,6 +25,96 @@ import java.io.File
 
 /** R5 measures raw/public notification boundaries and member correspondence before report assembly is replaced. */
 class A12ReportStreamTest {
+    @Test
+    fun originalReportFixturesRetainTheirKernelDisposition() {
+        val mapper = ObjectMapper()
+        val rows = HarvestedModels.expand(mapper.readTree(checkNotNull(javaClass.getResource(
+            "/checker-near-miss/harvested-report-checks.json")).readText()))
+        assertEquals(316, rows.size)
+        assertEquals(316, rows.map { it["id"].asText() }.distinct().size)
+        assertEquals(mapOf("CHECK" to 273, "INPUT" to 42, "PREPARATION" to 1),
+            rows.groupingBy { it["kernelPhase"].asText() }.eachCount())
+        val control = originalOutcome(host())
+        assertEquals(null, control.failure)
+        assertEquals(emptyList<RankedNotification>(), control.callbacks)
+        assertEquals(emptySet<String>(), kernelModelClasses(host()))
+        val observations = mapper.createArrayNode()
+        val misses = mutableListOf<String>()
+        val clusters = sortedMapOf<String, Int>()
+        for (row in rows) {
+            val id = row["id"].asText()
+            val model = row["model"].asText()
+            val outcome = originalOutcome(model)
+            var ingressFailure: IndexOutOfBoundsException? = null
+            val a12 = try {
+                kernelModelClasses(model)
+            } catch (failure: IndexOutOfBoundsException) {
+                ingressFailure = failure
+                null
+            }
+            val ours = check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            observations.addObject().apply {
+                put("id", id)
+                put("phase", outcome.phase.name)
+                put("failure", outcome.failure?.javaClass?.name)
+                put("message", outcome.failure?.message)
+                put("oracleFailure", ingressFailure?.javaClass?.name)
+                putArray("callbacks").apply { outcome.callbacks.forEach { add(it.message) } }
+                putArray("classes").apply { a12?.sorted()?.forEach { add(it) } }
+            }
+            val phase = OriginalPhase.valueOf(row["kernelPhase"].asText())
+            val expectedFailure = when (phase) {
+                OriginalPhase.INPUT -> outcome.failure is ModelInputException &&
+                    outcome.failure.message.orEmpty().contains("Illegal unquoted character ((CTRL-CHAR, code 9))")
+                OriginalPhase.PREPARATION -> outcome.failure is IndexOutOfBoundsException &&
+                    outcome.failure.message == "Index -1 out of bounds for length 0" && ingressFailure != null
+                OriginalPhase.CHECK -> outcome.failure is NullPointerException
+                OriginalPhase.EXPANSION -> false
+            }
+            val expectedClasses = if (phase == OriginalPhase.PREPARATION) null else setOf("CK_MODEL_NOT_BUILDABLE")
+            if (outcome.phase != phase || !expectedFailure || outcome.callbacks.isNotEmpty() || a12 != expectedClasses)
+                misses += "$id: ${outcome.phase}, ${outcome.failure}, callbacks=${outcome.callbacks.map { code(it.message) }}, classes=$a12"
+            val verdict = if (a12 == null) "ORACLE-THREW" else checkerVerdict(a12, ours)
+            if (verdict != null) {
+                fun Set<String>.column() = if (isEmpty()) "(none)" else sorted().joinToString(",")
+                val key = listOf(verdict, a12?.column() ?: checkNotNull(ingressFailure).javaClass.name, ours.column()).joinToString("\t")
+                clusters[key] = clusters.getOrDefault(key, 0) + 1
+            }
+        }
+        // Disposable detail; the captured inputs, assertions and committed ledger retain the population.
+        val directory = File("build/checker-near-miss").apply { mkdirs() }
+        mapper.writerWithDefaultPrettyPrinter().writeValue(File(directory, "report-harvest-observations.json"), observations)
+        val ledger = clusters.entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+            .joinToString("") { "${it.value}\t${it.key}\n" }
+        File(directory, "report-harvest.tsv").writeText(ledger)
+        assertEquals(emptyList<String>(), misses, "original model predictions")
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/report-harvest.tsv")).readText(), ledger)
+    }
+
+    private enum class OriginalPhase { INPUT, EXPANSION, PREPARATION, CHECK }
+
+    private data class OriginalOutcome(val phase: OriginalPhase, val failure: RuntimeException?, val callbacks: List<RankedNotification>)
+
+    private fun originalOutcome(model: String): OriginalOutcome {
+        val prepared = try {
+            KernelModelPreparation.expand(model, ReferenceResolvers.selfContained())
+        } catch (failure: ModelInputException) {
+            return OriginalOutcome(OriginalPhase.INPUT, failure, emptyList())
+        } catch (failure: ModelConsistencyException) {
+            return OriginalOutcome(OriginalPhase.EXPANSION, failure, emptyList())
+        } catch (failure: IndexOutOfBoundsException) {
+            return OriginalOutcome(OriginalPhase.PREPARATION, failure, emptyList())
+        }
+        val callbacks = mutableListOf<RankedNotification>()
+        val failure = try {
+            prepared.service().checkConsistency(prepared.model()) { callbacks += it }
+            null
+        } catch (failure: RuntimeException) {
+            failure
+        }
+        return OriginalOutcome(OriginalPhase.CHECK, failure, callbacks)
+    }
+
     @Test
     fun rawSemanticPositionsIdentifyAuthoredMembers() {
         val rows = siteRows()
@@ -198,9 +294,10 @@ class A12ReportStreamTest {
             val generation = KernelModelPreparation.expand(row.model, ReferenceResolvers.selfContained())
             val raw = mutableListOf<RankedNotification>()
             generation.service().generateValidationCode(generation.model(), GroovyCodeGeneratorConfig(null), null) { raw += it }
-            val consistency = KernelModelPreparation.expand(row.model, ReferenceResolvers.selfContained())
-            val whole = mutableListOf<RankedNotification>()
-            consistency.service().checkConsistency(consistency.model()) { whole += it }
+            val consistency = originalOutcome(row.model)
+            assertEquals(OriginalPhase.CHECK, consistency.phase, row.id)
+            assertEquals(null, consistency.failure, row.id)
+            val whole = consistency.callbacks
             val projected = KernelConsistencyOracle().checkConsistency(row.model, ReferenceResolvers.selfContained())
             val ours = check(ModelSource(row.model)).findings.filter { it.justifiesRejection }.map { it.code }
             fun expect(label: String, expected: Any?, actual: Any?) {
