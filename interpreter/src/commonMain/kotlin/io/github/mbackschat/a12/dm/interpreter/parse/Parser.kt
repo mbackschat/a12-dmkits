@@ -488,9 +488,34 @@ private class ConditionParser(
 
     private fun readNumber(): Expr.NumLit {
         val start = pos
-        if (peek() == '-') next()
-        while (peek().isDigit() || peek() == '.') next()
-        return Expr.NumLit(dec(src.substring(start, pos)))
+        var separated = false
+        if (peek() == '-') {
+            next()
+            separated = skipNumberSpace()
+        }
+        while (peek().isDigit()) next()
+        val integerEnd = pos
+        val beforePoint = skipNumberSpace()
+        if (peek() == '.') {
+            next()
+            separated = skipNumberSpace() || beforePoint || separated
+            while (peek().isDigit()) next()
+        } else {
+            pos = integerEnd
+        }
+        val literal = src.substring(start, pos)
+        return Expr.NumLit(dec(if (separated) literal.filterNot { it.isWhitespace() } else literal))
+    }
+
+    // ConformanceFrontierTest measures whitespace between numeric tokens, but rejects comments there.
+    private fun skipNumberSpace(): Boolean {
+        val start = pos
+        while (true) {
+            when (peek()) {
+                ' ', '\t', '\n', '\r', '\u000C' -> next()
+                else -> return pos != start
+            }
+        }
     }
 
     private fun readString(): Expr.StrLit {
@@ -576,8 +601,8 @@ private class ConditionParser(
     private fun next(): Char = src[pos++]
     /** Skip insignificant input: all whitespace (the kernel lexer's `WS` is `channel(HIDDEN)`) and `;;` line
      *  comments (the kernel's `Comment` token — `;; …` to end of line, valid as `before`/`after` of a
-     *  condition/operation per `teilBedingung`/`operation`). Stripping here covers every parse position, so a
-     *  commented condition/operation parses to its body on all entry points (validateFull/validatePart/compute). */
+     *  condition/operation per `teilBedingung`/`operation`). Numeric-token boundaries use the whitespace-only scanner instead (ConformanceFrontierTest);
+     *  comments there are significant and rejected. */
     private fun skipWs() {
         while (pos < src.length) {
             val c = src[pos]

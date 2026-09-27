@@ -21,6 +21,15 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-09-27 — numeric-token correction: routine gate and isolated charset controls
+
+<a id="checkpoint-2026-09-27--numeric-token-correction-routine-gate-and-isolated-charset-controls"></a>
+
+The M3-N numeric-reader candidate passed 57 of 58 routine performance tests; its BMP charset row breached the existing anchor at N=8000 (retry median 12.89 ms, limit 12.20 ms). The [complete run](../perf-results/darwin-aarch64/2026-09-27T213726Z.jsonl) retains that failure. The discriminator restored only Parser.kt from `a28d06d1e`, ran the failed method, then restored the reviewed candidate and ran the identical method. Both isolated runs passed: [original parser](../perf-results/darwin-aarch64/2026-09-27T214521Z.jsonl), [candidate parser](../perf-results/darwin-aarch64/2026-09-27T214551Z.jsonl). These dirty-tree records identify the base revision; the only production difference between the controls is the numeric-reader change documented by [IF344](INTERPRETER-FINDINGS.md#if344).
+
+The fixture constructs a ModelDef with no rules and times string-field validation, so it does not exercise numeric parsing. The controls do not establish a cause for the initial breach or a 5% timing guarantee: their N=8000 medians are 9.067/9.690 ms and N=32000 medians 44.745/45.938 ms, with recorded foreign CPU demand at the latter endpoints of 0.734/0.565. No anchor or threshold changed, and the failed run is not relabelled green. The restored candidate passes the isolated existing gate; finer timing qualification remains inconclusive. The JVM/JS WorkLedger controls passed separately; standing footprint qualification remains outstanding in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md).
+
+
 ### Checkpoint 2026-09-20 — the NATIVE lane's contention instrument, measured on the real binary: the same arithmetic, a different quantity, because the child's own CPU is unreadable on this platform
 
 **The platform fact that decided the design, and it refuted the plan that had already been written down.** [IG154](INTERPRETER-GAPS.md)'s remainder was going to subtract the child process's own CPU and judge what was left. It cannot: `ProcessHandle.Info.totalCpuDuration()` returns **empty** on darwin for a child — measured while the child ran, in a poll loop immediately before it exited, and after it exited. So the parent can only form `system − parent`, which leaves the child's work in the remainder. That makes it **unattributed** demand rather than foreign demand: same formula, different meaning, because "this process" is now a parent waiting rather than the process doing the work.

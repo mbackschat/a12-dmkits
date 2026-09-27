@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
 
 /**
  * The scalar value-list predicates `FieldValueIncludedInValueList` / `FieldValueNotIncludedInValueList` — the
@@ -32,4 +33,24 @@ class ValueListLiteralParseTest {
                 listOf(Expr.Field("/G/Status"), Expr.StrLit("cancelled"))),
             parseCondition("""FieldValueNotIncludedInValueList(Status, "cancelled")""", "/G"),
         )
+    @Test
+    fun numericTokensAllowWhitespaceButNotCommentsInsideTheLiteral() {
+        val bodies = listOf("[Amount] > %s", "FieldValueIncludedInValueList(Amount, %s)", "[Amount] > {%s + [Tax]}")
+        for (literal in listOf("-2.50", "2.50", "-0.00", "0.00")) {
+            val sites = if (literal.startsWith('-')) listOf(1, 2, 3) else listOf(1, 2)
+            for (body in bodies) {
+                val plain = body.replace("%s", literal)
+                for (at in sites) {
+                    for (gap in listOf(" ", "\t", "\r", "\n", "\u000C")) {
+                        val separated = literal.take(at) + gap + literal.drop(at)
+                        assertEquals(parseCondition(plain, "/Order"),
+                            parseCondition(body.replace("%s", separated), "/Order"))
+                    }
+                    val comment = literal.take(at) + ";; note\n" + literal.drop(at)
+                    assertFails { parseCondition(body.replace("%s", comment), "/Order") }
+                }
+            }
+        }
+    }
+
 }

@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
 import io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -18,6 +19,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.security.MessageDigest
@@ -25,6 +27,115 @@ import java.security.MessageDigest
 /** O2 and O3 over M1's admitted inputs; the finite matrix is CONFORMANCE-PLAN's M2 acceptance matrix. */
 class ConformanceFrontierTest {
     private val validator = RuleValidator()
+
+    @Test
+    fun numericFrontierExceptionsSeparateSignTokensFromTheirMagnitude() {
+        val witnesses = mapOf(
+            "corpus/models/order-code-length-ge.json#/Order/CodeLenGe" to 16,
+            "corpus/models/order-code-length-lt.json#/Order/CodeLenLt" to 8,
+            "corpus/models/order-stock-ne-one.json#/Order/StockNeOne" to 22,
+            "cli/src/test/resources/models/order-variant.dm.json#/Order/DeliveryNotBeforeOrder" to 20,
+            "catalog#GreaterThan" to 2, "catalog#MinValue" to 22, "catalog#DifferenceInSeconds" to 15,
+            "catalog#AddSeconds" to 8, "catalog#MonthFromDate" to 14, "catalog#HoursFromTime" to 24,
+            "catalog#MinutesFromTime" to 20, "catalog#FieldValueAsNumber" to 29, "catalog#FirstFilledValue" to 24,
+        )
+        val accepted = resource("accepted.tsv").lineSequence().filter { it.isNotEmpty() }
+            .associate { it.substringBefore('\t') to it.substringAfter('\t') }
+        val misses = mutableListOf<String>()
+        var count = 0
+        for (seed in NearMissPopulation.seeds().filter { it.label in witnesses }) {
+            val ordinal = witnesses.getValue(seed.label)
+            val edit = NearMissPopulation.edits(seed)[ordinal - 1]
+            val id = "${seed.label}#$ordinal:${edit.family}"
+            val original = validator.inject(seed.host, edit.rule)
+            assertEquals(accepted.getValue(id), digest(original), id)
+            val text = edit.rule.errorCondition()
+            val normalized = text.replace(Regex("-\\s+(?=[0-9])"), "-")
+            println("M3-N $id: $text")
+            if (text == normalized) {
+                misses += "$id: no sign-space boundary in $text"
+                continue
+            }
+            assertEquals(emptySet<String>(), refusals(seed.host, edit.rule), id)
+            val control = edit.rule.withErrorCondition(normalized)
+            assertEquals(emptySet<String>(), refusals(seed.host, control), "$id control")
+            assertEquals(parseCondition(normalized, edit.rule.groupPath()), parseCondition(text, edit.rule.groupPath()), id)
+            assertDoesNotThrow({ parseCondition(normalized, edit.rule.groupPath()) }, "$id control parse")
+            assertDoesNotThrow({ ModelLoader.load(original) }, "$id load")
+            val changed = validator.inject(seed.host, control)
+            for (document in documents(original)) {
+                val locale = CorpusShrinkSupport.modelLocale(original)
+                assertEquals(CorpusEngines.groovyDynamic(original, document, Op.ValidateFull, CLOCK, locale),
+                    CorpusEngines.groovyDynamic(changed, document, Op.ValidateFull, CLOCK, locale), "$id whitespace")
+                assertEquals(InterpreterReplay.run(changed, document, Op.ValidateFull, CLOCK),
+                    InterpreterReplay.run(original, document, Op.ValidateFull, CLOCK), "$id interpreter whitespace")
+            }
+            count++
+        }
+        assertEquals(emptyList<String>(), misses)
+        assertEquals(13, count)
+    }
+
+    @Test
+    fun numericTokenBoundariesDistinguishWhitespaceFromComments() {
+        val model = BoundModel.ofJson(DocumentModelDraft.named("numeric-boundaries").locale("en_US")
+            .rootGroup("Order") { it.numberField("Amount") { n -> n.fractionDigits(1) } }.build().toJson())
+        val amount = model.num("/Order/Amount")
+        val template = model.rule(model.group("/Order")).name("Boundary").errorField(amount)
+            .`when`(amount.gt(java.math.BigDecimal("-2.5"))).code("BOUNDARY")
+            .message(Dsl.en("amount above threshold")).build().draft()
+        val documents = listOf(emptyList<Placement>()) + listOf("-3", "-2.5", "-2", "3").map {
+            listOf(Placement(PlacementKind.FIELD, amount.field().path().toString(), listOf(1, 1), it))
+        }
+        val misses = mutableListOf<String>()
+        var count = 0
+        for (negative in listOf(false, true)) {
+            val literal = if (negative) "-2.5" else "2.5"
+            val rule = template.withErrorCondition(template.errorCondition().replace("-2.5", literal))
+            val json = validator.inject(model.toJson(), rule)
+            assertEquals(emptySet<String>(), refusals(model.toJson(), rule), literal)
+            val expected = documents.map { document ->
+                CorpusEngines.groovyDynamic(json, document, Op.ValidateFull, CLOCK)
+            }
+            assertEquals(listOf(emptyList<String>(), emptyList(), emptyList(),
+                if (negative) listOf("BOUNDARY|VALUE_ERROR|/Order[1]/Amount") else emptyList(),
+                listOf("BOUNDARY|VALUE_ERROR|/Order[1]/Amount")), expected, literal)
+            val sites = if (negative) listOf(1, 2, 3) else listOf(1, 2)
+            val rows = listOf("" to literal) + sites.flatMap { at ->
+                listOf(" ", "\t", "\n", "\r", "\u000C").map { gap ->
+                    "$at:${gap[0].code}" to (literal.take(at) + gap + literal.drop(at))
+                }
+            }
+            for ((label, edited) in rows) {
+                val changed = rule.withErrorCondition(rule.errorCondition().replace(literal, edited))
+                val actual = refusals(model.toJson(), changed)
+                if (actual.isNotEmpty()) misses += "$literal/$label: $actual"
+                else {
+                    val changedJson = validator.inject(model.toJson(), changed)
+                    assertEquals(parseCondition(rule.errorCondition(), rule.groupPath()),
+                        parseCondition(changed.errorCondition(), changed.groupPath()), "$literal/$label AST")
+                    for ((i, document) in documents.withIndex()) {
+                        assertEquals(expected[i], CorpusEngines.groovyDynamic(changedJson, document, Op.ValidateFull, CLOCK), "$literal/$label")
+                        assertEquals(expected[i], CorpusEngines.javaStatic(changedJson, document, Op.ValidateFull, CLOCK), "$literal/$label Java")
+                        val interpreted = InterpreterReplay.run(changedJson, document, Op.ValidateFull, CLOCK)
+                        assertEquals(emptyList<String>(), interpreted.unsupported, "$literal/$label")
+                        assertEquals(expected[i], interpreted.signatures, "$literal/$label interpreter")
+                    }
+                }
+                count++
+            }
+        }
+        for (at in listOf(1, 2, 3)) {
+            val literal = "-2.5"
+            val changed = template.withErrorCondition(template.errorCondition()
+                .replace(literal, literal.take(at) + ";; boundary\n" + literal.drop(at)))
+            val actual = refusals(model.toJson(), changed)
+            if (actual.isEmpty()) misses += "comment@$at unexpectedly admitted"
+            count++
+        }
+        assertEquals(30, count)
+        assertEquals(emptyList<String>(), misses)
+    }
 
     @Test
     fun aTypedPresenceRuleDistinguishesTheSameDocumentWithAndWithoutItsField() {
