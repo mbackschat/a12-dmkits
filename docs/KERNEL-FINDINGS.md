@@ -11864,3 +11864,29 @@ These pairs distinguish child-result typing from leaf-only typing and completion
 The population separately measures four German rule suffixes, six computations with independent typed targets, four filter-body suffixes and two Base Year variants, as specified in the matrix. On those carriers it retains admitted controls and the computed text/Number, scale and temporal-component refusals. It does not transfer those results to custom declarations, categories, deeper topology, diagnostic spans, multiplicity or ordering.
 
 *Locked by:* `adapter.A12ParseTraceTest.operationTypesFollowTheirChildrenAndCompletion` and `adapter.laws.CheckerNearMissSweepTest.operationTypesHaveOnlyLedgeredDifferences`, sharing `OperationTypingPopulation`. Both assert the kernel classes; the latter also compares the same models with the portable checker against its committed operation-types ledger. Existing arithmetic and temporal laws remain independent evidence ([KF396](#kf396), [KF96](#kf96)); this population adds result/completion carriers rather than replacing their claims.
+
+## §13 supplement — filtering distinguishes missing field-type members and unresolved typedefs (kernel admission, 2026-09-27) <a id="kf498"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §13's model checks.
+
+On [KF494](#kf494)'s own-domain Order host, hold each defective field fixed and change only its filter between absent, `ONLY premium` and `ALL_EXCEPT premium`. These 13 descriptor mutations each have three unmutated fixture controls: 78 inputs, all 39 controls admitted. The controls establish fixture liveness; where a mutation changes type as well as its body, they do not isolate the missing member's causation. The filter contrast isolates the effect of filtering each fixed defective descriptor. Oracle: Kernel 30.8.1 whole-model admission through `BoundModel.ofJson`, using the existing `kernelModelClasses` projection.
+
+| Defective descriptor | Absent / ALL_EXCEPT | ONLY |
+|---|---|---|
+| Code: absent fieldType | load/build refusal | same |
+| Code: null fieldType | load/build refusal | same |
+| Placed: DateType without its body | load/build refusal | same |
+| Placed: DateRangeType body without format | codeless refusal | admitted |
+| Placed: DateFragmentType body without formatOfFragment | load/build refusal | admitted |
+| Status: EnumerationType body without values | load/build refusal | admitted |
+| Code: CustomFieldType body without name | CUSTOM_FIELD_TYPE_CODENAME_MISSING | admitted |
+| Code: TypeDefType body without typeDefinitionId | load/build refusal | codeless refusal |
+| Code: TypeDefType body with undeclared typeDefinitionId missing | load/build refusal | admitted |
+| Placed: DateRangeType format yyyy-MM, rangeSeparator - | codeless refusal | admitted |
+| Code: String pattern errorMessage containing an empty object | load/build refusal | same |
+| Total: minValue 2, maxValue 1 | MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE | admitted |
+| Total: maxIntegerDigits 16 | codeless refusal | admitted |
+
+“Load/build refusal” is the harness's combined `CK_MODEL_NOT_BUILDABLE` category; “codeless refusal” is its `(no code)` sentinel. Neither category locates an exception within the kernel stages. In particular, missing and unresolved typedef IDs have different filtered outcomes, and a missing DateType body cannot inherit the missing-member rows' admission. The measurements concern these root-level carriers, English conditions and en_US locale; no nested, mounted, runtime or diagnostic-order claim follows. The BA documentation search for `variant`, `DateRangeType`, `typeDefinitionId` and `formatOfFragment` found two unrelated uses of “variant” and no descriptor/filter contract; the executable kernel is the basis here.
+
+*Locked by:* `adapter.laws.FieldVariantStageLawsTest.mixedFieldArmsHaveThePredictedFilterSensitivity`. Its companion `theMixedFieldPopulationHasOnlyLedgeredCheckerDifferences` sends the same 78 inputs through the portable checker and the shared O1 classification, with a separate [variants-mixed.tsv](../adapter/src/test/resources/checker-near-miss/variants-mixed.tsv) ledger. The pre-run predictions and all 11 misses are retained in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md); the fixed inputs were not changed to fit the predictions.

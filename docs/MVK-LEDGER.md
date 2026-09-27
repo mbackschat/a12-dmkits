@@ -324,8 +324,8 @@ A replacement landing is conditional ownership, not an instruction to rewrite ev
 | read/build, syntax, parse-action | `SUPPRESSED_WARNINGS` | R4 owns the declared list; R3a syntax; R3b preamble action |
 | read/build, container | `VARIANT_FILTER` | R4 candidate; original filter binding precedes default-variant deletion |
 | read/build | `RULE_PRESENTATION_MEMBERS` | R4 candidate; original JSON, independent of default-variant filtering |
-| read/build, container, serializer | `STRING_SLOT_BINDING` | R4 candidate; field name witness crosses original binding, conversion and original serializer |
-| read/build, container, metamodel | `FIELD_TYPE_BINDING` | R4 candidate; unknown type reads original input, unspecified type is checked in the default container |
+| read/build | `STRING_SLOT_BINDING` | retain original rule/computation/group slot binding; corrected 2026-09-27: R0's malformed field-name witness belongs to preparation diagnostics, not this family's FIELD arm (there is none) |
+| read/build, container, metamodel | `FIELD_TYPE_BINDING` | R4 candidate; unknown type reads original input, unspecified type is checked in the default container; KF498 separates missing members and missing/unresolved typedef IDs by filter sensitivity without assigning codeless exceptions a stage |
 | metamodel | `TEMPORAL_CONFIG` | R4 candidate; measured field arm reads the default container (KF494) |
 | non-meta, metamodel | `ELEMENT_NAME_ALPHABET` | R4 candidate; field and group names in the default container |
 | metamodel | `FIELD_NAME_RESERVED_SEGMENT` | R4 candidate; measured field arm reads the default container (KF494) |
@@ -338,7 +338,7 @@ A replacement landing is conditional ownership, not an instruction to rewrite ev
 | parse-action | `H_MODEL_FORM_CONSTRUCT` | R3b candidate; retained through R3a |
 | metamodel | `ENUM_S_VALUE_DOMAIN` | R4 candidate; measured field arm reads the default container (KF494) |
 | metamodel | `STRING_PATTERN_ADMISSION` | R4 candidate; measured field arm reads the default container (KF494) |
-| metamodel | `STRING_PATTERN_MESSAGE` | R4 candidate; measured field arm reads the default container (KF494) |
+| read/build, metamodel | `STRING_PATTERN_MESSAGE` | R4 candidate; pattern/message pairing reads the default container (KF494), while an empty message object remains a load/build refusal under filtering (KF498) |
 | non-meta | `FIELD_TYPE_MESSAGE_TEXT` | R4 candidate; field messages in the default container (KF490, KF494) |
 | metamodel | `STRING_TYPE_PARAMETERS` | R4 candidate; measured field arm reads the default container (KF494) |
 | metamodel | `NUMBER_TYPE_DIGITS` | R4 candidate; measured field arm reads the default container (KF494) |

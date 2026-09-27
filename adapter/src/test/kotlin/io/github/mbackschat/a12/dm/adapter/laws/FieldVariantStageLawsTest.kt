@@ -21,6 +21,11 @@ class FieldVariantStageLawsTest {
         assertPredictions(FieldVariantPopulation.remainingRows(), 16)
     }
 
+    @Test
+    fun mixedFieldArmsHaveThePredictedFilterSensitivity() {
+        assertPredictions(FieldVariantPopulation.mixedRows(), 78)
+    }
+
     private fun assertPredictions(rows: List<FieldVariantPopulation.Row>, expectedSize: Int) {
         assertEquals(expectedSize, rows.size, "the partition's frozen witness denominator")
         assertEquals(rows.size, rows.map { it.label }.distinct().size, "each witness must have a distinct label")
@@ -33,10 +38,19 @@ class FieldVariantStageLawsTest {
 
     @Test
     fun theVariantPopulationHasOnlyLedgeredCheckerDifferences() {
+        assertLedger(FieldVariantPopulation.rows(), 139, "variants")
+    }
+
+    @Test
+    fun theMixedFieldPopulationHasOnlyLedgeredCheckerDifferences() {
+        assertLedger(FieldVariantPopulation.mixedRows(), 78, "variants-mixed")
+    }
+
+    private fun assertLedger(rows: List<FieldVariantPopulation.Row>, expectedSize: Int, name: String) {
         val clusters = sortedMapOf<String, Int>()
         val examples = mutableListOf<String>()
         var compared = 0
-        for (row in FieldVariantPopulation.rows()) {
+        for (row in rows) {
             val a12 = kernelModelClasses(row.json)
             val ours = check(ModelSource(row.json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
             compared++
@@ -45,14 +59,14 @@ class FieldVariantStageLawsTest {
             clusters[key] = clusters.getOrDefault(key, 0) + 1
             examples += "$key\t${row.label}"
         }
-        assertEquals(139, compared, "every R0 input must reach both oracles")
+        assertEquals(expectedSize, compared, "every input must reach both oracles")
         val actual = clusters.entries.joinToString("") { "${it.value}\t${it.key}\n" }
         // Run output is disposable; the resource ledger below is the cross-run record.
-        File("build/checker-variants").apply { mkdirs() }.also {
+        File("build/checker-$name").apply { mkdirs() }.also {
             File(it, "actual.tsv").writeText(actual)
             File(it, "examples.tsv").writeText(examples.joinToString("\n"))
         }
-        val ledger = checkNotNull(javaClass.getResource("/checker-near-miss/variants.tsv")).readText()
+        val ledger = checkNotNull(javaClass.getResource("/checker-near-miss/$name.tsv")).readText()
         assertEquals(ledger, actual)
     }
 
@@ -76,7 +90,7 @@ internal object FieldVariantPopulation {
 
     enum class Filter { ABSENT, ONLY, ALL_EXCEPT }
 
-    private enum class Stage { CONTAINER, BEFORE_CONTAINER }
+    private enum class FilterEffect { REMOVES_REFUSAL, RETAINS_REFUSAL }
 
     class Row(val label: String, val json: String, val predicted: Set<String>)
 
@@ -84,7 +98,7 @@ internal object FieldVariantPopulation {
         val name: String,
         val field: String,
         val code: String,
-        val stage: Stage = Stage.CONTAINER,
+        val filterEffect: FilterEffect = FilterEffect.REMOVES_REFUSAL,
         val filteredCode: String? = null,
         val mutate: (ObjectNode, ObjectNode, ObjectNode) -> Unit,
     )
@@ -93,7 +107,7 @@ internal object FieldVariantPopulation {
         Witness("unspecified type", "Code", "MVK_UNSPECIFIED_TYPE_NO_CODEGEN") { _, _, f ->
             f.putObject("fieldType").put("type", "UnspecifiedType").putObject("UnspecifiedType")
         },
-        Witness("unknown type", "Code", "CK_MODEL_NOT_BUILDABLE", Stage.BEFORE_CONTAINER) { _, _, f ->
+        Witness("unknown type", "Code", "CK_MODEL_NOT_BUILDABLE", FilterEffect.RETAINS_REFUSAL) { _, _, f ->
             f.withObject("/fieldType").put("type", "UnknownType")
         },
         Witness("temporal configuration", "Placed", "MVK_OPTIONAL_DATE_TYPE_INVALID") { _, _, f ->
@@ -140,7 +154,7 @@ internal object FieldVariantPopulation {
         Witness("number scale limit", "Total", UNKEYED_A12_CLASS) { _, _, f ->
             f.withObject("/fieldType/NumberType").put("maxFractionalDigits", 15)
         },
-        Witness("original model number limit", "Total", UNKEYED_A12_CLASS, Stage.BEFORE_CONTAINER) { _, _, f ->
+        Witness("original model number limit", "Total", UNKEYED_A12_CLASS, FilterEffect.RETAINS_REFUSAL) { _, _, f ->
             f.withObject("/fieldType/NumberType").put("maxValue", "99999999999999999999")
         },
         Witness("enum values", "Status", "MVK_INTERNAL_VALUES_DUPLICATE,MVK_CATEGORY_VALUE_DUPLICATE,$UNKEYED_A12_CLASS",
@@ -160,6 +174,50 @@ internal object FieldVariantPopulation {
         Witness("field name collision", "Code", "CK_MODEL_NOT_BUILDABLE") { _, e, _ -> e.put("name", "Reference") },
     )) + bindingRows()
 
+    fun mixedRows(): List<Row> = declarationRows(listOf(
+        Witness("absent field type", "Code", "CK_MODEL_NOT_BUILDABLE", FilterEffect.RETAINS_REFUSAL) { _, _, f ->
+            f.remove("fieldType")
+        },
+        Witness("null field type", "Code", "CK_MODEL_NOT_BUILDABLE", FilterEffect.RETAINS_REFUSAL) { _, _, f ->
+            f.putNull("fieldType")
+        },
+        Witness("absent date body", "Placed", "CK_MODEL_NOT_BUILDABLE", FilterEffect.RETAINS_REFUSAL) { _, _, f ->
+            f.putObject("fieldType").put("type", "DateType")
+        },
+        Witness("absent range format", "Placed", UNKEYED_A12_CLASS) { _, _, f ->
+            f.putObject("fieldType").put("type", "DateRangeType").putObject("DateRangeType")
+        },
+        Witness("absent fragment format", "Placed", "CK_MODEL_NOT_BUILDABLE") { _, _, f ->
+            f.putObject("fieldType").put("type", "DateFragmentType").putObject("DateFragmentType")
+        },
+        Witness("absent enum values", "Status", "CK_MODEL_NOT_BUILDABLE") { _, _, f ->
+            f.putObject("fieldType").put("type", "EnumerationType").putObject("EnumerationType")
+        },
+        Witness("absent custom name", "Code", "CUSTOM_FIELD_TYPE_CODENAME_MISSING") { _, _, f ->
+            f.putObject("fieldType").put("type", "CustomFieldType").putObject("CustomFieldType")
+        },
+        Witness("absent typedef id", "Code", "CK_MODEL_NOT_BUILDABLE", filteredCode = UNKEYED_A12_CLASS) { _, _, f ->
+            f.putObject("fieldType").put("type", "TypeDefType").putObject("TypeDefType")
+        },
+        Witness("unresolved typedef id", "Code", "CK_MODEL_NOT_BUILDABLE") { _, _, f ->
+            f.putObject("fieldType").put("type", "TypeDefType").putObject("TypeDefType")
+                .put("typeDefinitionId", "missing")
+        },
+        Witness("incompatible range pair", "Placed", UNKEYED_A12_CLASS) { _, _, f ->
+            f.putObject("fieldType").put("type", "DateRangeType").putObject("DateRangeType")
+                .put("format", "yyyy-MM").put("rangeSeparator", "-")
+        },
+        Witness("empty message entry", "Code", "CK_MODEL_NOT_BUILDABLE", FilterEffect.RETAINS_REFUSAL) { _, _, f ->
+            f.withObject("/fieldType/StringType").putArray("errorMessage").addObject()
+        },
+        Witness("inverted number bounds", "Total", "MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE") { _, _, f ->
+            f.withObject("/fieldType/NumberType").put("minValue", 2).put("maxValue", 1)
+        },
+        Witness("integer digit limit", "Total", UNKEYED_A12_CLASS) { _, _, f ->
+            f.withObject("/fieldType/NumberType").put("maxIntegerDigits", 16)
+        },
+    ))
+
     private fun declarationRows(witnesses: List<Witness>): List<Row> = witnesses.flatMap { witness ->
         listOf(false, true).flatMap { defective ->
             Filter.entries.map { filter ->
@@ -173,7 +231,7 @@ internal object FieldVariantPopulation {
                 val predicted = when {
                     !defective -> emptySet()
                     filter == Filter.ONLY && witness.filteredCode != null -> setOf(witness.filteredCode)
-                    filter == Filter.ONLY && witness.stage == Stage.CONTAINER -> emptySet()
+                    filter == Filter.ONLY && witness.filterEffect == FilterEffect.REMOVES_REFUSAL -> emptySet()
                     else -> witness.code.split(',').toSet()
                 }
                 Row("${witness.name}/$defective/$filter", root.toString(), predicted)
