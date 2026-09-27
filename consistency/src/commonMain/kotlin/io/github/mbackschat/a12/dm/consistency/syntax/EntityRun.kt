@@ -10,25 +10,11 @@ package io.github.mbackschat.a12.dm.consistency.syntax
 internal class EntityRun(val end: Int, val closes: Boolean)
 
 /**
- * The run of A12's `entity` production beginning at [from], read as the grammar reads it.
+ * Read the flat path run used by the reference scanner.
  *
- * The shape is `entity: ('/'? idNameRef | relativeUp) ('/' idNameRef)*`, with `idNameRef: idName ('.' '*')? '*'?`
- * and `idName: nameOhnePunkt ('.' Name)*` (`GrammarOnly_ConditionParser.g4`, source-read, kernel `30.8.1`). So
- * steps are joined by exactly one `/`, and a name directly after a step ENDS the production rather than
- * continuing it.
- *
- * **Why both readers share it.** A12 raises a reference's class when its production closes, before the
- * parser matches the token after it, because the error strategy does not look ahead (`AbstractDefaultErrorStrategy.sync`
- * does nothing, and no error is recovered from). So in `FieldFilled(BillingAddress*PostalCode)` the entity
- * `BillingAddress*` closes and draws `MVK_INVALID_WILDCARD` before `PostalCode` is refused, and in
- * `FieldFilled(Lines/)` the entity never closes and only the parse error is drawn
- * (`adapter.laws.CheckerNearMissSweepTest`). The shape parser needs the failure point and the reference
- * scanner needs the close point. They are the same walk, and two walks that drifted would give one text two
- * different references.
- *
- * One departure is deliberate. A climb after a named step (`A/../B`) is refused by the grammar, which admits
- * `..` only at the start. It is read here as a step, because the reference family owns that refusal and
- * reports it with the class measured on the path grid.
+ * The scanner retains names from malformed text for editing; [ConditionRecognizer] owns syntax acceptance
+ * and supplies the completed boundaries that cap unfinished walks (KF491). This projection deliberately
+ * retains a climb after a named step, because the reference family owns that path-grid refusal.
  */
 internal fun entityRunAt(tokens: List<Token>, from: Int, startsSegment: (Token) -> Boolean): EntityRun {
     var at = from
