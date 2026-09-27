@@ -52,6 +52,25 @@ object FieldReadPopulation {
             filter("[Items/Raw] == [Items*/Raw]") to raw,
             filter("[Items*/Raw] == [Items/Raw]") to star,
         )
+        return rowsOf(suffixes)
+    }
+
+    fun boundaryRows(): List<Row> {
+        val star = "MVK_NO_WILDCARDS_ALLOWED"
+        val lexer = "MVK_LEXER_STANDARD_ERROR"
+        return rowsOf(linkedMapOf(
+            "[Items*/Count]" to star,
+            "[Items*/Count] %" to lexer,
+            "[Items*/Count]   %" to lexer,
+            "[Items*/Count] > %" to star,
+            "[Items*/Count] ) %" to star,
+            "[Items*/Count] ;; marker\n%" to star,
+            "[Total] %" to lexer,
+            "[Total] > 0" to null,
+        ))
+    }
+
+    private fun rowsOf(suffixes: Map<String, String?>): List<Row> {
         val probe = model.rule(model.group("/Order")).name("ReadProbe").errorField(total)
             .`when`(total.filled()).code("READ_PROBE")
             .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("Check order values")).build().draft()

@@ -46,9 +46,17 @@ class CheckerNearMissSweepTest {
 
     @Test
     fun fieldReadActionsHaveOnlyLedgeredDifferences() {
-        val rows = FieldReadPopulation.rows()
-        assertEquals(22, rows.size)
-        assertEquals(22, rows.map { it.rule.errorCondition() }.distinct().size)
+        assertFieldReadLedger(FieldReadPopulation.rows(), 22, "field-reads")
+    }
+
+    @Test
+    fun fieldReadTokenBoundariesHaveOnlyLedgeredDifferences() {
+        assertFieldReadLedger(FieldReadPopulation.boundaryRows(), 8, "field-read-boundaries")
+    }
+
+    private fun assertFieldReadLedger(rows: List<FieldReadPopulation.Row>, count: Int, name: String) {
+        assertEquals(count, rows.size)
+        assertEquals(count, rows.map { it.rule.errorCondition() }.distinct().size)
         assertEquals(emptySet<String>(), kernelModelClasses(FieldReadPopulation.host))
         val clusters = sortedMapOf<String, Int>()
         val examples = mutableListOf<String>()
@@ -64,10 +72,10 @@ class CheckerNearMissSweepTest {
             examples += "$signature\t${row.rule.errorCondition()}"
         }
         val directory = File("build/checker-near-miss").apply { mkdirs() }
-        File(directory, "field-reads.tsv").writeText(render(clusters))
-        File(directory, "field-read-examples.tsv").writeText(examples.joinToString("\n"))
+        File(directory, "$name.tsv").writeText(render(clusters))
+        File(directory, "$name-examples.tsv").writeText(examples.joinToString("\n"))
         assertEquals(emptyList<String>(), predictions, "kernel predictions differed")
-        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/field-reads.tsv")).readText(), render(clusters))
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/$name.tsv")).readText(), render(clusters))
     }
 
     @Test

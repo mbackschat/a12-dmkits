@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter
 
 import com.mgmtp.a12.kernel.core.parser.internal.ParserService
 import com.mgmtp.a12.kernel.core.parser.internal.error.MVKDefaultErrorStrategy
+import com.mgmtp.a12.kernel.core.parser.internal.error.MVKParserError
 import com.mgmtp.a12.kernel.core.parser.internal.grammar.gen.Lenient_ConditionParser
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.IRule
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.error.IProblemReporter
@@ -82,6 +83,25 @@ class A12ParseTraceTest {
             Triple(row.rule.errorCondition(), observed.code, a12Classes(FieldReadPopulation.host, row.rule))
         }
         assertEquals(rows.map { Triple(it.rule.errorCondition(), it.expected, setOfNotNull(it.expected)) }, observed)
+    }
+
+    @Test
+    fun aFieldReadDemandsTheNextTokenBeforeItsAction() {
+        val rows = FieldReadPopulation.boundaryRows()
+        assertEquals(8, rows.size)
+        assertEquals(1, rows.count { it.expected == null })
+        val service = mvkService(validator.inject(FieldReadPopulation.host, rows.last().rule))
+        val rule = (service.iec as ElementContainer).allRules.single { it.fullName == "/Order/ReadProbe" }
+        val observations = rows.map { row ->
+            val text = row.rule.errorCondition()
+            val measured = trace(service, rule, text)
+            Triple(text, measured.code, a12Classes(FieldReadPopulation.host, row.rule)) to measured.problemRange
+        }
+        assertEquals(rows.map { Triple(it.rule.errorCondition(), it.expected, setOfNotNull(it.expected)) },
+            observations.map { it.first })
+        observations.filter { it.first.second == "MVK_NO_WILDCARDS_ALLOWED" }.forEach { (row, range) ->
+            assertEquals(ProblemRange(1, 1, row.first.indexOf('['), row.first.indexOf('[') + 1), range, row.first)
+        }
     }
 
 
@@ -420,13 +440,18 @@ class A12ParseTraceTest {
         val problems = mutableListOf<String>()
         var recorder: Recorder? = null
         var lexical: Location? = null
+        var problemRange: ProblemRange? = null
         ParserService(service).checkSnippet(rule, condition, {
             when (entry) {
                 SyntaxEntry.CONDITION -> it.bedingung_start()
                 SyntaxEntry.OPERATION -> it.operationSnippet()
             }
         },
-            { problems += (it as? Throwable)?.message ?: it.toString() }) { parser ->
+            {
+                problems += (it as? Throwable)?.message ?: it.toString()
+                if (problemRange == null && it is MVKParserError)
+                    problemRange = ProblemRange(it.line, it.lineEnd, it.sourceStart, it.sourceEnd)
+            }) { parser ->
             recorder = Recorder(rule, parser).also { parser.errorHandler = it }
             (parser.tokenStream.tokenSource as Lexer).addErrorListener(object : BaseErrorListener() {
                 override fun syntaxError(r: Recognizer<*, *>?, symbol: Any?, line: Int, column: Int, msg: String?,
@@ -445,7 +470,7 @@ class A12ParseTraceTest {
             code == null -> Trace(null, null)
             lexical != null -> Trace(code, Failure(Kind.LEXICAL, "-", -1, "-", 0, false, lexical))
             failure != null -> Trace(code, failure)
-            else -> Trace(code, Failure(Kind.CHECK, code, -1, "-", 0, false))
+            else -> Trace(code, Failure(Kind.CHECK, code, -1, "-", 0, false), problemRange)
         }
     }
 
@@ -498,7 +523,9 @@ class A12ParseTraceTest {
     }
 
     /** The code A12 reported for one parse ([code], null when it parsed), and how the parse failed. */
-    data class Trace(val code: String?, val failure: Failure?)
+    data class Trace(val code: String?, val failure: Failure?, val problemRange: ProblemRange? = null)
+
+    data class ProblemRange(val line: Int, val lineEnd: Int, val start: Int, val end: Int)
 
     data class Location(val start: Int, val end: Int, val text: String)
 
