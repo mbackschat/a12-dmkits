@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.adapter
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.adapter.laws.HarvestedModels
 import io.github.mbackschat.a12.dm.adapter.laws.kernelModelClasses
 import io.github.mbackschat.a12.dm.adapter.laws.checkerVerdict
@@ -20,11 +22,96 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import java.io.File
 
 /** R5 measures raw/public notification boundaries and member correspondence before report assembly is replaced. */
 class A12ReportStreamTest {
+    @Test
+    fun versionCompletedReportHostsKeepTheirDeclarations() {
+        val mapper = ObjectMapper()
+        val harvested = HarvestedModels.expand(mapper.readTree(checkNotNull(javaClass.getResource(
+            "/checker-near-miss/harvested-report-checks.json")).readText())).associateBy { it["id"].asText() }
+        val cases = listOf(
+            HostCase("repeat", "ConditionMultipleDefectTest.aRepeatOfOneCodeIsKeptForEachPlaceToFix#1", HostControl.CONDITION),
+            HostCase("twins-valid", "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#1", HostControl.FIRST_RULE_NAME),
+            HostCase("twins-invalid", "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#2", HostControl.FIRST_RULE_NAME),
+            HostCase("field-rule", "RuleMemberWithholdingTest.aFieldSharingARulesPathKeepsItsOwnFindings#1", HostControl.FIRST_RULE_NAME),
+            HostCase("dispatch", "DispatchOrderTest.aPerDeclarationFamilyReportsInDeclarationOrderAndFamiliesStayProducerMajor#1", HostControl.CONDITION),
+        )
+        val version = mapper.readTree(host())["header"]["modelVersion"]
+        val misses = mutableListOf<String>()
+        val ledger = mutableListOf<String>()
+        for (case in cases) {
+            val original = mapper.readTree(harvested.getValue(case.source)["model"].asText()) as ObjectNode
+            val completed = original.deepCopy()
+            val header = completed["header"] as ObjectNode
+            check(!header.has("modelVersion"))
+            header.set<JsonNode>("modelVersion", version)
+            val restored = completed.deepCopy().apply { (get("header") as ObjectNode).remove("modelVersion") }
+            assertEquals(original, restored, "${case.id}: only the version is added")
+            val control = completed.deepCopy()
+            val elements = control["content"]["modelRoot"]["rootGroups"][0]["Group"]["elements"]
+            val rules = elements.filter { it["type"].asText() == "Rule" }
+            when (case.control) {
+                HostControl.FIRST_RULE_NAME -> (rules.first() as ObjectNode).put("name",
+                    if (case.id == "field-rule") "OtherTwin" else "OtherProbe")
+                HostControl.CONDITION -> rules.forEach { (it["Rule"] as ObjectNode).put("errorCondition",
+                    if (case.id == "dispatch") "FieldFilled(Code)" else "FieldFilled(Reference)") }
+            }
+            assertHostControl(case, completed, control)
+            val extraEdit = control.deepCopy().apply { (get("header") as ObjectNode).put("unexpected", true) }
+            assertThrows(AssertionError::class.java) { assertHostControl(case, completed, extraEdit) }
+            for ((suffix, model) in listOf("completed" to completed, "control" to control)) {
+                val id = "${case.id}/$suffix"
+                val json = model.toString()
+                val outcome = originalOutcome(json)
+                val reported = outcome.callbacks.map { code(it.message) }
+                val a12 = kernelModelClasses(json)
+                val ours = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }
+                val failureType = if (suffix == "completed" && case.control == HostControl.FIRST_RULE_NAME)
+                    IllegalArgumentException::class.java else NullPointerException::class.java
+                if (outcome.phase != OriginalPhase.CHECK || outcome.failure?.javaClass != failureType ||
+                    reported.isNotEmpty() || a12 != setOf("CK_MODEL_NOT_BUILDABLE"))
+                    misses += "$id: ${outcome.phase}, ${outcome.failure}, reports=$reported, O1=$a12"
+                ledger += listOf(id, outcome.phase.name, outcome.failure?.javaClass?.name ?: "completed",
+                    reported.toString(), a12.sorted().toString(), ours.toString()).joinToString("\t")
+            }
+        }
+        assertEquals(10, ledger.size)
+        val text = ledger.joinToString("\n", postfix = "\n")
+        // Disposable observation; source identities, mutations and the committed ledger retain H1's ten inputs.
+        File("build/checker-near-miss/report-hosts.tsv").apply { parentFile.mkdirs(); writeText(text) }
+        assertEquals(emptyList<String>(), misses, "frozen minimal-completion predictions")
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/report-hosts.tsv")).readText(), text)
+    }
+
+    private fun assertHostControl(case: HostCase, completed: ObjectNode, control: ObjectNode) {
+        val undone = control.deepCopy()
+        fun rulesIn(model: ObjectNode) = model["content"]["modelRoot"]["rootGroups"][0]["Group"]["elements"]
+            .filter { it["type"].asText() == "Rule" }
+        val before = rulesIn(completed)
+        val after = rulesIn(undone)
+        assertEquals(before.size, after.size, "${case.id}: control keeps every rule")
+        when (case.control) {
+            HostControl.FIRST_RULE_NAME -> {
+                assertEquals(if (case.id == "field-rule") "OtherTwin" else "OtherProbe", after.first()["name"].asText())
+                (after.first() as ObjectNode).set<JsonNode>("name", before.first()["name"])
+            }
+            HostControl.CONDITION -> after.zip(before).forEach { (changed, unchanged) ->
+                assertEquals(if (case.id == "dispatch") "FieldFilled(Code)" else "FieldFilled(Reference)",
+                    changed["Rule"]["errorCondition"].asText())
+                (changed["Rule"] as ObjectNode).set<JsonNode>(
+                    "errorCondition", unchanged["Rule"]["errorCondition"])
+            }
+        }
+        assertEquals(completed, undone, "${case.id}: control changes only the named member")
+    }
+
+    private enum class HostControl { CONDITION, FIRST_RULE_NAME }
+    private data class HostCase(val id: String, val source: String, val control: HostControl)
+
     @Test
     fun originalReportFixturesRetainTheirKernelDisposition() {
         val mapper = ObjectMapper()
