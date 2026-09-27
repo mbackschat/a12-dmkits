@@ -54,13 +54,21 @@ class CheckerGateSpanGuardTest {
             "the suppression preamble's classes, which A12 raises ahead of the texts and report assembly never "
                     + "places among them (withoutTheTextsBehindARefusedPreamble)");
 
+    /** R3a states syntax codes in the verdict and constructs their findings in the carrier adapter. */
+    private static final Map<String, String> FINDING_ADAPTERS = Map.of(
+            "syntax/ConditionShape.kt", "ConditionSyntax.kt");
+
     @Test
     void everyFindingStatingAPositionedCodeCarriesItsSpan() {
         Set<String> positioned = positionedCodes();
         Map<String, Set<String>> reported = CheckerReportedCodes.bySource(positioned::contains);
         Set<String> files = new TreeSet<>();
-        reported.values().forEach(sources -> sources.forEach(s -> files.add(Path.of(s).getFileName().toString())));
+        reported.values().forEach(sources -> sources.forEach(s -> files.add(SOURCES.relativize(Path.of(s)).toString())));
         assertTrue(files.size() >= 40, "the scan found only " + files.size() + " files stating a positioned code");
+        FINDING_ADAPTERS.forEach((verdict, adapter) -> {
+            assertTrue(files.contains(verdict), "the finding adapter's code source disappeared: " + verdict);
+            files.add(adapter);
+        });
 
         Map<String, String> constants = codeConstants();
         Map<String, List<Integer>> spanless = new TreeMap<>();

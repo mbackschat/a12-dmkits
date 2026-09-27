@@ -16,14 +16,17 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * post-parse one, withheld there by report assembly.
  */
 fun callsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionCall> {
-    val keywords = CONDITION_KEYWORDS.getValue(language)
     val bodies = filterBodiesIn(text, language)
     return callShapes(text, language, entry).map { shape ->
-        ConditionCall(shape.operator, shape.at, shape.operands.map { it.asOperand(keywords, language, text) },
+        ConditionCall(shape.operator, shape.at, shape.operands.map { operandOf(it, language, text) },
             shape.end,
             inAFilterBody = bodies.any { body -> body.at <= shape.at && shape.end <= body.at + body.text.length })
     }
 }
+
+/** Operand reduction is independent of whether a strict call can enclose these tokens (R3a scanner hosts). */
+internal fun operandOf(tokens: List<Token>, language: ConditionLanguage, source: String): CallOperand =
+    tokens.asOperand(CONDITION_KEYWORDS.getValue(language), language, source)
 
 /** Whether a `Having` body of its own text holds this call, read as [ConditionCall.inAFilterBody] is. */
 internal fun CallShape.inAFilterBody(language: ConditionLanguage): Boolean =

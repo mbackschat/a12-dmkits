@@ -208,7 +208,7 @@ class ErrorTextIndexTerminalTest {
     private val READS_SLOT = "FieldFilled(Weight) And FieldFilled(Slot)"
     private val READS_SLOT_STARRED =
         "FieldFilled(Weight) And AtLeastOneFieldFilled(/Warehouse/Pallets*/Slot)"
-    private val READS_SLOT_KEYED = "FieldFilled(Weight) And FieldFilled([/Warehouse/Pallets/Slot For \"S-1\"])"
+    private val READS_SLOT_KEYED = "FieldFilled(Weight) And FieldFilled(/Warehouse/Pallets/Slot For \"S-1\")"
     private val READS_TIER = "FieldFilled(Note) And FieldFilled(Tier)"
     private val READS_NOTE = "FieldFilled(Note)"
     private val READS_RACK_TIER = "FieldFilled(Note) And AtLeastOneFieldFilled(/Warehouse/Racks*/Tier)"

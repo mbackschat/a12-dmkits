@@ -47,7 +47,7 @@ class ConditionLexicalityTest {
                         {"type":"Rule","id":"r0","name":"PriceRule","Rule":{
                           "errorCondition":${'"'}$condition${'"'},"errorEntityRelPath":"../Price"}},
                         {"type":"Computation","id":"c0","name":"PriceCalc","Computation":{
-                          "computationAlternatives":[{"operation":${'"'}$operation${'"'}}]}}
+                          "computedFieldRelPath":"../Price","computationAlternatives":[{"operation":${'"'}$operation${'"'}}]}}
                       ]}}
                      ]}}}
                     """,

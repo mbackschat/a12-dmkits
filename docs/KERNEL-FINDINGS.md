@@ -6098,7 +6098,7 @@ The portable checker's completeness family now asks its shape parser where it st
 
 **`%` is not an operator at any layer.** It fails in the LEXER, not the grammar, which is what makes it the grid's liveness control: it shows the probe can still produce a rejection, without which seven admissions cannot be told from a probe that admits everything.
 
-*Locked by:* `rulekit.validate.laws.ConditionArithmeticSymbolLawsTest` (one grid, one symbol apart on one carrier, with both a no-arithmetic control and the `%` liveness control). The portable side is `consistency`'s `ConditionShapeTest`, whose division and exponentiation rows are the controls that were missing when the mutants survived.
+*Locked by:* `rulekit.validate.laws.ConditionArithmeticSymbolLawsTest` (one grid, one symbol apart on one carrier, with both a no-arithmetic control and the `%` liveness control). The portable side is `consistency`'s `SyntaxVerdictTest` over the harvested syntax population, whose division and exponentiation rows are the controls that were missing when the mutants survived.
 
 ## §13 supplement — a rule's `guiPatterns` and `variantErrorMessages` are stored but never judged, and their two binding laws differ on exactly one row (measured, 2026-09-13) <a id="kf303"></a>
 
@@ -10925,7 +10925,7 @@ The key rows order two spec-end classes as well: on one key spec, the body's ite
 
 **Extended 2026-09-25 — a sign stands on a number literal alone.** The grammar has no unary minus: `-` is part of `commonKonstante : minus='-'? ZiffernFolge …`. So `[BaseFee] > -1` and `[BaseFee] - -1 > 1` are admitted, while `-[BaseFee] < 0`, `[BaseFee] > -[EffectiveFee]`, `[BaseFee] > -{[EffectiveFee] + 1}`, `[BaseFee] > -Abs([EffectiveFee])` and `[BaseFee] > --1` are each `MVK_UNEXPECTED_TOKEN`. The checker had signed any operand and admitted all five; it now signs a literal only. The same holds on the operation carrier and in an operation argument: into `EffectiveFee`, `-5`, `0 - [BaseFee]`, `[BaseFee] * -1` and `RoundUp(0 - [BaseFee], 2)` are admitted, while `-[BaseFee]`, `[BaseFee] * -[BaseFee]`, `{-[BaseFee]}` and `RoundUp(-[BaseFee], 2)` are each `MVK_UNEXPECTED_TOKEN`, as the checker also answers.
 
-*Locked by:* `rulekit.validate.laws.WhereAConditionMayStandLawsTest`, `…FilterBodyComparisonLawsTest`, the connective rows of `…ConditionClassWithholdingLawsTest`, and `…ConditionArithmeticSymbolLawsTest` (both carriers); mirrored by `consistency.WhereAConditionMayStandTest`, `consistency.FilterBodyComparisonTest`, `consistency.ConditionMultipleDefectTest` and `consistency.ConditionShapeTest`.
+*Locked by:* `rulekit.validate.laws.WhereAConditionMayStandLawsTest`, `…FilterBodyComparisonLawsTest`, the connective rows of `…ConditionClassWithholdingLawsTest`, and `…ConditionArithmeticSymbolLawsTest` (both carriers); mirrored by `consistency.WhereAConditionMayStandTest`, `consistency.FilterBodyComparisonTest`, `consistency.ConditionMultipleDefectTest` and `consistency.SyntaxVerdictTest` over the harvested syntax population.
 
 ## §1 supplement — a time, a date-time and a date fragment share the date's base-type class, and a custom declaration the text's, wherever a gate compares two base types (source-read + measured, 2026-09-25) <a id="kf468"></a>
 

@@ -121,8 +121,8 @@ fun tokenize(text: String): List<Token> {
                 }
             }
 
-            char.isDigit() -> {
-                while (index < text.length && text[index].isDigit()) index++
+            char.isAsciiDigit() -> {
+                while (index < text.length && text[index].isAsciiDigit()) index++
                 // A digit run followed by a letter is a NAME, not a number then a name: the lexer's
                 // `NameOhnePunktZifferAmAnfang` is `ZiffernFolge STR (STR|DIGIT)*`, so `1City` is one
                 // identifier. Splitting it would hand a consumer the reference `City`, which usually exists.
@@ -179,7 +179,7 @@ fun tokenize(text: String): List<Token> {
  *   `#Zeile` had other language spellings; the grammar has none, and a lone `#` measures illegal.
  */
 private fun Char.beginsNoTerminal(): Boolean =
-    this !in STANDALONE_PUNCTUATION && this != '#' && this !in LEXER_WHITESPACE && !isDigit() &&
+    this !in STANDALONE_PUNCTUATION && this != '#' && this !in LEXER_WHITESPACE && !isAsciiDigit() &&
         !isNameStart() && this != '"' && this != '\''
 
 /**
@@ -246,6 +246,9 @@ private fun String.kindOfSymbol(): TokenKind =
 /** `STR` in the lexer: ASCII letters, underscore, the German umlauts and eszett, and colon. */
 private fun Char.isNameStart(): Boolean = this in 'a'..'z' || this in 'A'..'Z' || this in NAME_EXTRA
 
-private fun Char.isNamePart(): Boolean = isNameStart() || isDigit()
+private fun Char.isNamePart(): Boolean = isNameStart() || isAsciiDigit()
 
 private const val NAME_EXTRA = "_ÄÜÖäüöß:"
+
+/** KF493: an Arabic digit is a lexical error; A12's digit terminal is ASCII. */
+private fun Char.isAsciiDigit(): Boolean = this in '0'..'9'

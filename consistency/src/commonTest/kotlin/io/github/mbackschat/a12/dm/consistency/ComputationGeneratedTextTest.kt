@@ -98,7 +98,12 @@ class ComputationGeneratedTextTest {
         return "{$guarded$work}"
     }
 
-    private fun codes(common: String?, vararg alternatives: String): List<String> = checkRead(
+    private fun codes(common: String?, vararg alternatives: String): List<String> =
+        checkRead(computationSyntaxModel(common, *alternatives)).findings
+            .filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }.sorted()
+}
+
+internal fun computationSyntaxModel(common: String?, vararg alternatives: String): ModelSource =
         ModelSource(
             """
             {"header":{"id":"subscription","locales":[{"code":"en_US"}]},
@@ -114,6 +119,4 @@ class ComputationGeneratedTextTest {
                     "errorCode":"P","errorMessage":[{"locale":"en_US","text":"x"}]}}
                 ]}}]}}]}}}
             """.trimIndent(),
-        ),
-    ).findings.filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }.sorted()
-}
+        )

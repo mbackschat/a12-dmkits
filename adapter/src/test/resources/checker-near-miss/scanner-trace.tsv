@@ -1,0 +1,7 @@
+scanner#1	PARSED	null	null
+scanner#2	MISMATCH	MVK_UNEXPECTED_TOKEN	Location(start=23, end=28, text=@From)
+scanner#3	CHECK	MVK_INVALID_ENTITY	null
+scanner#4	CHECK	MVK_NO_GROUPS_ALLOWED	null
+scanner#5	NO_VIABLE	MVK_UNEXPECTED_TOKEN	Location(start=16, end=17, text=[)
+scanner#6	NO_VIABLE	MVK_UNEXPECTED_TOKEN	Location(start=16, end=24, text="Garage")
+scanner#7	CHECK	MVK_INVALID_OUTER_ITERATION	null

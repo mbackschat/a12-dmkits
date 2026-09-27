@@ -105,7 +105,7 @@ class ComparisonOperatorOperandsTest {
         actual["arithmetic on one side of an ordering comparison"] =
             comparison("[GiftNote] < {[Quantity] + 1}")
         actual["an aggregate on one side of an ordering comparison"] =
-            comparison("[GiftNote] < Sum([Quantity], [Backordered])")
+            comparison("[GiftNote] < Sum(Quantity, Backordered)")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["arithmetic on one side of an ordering comparison"] = emptyList()

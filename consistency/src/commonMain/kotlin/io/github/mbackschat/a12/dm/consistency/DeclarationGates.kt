@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.delimitersBalanced
+import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
+import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
  * The declarations whose DSL cannot be trusted at all — a condition naming something that does not resolve, or
@@ -23,6 +24,20 @@ internal fun TrackedFactBase.declarationsWithUnsoundDsl(): Set<String> {
         }
     }
     return unresolved + unparseable
+}
+
+/** Preserve the outer-marker gate's delimiter-only withholding contract (UnsoundDslDrawsARejectionTest). */
+private fun delimitersBalanced(text: String): Boolean {
+    val open = ArrayDeque<String>()
+    for (token in tokenize(text)) {
+        if (token.kind != TokenKind.PUNCTUATION) continue
+        when (token.text) {
+            "(", "[" -> open.addLast(token.text)
+            ")" -> if (open.removeLastOrNull() != "(") return false
+            "]" -> if (open.removeLastOrNull() != "[") return false
+        }
+    }
+    return open.isEmpty()
 }
 
 /**

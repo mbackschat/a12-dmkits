@@ -63,6 +63,18 @@ final enum class io.github.mbackschat.a12.dm.consistency.syntax/SyntaxEntry : ko
     final fun values(): kotlin/Array<io.github.mbackschat.a12.dm.consistency.syntax/SyntaxEntry> // io.github.mbackschat.a12.dm.consistency.syntax/SyntaxEntry.values|values#static(){}[0]
 }
 
+final enum class io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind : kotlin/Enum<io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind> { // io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind|null[0]
+    enum entry DECISION // io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind.DECISION|null[0]
+    enum entry LEXICAL // io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind.LEXICAL|null[0]
+    enum entry MATCH // io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind.MATCH|null[0]
+
+    final val entries // io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind> // io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind.entries.<get-entries>|<get-entries>#static(){}[0]
+
+    final fun valueOf(kotlin/String): io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind // io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind> // io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind.values|values#static(){}[0]
+}
+
 final enum class io.github.mbackschat.a12.dm.consistency.syntax/TokenKind : kotlin/Enum<io.github.mbackschat.a12.dm.consistency.syntax/TokenKind> { // io.github.mbackschat.a12.dm.consistency.syntax/TokenKind|null[0]
     enum entry COMMENT // io.github.mbackschat.a12.dm.consistency.syntax/TokenKind.COMMENT|null[0]
     enum entry ILLEGAL_CHARACTER // io.github.mbackschat.a12.dm.consistency.syntax/TokenKind.ILLEGAL_CHARACTER|null[0]
@@ -571,22 +583,6 @@ final class io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreemen
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement.toString|toString(){}[0]
 }
 
-final class io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput { // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput|null[0]
-    constructor <init>(kotlin/String, kotlin/Int) // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput.<init>|<init>(kotlin.String;kotlin.Int){}[0]
-
-    final val at // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput.at|{}at[0]
-        final fun <get-at>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput.at.<get-at>|<get-at>(){}[0]
-    final val spelling // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput.spelling|{}spelling[0]
-        final fun <get-spelling>(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput.spelling.<get-spelling>|<get-spelling>(){}[0]
-
-    final fun component1(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput.component1|component1(){}[0]
-    final fun component2(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput.component2|component2(){}[0]
-    final fun copy(kotlin/String = ..., kotlin/Int = ...): io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput.copy|copy(kotlin.String;kotlin.Int){}[0]
-    final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput.equals|equals(kotlin.Any?){}[0]
-    final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput.hashCode|hashCode(){}[0]
-    final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput.toString|toString(){}[0]
-}
-
 final class io.github.mbackschat.a12.dm.consistency.syntax/LexicalFailure { // io.github.mbackschat.a12.dm.consistency.syntax/LexicalFailure|null[0]
     constructor <init>(kotlin/Int, io.github.mbackschat.a12.dm.consistency.syntax/LexicalFailureKind, kotlin/String) // io.github.mbackschat.a12.dm.consistency.syntax/LexicalFailure.<init>|<init>(kotlin.Int;io.github.mbackschat.a12.dm.consistency.syntax.LexicalFailureKind;kotlin.String){}[0]
 
@@ -651,19 +647,27 @@ final class io.github.mbackschat.a12.dm.consistency.syntax/ReferenceSpan { // io
 }
 
 final class io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure { // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure|null[0]
-    constructor <init>(kotlin/Int, kotlin/Boolean, kotlin/String) // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.<init>|<init>(kotlin.Int;kotlin.Boolean;kotlin.String){}[0]
+    constructor <init>(kotlin/Int, kotlin/Boolean, kotlin/String, io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind = ..., kotlin/Int = ...) // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.<init>|<init>(kotlin.Int;kotlin.Boolean;kotlin.String;io.github.mbackschat.a12.dm.consistency.syntax.SyntaxFailureKind;kotlin.Int){}[0]
 
     final val at // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.at|{}at[0]
         final fun <get-at>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.at.<get-at>|<get-at>(){}[0]
+    final val code // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.code|{}code[0]
+        final fun <get-code>(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.code.<get-code>|<get-code>(){}[0]
+    final val end // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.end|{}end[0]
+        final fun <get-end>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.end.<get-end>|<get-end>(){}[0]
     final val found // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.found|{}found[0]
         final fun <get-found>(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.found.<get-found>|<get-found>(){}[0]
+    final val kind // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.kind|{}kind[0]
+        final fun <get-kind>(): io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.kind.<get-kind>|<get-kind>(){}[0]
     final val ranOutAwaitingOneToken // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.ranOutAwaitingOneToken|{}ranOutAwaitingOneToken[0]
         final fun <get-ranOutAwaitingOneToken>(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.ranOutAwaitingOneToken.<get-ranOutAwaitingOneToken>|<get-ranOutAwaitingOneToken>(){}[0]
 
     final fun component1(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.component1|component1(){}[0]
     final fun component2(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.component2|component2(){}[0]
     final fun component3(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.component3|component3(){}[0]
-    final fun copy(kotlin/Int = ..., kotlin/Boolean = ..., kotlin/String = ...): io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.copy|copy(kotlin.Int;kotlin.Boolean;kotlin.String){}[0]
+    final fun component4(): io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.component4|component4(){}[0]
+    final fun component5(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.component5|component5(){}[0]
+    final fun copy(kotlin/Int = ..., kotlin/Boolean = ..., kotlin/String = ..., io.github.mbackschat.a12.dm.consistency.syntax/SyntaxFailureKind = ..., kotlin/Int = ...): io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.copy|copy(kotlin.Int;kotlin.Boolean;kotlin.String;io.github.mbackschat.a12.dm.consistency.syntax.SyntaxFailureKind;kotlin.Int){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency.syntax/ShapeFailure.toString|toString(){}[0]
@@ -1269,7 +1273,6 @@ final fun (io.github.mbackschat.a12.dm.consistency/Reference).io.github.mbacksch
 final fun io.github.mbackschat.a12.dm.consistency.syntax/callsIn(kotlin/String, io.github.mbackschat.a12.dm.consistency.syntax/ConditionLanguage, io.github.mbackschat.a12.dm.consistency.syntax/SyntaxEntry): kotlin.collections/List<io.github.mbackschat.a12.dm.consistency.syntax/ConditionCall> // io.github.mbackschat.a12.dm.consistency.syntax/callsIn|callsIn(kotlin.String;io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage;io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry){}[0]
 final fun io.github.mbackschat.a12.dm.consistency.syntax/comparisonsIn(kotlin/String, io.github.mbackschat.a12.dm.consistency.syntax/ConditionLanguage, io.github.mbackschat.a12.dm.consistency.syntax/SyntaxEntry): kotlin.collections/List<io.github.mbackschat.a12.dm.consistency.syntax/ConditionComparison> // io.github.mbackschat.a12.dm.consistency.syntax/comparisonsIn|comparisonsIn(kotlin.String;io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage;io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry){}[0]
 final fun io.github.mbackschat.a12.dm.consistency.syntax/connectiveDisagreement(kotlin/String, io.github.mbackschat.a12.dm.consistency.syntax/ConditionLanguage): io.github.mbackschat.a12.dm.consistency.syntax/ConnectiveDisagreement? // io.github.mbackschat.a12.dm.consistency.syntax/connectiveDisagreement|connectiveDisagreement(kotlin.String;io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage){}[0]
-final fun io.github.mbackschat.a12.dm.consistency.syntax/incompleteInput(kotlin/String, io.github.mbackschat.a12.dm.consistency.syntax/ConditionLanguage, io.github.mbackschat.a12.dm.consistency.syntax/SyntaxEntry): io.github.mbackschat.a12.dm.consistency.syntax/IncompleteInput? // io.github.mbackschat.a12.dm.consistency.syntax/incompleteInput|incompleteInput(kotlin.String;io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage;io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry){}[0]
 final fun io.github.mbackschat.a12.dm.consistency.syntax/lexicalFailure(kotlin/String): io.github.mbackschat.a12.dm.consistency.syntax/LexicalFailure? // io.github.mbackschat.a12.dm.consistency.syntax/lexicalFailure|lexicalFailure(kotlin.String){}[0]
 final fun io.github.mbackschat.a12.dm.consistency.syntax/referenceSpansIn(kotlin/String, io.github.mbackschat.a12.dm.consistency.syntax/ConditionLanguage): kotlin.collections/List<io.github.mbackschat.a12.dm.consistency.syntax/ReferenceSpan> // io.github.mbackschat.a12.dm.consistency.syntax/referenceSpansIn|referenceSpansIn(kotlin.String;io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage){}[0]
 final fun io.github.mbackschat.a12.dm.consistency.syntax/referencesIn(kotlin/String, io.github.mbackschat.a12.dm.consistency.syntax/ConditionLanguage): kotlin.collections/List<kotlin/String> // io.github.mbackschat.a12.dm.consistency.syntax/referencesIn|referencesIn(kotlin.String;io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage){}[0]

@@ -1,0 +1,540 @@
+[ {
+  "id" : "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves#1",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 22,
+  "end" : 22,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves#2",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 22,
+  "end" : 22,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves#3",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 22,
+  "end" : 22,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves#4",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 21,
+  "end" : 21,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves#5",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 21,
+  "end" : 21,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves#6",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 19,
+  "end" : 22,
+  "found" : "aNd"
+}, {
+  "id" : "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete#1",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete#2",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 22,
+  "end" : 22,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete#3",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 21,
+  "end" : 21,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete#4",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 9,
+  "end" : 9,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete#5",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 13,
+  "end" : 13,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete#6",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 9,
+  "end" : 9,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete#7",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 9,
+  "end" : 9,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete#8",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 22,
+  "end" : 22,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete#9",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 25,
+  "end" : 25,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.textThatEndsOnAnInfixOperatorIsReportedIncomplete#10",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 30,
+  "end" : 30,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness#1",
+  "kind" : "DECISION",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 12,
+  "end" : 13,
+  "found" : "["
+}, {
+  "id" : "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness#2",
+  "kind" : "DECISION",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 12,
+  "end" : 13,
+  "found" : "["
+}, {
+  "id" : "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness#3",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 21,
+  "end" : 21,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness#4",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 18,
+  "end" : 21,
+  "found" : "And"
+}, {
+  "id" : "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness#5",
+  "kind" : "DECISION",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 12,
+  "end" : 13,
+  "found" : "["
+}, {
+  "id" : "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness#6",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 17,
+  "end" : 18,
+  "found" : "]"
+}, {
+  "id" : "ConditionCompletenessTest.textWithAnUnclosedDelimiterIsNotThisFamilysBusiness#7",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 11,
+  "end" : 12,
+  "found" : "["
+}, {
+  "id" : "ConditionCompletenessTest.theFindingNamesTheMemberThatEndsEarly#1",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 22,
+  "end" : 22,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.theOperatorIsRecognisedInTheModelsOwnConditionLanguage#1",
+  "kind" : "DECISION",
+  "code" : "MVK_INCOMPLETE_INPUT",
+  "start" : 24,
+  "end" : 24,
+  "found" : ""
+}, {
+  "id" : "ConditionCompletenessTest.theOperatorIsRecognisedInTheModelsOwnConditionLanguage#2",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 19,
+  "end" : 22,
+  "found" : "Und"
+}, {
+  "id" : "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral#1",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral#2",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral#3",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 1,
+  "end" : 2,
+  "found" : "["
+}, {
+  "id" : "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral#4",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 13,
+  "end" : 14,
+  "found" : "["
+}, {
+  "id" : "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral#5",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 13,
+  "end" : 14,
+  "found" : "{"
+}, {
+  "id" : "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral#6",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 13,
+  "end" : 16,
+  "found" : "Abs"
+}, {
+  "id" : "ConditionShapeTest.aSignStandsOnlyOnANumberLiteral#7",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 13,
+  "end" : 14,
+  "found" : "-"
+}, {
+  "id" : "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo#1",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo#2",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo#3",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 1,
+  "end" : 2,
+  "found" : "["
+}, {
+  "id" : "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo#4",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo#5",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 13,
+  "end" : 14,
+  "found" : "["
+}, {
+  "id" : "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo#6",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 2,
+  "end" : 3,
+  "found" : "["
+}, {
+  "id" : "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo#7",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.onTheOperationCarrierASignStandsOnlyOnANumberLiteralToo#8",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 9,
+  "end" : 10,
+  "found" : "["
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#1",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 1,
+  "end" : 2,
+  "found" : "@"
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#2",
+  "kind" : "DECISION",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 0,
+  "end" : 13,
+  "found" : "NotAnOperator"
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#3",
+  "kind" : "DECISION",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 0,
+  "end" : 13,
+  "found" : "FeldAngegeben"
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#4",
+  "kind" : "DECISION",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 0,
+  "end" : 4,
+  "found" : "Tier"
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#5",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 17,
+  "end" : 18,
+  "found" : ")"
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#6",
+  "kind" : "DECISION",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 12,
+  "end" : 13,
+  "found" : "["
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#7",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 16,
+  "end" : 17,
+  "found" : "]"
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#8",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 17,
+  "end" : 18,
+  "found" : "]"
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#9",
+  "kind" : "MATCH",
+  "code" : "MVK_EXPECTED_TOKEN_NOT_FOUND",
+  "start" : 16,
+  "end" : 16,
+  "found" : ""
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#10",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#11",
+  "kind" : "CHECK",
+  "code" : "MVK_INVALID_TYPE_FOR_COMPARISON",
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#12",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#13",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#14",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theMeasuredRejectShapesAreRejectedWithTheCodeA12Gives#15",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theRuleContextEntityParsesAsAReferenceInBothLanguages#1",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theRuleContextEntityParsesAsAReferenceInBothLanguages#2",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theRuleContextEntityParsesAsAReferenceInBothLanguages#3",
+  "kind" : "DECISION",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 12,
+  "end" : 15,
+  "found" : "And"
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#1",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#2",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#3",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#4",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#5",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#6",
+  "kind" : "PARSED",
+  "code" : null,
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#7",
+  "kind" : "CHECK",
+  "code" : "MVK_TABLE_ENUM_EXPECTED",
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#8",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 25,
+  "end" : 27,
+  "found" : "To"
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#9",
+  "kind" : "CHECK",
+  "code" : "MVK_TABLE_ENUM_EXPECTED",
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#10",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 25,
+  "end" : 27,
+  "found" : "TO"
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#11",
+  "kind" : "CHECK",
+  "code" : "MVK_TABLE_ENUM_EXPECTED",
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#12",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 25,
+  "end" : 27,
+  "found" : "to"
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#13",
+  "kind" : "CHECK",
+  "code" : "MVK_TABLE_ENUM_EXPECTED",
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#14",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 24,
+  "end" : 26,
+  "found" : "Zu"
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#15",
+  "kind" : "CHECK",
+  "code" : "MVK_TABLE_ENUM_EXPECTED",
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#16",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 24,
+  "end" : 26,
+  "found" : "ZU"
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#17",
+  "kind" : "CHECK",
+  "code" : "MVK_TABLE_ENUM_EXPECTED",
+  "start" : null,
+  "end" : null,
+  "found" : null
+}, {
+  "id" : "ConditionShapeTest.theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther#18",
+  "kind" : "MATCH",
+  "code" : "MVK_UNEXPECTED_TOKEN",
+  "start" : 24,
+  "end" : 26,
+  "found" : "zu"
+} ]

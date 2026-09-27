@@ -679,6 +679,36 @@ kotlin.sourceSets.commonTest.kotlin.srcDir(generatedCorpusDir)
 tasks.named('compileTestKotlinJvm') { dependsOn generateConditionCorpus }
 tasks.named('compileTestKotlinJs') { dependsOn generateConditionCorpus }
 
+// P4 inputs and kernel trace records stay authoritative in adapter test resources; both runtimes replay them.
+def syntaxInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-syntax.json')
+def syntaxVerdicts = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-verdicts.json')
+def computationInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/computation-inputs.json')
+def generatedSyntaxDir = layout.buildDirectory.dir('generated/syntaxFixtures/commonTest/kotlin').get().asFile
+def generatedSyntax = new File(generatedSyntaxDir,
+        'io/github/mbackschat/a12/dm/consistency/SyntaxFixtureData.kt')
+def generateSyntaxFixtures = tasks.register('generateSyntaxFixtures') {
+    inputs.files(syntaxInputs, syntaxVerdicts, computationInputs)
+    outputs.file(generatedSyntax)
+    doLast {
+        def parser = new groovy.json.JsonSlurper()
+        def literal = { value -> groovy.json.JsonOutput.toJson(value).replace('$', '\\$') }
+        def rows = { values -> values.collect { literal(groovy.json.JsonOutput.toJson(it)) }.join(',\n') }
+        generatedSyntax.parentFile.mkdirs()
+        generatedSyntax.text = """package io.github.mbackschat.a12.dm.consistency
+
+internal object SyntaxFixtureData {
+    val inputs = listOf(${rows(parser.parse(syntaxInputs).rows)})
+    val verdicts = listOf(${rows(parser.parse(syntaxVerdicts))})
+    val computations = listOf(${rows(parser.parse(computationInputs))})
+}
+"""
+    }
+}
+kotlin.sourceSets.commonTest.kotlin.srcDir(generatedSyntaxDir)
+tasks.named('compileTestKotlinJvm') { dependsOn generateSyntaxFixtures }
+tasks.named('compileTestKotlinJs') { dependsOn generateSyntaxFixtures }
+
+
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 // The checker names its own build, so a consumer's receipt can cite the artifact it RESOLVED.
 //

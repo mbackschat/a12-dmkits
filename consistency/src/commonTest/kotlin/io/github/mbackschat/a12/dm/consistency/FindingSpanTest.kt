@@ -50,12 +50,12 @@ class FindingSpanTest {
     }
 
     @Test
-    fun halfTypedTextIsLocatedAtTheTokenItRanOutOn() {
+    fun halfTypedTextIsLocatedAtItsEnd() {
         val condition = "FieldFilled(Code) And"
         val finding = single(condition)
 
         assertEquals("MVK_INCOMPLETE_INPUT", finding.code)
-        assertEquals("And", slice(condition, finding))
+        assertEquals(TextSpan("errorCondition", condition.length, condition.length), finding.span)
     }
 
     @Test

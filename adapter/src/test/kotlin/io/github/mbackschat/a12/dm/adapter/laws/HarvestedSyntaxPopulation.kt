@@ -71,6 +71,27 @@ internal object HarvestedSyntaxPopulation {
         }
     }
 
+    /** The seven scanner hosts named in R3a's contract, kept separate from T1's frozen denominator. */
+    fun scannerRows(): List<Row> {
+        val model = DocumentModelDraft.named("policy-scanner-hosts").locale("en_US")
+            .rootGroup("Policy") { p -> p.stringField("Tier") { }.stringField("Plate") { }
+                .group("Garage") { g -> g.stringField("Name") { } }
+                .group("Coverage") { g -> g.stringField("Code") { } }
+                .group("Claims") { g -> g.repeatable(9).numberField("Amount") { n -> n.fractionDigits(2) }
+                    .stringField("Paid") { } } }.build().toJson()
+        val texts = listOf(
+            "Sum(Claims*/Amount Having [Claims/Paid] == \"Y\") > 0",
+            "AllGroupsFilled(Garage @From 2, Coverage)",
+            "AllGroupsFilled(Garage For 2, Coverage)",
+            "AllGroupsFilled(Garage -> Band, Coverage)",
+            "AllFieldsFilled([Tier], Plate)",
+            "AllGroupsFilled(\"Garage\", Coverage)",
+            "AllGroupsFilled(\$Claims, Coverage)",
+        )
+        return texts.mapIndexed { index, text -> Row("scanner#${index + 1}", text,
+            ConditionLanguage.EN, SyntaxEntry.CONDITION, Host(model, "/Policy", "../Tier")) }
+    }
+
     /** The same live source as ConditionCorpus; harvested German texts verify this projection in T1. */
     fun catalogRows(): List<Row> = catalog.flatMap { operator ->
         val fixture = CatalogHosting.fixtureOf(operator)

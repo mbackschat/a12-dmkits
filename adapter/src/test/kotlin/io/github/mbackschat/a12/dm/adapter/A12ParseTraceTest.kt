@@ -11,26 +11,40 @@ import com.mgmtp.a12.kernel.md.model.a12internal.services.ElementContainer
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService
 import io.github.mbackschat.a12.dm.adapter.laws.NearMissPopulation
 import io.github.mbackschat.a12.dm.adapter.laws.NearMissPopulation.Family
+import io.github.mbackschat.a12.dm.adapter.laws.HarvestedSyntaxPopulation
 import io.github.mbackschat.a12.dm.adapter.laws.ledgerClass
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxFailureKind
+import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailure
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.core.Severity
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.antlr.v4.runtime.BaseErrorListener
+import org.antlr.v4.runtime.CharStream
 import org.antlr.v4.runtime.InputMismatchException
 import org.antlr.v4.runtime.Lexer
+import org.antlr.v4.runtime.LexerNoViableAltException
 import org.antlr.v4.runtime.NoViableAltException
 import org.antlr.v4.runtime.Parser
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.atn.DecisionState
+import org.antlr.v4.runtime.misc.Interval
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
+import java.nio.file.Path
+import org.junit.jupiter.api.Assumptions.assumeTrue
+import io.github.mbackschat.a12.dm.adapter.laws.ParserCorpora
+import io.github.mbackschat.a12.dm.consistency.syntax.lexicalFailure
+import com.fasterxml.jackson.databind.ObjectMapper
 
 /**
  * A12's own condition parser, instrumented, on every near-miss condition: plan item R2 of
@@ -54,6 +68,243 @@ import java.io.File
 class A12ParseTraceTest {
 
     private val validator = RuleValidator()
+
+
+    @Test
+    fun theCheckersParserAcceptsTheKernelMmCorpus() {
+        val root = ParserCorpora.kernelMm()
+        assumeTrue(root != null, "a12-kernel-mm not present — skipping checker parser sweep")
+        sweepCorpus("kernel-mm", root!!)
+    }
+
+    @Test
+    fun theCheckersParserAcceptsTheWorkspacesCorpus() {
+        val dir = ParserCorpora.workspaces()
+        assumeTrue(dir != null, "a12.corpus1.dir not set / absent — skipping checker parser sweep")
+        sweepCorpus("workspaces", dir!!)
+    }
+
+    private fun sweepCorpus(label: String, root: Path) {
+        val harvested = ParserCorpora.harvest(root)
+        val unlexable = mutableListOf<String>()
+        val refused = mutableListOf<String>()
+        val unsupported = mutableSetOf<String>()
+        var swept = 0
+        var conditions = 0
+        var operations = 0
+        for ((text, code) in harvested.conditions) {
+            val language = ConditionLanguage.of(code)
+            if (language == null) {
+                unsupported += code
+                continue
+            }
+            if (lexicalFailure(text) != null) {
+                unlexable += text
+                continue
+            }
+            swept++; conditions++
+            shapeFailure(text, language, SyntaxEntry.CONDITION)?.let {
+                refused += "[$code] at ${it.at} found '${it.found}' in: $text"
+            }
+        }
+        for ((text, code) in harvested.operations) {
+            val language = ConditionLanguage.of(code)
+            if (language == null) {
+                unsupported += code
+                continue
+            }
+            if (lexicalFailure(text) != null) {
+                unlexable += text
+                continue
+            }
+            swept++; operations++
+            shapeFailure(text, language, SyntaxEntry.OPERATION)?.let {
+                refused += "[$code] at ${it.at} found '${it.found}' in: $text"
+            }
+        }
+        println(
+            "[checker-parser-sweep] $label: ${harvested.conditions.size} conditions + " +
+                "${harvested.operations.size} operations, $swept parsed, ${refused.size} refused, " +
+                "${unlexable.size} unlexable",
+        )
+        // A corpus that yielded nothing would make the sweep pass while measuring nothing, and an empty
+        // directory looks exactly like a corpus that parses perfectly. `swept` rather than the harvest size
+        // is what carries that, because every exclusion below it also drains the population silently.
+        assertTrue(conditions > 0 && operations > 0) { "$label put no text through the parser at all — the sweep would pass vacuously" }
+        // A12 supports exactly two condition languages and refuses a model declaring a third, so a code the
+        // checker does not know is a harvest defect — and dropping its text would shrink the sweep invisibly.
+        assertTrue(unsupported.isEmpty()) {
+            "$label declares condition language(s) the checker does not know: $unsupported"
+        }
+        assertTrue(refused.isEmpty()) {
+            "$label: the checker's parser refused ${refused.size} text(s) the Kernel stores, which is an " +
+                "OVER-REJECTION — widen the parser, never the expectation:\n" +
+                refused.take(20).joinToString("\n") { "  $it" }
+        }
+        assertTrue(unlexable.isEmpty()) {
+            "$label: ${unlexable.size} stored text(s) the checker's LEXER refuses, which it must not — this " +
+                "is a tokenizer defect, not a parser one:\n" +
+                unlexable.take(20).joinToString("\n") { "  ${it.take(200)}" }
+        }
+    }
+
+
+
+    @Test
+    fun scannerHostsExposeWhichCallsCanComplete() {
+        val rows = HarvestedSyntaxPopulation.scannerRows()
+        assertEquals(7, rows.size)
+        val observations = rows.map { row ->
+            val service = mvkService(row.model())
+            val rule = (service.iec as ElementContainer).allRules.single()
+            val measured = trace(service, rule, row.text)
+            if (measured.failure?.kind != Kind.CHECK) assertPortable(row.text, measured)
+            "${row.id}\t${measured.failure?.kind ?: "PARSED"}\t${measured.code}\t${measured.failure?.location}"
+        }.joinToString("\n", postfix = "\n")
+        File("build/parse-trace/scanner-hosts.tsv").apply { parentFile.mkdirs(); writeText(observations) }
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/scanner-trace.tsv")).readText(), observations)
+    }
+
+    @Test
+    fun harvestedEntriesMatchTheKernelTraceRecord() {
+        val rows = HarvestedSyntaxPopulation.fixedRows()
+        assertEquals(77, rows.size)
+        assertEquals(8, rows.count { it.entry == SyntaxEntry.OPERATION })
+        val differences = mutableListOf<String>()
+        val observed = rows.map { row ->
+            val service = mvkService(row.model())
+            val rule = (service.iec as ElementContainer).allRules.single()
+            val kernel = trace(service, rule, row.text, row.entry)
+            val kind = when (kernel.failure?.kind) {
+                Kind.MISMATCH -> "MATCH"
+                Kind.NO_VIABLE -> "DECISION"
+                Kind.LEXICAL -> "LEXICAL"
+                Kind.CHECK -> "CHECK"
+                null -> "PARSED"
+                else -> error("uncontracted failure: $kernel")
+            }
+            if (kind != "CHECK") {
+                val portable = shapeFailure(row.text, row.language, row.entry)
+                val actual = listOf(portable?.kind?.name ?: "PARSED", portable?.code,
+                    portable?.let { Location(it.at, it.end, it.found) })
+                val expected = listOf(kind, kernel.code, kernel.failure?.location)
+                if (actual != expected) differences += "${row.id}: $expected vs $actual"
+            }
+            mapOf("id" to row.id, "kind" to kind, "code" to kernel.code,
+                "start" to kernel.failure?.location?.start, "end" to kernel.failure?.location?.end,
+                "found" to kernel.failure?.location?.text)
+        }
+        val mapper = ObjectMapper()
+        val actual = File("build/parse-trace/harvested-verdicts.json").apply { parentFile.mkdirs() }
+        mapper.writerWithDefaultPrettyPrinter().writeValue(actual, observed)
+        assertEquals(emptyList<String>(), differences)
+        val expected = checkNotNull(javaClass.getResource("/checker-near-miss/harvested-verdicts.json"))
+        assertEquals(mapper.readTree(expected.readText()), mapper.readTree(actual), "the kernel record changed")
+    }
+
+    @Test
+    fun computationsAreRecognizedInTheirActualJoinedText() {
+        val model = DocumentModelDraft.named("order-computation-syntax").locale("en_US")
+            .rootGroup("Order") { o -> o.stringField("Tier") { }
+                .group("Billing") { b -> b.numberField("Total") { n -> n.fractionDigits(2) } } }.build().toJson()
+        val guard = "FieldFilled(../Tier)"
+        val rows = listOf(
+            Triple(null, listOf(null to "42.00"), null),
+            Triple(null, listOf(guard to "42.00 +"), "MVK_INCOMPLETE_INPUT"),
+            Triple(null, listOf(guard to "42.00 +", guard to "42.00"), "MVK_UNEXPECTED_TOKEN"),
+            Triple(null, listOf("FieldFilled(../Tier" to "42.00"), "MVK_EXPECTED_TOKEN_NOT_FOUND"),
+            Triple(null, listOf("$guard And" to "42.00"), "MVK_UNEXPECTED_TOKEN"),
+            Triple("$guard And", listOf(null to "42.00"), "MVK_UNEXPECTED_TOKEN"),
+            Triple("", listOf(null to "42.00"), "MVK_UNEXPECTED_TOKEN"),
+            Triple(null, listOf("$guard ;;note" to "42.00"), null),
+            Triple(null, listOf(guard to ""), "MVK_INCOMPLETE_INPUT"),
+        )
+        val captured = rows.mapIndexed { index, (common, alternatives, expected) ->
+            val draft = DraftComputation("/Order/Billing", "SyntaxProbe", "../Total", common,
+                alternatives.map { (precondition, operation) -> DraftComputation.Alternative(precondition, operation) })
+            val service = mvkService(validator.inject(model, draft))
+            val rule = (service.iec as ElementContainer).allRules.single()
+            val joined = rule.errorConditionText
+            val measured = trace(service, rule, joined)
+            assertEquals(expected, measured.code, "row $index: $joined")
+            val portable = shapeFailure(joined, ConditionLanguage.EN, SyntaxEntry.CONDITION)
+            assertEquals(expected, portable?.code, "row $index: $joined")
+            assertEquals(measured.failure?.location, portable?.let { Location(it.at, it.end, it.found) }, "row $index")
+            mapOf("common" to common, "alternatives" to alternatives.map { (pre, op) ->
+                mapOf("precondition" to pre, "operation" to op) }, "joined" to joined)
+        }
+        val mapper = ObjectMapper()
+        val actual = File("build/parse-trace/computation-inputs.json").apply { parentFile.mkdirs() }
+        mapper.writerWithDefaultPrettyPrinter().writeValue(actual, captured)
+        val expected = checkNotNull(javaClass.getResource("/checker-near-miss/computation-inputs.json")).readText()
+        assertEquals(mapper.readTree(expected), mapper.readTree(actual))
+    }
+
+    @Test
+    fun portableVerdictsMatchEveryUncensoredTrace() {
+        val differences = mutableListOf<String>()
+        var compared = 0
+        var censored = 0
+        for (seed in NearMissPopulation.seeds()) {
+            if (a12Classes(seed.host, seed.rule).isNotEmpty()) continue
+            val service = mvkService(validator.inject(seed.host, seed.rule))
+            val probe = (service.iec as ElementContainer).allRules
+                .single { it.fullName.endsWith("/${NearMissPopulation.PROBE}") }
+            for (edit in NearMissPopulation.edits(seed)) {
+                if (edit.family == Family.MESSAGE) continue
+                val text = edit.rule.errorCondition()
+                val kernel = trace(service, probe, text)
+                if (kernel.failure?.kind == Kind.CHECK) { censored++; continue }
+                compared++
+                val portable = shapeFailure(text, ConditionLanguage.EN, SyntaxEntry.CONDITION)
+                val expectedKind = when (kernel.failure?.kind) {
+                    Kind.MISMATCH -> SyntaxFailureKind.MATCH
+                    Kind.NO_VIABLE -> SyntaxFailureKind.DECISION
+                    Kind.LEXICAL -> SyntaxFailureKind.LEXICAL
+                    null -> null
+                    else -> error("uncontracted trace: $kernel")
+                }
+                val expected = listOf(expectedKind, kernel.code, kernel.failure?.location)
+                val actual = listOf(portable?.kind, portable?.code,
+                    portable?.let { Location(it.at, it.end, it.found) })
+                if (expected != actual) differences +=
+                    "${text.replace("\n", "\\n")}\t$expected\t$actual\t${kernel.failure?.site()}"
+            }
+        }
+        val report = File("build/parse-trace/syntax.tsv").apply { parentFile.mkdirs() }
+        report.writeText(differences.joinToString("\n"))
+        assertEquals(9063, compared + censored)
+        assertTrue(compared > 1000)
+        assertTrue(censored > 100)
+        assertEquals(emptyList<String>(), differences.take(20), "${differences.size} differences in ${report.path}")
+    }
+
+    @Test
+    fun tracedPositionsUseUtf16OffsetsAndPreserveOffendingText() {
+        val model = DocumentModelDraft.named("order-trace-positions").locale("en_US")
+            .rootGroup("Order") { it.numberField("Total") { n -> n.fractionDigits(2) } }.build().toJson()
+        val draft = DraftRule.builder().groupPath("/Order").name(NearMissPopulation.PROBE)
+            .errorEntityRelPath("../Total").errorCondition("FieldFilled(Total)")
+            .errorCode(NearMissPopulation.PROBE_CODE).severity("ERROR").build()
+        val service = mvkService(validator.inject(model, draft))
+        val rule = (service.iec as ElementContainer).allRules.single()
+        for (prefix in listOf("", "\r\n", ";;😀\r\n")) {
+            assertEquals(null, trace(service, rule, prefix + "FieldFilled(Total)").code)
+            for ((body, kind) in listOf("FieldFilled" to Kind.MISMATCH,
+                    "FieldFilled(Total]" to Kind.MISMATCH, "[Total] > ٢" to Kind.LEXICAL)) {
+                val text = prefix + body
+                val expectedText = when (body) {
+                    "FieldFilled" -> ""
+                    "FieldFilled(Total]" -> "]"
+                    else -> "٢"
+                }
+                val start = text.length - expectedText.length
+                val actual = trace(service, rule, text)
+                assertEquals(kind, actual.failure?.kind, text)
+                assertEquals(Location(start, text.length, expectedText), actual.failure?.location, text)
+            }
+        }
+    }
 
     @Test
     fun everyParseFailureHasTheShapeTheModelPredicts() {
@@ -116,9 +367,24 @@ class A12ParseTraceTest {
             .single { it.fullName.endsWith("/${NearMissPopulation.PROBE}") }
         val observed = PREDICTED_ROWS.map { (condition, _) ->
             val trace = trace(service, rule, condition)
+            if (trace.failure?.kind != Kind.CHECK) assertPortable(condition, trace)
             condition to (trace.failure?.let { "${it.site()} ${trace.code}" } ?: "PARSED")
         }
         assertEquals(PREDICTED_ROWS, observed)
+    }
+
+    private fun assertPortable(text: String, measured: Trace) {
+        val failure = shapeFailure(text, ConditionLanguage.EN, SyntaxEntry.CONDITION)
+        val kind = when (measured.failure?.kind) {
+            Kind.MISMATCH -> SyntaxFailureKind.MATCH
+            Kind.NO_VIABLE -> SyntaxFailureKind.DECISION
+            Kind.LEXICAL -> SyntaxFailureKind.LEXICAL
+            null -> null
+            else -> error("censored or uncontracted trace: $measured")
+        }
+        assertEquals(kind, failure?.kind, text)
+        assertEquals(measured.code, failure?.code, text)
+        assertEquals(measured.failure?.location, failure?.let { Location(it.at, it.end, it.found) }, text)
     }
 
     /** A12's classes for the host with [rule] injected: its ERROR findings, as the near-miss sweep reads them. */
@@ -134,17 +400,27 @@ class A12ParseTraceTest {
     }
 
     /** One parse of [condition] in [rule]'s context, with the failure recorded as A12's parser met it. */
-    private fun trace(service: IMVK_Service, rule: IRule, condition: String): Trace {
+    private fun trace(service: IMVK_Service, rule: IRule, condition: String,
+        entry: SyntaxEntry = SyntaxEntry.CONDITION): Trace {
         val problems = mutableListOf<String>()
         var recorder: Recorder? = null
-        var lexical: String? = null
-        ParserService(service).checkSnippet(rule, condition, { it.bedingung_start() },
+        var lexical: Location? = null
+        ParserService(service).checkSnippet(rule, condition, {
+            when (entry) {
+                SyntaxEntry.CONDITION -> it.bedingung_start()
+                SyntaxEntry.OPERATION -> it.operationSnippet()
+            }
+        },
             { problems += (it as? Throwable)?.message ?: it.toString() }) { parser ->
             recorder = Recorder(rule, parser).also { parser.errorHandler = it }
             (parser.tokenStream.tokenSource as Lexer).addErrorListener(object : BaseErrorListener() {
                 override fun syntaxError(r: Recognizer<*, *>?, symbol: Any?, line: Int, column: Int, msg: String?,
                         e: RecognitionException?) {
-                    if (lexical == null) lexical = "column $column"
+                    if (lexical == null) {
+                        val lexer = r as Lexer
+                        val start = (e as LexerNoViableAltException).startIndex
+                        lexical = location(lexer.inputStream, start, lexer.inputStream.index() + 1)
+                    }
                 }
             })
         }
@@ -152,7 +428,7 @@ class A12ParseTraceTest {
         val failure = recorder?.failure
         return when {
             code == null -> Trace(null, null)
-            lexical != null -> Trace(code, Failure(Kind.LEXICAL, "-", -1, "-", 0, false))
+            lexical != null -> Trace(code, Failure(Kind.LEXICAL, "-", -1, "-", 0, false, lexical))
             failure != null -> Trace(code, failure)
             else -> Trace(code, Failure(Kind.CHECK, code, -1, "-", 0, false))
         }
@@ -176,7 +452,7 @@ class A12ParseTraceTest {
      * start the offending token lies ([depth]).
      */
     data class Failure(val kind: Kind, val rule: String, val decision: Int, val offending: String, val depth: Int,
-            val atEnd: Boolean) {
+            val atEnd: Boolean, val location: Location? = null) {
         fun signature() = "$kind\t$rule\t${if (decision < 0) "-" else "dec $decision"}\t$offending\t" +
             (if (kind == Kind.NO_VIABLE) "depth $depth" else "-")
 
@@ -193,12 +469,14 @@ class A12ParseTraceTest {
                 val rule = e.ctx?.let { parser.ruleNames[it.ruleIndex] } ?: "?"
                 val type = if (offending.type == Token.EOF) "EOF" else parser.vocabulary.getSymbolicName(offending.type)
                     ?: parser.vocabulary.getLiteralName(offending.type) ?: offending.type.toString()
+                val position = location(offending.inputStream, offending.startIndex,
+                    if (offending.type == Token.EOF) offending.startIndex else offending.stopIndex + 1)
                 return when (e) {
                     is NoViableAltException -> Failure(Kind.NO_VIABLE, rule,
                         (parser.atn.states[e.offendingState] as? DecisionState)?.decision ?: -1, type,
-                        offending.tokenIndex - e.startToken.tokenIndex, offending.type == Token.EOF)
-                    is InputMismatchException -> Failure(Kind.MISMATCH, rule, -1, type, 0, offending.type == Token.EOF)
-                    else -> Failure(Kind.OTHER, rule, -1, type, 0, offending.type == Token.EOF)
+                        offending.tokenIndex - e.startToken.tokenIndex, offending.type == Token.EOF, position)
+                    is InputMismatchException -> Failure(Kind.MISMATCH, rule, -1, type, 0, offending.type == Token.EOF, position)
+                    else -> Failure(Kind.OTHER, rule, -1, type, 0, offending.type == Token.EOF, position)
                 }
             }
         }
@@ -206,6 +484,8 @@ class A12ParseTraceTest {
 
     /** The code A12 reported for one parse ([code], null when it parsed), and how the parse failed. */
     data class Trace(val code: String?, val failure: Failure?)
+
+    data class Location(val start: Int, val end: Int, val text: String)
 
     /** Every traced condition, filed by signature, with the defects found against production and the model. */
     private class Tally {
@@ -251,6 +531,14 @@ class A12ParseTraceTest {
     }
 
     private companion object {
+        // The stream owns its index units; measuring its prefix avoids assuming UTF-16 or code-point indices.
+        fun location(stream: CharStream, from: Int, until: Int): Location {
+            val start = from.coerceIn(0, stream.size())
+            val end = until.coerceIn(start, stream.size())
+            fun prefixLength(index: Int) = if (index == 0) 0 else stream.getText(Interval(0, index - 1)).length
+            return Location(prefixLength(start), prefixLength(end),
+                if (start == end) "" else stream.getText(Interval(start, end - 1)))
+        }
         val REPORT = File("build/parse-trace/report.tsv")
 
         private const val AFTER = "FieldFilled(Total) And "

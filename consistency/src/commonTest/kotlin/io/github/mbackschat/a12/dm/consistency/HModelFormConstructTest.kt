@@ -120,10 +120,8 @@ class HModelFormConstructTest {
         expected["Oder VordruckAngegeben(Bestellung)"] = listOf("MVK_UNEXPECTED_TOKEN")
         // Where no condition opens, the parser refuses the keyword itself.
         expected["FeldAngegeben(Kennzeichen) VordruckAngegeben(Bestellung)"] = listOf("MVK_UNEXPECTED_TOKEN")
-        // Divergence, asserted rather than hidden: this checker's grammar reads a nested call as the field
-        // operand, where A12's refuses the keyword there (KERNEL-FINDINGS KF467, the operator's own argument
-        // shape left to the Kernel). Silent, rather than naming the construct's class A12 does not draw.
-        expected["FeldAngegeben(VordruckAngegeben(Bestellung))"] = emptyList()
+        // KF467 refuses the keyword in an entity slot before the form construct's action is reached.
+        expected["FeldAngegeben(VordruckAngegeben(Bestellung))"] = listOf("MVK_UNEXPECTED_TOKEN")
         expected["AktuelleVordruckNummer(Kennzeichen) > 0"] = listOf("MVK_UNEXPECTED_TOKEN")
         expected["MaximalAngegebenerZeilenindex(Kennzeichen) > 0"] = listOf("MVK_UNEXPECTED_TOKEN")
         assertEquals(expected, actual, "where a form construct's class stands in a German A12 model")

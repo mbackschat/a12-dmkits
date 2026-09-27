@@ -63,18 +63,21 @@ class ConditionCallTest {
      */
     @Test
     fun anArgumentThatIsNotABareEntitySpecHasNoPath() {
+        fun reduced(vararg operands: String) = operands.map {
+            operandOf(tokenize(it), ConditionLanguage.EN, it).path
+        }
         val actual = mutableMapOf<String, List<String?>>()
         actual["a filtered reference (`Having`)"] =
             calls("Sum(Claims*/Amount Having [Claims/Paid] == \"Y\") > 0").single().operands.map { it.path }
         actual["a scoped reference (`@From`)"] =
-            calls("AllGroupsFilled(Garage @From 2, Coverage)").single().operands.map { it.path }
+            reduced("Garage @From 2", "Coverage")
         actual["a clause keyword that is a BARE NAME (`For`)"] =
             calls("AllGroupsFilled(Garage For 2, Coverage)").single().operands.map { it.path }
         actual["a category selector (`->`)"] =
             calls("AllGroupsFilled(Garage -> Band, Coverage)").single().operands.map { it.path }
         actual["a bracketed field value"] =
-            calls("AllFieldsFilled([Tier], Plate)").single().operands.map { it.path }
-        actual["a literal"] = calls("AllGroupsFilled(\"Garage\", Coverage)").single().operands.map { it.path }
+            reduced("[Tier]", "Plate")
+        actual["a literal"] = reduced("\"Garage\"", "Coverage")
         actual["an outer-repetition marker (`\$`)"] =
             calls("AllGroupsFilled(\$Claims, Coverage)").single().operands.map { it.path }
 

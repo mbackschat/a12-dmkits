@@ -105,6 +105,10 @@ class SurvivingDataNotInBuildGuardTest {
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "P4 live clusters, source-row examples and regenerated input enumeration; the committed "
                                     + "harvested-syntax.json owns fixed inputs and harvested.tsv owns the baseline")),
+            Map.entry("build/checker-harvest/scanner.tsv",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "regenerated scanner-host class comparisons; checker-near-miss/scanner.tsv in test "
+                                    + "resources owns the persistent comparison record")),
             Map.entry("build/checker-variants",
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "the variant population's live clusters and witness labels, regenerated on every run; "
@@ -115,6 +119,22 @@ class SurvivingDataNotInBuildGuardTest {
                             "A12's parse-failure signatures over the near-miss population, rewritten on every run "
                                     + "from inputs the population regenerates deterministically; the model's claims "
                                     + "are asserted in the test and its measurements are in KERNEL-FINDINGS")),
+            Map.entry("build/parse-trace/scanner-hosts.tsv",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "regenerated scanner-host trace; checker-near-miss/scanner-trace.tsv in test "
+                                    + "resources owns the persistent comparison record")),
+            Map.entry("build/parse-trace/harvested-verdicts.json",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "fresh kernel verdicts compared with committed checker-near-miss/harvested-verdicts.json; "
+                                    + "the preserved input resource regenerates them on every run")),
+            Map.entry("build/parse-trace/computation-inputs.json",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "fresh kernel computation joins compared with committed checker-near-miss/computation-inputs.json; "
+                                    + "the test regenerates the typed fixtures on every run")),
+            Map.entry("build/parse-trace/syntax.tsv",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "current portable-versus-kernel syntax differences, regenerated from the deterministic "
+                                    + "population; the test requires this diagnostic list to be empty")),
             Map.entry("build/rp-large.dm.json",
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "a generated fixture for a manual before/after CLI comparison under -Drp.perf=true; "

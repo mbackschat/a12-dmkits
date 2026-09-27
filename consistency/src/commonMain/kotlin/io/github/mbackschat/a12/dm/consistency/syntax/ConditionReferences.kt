@@ -53,6 +53,7 @@ private fun scanOf(text: String, language: ConditionLanguage) = ReferenceScan(
     CONDITION_KEYWORDS.getValue(language),
     CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION],
     CONDITION_OPERATOR_KEYWORDS.getValue(language)[SEMANTIC_INDEX],
+    ConditionRecognizer(text, language).recognize(SyntaxEntry.CONDITION).completedSteps,
 )
 
 /**
@@ -88,6 +89,7 @@ internal fun semanticIndexKeysIn(text: String, language: ConditionLanguage, keyw
         CONDITION_KEYWORDS.getValue(language),
         CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION],
         keyword,
+        ConditionRecognizer(text, language).recognize(SyntaxEntry.CONDITION).completedSteps,
     ).semanticIndexKeys()
 
 /**
@@ -160,9 +162,6 @@ private const val OUTER_MARKER_TOKEN = "$"
 
 private const val WILDCARD_TOKEN = "*"
 
-/** The separators an open path can stop after, which are no part of what it had read. */
-private val DANGLING_SEPARATORS = setOf("/", ".")
-
 /**
  * The path written by the run of tokens beginning at [from], with the offset just past it, or null where none
  * begins there.
@@ -204,6 +203,7 @@ private class ReferenceScan(
     private val keywords: Map<String, KeywordKind>,
     private val customCondition: String?,
     private val semanticIndex: String? = null,
+    private val completedSteps: Map<Int, Int> = emptyMap(),
 ) {
 
     private var at = 0
@@ -375,16 +375,20 @@ private class ReferenceScan(
      * opens with an up-run, or carries a star is walked instead: A12 checks each step as that step's production
      * completes, so the part read before the failure is recorded, and `Items* / NoSuch /` draws
      * `MVK_INVALID_ENTITY` for `NoSuch` ([KERNEL-FINDINGS KF491], `rulekit.validate.laws.EntityProductionCloseLawsTest`).
-     * A step the parser stopped inside, `NoSuch` in `Items* / NoSuch.`, is recorded as well, although A12 never
-     * checks it: the sweep ledger's token-against-entity cluster.
+     * The recognizer supplies completed step ends; a name followed by an unfinished dot has not completed
+     * its step (KF491's `NoSuch.` discriminator).
      */
     private fun readReference() {
         val begin = at
         val run = entityRunAt(tokens, begin, ::startsSegment)
         val end = when {
             run.closes -> run.end
-            walksAsItReads(begin, run.end) -> readPrefixEnd(begin, run.end)
-            else -> begin
+            else -> {
+                val start = if (tokens.getOrNull(begin - 1)?.text == OUTER_MARKER_TOKEN) tokens[begin - 1].start
+                    else tokens[begin].start
+                val boundary = completedSteps[start] ?: tokens[begin].start
+                (begin until run.end).lastOrNull { tokens[it].end <= boundary }?.plus(1) ?: begin
+            }
         }
         val path = tokens.subList(begin, end)
         if (path.namesAnEntity()) {
@@ -393,18 +397,6 @@ private class ReferenceScan(
         }
         // Even a run that named nothing consumed its first token, so the scan always advances.
         at = maxOf(run.end, begin + 1)
-    }
-
-    /** Whether A12 walks the path at [begin], checking each step as it completes: `$`-marked, up-run-led or starred. */
-    private fun walksAsItReads(begin: Int, end: Int): Boolean =
-        tokens.getOrNull(begin - 1)?.text == OUTER_MARKER_TOKEN || tokens[begin].text == UP_STEP ||
-            tokens.subList(begin, end).any { it.text == WILDCARD_TOKEN }
-
-    /** The end of what an open path had read: its tokens up to [end], without the separator it stopped after. */
-    private fun readPrefixEnd(begin: Int, end: Int): Int {
-        var prefix = end
-        while (prefix > begin && tokens[prefix - 1].text in DANGLING_SEPARATORS) prefix--
-        return prefix
     }
 
     /** A segment is a quoted name, a digit sequence, or a name the lexer does not resolve as a keyword. */

@@ -84,6 +84,21 @@ class CheckerNearMissSweepTest {
     }
 
     @Test
+    fun scannerHostsHaveOnlyLedgeredDifferences() {
+        val rows = HarvestedSyntaxPopulation.scannerRows()
+        assertEquals(7, rows.size)
+        rows.map { it.host.json }.distinct().forEach { assertEquals(emptySet<String>(), kernelModelClasses(it)) }
+        val observations = rows.map { row ->
+            val model = row.model()
+            val a12 = kernelModelClasses(model)
+            val ours = check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            "${row.id}\t${checkerVerdict(a12, ours) ?: "AGREE"}\t${a12.column()}\t${ours.column()}"
+        }.joinToString("\n", postfix = "\n")
+        File("build/checker-harvest/scanner.tsv").apply { parentFile.mkdirs(); writeText(observations) }
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/scanner.tsv")).readText(), observations)
+    }
+
+    @Test
     fun harvestedSyntaxFixturesHaveOnlyLedgeredDifferences() {
         val fixed = HarvestedSyntaxPopulation.fixedRows()
         val catalog = HarvestedSyntaxPopulation.catalogRows()

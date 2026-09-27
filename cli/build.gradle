@@ -597,6 +597,8 @@ tasks.register('semanticsMapGuardTest', Test) {
             'validate/laws lock tree' : rootProject.fileTree('src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws'),
             'adapter/laws (java)'     : rootProject.fileTree('adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws'),
             'adapter/laws (kotlin)'   : rootProject.fileTree('adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws'),
+            'checker syntax verdict lock': rootProject.file('consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/SyntaxVerdictTest.kt'),
+            'checker syntax trace lock': rootProject.file('adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/A12ParseTraceTest.kt'),
             'adapter preparation locks': rootProject.fileTree(
                     'adapter/src/test/java/io/github/mbackschat/a12/dm/adapter') {
                 include '**/Workspace*Test.java'

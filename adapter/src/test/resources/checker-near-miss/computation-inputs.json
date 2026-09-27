@@ -1,0 +1,67 @@
+[ {
+  "common" : null,
+  "alternatives" : [ {
+    "precondition" : null,
+    "operation" : "42.00"
+  } ],
+  "joined" : "FieldFilled(Total) And [Total] != 42.00"
+}, {
+  "common" : null,
+  "alternatives" : [ {
+    "precondition" : "FieldFilled(../Tier)",
+    "operation" : "42.00 +"
+  } ],
+  "joined" : "FieldFilled(Total) And (FieldFilled(../Tier)\n) And [Total] != 42.00 +"
+}, {
+  "common" : null,
+  "alternatives" : [ {
+    "precondition" : "FieldFilled(../Tier)",
+    "operation" : "42.00 +"
+  }, {
+    "precondition" : "FieldFilled(../Tier)",
+    "operation" : "42.00"
+  } ],
+  "joined" : "FieldFilled(Total) And (\n((FieldFilled(../Tier)\n) And [Total] != 42.00 +\n) Or\n((FieldFilled(../Tier)\n) And [Total] != 42.00\n)\n)"
+}, {
+  "common" : null,
+  "alternatives" : [ {
+    "precondition" : "FieldFilled(../Tier",
+    "operation" : "42.00"
+  } ],
+  "joined" : "FieldFilled(Total) And (FieldFilled(../Tier\n) And [Total] != 42.00"
+}, {
+  "common" : null,
+  "alternatives" : [ {
+    "precondition" : "FieldFilled(../Tier) And",
+    "operation" : "42.00"
+  } ],
+  "joined" : "FieldFilled(Total) And (FieldFilled(../Tier) And\n) And [Total] != 42.00"
+}, {
+  "common" : "FieldFilled(../Tier) And",
+  "alternatives" : [ {
+    "precondition" : null,
+    "operation" : "42.00"
+  } ],
+  "joined" : "FieldFilled(Total) And (FieldFilled(../Tier) And\n) And [Total] != 42.00"
+}, {
+  "common" : "",
+  "alternatives" : [ {
+    "precondition" : null,
+    "operation" : "42.00"
+  } ],
+  "joined" : "FieldFilled(Total) And (\n) And [Total] != 42.00"
+}, {
+  "common" : null,
+  "alternatives" : [ {
+    "precondition" : "FieldFilled(../Tier) ;;note",
+    "operation" : "42.00"
+  } ],
+  "joined" : "FieldFilled(Total) And (FieldFilled(../Tier) ;;note\n) And [Total] != 42.00"
+}, {
+  "common" : null,
+  "alternatives" : [ {
+    "precondition" : "FieldFilled(../Tier)",
+    "operation" : ""
+  } ],
+  "joined" : "FieldFilled(Total) And (FieldFilled(../Tier)\n) And [Total] != "
+} ]
