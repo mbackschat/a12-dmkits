@@ -38,7 +38,7 @@ internal fun TrackedFactBase.suppressedWarningFindings(): List<Finding> =
 
 /**
  * The single code A12's `@SuppressWarning` pragma accepts — the static scale gate on `==` / `!=` between two
- * numbers, which [numberComparisonScaleFindings] reports and which this family compares an authored code
+ * numbers, which [OperationAnalysis] reports and which this family compares an authored code
  * against.
  */
 internal const val SUPPRESSIBLE = "MVK_INVALID_COMPARE_DEC_PLACES"

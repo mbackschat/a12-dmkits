@@ -35,7 +35,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * because the walk runs ahead of the type-matching gate rather than inside it.
  *
  * **The extrema's LEADER decides which arm judges the list**, which is why they carry two classes rather
- * than one: a temporal leader hands the list to [temporalAggregateOperandFindings] and its component-set
+ * than one: a temporal leader hands the list to [OperationAnalysis] and its component-set
  * comparison, and everything else takes the flat numeric question here. A leader whose declared type this
  * reader cannot place leaves the call unjudged rather than guessing the arm.
  *
@@ -216,7 +216,7 @@ private fun matchedTypeOf(field: TrackedDeclaration): MatchedType? = when (field
  * The `NumberOfDifferentValues` arm, which is itself a switch on the LEADER's declared type.
  *
  * Four leaders, four outcomes, and the two this reader answers walk the rest of the list with the leader's
- * own predicate. A temporal leader hands the list to [temporalAggregateOperandFindings]; a leader whose
+ * own predicate. A temporal leader hands the list to [OperationAnalysis]; a leader whose
  * effective type this reader does not resolve leaves the call unjudged rather than guessing the arm.
  *
  * **The value-validation gate runs over the WHOLE list after the kind walk**, not interleaved with it, so a

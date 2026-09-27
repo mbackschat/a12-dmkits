@@ -7729,7 +7729,7 @@ The rest of the grid re-states the core on one carrier: identity labels are text
 
 Reported by the portable checker (`CheckFamily.ENUM_DISPLAY_COMPARABILITY`), whose silences are A12's own exits: a category access, an operand that is not one bare field, and a table-backed enumeration.
 
-*Locked by:* `rulekit.validate.laws.EnumDisplayComparabilityLawsTest` (with `EnumComparabilityLawsTest` for the core), mirrored by `consistency.EnumDisplayComparabilityTest`.
+*Locked by:* `rulekit.validate.laws.EnumDisplayComparabilityLawsTest` (with `EnumComparabilityLawsTest` for the core), portable assertions preserved by `consistency.OperationContractTest`.
 
 ## §8 supplement — an ELEMENT's display label owes no locale at all (measured, 2026-09-14) <a id="kf406"></a>
 
@@ -8046,9 +8046,9 @@ Reported by the portable checker (`CheckFamily.VALUE_LIST_CONDITION_GATES`, rena
 
 **An inner operation's RESULT type is what the outer operator judges**, which is the only way the two classes meet on one expression: a concatenation subtracted from is the number class, and a product added to a text is the addition class.
 
-Reported by the portable checker (`CheckFamily.ARITHMETIC_OPERATION_GATES`), silent on a written-out text, a call, a comma-separated argument list, a category access, and a typedef or unspecified declaration.
+Reported by the portable checker (`CheckFamily.ARITHMETIC_OPERATION_GATES`) from recognized child results; unsupported operation results, category accesses, typedefs and unspecified declarations remain unjudged.
 
-*Locked by:* `rulekit.validate.laws.ArithmeticOperandKindLawsTest`, mirrored by `consistency.ArithmeticOperationGatesTest`.
+*Locked by:* `rulekit.validate.laws.ArithmeticOperandKindLawsTest`, portable assertions preserved by `consistency.OperationContractTest`.
 
 ## §11 supplement — the four single-field value operators share ONE head and then demand four different things, two of them the opposite of their names (source-verified + measured, 2026-09-14) <a id="kf395"></a>
 
@@ -8259,7 +8259,7 @@ So duplicates, the root-group gate ([KF388](#kf388)) and the param law come firs
 
 The controls are admitted: `Sum(Grading)` and `Sum(NumNested, Weight)` over numbers, the second nested, `NumberOfDifferentValues(Grading, Weight)`, and `MaxValue(Dated*, Released)` over dates at one format. **For rulekit**, `BoundModel`'s factories ask the kind gates over `BoundModel.expansionOf` and cite these classes, while the records leave a group to the kernel.
 
-*Locked by:* `rulekit.validate.laws.DateAggregateBaseTypeGateLawsTest` (the walk's three questions and the position pair), mirrored by `consistency.TemporalAggregateOperandsTest`; the "Extended 2026-09-23" rows by `rulekit.validate.laws.EntityListLeaderRouteLawsTest`; the "Extended 2026-09-26" rows by `rulekit.validate.laws.EntityListGroupExpansionKindLawsTest`.
+*Locked by:* `rulekit.validate.laws.DateAggregateBaseTypeGateLawsTest` (the walk's three questions and the position pair), portable assertions preserved by `consistency.OperationContractTest`; the "Extended 2026-09-23" rows by `rulekit.validate.laws.EntityListLeaderRouteLawsTest`; the "Extended 2026-09-26" rows by `rulekit.validate.laws.EntityListGroupExpansionKindLawsTest`.
 
 ## §9 supplement — an entity list's DUPLICATE and ROOT-GROUP gates are the CALLER's, not the list's (source-verified + measured, 2026-09-14) <a id="kf388"></a>
 
@@ -8299,7 +8299,7 @@ Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the ca
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
 
-`CheckVergleichsBedingungImpl.checkPatternOp` returns before every type-agreement arm and asks four questions of its own. Locked: `rulekit.validate.laws.PatternComparisonOperandLawsTest` (19 rows), mirrored by `consistency.PatternComparisonOperandsTest`.
+`CheckVergleichsBedingungImpl.checkPatternOp` returns before every type-agreement arm and asks four questions of its own. Locked: `rulekit.validate.laws.PatternComparisonOperandLawsTest` (19 rows), portable assertions preserved by `consistency.OperationContractTest`.
 
 | the question | class |
 |---|---|
@@ -8324,7 +8324,7 @@ Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the ca
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
 
-`CheckVergleichsBedingungImpl.checkDateType` and `checkDateRangeType` run back to back, ahead of the text, enumeration and number arms. Locked: `rulekit.validate.laws.TemporalComparisonAgreementLawsTest`, mirrored by `consistency.TemporalComparisonAgreementTest`.
+`CheckVergleichsBedingungImpl.checkDateType` and `checkDateRangeType` run back to back, ahead of the text, enumeration and number arms. Locked: `rulekit.validate.laws.TemporalComparisonAgreementLawsTest`, portable assertions preserved by `consistency.OperationContractTest`.
 
 | the question | class |
 |---|---|
@@ -8345,7 +8345,7 @@ Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the ca
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
 
-`CheckVergleichsBedingungImpl.checkNumberComparison` is the last arm of the comparison walk and carries two classes. Locked: `rulekit.validate.laws.NumberComparisonScaleGateLawsTest` (26 rows), mirrored by `consistency.NumberComparisonScaleGateTest`.
+`CheckVergleichsBedingungImpl.checkNumberComparison` is the last arm of the comparison walk and carries two classes. Locked: `rulekit.validate.laws.NumberComparisonScaleGateLawsTest` (26 rows), portable assertions preserved by `consistency.OperationContractTest`.
 
 | the question | class |
 |---|---|
@@ -8366,7 +8366,7 @@ Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the ca
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
 
-`CheckVergleichsBedingungImpl.checkStringOrEnumType` is called TWICE, once per side, after the date, date-range and boolean arms of [KF383](#kf383). Locked: `rulekit.validate.laws.StringEnumComparisonAgreementLawsTest` (23 rows), mirrored by `consistency.StringEnumComparisonAgreementTest`.
+`CheckVergleichsBedingungImpl.checkStringOrEnumType` is called TWICE, once per side, after the date, date-range and boolean arms of [KF383](#kf383). Locked: `rulekit.validate.laws.StringEnumComparisonAgreementLawsTest` (23 rows), portable assertions preserved by `consistency.OperationContractTest`.
 
 | the question | class |
 |---|---|
@@ -11462,9 +11462,9 @@ What the rows separate:
 - **The target is read before the operation.** A partially known or raw target draws its read class, which is the bracket's and no comparison's ([KF81](#kf81) measured the partial date). A source read that spans the whole operation answers ahead of the comparison it sits in.
 - **Joined order, not preconditions first.** One alternative's operation withholds the next alternative's precondition, which a reading that parsed every precondition first would get wrong; and a name in the operation leaves the precondition's class standing, where [KF340](#kf340)'s measured name in a precondition withholds the operation's.
 
-The portable checker was silent on every refused copy row, and named both classes on the first three joined rows and the unresolved name's on the fourth. It now reads a computation's lowered comparison through the same shape parser as an authored one (`comparisonsOf`), and the seven comparison families judge it. The field-value read family reads the target. Report assembly orders a declaration's members by their place in the joined text (`joinedOrderOf`). One row stays under-reported, the sum: the comparison families type a side only where it is one entity spec or a written-out constant, for rules and computations alike (DG117).
+The portable checker was silent on every refused copy row, and named both classes on the first three joined rows and the unresolved name's on the fourth. It reads a computation's lowered comparison through the same recognizer and operation analysis as an authored one; the seven comparison families share that analysis. The field-value read family reads the target. Report assembly orders a declaration's members by their place in the joined text (`joinedOrderOf`). Recognized arithmetic results also reach the comparison gates, including the sum row (DG117's replacement).
 
-*Locked by:* `adapter.laws.CheckerComputationJoinedConditionAgreementTest`, A12's class written out on every row and the checker required to name it, and `adapter.laws.CheckerFieldCopyCrossAgreementTest` for the complete cross, where the checker agrees on every row but the arithmetic one ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG117); mirrored by `consistency.ComputationJoinedConditionTest`.
+*Locked by:* `adapter.laws.CheckerComputationJoinedConditionAgreementTest`, A12's class written out on every row and the checker required to name it, and `adapter.laws.CheckerFieldCopyCrossAgreementTest` for the complete cross, where the checker agrees on all 127 rows, including the arithmetic one; mirrored by `consistency.ComputationJoinedConditionTest`.
 
 ## §1 supplement — A12 types a written-out constant before the comparison walk: a date-shaped literal, `Today` and `Now` are DATES, any other literal is text, and the two-constant gate exempts a pair only where its LEFT side is a date (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf484"></a>
 

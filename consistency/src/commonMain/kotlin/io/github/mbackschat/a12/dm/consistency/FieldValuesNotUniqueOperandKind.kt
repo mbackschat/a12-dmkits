@@ -30,7 +30,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  *
  * **It is the declared SPELLING and not the component set**, which is the neighbouring aggregates' gate:
  * `yyyy-MM-dd` beside `dd.MM.yyyy` is one component set and two spellings, admitted by
- * [temporalAggregateOperandFindings] and refused here ([KF193]).
+ * [OperationAnalysis] and refused here ([KF193]).
  *
  * **Silent on every declared type this reader does not resolve** — `CustomFieldType`, `TypeDefType`,
  * `UnspecifiedType` and the two boolean kinds — because the refusal set is an allow-list of what was

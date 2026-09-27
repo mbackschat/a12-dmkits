@@ -7,6 +7,7 @@ internal data class Recognition(
     val failure: ShapeFailure?,
     val calls: List<CallShape>,
     val comparisons: List<ComparisonShape>,
+    val operations: List<OperationShape>,
     val fieldReads: List<FieldValueRead>,
     val completedSteps: Map<Int, Int>,
     val unfinishedAt: Int?,
@@ -20,6 +21,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private val identities = spellings.entries.associate { (id, spelling) -> spelling to id }
     private val calls = mutableListOf<CallShape>()
     private val comparisons = mutableListOf<ComparisonShape>()
+    private val operations = mutableListOf<OperationShape>()
     private val fieldReads = mutableListOf<FieldValueRead>()
     private val completedSteps = mutableMapOf<Int, Int>()
     private val openings = mutableListOf<Int>()
@@ -43,7 +45,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         } catch (stop: RecognitionStop) {
             stop.failure
         }
-        return Recognition(failure, calls, comparisons, fieldReads, completedSteps, openings.lastOrNull())
+        return Recognition(failure, calls, comparisons, operations, fieldReads, completedSteps, openings.lastOrNull())
     }
 
     private fun peek(ahead: Int = 0): Token? {
@@ -145,17 +147,44 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         comparisons += ComparisonShape(tokens.subList(left, operatorAt), operator, tokens.subList(right, cursor))
     }
 
-    private fun operation() {
+    private fun operation(): OperationShape {
         comments()
-        primary()
-        while (peek()?.text in ARITHMETIC) { take(); primary() }
+        val result = arithmetic(0)
         comments()
+        return result
     }
 
-    private fun primary() {
+    private fun arithmetic(minimum: Int): OperationShape {
+        var left = primary()
+        while (true) {
+            val precedence = when (peek()?.text) {
+                "+", "-" -> 1
+                "*", "/" -> 2
+                "^" -> 3
+                else -> return left
+            }
+            if (precedence < minimum) return left
+            val operator = take()
+            val right = arithmetic(precedence + 1)
+            left = complete(OperationShape.Arithmetic(left, operator, right))
+        }
+    }
+
+    private fun complete(shape: OperationShape): OperationShape {
+        // KF497: demanding the next token precedes the completed operation's action.
+        peek()
+        operations += shape
+        return shape
+    }
+
+    private fun primary(): OperationShape {
         val token = peek() ?: fail(SyntaxFailureKind.DECISION)
-        when {
-            open("{") -> { operation(); require("}") }
+        return when {
+            open("{") -> {
+                val child = operation()
+                require("}")
+                complete(OperationShape.Group(token.start, tokens[cursor - 1].end, child))
+            }
             open("[") -> {
                 val from = cursor
                 entity()
@@ -164,13 +193,23 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                 val end = tokens[cursor - 1].end
                 // KF496: an immediate lexical defect prevents the completed-read action.
                 peek()
-                fieldReads += fieldValueRead(spec, token.start, end, filterActive, keywords)
+                val read = fieldValueRead(spec, token.start, end, filterActive, keywords)
+                fieldReads += read
+                complete(OperationShape.Read(read))
             }
-            consume("-") -> digits(decimal = true)
-            token.kind == TokenKind.NUMBER -> digits(decimal = true)
-            token.kind == TokenKind.STRING || kind(token) == KeywordKind.CONSTANT -> take()
+            consume("-") -> { digits(decimal = true); complete(OperationShape.Literal(token.start, tokens[cursor - 1].end)) }
+            token.kind == TokenKind.NUMBER -> { digits(decimal = true); complete(OperationShape.Literal(token.start, tokens[cursor - 1].end)) }
+            token.kind == TokenKind.STRING || kind(token) == KeywordKind.CONSTANT -> {
+                take(); complete(OperationShape.Literal(token.start, token.end))
+            }
             kind(token) == KeywordKind.FUNCTION ||
-                kind(token) != null && token.text == "AnzahlAngegebenerVordrucke" -> call()
+                kind(token) != null && token.text == "AnzahlAngegebenerVordrucke" -> {
+                val call = call()
+                complete(OperationShape.Call(call, call.operands.map { operand ->
+                    val meaningful = operand.filter { it.kind != TokenKind.COMMENT }
+                    operations.lastOrNull { it.at == meaningful.firstOrNull()?.start && it.end == meaningful.lastOrNull()?.end }
+                }))
+            }
             else -> fail(SyntaxFailureKind.DECISION)
         }
     }
@@ -182,7 +221,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         if (decimal && consume(".")) digits()
     }
 
-    private fun call() {
+    private fun call(): CallShape {
         val operator = take()
         val id = identity(operator)
         require("(")
@@ -252,7 +291,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             operands[operands.lastIndex] = tokens.subList(lastOperandStart, cursor)
         }
         require(")")
-        calls += CallShape(operator.text, operator.start, tokens[cursor - 1].end, operands, source)
+        return CallShape(operator.text, operator.start, tokens[cursor - 1].end, operands, source).also { calls += it }
     }
 
     private fun constant() {
@@ -359,7 +398,6 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private companion object {
         val CONNECTIVES = setOf("And", "AND", "and", "Or", "OR", "or", "Und", "UND", "und", "Oder", "ODER", "oder")
         val COMPARISONS = setOf("==", "!=", "<", ">", "<=", ">=")
-        val ARITHMETIC = setOf("+", "-", "*", "/", "^")
         val PATH_STARTS = setOf("/", "..", "$")
         val LIST_WORDS = setOf("In", "IN", "in", "To", "TO", "to", "Zu", "ZU", "zu")
         val VALIDITY = setOf("Valid", "ValidType", "Invalid", "InvalidType")

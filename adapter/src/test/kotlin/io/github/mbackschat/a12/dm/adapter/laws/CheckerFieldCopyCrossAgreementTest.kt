@@ -53,7 +53,7 @@ class CheckerFieldCopyCrossAgreementTest {
         val wrong = rows.mapNotNull { (row, probe) ->
             val (copy, predicted) = probe
             val observed = compare(copy)
-            val expected = predicted to (OURS[row] ?: predicted)
+            val expected = predicted to predicted
             if (observed == expected) null else "$row: expected (A12, ours) $expected, observed $observed"
         }
         assertTrue(wrong.isEmpty(), wrong.joinToString("\n", "${wrong.size} of ${rows.size} rows disagree:\n"))
@@ -168,11 +168,5 @@ class CheckerFieldCopyCrossAgreementTest {
             PLAN,
         )
 
-        /** The rows where the checker answers otherwise, with what it answers. */
-        val OURS: Map<String, Set<String>> = mapOf(
-            // The comparison families type a side only where it is one entity spec or a written-out constant
-            // ([CONSISTENCY-GAPS DG117](../../../../../../../../../../../docs/CONSISTENCY-GAPS.md)).
-            "Premium + 1 into HolderCopy" to ADMITTED,
-        )
     }
 }

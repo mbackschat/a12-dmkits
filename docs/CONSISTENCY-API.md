@@ -110,6 +110,14 @@ Completed field reads come from that same recognizer: consuming the closing brac
 
 Numeric entity references use the recognizer's completed path positions, including completed steps before a later failure. `05` retains its spelling and source span; numeric operations, precision arguments and application-condition names remain outside binding. Standalone semantic-index operand fragments use the same entity recognizer. `NumericNameContractTest` locks these projections and the harvested ordered code lists on JVM/JS; the numeric-name population in `CheckerNearMissSweepTest` checks diagnostic classes against A12.
 
+### Operation results
+
+Arithmetic, temporal extrema and the seven comparison families share one per-declaration `OperationAnalysis`. It types completed operations from their children, retaining signed numeric scale, constant expandability, temporal components and direct-field/literal provenance. Recognition preserves arithmetic precedence, explicit grouping and completion order; a completed child survives an unfinished parent, while failed next-token demand prevents completion. Unsupported results remain unknown rather than being assigned a guessed type. Computations use their joined condition with diagnostics mapped back to authored members.
+
+The grouped producer retains all nine public `CheckFamily` assignments. Its tracked model reads govern incremental reuse: changing a referenced scale invalidates the operation cell, while an unrelated field edit preserves it. `OperationContractTest` locks those controls against a full check, operation completion structure, the 53 captured numeric-law targets and the retired grids' ordered-list assertions on JVM/JS. `CheckFamilyWiringTest` locks ownership. The two retained diagnostic methods in `BooleanComparisonAgreementTest` and `ComparisonOperatorOperandsTest` lock their corrective wording and declaration location.
+
+The fixed operation population in `CheckerNearMissSweepTest`, paired with `A12ParseTraceTest`, checks child-result typing and completion boundaries against A12. Existing joined-computation, field-copy, keyed-reference and filter differentials cover their respective carriers; those measurements do not establish types for every unmodeled call.
+
 ## Checking an EDIT — `checkEdit`, for a candidate you have not saved
 
 `checkEdit(baseline, edited)` answers a different question from `check`: not *is this model acceptable* but **what did this edit do**. It is what an editor wants before saving, and what `dmtool rule check --engine portable` uses for a candidate rule.

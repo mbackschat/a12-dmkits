@@ -133,7 +133,7 @@ class CheckerComputationJoinedConditionAgreementTest {
         val wrong = predicted.mapNotNull { (row, probe) ->
             val (copy, a12) = probe
             val observed = compare(copy)
-            val expected = a12 to (OURS[row] ?: a12)
+            val expected = a12 to a12
             if (observed == expected) null else "$row: expected (A12, ours) $expected, observed $observed"
         }
         assertTrue(wrong.isEmpty(), wrong.joinToString("\n", "rows that disagree:\n"))
@@ -158,7 +158,7 @@ class CheckerComputationJoinedConditionAgreementTest {
         val wrong = predicted.mapNotNull { (row, probe) ->
             val (joined, a12) = probe
             val observed = compare(joined.draft())
-            val expected = a12 to (OURS[row] ?: a12)
+            val expected = a12 to a12
             if (observed == expected) null else "$row: expected (A12, ours) $expected, observed $observed"
         }
         assertTrue(wrong.isEmpty(), wrong.joinToString("\n", "rows that disagree:\n"))
@@ -207,12 +207,5 @@ class CheckerComputationJoinedConditionAgreementTest {
         val RAW = setOf("MVK_INVALID_RAW_TYPE")
         val PARTIAL = setOf("MVK_INVALID_DATE_TYPE")
 
-        /** The rows where the checker answers otherwise, with what it answers. */
-        val OURS: Map<String, Set<String>> = mapOf(
-            // The comparison families type a side only where it is one entity spec or a written-out constant,
-            // for rules and computations alike: an arithmetic side's type is derived from the whole expression
-            // ([CONSISTENCY-GAPS DG117](../../../../../../../../../../../docs/CONSISTENCY-GAPS.md)).
-            "a String from a sum" to ADMITTED,
-        )
     }
 }
