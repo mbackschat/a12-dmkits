@@ -35,7 +35,7 @@ internal class TrackedFactBase private constructor(
     private class Scope(val at: DeclarationKey, val cursor: TrackedDeclaration)
 
     /**
-     * The derived views every fact base of ONE check shares — the cursors and the three views over them.
+     * The derived views every fact base of ONE check shares — the cursors and their lookup views.
      *
      * **They live here because [scopedTo] makes a new fact base per declaration, and a per-instance `lazy`
      * is then per DECLARATION.** With N of them over an N-element model each rebuilding its own cursor list
@@ -57,6 +57,13 @@ internal class TrackedFactBase private constructor(
 
         val defaultVariantCursors: List<TrackedDeclaration> by lazy {
             cursors.filterIndexed { index, _ -> !model.elements[index].body.deletesAtDefaultVariant() }
+        }
+
+        val defaultVariantFieldsByPath: Map<String, TrackedDeclaration> by lazy {
+            val fields = LinkedHashMap<String, TrackedDeclaration>()
+            defaultVariantCursors.filter { it.declaredKind == DeclaredKind.FIELD }
+                .forEach { field -> fields.getOrPut(field.path) { field } }
+            fields
         }
 
         /**
@@ -196,6 +203,12 @@ internal class TrackedFactBase private constructor(
     fun declarationAt(path: String, kind: DeclaredKind): TrackedDeclaration? {
         transcript.record(FactRead.DeclarationSetShape)
         return views.cursorsByPathAndKind[PathAndKind(path, kind)]
+    }
+
+    /** KF295 selects the surviving local field after original binding; membership is in the set shape. */
+    fun defaultVariantFieldAt(path: String): TrackedDeclaration? {
+        transcript.record(FactRead.DeclarationSetShape)
+        return views.defaultVariantFieldsByPath[path]
     }
 
     /**

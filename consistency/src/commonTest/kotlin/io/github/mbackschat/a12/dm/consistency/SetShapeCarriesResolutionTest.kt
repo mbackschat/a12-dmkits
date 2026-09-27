@@ -134,6 +134,77 @@ class SetShapeCarriesResolutionTest {
         assertNotNull(store.validIn(unrelated, cell.key))
     }
 
+    @Test
+    fun defaultVariantFieldLookupKeepsIdentityAndChargesEveryCaller() {
+        val unfiltered = TrackedFactBase(prepared(TWINS), ReadTranscript())
+        val first = unfiltered.allDeclarations().single { it.id == "f0" }
+        assertSame(first, unfiltered.defaultVariantFieldAt(first.path))
+        for ((removed, kept) in listOf("f0" to "f1", "f1" to "f0")) {
+            val facts = TrackedFactBase(prepared(filteredTwin(removed)), ReadTranscript())
+            val original = facts.allDeclarations()
+            val survivor = original.single { it.id == kept }
+            val deleted = original.single { it.id == removed }
+            val scope = DeclarationKey(deleted.path, if (removed == "f0") 0 else 1)
+            val scoped = facts.scopedTo(scope, deleted)
+            val keys = listOf(CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.ELEMENT_NAME_UNIQUENESS)
+                .map { family -> CellKey(CHECK_PRODUCERS.single { family in it.completes }) }
+            for ((index, key) in keys.withIndex()) {
+                val reader = if (index == 0) facts else scoped
+                val found = assertNotNull(facts.whileProducing(key) { reader.defaultVariantFieldAt(survivor.path) })
+                assertSame(survivor, found)
+                assertEquals(setOf(FactRead.DeclarationSetShape), facts.observedWhileProducing(key))
+                facts.whileProducing(key) { found.body }
+                assertEquals(setOf(FactRead.DeclarationSetShape, FactRead.DeclarationContent(survivor.path)),
+                    facts.observedWhileProducing(key))
+            }
+            assertSame(original.single { it.id == "f0" }, facts.declarationAt(survivor.path))
+            assertNull(facts.defaultVariantFieldAt("/Order/Missing"))
+            assertNull(facts.defaultVariantFieldAt("/Order/Lines"))
+        }
+    }
+
+    @Test
+    fun orderingLookupReuseIsNarrowerThanTheExistingGroupBodyRead() {
+        fun indexed(id: String) = filteredTwin(id).replace(
+            "\"id\":\"g1\",\"name\":\"Lines\",\"Group\":{",
+            "\"id\":\"g1\",\"name\":\"Lines\",\"Group\":{\"indexFieldName\":\"Code\",",
+        )
+        val beforeJson = indexed("f1")
+        val before = prepared(beforeJson)
+        val swapped = prepared(indexed("f0"))
+        val selectedType = prepared(beforeJson.replaceFirst(
+            "\"type\":\"StringType\"",
+            "\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":true}",
+        ))
+        val unrelated = prepared(beforeJson.replace(
+            "\"type\":\"NumberType\"",
+            "\"type\":\"NumberType\",\"NumberType\":{\"maxFractionalDigits\":2}",
+        ))
+        val facts = TrackedFactBase(before, ReadTranscript())
+        val cell = schedule(facts).single { CheckFamily.GROUP_ORDERING_REFERENCES in it.key.producer.completes }
+        val produced = facts.cellFor(cell.key, before, cell.produce)
+        assertEquals(emptyList(), produced.findings)
+        assertEquals(listOf("MVK_INDEX_FIELD_NO_VALUE_VALIDATION"),
+            selectedType.tracked().groupOrderingFindings().map { it.code })
+        val store = CheckCells(mapOf(cell.key to produced))
+        assertNull(store.validIn(swapped, cell.key))
+        assertNull(store.validIn(selectedType, cell.key))
+        assertEquals(setOf(FactRead.DeclarationContent("/Order")),
+            produced.readValues.filter { (read, value) -> unrelated.valueOf(read) != value }.keys)
+
+        val lookup = TrackedFactBase(before, ReadTranscript())
+        val lookupCell = lookup.cellFor(cell.key, before) {
+            lookup.defaultVariantFieldAt("/Order/Lines/Code")?.body
+            emptyList<Finding>() to emptyList<CoverageGap>()
+        }
+        assertEquals(setOf(FactRead.DeclarationSetShape, FactRead.DeclarationContent("/Order/Lines/Code")),
+            lookupCell.readValues.keys)
+        val lookupStore = CheckCells(mapOf(cell.key to lookupCell))
+        assertNull(lookupStore.validIn(swapped, cell.key))
+        assertNull(lookupStore.validIn(selectedType, cell.key))
+        assertNotNull(lookupStore.validIn(unrelated, cell.key))
+    }
+
     private fun prepared(json: String): PreparedModel {
         val admitted = admit(ModelSource(json))
         assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")

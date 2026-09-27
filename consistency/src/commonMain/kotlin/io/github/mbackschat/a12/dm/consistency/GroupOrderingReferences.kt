@@ -30,11 +30,12 @@ import kotlinx.serialization.json.contentOrNull
  * `/Order/Items` names nothing and stops the build, while the same spelling read from `/Order` lands on a
  * real field and reaches the second gate.
  *
- * **A THIRD gate reads the landed field's own TYPE**, and it lives here rather than in a file of its own
+ * **A THIRD gate reads the selected local field's TYPE**, and it lives here rather than in a file of its own
  * because it is the same lookup: `checkIndexField` returns at the first gate that fires, so a type verdict is
  * only ever reached by a reference that already resolved, and separating them would let a resolution fix read
  * as a type approval. The report still tells them apart — `CheckFamily.GROUP_ORDERING_FIELD_TYPE` is its own
- * constant. A `noValueValidation` string draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` /
+ * constant. KF295's remote/local controls (2026-09-27, `FieldVariantStageLawsTest`) distinguish the original
+ * referent from the surviving local field. A `noValueValidation` string draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` /
  * `MVK_SORT_FIELD_NO_VALUE_VALIDATION` even as a direct child (`GroupOrderingFieldTypeLawsTest`).
  *
  * **The index member has a FOURTH gate in source that no stored A12 model can reach**, so it is excluded on a
@@ -149,10 +150,10 @@ private fun TrackedDeclaration.repeatedSortField(entries: JsonArray): List<Findi
 }
 
 /**
- * One ordering reference, judged by what it lands on.
+ * Bind one ordering reference, then judge its surviving local field by short name (KF295).
  *
- * @param outsideCode the member's own code for a spelling that resolves to something other than one of this
- *     group's own fields. The two members do NOT share one — `MVK_INVALID_INDEX_FIELD` is named for the
+ * @param outsideCode the member's own code when the landed short name selects no surviving local field.
+ *     The two members do NOT share one — `MVK_INVALID_INDEX_FIELD` is named for the
  *     index and `MVK_INVALID_SORT_FIELD` for the sort, and each was measured on its own member rather than
  *     transferred from the other.
  * @param noValueValidationCode the member's own code for the third gate, likewise unshared.
@@ -178,10 +179,9 @@ private fun TrackedFactBase.orderingFinding(
                 "and a GROUP of that name does not count",
         )
     }
-    // GATE TWO — A12 keeps only the landed field's SHORT NAME and looks it up under this group, so what
-    // decides is whether the group has a field of that NAME, not whether the path stayed inside it.
+    // KF295's filter and twin controls require a surviving local cursor, after the original binding above.
     val shortName = landed.substringAfterLast('/')
-    val own = declarationAt("${group.path}/$shortName", DeclaredKind.FIELD)
+    val own = defaultVariantFieldAt("${group.path}/$shortName")
     if (own != null) {
         // GATE THREE — the field A12 ends up with is this group's OWN field of that short name, which is
         // also the one it reports the type error against, so the finding is attached there and not at the
