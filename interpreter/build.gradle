@@ -3546,7 +3546,7 @@ if (!footprintForkCountProperty.isPresent()) {
                 timeout = nodeTimeout
             }
             nodeJsArgs.add('--expose-gc')
-            nodeJsArgs.add("--max-old-space-size=${nodeHeapMb}")
+            nodeJsArgs.add('--max-old-space-size=' + nodeHeapMb)
             commonEnvironment(delegate, 'NODE', fork, output)
         }
     }
@@ -3756,7 +3756,7 @@ if (!performanceForkCountProperty.isPresent()) {
             filter.includeTestsMatching(
                 'io.github.mbackschat.a12.dm.interpreter.performance.PerformanceNodeWorkerTest')
             useMocha { timeout = performanceNodeTimeout }
-            nodeJsArgs.add("--max-old-space-size=${performanceNodeHeapMb}")
+            nodeJsArgs.add('--max-old-space-size=' + performanceNodeHeapMb)
             configurePerformanceWorker(
                 delegate, 'NODE', 'node-b1-10000-rows-first-answer', "node-first-${fork}",
                 output, 0, 1)
@@ -3783,7 +3783,7 @@ if (!performanceForkCountProperty.isPresent()) {
                 filter.includeTestsMatching(
                     'io.github.mbackschat.a12.dm.interpreter.performance.PerformanceNodeWorkerTest')
                 useMocha { timeout = performanceNodeTimeout }
-                nodeJsArgs.add("--max-old-space-size=${performanceNodeHeapMb}")
+                nodeJsArgs.add('--max-old-space-size=' + performanceNodeHeapMb)
                 configurePerformanceWorker(
                     delegate, 'NODE', scenario, "node-throughput-${index + 1}-${fork}", output,
                     performanceWarmup, performanceRepetitions)
