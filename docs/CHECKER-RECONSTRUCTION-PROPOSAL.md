@@ -252,6 +252,56 @@ The original five marker rows and the three paired binding rows are separate pop
 
 Both test classes and their private fixture helpers retire with the replacement. Shared `BasketModel` remains because other tests consume it. The replay carries the non-class-set contract once; it does not grow into a new per-fact grid. Kernel-law tests and the three named adapter carrier differentials remain: their own claims are not declared redundant. The common `filterBodiesIn` helper also remains for its other callers; only field-read reconstruction stops using it.
 
+### R3b-N contract — numeric entity names
+
+**Scope.** Close DG93 by binding digit sequences when recognition places them in an entity path. An operation literal, rounding precision, quoted key or application-condition name remains outside entity binding. The existing reference resolver owns existence and addressing checks; there is no new numeric-name family or operator-name table. The interpreter parser, operation typing, default-variant preparation and public report ordering remain outside this partition.
+
+**Representation and compatibility.** Recognition must expose completed entity-path positions, including a digit-led path that completes before a later syntax failure. Unresolved prediction contributes no completed path; a walked path contributes only its completed steps. Preserve the source occurrence, normalized digit spelling (including leading zeros), outer-marker handling and semantic-index key role. Reuse the existing completed-step representation where it carries these facts; do not add a parallel parser or a general event framework. The scanner retains its public malformed-text/name behavior and its use on standalone operand fragments. In particular, numeric keys in fragments still bind when the fragment has no enclosing condition, while an isolated numeric operation remains a literal. The source inventory must cover those fragment consumers before retiring the existing digit-key special case.
+
+**Oracle and limits.** The kernel trace and whole-model `checkConsistency` each see the exact population below, with their outcomes recorded separately. The same injected models enter O1, without dropping refused inputs. The three existing KF492 disagreements are explicit targets; the new population locks their surrounding role and completion boundaries. This is a first-class/recognition-origin contract, not an assertion of full public notification ordering. R5 retains that contract. Existing kernel laws stay while findings cite them.
+
+The fixed host is an Order with Numbers Total and Qty, a full Date Placed in yyyy-MM-dd, and repeatable Items keyed by String Code and containing Number Count. Rules target Total and prefix the typed rendering of `FieldFilled(Total) And`; German rows use the same model with de_DE condition language and the corresponding typed prefix. All other declarations, bounds, locale and topology are held fixed. Computation rows target Qty and use a typed Total-presence precondition. The literal/entity role, token boundary, language and rule/computation carrier are varied only as listed; other model topologies, metadata and runtime Documents are unmeasured. No claim that numeric-named fields are valid declarations is made.
+
+### R3b-N acceptance and deletion matrix (before execution)
+
+There are 27 new population members: the 21 English suffixes below, four German suffixes, and two computation operations. Predictions remain hypotheses until both named kernel routes run. The original prediction is retained if a row disagrees.
+
+| English suffix | predicted first class | discriminator |
+|---|---|---|
+| `FieldFilled(5)` | `MVK_INVALID_ENTITY` | an entity slot, against treating every number as a literal |
+| `FieldFilled(05)` | `MVK_INVALID_ENTITY` | preserve spelling, against numeric normalization |
+| `AbsValue(5) > 0` | `MVK_INVALID_ENTITY` | field-operation slot, against predicate-only recognition |
+| `MinValue(1 + Items*/Count) > 1` | `MVK_INVALID_ENTITY` | completed binding precedes the later plus-token failure |
+| `[5] > 0` | `MVK_INVALID_ENTITY` | bracket operand |
+| `FieldFilled(Items*/5)` | `MVK_INVALID_ENTITY` | numeric trailing segment on a walked path |
+| `FieldFilled(5/)` | `MVK_UNEXPECTED_TOKEN` | unresolved path prediction contributes no premature name |
+| `FieldFilled($5/)` | `MVK_INVALID_ENTITY` | outer marker commits a completed step before the later failure |
+| `FieldFilled(5.)` | `MVK_UNEXPECTED_TOKEN` | unfinished name continuation contributes no complete step |
+| `FieldFilled(5 %)` | `MVK_LEXER_STANDARD_ERROR` | next-token demand precedes name completion |
+| `FieldFilled(5) %` | `MVK_INVALID_ENTITY` | binding precedes a later lexical defect |
+| `Sum(Items/Count For 5) > 0` | `MVK_INVALID_ENTITY` | preserve the existing numeric-key path |
+| `Sum(Items/Count For 5.5) > 0` | `MVK_UNEXPECTED_TOKEN` | a decimal does not become an entity name |
+| `Sum(Items/Count For "5") > 0` | `MVK_PARAMSIZE_INVALIDN` | a quoted String key passes binding and reaches the outer arity gate |
+| `[Total] > 5` | admitted | numeric operation literal, against global digit binding |
+| `RoundUpValue(Total, 5) > 0` | admitted | precision slot is not an entity |
+| `CustomCondition 5` | admitted | application name is not a model reference |
+| `Date(5, "1", "2020") > [Placed]` | `MVK_INVALID_ENTITY` | date-component entity slot |
+| `Date("5", "1", "2020") > [Placed]` | admitted | change only component quoting |
+| `FieldFilled(5/Count)` | `MVK_INVALID_ENTITY` | numeric leading path segment |
+| `FieldFilled(5.5)` | `MVK_UNEXPECTED_TOKEN` | decimal in an ordinary entity slot |
+
+German suffixes: `FeldAngegeben(5)` and `FeldAngegeben(05)` predict `MVK_INVALID_ENTITY`; `AufrundenWert(Total, 5) > 0` and `ApplikationsBedingung 5` predict admission. Computation operations: `AbsValue(5)` predicts `MVK_INVALID_ENTITY`, `[Total] + 5` predicts admission. The discriminator on those carriers is the same role distinction under a different entry/language; English rule evidence alone cannot settle it.
+
+| obligation | oracle / predicted outcome | deletion or preservation |
+|---|---|---|
+| DG93 and action boundary | 27-member trace/admission population plus O1; the three KF492 disagreements disappear, no new over-rejection | delete the scanner's separate digit-key recognition/recording path once ordinary recognized entity handling carries it |
+| Numeric spelling and role projections | focused common contract assertions on JVM/JS from the measured rows; retain literal and application-name controls | preserve reference spans, leading zeros, key designation and operand reduction; no global widening of the shared literal reducer |
+| Existing digit-key assertions | capture `LiteralIndexKeyTest.aDigitSequenceKeyIsAnEntityName` before deletion: nine rows in each language, exact original model bytes and ordered full code lists | P4 retains all 18 original inputs and a separate typed completion arm if needed; compact common replay preserves those exact lists, since O1 class sets cannot replace multiplicity/order |
+| Existing kernel evidence and other roles | retained `LiteralIndexKeyLawsTest`, `CheckerArgumentSlotAgreementTest`, `CheckerKeyedOperandAgreementTest`, syntax/reference contracts and unchanged P1/P2/P4 ledgers | delete only the numeric method and any helper made unused by that deletion; retain the Enumeration-key method and cited kernel laws |
+| Stage acceptance | `:consistency:check`, focused adapter population/trace and the terminal review | public signatures and family selection unchanged; retire superseded production/test mechanisms in the same implementation commit |
+
+One foundational cold review reads this contract before production changes; one terminal review reads the settled replacement and deletion evidence. A prediction miss is recorded and tested against its rival; changing the acceptance denominator triggers the convergence gate.
+
 ## Appendix A — check actions (source-read)
 
 ### A.1 Where they sit
