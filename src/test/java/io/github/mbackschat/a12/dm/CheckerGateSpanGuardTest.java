@@ -108,6 +108,19 @@ class CheckerGateSpanGuardTest {
         assertEquals(List.of(1, 4, 7), spanlessConstructions(source, Set.of("MVK_X"), constants));
     }
 
+    @Test
+    void quotedCommentMarkersLeaveConstructionsVisibleAtTheirOriginalLines() {
+        String source = """
+                val url = "https://example.invalid"; val a = Finding(category, severity, code, explain, at)
+                val begin = "/*"; val b = Finding(category, severity, code, explain, at); val end = "*/"
+                // Finding(category, severity, code, explain, at)
+                /* outer
+                  /* nested */ Finding(category, severity, code, explain, at)
+                */ val c = Finding(category, severity, code, explain, at)
+                """;
+        assertEquals(List.of(1, 2, 6), spanlessConstructions(withoutComments(source), Set.of("MVK_X"), Map.of()));
+    }
+
     private static List<Integer> spanlessConstructions(
             String text, Set<String> positioned, Map<String, String> constants) {
         List<Integer> lines = new ArrayList<>();
@@ -202,16 +215,7 @@ class CheckerGateSpanGuardTest {
 
     /** Comments blanked, not removed, so a line number still points where it did. */
     private static String withoutComments(String text) {
-        StringBuilder out = new StringBuilder(text);
-        Matcher comment = Pattern.compile("/\\*.*?\\*/|//[^\\n]*", Pattern.DOTALL).matcher(text);
-        while (comment.find()) {
-            for (int i = comment.start(); i < comment.end(); i++) {
-                if (out.charAt(i) != '\n') {
-                    out.setCharAt(i, ' ');
-                }
-            }
-        }
-        return out.toString();
+        return SourceText.uncommented(text, true);
     }
 
     private static String read(Path path) {
