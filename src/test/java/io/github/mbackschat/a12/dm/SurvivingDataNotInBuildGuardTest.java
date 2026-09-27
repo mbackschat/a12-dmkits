@@ -105,6 +105,10 @@ class SurvivingDataNotInBuildGuardTest {
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "P4 live clusters, source-row examples and regenerated input enumeration; the committed "
                                     + "harvested-syntax.json owns fixed inputs and harvested.tsv owns the baseline")),
+            Map.entry("build/conformance-frontier",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "M2's regenerated admission digests, live clusters and examples; committed resources "
+                                    + "under adapter/src/test/resources/conformance-frontier own the lasting records")),
             Map.entry("build/checker-harvest/scanner.tsv",
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "regenerated scanner-host class comparisons; checker-near-miss/scanner.tsv in test "

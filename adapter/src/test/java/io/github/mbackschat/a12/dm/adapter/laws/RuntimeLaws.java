@@ -278,8 +278,12 @@ public final class RuntimeLaws {
 
     /** As {@link #render(Condition)}, emitting same-root paths relative to {@code groupId}. */
     static String render(String groupId, Condition condition) {
-        return new DslRenderer(
-                ConditionLanguage.EN, groupId).render(condition);
+        return render(groupId, condition, ConditionLanguage.EN);
+    }
+
+    /** Preserve the host's declared language when replaying a read-back condition (O3). */
+    static String render(String groupId, Condition condition, ConditionLanguage language) {
+        return new DslRenderer(language, groupId).render(condition);
     }
 
     /**
