@@ -29,12 +29,6 @@ import java.io.File
  * disagreements are written to `build/checker-path-grid/actual.tsv`, so the diff is reviewable rather than
  * retyped.
  *
- * **One pair is agreement by design, not a ledger row.** Where A12 names only `MVK_POINT_IN_A12_MODEL` for a
- * `.*` on a group that does not repeat, the checker adds `MVK_INVALID_WILDCARD`, because that defect survives
- * fixing the suffix (`HModelPathSuffix`'s own contract). A12 stops at its first gate and the checker
- * accumulates, so a strict superset is not by itself wrong; every OTHER superset stays in the ledger until it
- * is measured to be a true second defect.
- *
  * Own domain: an insurance policy with a fixed insured party and broker and repeatable claims, `Remark`
  * declared twice so a bare `Remark` is ambiguous, and short-name references on. The rule sits at the root and
  * one level down, because `..` means something different from each.

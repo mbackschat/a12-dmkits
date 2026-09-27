@@ -15,12 +15,11 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic
  * [CONFORMANCE-PLAN](../../../../../../../../../../../docs/CONFORMANCE-PLAN.md): `OVER-REJECT` and `WRONG-CLASS`
  * are correctness, `SILENT` is coverage, and `EXTRA` is order, the classes A12's early stop never reached.
  *
- * One superset counts as agreement because the checker draws it by design: where A12 names only
- * `MVK_POINT_IN_A12_MODEL`, the checker adds `MVK_INVALID_WILDCARD` beside it, for the reason [CheckerPathGridAgreementTest] gives.
+ * Agreement requires equal class sets. A diagnostic surviving a hypothetical repair is still EXTRA when
+ * the measured kernel did not report it (CONFORMANCE-PLAN, G-POINT-ORACLE).
  */
 internal fun checkerVerdict(a12: Set<String>, ours: Set<String>): String? = when {
     a12 == ours -> null
-    a12 == setOf(POINT_IN_A12_MODEL) && ours == setOf(POINT_IN_A12_MODEL, "MVK_INVALID_WILDCARD") -> null
     a12.isEmpty() -> "OVER-REJECT"
     ours.isEmpty() -> "SILENT"
     ours.containsAll(a12) -> "EXTRA"
@@ -42,8 +41,6 @@ internal const val UNKEYED_A12_CLASS = "(no code)"
 
 private const val A12_REPERTOIRE_REFUSAL = "The field contains one or several unsupported signs."
 private const val RK_UNSUPPORTED_CHARACTER = "RK_UNSUPPORTED_CHARACTER"
-
-private const val POINT_IN_A12_MODEL = "MVK_POINT_IN_A12_MODEL"
 
 /** Whole-model admission, also covering the original partial fixtures P4 preserves before hosted completion. */
 internal fun kernelModelClasses(json: String): Set<String> = try {

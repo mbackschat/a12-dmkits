@@ -45,6 +45,33 @@ class CheckerNearMissSweepTest {
     private val validator = RuleValidator()
 
     @Test
+    fun classComparisonDoesNotExemptSpecificCodes() {
+        for ((a, b) in listOf("MVK_POINT_IN_A12_MODEL" to "MVK_INVALID_WILDCARD", "A" to "B")) {
+            assertEquals(listOf(null, null, "EXTRA", "WRONG-CLASS", "WRONG-CLASS", "WRONG-CLASS", "OVER-REJECT", "SILENT"),
+                listOf(
+                    checkerVerdict(emptySet(), emptySet()),
+                    checkerVerdict(setOf(a), setOf(a)),
+                    checkerVerdict(setOf(a), setOf(a, b)),
+                    checkerVerdict(setOf(a, b), setOf(a)),
+                    checkerVerdict(setOf(a), setOf(b)),
+                    checkerVerdict(setOf(a), setOf(b, "C")),
+                    checkerVerdict(emptySet(), setOf(a)),
+                    checkerVerdict(setOf(a), emptySet()),
+                ), "class-set relations for $a and $b")
+        }
+    }
+
+    @Test
+    fun pathGatesHaveOnlyLedgeredDifferences() {
+        assertModelLedger(PathGatePopulation.rows(), 18, "path-gates")
+    }
+
+    @Test
+    fun aggregatePathGatesHaveOnlyLedgeredDifferences() {
+        assertModelLedger(PathGatePopulation.aggregateRows(), 18, "aggregate-path-gates")
+    }
+
+    @Test
     fun harvestedOperationsPreserveTheirKernelComparisonPopulation() {
         val clusters = sortedMapOf<String, Int>()
         val examples = mutableListOf<String>()
