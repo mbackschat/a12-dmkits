@@ -3,7 +3,7 @@ const path = require("node:path");
 
 type TaskState = "EXECUTED" | "FROM-CACHE" | "UP-TO-DATE" | "NO-SOURCE" | "SKIPPED" | "FAILED";
 type Counts = { tests: number; failures: number; errors: number };
-type Cutoff = { epochSeconds: number; basis: "derived" | "birth-only" };
+type Cutoff = { epochSeconds: number; finishedAt: number; basis: "derived" | "birth-only" };
 
 const ROOT = path.resolve(__dirname, "../..");
 const STATE_RANK: Readonly<Record<TaskState, number>> = {
@@ -48,8 +48,13 @@ function freshnessCutoff(logPath: string, log: string): Cutoff {
   const birth = stat.birthtimeMs > 0 ? stat.birthtimeMs / 1000 : mtime;
   const duration = durationSeconds(log);
   return duration === undefined
-    ? { epochSeconds: birth, basis: "birth-only" }
-    : { epochSeconds: Math.max(birth, mtime - duration - margin), basis: "derived" };
+    ? { epochSeconds: birth, finishedAt: mtime, basis: "birth-only" }
+    : { epochSeconds: Math.max(birth, mtime - duration - margin), finishedAt: mtime, basis: "derived" };
+}
+
+/** A later run can overwrite the same XML; a lower cutoff alone credits it to the old log (G-EVIDENCE). */
+function withinRun(epochSeconds: number, cutoff: Cutoff): boolean {
+  return epochSeconds > cutoff.epochSeconds && epochSeconds <= cutoff.finishedAt;
 }
 
 function lastVerdict(log: string): string | undefined {
@@ -154,14 +159,14 @@ function reportClass(pattern: string, states: Map<string, TaskState>, cutoff: Cu
       const name = path.basename(file).replace(/^TEST-/, "").replace(/\.xml$/, "");
       if (!name.includes(pattern)) continue;
       matched = true;
-      const fresh = fs.statSync(file).mtimeMs / 1000 > cutoff.epochSeconds;
+      const fresh = withinRun(fs.statSync(file).mtimeMs / 1000, cutoff);
       const counts = xmlCounts(file);
       const ran = ranInThisRun(fresh, task);
       const outcome = counts.failures + counts.errors > 0
         ? `FAILURES=${counts.failures} ERRORS=${counts.errors}`
         : `${counts.tests} tests, 0 failures`;
       console.log(`${pad(name.slice(name.lastIndexOf(".") + 1), 52)} ${pad(taskFor(directory), 26)} `
-        + `${pad(task, 12)} ${pad(ran ? "YES" : "no — STALE", 10)} ${outcome}`);
+        + `${pad(task, 12)} ${pad(ran ? "YES" : "no — OTHER RUN", 10)} ${outcome}`);
     }
   }
   if (!matched) {
@@ -212,7 +217,7 @@ function main(): void {
   let found = false;
   const withheld: string[] = [];
   for (const directory of resultDirectories(ROOT)) {
-    const fresh = walkResultFiles(directory).filter(file => fs.statSync(file).mtimeMs / 1000 > cutoff.epochSeconds);
+    const fresh = walkResultFiles(directory).filter(file => withinRun(fs.statSync(file).mtimeMs / 1000, cutoff));
     if (fresh.length === 0) continue;
     const relative = `${path.relative(ROOT, directory).split(path.sep).join("/")}/`;
     const task = taskFor(directory);
@@ -263,4 +268,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { ranInThisRun, taskFor, lastVerdict, taskStates };
+module.exports = { withinRun, ranInThisRun, taskFor, lastVerdict, taskStates };

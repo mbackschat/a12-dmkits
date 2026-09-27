@@ -8,7 +8,7 @@
 # `>` does not reset, which on 2026-08-31 credited a 6-second run with 13 directories and 2016 tests from
 # earlier runs. Both were invisible in the output. Hence the does-count / does-NOT-count pairing below, and the
 # cutoff cases that drive the arithmetic directly through `--print-cutoff`. A third regression made the
-# reporter abort under stock macOS Bash. The command is now a Bash-3.2 launcher over typed logic, so every
+# reporter abort under stock macOS Bash. The command is now a POSIX launcher over typed logic, so every
 # invocation below deliberately uses `/bin/dash` as the POSIX oracle and copies the complete launcher/runtime source set.
 set -euo pipefail
 
@@ -54,6 +54,7 @@ printf '> Task :cli:docGuardTest\nBUILD SUCCESSFUL in 6s\n' > "$tmp/build/run.lo
 sleep 1
 suite Stale 2016 > "$tmp/build/test-results/docGuardTest/TEST-Stale.xml"
 suite Real 70 > "$tmp/cli/build/test-results/docGuardTest/TEST-Real.xml"
+touch "$tmp/build/run.log"
 out="$(run "$tmp")"
 check "a root task absent from the log is withheld, however recent its files" \
   "withheld" "$(grep -q 'build/test-results/docGuardTest/ *ABSENT' <<<"$out" && echo withheld || echo counted)"
@@ -67,6 +68,7 @@ mkdir -p "$tmp/cli/build/test-results/docGuardTest"
 printf '> Task :cli:docGuardTest FROM-CACHE\nBUILD SUCCESSFUL in 2s\n' > "$tmp/build/run.log"
 sleep 1
 suite Cached 70 > "$tmp/cli/build/test-results/docGuardTest/TEST-Cached.xml"
+touch "$tmp/build/run.log"
 out="$(run "$tmp")"
 check "a FROM-CACHE task is not reported as this run's execution" \
   "withheld" "$(grep -q 'FROM-CACHE .*NOT this run' <<<"$out" && echo withheld || echo counted)"
@@ -81,6 +83,7 @@ suite Old 500 > "$tmp/cli/build/test-results/docGuardTest/TEST-Old.xml"
 touch -t 202601010000 "$tmp/cli/build/test-results/docGuardTest/TEST-Old.xml"
 sleep 1
 suite New 7 > "$tmp/cli/build/test-results/docGuardTest/TEST-New.xml"
+touch "$tmp/build/run.log"
 out="$(run "$tmp")"
 check "a --tests filter's unmatched siblings stay out of the count" \
   "1 classes      7 tests" "$(grep -oE '[0-9]+ classes +[0-9]+ tests' <<<"$out" | head -1)"
@@ -94,11 +97,15 @@ printf '> Task :docGuardTest\n> Task :cli:docGuardTest\nBUILD SUCCESSFUL in 6s\n
 sleep 1
 suite RootReal 13 > "$tmp/build/test-results/docGuardTest/TEST-RootReal.xml"
 suite CliReal 70 > "$tmp/cli/build/test-results/docGuardTest/TEST-CliReal.xml"
+touch "$tmp/build/run.log"
 out="$(run "$tmp")"
 check "both executed tasks are credited" \
   "13 70" "$(grep -oE '[0-9]+ tests' <<<"$out" | grep -oE '[0-9]+' | tr '\n' ' ' | sed 's/ $//')"
 check "nothing is withheld when every directory has an executing task" \
   "clean" "$(grep -q 'withheld' <<<"$out" && echo withheld || echo clean)"
+out="$(/bin/dash "$tmp/scripts/test-evidence.sh" --class CliReal "$tmp/build/run.log")"
+check "the class report credits the matching in-run class and its count" \
+  "credited" "$(grep -q 'CliReal.*YES.*70 tests, 0 failures' <<<"$out" && echo credited || echo withheld)"
 
 tmp="$(mk_tree)"
 mkdir -p "$tmp/cli/build/test-results/docGuardTest"
@@ -106,9 +113,25 @@ printf '> Task :cli:docGuardTest\nBUILD SUCCESSFUL in 2s\n' > "$tmp/build/run.lo
 sleep 1
 printf "<testsuite name='Quoted' tests = '7' failures = '0' errors = '0'/>\n" \
   > "$tmp/cli/build/test-results/docGuardTest/TEST-Quoted.xml"
+touch "$tmp/build/run.log"
 out="$(run "$tmp")"
 check "valid single-quoted XML attributes retain their counts" \
   "7" "$(grep -oE '[0-9]+ tests' <<<"$out" | head -1 | grep -oE '[0-9]+')"
+
+# A later execution overwrites XML while the completed log stays unchanged (G-EVIDENCE, 2026-09-27).
+echo 'does NOT count — newer results beside a historical log'
+
+tmp="$(mk_tree)"
+mkdir -p "$tmp/cli/build/test-results/docGuardTest"
+printf '> Task :cli:docGuardTest FAILED\n4 tests completed, 4 failed\nBUILD FAILED in 2s\n' > "$tmp/build/run.log"
+sleep 1
+suite LaterPass 25 > "$tmp/cli/build/test-results/docGuardTest/TEST-LaterPass.xml"
+out="$(run "$tmp")"
+check "a later passing XML cannot replace the older failed run's evidence" \
+  "absent" "$(grep -q '25 tests' <<<"$out" && echo present || echo absent)"
+out="$(/bin/dash "$tmp/scripts/test-evidence.sh" --class LaterPass "$tmp/build/run.log")"
+check "the class report must not credit the later execution either" \
+  "absent" "$(grep -q 'YES' <<<"$out" && echo present || echo absent)"
 
 # ---- the cutoff arithmetic, driven directly --------------------------------------------------------------------
 echo 'the cutoff — derived from the log verdict, not from metadata that `>` does not reset'

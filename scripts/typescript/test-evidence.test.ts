@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const path = require("node:path");
 const { test } = require("node:test");
 
-const { ranInThisRun, taskFor, lastVerdict, taskStates } = require("./test-evidence.ts");
+const { withinRun, ranInThisRun, taskFor, lastVerdict, taskStates } = require("./test-evidence.ts");
 
 /**
  * The claim under test is the one the reporter exists for: a result file is evidence of THE RUN YOU JUST DID,
@@ -42,4 +42,13 @@ test("task states are read per task, and the worst state for a task wins", () =>
   assert.equal(states.get(":test"), "EXECUTED");
   assert.equal(states.get(":cli:test"), "UP-TO-DATE");
   assert.equal(states.get(":cli:docGuardTest"), "FAILED");
+});
+
+test("historical logs exclude later overwritten results but retain the closing boundary", () => {
+  const run = { epochSeconds: 100, finishedAt: 110, basis: "derived" };
+  assert.equal(withinRun(99, run), false);
+  assert.equal(withinRun(100, run), false, "the lower cutoff retains its existing exclusive boundary");
+  assert.equal(withinRun(105, run), true);
+  assert.equal(withinRun(110, run), true, "a result may share the log's filesystem timestamp");
+  assert.equal(withinRun(111, run), false, "a later passing execution cannot replace this run's failure");
 });

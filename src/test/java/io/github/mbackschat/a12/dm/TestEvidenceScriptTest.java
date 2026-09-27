@@ -33,7 +33,7 @@ class TestEvidenceScriptTest {
 
     private static final Checkout CHECKOUT = Checkout.locate();
 
-    /** Vacuity floor: the script carries 11 cases over the does-count and does-NOT-count halves. */
+    /** A vacuity floor below the script's positive and negative control population. */
     private static final int MIN_CASES = 8;
 
     @Test
