@@ -58,7 +58,7 @@ internal fun TrackedFactBase.loweredComparisonOf(
     val written = target.removePrefix("$group/")
     val start = first.start
     val end = tokens.last().end
-    val wholeRead = fieldValueReadsIn(text, conditionLanguage).singleOrNull { it.at == start && it.end == end }
+    val wholeRead = fieldValueReadsIn(text, conditionLanguage, SyntaxEntry.OPERATION).singleOrNull { it.at == start && it.end == end }
     val answeredByTheRead = wholeRead != null && fieldValueReadIsRefused(wholeRead, group, element)
     return LoweredComparison(
         FieldValueRead(written, start, start, inAFilterBody = false),

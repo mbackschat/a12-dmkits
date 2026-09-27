@@ -1,0 +1,22 @@
+[
+  {
+    "text": "FieldFilled(Total) And [Items*/Count]",
+    "start": 23,
+    "end": 24
+  },
+  {
+    "text": "FieldFilled(Total) And [Items*/Count] > %",
+    "start": 23,
+    "end": 24
+  },
+  {
+    "text": "FieldFilled(Total) And [Items*/Count] ) %",
+    "start": 23,
+    "end": 24
+  },
+  {
+    "text": "FieldFilled(Total) And [Items*/Count] ;; marker\n%",
+    "start": 23,
+    "end": 24
+  }
+]

@@ -11,7 +11,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.clausedOperandsIn
  * What a `Having` filter's OWN operand may be — a field, starred, with no semantic index on it.
  *
  * The operand must be a field (`MVK_NO_GROUPS_ALLOWED`), then must carry a wildcard (`MVK_WILDCARDS_REQUIRED`),
- * then must carry no semantic index, and the filter BODY is [filterWildcardFindings]' subject, so the two
+ * then must carry no semantic index, and the filter BODY is [fieldValueReadOperandFindings]' subject, so the two
  * families partition the construct. **The two classes here are raised at two different points.** The kind is
  * asked by the parser as it reads the `Having` keyword (`initFilterCondition`, the grammar's action on
  * `'Mit'` in `GrammarOnly_ConditionParser.g4`), so a group draws it ahead of anything its body holds; the

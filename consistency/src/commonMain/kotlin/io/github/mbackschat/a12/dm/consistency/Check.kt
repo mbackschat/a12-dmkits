@@ -372,16 +372,9 @@ enum class CheckFamily {
     TEMPORAL_AGGREGATE_OPERANDS,
 
     /**
-     * That a `Having` filter carries no repetition wildcard. Its own constant rather than part of
-     * [REPETITION_WILDCARD_TARGET] because the filter is a fourth POSITION and position picks the class
-     * there: the same star on the same repeatable group is admitted in the aggregate's own operand.
-     */
-    FILTER_WILDCARD,
-
-    /**
      * Which repeatable levels a `Having` filter's BODY may name, and the one it must. Its own constant
-     * rather than part of [FILTER_WILDCARD] because that family judges a STAR in the body while this one
-     * judges the levels the body's unmarked references ride — two gates of one kernel method, with the star
+     * rather than part of [FIELD_VALUE_READ_OPERAND] because that family judges a STAR in the body while this one
+     * judges the levels the body's unmarked references ride — distinct check actions, with the star
      * refused before either is asked.
      */
     FILTER_BODY_GATES,
@@ -396,7 +389,7 @@ enum class CheckFamily {
 
     /**
      * That no GROUP-CONDITION operand carries a repetition wildcard where its operator bars one. Its own
-     * constant rather than part of [REPETITION_WILDCARD_TARGET] or [FILTER_WILDCARD] because here the star
+     * constant rather than part of [REPETITION_WILDCARD_TARGET] or [FIELD_VALUE_READ_OPERAND] because here the star
      * lands on a group that legitimately repeats and the OPERATOR alone picks the class: A12 splits the seven
      * group conditions three ways, and two of them admit the very star the other five refuse.
      */
@@ -613,8 +606,8 @@ enum class CheckFamily {
     FIELD_OPERAND_KIND,
 
     /**
-     * What a `Having` filter's own operand may be. Its own constant rather than part of [FILTER_WILDCARD]
-     * because that family judges the filter BODY, and A12 gates the two in one method with the operand's
+     * What a `Having` filter's own operand may be. Its own constant rather than part of [FIELD_VALUE_READ_OPERAND]
+     * because that family judges reads in the filter BODY, with the operand's
      * chain running first.
      */
     FILTERED_OPERAND_KIND,

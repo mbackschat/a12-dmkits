@@ -346,7 +346,6 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclarationWalk(CheckFamily.REPETITION_KEY_PLACEMENT) { it.repetitionKeyPlacementFindings() },
     perDeclarationWalk(CheckFamily.REPETITION_SCOPE_GROUP) { it.repetitionScopeGroupFindings() },
     produces(CheckFamily.REPETITION_KEY_CONTAINMENT) { it.repetitionKeyContainmentFindings() },
-    perDeclarationWalk(CheckFamily.FILTER_WILDCARD) { it.filterWildcardFindings() },
     produces(CheckFamily.FILTER_BODY_GATES) { it.filterBodyGateFindings() },
     producesAfterTheParse(CheckFamily.FILTER_BODY_GATES) { it.filterBodyPostParseIndexFindings() },
     perDeclarationWalk(CheckFamily.OUTER_MARKER_POSITION) { it.outerMarkerPositionFindings() },

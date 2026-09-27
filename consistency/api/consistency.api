@@ -94,7 +94,6 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field FILTERED_ENTITY_ITERATION Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field FILTERED_OPERAND_KIND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field FILTER_BODY_GATES Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
-	public static final field FILTER_WILDCARD Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field GROUP_CONDITION_WILDCARD Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field GROUP_LIST_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field GROUP_LIST_OPERAND_KIND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;

@@ -69,7 +69,7 @@ class SumOfProductsOperandsTest {
         expected["the same starless field twice"] = emptyList()
         // MVK_DUPLICATE_PARAM2: a field named beside the group that contains it, ahead of the kind gate.
         expected["a GROUP operand"] = emptyList()
-        // MVK_NO_WILDCARDS_ALLOWED, the filter's own gate, which `FILTER_WILDCARD` already reports.
+        // MVK_NO_WILDCARDS_ALLOWED, the field-read gate, which `FIELD_VALUE_READ_OPERAND` already reports.
         expected["a starred reference inside the filter"] = emptyList()
         // MVK_PARAMSIZE_INVALID_2, the arity gate.
         expected["one operand only"] = emptyList()

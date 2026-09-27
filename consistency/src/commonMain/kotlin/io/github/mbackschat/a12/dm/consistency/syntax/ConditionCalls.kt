@@ -489,42 +489,23 @@ data class ConditionComparison(
     val inAFilterBody: Boolean = false,
 )
 
-/**
- * Every field-value read a text makes: A12's `feldWertOp`, `'[' entitySpec ']'`, which is the grammar's only
- * use of a square bracket (`GrammarOnly_ConditionParser.g4`), so every matched pair of brackets is one.
- *
- * A bracket A12 never closes is not read, since its production never ends and its gate is never asked; the
- * text's own parse failure is another family's.
- */
-internal fun fieldValueReadsIn(text: String, language: ConditionLanguage): List<FieldValueRead> {
-    val keywords = CONDITION_KEYWORDS.getValue(language)
-    val bodies = filterBodiesIn(text, language)
-    val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
-    val open = ArrayDeque<Int>()
-    val reads = mutableListOf<FieldValueRead>()
-    tokens.forEachIndexed { index, token ->
-        if (token.kind != TokenKind.PUNCTUATION) {
-            return@forEachIndexed
-        }
-        when (token.text) {
-            "[" -> open.addLast(index)
-            "]" -> {
-                val from = open.removeLastOrNull() ?: return@forEachIndexed
-                val at = tokens[from].start
-                val spec = tokens.subList(from + 1, index)
-                val category = spec.takeIf { it.size > 2 && it[it.size - 2].text == "->" && it.last().isName() }
-                    ?.last()?.text
-                reads += FieldValueRead(
-                    (if (category == null) spec else spec.dropLast(2)).asPath(keywords),
-                    at,
-                    token.end,
-                    inAFilterBody = bodies.any { body -> body.at <= at && token.end <= body.at + body.text.length },
-                    category = category,
-                )
-            }
-        }
-    }
-    return reads
+/** Completed reads retain their parse-time filter state even if an enclosing construct later fails (KF496). */
+internal fun fieldValueReadsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<FieldValueRead> =
+    ConditionRecognizer(text, language).recognize(entry).fieldReads
+
+internal fun fieldValueRead(
+    spec: List<Token>,
+    at: Int,
+    end: Int,
+    filterActive: Boolean,
+    keywords: Map<String, KeywordKind>,
+): FieldValueRead {
+    val category = spec.takeIf { it.size > 2 && it[it.size - 2].text == "->" && it.last().isName() }
+        ?.last()?.text
+    val outerMarker = spec.firstOrNull()?.text == "$"
+    val path = (if (category == null) spec else spec.dropLast(2))
+        .let { if (outerMarker && filterActive) it.drop(1) else it }.asPath(keywords)
+    return FieldValueRead(path, at, end, filterActive, category, outerMarker)
 }
 
 /**
@@ -535,23 +516,15 @@ internal fun fieldValueReadsIn(text: String, language: ConditionLanguage): List<
  */
 internal fun soleFieldValueReadIn(text: String, language: ConditionLanguage): FieldValueRead? {
     val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
-    val read = fieldValueReadsIn(text, language).singleOrNull() ?: return null
+    val read = fieldValueReadsIn(text, language, SyntaxEntry.OPERATION).singleOrNull() ?: return null
     return read.takeIf { tokens.firstOrNull()?.start == it.at && tokens.lastOrNull()?.end == it.end }
 }
 
 /**
- * One field-value read.
+ * A completed bracket's reducible path/category, opening origin and closing end (KF496).
  *
- * @param path the entity it names, in the normalized spelling [referencesIn] produces with any repetition
- *     wildcard kept — absent when the spec is not one bare path, or one path and a category: it carries a
- *     clause, the `$` outer marker or the rule-context keyword, each of which brings another gate ahead of
- *     this one.
- * @param at the offset of the opening bracket, and [end] the offset just past the closing one: where A12 has
- *     read the production and runs `CheckFeldWertOpImpl.check`.
- * @param inAFilterBody whether a `Having` body holds the read, at any depth.
- * @param category the name behind a `->` the spec ends with, or null. A category belongs to the entity spec
- *     inside the brackets (`entitySpec: … entity ('->' categoryName)? …`), whose own gates run when the spec
- *     ends, before the bracket's.
+ * The active filter flag is not lexical nesting: a nested filter clears it (KF486). An outer marker in an
+ * active filter retains ordinary rule-target binding (KF487); outside it the path remains unreduced.
  */
 internal data class FieldValueRead(
     val path: String?,
@@ -559,6 +532,7 @@ internal data class FieldValueRead(
     val end: Int,
     val inAFilterBody: Boolean,
     val category: String? = null,
+    val outerMarker: Boolean = false,
 )
 
 /** Every `Having` body in [text], each placed by its own offset. */

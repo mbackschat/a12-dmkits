@@ -106,6 +106,8 @@ Lexical failures belong to lexicality, required-token failures to grammar, and s
 
 `ConditionSyntax` enforces family and member attribution; `SyntaxVerdictTest` locks those contracts on JVM and JS. The adapter-only `A12ParseTraceTest` independently compares failure kind, code, offending text and positions with Kernel 30.8.1, keeping early semantic throws explicitly censored. The [conformance plan](CONFORMANCE-PLAN.md) records the measured populations and remaining gaps; the [reconstruction proposal](CHECKER-RECONSTRUCTION-PROPOSAL.md#r3a-contract) carries the design rationale and deletion matrix. The interpreter retains its separate parser.
 
+Completed field reads come from that same recognizer: consuming the closing bracket and successfully demanding the next token makes the read eligible; an immediate lexical failure prevents it. `FIELD_VALUE_READ_OPERAND` owns the group, star, raw-value and partial-Date gates in ordinary expressions and filter bodies. The former public `CheckFamily.FILTER_WILDCARD` member is removed; code naming that member must migrate to `FIELD_VALUE_READ_OPERAND`. Existing whole-bracket report spans remain the projection. `FieldReadContractTest` locks the kernel-recorded origin and harvested list assertions on JVM/JS; `CheckFamilyWiringTest` locks ownership, and the field-read populations in `CheckerNearMissSweepTest` compare the kernel's first classes.
+
 ## Checking an EDIT — `checkEdit`, for a candidate you have not saved
 
 `checkEdit(baseline, edited)` answers a different question from `check`: not *is this model acceptable* but **what did this edit do**. It is what an editor wants before saving, and what `dmtool rule check --engine portable` uses for a candidate rule.

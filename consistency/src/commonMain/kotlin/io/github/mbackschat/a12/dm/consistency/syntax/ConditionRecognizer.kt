@@ -7,6 +7,7 @@ internal data class Recognition(
     val failure: ShapeFailure?,
     val calls: List<CallShape>,
     val comparisons: List<ComparisonShape>,
+    val fieldReads: List<FieldValueRead>,
     val completedSteps: Map<Int, Int>,
     val unfinishedAt: Int?,
 )
@@ -19,9 +20,11 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private val identities = spellings.entries.associate { (id, spelling) -> spelling to id }
     private val calls = mutableListOf<CallShape>()
     private val comparisons = mutableListOf<ComparisonShape>()
+    private val fieldReads = mutableListOf<FieldValueRead>()
     private val completedSteps = mutableMapOf<Int, Int>()
     private val openings = mutableListOf<Int>()
     private var cursor = 0
+    private var filterActive = false
 
     fun recognize(entry: SyntaxEntry): Recognition {
         val failure = try {
@@ -34,7 +37,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         } catch (stop: RecognitionStop) {
             stop.failure
         }
-        return Recognition(failure, calls, comparisons, completedSteps, openings.lastOrNull())
+        return Recognition(failure, calls, comparisons, fieldReads, completedSteps, openings.lastOrNull())
     }
 
     private fun peek(ahead: Int = 0): Token? {
@@ -147,7 +150,16 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         val token = peek() ?: fail(SyntaxFailureKind.DECISION)
         when {
             open("{") -> { operation(); require("}") }
-            open("[") -> { entity(); require("]") }
+            open("[") -> {
+                val from = cursor
+                entity()
+                val spec = tokens.subList(from, cursor)
+                require("]")
+                val end = tokens[cursor - 1].end
+                // KF496: an immediate lexical defect prevents the completed-read action.
+                peek()
+                fieldReads += fieldValueRead(spec, token.start, end, filterActive, keywords)
+            }
             consume("-") -> digits(decimal = true)
             token.kind == TokenKind.NUMBER -> digits(decimal = true)
             token.kind == TokenKind.STRING || kind(token) == KeywordKind.CONSTANT -> take()
@@ -318,7 +330,11 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                     take()
                     if (peek()?.kind == TokenKind.STRING) take() else entity()
                 }
-                identity(peek()) == "Having" -> { take(); condition() }
+                identity(peek()) == "Having" -> {
+                    take(); filterActive = true; condition()
+                    // KF486: finishing a nested filter clears the flag instead of restoring its parent.
+                    filterActive = false
+                }
                 else -> break
             }
         }

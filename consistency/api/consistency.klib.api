@@ -149,7 +149,6 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
     enum entry FILTERED_ENTITY_ITERATION // io.github.mbackschat.a12.dm.consistency/CheckFamily.FILTERED_ENTITY_ITERATION|null[0]
     enum entry FILTERED_OPERAND_KIND // io.github.mbackschat.a12.dm.consistency/CheckFamily.FILTERED_OPERAND_KIND|null[0]
     enum entry FILTER_BODY_GATES // io.github.mbackschat.a12.dm.consistency/CheckFamily.FILTER_BODY_GATES|null[0]
-    enum entry FILTER_WILDCARD // io.github.mbackschat.a12.dm.consistency/CheckFamily.FILTER_WILDCARD|null[0]
     enum entry GROUP_CONDITION_WILDCARD // io.github.mbackschat.a12.dm.consistency/CheckFamily.GROUP_CONDITION_WILDCARD|null[0]
     enum entry GROUP_LIST_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.GROUP_LIST_OPERANDS|null[0]
     enum entry GROUP_LIST_OPERAND_KIND // io.github.mbackschat.a12.dm.consistency/CheckFamily.GROUP_LIST_OPERAND_KIND|null[0]

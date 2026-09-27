@@ -99,6 +99,12 @@ class A12ParseTraceTest {
         }
         assertEquals(rows.map { Triple(it.rule.errorCondition(), it.expected, setOfNotNull(it.modelCode)) },
             observations.map { it.first })
+        val origins = observations.filter { it.first.second == "MVK_NO_WILDCARDS_ALLOWED" }.map { (row, range) ->
+            mapOf("text" to row.first, "start" to checkNotNull(range).start, "end" to range.end)
+        }
+        val mapper = com.fasterxml.jackson.databind.ObjectMapper()
+        assertEquals(mapper.readTree(checkNotNull(javaClass.getResource("/checker-near-miss/field-read-origins.json")).readText()),
+            mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(origins))
         observations.filter { it.first.second == "MVK_NO_WILDCARDS_ALLOWED" }.forEach { (row, range) ->
             assertEquals(ProblemRange(1, 1, row.first.indexOf('['), row.first.indexOf('[') + 1), range, row.first)
         }

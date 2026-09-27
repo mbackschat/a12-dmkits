@@ -83,7 +83,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * **Silent on the operand shapes whose own gate answers earlier**, each measured rather than assumed: a
  * repetition the OPERAND crosses that neither its own star nor the DECLARATION'S ITERATION addresses draws
  * `MVK_NO_WILDCARD` from the reference reader before any filter question, and a star inside the BODY draws
- * `MVK_NO_WILDCARDS_ALLOWED` from [filterWildcardFindings]' position. The iteration is set by where the
+ * `MVK_NO_WILDCARDS_ALLOWED` from [fieldValueReadOperandFindings]' position. The iteration is set by where the
  * error field sits rather than by where the rule is declared, which are the same thing on every carrier that
  * measured this until 2026-09-15 and are not the same question.
  *
@@ -216,7 +216,7 @@ private fun TrackedFactBase.filterVerdictOf(
     val marked = markedReferenceSpansIn(filter.text)
     if (namesRuleContext(filter.text, conditionLanguage) ||
         namesKeyword(filter.text, clauseKeywords) != null ||
-        fieldValueReadsIn(filter.text, conditionLanguage).any { it.path?.contains('*') == true }
+        fieldValueReadsIn(filter.text, conditionLanguage, syntaxEntryOf("errorCondition")).any { it.path?.contains('*') == true }
     ) {
         return null
     }

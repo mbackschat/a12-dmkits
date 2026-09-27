@@ -544,10 +544,6 @@ class CheckFamilyWiringTest {
         // is not one it reduces.
         CheckFamily.REPETITION_SCOPE_GROUP to
             ("MVK_GROUP_NOT_REPEATABLE" to "/Catalog/ScopeDoesNotRepeat"),
-        // The aggregate's own operand stars `Pallets` legally; the filter's copy of the same star is the
-        // defect, which is what makes this row a position claim rather than a wildcard one.
-        CheckFamily.FILTER_WILDCARD to
-            ("MVK_NO_WILDCARDS_ALLOWED" to "/Catalog/StarInsideAFilter"),
         // The identical star on the identical group, one slot over: legal in the aggregate above and refused
         // here, which is what makes the operator rather than the star the thing this family reads.
         CheckFamily.GROUP_CONDITION_WILDCARD to
@@ -835,6 +831,19 @@ class CheckFamilyWiringTest {
 
     /** The models beside [source], each carrying the families only it can reach, with what each proves. */
     private val sideModels = listOf(germanSource to germanEvidence, cycleSource to cycleEvidence)
+
+    @Test
+    fun theFieldReadProducerOwnsTheFilterRead() {
+        val admitted = admit(source)
+        assertIs<Admission.Admitted>(admitted)
+        val tracked = TrackedFactBase(prepare(admitted), ReadTranscript())
+        val findings = schedule(tracked)
+            .filter { CheckFamily.FIELD_VALUE_READ_OPERAND in it.key.producer.completes }
+            .flatMap { it.produce().first }
+            .filter { it.at == "/Catalog/StarInsideAFilter" }
+        assertEquals(listOf("MVK_NO_WILDCARDS_ALLOWED"), findings.map { it.code })
+        assertEquals("errorCondition", findings.single().span?.member)
+    }
 
     @Test
     fun everySideModelFamilyReachesTheReport() {
