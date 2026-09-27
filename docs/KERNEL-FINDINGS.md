@@ -11885,6 +11885,8 @@ The population separately measures four German rule suffixes, six computations w
 
 Every refused row has a left-child defect; these rows do not establish right-child visitation when the left succeeds. The swapped pair discriminates both a whole-expression reference-first account and a type-first account from left-to-right completed-child failures on these compositions. Numeric scale zero, fixed root topology, two wrapper levels, and absence of lexical defects are held fixed; arbitrary depth, iteration, other field kinds, diagnostic order/span/multiplicity and runtime behavior are not measured by this population. The original 48-input trace evidence remains separate; no trace claim is transferred to these 320 inputs. The BA document’s `MVK_NO_NUMBER_FOR_CALC` entry independently describes the String arithmetic refusal; the competing-child order here rests on the experiment.
 
+**Right-child control extension (2026-09-27).** The separately pre-predicted C2 population retains those 320 rows and adds 128 with valid Left and either String Label or absent Missing on the right, across the same wrappers, languages and carriers. All right-only String rows draw `MVK_NO_NUMBER_FOR_CALC`; all right-only missing-reference rows draw `MVK_INVALID_ENTITY`, in both kernel and checker. `CheckerCompositionSweepTest` now locks the combined 448 inputs with the original 64 admitted controls. These new rows rule out skipping the right subtree on the measured compositions; the other fixed-axis and oracle limits above remain.
+
 ## §13 supplement — filtering distinguishes missing field-type members and unresolved typedefs (kernel admission, 2026-09-27) <a id="kf498"></a>
 
 > Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §13's model checks.

@@ -16,9 +16,9 @@ class CheckerCompositionSweepTest {
     @Test
     fun composedChildrenHaveOnlyLedgeredDifferences() {
         val rows = rows()
-        assertEquals(320, rows.map { it.model }.distinct().size)
+        assertEquals(448, rows.map { it.model }.distinct().size)
         assertEquals(64, rows.count { it.expected == null })
-        assertModelLedger(rows, 320, "composed-children")
+        assertModelLedger(rows, 448, "composed-children")
     }
 
     private enum class Wrapper {
@@ -34,7 +34,8 @@ class CheckerCompositionSweepTest {
 
     private enum class Leaves(val expected: String?) {
         VALID(null), STRING("MVK_NO_NUMBER_FOR_CALC"), MISSING("MVK_INVALID_ENTITY"),
-        STRING_THEN_MISSING("MVK_NO_NUMBER_FOR_CALC"), MISSING_THEN_STRING("MVK_INVALID_ENTITY");
+        STRING_THEN_MISSING("MVK_NO_NUMBER_FOR_CALC"), MISSING_THEN_STRING("MVK_INVALID_ENTITY"),
+        RIGHT_STRING("MVK_NO_NUMBER_FOR_CALC"), RIGHT_MISSING("MVK_INVALID_ENTITY");
 
         fun mutate(text: String): String {
             require(text.countOccurrences("[Left]") == 1 && text.countOccurrences("[Right]") == 1)
@@ -44,6 +45,8 @@ class CheckerCompositionSweepTest {
                 MISSING -> text.replace("[Left]", "[Missing]")
                 STRING_THEN_MISSING -> text.replace("[Left]", "[Label]").replace("[Right]", "[Missing]")
                 MISSING_THEN_STRING -> text.replace("[Left]", "[Missing]").replace("[Right]", "[Label]")
+                RIGHT_STRING -> text.replace("[Right]", "[Label]")
+                RIGHT_MISSING -> text.replace("[Right]", "[Missing]")
             }
         }
     }
