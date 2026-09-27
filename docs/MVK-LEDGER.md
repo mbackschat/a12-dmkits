@@ -315,7 +315,7 @@ A replacement landing is conditional ownership, not an instruction to rewrite ev
 | message | `ERROR_TEXT_PRESENCE` | R4 candidate; message syntax is outside R3a |
 | read/build, syntax, metamodel, calculation | `COMPUTATION_ALTERNATIVES` | R4 candidate; R3a supplies joined-text syntax without deleting this family |
 | read/build, syntax, pre-parse, metamodel | `RULE_CONDITION_AND_TARGET` | R4 candidate; R3a supplies syntax without deleting this family |
-| container | `ELEMENT_NAME_UNIQUENESS` | R4 candidate; name collisions in the converted container (R0b witness) |
+| container | `ELEMENT_NAME_UNIQUENESS` | R4-V0: name collisions read the shared default-variant declaration set (R0b witness); original binding checks remain separate |
 | non-meta | `GROUP_ORDERING_REFERENCES` | R4 candidate; ordering references and field usability read the default container |
 | non-meta | `GROUP_ORDERING_FIELD_TYPE` | R4 candidate; ordering references and field usability read the default container |
 | metamodel | `GROUP_ORDERING_CARRIER` | R4 candidate; group declarations in the default container |

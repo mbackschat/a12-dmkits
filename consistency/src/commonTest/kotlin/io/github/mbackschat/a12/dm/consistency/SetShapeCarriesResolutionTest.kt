@@ -2,6 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertSame
+import kotlin.test.assertNull
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -57,6 +60,37 @@ class SetShapeCarriesResolutionTest {
         )
     }
 
+    @Test
+    fun theDefaultVariantViewKeepsTheSurvivingDeclarationAtADuplicatePath() {
+        for ((removed, kept) in listOf("f0" to "f1", "f1" to "f0")) {
+            val facts = TrackedFactBase(prepared(filteredTwin(removed)), ReadTranscript())
+            assertEquals(listOf(kept), facts.allDefaultVariantDeclarations()
+                .filter { it.path == "/Order/Lines/Code" }.map { it.id })
+            assertEquals(listOf("f0", "f1"), facts.allDeclarations()
+                .filter { it.path == "/Order/Lines/Code" }.map { it.id })
+            val original = facts.allDeclarations().single { it.id == removed }
+            val scoped = facts.scopedTo(DeclarationKey(original.path, if (removed == "f0") 0 else 1), original)
+            assertSame(facts.allDefaultVariantDeclarations(), scoped.allDefaultVariantDeclarations(),
+                "a whole-set view stays shared even when the scope names a deleted declaration")
+        }
+    }
+
+    @Test
+    fun changingWhichTwinSurvivesInvalidatesTheSetButUnrelatedContentDoesNot() {
+        val before = prepared(filteredTwin("f1"))
+        val swapped = prepared(filteredTwin("f0"))
+        val contentOnly = prepared(filteredTwin("f1").replace(
+            "\"type\":\"NumberType\"",
+            "\"type\":\"NumberType\",\"NumberType\":{\"maxFractionalDigits\":2}",
+        ))
+        assertEquals(before.resolvableElements.map { it.path }, swapped.resolvableElements.map { it.path })
+        val tracked = TrackedFactBase(before, ReadTranscript())
+        val cell = schedule(tracked).single { CheckFamily.ELEMENT_NAME_UNIQUENESS in it.key.producer.completes }
+        val store = CheckCells(mapOf(cell.key to tracked.cellFor(cell.key, before, cell.produce)))
+        assertNull(store.validIn(swapped, cell.key), "a different twin survives at the same path")
+        assertNotNull(store.validIn(contentOnly, cell.key), "a scale edit does not change the declaration set")
+    }
+
     private fun prepared(json: String): PreparedModel {
         val admitted = admit(ModelSource(json))
         assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")
@@ -90,9 +124,11 @@ class SetShapeCarriesResolutionTest {
         """.trimIndent()
 
         /** The same model with one twin deleted at the default variant — the body moves, the rows do not. */
-        private val TWIN_DELETED = TWINS.replace(
-            """{"type":"Field","id":"f1","name":"Code","Field":{"fieldType":{"type":"StringType"}}}""",
-            """{"type":"Field","id":"f1","name":"Code","Field":{"fieldType":{"type":"StringType"},
+        private val TWIN_DELETED = filteredTwin("f1")
+
+        private fun filteredTwin(id: String) = TWINS.replace(
+            """{"type":"Field","id":"$id","name":"Code","Field":{"fieldType":{"type":"StringType"}}}""",
+            """{"type":"Field","id":"$id","name":"Code","Field":{"fieldType":{"type":"StringType"},
                 "variantFilter":{"filterType":"ONLY"}}}""",
         )
     }

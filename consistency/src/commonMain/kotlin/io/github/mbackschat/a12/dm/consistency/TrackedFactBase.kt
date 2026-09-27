@@ -55,6 +55,10 @@ internal class TrackedFactBase private constructor(
             model.elements.map { TrackedDeclaration(it, model, transcript) }
         }
 
+        val defaultVariantCursors: List<TrackedDeclaration> by lazy {
+            cursors.filterIndexed { index, _ -> !model.elements[index].body.deletesAtDefaultVariant() }
+        }
+
         /**
          * [cursors] keyed by path, so `declarationAt` is a lookup rather than a scan.
          *
@@ -255,6 +259,15 @@ internal class TrackedFactBase private constructor(
     fun allDeclarations(): List<TrackedDeclaration> {
         transcript.record(FactRead.DeclarationSetShape)
         return views.cursors
+    }
+
+    /**
+     * Code-generation declarations, irrespective of scope (KF495's filtered name-collision witness).
+     * DeclarationSetShape carries each deletion bit, so reading this view does not charge every body.
+     */
+    fun allDefaultVariantDeclarations(): List<TrackedDeclaration> {
+        transcript.record(FactRead.DeclarationSetShape)
+        return views.defaultVariantCursors
     }
 
     /**

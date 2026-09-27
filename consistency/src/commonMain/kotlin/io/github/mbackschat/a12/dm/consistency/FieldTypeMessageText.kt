@@ -46,8 +46,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 internal fun TrackedFactBase.fieldTypeMessageTextFindings(): List<Finding> {
     val unreached = declarations().filterNot { it.reachedByTheElementWalk() }.map { it.path }.toSet()
     val language = conditionLanguage
-    return declarations()
-        .filter { it.declaredKind == DeclaredKind.FIELD && !it.origin.isMounted && !it.body.deletesAtDefaultVariant() }
+    return allDefaultVariantDeclarations()
+        .filter { it.declaredKind == DeclaredKind.FIELD && !it.origin.isMounted }
         .filter { field -> field.path !in unreached && field.path.enclosingPaths().none { it in unreached } }
         .mapNotNull { field -> ownMessageFinding(field, language) }
 }
