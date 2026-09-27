@@ -132,6 +132,11 @@ class SurvivingDataNotInBuildGuardTest {
                             "the variant population's live clusters and witness labels, regenerated on every run; "
                                     + "adapter/src/test/resources/checker-near-miss/variants.tsv and variants-mixed.tsv "
                                     + "are the committed comparison records, while KERNEL-FINDINGS records the claims")),
+            Map.entry("build/checker-element-paths",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "regenerated path-population differences and prediction diagnostics; "
+                                    + "ElementPathStageLawsTest owns inputs and predictions, and the committed "
+                                    + "checker-near-miss/element-paths.tsv owns the comparison baseline")),
             Map.entry("build/parse-trace/report.tsv",
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "A12's parse-failure signatures over the near-miss population, rewritten on every run "

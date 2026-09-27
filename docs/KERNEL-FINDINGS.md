@@ -6392,6 +6392,8 @@ The portable checker's completeness family now asks its shape parser where it st
 
 *Locked by:* `rulekit.validate.laws.FieldNameAlphabetLawsTest`, row for row against `GroupNameAlphabetLawsTest`.
 
+**Path-position and filter controls (measured 2026-09-28).** `adapter.laws.ElementPathStageLawsTest` crosses 24 names with root/nested/field placement, plain/tabbed pattern text and absent/ONLY/ALL_EXCEPT field filters on one typed host (432 models). Leading `ä`/`ß` pass on a root but fail on a nested group; interior `ä`/`ß` pass on both groups and fail on fields. The sampled `é`, `中` and Arabic-Indic digit `١` fail in both positions on every carrier. Field `Co.de`, `Co:de` and `:Code` reach message checking beside the dot/colon name code; `Co.1de`, `Co._de`, `Co..de` and `Co.` fail the path and withhold that message. ONLY removes the tested field-name and message refusals, while group-name refusals remain; ALL_EXCEPT matches absent. The full notification projection adds a codeless member to the 246 rows whose named set is PATH_INVALID alone, but not to the digit-leading field's two-code set. That observation does not attribute the codeless member to a stage. The original code-only laws remain valid within their projection.
+
 ## §10 supplement — a DATERANGE's `(format, rangeSeparator)` pair is refused at the BUILD tier, and an omitted separator is the kernel's `/` (measured, 2026-09-13) <a id="kf316"></a>
 
 > Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §10, whose field-type material names `DateRangeType` without saying that its two members are allowlisted together.
