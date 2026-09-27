@@ -501,5 +501,66 @@
     "kf498": "f4eced3991f18b42f879879c953caee5435af6b55bc8604ddb63ca7ea2f8f668",
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
-  "reviews": {}
+  "reviews": {
+    "kf493": {
+      "sha256": "1c17b91b57ff05dc68752f9797910647b5f3887db0685e9da85daba9510ce960",
+      "task": "F-USE3",
+      "scope": {
+        "adapter": [
+          "syntax trace",
+          "consistency oracle"
+        ],
+        "dmkits": [
+          "core",
+          "rulekit",
+          "modelkit",
+          "edit",
+          "schemakit",
+          "catalog",
+          "schema",
+          "CLI"
+        ],
+        "interpreter": [
+          "parser JVM",
+          "parser JS"
+        ],
+        "checker": [
+          "syntax verdict JVM",
+          "syntax verdict JS"
+        ],
+        "a12-kernel-lean": [
+          "specification",
+          "executable and proofs",
+          "evidence"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "OPEN",
+          "basis": "Reconcile the recorded trace law with current oracle and trace consumers.",
+          "evidence": {}
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "Assess each kit and published surface; this scope does not assert that each needs a code change.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "Assess syntax admission and runtime meaning separately; independent parser implementations do not establish alignment.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "Bind the finding to the current portable syntax verdict on JVM and JS.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Peer adoption in specification, executable account and evidence is unconfirmed; our trace does not settle it.",
+          "evidence": {}
+        }
+      }
+    }
+  }
 }

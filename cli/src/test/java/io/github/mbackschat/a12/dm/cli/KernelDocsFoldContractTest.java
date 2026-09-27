@@ -11,18 +11,25 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -82,7 +89,18 @@ class KernelDocsFoldContractTest {
                 + String.join("\n", violations));
     }
 
-    private record FindingReview(String sha256, String task) {}
+    private enum Consumer {
+        @JsonProperty("adapter") ADAPTER,
+        @JsonProperty("dmkits") DMKITS,
+        @JsonProperty("interpreter") INTERPRETER,
+        @JsonProperty("checker") CHECKER,
+        @JsonProperty("a12-kernel-lean") KERNEL_LEAN
+    }
+    private enum ReviewState { APPLIED, ALREADY_CONFORMS, NOT_APPLICABLE, OPEN }
+    private record ConsumerEvidence(String reference, String witness) {}
+    private record ConsumerReview(ReviewState state, String basis, Map<String, ConsumerEvidence> evidence) {}
+    private record FindingReview(String sha256, String task, Map<Consumer, List<String>> scope,
+                                 Map<Consumer, ConsumerReview> consumers) {}
     private record FindingInventory(String baselineRevision, Map<String, String> legacy,
                                     Map<String, FindingReview> reviews) {}
 
@@ -94,11 +112,21 @@ class KernelDocsFoldContractTest {
     void everyFindingHasACurrentReviewOrIsExplicitlyLegacyUnassessed() throws IOException {
         var inventory = new ObjectMapper()
                 .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+                .enable(DeserializationFeature.FAIL_ON_NUMBERS_FOR_ENUMS)
                 .readValue(Files.readString(FINDING_INVENTORY), FindingInventory.class);
         var problems = findingInventoryProblems(Files.readString(KERNEL_FINDINGS), inventory, LEGACY_FINDINGS_SHA256);
+        Set<String> tasks = Pattern.compile("(?m)^\\| \\*\\*([A-Z][A-Z0-9-]*)\\*\\* \\|")
+                .matcher(Files.readString(Path.of("../docs/CONFORMANCE-PLAN.md"))).results()
+                .map(m -> m.group(1)).collect(java.util.stream.Collectors.toSet());
+        inventory.reviews().forEach((id, review) -> {
+            if (review != null) consumerReviewProblems(review, tasks, KernelDocsFoldContractTest::localTestReferenceResolves)
+                    .forEach(problem -> problems.add(id + ": " + problem));
+        });
         assertTrue(problems.isEmpty(), () -> String.join("\n", problems));
         System.out.println("Finding review inventory: " + inventory.legacy().size()
                 + " legacy entries (not adoption evidence), " + inventory.reviews().size() + " current review records");
+        System.out.println("Outstanding consumer obligations: " + inventory.reviews().values().stream()
+                .mapToLong(KernelDocsFoldContractTest::outstandingConsumers).sum());
     }
 
     @Test
@@ -115,12 +143,12 @@ class KernelDocsFoldContractTest {
         var rebaselined = new FindingInventory("baseline", findingRevisions(revised), Map.of());
         assertTrue(findingInventoryProblems(revised, rebaselined, pin).stream().anyMatch(p -> p.contains("baseline")));
         var reviewed = new FindingInventory("baseline", baseline.legacy(), Map.of(
-                "kf1", new FindingReview(findingRevisions(revised).get("kf1"), "F-USE2")));
+                "kf1", new FindingReview(findingRevisions(revised).get("kf1"), "F-USE2", Map.of(), Map.of())));
         assertEquals(List.of(), findingInventoryProblems(revised, reviewed, pin));
         assertTrue(findingInventoryProblems(revised + "Later amendment.\n", reviewed, pin).stream()
                 .anyMatch(p -> p.contains("kf1")));
         var ownerless = new FindingInventory("baseline", baseline.legacy(), Map.of(
-                "kf1", new FindingReview(findingRevisions(revised).get("kf1"), " ")));
+                "kf1", new FindingReview(findingRevisions(revised).get("kf1"), " ", Map.of(), Map.of())));
         assertTrue(findingInventoryProblems(revised, ownerless, pin).stream().anyMatch(p -> p.contains("task")));
     }
 
@@ -138,7 +166,7 @@ class KernelDocsFoldContractTest {
         String pin = legacyFindingsDigest(baseline);
         assertTrue(findingInventoryProblems(first, baseline, pin).stream().anyMatch(p -> p.contains("kf1001")));
         var ghost = new FindingInventory("baseline", baseline.legacy(), Map.of(
-                "kf9", new FindingReview("absent", "F-USE2")));
+                "kf9", new FindingReview("absent", "F-USE2", Map.of(), Map.of())));
         assertTrue(findingInventoryProblems(first + second, ghost, pin).stream().anyMatch(p -> p.contains("kf9")));
     }
 
@@ -154,6 +182,196 @@ class KernelDocsFoldContractTest {
         String pin = legacyFindingsDigest(absent);
         assertEquals(List.of(), findingInventoryProblems(source, absent, pin));
         assertTrue(findingInventoryProblems(source, explicitNull, pin).stream().anyMatch(p -> p.contains("review")));
+    }
+
+    @Test
+    void eachConsumerAndItsDeclaredScopeIsMandatory() {
+        FindingReview review = openReview();
+        assertEquals(List.of(), consumerReviewProblems(review, Set.of("F-USE3"), ref -> true));
+        assertEquals(5, outstandingConsumers(review));
+        for (Consumer consumer : Consumer.values()) {
+            var consumers = new EnumMap<>(review.consumers());
+            consumers.remove(consumer);
+            assertTrue(!consumerReviewProblems(new FindingReview("sha", "F-USE3", review.scope(), consumers),
+                    Set.of("F-USE3"), ref -> true).isEmpty(), consumer.toString());
+            consumers.put(consumer, null);
+            assertTrue(!consumerReviewProblems(new FindingReview("sha", "F-USE3", review.scope(), consumers),
+                    Set.of("F-USE3"), ref -> true).isEmpty(), "null " + consumer);
+            var scope = new EnumMap<>(review.scope());
+            scope.remove(consumer);
+            assertTrue(!consumerReviewProblems(new FindingReview("sha", "F-USE3", scope, review.consumers()),
+                    Set.of("F-USE3"), ref -> true).isEmpty(), "scope " + consumer);
+        }
+        assertTrue(!consumerReviewProblems(review, Set.of("OTHER"), ref -> true).isEmpty(), "unknown owner");
+    }
+
+    @Test
+    void terminalDispositionsNeedEveryDeclaredSurfaceAndItsEvidence() {
+        FindingReview open = openReview();
+        var scope = new EnumMap<>(open.scope());
+        scope.put(Consumer.DMKITS, List.of("rulekit", "modelkit"));
+        var consumers = new EnumMap<>(open.consumers());
+        var evidence = new TreeMap<String, ConsumerEvidence>();
+        evidence.put("rulekit", new ConsumerEvidence("known#case", "witness"));
+        consumers.put(Consumer.DMKITS, new ConsumerReview(ReviewState.APPLIED, "fixture basis", evidence));
+        var review = new FindingReview("sha", "F-USE3", scope, consumers);
+        assertTrue(!consumerReviewProblems(review, Set.of("F-USE3"), ref -> true).isEmpty(), "missing modelkit evidence");
+        evidence.put("modelkit", new ConsumerEvidence("known#case", "witness"));
+        assertEquals(List.of(), consumerReviewProblems(review, Set.of("F-USE3"), ref -> true));
+        assertEquals(4, outstandingConsumers(review));
+        assertTrue(!consumerReviewProblems(review, Set.of("F-USE3"), ref -> false).isEmpty(), "unresolved test method");
+        evidence.put("modelkit", new ConsumerEvidence("known#case", " "));
+        assertTrue(!consumerReviewProblems(review, Set.of("F-USE3"), ref -> true).isEmpty(), "missing witness");
+        consumers.put(Consumer.DMKITS, new ConsumerReview(ReviewState.NOT_APPLICABLE, "contract basis", Map.of()));
+        assertTrue(!consumerReviewProblems(review, Set.of("F-USE3"), ref -> true).isEmpty(), "affected but inapplicable");
+        scope.put(Consumer.DMKITS, List.of());
+        assertEquals(List.of(), consumerReviewProblems(review, Set.of("F-USE3"), ref -> true));
+        consumers.put(Consumer.DMKITS, new ConsumerReview(ReviewState.NOT_APPLICABLE, " ", Map.of()));
+        assertTrue(!consumerReviewProblems(review, Set.of("F-USE3"), ref -> true).isEmpty(), "missing contract reason");
+    }
+
+    @Test
+    void localMethodReferencesAndPeerRevisionReferencesHaveDifferentOwners() throws IOException {
+        String own = "cli/src/test/java/io/github/mbackschat/a12/dm/cli/KernelDocsFoldContractTest.java";
+        assertTrue(localTestReferenceResolves(own + "#eachConsumerAndItsDeclaredScopeIsMandatory"));
+        assertTrue(!localTestReferenceResolves(own), "filename alone");
+        assertTrue(!localTestReferenceResolves(own + "#missingMethod"));
+        assertTrue(localTestReferenceResolves("consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/"
+                + "SyntaxVerdictTest.kt#computationTextMatchesTheKernelJoiner"));
+        FindingReview open = openReview();
+        var consumers = new EnumMap<>(open.consumers());
+        consumers.put(Consumer.KERNEL_LEAN, new ConsumerReview(ReviewState.ALREADY_CONFORMS, "fixture peer disposition",
+                Map.of("runtime", new ConsumerEvidence("Downloads/letter.md", "prepared letter"))));
+        var review = new FindingReview("sha", "F-USE3", open.scope(), consumers);
+        assertTrue(!consumerReviewProblems(review, Set.of("F-USE3"), ref -> true).isEmpty(), "preparation is not peer evidence");
+        consumers.put(Consumer.KERNEL_LEAN, new ConsumerReview(ReviewState.ALREADY_CONFORMS, "fixture peer disposition",
+                Map.of("runtime", new ConsumerEvidence("a12-kernel-lean@" + "a".repeat(40) + ":docs/SOURCES.md#receipt", "confirmed surface"))));
+        assertEquals(List.of(), consumerReviewProblems(review, Set.of("F-USE3"), ref -> false));
+    }
+
+    @Test
+    void unknownConsumerStatesDuplicateKeysAndMalformedScopesAreRejected() throws IOException {
+        var mapper = new ObjectMapper().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+                .enable(DeserializationFeature.FAIL_ON_NUMBERS_FOR_ENUMS);
+        assertEquals(ReviewState.APPLIED, mapper.readValue(
+                "{\"consumers\":{\"adapter\":{\"state\":\"APPLIED\"}}}", FindingReview.class)
+                .consumers().get(Consumer.ADAPTER).state());
+        for (String json : List.of(
+                "{\"scope\":{\"unknown\":[]}}",
+                "{\"consumers\":{\"adapter\":{\"state\":\"UNKNOWN\"}}}",
+                "{\"consumers\":{\"adapter\":{\"state\":0}}}",
+                "{\"consumers\":{\"adapter\":{\"state\":\"0\"}}}",
+                "{\"task\":\"F-USE3\",\"task\":\"F-USE2\"}")) {
+            assertThrows(IOException.class, () -> mapper.readValue(json, FindingReview.class), json);
+        }
+        FindingReview open = openReview();
+        for (List<String> invalid : List.of(List.of("rulekit", "rulekit"), List.of(" "))) {
+            var scope = new EnumMap<>(open.scope());
+            scope.put(Consumer.DMKITS, invalid);
+            assertTrue(!consumerReviewProblems(new FindingReview("sha", "F-USE3", scope, open.consumers()),
+                    Set.of("F-USE3"), ref -> true).isEmpty(), invalid.toString());
+        }
+    }
+
+    @Test
+    void evidenceSourcesStayInsideTheDeclaredInputTree(@TempDir Path root) throws IOException {
+        for (String source : List.of("kit/src/test/ExampleTest.java", "kit/src/commonTest/ExampleTest.kt",
+                "build/evidence/ExampleTest.java", "kit/src/build/ExampleTest.java",
+                "node_modules/kit/src/ExampleTest.java", ".git/src/ExampleTest.java")) {
+            Path file = root.resolve(source);
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, source.endsWith(".kt") ? "fun case() {}" : "void case() {}");
+            boolean declared = source.equals("kit/src/test/ExampleTest.java")
+                    || source.equals("kit/src/commonTest/ExampleTest.kt");
+            assertEquals(declared, localTestReferenceResolves(root, source + "#case"), source);
+        }
+    }
+
+    private static FindingReview openReview() {
+        var scope = new EnumMap<Consumer, List<String>>(Consumer.class);
+        var consumers = new EnumMap<Consumer, ConsumerReview>(Consumer.class);
+        for (Consumer consumer : Consumer.values()) {
+            scope.put(consumer, List.of("runtime"));
+            consumers.put(consumer, new ConsumerReview(ReviewState.OPEN, "assess this consumer", Map.of()));
+        }
+        return new FindingReview("sha", "F-USE3", scope, consumers);
+    }
+
+    private static List<String> consumerReviewProblems(FindingReview review, Set<String> tasks,
+                                                      Predicate<String> localLock) {
+        List<String> problems = new ArrayList<>();
+        if (review.task() == null || !tasks.contains(review.task())) problems.add("review task does not resolve: " + review.task());
+        Set<Consumer> required = EnumSet.allOf(Consumer.class);
+        if (review.scope() == null || review.consumers() == null
+                || !review.scope().keySet().equals(required) || !review.consumers().keySet().equals(required)) {
+            problems.add("scope and dispositions must each name all five consumers");
+            return problems;
+        }
+        for (Consumer consumer : Consumer.values()) {
+            List<String> scope = review.scope().get(consumer);
+            ConsumerReview disposition = review.consumers().get(consumer);
+            if (scope == null || scope.stream().anyMatch(s -> s == null || s.isBlank())
+                    || new HashSet<>(scope).size() != scope.size()) {
+                problems.add(consumer + ": scope must list unique nonblank surfaces");
+                continue;
+            }
+            if (disposition == null || disposition.state() == null || disposition.evidence() == null) {
+                problems.add(consumer + ": disposition, state and evidence map are required");
+                continue;
+            }
+            if (disposition.basis() == null || disposition.basis().isBlank()) problems.add(consumer + ": disposition needs a basis");
+            Set<String> surfaces = new HashSet<>(scope);
+            switch (disposition.state()) {
+                case APPLIED, ALREADY_CONFORMS -> {
+                    if (surfaces.isEmpty() || !surfaces.equals(disposition.evidence().keySet())) {
+                        problems.add(consumer + ": terminal applicable disposition needs evidence for every declared surface");
+                    }
+                }
+                case NOT_APPLICABLE -> {
+                    if (!surfaces.isEmpty() || !disposition.evidence().isEmpty()) {
+                        problems.add(consumer + ": inapplicable disposition contradicts affected scope or evidence");
+                    }
+                }
+                case OPEN -> {
+                    if (!surfaces.containsAll(disposition.evidence().keySet())) problems.add(consumer + ": evidence outside declared scope");
+                }
+            }
+            disposition.evidence().forEach((surface, evidence) -> {
+                if (evidence == null || evidence.reference() == null || evidence.witness() == null || evidence.witness().isBlank()) {
+                    problems.add(consumer + "/" + surface + ": evidence needs a reference and a witness");
+                } else if (consumer == Consumer.KERNEL_LEAN
+                        ? !evidence.reference().matches("a12-kernel-lean@[0-9a-f]{40}:[^\\s#]+#[^\\s#]+")
+                        : !localLock.test(evidence.reference())) {
+                    problems.add(consumer + "/" + surface + ": evidence reference does not identify its owner's lock or receipt");
+                }
+            });
+        }
+        return problems;
+    }
+
+    private static long outstandingConsumers(FindingReview review) {
+        return review.consumers().values().stream().filter(c -> c.state() == ReviewState.OPEN).count();
+    }
+
+    // F-USE2 resolves the source and declaration spelling; F-USE3 must execute the witness, not trust this lookup.
+    private static boolean localTestReferenceResolves(String reference) {
+        return localTestReferenceResolves(Path.of("..").toAbsolutePath().normalize(), reference);
+    }
+
+    private static boolean localTestReferenceResolves(Path root, String reference) {
+        String[] parts = reference.split("#", -1);
+        if (parts.length != 2 || !parts[0].matches(".+Test\\.(java|kt)") || !parts[1].matches("[A-Za-z_][A-Za-z0-9_]*")) return false;
+        Path source = root.resolve(parts[0]).normalize();
+        if (!source.startsWith(root) || !Files.isRegularFile(source)) return false;
+        var segments = new ArrayList<String>();
+        root.relativize(source).forEach(segment -> segments.add(segment.toString()));
+        if (!segments.contains("src") || segments.stream().anyMatch(Set.of("build", "node_modules", ".git")::contains)) return false;
+        try {
+            return Pattern.compile("\\b(?:void|fun)\\s+" + Pattern.quote(parts[1]) + "\\s*\\(")
+                    .matcher(Files.readString(source)).find();
+        } catch (IOException unreadable) {
+            return false;
+        }
     }
 
     private static Map<String, String> findingRevisions(String markdown) {

@@ -592,6 +592,11 @@ tasks.register('semanticsMapGuardTest', Test) {
             'docs/SEMANTICS-MAP.md'   : rootProject.file('docs/SEMANTICS-MAP.md'),
             'docs/KERNEL-FINDINGS.md' : rootProject.file('docs/KERNEL-FINDINGS.md'),
             'finding adoption inventory': file('src/test/resources/kernel-finding-adoption.json'),
+            'finding review owners': rootProject.file('docs/CONFORMANCE-PLAN.md'),
+            'finding evidence references': rootProject.fileTree('.') {
+                include '**/src/**/*Test.java', '**/src/**/*Test.kt'
+                exclude '**/build/**', '**/node_modules/**', '.git/**'
+            },
             'docs/KERNEL-SEMANTICS.md': rootProject.file('docs/KERNEL-SEMANTICS.md'),
             'operator catalog'        : rootProject.fileTree('rulekit/src/main/resources/catalog'),
             'corpus cases'            : rootProject.fileTree('corpus/cases') { include '**/*.json' },
