@@ -34,7 +34,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * that model, which is the pairing law transferred onto a shape the pairing never sees.
  */
 internal fun TrackedFactBase.enumCategoryFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+    defaultVariantFields().flatMap { field ->
         val body = field.enumerationBody() ?: return@flatMap emptyList()
         val values = body.declaredEnumValues()?.takeIf { it.isNotEmpty() } ?: return@flatMap emptyList()
         val categories = body["categories"] as? JsonArray ?: return@flatMap emptyList()
@@ -52,7 +52,7 @@ internal fun TrackedFactBase.enumCategoryFindings(): List<Finding> =
  * what the consumer needs: which enumeration was left to A12, not that some were.
  */
 internal fun TrackedFactBase.enumCategoryGaps(): List<CoverageGap> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+    defaultVariantFields().mapNotNull { field ->
         val unread = field.enumerationBody()?.unreadableHalf() ?: return@mapNotNull null
         CoverageGap(
             field.path,

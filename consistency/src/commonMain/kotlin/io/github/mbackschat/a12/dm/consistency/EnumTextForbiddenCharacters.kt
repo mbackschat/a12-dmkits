@@ -37,7 +37,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * character that triggers it is incidental and reporting it here would state the wrong law.
  */
 internal fun TrackedFactBase.enumTextForbiddenCharacterFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+    defaultVariantFields().flatMap { field ->
         val body = field.enumerationBody() ?: return@flatMap emptyList()
         val texts = declaredTexts(body)
         val broken = texts.filter { it.text.any(::isALineBreak) }
@@ -56,7 +56,7 @@ internal fun TrackedFactBase.enumTextForbiddenCharacterFindings(): List<Finding>
  * that some were.
  */
 internal fun TrackedFactBase.enumTextForbiddenCharacterGaps(): List<CoverageGap> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+    defaultVariantFields().mapNotNull { field ->
         val unread = field.enumerationBody()?.unreadableText() ?: return@mapNotNull null
         CoverageGap(
             field.path,

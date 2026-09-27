@@ -33,7 +33,7 @@ import kotlinx.serialization.json.booleanOrNull
  * [declaredFormat] can treat the absent member as nothing to judge and still give A12's answer.
  */
 internal fun TrackedFactBase.temporalConfigFindings(field: TrackedDeclaration): List<Finding> {
-    if (field.declaredKind != DeclaredKind.FIELD) {
+    if (field.declaredKind != DeclaredKind.FIELD || field.body.deletesAtDefaultVariant()) {
         return emptyList()
     }
     val declared = field.body?.get("fieldType") as? JsonObject ?: return emptyList()

@@ -91,6 +91,49 @@ class SetShapeCarriesResolutionTest {
         assertNotNull(store.validIn(contentOnly, cell.key), "a scale edit does not change the declaration set")
     }
 
+    @Test
+    fun scopedDefaultVariantFieldsKeepIdentityAndChargeOnlyTheirOwnMembership() {
+        val model = prepared(filteredTwin("f1"))
+        val facts = TrackedFactBase(model, ReadTranscript())
+        val wholeKey = CellKey(CHECK_PRODUCERS.single { CheckFamily.ENUM_CATEGORY_ALIGNMENT in it.completes })
+        val fields = facts.whileProducing(wholeKey) { facts.defaultVariantFields() }
+        assertEquals(listOf("f0", "f2"), fields.map { it.id })
+        assertEquals(setOf(FactRead.DeclarationSetShape), facts.observedWhileProducing(wholeKey))
+        val original = facts.allDeclarations()
+        fields.forEach { field -> assertSame(original.single { it.id == field.id }, field) }
+        val producer = CHECK_PRODUCERS.single { CheckFamily.ENUM_S_VALUE_DOMAIN in it.completes }
+        for (cursor in original) {
+            val at = DeclarationKey(cursor.path, if (cursor.id == "f1") 1 else 0)
+            val key = CellKey(producer, at)
+            val scoped = facts.scopedTo(at, cursor)
+            val result = facts.whileProducing(key) { scoped.defaultVariantFields() }
+            val survives = cursor.id in setOf("f0", "f2")
+            assertEquals(if (survives) listOf(cursor.id) else emptyList(), result.map { it.id })
+            if (survives) assertSame(cursor, result.single())
+            val expectedReads = setOf(FactRead.DeclarationRow(at.path, at.amongSamePath)) +
+                if (cursor.declaredKind == DeclaredKind.FIELD) setOf(FactRead.DeclarationContent(at.path)) else emptySet()
+            assertEquals(expectedReads, facts.observedWhileProducing(key))
+        }
+    }
+
+    @Test
+    fun scopedFieldCellsFollowFilterChangesWithoutDependingOnOtherFields() {
+        val before = prepared(filteredTwin("f1"))
+        val swapped = prepared(filteredTwin("f0"))
+        val unrelated = prepared(filteredTwin("f1").replace(
+            "\"type\":\"NumberType\"",
+            "\"type\":\"NumberType\",\"NumberType\":{\"maxFractionalDigits\":2}",
+        ))
+        val facts = TrackedFactBase(before, ReadTranscript())
+        val cell = schedule(facts).single {
+            CheckFamily.ENUM_S_VALUE_DOMAIN in it.key.producer.completes &&
+                it.key.at == DeclarationKey("/Order/Lines/Code", 1)
+        }
+        val store = CheckCells(mapOf(cell.key to facts.cellFor(cell.key, before, cell.produce)))
+        assertNull(store.validIn(swapped, cell.key))
+        assertNotNull(store.validIn(unrelated, cell.key))
+    }
+
     private fun prepared(json: String): PreparedModel {
         val admitted = admit(ModelSource(json))
         assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")

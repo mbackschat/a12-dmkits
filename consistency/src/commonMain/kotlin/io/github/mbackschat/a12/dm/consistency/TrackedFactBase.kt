@@ -270,6 +270,14 @@ internal class TrackedFactBase private constructor(
         return views.defaultVariantCursors
     }
 
+    /** KF494/KF498's field checks retain scope; a scoped filter is part of that field's tracked body. */
+    fun defaultVariantFields(): List<TrackedDeclaration> =
+        if (scope == null) {
+            allDefaultVariantDeclarations().filter { it.declaredKind == DeclaredKind.FIELD }
+        } else {
+            declarations().filter { it.declaredKind == DeclaredKind.FIELD && !it.body.deletesAtDefaultVariant() }
+        }
+
     /**
      * The REPEATABLE groups the model declares, charged as [ModelFact.REPEATABLE_GROUP_SET].
      *

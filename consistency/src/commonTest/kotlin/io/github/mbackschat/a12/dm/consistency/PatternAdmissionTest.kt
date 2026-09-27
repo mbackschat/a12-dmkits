@@ -118,14 +118,14 @@ class PatternAdmissionTest {
      */
     @Test
     fun theUndecidableHalfIsPublishedAsACoverageGap() {
-        val compilability = { pattern: String? ->
+        fun compilability(pattern: String?, filtered: Boolean = false): Int =
             checkRead(
                 ModelSource(
                     """
                     {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-                        {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"${
+                        {"type":"Field","id":"f0","name":"Reference","Field":{${if (filtered) """"variantFilter":{"filterType":"ONLY"},""" else ""}"fieldType":{"type":"StringType"${
                         pattern?.let { ""","StringType":{"pattern":"$it",$patternMessage}""" } ?: ""
                     }}}}
                       ]}}
@@ -133,8 +133,8 @@ class PatternAdmissionTest {
                     """.trimIndent(),
                 ),
             ).gaps.count { it.reason.contains("compiles as a JAVA regular expression") }
-        }
         assertEquals(1, compilability("[A-Z]+"), "a model with a pattern discloses the half left to A12")
         assertEquals(0, compilability(null), "a model with no pattern has nothing to disclose")
+        assertEquals(0, compilability("[A-Z]+", filtered = true), "a removed field has no pattern to examine")
     }
 }

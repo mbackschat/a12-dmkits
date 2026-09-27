@@ -325,23 +325,23 @@ A replacement landing is conditional ownership, not an instruction to rewrite ev
 | read/build, container | `VARIANT_FILTER` | R4 candidate; original filter binding precedes default-variant deletion |
 | read/build | `RULE_PRESENTATION_MEMBERS` | R4 candidate; original JSON, independent of default-variant filtering |
 | read/build | `STRING_SLOT_BINDING` | retain original rule/computation/group slot binding; corrected 2026-09-27: R0's malformed field-name witness belongs to preparation diagnostics, not this family's FIELD arm (there is none) |
-| read/build, container, metamodel | `FIELD_TYPE_BINDING` | R4 candidate; unknown type reads original input, unspecified type is checked in the default container; KF498 separates missing members and missing/unresolved typedef IDs by filter sensitivity without assigning codeless exceptions a stage |
-| metamodel | `TEMPORAL_CONFIG` | R4 candidate; measured field arm reads the default container (KF494) |
-| non-meta, metamodel | `ELEMENT_NAME_ALPHABET` | R4 candidate; field and group names in the default container |
-| metamodel | `FIELD_NAME_RESERVED_SEGMENT` | R4 candidate; measured field arm reads the default container (KF494) |
-| metamodel | `ENUM_CATEGORY_ALIGNMENT` | R4 candidate; measured field arm reads the default container (KF494) |
-| non-meta | `ENUM_VALUE_CHARACTERS` | R4 candidate; enum values in the default container (KF494) |
-| metamodel | `ENUM_TEXT_FORBIDDEN_CHARACTERS` | R4 candidate; measured field arm reads the default container (KF494) |
-| metamodel | `MODEL_TEXT_REPERTOIRE` | R4 candidate; measured field arm reads the default container (KF494) |
-| metamodel | `HINT_LIST_VALUES` | R4 candidate; measured field arm reads the default container (KF494) |
+| read/build, container, metamodel | `FIELD_TYPE_BINDING` | R4-V1: original binding gates precede filtered construction checks; missing typedef ID retains its refusal, present unresolved ID is skipped with its field; KF498 separates these outcomes without assigning codeless exceptions a stage |
+| metamodel | `TEMPORAL_CONFIG` | R4-V1: field configuration reads surviving declarations (KF494); original type binding is separate |
+| non-meta, metamodel | `ELEMENT_NAME_ALPHABET` | R4-V1: field names use default-variant membership (KF494); group-name behavior remains unchanged |
+| metamodel | `FIELD_NAME_RESERVED_SEGMENT` | R4-V1: the field gate uses default-variant membership (KF494) |
+| metamodel | `ENUM_CATEGORY_ALIGNMENT` | R4-V1: findings and declaration gaps use the shared default-variant field view (KF494) |
+| non-meta | `ENUM_VALUE_CHARACTERS` | R4-V1: enum findings and declaration gaps use the shared default-variant field view (KF494); model-level unsupported-range disclosure remains separate |
+| metamodel | `ENUM_TEXT_FORBIDDEN_CHARACTERS` | R4-V1: findings and declaration gaps use the shared default-variant field view (KF494) |
+| metamodel | `MODEL_TEXT_REPERTOIRE` | R4-V1: only the field arm changes to default-variant membership (KF494); other declaration carriers remain unchanged |
+| metamodel | `HINT_LIST_VALUES` | R4-V1: findings and declaration gaps use the shared default-variant field view (KF494) |
 | parse-action | `TABLE_ENUM_OPERAND` | R3b candidate; retained through R3a |
 | parse-action | `H_MODEL_FORM_CONSTRUCT` | R3b candidate; retained through R3a |
-| metamodel | `ENUM_S_VALUE_DOMAIN` | R4 candidate; measured field arm reads the default container (KF494) |
-| metamodel | `STRING_PATTERN_ADMISSION` | R4 candidate; measured field arm reads the default container (KF494) |
-| read/build, metamodel | `STRING_PATTERN_MESSAGE` | R4 candidate; pattern/message pairing reads the default container (KF494), while an empty message object remains a load/build refusal under filtering (KF498) |
+| metamodel | `ENUM_S_VALUE_DOMAIN` | R4-V1: the scoped field walk uses the shared default-variant view (KF494) |
+| metamodel | `STRING_PATTERN_ADMISSION` | R4-V1: findings and pattern-compilability disclosure use surviving fields (KF494); no Java-regex implementation is added |
+| read/build, metamodel | `STRING_PATTERN_MESSAGE` | R4-V1: pairing and locale checks follow filtering (KF494); malformed message entries retain original-input refusal (KF498) |
 | non-meta | `FIELD_TYPE_MESSAGE_TEXT` | R4 candidate; field messages in the default container (KF490, KF494) |
-| metamodel | `STRING_TYPE_PARAMETERS` | R4 candidate; measured field arm reads the default container (KF494) |
-| metamodel | `NUMBER_TYPE_DIGITS` | R4 candidate; measured field arm reads the default container (KF494) |
+| metamodel | `STRING_TYPE_PARAMETERS` | R4-V1: the String arm uses default-variant membership (KF494); Custom length ordering is unchanged pending its own filter witness |
+| metamodel | `NUMBER_TYPE_DIGITS` | R4-V1: digit, inverted-range and budget checks use surviving fields (KF494/KF498); original-model value-limit checking is separate |
 | metamodel | `ENUM_VALUE_LABELS` | R4 candidate; container value checks; original serializer duplicate rejection needs a separate stage (KF494) |
 | parse-action | `EMPTY_GROUP_OPERAND` | R3b candidate; retained through R3a |
 | post-parse | `ERROR_FIELD_REFERENCE` | R3b candidate; retained through R3a |

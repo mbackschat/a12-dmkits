@@ -38,7 +38,7 @@ package io.github.mbackschat.a12.dm.consistency
 internal fun TrackedFactBase.elementNameAlphabetFindings(element: TrackedDeclaration): List<Finding> =
     when (element.declaredKind) {
         DeclaredKind.GROUP -> element.groupNameFindings()
-        DeclaredKind.FIELD -> element.fieldNameFindings()
+        DeclaredKind.FIELD -> if (element.body.deletesAtDefaultVariant()) emptyList() else element.fieldNameFindings()
         else -> emptyList()
     }
 

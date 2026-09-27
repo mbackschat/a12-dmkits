@@ -34,6 +34,7 @@ import kotlinx.serialization.json.JsonObject
  */
 internal fun TrackedFactBase.modelTextRepertoireFindings(): List<Finding> =
     declarations().filterNot { it.origin.isMounted }.mapNotNull { element ->
+        if (element.declaredKind == DeclaredKind.FIELD && element.body.deletesAtDefaultVariant()) return@mapNotNull null
         element.carriedTexts(declaredLocales).firstNotNullOfOrNull { it.unsupported() }
             ?.let { element.repertoireFinding(it) }
     }

@@ -16,7 +16,7 @@ import kotlinx.serialization.json.JsonObject
  * the question, so reporting one would refuse a model A12 admits.
  */
 internal fun TrackedFactBase.enumSpecialValueFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+    defaultVariantFields().mapNotNull { field ->
         val body = field.enumerationBody() ?: return@mapNotNull null
         val special = body.string("sValue")?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
         val declared = (body["values"] as? JsonArray)

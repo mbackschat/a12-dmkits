@@ -35,7 +35,7 @@ import kotlinx.serialization.json.intOrNull
  * A12 takes. Also any `hintList` entry whose shape this checker cannot read, published as a [CoverageGap].
  */
 internal fun TrackedFactBase.hintListValueFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+    defaultVariantFields().flatMap { field ->
         val body = field.stringTypeBody() ?: return@flatMap emptyList()
         judgedEntries(body).flatMap { values ->
             field.lengthFindings(values, body) + field.duplicateFindings(values)
@@ -48,7 +48,7 @@ internal fun TrackedFactBase.hintListValueFindings(): List<Finding> =
  * Per DECLARATION, because that is what a consumer needs: which field's hint list was left to A12.
  */
 internal fun TrackedFactBase.hintListValueGaps(): List<CoverageGap> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+    defaultVariantFields().mapNotNull { field ->
         val unread = field.stringTypeBody()?.unreadableHintEntry() ?: return@mapNotNull null
         CoverageGap(
             field.path,

@@ -40,7 +40,7 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 internal fun TrackedFactBase.supportedCharacterFindings(): List<Finding> {
     val admitted = admittedRanges(supportedCharacters) ?: return emptyList()
-    return declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+    return defaultVariantFields().flatMap { field ->
         val values = field.enumerationBody()?.get("values") as? JsonArray ?: return@flatMap emptyList()
         // Distinct SPELLINGS, because A12 reports on the triple (field, value, character): a value declared
         // twice yields the same notification twice and A12 keeps one, so pairing per entry would over-count.
@@ -71,7 +71,7 @@ internal fun TrackedFactBase.supportedCharacterGaps(): List<CoverageGap> {
             ),
         )
     }
-    return declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+    return defaultVariantFields().mapNotNull { field ->
         val values = field.enumerationBody()?.get("values") as? JsonArray ?: return@mapNotNull null
         val unread = values.firstNotNullOfOrNull { it.unreadableValue() } ?: return@mapNotNull null
         CoverageGap(

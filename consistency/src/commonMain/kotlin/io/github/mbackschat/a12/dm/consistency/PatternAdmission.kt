@@ -23,7 +23,7 @@ import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
  * about that suggests two codes.
  */
 internal fun TrackedFactBase.declaredPatternFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+    defaultVariantFields().mapNotNull { field ->
         val pattern = field.declaredPattern() ?: return@mapNotNull null
         val listed = kernelPatternBlacklist(pattern) ?: return@mapNotNull null
         Finding(
@@ -45,7 +45,7 @@ internal fun TrackedFactBase.declaredPatternFindings(): List<Finding> =
  * gap is raised only when the model actually declares a pattern — otherwise it would describe every model.
  */
 internal fun TrackedFactBase.declaredPatternGaps(): List<CoverageGap> =
-    if (allDeclarations().none { it.declaredKind == DeclaredKind.FIELD && it.declaredPattern() != null }) {
+    if (defaultVariantFields().none { it.declaredPattern() != null }) {
         emptyList()
     } else {
         listOf(

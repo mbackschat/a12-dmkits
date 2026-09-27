@@ -29,7 +29,9 @@ internal fun TrackedFactBase.fieldNameReservedSegmentFinding(field: TrackedDecla
     if (conditionLanguage != ConditionLanguage.EN) {
         return null
     }
-    if (field.declaredKind != DeclaredKind.FIELD || !field.name.reservesItsFinalSegment()) {
+    if (field.declaredKind != DeclaredKind.FIELD || !field.name.reservesItsFinalSegment() ||
+        field.body.deletesAtDefaultVariant()
+    ) {
         return null
     }
     return Finding(

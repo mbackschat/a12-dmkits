@@ -6,7 +6,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * Whether A12's reader can BIND a field's declared `fieldType` — the discriminated union, not its contents.
+ * A field's original type binding and the checks that require its default-variant declaration.
  *
  * A `fieldType` A12 cannot bind refuses the source outright: no diagnostic, no code, the model simply does
  * not load, so a clean report about it would present silence as a verdict. Measured across the whole
@@ -22,11 +22,10 @@ import kotlinx.serialization.json.JsonPrimitive
  * `FieldtypeDeserializer.deriveFieldtype`, whose `default` raises, so the thirteen names are the vocabulary
  * by construction rather than by survey.
  *
- * **TWO tiers, and the family owns both, because they are one member's law.** A shape A12's reader refuses
- * never loads; a field with NO `fieldType` at all, and one whose body lacks the member its type constructs
- * from, load and then fail as A12 builds the model. Splitting them would put one member's verdict in
- * two families and give them two chances to disagree. The distinction survives in the message, which says
- * which tier the model died at, since only the first means A12 never saw the declaration.
+ * Original binding and container checks share this family. KF494/KF498 distinguish them by filtering the
+ * same defective declaration: absent/null types and an absent Date body still refuse, while missing
+ * construction members can disappear. Missing and unresolved typedef IDs also differ under filtering.
+ * Keep the original binding gates before the filter; the combined load/build class does not locate a stage.
  *
  * **The absent-member half changed this checker's answer about nearly every model, and that was the cost.**
  * A field with no declared type is not an untyped field — A12 refuses to build the model
@@ -53,7 +52,7 @@ internal fun TrackedFactBase.fieldTypeBindingFindings(): List<Finding> =
  * found" for a declaration the family declined to judge.
  */
 internal fun TrackedFactBase.fieldTypeBindingGaps(): List<CoverageGap> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+    defaultVariantFields().mapNotNull { field ->
         val declared = field.body?.get("fieldType") as? JsonObject ?: return@mapNotNull null
         if (declared.namedFieldType() != FieldType.DATE_RANGE) {
             return@mapNotNull null
@@ -138,6 +137,8 @@ private fun unbindableFieldType(
     if (type == FieldType.TYPE_DEF) {
         return unresolvedTypeDefinition(field, declaredTypeDefinitionIds)
     }
+    // KF494/KF498: reader failures above survive filtering; the following type checks do not.
+    if (field.body.deletesAtDefaultVariant()) return null
     // The one type refused for BEING itself: it binds like any other and A12 then has no code to generate
     // for it, in both body spellings, on a root and a nested field, and once per declaration rather than
     // once for the model (`FieldTypeBindingLawsTest`). So the verdict is the type's, not the body's, and
@@ -153,10 +154,8 @@ private fun unbindableFieldType(
             field.path,
         )
     }
-    // The second tier: A12 BOUND this and then could not construct from it. The member is NAMED rather than
-    // the body merely weighed, so a body carrying its optional members and not the one A12 builds from is
-    // caught — which an emptiness test missed. Absence only: a member present but null is a shape nobody has
-    // run, and leaving it to A12 under-reports where guessing could refuse a model A12 takes.
+    // Check the required member rather than body emptiness: optional members do not satisfy it (KF308).
+    // KF498 measures the filter-sensitive absent-member carriers; explicit null remains unjudged.
     val required = REQUIRED_BODY_MEMBER[type]
     if (required != null && body is JsonObject && body.lacks(required)) {
         val explain = "`fieldType` names `$discriminator` without the `$required` A12 constructs that " +
@@ -178,9 +177,8 @@ private fun unbindableFieldType(
  *
  * The member above is necessary and not sufficient, and this is the measured case that says so
  * ([KERNEL-FINDINGS KF316], `rulekit.validate.laws.DateRangePairAdmissionLawsTest`): every half of a refused
- * pair appears in an admitted pair, so neither half can be judged alone. It is the same BUILD tier as an
- * absent member — A12 reads the model, cannot construct the type, and issues no consistency code — which is
- * why it belongs to this family rather than to the date-config one, whose findings are A12's own verdicts.
+ * pair appears in an admitted pair, so neither half can be judged alone. KF498 measures a codeless refusal
+ * for an incompatible pair that disappears when the field is filtered; only surviving fields reach here.
  *
  * **An ABSENT `rangeSeparator` is `/`**, the kernel's `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`
  * pre-initialised by `DateRangeTypeBuilder`, and measured as such on a format `/` admits and one it does
@@ -231,7 +229,7 @@ private fun inadmissibleRangePair(field: TrackedDeclaration, body: JsonObject): 
  * dangling-reference law ([KERNEL-FINDINGS KF308], corrected). It was settled against a shipped model, which
  * is the only oracle for a wire name.
  *
- * Both failures are the BUILD tier rather than the reader's: `EntityReferenceResolverVisitor.visitField`
+ * On unfiltered fields both failures are classified as load/build refusals: `EntityReferenceResolverVisitor.visitField`
  * resolves the id and deliberately sets the reference to null when it cannot, so the source loads and the
  * model then fails to build — measured for a dangling reference, for an absent member, and against a
  * declared-definition control that is ADMITTED.
@@ -246,7 +244,8 @@ private fun unresolvedTypeDefinition(
             "`fieldType` names `TypeDefType` without a `typeDefinitionId`, so A12 has no type definition to " +
                 "resolve",
         )
-    if (named in declaredTypeDefinitionIds) {
+    // KF498 distinguishes a missing id above from a present unresolved id on a filtered field.
+    if (field.body.deletesAtDefaultVariant() || named in declaredTypeDefinitionIds) {
         return null
     }
     return unbuildable(

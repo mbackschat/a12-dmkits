@@ -34,6 +34,7 @@ import kotlinx.serialization.json.intOrNull
 internal fun TrackedFactBase.stringTypeParameterFindings(): List<Finding> =
     declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         field.stringTypeBody()?.let { body ->
+            if (field.body.deletesAtDefaultVariant()) return@flatMap emptyList()
             return@flatMap noValueValidationFindings(field, body) + lengthFindings(field, body)
         }
         // The custom type carries the same two length members under the same law and answers with a class of

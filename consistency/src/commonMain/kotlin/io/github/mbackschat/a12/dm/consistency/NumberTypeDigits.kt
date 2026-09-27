@@ -28,12 +28,12 @@ import kotlinx.serialization.json.intOrNull
  * declares none, and the priority half of the sort block that has no DM-JSON member at all.
  */
 internal fun TrackedFactBase.numberTypeDigitFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+    defaultVariantFields().flatMap { field ->
         val body = field.numberTypeBody() ?: return@flatMap emptyList()
         digitPairFindings(field, body) + valueRangeFindings(field, body) + budgetFindings(field, body)
     }
 
-/** A12's cap on a declared scale, measured: 14 builds, 15 does not. */
+/** A12's declared-scale ceiling: 15 draws a codeless refusal on a surviving field (KF494). */
 private const val MAX_SCALE = 14
 
 /**
