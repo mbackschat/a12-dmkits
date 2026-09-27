@@ -9,7 +9,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 
 /** The finite role and completion population of CHECKER-RECONSTRUCTION-PROPOSAL, R3b-N. */
-object NumericNamePopulation {
+internal object NumericNamePopulation {
     private val host = DocumentModelDraft.named("order-numeric-names").locale("en_US")
         .rootGroup("Order") { root -> root
             .numberField("Total") { it.fractionDigits(0) }
@@ -23,9 +23,7 @@ object NumericNamePopulation {
     private const val ENTITY = "MVK_INVALID_ENTITY"
     private const val TOKEN = "MVK_UNEXPECTED_TOKEN"
 
-    data class Row(val id: String, val model: String, val expected: String?)
-
-    fun rows(): List<Row> {
+    fun rows(): List<ConditionCase> {
         val english = linkedMapOf(
             "FieldFilled(5)" to ENTITY,
             "FieldFilled(05)" to ENTITY,
@@ -58,7 +56,7 @@ object NumericNamePopulation {
         return rules(english, ConditionLanguage.EN) + rules(german, ConditionLanguage.DE) + computations()
     }
 
-    private fun rules(suffixes: Map<String, String?>, language: ConditionLanguage): List<Row> {
+    private fun rules(suffixes: Map<String, String?>, language: ConditionLanguage): List<ConditionCase> {
         val json = ModelDocument.read(host).setConditionLanguage(if (language == ConditionLanguage.EN) "en_US" else "de_DE").toJson()
         val model = BoundModel.ofJson(json)
         val total = model.num("/Order/Total")
@@ -66,11 +64,11 @@ object NumericNamePopulation {
             .`when`(total.filled()).code("NUMERIC_PROBE").message(Dsl.en("Check order values")).build().draft(language)
         val prefix = probe.errorCondition() + if (language == ConditionLanguage.EN) " And " else " Und "
         return suffixes.map { (suffix, expected) ->
-            Row("$language:$suffix", validator.inject(json, probe.withErrorCondition(prefix + suffix)), expected)
+            ConditionCase("$language:$suffix", validator.inject(json, probe.withErrorCondition(prefix + suffix)), expected)
         }
     }
 
-    private fun computations(): List<Row> {
+    private fun computations(): List<ConditionCase> {
         val model = BoundModel.ofJson(host)
         val total = model.num("/Order/Total")
         val probe = model.computation(model.num("/Order/Qty")).name("NumericProbe")
@@ -80,7 +78,7 @@ object NumericNamePopulation {
             val draft = DraftComputation(probe.groupPath(), probe.name(), probe.computedFieldRelPath(),
                 probe.commonPrecondition(), listOf(DraftComputation.Alternative(null, operation)),
                 probe.errorCodesToSuppress(), probe.roundingMode(), probe.messages())
-            Row("computation:$operation", validator.inject(host, draft), expected)
+            ConditionCase("computation:$operation", validator.inject(host, draft), expected)
         }
     }
 }

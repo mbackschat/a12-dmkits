@@ -46,9 +46,18 @@ class CheckerNearMissSweepTest {
 
     @Test
     fun numericNamesHaveOnlyLedgeredDifferences() {
-        val rows = NumericNamePopulation.rows()
-        assertEquals(27, rows.size)
-        assertEquals(27, rows.map { it.id }.distinct().size)
+        assertModelLedger(NumericNamePopulation.rows(), 27, "numeric-names")
+    }
+
+    @Test
+    fun operationTypesHaveOnlyLedgeredDifferences() {
+        assertModelLedger(OperationTypingPopulation.rows(), 48, "operation-types")
+    }
+
+    private fun assertModelLedger(rows: List<ConditionCase>, count: Int, name: String) {
+        assertEquals(count, rows.size)
+        assertEquals(count, rows.map { it.id }.distinct().size)
+        assertTrue(rows.any { it.expected == null }, "population retains admitted controls")
         val predictions = mutableListOf<String>()
         val clusters = sortedMapOf<String, Int>()
         val examples = mutableListOf<String>()
@@ -62,10 +71,10 @@ class CheckerNearMissSweepTest {
             examples += "$signature\t${row.id}"
         }
         val directory = File("build/checker-near-miss").apply { mkdirs() }
-        File(directory, "numeric-names.tsv").writeText(render(clusters))
-        File(directory, "numeric-names-examples.tsv").writeText(examples.joinToString("\n"))
+        File(directory, "$name.tsv").writeText(render(clusters))
+        File(directory, "$name-examples.tsv").writeText(examples.joinToString("\n"))
         assertEquals(emptyList<String>(), predictions, "kernel predictions differed")
-        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/numeric-names.tsv")).readText(), render(clusters))
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/$name.tsv")).readText(), render(clusters))
     }
 
     @Test

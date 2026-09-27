@@ -14,6 +14,8 @@ import io.github.mbackschat.a12.dm.adapter.laws.NearMissPopulation
 import io.github.mbackschat.a12.dm.adapter.laws.NearMissPopulation.Family
 import io.github.mbackschat.a12.dm.adapter.laws.HarvestedSyntaxPopulation
 import io.github.mbackschat.a12.dm.adapter.laws.FieldReadPopulation
+import io.github.mbackschat.a12.dm.adapter.laws.OperationTypingPopulation
+import io.github.mbackschat.a12.dm.adapter.laws.ConditionCase
 import io.github.mbackschat.a12.dm.adapter.laws.NumericNamePopulation
 import io.github.mbackschat.a12.dm.adapter.laws.ledgerClass
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
@@ -74,8 +76,16 @@ class A12ParseTraceTest {
 
     @Test
     fun numericNamesFollowTheirRecognizedRoleAndCompletion() {
-        val rows = NumericNamePopulation.rows()
-        assertEquals(27, rows.size)
+        assertPopulationClasses(NumericNamePopulation.rows(), 27)
+    }
+
+    @Test
+    fun operationTypesFollowTheirChildrenAndCompletion() {
+        assertPopulationClasses(OperationTypingPopulation.rows(), 48)
+    }
+
+    private fun assertPopulationClasses(rows: List<ConditionCase>, count: Int) {
+        assertEquals(count, rows.size)
         val observed = rows.map { row ->
             val service = mvkService(row.model)
             val rule = (service.iec as ElementContainer).allRules.single()

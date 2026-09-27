@@ -11835,3 +11835,32 @@ The four star refusals expose public `MVKParserError` coordinates `(line=1, line
 **Marked reads and target binding (2026-09-27).** With the same host and prefix, let `H(body)` be `Sum(Items*/Count Having [Items/Count] > 0 And body) > 0`. From a rule reporting on Total, `H([$Items*] > 0)` draws `MVK_NO_GROUPS_ALLOWED` and `H([$Items*/Count] > 0)` draws `MVK_NO_WILDCARDS_ALLOWED`. The unstarred marked reads `H([$Items/Raw] == "x")`, `H([$Items/Estimate] < Today)` and `H([$Items/Count] > 0)` all draw `MVK_NO_WILDCARD`: the prediction that the unmarked conjunct supplied their binding was wrong. These confirm [KF487](#kf487)'s distinction between filter iteration and the rule-target coordinates of a marked read.
 
 Changing only the rule's typed error-field handle from Total to Items/Count makes the identical Raw and Estimate conditions draw `MVK_INVALID_RAW_TYPE` and `MVK_INVALID_DATE_TYPE`, respectively. The identical Count condition parses, but whole-model admission draws `MVK_NEG_CONDITION_IN_ITERATION`; its predicted full admission was wrong. Thus the two type-gate witnesses reach their brackets only after the rule target binds the marked repetition; parse success alone is not admission. *Locked by:* `A12ParseTraceTest.markedFieldReadsRequireTheRulesBindingBeforeTheirGate` and `.boundMarkedFieldReadsReachTheirTypeGates`; O1 uses the same fixed five- and three-row populations in `CheckerNearMissSweepTest`. The initial O1 records are one group/star wrong-class input and three SILENT bound-marker inputs, including the later-stage Count refusal. No new claim about that later refusal's cause is made.
+
+## §12 supplement — operation results reach comparisons, and completed children can refuse before unfinished parents (kernel trace and `checkConsistency`, 2026-09-27) <a id="kf497"></a>
+
+> Fold: pending — operation-result admission and parse/check order beside §12.
+
+The fixed R3b-T0 population in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md#r3b-t0-acceptance-matrix-2026-09-27-before-execution) measures 48 own-domain Order inputs on Kernel 30.8.1 through both parse and whole-model admission. Qty is a scale-0 Number, Total a scale-2 Number, Label a String, Day a Date formatted yyyy-MM-dd, OtherDay dd.MM.yyyy and Month yyyy-MM. Each root-rule suffix below follows `FieldFilled(Total) And`. The two kernel routes agree on every class; the recorded incomplete-input prediction for the unfinished addition was refuted.
+
+| suffix | observed first class |
+|---|---|
+| `[Label] == [Qty] + 1` and its reversed comparison | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
+| `[Qty] + 1 == [Qty]` | admitted |
+| `[Total] + 1 == [Qty]` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `[Qty] / 2 == [Qty]` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `RoundDown([Qty] / 2, 0) == [Qty]` | admitted |
+| `Min([Day], [Month]) == [Day]` | `MVK_DATEFORMATS_NOT_COMPATIBLE` |
+| `Min([Day], [OtherDay]) == [Day]` | admitted |
+| `Min([Day], [Qty] + 1) == [Day]` | `MVK_DATE_AND_NONDATE` |
+| `Min([Qty] + 1, [Day]) > 0` | `MVK_NOT_SORTABLE` |
+| `[Qty] + [Label] >` and `[Qty] + [Label] +` | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` |
+| `[Qty] + [Label] %` | `MVK_LEXER_STANDARD_ERROR` |
+| `[Qty] + [Label] > %` | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` |
+| `Min([Day], [Month]) %` | `MVK_LEXER_STANDARD_ERROR` |
+| `Min([Day], [Month]) > %` | `MVK_DATEFORMATS_NOT_COMPATIBLE` |
+
+These pairs distinguish child-result typing from leaf-only typing and completion before an unfinished parent from waiting for the entire expression. An immediate invalid token can still win; the intervening comparator separates that case from unconditional lexical precedence. The rows measure outcomes at those boundaries, not the kernel method that demands the next token. Addition scale and rounded-division controls distinguish the scale refusal from a generic arithmetic refusal; they do not establish every operator's scale formula.
+
+The population separately measures four German rule suffixes, six computations with independent typed targets, four filter-body suffixes and two Base Year variants, as specified in the matrix. On those carriers it retains admitted controls and the computed text/Number, scale and temporal-component refusals. It does not transfer those results to custom declarations, categories, deeper topology, diagnostic spans, multiplicity or ordering.
+
+*Locked by:* `adapter.A12ParseTraceTest.operationTypesFollowTheirChildrenAndCompletion` and `adapter.laws.CheckerNearMissSweepTest.operationTypesHaveOnlyLedgeredDifferences`, sharing `OperationTypingPopulation`. Both assert the kernel classes; the latter also compares the same models with the portable checker against its committed operation-types ledger. Existing arithmetic and temporal laws remain independent evidence ([KF396](#kf396), [KF96](#kf96)); this population adds result/completion carriers rather than replacing their claims.

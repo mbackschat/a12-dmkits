@@ -62,3 +62,6 @@ internal fun kernelModelClasses(json: String): Set<String> = try {
         }
     }.toSet()
 }
+
+/** One fixed whole-model input with a predicted first class for trace and admission oracles. */
+internal data class ConditionCase(val id: String, val model: String, val expected: String?)
