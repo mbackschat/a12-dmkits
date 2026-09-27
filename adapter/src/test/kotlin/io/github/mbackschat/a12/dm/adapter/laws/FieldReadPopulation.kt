@@ -21,7 +21,7 @@ object FieldReadPopulation {
     private val total = model.num("/Order/Total")
     private val prefix = RuntimeLaws.render("/Order", total.filled()) + " And "
 
-    data class Row(val rule: DraftRule, val expected: String?)
+    data class Row(val rule: DraftRule, val expected: String?, val modelCode: String? = expected)
 
     fun rows(): List<Row> {
         fun filter(body: String) = "Sum(Items*/Count Having $body) > 0"
@@ -70,8 +70,24 @@ object FieldReadPopulation {
         ))
     }
 
-    private fun rowsOf(suffixes: Map<String, String?>): List<Row> {
-        val probe = model.rule(model.group("/Order")).name("ReadProbe").errorField(total)
+    fun markerRows(): List<Row> = rowsOf(linkedMapOf(
+        "[\$Items*] > 0" to "MVK_NO_GROUPS_ALLOWED",
+        "[\$Items/Raw] == \"x\"" to "MVK_NO_WILDCARD",
+        "[\$Items/Estimate] < Today" to "MVK_NO_WILDCARD",
+        "[\$Items/Count] > 0" to "MVK_NO_WILDCARD",
+        "[\$Items*/Count] > 0" to "MVK_NO_WILDCARDS_ALLOWED",
+    ).mapKeys { (body, _) -> "Sum(Items*/Count Having [Items/Count] > 0 And $body) > 0" })
+
+    fun boundMarkerRows(): List<Row> = rowsOf(linkedMapOf(
+        "[\$Items/Raw] == \"x\"" to "MVK_INVALID_RAW_TYPE",
+        "[\$Items/Estimate] < Today" to "MVK_INVALID_DATE_TYPE",
+        "[\$Items/Count] > 0" to null,
+    ).mapKeys { (body, _) -> "Sum(Items*/Count Having [Items/Count] > 0 And $body) > 0" }, bindItems = true)
+        .map { if (it.expected == null) it.copy(modelCode = "MVK_NEG_CONDITION_IN_ITERATION") else it }
+
+    private fun rowsOf(suffixes: Map<String, String?>, bindItems: Boolean = false): List<Row> {
+        val target = if (bindItems) model.num("/Order/Items/Count") else total
+        val probe = model.rule(model.group("/Order")).name("ReadProbe").errorField(target)
             .`when`(total.filled()).code("READ_PROBE")
             .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("Check order values")).build().draft()
         return suffixes.map { (suffix, expected) -> Row(probe.withErrorCondition(prefix + suffix), expected) }

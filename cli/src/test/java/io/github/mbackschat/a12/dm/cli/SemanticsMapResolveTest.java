@@ -39,7 +39,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *       well-formed {@code §1..§14}.</li>
  *   <li><b>Locking tests</b> — every backticked {@code *Test} token resolves to a file in a designated lock
  *       source (validate/laws, adapter/laws, the Kernel-backed adapter preparation locks, or interpreter
- *       commonTest, plus the explicit checker syntax locks), and every {@code *Test} class in those sources appears somewhere in the map (a new law test
+ *       commonTest, plus the explicit checker contract locks), and every {@code *Test} class in those sources appears somewhere in the map (a new law test
  *       must be placed — in a § row or the outside-the-taxonomy table — before the build goes green).</li>
  *   <li><b>Links</b> — every relative markdown link resolves to an existing file.</li>
  * </ul>
@@ -66,6 +66,7 @@ class SemanticsMapResolveTest {
             Path.of("../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws"),
             Path.of("../interpreter/src/commonTest"));
     private static final List<Path> EXPLICIT_LOCK_FILES = List.of(
+            Path.of("../consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/FieldReadContractTest.kt"),
             Path.of("../consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/SyntaxVerdictTest.kt"),
             Path.of("../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/A12ParseTraceTest.kt"));
     private static final Pattern WORKSPACE_PREPARATION_LOCK =

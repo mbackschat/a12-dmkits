@@ -54,6 +54,16 @@ class CheckerNearMissSweepTest {
         assertFieldReadLedger(FieldReadPopulation.boundaryRows(), 8, "field-read-boundaries")
     }
 
+    @Test
+    fun markedFieldReadsHaveOnlyLedgeredDifferences() {
+        assertFieldReadLedger(FieldReadPopulation.markerRows(), 5, "field-read-markers")
+    }
+
+    @Test
+    fun boundMarkedFieldReadsHaveOnlyLedgeredDifferences() {
+        assertFieldReadLedger(FieldReadPopulation.boundMarkerRows(), 3, "field-read-bound-markers")
+    }
+
     private fun assertFieldReadLedger(rows: List<FieldReadPopulation.Row>, count: Int, name: String) {
         assertEquals(count, rows.size)
         assertEquals(count, rows.map { it.rule.errorCondition() }.distinct().size)
@@ -64,7 +74,7 @@ class CheckerNearMissSweepTest {
         rows.forEach { row ->
             val json = validator.inject(FieldReadPopulation.host, row.rule)
             val a12 = kernelModelClasses(json)
-            if (a12 != setOfNotNull(row.expected)) predictions += "${row.rule.errorCondition()}: $a12"
+            if (a12 != setOfNotNull(row.modelCode)) predictions += "${row.rule.errorCondition()}: $a12"
             val ours = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
             val verdict = checkerVerdict(a12, ours) ?: return@forEach
             val signature = key(verdict, a12, ours)
@@ -115,6 +125,48 @@ class CheckerNearMissSweepTest {
         assertEquals(render(ledger), render(live),
             "cluster counts differ from the ledger (live counts in ${ACTUAL.path}, examples in ${REPORT.path}); " +
                 "a fix updates or deletes its rows, a new key is a new defect")
+    }
+
+    @Test
+    fun harvestedFieldReadsHaveOnlyLedgeredDifferences() {
+        val rows = ObjectMapper().readTree(checkNotNull(javaClass.getResource(
+            "/checker-near-miss/harvested-field-reads.json")).readText())
+        val sources = mapOf(
+            "FilterWildcardTest.onlyAStarredRepeatableGroupInsideTheFilterIsReported" to 7,
+            "FieldValueReadOperandTest.aStarredReadIsTheStarsClassWhereverTheBracketStands" to 13,
+            "FieldValueReadOperandTest.theGatesAnswerInTheirOrderAfterTheReadersOwnClasses" to 19,
+            "FieldValueReadOperandTest.theGatesReachEveryCarrierOfTheRead" to 11,
+        )
+        assertEquals(sources.flatMap { (source, count) -> (1..count).map { "$source#$it" } }.toSet(),
+            rows.map { it.get("id").asText() }.toSet())
+        assertEquals(50, rows.size())
+        val clusters = sortedMapOf<String, Int>()
+        val predictions = mutableListOf<String>()
+        var compared = 0
+        fun compare(json: String): Set<String> {
+            val a12 = kernelModelClasses(json)
+            val ours = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            compared++
+            checkerVerdict(a12, ours)?.let { verdict ->
+                val signature = key(verdict, a12, ours)
+                clusters[signature] = clusters.getOrDefault(signature, 0) + 1
+            }
+            return a12
+        }
+        rows.forEach { row ->
+            val id = row.get("id").asText()
+            val original = row.get("model").asText()
+            assertEquals(setOf("CK_MODEL_NOT_BUILDABLE"), compare(original), id)
+            val a12 = compare(HarvestedFieldReadPopulation.completed(original))
+            val onlyCode = row.get("onlyCode").takeUnless { it.isNull }?.asText()
+            val expected = row.get("classes").map { it.asText() }.toSet()
+            if (a12.filter { onlyCode == null || it == onlyCode }.toSet() != expected)
+                predictions += "$id: ${a12.sorted()}"
+        }
+        assertEquals(100, compared, "both original and completed models reach O1")
+        assertEquals(emptyList<String>(), predictions, "old expectations versus kernel")
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/field-read-harvest.tsv")).readText(),
+            render(clusters))
     }
 
     @Test

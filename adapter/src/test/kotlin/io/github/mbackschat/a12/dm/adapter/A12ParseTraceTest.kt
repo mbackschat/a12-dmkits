@@ -82,7 +82,7 @@ class A12ParseTraceTest {
             val observed = trace(service, rule, row.rule.errorCondition())
             Triple(row.rule.errorCondition(), observed.code, a12Classes(FieldReadPopulation.host, row.rule))
         }
-        assertEquals(rows.map { Triple(it.rule.errorCondition(), it.expected, setOfNotNull(it.expected)) }, observed)
+        assertEquals(rows.map { Triple(it.rule.errorCondition(), it.expected, setOfNotNull(it.modelCode)) }, observed)
     }
 
     @Test
@@ -97,11 +97,36 @@ class A12ParseTraceTest {
             val measured = trace(service, rule, text)
             Triple(text, measured.code, a12Classes(FieldReadPopulation.host, row.rule)) to measured.problemRange
         }
-        assertEquals(rows.map { Triple(it.rule.errorCondition(), it.expected, setOfNotNull(it.expected)) },
+        assertEquals(rows.map { Triple(it.rule.errorCondition(), it.expected, setOfNotNull(it.modelCode)) },
             observations.map { it.first })
         observations.filter { it.first.second == "MVK_NO_WILDCARDS_ALLOWED" }.forEach { (row, range) ->
             assertEquals(ProblemRange(1, 1, row.first.indexOf('['), row.first.indexOf('[') + 1), range, row.first)
         }
+    }
+
+    @Test
+    fun markedFieldReadsRequireTheRulesBindingBeforeTheirGate() {
+        val rows = FieldReadPopulation.markerRows()
+        assertEquals(5, rows.size)
+        assertFieldReadPredictions(rows)
+    }
+
+    @Test
+    fun boundMarkedFieldReadsReachTheirTypeGates() {
+        val rows = FieldReadPopulation.boundMarkerRows()
+        assertEquals(3, rows.size)
+        assertEquals(1, rows.count { it.expected == null })
+        assertFieldReadPredictions(rows)
+    }
+
+    private fun assertFieldReadPredictions(rows: List<FieldReadPopulation.Row>) {
+        val service = mvkService(validator.inject(FieldReadPopulation.host, rows.first().rule))
+        val rule = (service.iec as ElementContainer).allRules.single { it.fullName == "/Order/ReadProbe" }
+        val observed = rows.map { row ->
+            Triple(row.rule.errorCondition(), trace(service, rule, row.rule.errorCondition()).code,
+                a12Classes(FieldReadPopulation.host, row.rule))
+        }
+        assertEquals(rows.map { Triple(it.rule.errorCondition(), it.expected, setOfNotNull(it.modelCode)) }, observed)
     }
 
 

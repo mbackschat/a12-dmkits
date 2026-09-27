@@ -683,11 +683,12 @@ tasks.named('compileTestKotlinJs') { dependsOn generateConditionCorpus }
 def syntaxInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-syntax.json')
 def syntaxVerdicts = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-verdicts.json')
 def computationInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/computation-inputs.json')
+def fieldReadInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-field-reads.json')
 def generatedSyntaxDir = layout.buildDirectory.dir('generated/syntaxFixtures/commonTest/kotlin').get().asFile
 def generatedSyntax = new File(generatedSyntaxDir,
         'io/github/mbackschat/a12/dm/consistency/SyntaxFixtureData.kt')
 def generateSyntaxFixtures = tasks.register('generateSyntaxFixtures') {
-    inputs.files(syntaxInputs, syntaxVerdicts, computationInputs)
+    inputs.files(syntaxInputs, syntaxVerdicts, computationInputs, fieldReadInputs)
     outputs.file(generatedSyntax)
     doLast {
         def parser = new groovy.json.JsonSlurper()
@@ -700,6 +701,7 @@ internal object SyntaxFixtureData {
     val inputs = listOf(${rows(parser.parse(syntaxInputs).rows)})
     val verdicts = listOf(${rows(parser.parse(syntaxVerdicts))})
     val computations = listOf(${rows(parser.parse(computationInputs))})
+    val fieldReads = listOf(${rows(parser.parse(fieldReadInputs))})
 }
 """
     }
