@@ -12,6 +12,7 @@ import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumen
 import io.github.mbackschat.a12.dm.adapter.laws.NearMissPopulation
 import io.github.mbackschat.a12.dm.adapter.laws.NearMissPopulation.Family
 import io.github.mbackschat.a12.dm.adapter.laws.HarvestedSyntaxPopulation
+import io.github.mbackschat.a12.dm.adapter.laws.FieldReadPopulation
 import io.github.mbackschat.a12.dm.adapter.laws.ledgerClass
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
@@ -68,6 +69,20 @@ import com.fasterxml.jackson.databind.ObjectMapper
 class A12ParseTraceTest {
 
     private val validator = RuleValidator()
+
+    @Test
+    fun completedFieldReadsFailBeforeTheirEnclosingConstructs() {
+        val rows = FieldReadPopulation.rows()
+        assertEquals(22, rows.size)
+        assertEquals(2, rows.count { it.expected == null })
+        val service = mvkService(validator.inject(FieldReadPopulation.host, rows.first().rule))
+        val rule = (service.iec as ElementContainer).allRules.single { it.fullName == "/Order/ReadProbe" }
+        val observed = rows.map { row ->
+            val observed = trace(service, rule, row.rule.errorCondition())
+            Triple(row.rule.errorCondition(), observed.code, a12Classes(FieldReadPopulation.host, row.rule))
+        }
+        assertEquals(rows.map { Triple(it.rule.errorCondition(), it.expected, setOfNotNull(it.expected)) }, observed)
+    }
 
 
     @Test

@@ -101,6 +101,10 @@ class SurvivingDataNotInBuildGuardTest {
                             "every divergent input of the near-miss sweep under its cluster key, rewritten on every "
                                     + "run from inputs the sweep regenerates deterministically; the committed ledger "
                                     + "carries what must survive")),
+            Map.entry("build/checker-near-miss",
+                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                            "regenerated field-read action reports; FieldReadPopulation and the committed "
+                                    + "checker-near-miss/field-reads.tsv retain the inputs and baseline")),
             Map.entry("build/checker-harvest",
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "P4 live clusters, source-row examples and regenerated input enumeration; the committed "

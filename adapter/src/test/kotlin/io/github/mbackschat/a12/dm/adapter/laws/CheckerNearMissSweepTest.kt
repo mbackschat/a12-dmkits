@@ -45,6 +45,32 @@ class CheckerNearMissSweepTest {
     private val validator = RuleValidator()
 
     @Test
+    fun fieldReadActionsHaveOnlyLedgeredDifferences() {
+        val rows = FieldReadPopulation.rows()
+        assertEquals(22, rows.size)
+        assertEquals(22, rows.map { it.rule.errorCondition() }.distinct().size)
+        assertEquals(emptySet<String>(), kernelModelClasses(FieldReadPopulation.host))
+        val clusters = sortedMapOf<String, Int>()
+        val examples = mutableListOf<String>()
+        val predictions = mutableListOf<String>()
+        rows.forEach { row ->
+            val json = validator.inject(FieldReadPopulation.host, row.rule)
+            val a12 = kernelModelClasses(json)
+            if (a12 != setOfNotNull(row.expected)) predictions += "${row.rule.errorCondition()}: $a12"
+            val ours = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            val verdict = checkerVerdict(a12, ours) ?: return@forEach
+            val signature = key(verdict, a12, ours)
+            clusters[signature] = clusters.getOrDefault(signature, 0) + 1
+            examples += "$signature\t${row.rule.errorCondition()}"
+        }
+        val directory = File("build/checker-near-miss").apply { mkdirs() }
+        File(directory, "field-reads.tsv").writeText(render(clusters))
+        File(directory, "field-read-examples.tsv").writeText(examples.joinToString("\n"))
+        assertEquals(emptyList<String>(), predictions, "kernel predictions differed")
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/field-reads.tsv")).readText(), render(clusters))
+    }
+
+    @Test
     fun theCheckerDisagreesWithA12OnlyWhereTheLedgerSays() {
         val tally = Tally()
         for (seed in NearMissPopulation.seeds()) {

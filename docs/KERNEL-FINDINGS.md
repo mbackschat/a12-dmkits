@@ -11804,3 +11804,24 @@ R0b adds 16 inputs to [KF494](#kf494)'s Order population, predicted before the r
 The ten binding rows on the same field admit an absent filter, valid `ONLY premium`, valid `ALL_EXCEPT premium`, and explicit JSON null. They refuse an unknown mode `SOMETIMES`, an absent mode, a string filter, and null/object/numeric mode values. These corroborate [KF305](#kf305)'s field binding on this population; the differential groups the unreadable and not-buildable outcomes under `CK_MODEL_NOT_BUILDABLE` and does not distinguish those ingress tiers.
 
 *Locked by:* `adapter.laws.FieldVariantStageLawsTest.remainingFieldFamiliesReadThePredictedStage`; the initial and remaining populations have independent cardinality and kernel assertions, and every one of their combined 139 inputs reaches both the kernel and checker oracles. The combined variant ledger records 28 divergent inputs in 21 clusters: 16 over-rejections, seven silent inputs and five wrong-class inputs. The only additional divergence is the filtered name collision, where the checker still reports `CK_MODEL_NOT_BUILDABLE`. Neither the population nor the stage map changes production behavior.
+
+## §12 supplement — field-read failures inside filters and beside incomplete syntax (kernel trace and `checkConsistency`, 2026-09-27) <a id="kf496"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §12's parse/check order.
+
+R3b-F in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md) freezes 22 own-domain Order conditions before measuring them. Every condition prefixes `FieldFilled(Total) And`; Items is repeatable, Count is numeric, Raw waives value validation and Estimate is a partial Date. Both `ParserService.checkSnippet` and whole-model admission report the classes below. These refine [KF473](#kf473)'s field-read gate on these English root-rule/filter carriers; they do not establish the position of every action or its diagnostic span.
+
+| suffix after the common prefix | observed first class |
+|---|---|
+| `Sum(Items*/Count Having Abs([Items*/Count]) > 0) > 0` | `MVK_NO_WILDCARDS_ALLOWED` |
+| `Sum(Items*/Count Having [Items*/Count] >` | `MVK_NO_WILDCARDS_ALLOWED` |
+| `Sum(Items*/Count Having [Items*/Count` | `MVK_EXPECTED_TOKEN_NOT_FOUND` |
+| `Sum(Items*/Count Having [Items*] > 0) > 0` | `MVK_NO_GROUPS_ALLOWED` |
+| `Sum(Items*/Count Having [Items/Raw] == [Items*/Raw]) > 0` | `MVK_INVALID_RAW_TYPE` |
+| `Sum(Items*/Count Having [Items*/Raw] == [Items/Raw]) > 0` | `MVK_NO_WILDCARDS_ALLOWED` |
+| `[Items*/Count] %` | `MVK_LEXER_STANDARD_ERROR` |
+| `[Items*/Count %] > 0` | `MVK_LEXER_STANDARD_ERROR` |
+
+The two raw/star rows hold the host and operands fixed and reverse only their order: the earlier read's refusal wins, rather than a global priority between raw and star classes. A nested call does not hide the bracket's star refusal, and an enclosing incomplete comparison does not replace it. The unclosed bracket is the syntax control. However, a closing bracket directly followed by `%` draws the lexer class; the prediction that the star action had already run was wrong. Whether consuming the closing token requests the next token before running that action remains a hypothesis, not this finding's explanation.
+
+*Locked by:* `adapter.A12ParseTraceTest.completedFieldReadsFailBeforeTheirEnclosingConstructs`, sharing `FieldReadPopulation` with `adapter.laws.CheckerNearMissSweepTest.fieldReadActionsHaveOnlyLedgeredDifferences`. All 22 rows reach both kernel oracles and O1, with two admitted controls. The checker baseline has four divergent inputs in four keys: the nested-call row is silent; the incomplete enclosing comparison, group-plus-star and trailing lexical-error rows draw the wrong class. This is evidence for replacing DG94's split gate, not a production fix or an assertion that other carriers are covered.
