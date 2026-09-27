@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * What `ValueAsDate` demands of the field it resolves, and in what order.
@@ -38,18 +37,19 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * resolve — a typedef may well resolve to a partially known date, and refusing it would be the one
  * direction this checker may not take.
  */
-internal fun TrackedFactBase.valueAsDateOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.valueAsDateOperandFindings(): List<Finding> = declarations().flatMap { element ->
+    valueAsDateContributions(element).map { it.finding }
+}
+
+internal fun TrackedFactBase.valueAsDateContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val carrier = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(VALUE_AS_DATE) ?: return emptyList()
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator == carrier }
-                .mapNotNull { call ->
-                    valueAsDateDefect(call, declaringGroup, element)?.let { finding(it, call, element, member) }
-                }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        if (call.operator != carrier) return@callContributions null
+        valueAsDateDefect(call, group, element)?.let { finding(it, call, element, member) }
     }
 }
 

@@ -35,38 +35,40 @@ import kotlinx.serialization.json.contentOrNull
  * **Rules only**, like every family here that reads `RepetitionNotUnique`: A12's calculation module refuses
  * the construct in a computation outright ([KERNEL-FINDINGS KF333]).
  */
-internal fun TrackedFactBase.parallelIterationUniquenessFindings(): List<Finding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val spelling = keywords[REPETITION_NOT_UNIQUE] ?: return emptyList()
-    val referencesByElement = conditionReferences().groupBy { it.declaredAt }
-    return declarations().filter { it.kind == "Rule" }.mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val callsUniqueness = conditionTexts(element.kind, body).any { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member)).any { it.operator == spelling }
-        }
-        if (!callsUniqueness) {
-            return@mapNotNull null
-        }
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        val keyed = referencesByElement[element.path].orEmpty()
-            .mapNotNull { reference ->
-                val resolved = (reference.target as? Reference.Resolved)?.path ?: return@mapNotNull null
-                val starred = starredLevelsOf(reference.written, declaringGroup, element)
-                    ?: return@mapNotNull null
-                keyedGroupOver(resolved)?.takeIf { it.path !in starred }
-            }
-            .distinct()
-        val pair = jointlyIteratingPair(keyed) ?: return@mapNotNull null
-        Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            "MVK_PARALLEL_ITERATION_NOT_ALLOWED",
-            "this rule reads `${pair.first.path}` and `${pair.second.path}`, which share the index field " +
-                "`${pair.first.indexField}` and therefore iterate JOINTLY — `$spelling` may not sit in a " +
-                "condition that parallel-iterates; star one of the reads, or split the rule in two",
-            element.path,
-        )
+internal fun TrackedFactBase.parallelIterationUniquenessFindings(): List<Finding> =
+    declarations().flatMap { parallelIterationUniquenessFindings(it) }
+
+internal fun TrackedFactBase.parallelIterationContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> = execution?.postParse(PostParseCheck.PARALLEL_ITERATION) {
+    parallelIterationUniquenessFindings(element)
+}.orEmpty()
+
+private fun TrackedFactBase.parallelIterationUniquenessFindings(element: TrackedDeclaration): List<Finding> {
+    if (element.kind != "Rule") return emptyList()
+    val spelling = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(REPETITION_NOT_UNIQUE) ?: return emptyList()
+    val body = element.body ?: return emptyList()
+    val callsUniqueness = conditionTexts(element.kind, body).any { (member, text) ->
+        callsIn(text, conditionLanguage, syntaxEntryOf(member)).any { it.operator == spelling }
     }
+    if (!callsUniqueness) return emptyList()
+    val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    val keyed = conditionReferencesOf(element).mapNotNull { reference ->
+        val resolved = (reference.target as? Reference.Resolved)?.path ?: return@mapNotNull null
+        val starred = starredLevelsOf(reference.written, declaringGroup, element) ?: return@mapNotNull null
+        keyedGroupOver(resolved)?.takeIf { it.path !in starred }
+    }.distinct()
+    val pair = jointlyIteratingPair(keyed) ?: return emptyList()
+    return listOf(Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        "MVK_PARALLEL_ITERATION_NOT_ALLOWED",
+        "this rule reads `${pair.first.path}` and `${pair.second.path}`, which share the index field " +
+            "`${pair.first.indexField}` and therefore iterate JOINTLY — `$spelling` may not sit in a " +
+            "condition that parallel-iterates; star one of the reads, or split the rule in two",
+        element.path,
+    ))
 }
 
 /** A repeatable group that declares an index field, with the field's short name and declared type. */

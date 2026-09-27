@@ -1,18 +1,17 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.isLexerBlank
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * A computation's `computationAlternatives` — the list that carries its work, and the guards A12 demands of
  * it once there is more than one.
  *
- * Like the declaration slots, nothing here needs a condition parser: the rows read structure, and the one
- * place a condition's TEXT would decide the answer is deliberately left to the syntax family (see below).
+ * Structural absence belongs to the declaration. Blank operation text retains this family's ownership
+ * but uses the joined recognizer's actual failure site, so an earlier action can stop it (R5).
  *
  * **A single alternative may be unguarded; from two on, EVERY one owes its own precondition.** The first
  * half is why the law needs stating: a lone unguarded alternative is admitted, so "an alternative may be
@@ -37,26 +36,27 @@ import kotlinx.serialization.json.JsonPrimitive
  * one that was inferred from its neighbour was the one that turned out wrong.
  */
 internal fun TrackedFactBase.computationAlternativeFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.COMPUTATION }.flatMap { alternativeFindings(it) }
+    declarations().flatMap { element ->
+        computationAlternativeContributions(element).filterNot { it is ConditionFinding }.map { it.finding } +
+            blankOperationFindings(element)
+    }
 
-/**
- * A computation is a whole element A12 refuses or judges as one, so an unreadable shape stops the read here
- * rather than contributing an alternative nothing can be said about.
- */
-private fun alternativeFindings(element: TrackedDeclaration): List<Finding> {
+internal fun TrackedFactBase.computationAlternativeContributions(element: TrackedDeclaration): List<OwnedFinding> {
+    if (element.declaredKind != DeclaredKind.COMPUTATION) return emptyList()
     // An envelope A12 cannot bind is a tier ABOVE any verdict about this member, and reading it as an
     // absent member would report two codes about a model A12 never examined.
-    val body = element.body ?: return listOf(unreadableEnvelope(element))
+    val body = element.body ?: return listOf(DeclarationFinding(element.key, DeclarationStage.TARGET, unreadableEnvelope(element)))
     val member = body["computationAlternatives"]
     return when {
-        member == null -> noWorkFindings(element)
-        member is JsonArray && member.isEmpty() -> noWorkFindings(element)
+        member == null || member is JsonArray && member.isEmpty() -> noWorkFindings(element)
+            .map { DeclarationFinding(element.key, DeclarationStage.CONDITION, it) }
         // Every other shape of the member itself — an explicit `null`, an object, a scalar — refuses A12's
         // own reader. The object case is the one worth naming: `errorMessage` ADMITS an object, because its
         // deserializer iterates the node's elements and an object's elements are its values, and inferring
         // one list-shaped member's reader from the other's would have analysed a model A12 never loads.
-        member !is JsonArray -> listOf(unreadable(element, "`computationAlternatives` is not a JSON array"))
-        else -> alternativeFindings(element, body, member)
+        member !is JsonArray -> listOf(DeclarationFinding(element.key, DeclarationStage.TARGET,
+            unreadable(element, "`computationAlternatives` is not a JSON array")))
+        else -> alternativeFindings(element, member)
     }
 }
 
@@ -88,31 +88,17 @@ private fun noWorkFindings(element: TrackedDeclaration): List<Finding> = listOf(
     ),
 )
 
-private fun alternativeFindings(element: TrackedDeclaration, body: JsonObject, alternatives: JsonArray): List<Finding> {
+private fun TrackedFactBase.alternativeFindings(element: TrackedDeclaration, alternatives: JsonArray): List<OwnedFinding> {
     val declared = alternatives.map {
         it as? JsonObject
-            ?: return listOf(unreadable(element, "a `computationAlternatives` entry is not a JSON object"))
+            ?: return listOf(DeclarationFinding(element.key, DeclarationStage.TARGET,
+                unreadable(element, "a `computationAlternatives` entry is not a JSON object")))
     }
-    val missingWork = declared.mapIndexedNotNull { index, alternative ->
-        if (alternative["operation"].isPresentText()) {
-            return@mapIndexedNotNull null
-        }
-        val member = "computationAlternatives[$index].operation"
-        Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            // A missing operation is read where A12's generated text puts it: at the end for a lone alternative,
-            // before an added `)` beside a sibling.
-            if (followedInGeneratedText(element.kind, body, member)) "MVK_UNEXPECTED_TOKEN" else "MVK_INCOMPLETE_INPUT",
-            "alternative ${index + 1} of this computation carries no operation — A12 refuses it, and a " +
-                "blank or `null` `operation` counts as none at all",
-            element.path,
-            endOfBlankText(
-                member,
-                (alternative["operation"] as? JsonPrimitive)?.takeIf { it.isString }?.content.orEmpty(),
-            ),
-        )
-    }
+    val reached = conditionExecution(element)?.syntaxContribution(CheckFamily.COMPUTATION_ALTERNATIVES)
+    val missingWork = listOfNotNull(reached?.let { contribution ->
+        blankOperationFindings(element).firstOrNull { it.span?.member == contribution.finding.span?.member }
+            ?.let { contribution.copy(finding = it) }
+    })
     // A lone alternative owes no guard, so the demand exists only from two on — and then it is owed by each
     // of them, not by all but the last.
     if (declared.size < 2) {
@@ -131,7 +117,7 @@ private fun alternativeFindings(element: TrackedDeclaration, body: JsonObject, a
     // `ComputationAlternativeSlotLawsTest.oneUnguardedNotificationCoversTheWholeComputation`). Emitting one
     // per alternative would tell a consumer A12 said twice what it said once; the numbers go in the text,
     // where they help an author without being claimed as A12's own report.
-    return missingWork + Finding(
+    return missingWork + DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES, Finding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         "MVK_ERROR_EMPTY_PRECONDITION",
@@ -141,7 +127,7 @@ private fun alternativeFindings(element: TrackedDeclaration, body: JsonObject, a
             " no precondition — every one of several owes its own, and a `commonPrecondition` does not " +
             "stand in for it",
         element.path,
-    )
+    ))
 }
 
 private fun unreadable(element: TrackedDeclaration, explain: String): Finding = Finding(
@@ -153,18 +139,26 @@ private fun unreadable(element: TrackedDeclaration, explain: String): Finding = 
     element.path,
 )
 
-/**
- * Whether a member carries text A12 reads as present — absent, `null` and blank all count as none.
- *
- * "Blank" is the lexer's: an operation has no presence test of its own, so text of any other space reaches the
- * lexer and draws its error rather than this family's `MVK_INCOMPLETE_INPUT` ([KERNEL-FINDINGS KF310]).
- *
- * A non-string primitive answers TRUE and draws no finding: A12 coerces a scalar to the String member, as it
- * does for a rule's `errorCode`, and a container in this slot is unmeasured. Under-reporting is the safe
- * direction; inventing a verdict for either would be a refusal with no Kernel basis.
- */
-private fun JsonElement?.isPresentText(): Boolean = when (this) {
-    null, is JsonNull -> false
-    is JsonPrimitive -> !isString || !content.isLexerBlank()
-    else -> true
+
+/** Local slot diagnostics remain available on partial models; publication requires a reached failure (R5). */
+private fun blankOperationFindings(element: TrackedDeclaration): List<Finding> {
+    if (element.declaredKind != DeclaredKind.COMPUTATION) return emptyList()
+    val body = element.body ?: return emptyList()
+    val alternatives = body["computationAlternatives"] as? JsonArray ?: return emptyList()
+    if (alternatives.any { it !is JsonObject }) return emptyList()
+    return alternatives.mapIndexedNotNull { index, entry ->
+        val operation = (entry as JsonObject)["operation"]
+        val text = when (operation) {
+            null, is JsonNull -> ""
+            is JsonPrimitive -> if (operation.isString) operation.content else return@mapIndexedNotNull null
+            else -> return@mapIndexedNotNull null
+        }
+        if (!text.isLexerBlank()) return@mapIndexedNotNull null
+        val member = "computationAlternatives[$index].operation"
+        Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR,
+            if (followedInGeneratedText(element.kind, body, member)) "MVK_UNEXPECTED_TOKEN" else "MVK_INCOMPLETE_INPUT",
+            "alternative ${index + 1} of this computation carries no operation — A12 refuses it, and a " +
+                "blank or `null` `operation` counts as none at all",
+            element.path, endOfBlankText(member, text))
+    }
 }

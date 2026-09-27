@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtInfix
 
 /**
@@ -31,19 +30,19 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtInfix
  * reach them. An operand this reader cannot resolve is left to A12 as well: an unknown path draws
  * `MVK_INVALID_ENTITY` from the reference gate ahead of everything here.
  */
-internal fun TrackedFactBase.tableEnumOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.tableEnumOperandFindings(): List<Finding> = declarations().flatMap { element ->
+    tableEnumContributions(element).take(1).map { it.finding }
+}
+
+internal fun TrackedFactBase.tableEnumContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val carrier = VALUE_NOT_CONSISTENT_SPELLING[conditionLanguage] ?: return emptyList()
     val infix = TO_SPELLING[conditionLanguage] ?: return emptyList()
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator == carrier }
-                .firstNotNullOfOrNull { call ->
-                    subjectDefect(call, infix, declaringGroup, element, member)
-                }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        if (call.operator == carrier) subjectDefect(call, infix, group, element, member) else null
     }
 }
 

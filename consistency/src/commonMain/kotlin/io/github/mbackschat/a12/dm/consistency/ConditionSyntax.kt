@@ -2,9 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
-import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
-import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxFailureKind
+import io.github.mbackschat.a12.dm.consistency.syntax.isLexerBlank
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -24,6 +24,18 @@ internal class ConditionText {
     }
 
     fun at(offset: Int): Part? = parts.firstOrNull { offset >= it.start && offset < it.end }
+}
+
+/** Generated computation reads point at their operation member; authored constructs keep their extent. */
+internal fun ConditionText.semanticSpan(at: Int, end: Int): TextSpan? {
+    val origin = at(at)?.takeIf { it.authored }
+        ?: at((end - 1).coerceAtLeast(at))?.takeIf { it.member != null }
+        ?: return null
+    val member = origin.member ?: return null
+    val authored = parts.single { it.authored && it.member == member }
+    val length = authored.end - authored.start
+    val start = (at - authored.start).coerceIn(0, length)
+    return TextSpan(member, start, (end - authored.start).coerceIn(start, length))
 }
 
 /** KF471's measured joined text; origin intervals are the checker's member-attribution contract. */
@@ -67,37 +79,30 @@ internal fun computationCondition(body: JsonObject, target: String, language: Co
 }
 
 /** Exactly one recognizer chooses the syntax code and the selected family that owns it. */
-internal fun TrackedFactBase.conditionSyntaxFindings(element: TrackedDeclaration, family: CheckFamily): List<Finding> {
-    val body = element.body ?: return emptyList()
-    val carrier = if (element.kind == "Computation") {
-        val target = computedTargetOf(element) ?: return emptyList()
-        val group = element.path.substringBeforeLast('/')
-        computationCondition(body, target.removePrefix("$group/"), conditionLanguage) ?: return emptyList()
-    } else {
-        val condition = conditionTexts(element.kind, body).singleOrNull() ?: return emptyList()
-        ConditionText().apply { append(condition.second, condition.first, authored = true) }
-    }
-    val recognition = ConditionRecognizer(carrier.text, conditionLanguage).recognize(SyntaxEntry.CONDITION)
-    val failure = recognition.failure ?: return emptyList()
+internal fun TrackedFactBase.conditionSyntaxFindings(element: TrackedDeclaration, family: CheckFamily): List<Finding> =
+    listOfNotNull(conditionExecution(element)?.syntaxContribution(family)?.finding)
+
+internal fun ConditionExecution.syntaxContribution(family: CheckFamily): ConditionFinding? {
+    val failure = recognition.failure ?: return null
     val at = carrier.at(failure.at)
     val origin = if (at?.authored == true) at else if (failure.found.isEmpty()) {
         recognition.unfinishedAt?.let(carrier::at)?.takeIf { it.member != null }
             ?: carrier.parts.lastOrNull { it.authored }
     } else at
-    val member = origin?.member ?: return emptyList()
+    val member = origin?.member ?: return null
     val authored = carrier.parts.single { it.authored && it.member == member }
     val text = carrier.text.substring(authored.start, authored.end)
-    // Declaration-presence families retain ownership of blank rule conditions and operations (proposal §5).
-    if (failure.kind != SyntaxFailureKind.LEXICAL && text.isBlank() &&
-        (member == "errorCondition" || member.endsWith("operation"))) return emptyList()
+    // Presence families own absent text, but blank work still fails at its reached parse site (R5).
+    if (failure.kind != SyntaxFailureKind.LEXICAL && text.isBlank() && member == "errorCondition") return null
     val generated = at?.authored != true
-    val owner = when (failure.kind) {
-        SyntaxFailureKind.LEXICAL -> CheckFamily.CONDITION_LEXICALITY
-        SyntaxFailureKind.MATCH -> CheckFamily.CONDITION_GRAMMAR
-        SyntaxFailureKind.DECISION -> if (failure.found.isEmpty() || generated)
-            CheckFamily.CONDITION_COMPLETENESS else CheckFamily.CONDITION_GRAMMAR
+    val ownerFamily = when {
+        failure.kind == SyntaxFailureKind.LEXICAL -> CheckFamily.CONDITION_LEXICALITY
+        member.endsWith(".operation") && text.isLexerBlank() -> CheckFamily.COMPUTATION_ALTERNATIVES
+        failure.kind == SyntaxFailureKind.MATCH -> CheckFamily.CONDITION_GRAMMAR
+        failure.found.isEmpty() || generated -> CheckFamily.CONDITION_COMPLETENESS
+        else -> CheckFamily.CONDITION_GRAMMAR
     }
-    if (owner != family) return emptyList()
+    if (ownerFamily != family) return null
     val start = if (generated) text.length else (failure.at - authored.start).coerceIn(0, text.length)
     val end = if (generated) start else (failure.end - authored.start).coerceIn(start, text.length)
     val context = if (failure.found.isEmpty() || generated) "ends after `${text.trimEnd().takeLast(40)}`"
@@ -107,6 +112,7 @@ internal fun TrackedFactBase.conditionSyntaxFindings(element: TrackedDeclaration
             "`$member` opens a quote at offset $start that is never closed or cannot form a quoted name"
         else "`$member` holds `${failure.found}` at offset $start, a character A12's condition lexer cannot read"
     } else "`$member` $context where A12's parser cannot complete the text"
-    return listOf(Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, failure.code,
-        explanation, element.path, TextSpan(member, start, end)))
+    return ConditionFinding(owner, SyntaxSite.Failure(failure),
+        Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, failure.code,
+            explanation, owner.path, TextSpan(member, start, end)))
 }

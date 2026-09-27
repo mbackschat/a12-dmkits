@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * A repetition wildcard in a GROUP-CONDITION operand, where five of the seven operators refuse one.
@@ -36,31 +35,28 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * resolves.** A star on a non-repeatable level is [repetitionWildcardFindings]' class and outruns this one;
  * an unresolvable leaf is unmeasured in this position, so silence is the safe answer.
  */
-internal fun TrackedFactBase.groupConditionWildcardFindings(): List<Finding> {
+internal fun TrackedFactBase.groupConditionWildcardFindings(): List<Finding> = declarations().flatMap { element ->
+    groupWildcardContributions(element).map { it.finding }
+}
+
+internal fun TrackedFactBase.groupWildcardContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val gates = WILDCARD_GATES.mapNotNull { (id, arm) -> keywords[id]?.let { it to arm } }.toMap()
     if (gates.isEmpty()) {
         return emptyList()
     }
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member)).mapNotNull { call ->
-                val arm = gates[call.operator] ?: return@mapNotNull null
-                if (anOperandIsRefusedOnRead(call, element)) {
-                    return@mapNotNull null
-                }
-                val rootSilencesIt = arm == GroupConditionArm.LIST &&
-                    call.operands.any { namesARootGroup(it.path, group, element) }
-                if (rootSilencesIt) {
-                    return@mapNotNull null
-                }
-                val starred = call.operands.firstOrNull { starsARepetition(it.path, group, element) }
-                    ?: return@mapNotNull null
-                wildcardFinding(arm, call.operator, starred.path.orEmpty(), element, member, call.spanIn(member))
-            }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        val arm = gates[call.operator] ?: return@callContributions null
+        if (anOperandIsRefusedOnRead(call, element)) return@callContributions null
+        if (arm == GroupConditionArm.LIST && call.operands.any { namesARootGroup(it.path, group, element) })
+            return@callContributions null
+        val starred = call.operands.firstOrNull { starsARepetition(it.path, group, element) }
+            ?: return@callContributions null
+        wildcardFinding(arm, call.operator, starred.path.orEmpty(), element, member, call.spanIn(member))
     }
 }
 

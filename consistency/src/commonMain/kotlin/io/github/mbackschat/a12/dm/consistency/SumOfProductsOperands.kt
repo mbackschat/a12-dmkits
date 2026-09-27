@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * `SumOfProducts`' operand PAIR, whose four laws are one kernel method each and run in a fixed order.
@@ -36,24 +35,23 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * too on an identical starless pair and on a starred filter, which A12 answers with `MVK_DUPLICATE_PARAM1`
  * and `MVK_NO_WILDCARDS_ALLOWED` — measured, both ahead of every gate here.
  */
-internal fun TrackedFactBase.sumOfProductsOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.sumOfProductsOperandFindings(): List<Finding> = declarations().flatMap { element ->
+    sumOfProductsContributions(element).map { it.finding }
+}
+
+internal fun TrackedFactBase.sumOfProductsContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val operator = keywords[SUM_OF_PRODUCTS] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator == operator }
-                .mapNotNull { call ->
-                    val pair = call.operands.map { readOperand(it, group, element, filterKeyword) }
-                    if (pair.size != 2 || pair.any { it == null }) {
-                        return@mapNotNull null
-                    }
-                    classOf(pair[0]!!, pair[1]!!)?.let { finding(it, element, member, call.spanIn(member)) }
-                }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        if (call.operator != operator) return@callContributions null
+        val pair = call.operands.map { readOperand(it, group, element, filterKeyword) }
+        if (pair.size != 2 || pair.any { it == null }) return@callContributions null
+        classOf(pair[0]!!, pair[1]!!)?.let { finding(it, element, member, call.spanIn(member)) }
     }
 }
 

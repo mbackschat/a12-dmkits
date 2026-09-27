@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -39,6 +40,13 @@ class OperationContractTest {
                 .single { it.call.operator == "RoundDown" }
             assertEquals(expected, analysis.value(rounded).type, "harvested row $ordinal")
             assertEquals(ordinal == 3, analysis.findings.any { it.code == "MVK_INVALID_NUMBER_FOR_EXP" })
+            if (ordinal == 3) {
+                val refused = analysis.contributions.single { it.finding.code == "MVK_INVALID_NUMBER_FOR_EXP" }
+                assertEquals(element.key, refused.owner)
+                val site = assertIs<SyntaxSite.Operation>(refused.site)
+                assertEquals("^", assertIs<OperationShape.Arithmetic>(site.shape).operator.text)
+                assertTrue(site in analysis.recognition.sites)
+            }
         }
     }
 

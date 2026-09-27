@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * The four questions a date-arithmetic operator asks of the date it shifts, and the one it asks of the amount.
@@ -41,23 +40,23 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * operand would be a claim with nothing behind it. A numeric literal needs no judgement and a computed amount
  * is left alone.
  */
-internal fun TrackedFactBase.dateArithmeticOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.dateArithmeticOperandFindings(): List<Finding> = declarations().flatMap { element ->
+    dateArithmeticContributions(element).map { it.finding }
+}
+
+internal fun TrackedFactBase.dateArithmeticContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = ADDED_COMPONENT_OF.mapNotNull { (id, unit) -> keywords[id]?.let { it to unit } }.toMap()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .mapNotNull { call ->
-                    val unit = carriers[call.operator] ?: return@mapNotNull null
-                    shiftDefect(call, unit, declaringGroup, element)
-                        ?.let { defect -> finding(defect, call, element, member) }
-                }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        val unit = carriers[call.operator] ?: return@callContributions null
+        shiftDefect(call, unit, group, element)?.let { finding(it, call, element, member) }
     }
 }
 

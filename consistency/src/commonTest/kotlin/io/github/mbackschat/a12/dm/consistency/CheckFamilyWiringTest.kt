@@ -839,10 +839,39 @@ class CheckFamilyWiringTest {
         val tracked = TrackedFactBase(prepare(admitted), ReadTranscript())
         val findings = schedule(tracked)
             .filter { CheckFamily.FIELD_VALUE_READ_OPERAND in it.key.producer.completes }
-            .flatMap { it.produce().first }
+            .flatMap { it.produce().findings }
             .filter { it.at == "/Catalog/StarInsideAFilter" }
         assertEquals(listOf("MVK_NO_WILDCARDS_ALLOWED"), findings.map { it.code })
         assertEquals("errorCondition", findings.single().span?.member)
+    }
+
+    @Test
+    fun postParseProducersRetainTheirOwnerAndStage() {
+        val facts = TrackedFactBase(prepare(assertIs<Admission.Admitted>(admit(source))), ReadTranscript())
+        val producers: List<Triple<CheckFamily, PostParseCheck,
+            (TrackedDeclaration) -> List<ConditionFinding>>> = listOf(
+            Triple(CheckFamily.PARALLEL_ITERATION_UNIQUENESS, PostParseCheck.PARALLEL_ITERATION,
+                { facts.parallelIterationContributions(it) }),
+            Triple(CheckFamily.FILTERED_ENTITY_ITERATION, PostParseCheck.FILTERED_ENTITY,
+                { facts.filteredEntityContributions(it) }),
+            Triple(CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION, PostParseCheck.REPEATED_UNIQUENESS,
+                { facts.repeatedUniquenessContributions(it) }),
+            Triple(CheckFamily.RAW_TYPE_LENGTH, PostParseCheck.RAW_LENGTH,
+                { facts.rawLengthContributions(it) }),
+            Triple(CheckFamily.ERROR_FIELD_REFERENCE, PostParseCheck.ERROR_TARGET_ITERATION,
+                { facts.errorFieldReferenceContributions(it) }),
+            Triple(CheckFamily.ERROR_TARGET_ITERATION, PostParseCheck.ERROR_TARGET_ITERATION,
+                { facts.errorTargetIterationContributions(it) }),
+        )
+        for ((family, site, produce) in producers) {
+            val (code, path) = evidence.getValue(family)
+            val element = facts.declarations().single { it.path == path }
+            val contribution = produce(element).single()
+            assertEquals(code, contribution.finding.code, family.name)
+            assertEquals(path, contribution.finding.at, family.name)
+            assertEquals(element.key, contribution.owner, family.name)
+            assertEquals(site, contribution.site, family.name)
+        }
     }
 
     @Test
@@ -904,34 +933,26 @@ class CheckFamilyWiringTest {
      * unsound. A family claimed by NO producer only under-reports, which is why it needs the inverse check
      * to be seen at all.
      *
-     * A registration is run raw here, ahead of `checkPrepared`'s post-filters, so its output is a superset
+     * A registration is run raw here, before occurrence-owned report selection, so its output is a superset
      * of what the report carries — which is the right side to be on: a claimed row must appear, and a row
      * belonging to another family must not, whether or not a later filter would have dropped it.
      *
-     * **A producer that raises after the parse answers for one site of its family, not for the family's row.**
-     * The row is a parse-time class, which such a producer never raises, so the first direction asks instead
-     * that a parse-time producer claims the same family, and the second direction applies unchanged.
      */
     @Test
     fun eachRegistrationProducesExactlyTheFamiliesItClaims() {
         val misattributed = mutableListOf<String>()
-        val claimedBeforeTheParse = CHECK_PRODUCERS.filterNot { it.raisesAfterTheParse }
-            .flatMapTo(mutableSetOf()) { it.completes }
-        CHECK_PRODUCERS.filter { it.raisesAfterTheParse }.flatMap { it.completes }
-            .filterNot { it in claimedBeforeTheParse }
-            .forEach { misattributed += "$it is claimed only by a producer that raises after the parse" }
         (listOf(source to evidence) + sideModels).forEach { (model, rows) ->
             val admitted = admit(model)
             assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")
             val tracked = TrackedFactBase(prepare(admitted), ReadTranscript())
             val byProducer = schedule(tracked)
-                .groupBy({ it.key.producer }, { it.produce().first })
+                .groupBy({ it.key.producer }, { it.produce().findings })
                 .mapValues { (_, runs) -> runs.flatten() }
             byProducer.forEach { (producer, findings) ->
                 val produced = findings.map { it.code to it.at }.toSet()
                 rows.forEach { (family, row) ->
                     val claimed = family in producer.completes
-                    if (claimed && !producer.raisesAfterTheParse && row !in produced) {
+                    if (claimed && row !in produced) {
                         misattributed += "$family is claimed by a producer that does not report it"
                     }
                     if (!claimed && row in produced) {
@@ -983,19 +1004,10 @@ class CheckFamilyWiringTest {
     }
 
     @Test
-    fun onlyTheTwoCompositionPassesReachTheReportWithoutACell() {
-        // **The one route a family can take to the report without a cell, pinned.** `checksCompleted` is
-        // the union of `COMPOSED_FAMILIES` and what the registry completes, so a family added to that set
-        // and wired into `checkRun`'s own concatenation would be advertised, reported, and never cached —
-        // and every other test here would pass, because they ask whether a family REACHES the report and
-        // not how. A third member means exactly that bypass, so the set is a pin rather than a list.
-        //
-        // Both members earn it: resolving declared references and resolving a condition's entities are done
-        // once for the whole model, ahead of every family, because several families then ask what those
-        // passes found. A cell keyed on what a model-wide pass read could never be reused, which is why
-        // they are composition rather than registrations.
+    fun onlyDeclaredTargetsReachTheReportWithoutACell() {
+        // R5 condition references carry occurrence/site identity in cells; only target resolution is composed.
         assertEquals(
-            setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES),
+            setOf(CheckFamily.DECLARED_REFERENCES),
             COMPOSED_FAMILIES,
             "a family outside the registry bypasses the cell store; register it as a producer instead",
         )

@@ -20,6 +20,13 @@ class ComputationGeneratedTextTest {
     private val token = listOf("MVK_UNEXPECTED_TOKEN")
 
     @Test
+    fun blankWorkStopsAtItsReachedFailureAfterEarlierChecks() {
+        assertEquals(listOf("MVK_INVALID_ENTITY"), codes("FieldFilled(NoSuchField)", guarded("")))
+        assertEquals(token, codes(null, guarded(""), guarded("")))
+        assertEquals(emptyList(), codes(null, work, work))
+    }
+
+    @Test
     fun aBlankOperationIsTheIncompletenessClassOnlyWhileItIsTheOnlyAlternative() {
         val actual = linkedMapOf(
             "two guarded — the control" to codes(null, work, work),

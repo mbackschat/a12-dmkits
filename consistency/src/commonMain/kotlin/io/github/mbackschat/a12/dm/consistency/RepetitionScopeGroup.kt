@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.consistency
 
+
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.FROM_SCOPE
 import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * What a `RepetitionNotUnique` `@From` scope has to be: a REPEATABLE group.
@@ -40,30 +40,18 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * `RepetitionNotUnique` in a computation outright ([KERNEL-FINDINGS KF333]), so a computation carrying one
  * has a different defect entirely.
  */
-internal fun TrackedFactBase.repetitionScopeGroupFindings(): List<Finding> {
+internal fun TrackedFactBase.repetitionScopeContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    if (element.declaredKind != DeclaredKind.RULE) return emptyList()
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val spelling = keywords[REPETITION_NOT_UNIQUE] ?: return emptyList()
-    // Resolved by CATALOG ID rather than by a literal or by "the PATH_OP that starts with @", because the
-    // German spelling is a different word and the clause set will grow: `For`/`Fuer` is a PATH_OP too and
-    // means something else entirely.
     val scopeKeyword = keywords[FROM_SCOPE] ?: return emptyList()
-    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator == spelling && repetitionKeyListIsSound(it, declaringGroup, element) }
-                .flatMap { call ->
-                    call.operands.mapNotNull { operand -> scopeTextOf(operand, scopeKeyword)?.let { it to call } }
-                }
-                .distinctBy { (scope, _) -> scope.text }
-                // The operator's own check refuses the scope, so the class is raised at the call's `)`.
-                .mapNotNull { (scope, call) ->
-                    // Read as a key is, so an index keeps its key and a clean one reaches the index gate.
-                    val read = categorySpecIn(scope.text, declaringGroup, element) { scope.bare }
-                        ?: return@mapNotNull null
-                    scopeFinding(read, declaringGroup, element, member, call.spanIn(member))
-                }
+    val group = element.path.substringBeforeLast('/')
+    return callContributions(element) { member, call ->
+        if (call.operator != spelling || !repetitionKeyListIsSound(call, group, element)) return@callContributions null
+        call.operands.firstNotNullOfOrNull { operand ->
+            val scope = scopeTextOf(operand, scopeKeyword) ?: return@firstNotNullOfOrNull null
+            val read = categorySpecIn(scope.text, group, element) { scope.bare } ?: return@firstNotNullOfOrNull null
+            scopeFinding(read, group, element, member, call.spanIn(member))
         }
     }
 }
@@ -89,7 +77,7 @@ internal fun scopeTextOf(operand: CallOperand, scopeKeyword: String): ScopeText?
  * Silent on a scope the reference reader answers for — one that does not RESOLVE (`MVK_INVALID_ENTITY`) or
  * crosses a repetition nothing addresses, or whose index does not read — on one carrying a category, which no
  * row measures, and on one that repeats, where every remaining defect is about containment:
- * [repetitionKeyContainmentFindings]', which models the joint iteration those classes turn on.
+ * [repetitionContainmentContributions]', which models the joint iteration those classes turn on.
  */
 private fun TrackedFactBase.scopeFinding(
     scope: OperandReference,

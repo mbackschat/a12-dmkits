@@ -25,13 +25,12 @@ package io.github.mbackschat.a12.dm.consistency
  * **A refused condition or operation withholds this verdict too**, which is A12 declining to examine the message
  * member at all rather than a rule about parameters. Report assembly applies that, not this family ([KF338]).
  */
-internal fun TrackedFactBase.messageTextCharacterFindings(): List<Finding> {
-    return declarations().filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.examined(declaredLocales).mapNotNull { message -> element.messageTextFinding(message) }
-    }
+internal fun TrackedFactBase.messageTextCharacterFindings(): List<Finding> = declarations().flatMap { element ->
+    messageContributions(element) { messageTextCharacterFindings(element, it) }.map { it.finding }
 }
+
+internal fun TrackedFactBase.messageTextCharacterFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> =
+    listOfNotNull(element.messageTextFinding(message))
 
 /** Both carriers are measured: a computation's message meets the same two classes a rule's does. */
 private fun TrackedDeclaration.messageTextFinding(message: AuthoredMessage): Finding? {

@@ -1,11 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.ClausedOperand
-import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
-import io.github.mbackschat.a12.dm.consistency.syntax.OperandClause
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
-import io.github.mbackschat.a12.dm.consistency.syntax.clausedOperandsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 
 /**
  * What a `Having` filter's OWN operand may be — a field, starred, with no semantic index on it.
@@ -45,26 +41,31 @@ import io.github.mbackschat.a12.dm.consistency.syntax.clausedOperandsIn
  * cell silent. That row was measured rather than reasoned, on its own fixture, for the same reason the
  * carrier above had to be.
  */
-internal fun TrackedFactBase.filteredOperandKindFindings(): List<Finding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val filterKeyword = keywords[HAVING] ?: return emptyList()
-    val indexKeyword = keywords[SEMANTIC_INDEX]
-    val targets = declaredReferences().associateBy { it.declaredAt }
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            // By delimiters rather than by a parse, because the kind is asked as `Having` is read: a text that
-            // breaks later in the body still draws it.
-            clausedOperandsIn(text, conditionLanguage)
-                .flatMap { operand ->
-                    operand.clauses.filter { it.keyword == filterKeyword }.map { filter ->
-                        filteredSpecOf(operand, filter, indexKeyword, text, member)
-                    }
+internal fun TrackedFactBase.filteredOperandKindFindings(): List<Finding> = declarations().flatMap {
+    filteredOperandContributions(it).map { contribution -> contribution.finding }
+}
+
+internal fun TrackedFactBase.filteredOperandContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
+    if (execution == null) return emptyList()
+    val group = element.path.substringBeforeLast('/')
+    val targetGroup = iterationScopeOf(element.declaredReference(), group)
+    return execution.recognition.sites.filterIsInstance<SyntaxSite.FilterEntry>().flatMap { entry ->
+        val kindSpan = execution.carrier.semanticSpan(entry.start, entry.end) ?: return@flatMap emptyList()
+        val entity = execution.entitiesByStart[entry.start]
+        val span = entity?.let { execution.carrier.semanticSpan(it.start, it.end) } ?: kindSpan
+        val spec = FilteredSpec(normalizedPath(entry.path), entry.indexed, entry.indexKey, kindSpan, span)
+        buildList {
+            specFinding(spec, group, targetGroup, element, kindSpan.member, beforeBody = true)?.let {
+                add(ConditionFinding(element.key, entry, it))
+            }
+            if (entity != null) {
+                specFinding(spec, group, targetGroup, element, span.member, beforeBody = false)?.let {
+                    add(ConditionFinding(element.key, EntityCheckSite(entity, EntityCheck.FILTER), it))
                 }
-                .mapNotNull { spec ->
-                    specFinding(spec, group, iterationScopeOf(targets[element.path], group), element, member)
-                }
+            }
         }
     }
 }
@@ -84,31 +85,6 @@ private class FilteredSpec(
     val kindSpan: TextSpan,
     val span: TextSpan,
 )
-
-private fun filteredSpecOf(
-    operand: ClausedOperand,
-    filter: OperandClause,
-    indexKeyword: String?,
-    text: String,
-    member: String,
-): FilteredSpec {
-    val key = filter.filtersKey
-    val owned = operand.clauses.subList(key?.let { operand.clauses.indexOf(it) + 1 } ?: 0,
-        operand.clauses.indexOf(filter))
-    val indexed = owned.any { it.keyword == indexKeyword }
-    val kindSpan = TextSpan(member, key?.at ?: operand.at, keywordEndOf(filter, text))
-    return if (key == null) {
-        FilteredSpec(operand.base, indexed, key = false, kindSpan, TextSpan(member, operand.at, operand.end))
-    } else {
-        FilteredSpec(key.path, indexed, key = true, kindSpan, TextSpan(member, key.at, filter.at + filter.text.length))
-    }
-}
-
-/** Just past [filter]'s keyword in [text]: its last spelling before the body the clause reads. */
-private fun keywordEndOf(filter: OperandClause, text: String): Int {
-    val keywordAt = text.lastIndexOf(filter.keyword, startIndex = filter.at)
-    return if (keywordAt < 0) filter.at else keywordAt + filter.keyword.length
-}
 
 /**
  * The group whose repetitions the declaration's target is addressed by, when this reader may use it.
@@ -132,6 +108,7 @@ private fun TrackedFactBase.specFinding(
     targetGroup: String?,
     element: TrackedDeclaration,
     member: String,
+    beforeBody: Boolean,
 ): Finding? {
     val path = spec.path ?: return null
     val resolved = resolveEntity(declaringGroup, path.replace("*", ""), element.origin)
@@ -144,6 +121,7 @@ private fun TrackedFactBase.specFinding(
     }
     val whose = if (spec.key) "the index key `$path` — a `Having` after `For` filters the key" else "`$path`"
     if (isGroupPath(resolved.path)) {
+        if (!beforeBody) return null
         return finding(
             "MVK_NO_GROUPS_ALLOWED",
             "in `$member`: `Having` filters $whose, which is the group `${resolved.path}` — the filter " +
@@ -152,7 +130,7 @@ private fun TrackedFactBase.specFinding(
             spec.kindSpan,
         )
     }
-    if (OUTER_MARKER in path || '*' in path || !isFieldPath(resolved.path)) {
+    if (beforeBody || OUTER_MARKER in path || '*' in path || !isFieldPath(resolved.path)) {
         return null
     }
     // The iteration gate runs at the top of the same method and answers for the whole reference, so this

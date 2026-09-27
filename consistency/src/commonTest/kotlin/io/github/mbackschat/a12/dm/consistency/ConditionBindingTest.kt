@@ -206,8 +206,8 @@ class ConditionBindingTest {
             prepared.conditionReferences().map { it.member to it.written },
         )
         val findings = checkRead(source).findings.filter { it.code == "MVK_INVALID_ENTITY" }
-        assertEquals(3, findings.size)
-        assertEquals(3, findings.map { it.explain }.toSet().size, "each finding must name its own member")
+        assertEquals(1, findings.size)
+        assertEquals("commonPrecondition", findings.single().span?.member)
     }
 
     /**

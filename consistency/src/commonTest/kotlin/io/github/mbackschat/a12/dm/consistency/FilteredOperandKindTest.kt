@@ -2,6 +2,10 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 
 /**
  * The checker's half of A12's `checkFilterCondition` operand chain.
@@ -17,8 +21,7 @@ class FilteredOperandKindTest {
     private val starRequired = "MVK_WILDCARDS_REQUIRED"
 
     /** A policy model whose one rule carries [condition]; `Claims` repeats and is keyed on `ClaimRef`. */
-    private fun codes(condition: String): List<String> = checkRead(
-        ModelSource(
+    private fun source(condition: String): ModelSource = ModelSource(
             """
             {"header":{"id":"policy-filter","locales":[{"code":"en_US"}]},
              "content":{"modelRoot":{"rootGroups":[
@@ -38,10 +41,51 @@ class FilteredOperandKindTest {
               ]}}
              ]}}}
             """.trimIndent().replace("CONDITION_HERE", condition),
-        ),
-    ).findings.filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }
+        )
+
+    private fun codes(condition: String): List<String> = checkRead(source(condition))
+        .findings.filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }
 
     private fun filtered(probe: String): List<String> = codes("FieldFilled(Reference) And $probe")
+
+    @Test
+    fun aFilterKeepsItsOwningEntityAndEntryOrCompletionSite() {
+        val probes = listOf(
+            "NumberOfFilledGroups(Claims* Having [Claims/ClaimRef] == \"X\") > 0",
+            "Sum(Claims*/Amount For Reference Having [Claims/ClaimRef] == \"X\") > 0",
+            "Sum(Claims/Amount For \"X\" Having [Claims/ClaimRef] == \"X\") > 0",
+            "Sum(Claims*/Amount For Insured Having [Insured/InsuredName] == \"X\") > 0",
+        )
+        for ((index, probe) in probes.withIndex()) {
+            val facts = TrackedFactBase(prepare(assertIs<Admission.Admitted>(
+                admit(source(probe.replace("\"", "\\\""))))), ReadTranscript())
+            val element = facts.declarations().single { it.declaredKind == DeclaredKind.RULE }
+            val execution = assertNotNull(facts.conditionExecution(element))
+            val entry = execution.recognition.sites.filterIsInstance<SyntaxSite.FilterEntry>().single()
+            assertEquals(listOf("Claims*", "Reference", "Claims/Amount", "Insured")[index], normalizedPath(entry.path))
+            assertEquals(index == 1 || index == 3, entry.indexKey)
+            assertEquals(index == 2, entry.indexed)
+            val contribution = facts.filteredOperandContributions(element, execution).single()
+            assertEquals(element.key, contribution.owner)
+            if (index == 0 || index == 3) {
+                assertEquals(noGroups, contribution.finding.code)
+                assertEquals(entry, contribution.site)
+            } else {
+                assertEquals(starRequired, contribution.finding.code)
+                assertEquals(EntityCheckSite(execution.entitiesByStart.getValue(entry.start), EntityCheck.FILTER), contribution.site)
+            }
+        }
+        for ((probe, expected) in listOf(
+            "NumberOfFilledGroups(Claims* Having [" to listOf(noGroups),
+            "Sum(Claims*/Amount For Reference Having [" to emptyList(),
+        )) {
+            val facts = TrackedFactBase(prepare(assertIs<Admission.Admitted>(admit(source(probe)))), ReadTranscript())
+            val element = facts.declarations().single { it.declaredKind == DeclaredKind.RULE }
+            val execution = assertNotNull(facts.conditionExecution(element))
+            assertNotNull(execution.recognition.failure)
+            assertEquals(expected, facts.filteredOperandContributions(element, execution).map { it.finding.code })
+        }
+    }
 
     @Test
     fun whichFilteredOperandsDrawWhichClass() {

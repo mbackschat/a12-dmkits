@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
+
 /**
  * A group named in a condition that carries no field anywhere beneath it.
  *
@@ -21,25 +23,19 @@ package io.github.mbackschat.a12.dm.consistency
  * group without knowing which operand position it sits in — the one thing a checker reading condition text
  * cannot recover.
  */
-internal fun TrackedFactBase.emptyGroupOperandFindings(): List<Finding> = conditionReferences().mapNotNull { reference ->
-    val target = (reference.target as? Reference.Resolved)?.path ?: return@mapNotNull null
-    val group = declarationAt(target, DeclaredKind.GROUP)
-        ?: return@mapNotNull null
-    if (carriesAField(group.path)) {
-        return@mapNotNull null
+internal fun TrackedFactBase.emptyGroupContributions(element: TrackedDeclaration): List<ConditionFinding> =
+    entityContributions(element, EntityCheck.EMPTY_GROUP) { entity, span ->
+        val written = normalizedPath(entity.path.dropWhile { it.text == "$" })
+        val resolved = resolveEntity(element.path.substringBeforeLast('/'), written, element.origin)
+            as? Reference.Resolved ?: return@entityContributions null
+        val group = declarationAt(resolved.path, DeclaredKind.GROUP) ?: return@entityContributions null
+        if (carriesAField(group.path)) return@entityContributions null
+        Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR,
+            if (group.path.isRootGroup()) "MVK_ROOT_GROUP_IS_EMPTY" else "MVK_GROUP_IS_EMPTY",
+            "this ${span.member} names `${group.path}`, a group with no field anywhere beneath it — A12 admits " +
+                "the declaration and refuses every condition that names it, so either populate the group or " +
+                "name one that carries something", element.path, span)
     }
-    Finding(
-        FindingCategory.A12_CONSTRAINT,
-        FindingSeverity.ERROR,
-        if (group.path.isRootGroup()) "MVK_ROOT_GROUP_IS_EMPTY" else "MVK_GROUP_IS_EMPTY",
-        "this ${reference.member} names `$target`, a group with no field anywhere beneath it — A12 admits " +
-            "the declaration and refuses every condition that names it, so either populate the group or " +
-            "name one that carries something",
-        reference.declaredAt,
-        // Raised while the reference resolves, as a name that resolves to nothing is.
-        reference.span,
-    )
-}
 
 /**
  * Whether any field is declared at or below [path].

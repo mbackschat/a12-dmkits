@@ -26,21 +26,18 @@ import kotlinx.serialization.json.JsonPrimitive
  * owns `INVALID_FIELD`, reads only the PLAIN form, so that row is an under-report both families disclose
  * rather than a class either of them reports.
  */
-internal fun TrackedFactBase.errorTextCategorySuffixFindings(): List<Finding> {
-    val readBy = entitiesReadByDeclaration()
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val membership = readBy[element.path] ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.examined(declaredLocales).flatMap { message ->
-            if (message.text.carriesAnOffendingCharacter()) {
-                return@flatMap emptyList()
-            }
-            messageParameterBodies(message.text).mapNotNull { parameter ->
-                suffixDefect(parameter, group, element, membership)?.let { finding(it, element) }
-            }
-        }
+internal fun TrackedFactBase.errorTextCategorySuffixFindings(): List<Finding> = declarations().flatMap { element ->
+    messageContributions(element) { errorTextCategorySuffixFindings(element, it) }.map { it.finding }
+}
+
+internal fun TrackedFactBase.errorTextCategorySuffixFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> {
+    val membership = entitiesReadBy(element)
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    if (message.text.carriesAnOffendingCharacter()) {
+        return emptyList()
+    }
+    return messageParameterBodies(message.text).mapNotNull { parameter ->
+        suffixDefect(parameter, group, element, membership)?.let { finding(it, element) }
     }
 }
 

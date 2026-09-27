@@ -22,7 +22,7 @@ class FilteredEntityIterationTest {
      * [group] picks where the probe rule sits: inside `Lines`, whose own repetitions the error field is
      * addressed by, or at the root, which is the only anchoring `RepetitionNotUnique` is reachable from.
      */
-    private fun codes(group: String, errorField: String, condition: String): List<String> = checkRead(
+    private fun source(group: String, errorField: String, condition: String): ModelSource =
         ModelSource(
             """
             {"header":{"id":"fulfilment","locales":[{"code":"en_US"}]},
@@ -59,8 +59,25 @@ class FilteredEntityIterationTest {
               ]}}
              ]}}}
             """.trimIndent(),
-        ),
-    ).findings.map { it.code }
+        )
+
+    private fun codes(group: String, errorField: String, condition: String): List<String> =
+        checkRead(source(group, errorField, condition)).findings.map { it.code }
+
+    @Test
+    fun anOmittedFilterProducerCannotVetoTheSelectedReferenceCheck() {
+        val source = source(LINES, "../OrderedQty",
+            "Sum(/Fulfilment/Picks/Checks*/CheckQty Having [/Fulfilment/Picks/Checks/CheckNote] == \"x\") > 0")
+        val prepared = prepare(admit(source) as Admission.Admitted)
+        fun selected(families: Set<CheckFamily>): List<String> {
+            val facts = TrackedFactBase(prepared, ReadTranscript())
+            val producers = CHECK_PRODUCERS.filter { it.completes.any { family -> family in families } }
+            return executeChecks(facts, prepared, CheckCells.NONE, producers).reportFindings(facts).map { it.code }
+        }
+        assertEquals(listOf(filtered), selected(setOf(CheckFamily.FILTERED_ENTITY_ITERATION, CheckFamily.ERROR_FIELD_REFERENCE)))
+        assertEquals(listOf("MVK_ERROR_FIELD_NOT_REFERENCED"), selected(setOf(CheckFamily.ERROR_FIELD_REFERENCE)))
+        assertEquals(emptyList(), selected(emptySet()))
+    }
 
     private fun probe(here: Boolean, errorField: String, condition: String): String = if (!here) {
         ""
@@ -110,7 +127,7 @@ class FilteredEntityIterationTest {
             listOf(filtered)
         // A12 refuses an unkeyed parallel level during the parse with `MVK_NO_WILDCARD`. THIS family stays
         // silent, because naming its own post-parse class on a rule that never parsed would be the wrong
-        // one; [operandRepetitionScopeFindings] owns `MVK_NO_WILDCARD` and, since 2026-09-15, reads a
+        // one; [operandScopeContributions] owns `MVK_NO_WILDCARD` and, since 2026-09-15, reads a
         // filter-carrying text with the filter BODY removed and so reaches this row. The under-report this
         // comment used to disclose is closed, and the row now measures which family answers.
         expected["the parallel level declares NO index field"] = listOf("MVK_NO_WILDCARD")

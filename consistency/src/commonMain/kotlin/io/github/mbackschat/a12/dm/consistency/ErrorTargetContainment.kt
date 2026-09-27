@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
-import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 
 /**
  * A rule or computation that ITERATES must write into a field at or below its own declaring group.
@@ -45,27 +43,20 @@ import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
  * That refusal is geometry alone, so it is NOT the predicate here — copying it would refuse the models A12
  * admits, which is exactly what it does on the authoring path.
  */
-internal fun TrackedFactBase.errorTargetContainmentFindings(): List<Finding> {
-    val named = conditionReferences().groupBy { it.declaredAt }
-    return declaredReferences()
-        .filter { it.role == ReferenceRole.ERROR_TARGET || it.role == ReferenceRole.COMPUTED_TARGET }
-        .mapNotNull { declared ->
-            val written = (declared.target as? Reference.Resolved)?.path ?: return@mapNotNull null
-            val group = declared.declaredAt.substringBeforeLast('/', missingDelimiterValue = "")
-            if (written == group || written.startsWith("$group/")) {
-                return@mapNotNull null
-            }
-            val texts = named[declared.declaredAt].orEmpty()
-            val element = declarationAt(declared.declaredAt) ?: return@mapNotNull null
-            val ownReads = spellingsThatCanReadARow(element)
-            val perRowRead = texts.firstOrNull { it.written in ownReads && readsOneRowAtATime(it, group, element) }
-            val writtenIterates =
-                declared.role == ReferenceRole.COMPUTED_TARGET && repeatingLevelsOnThePathTo(written) > 0
-            if (perRowRead == null && (!writtenIterates || texts.any { it.target !is Reference.Resolved })) {
-                return@mapNotNull null
-            }
-            containmentFinding(declared, written, group, perRowRead)
-        }
+internal fun TrackedFactBase.errorContainmentContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    val declared = element.declaredReference() ?: return emptyList()
+    val target = (declared.target as? Reference.Resolved)?.path ?: return emptyList()
+    val group = element.path.substringBeforeLast('/')
+    if (target == group || target.startsWith("$group/")) return emptyList()
+    return entityContributions(element, EntityCheck.ADDRESS) { entity, span ->
+        if (entity.indexKey || entity.indexed || entity.inFilter && entity.path.first().text != "$")
+            return@entityContributions null
+        val written = normalizedPath(entity.path.dropWhile { it.text == "$" })
+        val reference = ConditionReference(element.path, span.member, written,
+            resolveEntity(group, written, element.origin), span)
+        if (!readsOneRowAtATime(reference, group, element)) return@entityContributions null
+        containmentFinding(declared, target, group, reference)
+    }
 }
 
 /**
@@ -85,28 +76,6 @@ private fun TrackedFactBase.readsOneRowAtATime(
 ): Boolean {
     val path = (reference.target as? Reference.Resolved)?.path ?: return false
     return unstarredRepeatableLevels(reference.written, path, declaringGroup, element)?.isNotEmpty() == true
-}
-
-/**
- * The spellings in [element]'s texts that can read a row for the construct itself.
- *
- * Two unstarred spellings read no row of the path they name, and both were measured admitted from outside
- * the declaring group, on either construct: a `Having` filter's own leaf, which is about the starred extent,
- * and the value half of a semantic index, which picks its row by key
- * (`rulekit.validate.laws.PartialStarContainmentLawsTest.aFilterLeafAndAKeyedReadAreNotPerRowReads`). The
- * filter body is removed from the text except for what A12 checks against the target there, a `$`-marked read
- * and a nested filter's base ([rulesOwnReadsIn], `adapter.laws.CheckerFilterBodyAgreementTest`,
- * [KERNEL-FINDINGS KF487]); a text that writes a semantic index offers no row read at all,
- * because the reference scan cannot tell its keyed spelling from a plain one — silence there is the
- * under-report [operandRepetitionScopeFindings] accepts on the same text.
- */
-private fun TrackedFactBase.spellingsThatCanReadARow(element: TrackedDeclaration): Set<String> {
-    val keyed = setOfNotNull(CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX))
-    val body = element.body ?: return emptySet()
-    if (conditionTexts(element.kind, body).any { (_, text) -> namesKeyword(text, keyed) != null }) {
-        return emptySet()
-    }
-    return rulesOwnReferences(element)
 }
 
 /**

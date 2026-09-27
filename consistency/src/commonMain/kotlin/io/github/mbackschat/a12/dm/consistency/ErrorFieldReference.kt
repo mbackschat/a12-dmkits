@@ -33,56 +33,37 @@ import kotlinx.serialization.json.JsonObject
  * unstarred leaf inside a filter does not draw the iteration class, and treating it as if it did silenced
  * this family on three corpus mutants A12 answers with its own class ([KERNEL-FINDINGS KF424]).
  *
- * **Lifting that pre-emption alone was not enough, and the missing half is a gate ORDER.** A filtered
- * PARALLEL operand is refused by [filteredEntityIterationFindings]' class ahead of this one, so without the
- * yield above this family named a wrong class beside a right one on exactly that shape — caught by a mirror
- * row, not by reasoning.
+ * The filtered-entity gate precedes this one in [ConditionExecution]; an omitted producer cannot veto this
+ * family's local result (`FilteredEntityIterationTest.anOmittedFilterProducerCannotVetoTheSelectedReferenceCheck`).
  * And it reports nothing unless the target's own NAME is absent from the condition text, so a spelling the
  * reference extractor does not recognise can never become a refusal here — the recall risk above is bounded
  * by a test the extractor is not involved in.
  */
-internal fun TrackedFactBase.errorFieldReferenceFindings(): List<Finding> {
-    val named = conditionReferences().groupBy { it.declaredAt }
-    // A filtered PARALLEL operand is refused by its own gate AHEAD of this one — measured, on a rule whose
-    // error field is unreferenced, where A12 names that class and only that class
-    // (`rulekit.validate.laws.FilteredEntityParallelIterationLawsTest.whichPostParseGateAnswersFirst`).
-    // Asking the family rather than re-deriving its predicate keeps the two from drifting apart.
-    val answeredByTheFilterGate = filteredEntityIterationFindings().mapNotNull { it.at }.toSet()
-    return declaredReferences()
-        .filter { it.role == ReferenceRole.ERROR_TARGET }
-        .mapNotNull { declared ->
-            val target = (declared.target as? Reference.Resolved)?.path ?: return@mapNotNull null
-            val references = named[declared.declaredAt].orEmpty()
-            // Only what the RULE reads may pre-empt this family at the ITERATION gate. A filter body's leaf
-            // is about the filtered entity and does not iterate the rule — measured as the admitted control
-            // of `AggregateSlotLawsTest`'s iteration grid, where an unstarred filter leaf crossing a
-            // repetition the target sits outside of draws nothing at all.
-            val rulesOwn = declarationAt(declared.declaredAt)
-                ?.let { rulesOwnReferences(it) }.orEmpty()
-            // Three ways this rule is not this family's to judge. A rule with no condition at all belongs to
-            // `MVK_CONDITION_MISSING`. An UNRESOLVABLE operand PRE-EMPTS the gate — A12 reports the entity
-            // and says nothing about the reference, measured — so reporting here would name a second fix for
-            // one mistake. And a condition that mentions the target's name in some spelling is left alone.
-            if (references.isEmpty() ||
-                references.any { it.target !is Reference.Resolved } ||
-                references.any { it.written in rulesOwn && it.reaches(target) } ||
-                declared.declaredAt in answeredByTheFilterGate ||
-                references.any { it.written in rulesOwn && iteratesPastTheTarget(it, target) } ||
-                namesTheRulesOwnGroup(declared) ||
-                mentions(declared, target)
-            ) {
-                return@mapNotNull null
-            }
-            Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                "MVK_ERROR_FIELD_NOT_REFERENCED",
-                "this rule attaches its error to `$target`, which its condition never names — A12 requires " +
-                    "the condition to reference the field it reports on, and naming a group the target " +
-                    "sits in counts",
-                declared.declaredAt,
-            )
-        }
+internal fun TrackedFactBase.errorFieldReferenceFindings(): List<Finding> =
+    declarations().flatMap { errorFieldReferenceFindings(it) }
+
+private fun TrackedFactBase.errorFieldReferenceFindings(element: TrackedDeclaration): List<Finding> {
+    val declared = element.declaredReference()?.takeIf { it.role == ReferenceRole.ERROR_TARGET }
+        ?: return emptyList()
+    val target = (declared.target as? Reference.Resolved)?.path ?: return emptyList()
+    val references = conditionReferencesOf(element)
+    val rulesOwn = rulesOwnReferences(element)
+    if (references.isEmpty() ||
+        references.any { it.target !is Reference.Resolved } ||
+        references.any { it.written in rulesOwn && it.reaches(target) } ||
+        references.any { it.written in rulesOwn && iteratesPastTheTarget(it, target) } ||
+        namesTheRulesOwnGroup(element) ||
+        mentions(element, target)
+    ) return emptyList()
+    return listOf(Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        "MVK_ERROR_FIELD_NOT_REFERENCED",
+        "this rule attaches its error to `$target`, which its condition never names — A12 requires " +
+            "the condition to reference the field it reports on, and naming a group the target " +
+            "sits in counts",
+        element.path,
+    ))
 }
 
 /**
@@ -140,8 +121,7 @@ private fun TrackedFactBase.iteratesPastTheTarget(reference: ConditionReference,
  * had the self-reference here carried it ALONE, so the two readings agreed on all of them; the reference
  * corpus supplied the row on the other side of that axis, on two models the Kernel builds.
  */
-internal fun TrackedFactBase.namesTheRulesOwnGroup(declared: DeclaredReference): Boolean {
-    val element = declarationAt(declared.declaredAt) ?: return false
+internal fun TrackedFactBase.namesTheRulesOwnGroup(element: TrackedDeclaration): Boolean {
     return namesRuleContextIn(element.kind, element.body, conditionLanguage)
 }
 
@@ -170,9 +150,8 @@ internal fun ConditionReference.reaches(target: String): Boolean {
  * mentions `Parcels`, and naming a field INSIDE a target group is exactly the shape A12 refuses, so an
  * occurrence followed by `/` names something under the target rather than the target.
  */
-private fun TrackedFactBase.mentions(declared: DeclaredReference, target: String): Boolean {
+private fun TrackedFactBase.mentions(element: TrackedDeclaration, target: String): Boolean {
     val name = target.substringAfterLast('/')
-    val element = declarationAt(declared.declaredAt) ?: return true
     val body = element.body ?: return true
     return conditionTexts(element.kind, body)
         .any { (_, text) -> rulesOwnReadsIn(text, conditionLanguage).namesOtherThanAsAPrefix(name) }
@@ -188,3 +167,10 @@ private fun String.namesOtherThanAsAPrefix(name: String): Boolean {
     }
     return false
 }
+
+internal fun TrackedFactBase.errorFieldReferenceContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> = execution?.postParse(PostParseCheck.ERROR_TARGET_ITERATION) {
+    errorFieldReferenceFindings(element)
+}.orEmpty()

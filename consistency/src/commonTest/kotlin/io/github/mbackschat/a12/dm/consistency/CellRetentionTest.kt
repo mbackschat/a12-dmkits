@@ -42,16 +42,19 @@ class CellRetentionTest {
     fun aKeptStoreAnswersForItsOwnModelAndADiscardedOneHasNothingToAnswerWith() {
         val prepared = prepared(MODEL)
         val keys = schedule(TrackedFactBase(prepared, ReadTranscript())).map { it.key }
-        // The fixture's own claim, checked rather than asserted in prose: all three producer shapes run, so
+        // The fixture's own claim, checked rather than asserted in prose: all producer shapes run, so
         // the rows below are about retention and not about one dispatch shape happening to be scheduled.
         assertEquals(
             setOf(
                 CheckProducer.ModelWide::class.simpleName,
                 CheckProducer.PerDeclaration::class.simpleName,
                 CheckProducer.PerDeclarationWalk::class.simpleName,
+                CheckProducer.Condition::class.simpleName,
+                CheckProducer.Declaration::class.simpleName,
+                CheckProducer.Messages::class.simpleName,
             ),
             keys.map { it.producer::class.simpleName }.toSet(),
-            "the fixture does not reach all three producer shapes",
+            "the fixture does not reach all producer shapes",
         )
 
         val kept = checkRun(prepared, "retention", emptyList(), CheckCells.NONE, CellRetention.KEPT)
@@ -118,7 +121,7 @@ class CellRetentionTest {
     }
 
     private companion object {
-        /** A rule and a repeating group, which is what reaches all three producer shapes — checked above. */
+        /** A rule and a repeating group, which is what reaches all producer shapes — checked above. */
         private val MODEL = """
             {"header":{"id":"retention","locales":[{"code":"en_US"}]},
              "content":{"modelRoot":{"rootGroups":[

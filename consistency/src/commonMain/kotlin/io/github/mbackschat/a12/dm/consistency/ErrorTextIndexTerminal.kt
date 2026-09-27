@@ -45,30 +45,25 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * 30.8.1). Their two per-member siblings, `FIELD_NO_ENUM` and `INVALID_CATEGORY`, fire on a single member
  * and are already reported — by the category-suffix family, from the plain form.
  */
-internal fun TrackedFactBase.errorTextIndexTerminalFindings(): List<Finding> {
-    val targets = declaredReferences()
-        .filter { it.role == ReferenceRole.ERROR_TARGET }
-        .associate { it.declaredAt to (it.target as? Reference.Resolved)?.path }
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val errorTarget = targets[element.path] ?: return@flatMap emptyList()
-        val reachable = indexFieldsOnThePathTo(errorTarget)
-        val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.examined(declaredLocales).flatMap { message ->
-            if (message.text.carriesAnOffendingCharacter()) {
-                return@flatMap emptyList()
-            }
-            messageParameterBodies(message.text).mapNotNull { parameter ->
-                val terminal = indexTerminalIn(parameter) ?: return@mapNotNull null
-                val matched = reachable.filter { it.name == terminal.argument }
-                when (matched.size) {
-                    0 -> finding(terminal.argument, reachable.map { it.name }.toSet(), element)
-                    1 -> gatesBehindTheArgument(matched.single(), terminal, element)
-                    // The SECOND gate, and the argument gate is the only one before it — so reporting this
-                    // class needs no more of the terminal's machinery than the first one did.
-                    else -> ambiguousFinding(terminal.argument, element)
-                }
-            }
+internal fun TrackedFactBase.errorTextIndexTerminalFindings(): List<Finding> = declarations().flatMap { element ->
+    messageContributions(element) { errorTextIndexTerminalFindings(element, it) }.map { it.finding }
+}
+
+internal fun TrackedFactBase.errorTextIndexTerminalFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> {
+    val errorTarget = (element.declaredReference()?.takeIf { it.role == ReferenceRole.ERROR_TARGET }?.target as? Reference.Resolved)?.path ?: return emptyList()
+    val reachable = indexFieldsOnThePathTo(errorTarget)
+    if (message.text.carriesAnOffendingCharacter()) {
+        return emptyList()
+    }
+    return messageParameterBodies(message.text).mapNotNull { parameter ->
+        val terminal = indexTerminalIn(parameter) ?: return@mapNotNull null
+        val matched = reachable.filter { it.name == terminal.argument }
+        when (matched.size) {
+            0 -> finding(terminal.argument, reachable.map { it.name }.toSet(), element)
+            1 -> gatesBehindTheArgument(matched.single(), terminal, element)
+            // The SECOND gate, and the argument gate is the only one before it — so reporting this
+            // class needs no more of the terminal's machinery than the first one did.
+            else -> ambiguousFinding(terminal.argument, element)
         }
     }
 }

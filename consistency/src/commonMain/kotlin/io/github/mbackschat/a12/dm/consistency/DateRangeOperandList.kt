@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 
 /**
@@ -44,7 +43,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
  * **Silent where the pre-gates answer**, therefore, and on a reference this reader cannot resolve, on a
  * `DateRangeType` declaring no format, and on a repeated entity, whose duplicate class A12 draws first.
  */
-internal fun TrackedFactBase.dateRangeOperandListFindings(): List<Finding> {
+internal fun TrackedFactBase.dateRangeOperandListFindings(): List<Finding> = declarations().flatMap { element ->
+    dateRangeOperandContributions(element).take(1).map { it.finding }
+}
+
+internal fun TrackedFactBase.dateRangeOperandContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = RANGE_OVERLAP_CARRIERS
         .mapNotNull { (id, carrier) -> keywords[id]?.let { it to carrier } }
@@ -52,17 +58,10 @@ internal fun TrackedFactBase.dateRangeOperandListFindings(): List<Finding> {
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .mapNotNull { call -> carriers[call.operator]?.let { call to it } }
-                .firstNotNullOfOrNull { (call, carrier) ->
-                    rangeListDefect(call, carrier, group, element)
-                        ?.let { finding(it, call, element, member) }
-                }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        val carrier = carriers[call.operator] ?: return@callContributions null
+        rangeListDefect(call, carrier, group, element)?.let { finding(it, call, element, member) }
     }
 }
 

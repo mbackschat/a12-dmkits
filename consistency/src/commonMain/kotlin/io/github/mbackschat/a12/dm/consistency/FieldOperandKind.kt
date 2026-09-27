@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * A GROUP, or a starred field, handed to one of the two field predicates that take an entity rather than a list.
@@ -35,22 +34,19 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * `MVK_NO_WILDCARDS_ALLOWED`, because these predicates read one addressed value
  * (`rulekit.validate.laws.GroupOperandRepetitionScopeLawsTest`).
  */
-internal fun TrackedFactBase.fieldOperandKindFindings(): List<Finding> {
+internal fun TrackedFactBase.fieldOperandKindFindings(): List<Finding> = declarations().flatMap { element ->
+    fieldOperandKindContributions(element).map { it.finding }
+}
+
+internal fun TrackedFactBase.fieldOperandKindContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val carriers = spelledCarriers()
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator in carriers }
-                .mapNotNull { call ->
-                    // A12's arity gate answers ahead of the operand's, so a call with the wrong count is
-                    // `EntityListArity`'s alone (`rulekit.validate.laws.EntityListArityLawsTest`).
-                    call.operands.singleOrNull()?.let { operand ->
-                        operandFinding(operand, call, group, element, member)
-                    }
-                }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        if (call.operator !in carriers) return@callContributions null
+        call.operands.singleOrNull()?.let { operandFinding(it, call, group, element, member) }
     }
 }
 

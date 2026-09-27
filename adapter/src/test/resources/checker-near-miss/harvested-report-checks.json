@@ -573,7 +573,14 @@
           ],
           "modelMiddle": " And FieldFilled(NoSuchField)",
           "modelSha256": "ed2cd7095d9d0c497c139c21806947d9e7f24a884e7f2fb8a69b62a85c7e56f9",
-          "kernelPhase": "CHECK"
+          "kernelPhase": "CHECK",
+          "replacement": {
+            "contains": [
+              "MVK_INVALID_ENTITY",
+              "MVK_INVALID_WILDCARD"
+            ],
+            "absent": []
+          }
         }
       ]
     },
@@ -591,7 +598,17 @@
           ],
           "modelMiddle": "",
           "modelSha256": "a2f9b73f1a0322d4e1231c6c010f7d59b801354fb2fa8236ddffd0a1d82116e2",
-          "kernelPhase": "CHECK"
+          "kernelPhase": "CHECK",
+          "replacement": {
+            "expected": [
+              "MVK_INVALID_ENTITY"
+            ],
+            "span": {
+              "member": "errorCondition",
+              "start": 12,
+              "end": 23
+            }
+          }
         }
       ]
     },
@@ -3725,7 +3742,27 @@
           ],
           "modelMiddle": "",
           "modelSha256": "26921d3dfa261fc38eb08230a23b05c0f46523a9b97432b3136c1bde30b8f901",
-          "kernelPhase": "CHECK"
+          "kernelPhase": "CHECK",
+          "replacement": {
+            "expected": [
+              {
+                "code": "MVK_INCOMPLETE_INPUT",
+                "at": "/Order/AmountRequired"
+              },
+              {
+                "code": "MVK_BRACKET_MISSING",
+                "at": "/Order/BillingCheck"
+              },
+              {
+                "code": "MVK_INCOMPLETE_INPUT",
+                "at": "/Order/CouponRequired"
+              },
+              {
+                "code": "MVK_BRACKET_MISSING",
+                "at": "/Order/DeliveryCheck"
+              }
+            ]
+          }
         }
       ]
     }

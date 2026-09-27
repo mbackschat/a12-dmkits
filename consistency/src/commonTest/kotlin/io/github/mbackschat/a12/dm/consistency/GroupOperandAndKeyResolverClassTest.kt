@@ -83,9 +83,7 @@ class GroupOperandAndKeyResolverClassTest {
             "Sum(Holder*/Nope) > 0" to listOf("MVK_INVALID_WILDCARD"),
             "Sum(Claims.*/Amount) > 0" to listOf("MVK_POINT_IN_A12_MODEL"),
             "Sum(Claims.*/Nope) > 0" to listOf("MVK_POINT_IN_A12_MODEL"),
-            // A12 names the suffix alone; the checker adds the landing class on purpose, as it does where the
-            // path resolves (`HModelPathSuffixTest`), because that defect survives fixing the suffix.
-            "Sum(Insured.*/Nope) > 0" to listOf("MVK_INVALID_WILDCARD", "MVK_POINT_IN_A12_MODEL"),
+            "Sum(Insured.*/Nope) > 0" to listOf("MVK_POINT_IN_A12_MODEL"),
             "FieldFilled(Insured*/Nope)" to listOf("MVK_INVALID_WILDCARD"),
             "FieldFilled(Claims.*/Nope)" to listOf("MVK_POINT_IN_A12_MODEL"),
         )

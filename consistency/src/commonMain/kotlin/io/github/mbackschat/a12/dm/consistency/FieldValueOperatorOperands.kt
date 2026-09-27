@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -48,23 +47,23 @@ import kotlinx.serialization.json.intOrNull
  * **Silent on a declaration whose effective type this reader does not resolve** — a typedef, an unspecified
  * type — and on an enumeration whose declared values it cannot read as strings.
  */
-internal fun TrackedFactBase.fieldValueOperatorOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.fieldValueOperatorOperandFindings(): List<Finding> = declarations().flatMap { element ->
+    fieldValueOperatorContributions(element).map { it.finding }
+}
+
+internal fun TrackedFactBase.fieldValueOperatorContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = ARM_OF.mapNotNull { (id, arm) -> keywords[id]?.let { it to arm } }.toMap()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .mapNotNull { call ->
-                    val arm = carriers[call.operator] ?: return@mapNotNull null
-                    valueOperandDefect(call, arm, declaringGroup, element)
-                        ?.let { defect -> finding(defect, call, element, member) }
-                }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        val arm = carriers[call.operator] ?: return@callContributions null
+        valueOperandDefect(call, arm, group, element)?.let { finding(it, call, element, member) }
     }
 }
 

@@ -37,42 +37,41 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * gate, and [messageParameterBodies] hands them over unrecognised. Silent too on a text A12 refuses for its
  * CHARACTERS and on an unterminated one, both of which end the parse before a parameter is read.
  */
-internal fun TrackedFactBase.errorTextSemanticIndexFindings(): List<Finding> {
+internal fun TrackedFactBase.errorTextSemanticIndexFindings(): List<Finding> = declarations().flatMap { element ->
+    messageContributions(element) { errorTextSemanticIndexFindings(element, it) }.map { it.finding }
+}
+
+internal fun TrackedFactBase.errorTextSemanticIndexFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> {
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        val written = conditionTexts(element.kind, body)
-            .flatMap { (_, text) -> semanticIndexUsesIn(text, conditionLanguage, keyword) }
-            .mapNotNull { use -> boundPair(use, group, element) }
-            .toSet()
-        messages.examined(declaredLocales).flatMap { message ->
-            if (message.text.carriesAnOffendingCharacter()) {
-                return@flatMap emptyList()
-            }
-            messageParameterBodies(message.text).mapNotNull { parameter ->
-                // Only the bare indexed form is this family's. A parameter also carrying a category arrow
-                // or the `index(…)` terminal is a different form with its own gate family, and reducing it
-                // here would name this family's class for a defect A12 answers elsewhere.
-                if (parameter.contains("->") || parameter.trimStart().startsWith("index(")) {
-                    return@mapNotNull null
-                }
-                val uses = semanticIndexUsesIn(parameter, conditionLanguage, keyword)
-                // A key that is itself keyed is refused outright, and BEFORE membership: A12's check runs as
-                // the key SUB-RULE completes, so `checkFieldRef` never reaches the condition. Measured on a
-                // field the condition reads and on one it does not, both `ILLEGAL_SEMANTIC_INDEX`.
-                if (uses.any { it.nested }) {
-                    return@mapNotNull nestedFinding(element)
-                }
-                val use = uses.singleOrNull() ?: return@mapNotNull null
-                val asked = boundPair(use, group, element) ?: return@mapNotNull null
-                if (asked in written || ridesAlong(asked, written)) {
-                    return@mapNotNull null
-                }
-                finding(asked, keyword, element)
-            }
+    val body = element.body ?: return emptyList()
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    val written = conditionTexts(element.kind, body)
+        .flatMap { (_, text) -> semanticIndexUsesIn(text, conditionLanguage, keyword) }
+        .mapNotNull { use -> boundPair(use, group, element) }
+        .toSet()
+    if (message.text.carriesAnOffendingCharacter()) {
+        return emptyList()
+    }
+    return messageParameterBodies(message.text).mapNotNull { parameter ->
+        // Only the bare indexed form is this family's. A parameter also carrying a category arrow
+        // or the `index(…)` terminal is a different form with its own gate family, and reducing it
+        // here would name this family's class for a defect A12 answers elsewhere.
+        if (parameter.contains("->") || parameter.trimStart().startsWith("index(")) {
+            return@mapNotNull null
         }
+        val uses = semanticIndexUsesIn(parameter, conditionLanguage, keyword)
+        // A key that is itself keyed is refused outright, and BEFORE membership: A12's check runs as
+        // the key SUB-RULE completes, so `checkFieldRef` never reaches the condition. Measured on a
+        // field the condition reads and on one it does not, both `ILLEGAL_SEMANTIC_INDEX`.
+        if (uses.any { it.nested }) {
+            return@mapNotNull nestedFinding(element)
+        }
+        val use = uses.singleOrNull() ?: return@mapNotNull null
+        val asked = boundPair(use, group, element) ?: return@mapNotNull null
+        if (asked in written || ridesAlong(asked, written)) {
+            return@mapNotNull null
+        }
+        finding(asked, keyword, element)
     }
 }
 

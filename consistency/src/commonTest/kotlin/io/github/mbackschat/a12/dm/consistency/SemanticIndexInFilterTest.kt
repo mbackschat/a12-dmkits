@@ -100,7 +100,7 @@ class SemanticIndexInFilterTest {
         expected["the same two, the indexed reference FIRST"] = listOf(notAllowed)
         // A12 answers this from the index's OWN spec gates, which run while the spec is parsed. Under-
         // reported for the same reason as the row above, and the pair is what says the iteration class
-        // `semanticIndexKeyFindings` draws outside a filter must not be drawn inside one: A12 draws neither.
+        // `semanticIndexKeyContributions` draws outside a filter must not be drawn inside one: A12 draws neither.
         expected["an index in the filter whose key names a GROUP"] = emptyList()
         assertEquals(expected, actual, "where a semantic index is refused for sitting in a filter")
     }

@@ -278,7 +278,7 @@ class BuilderCheckerDivergenceGuardTest {
             // `Rule.build()` refuses an error field outside the rule's group (`RK_ERROR_FIELD_OUTSIDE_GROUP`),
             // and that refusal is measured OVER-REJECTING (KF212): A12 admits the pair whenever the rule does
             // not iterate, because the code gates ITERATION rather than placement. The checker deliberately
-            // does not inherit it — `operandRepetitionScopeFindings` names the code only to say which shapes
+            // does not inherit it — `operandScopeContributions` names the code only to say which shapes
             // it stays silent on, that gate running ahead of every class it does report. The divergence is a
             // known kit defect rather than a chosen strictness, and this row is where it stays visible.
             Map.entry("MVK_ERROR_FIELD_NOT_IN_RULEGROUP", Disposition.STRICTER_IN_JAVA),

@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * The per-call CONSTANT budget of the numeric operand-list `Min` and `Max`.
@@ -21,17 +20,21 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * constant — and that falls out of the same rule: an operand counts only when the WHOLE of it is one
  * literal, with any `{…}` grouping unwrapped.
  */
-internal fun TrackedFactBase.operandListConstantFindings(element: TrackedDeclaration): List<Finding> {
+internal fun TrackedFactBase.operandListConstantFindings(element: TrackedDeclaration): List<Finding> =
+    operandListConstantContributions(element).map { it.finding }
+
+internal fun TrackedFactBase.operandListConstantContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = OPERAND_LIST_MATH.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    val body = element.body ?: return emptyList()
-    return conditionTexts(element.kind, body).flatMap { (member, text) ->
-        callsIn(text, conditionLanguage, syntaxEntryOf(member))
-            .filter { it.operator in carriers && it.operands.count { operand -> operand.constant } > 1 }
-            .map { call -> budgetFinding(call.operator, element, member, call.spanIn(member)) }
+    return callContributions(element, execution) { member, call ->
+        if (call.operator in carriers && call.operands.count { it.constant } > 1)
+            budgetFinding(call.operator, element, member, call.spanIn(member)) else null
     }
 }
 

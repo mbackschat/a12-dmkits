@@ -100,3 +100,15 @@ internal fun AuthoredMessages.Read.examined(declaredLocales: List<String>): List
 /** A member A12 binds to a `String`, absent when it is missing or is not a JSON string. */
 internal fun JsonObject.string(key: String): String? =
     (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
+
+/** Locale occurrence order is retained before separate message checks are combined (R5-E0). */
+internal fun TrackedFactBase.messageContributions(
+    element: TrackedDeclaration,
+    check: (AuthoredMessage) -> List<Finding>,
+): List<MessageFinding> {
+    if (element.declaredKind != DeclaredKind.RULE && element.declaredKind != DeclaredKind.COMPUTATION) return emptyList()
+    val messages = element.body?.authoredMessages() as? AuthoredMessages.Read ?: return emptyList()
+    return messages.examined(declaredLocales).flatMapIndexed { ordinal, message ->
+        check(message).map { MessageFinding(element.key, ordinal, it) }
+    }
+}

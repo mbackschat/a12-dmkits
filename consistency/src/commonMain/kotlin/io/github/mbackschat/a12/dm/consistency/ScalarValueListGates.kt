@@ -4,7 +4,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORD
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
@@ -70,20 +69,24 @@ import kotlinx.serialization.json.contentOrNull
  * subject whose repetition stars do not match its repeating levels, where a wildcard-validity class answers
  * ahead of every gate here.
  */
-internal fun TrackedFactBase.scalarValueListGateFindings(): List<Finding> {
+internal fun TrackedFactBase.scalarValueListGateFindings(): List<Finding> = declarations().flatMap { element ->
+    val contributions = scalarValueListContributions(element)
+    val first = contributions.firstOrNull()?.site
+    contributions.takeWhile { it.site == first }.map { it.finding }
+}
+
+internal fun TrackedFactBase.scalarValueListContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = SCALAR_VALUE_LISTS.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator in carriers }
-                .firstNotNullOfOrNull { call -> gateFindings(call, group, element, member) }
-        } ?: emptyList()
+    val group = element.path.substringBeforeLast('/')
+    return callListContributions(element, execution) { member, call ->
+        if (call.operator in carriers) gateFindings(call, group, element, member).orEmpty() else emptyList()
     }
 }
 

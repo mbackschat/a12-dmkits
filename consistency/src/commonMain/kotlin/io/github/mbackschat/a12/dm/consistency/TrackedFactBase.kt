@@ -52,7 +52,7 @@ internal class TrackedFactBase private constructor(
 
         /** Every declaration as a cursor, allocated once per check. */
         val cursors: List<TrackedDeclaration> by lazy {
-            model.elements.map { TrackedDeclaration(it, model, transcript) }
+            model.declarationsByKey.map { (key, element) -> TrackedDeclaration(key, element, model, transcript) }
         }
 
         val defaultVariantCursors: List<TrackedDeclaration> by lazy {
@@ -398,6 +398,7 @@ internal class TrackedFactBase private constructor(
  * because it is the member an edit changes.
  */
 internal class TrackedDeclaration(
+    val key: DeclarationKey,
     private val element: DeclaredElement,
     /**
      * Held for [declaredReference] alone, which needs the model's memoized walk.
@@ -446,18 +447,13 @@ internal class TrackedDeclaration(
      * it spells, and the set's shape, because resolving that path consults the by-path index. Another
      * declaration's body cannot change this answer and is not charged for it.
      *
-     * **Known limit, at a twinned path: the lookup is by PATH, so the second twin gets the first's
-     * reference.** A path is not a unique key here — that is why the cell key carries an ordinal — and this
-     * is the one place left that treats it as one. It is equivalence-preserving (the scoped concatenation
-     * equals the unscoped list, before and after the narrowing) and charged correctly, so reuse stays sound;
-     * what it can do is attribute one twin's error target to the other on a model A12 refuses anyway. Named
-     * rather than fixed: the fix needs `declaredReferenceList` keyed by (path, ordinal), which is a change to
-     * preparation rather than to the barrier (cold review, 2026-09-18).
+     * Occurrence identity prevents a sibling at the same path from lending this declaration its target;
+     * ReportHarvestContractTest locks that distinction on the original field/rule collision (R5).
      */
     fun declaredReference(): DeclaredReference? {
         transcript.record(FactRead.DeclarationContent(element.path))
         transcript.record(FactRead.DeclarationSetShape)
-        return model.declaredReferenceByPath[element.path]
+        return model.declaredReferenceByDeclaration[key]
     }
 
     /**

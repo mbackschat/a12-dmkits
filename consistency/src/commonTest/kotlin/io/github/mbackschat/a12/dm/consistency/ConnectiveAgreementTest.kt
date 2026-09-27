@@ -16,11 +16,9 @@ import kotlin.test.assertTrue
 /**
  * `And` and `Or` mixed inside ONE bracket pair — A12's `MVK_BRACKET_MISSING`.
  *
- * The one grammar-free phase found after two were withdrawn, and it earns that place by not depending on
- * parser state: A12 refuses the mix from a semantic ACTION on the `bedingung` context, and exactly three
- * productions open one — the entry rule, a parenthesised sub-condition, and an entity filter's `Mit`
- * ([KERNEL-FINDINGS KF301], `rulekit.validate.laws.RuleConditionCompositionLawsTest`, kernel 30.8.1,
- * 2026-09-13).
+ * The recognizer records the semantic action in each condition context: the entry, a parenthesized
+ * subcondition or an entity filter (KF301, RuleConditionCompositionLawsTest). Only reached actions
+ * contribute; sibling contexts cannot share their connective state.
  *
  * **The rows that carry the family are the ADMITTED ones**, because two cheap implementations pass every
  * refusal row and over-reject here: looking for both spellings anywhere in the text fails the five
@@ -186,9 +184,8 @@ class ConnectiveAgreementTest {
      *
      * **The last row is the one that decides the mechanism.** Matching case-insensitively on its own would
      * also catch `aNd`, which A12's lexer does NOT resolve — it is an ordinary field name there, so treating
-     * it as a connective would invent a rejection A12 does not make. The spellings are therefore derived by
-     * intersecting a case-insensitive match with the generated keyword table, which is the measured terminal
-     * set, and that row is what separates the two readings.
+     * it as a connective would invent a rejection A12 does not make. Recognition requires membership in the
+     * generated terminal table before comparing the reached connective spellings.
      */
     @Test
     fun everyCaseTheLexerAdmitsIsAConnectiveAndNoOtherCaseIs() {
@@ -220,13 +217,8 @@ class ConnectiveAgreementTest {
     }
 
     /**
-     * The four spellings this family hard-codes are pinned against the GENERATED keyword table.
-     *
-     * The table carries a [KeywordKind] and nothing finer, so it cannot say which operators JOIN two
-     * conditions — `PatternMatched` is an `OPERATOR` too. The four connectives are therefore written out by
-     * hand, and this is what keeps that hand-written pair honest: a regeneration that renamed or reclassified
-     * one would otherwise switch the family off in silence, with every row above still green because they
-     * spell the same words.
+     * The recognizer's connective identities must remain operators in both generated terminal tables.
+     * This catches a renamed or reclassified terminal even if the literal fixtures still agree with each other.
      */
     @Test
     fun theConnectiveSpellingsAreTheKeywordTablesOwn() {

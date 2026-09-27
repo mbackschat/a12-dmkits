@@ -2,6 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 
 /**
  * The checker's half of A12's `.*` path-suffix gate.
@@ -16,8 +19,7 @@ class HModelPathSuffixTest {
     private val suffix = "MVK_POINT_IN_A12_MODEL"
 
     /** A policy model whose one rule carries [condition]; `Insured` is the only group that does not repeat. */
-    private fun codes(condition: String): List<String> = checkRead(
-        ModelSource(
+    private fun model(condition: String): ModelSource = ModelSource(
             """
             {"header":{"id":"policy-paths","locales":[{"code":"en_US"}]},
              "content":{"modelRoot":{"rootGroups":[
@@ -36,10 +38,49 @@ class HModelPathSuffixTest {
               ]}}
              ]}}}
             """.trimIndent().replace("CONDITION_HERE", condition),
-        ),
-    ).findings.map { it.code }
+        )
+
+    private fun codes(condition: String): List<String> = checkRead(model(condition)).findings.map { it.code }
 
     private fun path(probe: String): List<String> = codes("FieldFilled(Reference) And $probe")
+
+    @Test
+    fun omittedPathGatesDoNotStopSelectedFamilies() {
+        for ((path, family, expected) in listOf(
+            Triple("Claims.*/Nope", CheckFamily.CONDITION_REFERENCES, "MVK_INVALID_ENTITY"),
+            Triple("Insured.*/InsuredName", CheckFamily.REPETITION_WILDCARD_TARGET, "MVK_INVALID_WILDCARD"),
+        )) {
+            val prepared = prepare(assertIs<Admission.Admitted>(admit(model("FieldFilled(Reference) And Sum($path) > 0"))))
+            val facts = prepared.tracked()
+            val producers = CHECK_PRODUCERS.filter { family in it.completes }
+            assertEquals(listOf(expected), executeChecks(facts, prepared, CheckCells.NONE, producers)
+                .reportFindings(facts).map { it.code }, path)
+        }
+    }
+
+    @Test
+    fun pathActionsKeepTheirOwnerAndFullEditorExtent() {
+        for ((path, expected) in listOf("Claims*/Amount" to null,
+            "Claims.*/Amount" to suffix, "Insured.*/InsuredName" to suffix)) {
+            val text = "FieldFilled(Reference) And Sum($path) > 0"
+            val facts = prepare(assertIs<Admission.Admitted>(admit(model(text)))).tracked()
+            val rule = facts.declarations().single { it.declaredKind == DeclaredKind.RULE }
+            val execution = assertNotNull(facts.conditionExecution(rule))
+            val local = facts.pathContributions(rule, execution)
+            val selected = execution.selected(local.map { it.contribution }).toSet()
+            val contributions = local.filter { it.contribution in selected }
+            assertEquals(listOfNotNull(expected), contributions.map { it.contribution.finding.code }, path)
+            for ((family, contribution) in contributions) {
+                assertEquals(CheckFamily.H_MODEL_PATH_SUFFIX, family)
+                assertEquals(rule.key, contribution.owner)
+                val step = assertIs<PathCheckSite>(contribution.site).step
+                assertEquals(SyntaxSite.Kind.PATH_STEP, step.kind)
+                assertEquals(true, step in execution.recognition.sites)
+                assertEquals(TextSpan("errorCondition", text.indexOf(path), text.indexOf(path) + path.length),
+                    contribution.finding.span)
+            }
+        }
+    }
 
     @Test
     fun whichPathsCarryTheSuffix() {
@@ -51,12 +92,8 @@ class HModelPathSuffixTest {
         val expected = mutableMapOf<String, List<String>>()
         expected["a plain star — the control"] = emptyList()
         expected["the suffix on a repeatable group"] = listOf(suffix)
-        // A12 stops at the suffix gate and never reaches the landing site, so it names this class alone. The
-        // checker names both because the second defect SURVIVES fixing the first: `Insured*` is still a star
-        // on a group that does not repeat (`MVK_INVALID_WILDCARD`). That is the accumulation this checker
-        // exists for, and the line it must not cross is the other one — a "defect" that exists only because
-        // of the first.
-        expected["the suffix on a NON-REPEATABLE group"] = listOf("MVK_INVALID_WILDCARD", suffix)
+        // R5-PE confirms that the suffix gate stops before the wildcard landing gate.
+        expected["the suffix on a NON-REPEATABLE group"] = listOf(suffix)
 
         assertEquals(expected, actual)
     }

@@ -35,9 +35,9 @@ import java.util.regex.Pattern;
  * {@code Finding} through intermediate defect records in this estate — {@code ListDefect("MVK_…", …)},
  * {@code PartialDateDefect}, a {@code String?} returned up two frames — so narrowing to a {@code Finding}
  * construction misses 86 genuine reports and cannot be repaired by following helper names. The one shape
- * that is NOT a report is a code parked in a declared {@code setOf}: those are the suppression and phase
- * lists ({@code POST_PARSE_CONDITION_CODES} and its two siblings in
- * {@code Check.kt}), which the checker compares against and never emits. Comments are stripped for the same
+ * that is NOT a report is a code parked in a declared {@code setOf}: membership alone does not emit it.
+ * The former report-phase tables motivated this exclusion; the synthetic set fixture keeps its control
+ * after those tables were retired by R5. Comments are stripped for the same
  * reason — this estate's KDoc routinely names the neighbouring class a family deliberately leaves alone,
  * which is the opposite claim.
  *

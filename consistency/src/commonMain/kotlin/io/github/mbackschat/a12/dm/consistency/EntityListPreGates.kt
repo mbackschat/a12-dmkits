@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
@@ -49,7 +48,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
  * comparing the semantic index and the category alongside the path, so two same-path operands under
  * different keys are not duplicates at all.
  */
-internal fun TrackedFactBase.entityListPreGateFindings(): List<Finding> {
+internal fun TrackedFactBase.entityListPreGateFindings(): List<Finding> = declarations().flatMap { element ->
+    entityListPreGateContributions(element).take(1).map { it.finding }
+}
+
+internal fun TrackedFactBase.entityListPreGateContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val gates = ROOT_GROUP_GATE_OF.mapNotNull { (id, gate) -> keywords[id]?.let { it to gate } }.toMap()
     val infixCarrier = keywords[NUMBER_OF_VALUE_IN_FIELDS]
@@ -57,16 +63,10 @@ internal fun TrackedFactBase.entityListPreGateFindings(): List<Finding> {
     if (gates.isEmpty()) {
         return emptyList()
     }
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .firstNotNullOfOrNull { call ->
-                    gates[call.operator]?.let { gate ->
-                        preGateFinding(call, gate, infixCarrier, valueListCarriers, group, element, member)
-                    }
-                }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        gates[call.operator]?.let {
+            preGateFinding(call, it, infixCarrier, valueListCarriers, group, element, member)
         }
     }
 }
@@ -241,7 +241,7 @@ private fun TrackedFactBase.entityListOperandsOf(
         }
     }
     // By CATALOG ID, never by the literal: `For` is `Fuer` in German and a bare literal would read a German
-    // model's field of that name as a key — the same reasoning `repetitionScopeGroupFindings` states for
+    // model's field of that name as a key — the same reasoning `repetitionScopeContributions` states for
     // `@From`, which is a PATH_OP alongside this one and means something else entirely.
     val indexKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
     return call.operands.map { operand ->

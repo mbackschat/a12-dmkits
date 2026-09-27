@@ -348,16 +348,9 @@ tasks.register('leakGuardTest', Test) {
         // discriminator A12 never stores matches nothing and reports nothing, so no mirror and no laws grid
         // can see it. Both sides are read off source, so a new family's set arrives in the scan on its own.
         includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerFieldTypeTokenGuardTest'
-        // Same derived-denominator reason, on the checker's ORDERING law: a code in neither of Check.kt's phase
-        // sets is neither withheld nor placed, and the code that slips is the next family's, which no authored
-        // input list could name. Both sides are read off source, so a new family arrives in the scan on its own.
-        includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerConditionCodePhaseGuardTest'
         // Same reason on the MESSAGE law: an error-text class stated from a family A12's law does not withhold
         // co-fires beside a refused DSL, and a new family's own tests never meet the report assembly that decides.
         includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerMessageFamilyGuardTest'
-        // Same reason on the PLACING law: a positioned class built without its span cannot be ordered against
-        // the rest of its text, and a new family's own tests never meet the report assembly that places it.
-        includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerGateSpanGuardTest'
         // Same derived-denominator reason, on a COST class the instrument that found it cannot see: a CPU
         // profile ranks frames by self time, so five quadratic path scans surfaced and 29 siblings of the
         // identical shape did not. The denominator is every checker source, and the site that re-opens the

@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
@@ -70,7 +69,14 @@ import kotlinx.serialization.json.contentOrNull
  * [dateRangeOperandListFindings]; and on an enumeration declaring a `tableName`, which A12 exempts from the
  * domain check and which makes a model unreadable here anyway.
  */
-internal fun TrackedFactBase.valueListConditionGateFindings(): List<Finding> {
+internal fun TrackedFactBase.valueListConditionGateFindings(): List<Finding> = declarations().flatMap { element ->
+    valueListConditionContributions(element).take(1).map { it.finding }
+}
+
+internal fun TrackedFactBase.valueListConditionContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = VALUE_LIST_CONDITIONS
         .mapNotNull { (id, dateRange) -> keywords[id]?.let { it to dateRange } }
@@ -78,16 +84,9 @@ internal fun TrackedFactBase.valueListConditionGateFindings(): List<Finding> {
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .mapNotNull { call -> carriers[call.operator]?.let { call to it } }
-                .firstNotNullOfOrNull { (call, dateRange) ->
-                    gateFinding(call, dateRange, group, element, member)
-                }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        carriers[call.operator]?.let { gateFinding(call, it, group, element, member) }
     }
 }
 

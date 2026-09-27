@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
+
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -31,16 +32,12 @@ import kotlinx.serialization.json.contentOrNull
  * draws `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`, measured in the same grid; it is about the
  * comparison's constant rather than about the arrow, so this family says nothing about it.
  */
-internal fun TrackedFactBase.categoryReferenceFindings(): List<Finding> = declarations().flatMap { element ->
-    val body = element.body ?: return@flatMap emptyList()
-    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    conditionTexts(element.kind, body).flatMap { (member, text) ->
-        // Both classes are the entity spec's, which A12 checks once the name behind the arrow is read.
-        categoryAccessesIn(text, conditionLanguage).mapNotNull { access ->
-            categoryFinding(access.path, access.category, group, element, member, access.spanIn(member))
-        }
+internal fun TrackedFactBase.categoryContributions(element: TrackedDeclaration): List<ConditionFinding> =
+    entityContributions(element, EntityCheck.CATEGORY) { entity, span ->
+        val category = entity.category ?: return@entityContributions null
+        categoryFinding(normalizedPath(entity.path.dropWhile { it.text == "$" }), category.text.trim('`'),
+            element.path.substringBeforeLast('/'), element, span.member, span)
     }
-}
 
 private fun TrackedFactBase.categoryFinding(
     path: String,

@@ -38,12 +38,12 @@ data class DeclaredReference(
 fun PreparedModel.declaredReferences(): List<DeclaredReference> = declaredReferenceList
 
 /**
- * The walk itself, called once per model from [PreparedModel.declaredReferenceList].
+ * The walk itself, called once per model from [PreparedModel.declaredReferenceByDeclaration].
  *
  * Separate from [declaredReferences] so the memoized property has something to compute and every caller keeps
  * the name it already used — the hoisting is invisible to them, which is the point.
  */
-internal fun PreparedModel.computeDeclaredReferences(): List<DeclaredReference> = elements.mapNotNull { element ->
+internal fun PreparedModel.computeDeclaredReferences(): Map<DeclarationKey, DeclaredReference> = declarationsByKey.mapNotNull { (key, element) ->
     val declared = DECLARED_BY_KIND[element.kind] ?: return@mapNotNull null
     val relative = element.body
         ?.get(declared.first)?.let { (it as? JsonPrimitive)?.contentOrNull }
@@ -52,9 +52,9 @@ internal fun PreparedModel.computeDeclaredReferences(): List<DeclaredReference> 
     // strictly RELATIVE — an absolute spelling is "illegal relPath" at conversion and the model never builds
     // (measured 2026-09-12) — and a relative path is move-invariant under mounting, because the provider's
     // root group is REPLACED by the mount group rather than added above it.
-    DeclaredReference(element.path, declared.first, declared.second,
+    key to DeclaredReference(element.path, declared.first, declared.second,
         resolveRelative(element.path, relative), relative)
-}
+}.toMap()
 
 private val DECLARED_BY_KIND = mapOf(
     "Rule" to ("errorEntityRelPath" to ReferenceRole.ERROR_TARGET),

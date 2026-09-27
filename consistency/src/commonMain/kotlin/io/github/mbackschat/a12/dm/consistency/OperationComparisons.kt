@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
+import io.github.mbackschat.a12.dm.consistency.syntax.ComparisonShape
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
 import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
 import kotlinx.serialization.json.JsonArray
@@ -9,20 +10,20 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /** Comparison arms consume child results once; KF382–KF387 settle their order and direct-read boundaries. */
-internal fun OperationAnalysis.comparisonFindings(): List<Finding> = recognition.comparisons.mapNotNull { shape ->
+internal fun OperationAnalysis.comparisonFinding(shape: ComparisonShape): Finding? {
     fun operand(left: Boolean): OperationShape? {
         val tokens = if (left) shape.left else shape.right
         val first = tokens.firstOrNull { it.kind != io.github.mbackschat.a12.dm.consistency.syntax.TokenKind.COMMENT }
         val last = tokens.lastOrNull { it.kind != io.github.mbackschat.a12.dm.consistency.syntax.TokenKind.COMMENT }
         return recognition.operations.lastOrNull { it.at == first?.start && it.end == last?.end }
     }
-    val leftShape = operand(true) ?: return@mapNotNull null
-    val rightShape = operand(false) ?: return@mapNotNull null
+    val leftShape = operand(true) ?: return null
+    val rightShape = operand(false) ?: return null
     val left = value(leftShape)
     val right = value(rightShape)
     val comparison = ConditionComparison(written(leftShape), shape.operator.text, shape.operator.start,
         written(rightShape), leftShape.at, rightShape.end)
-    comparisonFinding(comparison, leftShape, left, right)
+    return comparisonFinding(comparison, leftShape, left, right)
 }
 
 private fun OperationAnalysis.comparisonFinding(
@@ -162,17 +163,12 @@ private fun OperationAnalysis.displayDefect(left: OperationValue, right: Operati
     return null
 }
 
-internal fun TrackedFactBase.operationFindings(element: TrackedDeclaration): List<Finding> {
-    val body = element.body ?: return emptyList()
-    val carrier = if (element.declaredKind == DeclaredKind.COMPUTATION) {
-        val target = computedTargetOf(element) ?: return emptyList()
-        computationCondition(body, target.removePrefix("${element.path.substringBeforeLast('/')}/"), conditionLanguage)
-            ?: return emptyList()
-    } else {
-        val condition = conditionTexts(element.kind, body).singleOrNull() ?: return emptyList()
-        ConditionText().apply { append(condition.second, condition.first, authored = true) }
-    }
-    val analysis = OperationAnalysis(this, element, carrier)
+internal fun TrackedFactBase.operationFindings(element: TrackedDeclaration): List<Finding> =
+    operationContributions(element).map { it.finding }
+
+internal fun TrackedFactBase.operationContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    val execution = conditionExecution(element) ?: return emptyList()
+    val analysis = OperationAnalysis(this, element, execution.carrier, execution.recognition)
     analysis.analyze()
-    return analysis.findings + analysis.comparisonFindings()
+    return analysis.contributions
 }

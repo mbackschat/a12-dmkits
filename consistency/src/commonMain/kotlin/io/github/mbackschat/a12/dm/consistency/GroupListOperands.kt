@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * A group-list quantifier that names the same group twice, or names a group and something under it.
@@ -70,16 +69,18 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * On those three carriers the kind gate runs LAST of the gates this file judges and outruns only the arity
  * class, which is A12's order and is not reproduced by accident: the checks below are written in it.
  */
-internal fun TrackedFactBase.groupListOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.groupListOperandFindings(): List<Finding> = declarations().flatMap { element ->
+    groupListContributions(element).map { it.finding }
+}
+
+internal fun TrackedFactBase.groupListContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val judged = spelled(GROUP_LIST_OPERATORS) + spelled(FIELD_REFUSING_OPERATORS)
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator in judged }
-                .mapNotNull { call -> operandFinding(call, group, element, member) }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        if (call.operator in judged) operandFinding(call, group, element, member) else null
     }
 }
 

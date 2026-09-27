@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * Where a `RepetitionNotUnique` KEY has to sit relative to the rule that names it.
@@ -47,17 +46,18 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * as `MVK_ERROR_INVALID_LANGUAGE_FEATURE`), so a computation carrying one has a different defect and this
  * family would be a second opinion about a condition A12 never reaches.
  */
-internal fun TrackedFactBase.repetitionKeyPlacementFindings(): List<Finding> {
-    val spelling = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(REPETITION_NOT_UNIQUE)
-        ?: return emptyList()
-    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator == spelling }
-                .mapNotNull { call -> placementFinding(call, declaringGroup, element, member) }
-        }
+internal fun TrackedFactBase.repetitionKeyPlacementFindings(): List<Finding> =
+    declarations().filter { it.kind == "Rule" }.flatMap { repetitionKeyPlacementContributions(it).map { contribution -> contribution.finding } }
+
+internal fun TrackedFactBase.repetitionKeyPlacementContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
+    if (element.kind != "Rule") return emptyList()
+    val spelling = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(REPETITION_NOT_UNIQUE) ?: return emptyList()
+    val group = element.path.substringBeforeLast('/')
+    return callContributions(element, execution) { member, call ->
+        if (call.operator == spelling) placementFinding(call, group, element, member) else null
     }
 }
 
@@ -103,6 +103,7 @@ private fun TrackedFactBase.placementFinding(
             "no repeatable group separates from `$declaringGroup` — the operator compares one repetition " +
             "against another, so each key needs a repeating group between the rule's own group and itself",
         element.path,
+        TextSpan(member, call.at, call.end),
     )
 }
 

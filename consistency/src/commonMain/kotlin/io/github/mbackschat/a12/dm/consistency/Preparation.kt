@@ -318,7 +318,17 @@ data class PreparedModel(
      * this class gets instead is the sibling sweep: [conditionReferenceList] was found and closed that way,
      * having been left behind when this one was fixed.
      */
-    internal val declaredReferenceList: List<DeclaredReference> by lazy { computeDeclaredReferences() }
+    internal val declaredReferenceList: List<DeclaredReference> by lazy { declaredReferenceByDeclaration.values.toList() }
+
+    /** R5 keeps occurrence identity before filtering: a field and rule may share a path. */
+    internal val declarationsByKey: Map<DeclarationKey, DeclaredElement> by lazy {
+        val seen = mutableMapOf<String, Int>()
+        elements.associateBy { element ->
+            val ordinal = seen.getOrElse(element.path) { 0 }
+            seen[element.path] = ordinal + 1
+            DeclarationKey(element.path, ordinal)
+        }
+    }
 
     /**
      * Every declaration's condition references, computed ONCE per model.
@@ -356,12 +366,7 @@ data class PreparedModel(
     }
 
     /**
-     * [declaredReferenceList] keyed by the path that declares it, so a cursor's own reference is a lookup.
-     *
-     * **FIRST occurrence wins, because that is the answer it replaces** — `TrackedDeclaration.declaredReference`
-     * asked `firstOrNull`, and at a twinned path that hands the second twin the first's reference. The limit is
-     * named on that member and is deliberately not fixed here: changing which twin answers is a behaviour
-     * change, and this is not.
+     * Targets retain their declaration occurrence, including when another kind shares the path (R5).
      *
      * **It is where the SECOND cost curve was, measured 2026-09-18.** The scan is per declaration and the list
      * is the whole model's, so the check was quadratic again: `node --cpu-prof` put that one `firstOrNull` at
@@ -369,11 +374,7 @@ data class PreparedModel(
      * the largest single frame in the profile. The 2026-09-15 note above hoisted the WALK out of fifteen
      * callers and left the per-caller LOOKUP linear, which is the same mistake one layer down.
      */
-    internal val declaredReferenceByPath: Map<String, DeclaredReference> by lazy {
-        val byPath = LinkedHashMap<String, DeclaredReference>(declaredReferenceList.size)
-        declaredReferenceList.forEach { reference -> byPath.getOrPut(reference.declaredAt) { reference } }
-        byPath
-    }
+    internal val declaredReferenceByDeclaration: Map<DeclarationKey, DeclaredReference> by lazy { computeDeclaredReferences() }
 }
 
 /** Whether A12 drops this element before checking — see [PreparedModel.resolvableElements]. */

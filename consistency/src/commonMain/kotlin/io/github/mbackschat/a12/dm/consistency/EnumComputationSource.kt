@@ -39,16 +39,16 @@ import kotlinx.serialization.json.contentOrNull
  * some of them. Silent too on a table-backed enumeration, on a `TypeDefType` or `UnspecifiedType`, and
  * wherever the target or a source does not resolve.
  */
-internal fun TrackedFactBase.enumComputationSourceFindings(): List<Finding> = declaredReferences()
-    .filter { it.role == ReferenceRole.COMPUTED_TARGET }
-    .flatMap { declared ->
+internal fun TrackedFactBase.enumComputationSourceFindings(): List<Finding> = declarations()
+    .filter { it.declaredKind == DeclaredKind.COMPUTATION }
+    .flatMap { element ->
+        val declared = element.declaredReference() ?: return@flatMap emptyList()
         val targetPath = (declared.target as? Reference.Resolved)?.path ?: return@flatMap emptyList()
         val target = declarationAt(targetPath) ?: return@flatMap emptyList()
         if (target.declaredFieldType() != FieldType.ENUMERATION) {
             return@flatMap emptyList()
         }
         val admitted = target.enumerationBody()?.declaredEnumValues()?.toSet() ?: return@flatMap emptyList()
-        val element = declarationAt(declared.declaredAt) ?: return@flatMap emptyList()
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body)

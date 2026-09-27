@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.consistency
 
+
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.FROM_SCOPE
 import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * Where a `RepetitionNotUnique` KEY has to sit relative to the scope that bounds it.
@@ -25,7 +25,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * Two repeatable groups on parallel branches iterate jointly only when they declare the same index field;
  * without that A12 refuses the pairing at the wildcard gate and draws `MVK_NO_WILDCARD` long before it asks
  * where anything sits. So every parallel shape here is judged only on an index-keyed pair, and the
- * index-free one is left to [operandRepetitionScopeFindings], which owns that class. The `@From` arm carries
+ * index-free one is left to [operandScopeContributions], which owns that class. The `@From` arm carries
  * the same condition against the SCOPE rather than against another key, which is why a key with no
  * repetition at all — above the scope entirely — is silent here and answered there.
  *
@@ -41,26 +41,20 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  *
  * **Silent on every key-list and scope defect**, which A12 gates ahead of containment: the key list's own
  * classes are [repetitionKeyListFindings]', and a scope naming a field draws `MVK_NO_FIELDS_ALLOWED` and a
- * non-repeatable one `MVK_GROUP_NOT_REPEATABLE`, both [repetitionScopeGroupFindings]'.
+ * non-repeatable one `MVK_GROUP_NOT_REPEATABLE`, both [repetitionScopeContributions]'.
  *
  * **Rules only**, for the reason its two siblings are: A12's calculation module refuses the operator in a
  * computation outright ([KERNEL-FINDINGS KF333]), so a computation carrying one has a different defect.
  */
-internal fun TrackedFactBase.repetitionKeyContainmentFindings(): List<Finding> {
+internal fun TrackedFactBase.repetitionContainmentContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    if (element.declaredKind != DeclaredKind.RULE) return emptyList()
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val spelling = keywords[REPETITION_NOT_UNIQUE] ?: return emptyList()
     val scopeKeyword = keywords[FROM_SCOPE] ?: return emptyList()
-    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator == spelling }
-                .mapNotNull { call ->
-                    containmentDefect(call, scopeKeyword, declaringGroup, element)
-                        ?.let { containmentFinding(it, call, element, member) }
-                }
-        }
+    val group = element.path.substringBeforeLast('/')
+    return callContributions(element) { member, call ->
+        if (call.operator != spelling) return@callContributions null
+        containmentDefect(call, scopeKeyword, group, element)?.let { containmentFinding(it, call, element, member) }
     }
 }
 
@@ -82,7 +76,7 @@ private fun TrackedFactBase.containmentDefect(
         return null
     }
     val scopeText = call.operands.firstNotNullOfOrNull { operand -> scopeTextOf(operand, scopeKeyword) }
-    // A scope carrying more than a path, such as an index, meets its own gates first ([repetitionScopeGroupFindings]).
+    // A scope carrying more than a path, such as an index, meets its own gates first ([repetitionScopeContributions]).
     val scopeSpelling = scopeText?.let { it.bare ?: return null }
     val written = call.operands.map { it.base ?: return null }
     val keys = written.mapNotNull {

@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
 import io.github.mbackschat.a12.dm.consistency.syntax.TODAY_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TRUE_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
@@ -74,7 +73,14 @@ import kotlinx.serialization.json.contentOrNull
  * **Silent on a `TypeDefType` or `UnspecifiedType` declaration**, whose effective type this reader does not
  * resolve.
  */
-internal fun TrackedFactBase.valueInFieldsConstantKindFindings(): List<Finding> {
+internal fun TrackedFactBase.valueInFieldsConstantKindFindings(): List<Finding> = declarations().flatMap { element ->
+    valueInFieldsConstantContributions(element).take(1).map { it.finding }
+}
+
+internal fun TrackedFactBase.valueInFieldsConstantContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carrier = keywords[NUMBER_OF_VALUE_IN_FIELDS] ?: return emptyList()
     val spellings = ConstantSpellings(
@@ -82,14 +88,9 @@ internal fun TrackedFactBase.valueInFieldsConstantKindFindings(): List<Finding> 
         keywords[FALSE_CONSTANT],
         listOfNotNull(keywords[TODAY_CONSTANT], keywords[NOW_CONSTANT]),
     )
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator == carrier }
-                .firstNotNullOfOrNull { call -> constantKindFinding(call, spellings, group, element, member) }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        if (call.operator == carrier) constantKindFinding(call, spellings, group, element, member) else null
     }
 }
 
@@ -312,12 +313,8 @@ private fun armOf(constantText: String, spellings: ConstantSpellings): ConstantA
  * **Placed at the slot's first token, and never silent on what the slot holds.** A12's parse stops in the
  * slot ahead of every reference phase, so a name there — declared, undeclared, or a spec that resolves and
  * whose star is illegal — draws this class and no resolution or wildcard class (measured 2026-09-15,
- * `rulekit.validate.laws.ValueInFieldsConstantKindLawsTest`). Report assembly gives that answer once the
- * finding carries the slot's span: a parser class is raised at its span's start, which stands ahead of the
- * end every reference class inside the slot is raised at ([withoutDefectsBehindAnEarlierOne]), and ahead of
- * the call's closing parenthesis, where the arity gate is raised. The refused token itself can sit one
- * constant later — `1 + 2` is refused at the `+` — but what precedes it is then a constant this production
- * admits, which carries no class to order against.
+ * `rulekit.validate.laws.ValueInFieldsConstantKindLawsTest`). Recognition records the failed token demand
+ * before any semantic completion in the slot; the editor span does not establish that ordering (R5).
  */
 private fun unexpectedConstantToken(constantText: String, element: TrackedDeclaration, member: String, span: TextSpan) =
     Finding(

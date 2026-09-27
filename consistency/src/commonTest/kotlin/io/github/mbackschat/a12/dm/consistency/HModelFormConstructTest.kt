@@ -2,6 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 
 /**
  * The checker's half of "an A12 model DOES reach the H-model form checks, and is refused by name there".
@@ -15,6 +18,41 @@ import kotlin.test.assertEquals
  * the legacy feel, and the grammar predicate-gates it, so A12 refuses it at the parser even in German.
  */
 class HModelFormConstructTest {
+
+    @Test
+    fun formFindingsBelongToReachedNamesAndCompletedCountCalls() {
+        val rows = listOf(
+            germanRule("VordruckAngegeben(") to SyntaxSite.Kind.FORM_NAME,
+            germanRule("AnzahlAngegebenerVordrucke(Bestellung) > 0") to SyntaxSite.Kind.CALL,
+            germanComputation("{ AnzahlAngegebenerVordrucke(Bestellung) }") to SyntaxSite.Kind.CALL,
+            germanRule("FeldAngegeben(VordruckAngegeben(Bestellung))") to null,
+            germanRule("AnzahlAngegebenerVordrucke(Bestellung Oder FeldAngegeben(Kennzeichen)) > 0") to null,
+            englishRule("VordruckAngegeben(Order)") to null,
+        )
+        for ((model, expected) in rows) {
+            val prepared = prepare(assertIs<Admission.Admitted>(admit(ModelSource(model))))
+            val facts = prepared.tracked()
+            val element = facts.declarations().single {
+                it.declaredKind == DeclaredKind.RULE || it.declaredKind == DeclaredKind.COMPUTATION
+            }
+            val execution = assertNotNull(facts.conditionExecution(element))
+            assertEquals(emptyList(), execution.recognition.sites.filterIsInstance<SyntaxSite.Completion>()
+                .filter { it.kind == SyntaxSite.Kind.PATH_STEP &&
+                    execution.carrier.text.substring(it.start, it.end) == "Bestellung" }, model)
+            val contributions = facts.hModelFormContributions(element)
+            if (expected == null) {
+                assertEquals(emptyList(), contributions, model)
+            } else {
+                val contribution = contributions.single()
+                assertEquals(element.key, contribution.owner)
+                assertEquals(expected, assertIs<SyntaxSite.Completion>(contribution.site).kind)
+                assertEquals(listOf(contribution), execution.selected(contributions))
+                assertEquals(refused, contribution.finding.code)
+                assertEquals(if (element.declaredKind == DeclaredKind.RULE) "errorCondition"
+                    else "computationAlternatives[0].operation", contribution.finding.span?.member)
+            }
+        }
+    }
 
     private val refused = "MVK_INVALID_ROOT_GROUP_CONSTR"
 
@@ -51,11 +89,8 @@ class HModelFormConstructTest {
      * The count operation in a rule CONDITION draws this class ALONE, as in A12
      * (`rulekit.validate.laws.HModelFormConditionReachabilityLawsTest`).
      *
-     * `conditionPart` consumes an UNCATALOGED call as a whole condition, so the `> 0` after it is a token the
-     * shape reader cannot use and draws the grammar class; the call is read to its end before that, and its
-     * class is raised there, so the grammar class stands behind it. A count operation whose own call the parse
-     * cuts short is not read, and is disclosed; a form CONDITION needs no call, and a condition naming no
-     * construct discloses nothing.
+     * KF282 distinguishes a completed count call from one cut short by syntax. Only the latter needs
+     * disclosure; a form condition reaches its name action even before its arguments complete.
      */
     @Test
     fun theCountOperationInAConditionIsReportedAndOneCutShortIsDisclosed() {

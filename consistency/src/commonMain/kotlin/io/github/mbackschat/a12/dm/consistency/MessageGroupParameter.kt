@@ -58,27 +58,27 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
  * **Rules only**, every measured row being a rule's message. The computation carrier was reported to us for
  * the `RuleGroup` locus by a12-kernel-lean and is not measured here.
  */
-internal fun TrackedFactBase.messageGroupParameterFindings(): List<Finding> {
+internal fun TrackedFactBase.messageGroupParameterFindings(): List<Finding> = declarations().flatMap { element ->
+    messageContributions(element) { messageGroupParameterFindings(element, it) }.map { it.finding }
+}
+
+internal fun TrackedFactBase.messageGroupParameterFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> {
+    if (element.declaredKind != DeclaredKind.RULE) return emptyList()
+
     // The model's ROOT GROUPS, so [TrackedFactBase.allDeclarations]: the walk below narrows to one rule,
     // and a scoped `declarations()` here would offer that rule's own path as the only root.
     val roots = allDeclarations().filter { it.path.count { c -> c == '/' } == 1 }.map { it.path }.toSet()
-    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val ruleGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.examined(declaredLocales).flatMap { message ->
-            if (message.text.carriesAnOffendingCharacter()) {
-                return@flatMap emptyList()
-            }
-            messageParameterBodies(message.text).mapNotNull { parameter ->
-                val argument = parameter.trim().removePrefix(GROUP_MARKER).takeIf {
-                    parameter.trim().startsWith(GROUP_MARKER)
-                } ?: return@mapNotNull null
-                val defect = groupArgumentDefect(argument, ruleGroup, roots, conditionLanguage)
-                    ?: starredIterationDefect(argument, ruleGroup, roots, element)
-                defect?.let { code -> finding(code, argument, element) }
-            }
-        }
+    val ruleGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    if (message.text.carriesAnOffendingCharacter()) {
+        return emptyList()
+    }
+    return messageParameterBodies(message.text).mapNotNull { parameter ->
+        val argument = parameter.trim().removePrefix(GROUP_MARKER).takeIf {
+            parameter.trim().startsWith(GROUP_MARKER)
+        } ?: return@mapNotNull null
+        val defect = groupArgumentDefect(argument, ruleGroup, roots, conditionLanguage)
+            ?: starredIterationDefect(argument, ruleGroup, roots, element)
+        defect?.let { code -> finding(code, argument, element) }
     }
 }
 

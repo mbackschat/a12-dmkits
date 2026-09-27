@@ -198,7 +198,7 @@ class FieldTypeMessageTextTest {
 
     /**
      * A rule's refusal elsewhere in the model withholds nothing here, since a field has no condition to wait on:
-     * this family is deliberately outside `MESSAGE_MEMBER_FAMILIES`, and these rows are what that rests on.
+     * these rows lock field-message independence from rule-condition execution.
      */
     @Test
     fun aRulesRefusalElsewhereWithholdsNothing() {

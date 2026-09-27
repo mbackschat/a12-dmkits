@@ -1,21 +1,17 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
+
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
-import io.github.mbackschat.a12.dm.consistency.syntax.clausedOperandsIn
-import io.github.mbackschat.a12.dm.consistency.syntax.firstReferenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
 import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
-import io.github.mbackschat.a12.dm.consistency.syntax.withoutFilterConditions
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 /**
  * Which repetitions an operand may cross unstarred, given where the rule's error field — or the
@@ -78,45 +74,17 @@ import kotlinx.serialization.json.contentOrNull
  * so a target outside it is never this family's to judge. Our own `Rule.build()` refuses that pair up front
  * and is measured OVER-REJECTING there ([KF212]), which is a second reason not to inherit the shape.
  */
-internal fun TrackedFactBase.operandRepetitionScopeFindings(): List<Finding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val indexKeyword = keywords[SEMANTIC_INDEX]
-    val filterKeyword = setOfNotNull(keywords[HAVING])
-    val targets = declaredReferences().associateBy { it.declaredAt }
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val target = (targets[element.path]?.target as? Reference.Resolved)?.path ?: return@mapNotNull null
-        val targetGroup = groupOfTargetField(target) ?: return@mapNotNull null
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        if (!(target == declaringGroup || target.startsWith("$declaringGroup/"))) {
-            return@mapNotNull null
-        }
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            val indexes = indexKeyword?.let { semanticIndexUsesIn(text, conditionLanguage, it) }.orEmpty()
-            val filtered = clausedOperandsIn(text, conditionLanguage)
-                .filter { operand -> operand.clauses.any { it.keyword in filterKeyword } }
-            // A marker outside every filter is refused as it is read, which is [outerMarkerPositionFindings]'.
-            if (OUTER_MARKER in withoutFilterConditions(text, conditionLanguage)) {
-                return@firstNotNullOfOrNull null
-            }
-            val own = rulesOwnReadsIn(text, conditionLanguage)
-            firstReferenceSpansIn(own, conditionLanguage)
-                .filterNot { isRuleContext(it.written, conditionLanguage) }
-                .filterNot { occurrence -> indexes.any { it.keys(occurrence.start, occurrence.end) } }
-                .firstNotNullOfOrNull { occurrence ->
-                    val written = occurrence.written
-                    val index = indexes.firstOrNull { it.indexes(occurrence.end, text) }
-                    if (index != null && !admitsSemanticIndex(index, declaringGroup, element)) {
-                        return@firstNotNullOfOrNull null
-                    }
-                    // A filtered base is asked once its whole spec is read, body included, so its span runs
-                    // to the operand's end and a defect inside the body is placed ahead of it.
-                    val filter = filtered.firstOrNull { it.at <= occurrence.start && occurrence.end <= it.baseEnd }
-                    val span = TextSpan(member, occurrence.start, filter?.end ?: occurrence.end)
-                    levelClassOf(written, declaringGroup, targetGroup, element, filter != null, keyed = index != null)
-                        ?.let { scopeFinding(it, written, target, element, span) }
-                }
-        }
+internal fun TrackedFactBase.operandScopeContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    val target = (element.declaredReference()?.target as? Reference.Resolved)?.path ?: return emptyList()
+    val targetGroup = groupOfTargetField(target) ?: return emptyList()
+    val group = element.path.substringBeforeLast('/')
+    if (!(target == group || target.startsWith("$group/"))) return emptyList()
+    return entityContributions(element, EntityCheck.ADDRESS) { entity, span ->
+        if (entity.indexKey || entity.inFilter && entity.path.first().text != "$") return@entityContributions null
+        val written = normalizedPath(entity.path.dropWhile { it.text == "$" })
+        if (isRuleContext(written, conditionLanguage)) return@entityContributions null
+        levelClassOf(written, group, targetGroup, element, entity.filtered, entity.indexed)
+            ?.let { scopeFinding(it, written, target, element, span) }
     }
 }
 

@@ -1,15 +1,13 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
+
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.DATE_CONSTRUCTION
-import io.github.mbackschat.a12.dm.consistency.syntax.Token
-import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.NameTerminal
-import io.github.mbackschat.a12.dm.consistency.syntax.callShapes
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
 import io.github.mbackschat.a12.dm.consistency.syntax.nameTerminalOf
-import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
  * The places a model's declared BASE YEAR is not optional.
@@ -29,7 +27,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * operand gate.
  *
  * **The day and month parameters are checked BEFORE the year one**, so a year-less construction that is also
- * out of range answers with the day's class. That gate is [dateConstructionSlotFindings]' and is read
+ * out of range answers with the day's class. That gate is [dateConstructionContributions]' and is read
  * through [aDateSlotAnswersFirst] rather than restated here.
  *
  * **The `Time` construction has no year to omit** and takes any prefix of its three slots, so the same
@@ -46,25 +44,30 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * **Silent on everything when the model declares a base year**, which is the whole family's precondition,
  * and on a `Date` construction this reader cannot parse into slots.
  */
-internal fun TrackedFactBase.baseYearRequirementFindings(): List<Finding> {
-    if (hasBaseYear) {
-        return emptyList()
-    }
+internal fun TrackedFactBase.baseYearContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    if (hasBaseYear) return emptyList()
+    val execution = conditionExecution(element) ?: return emptyList()
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val baseYear = keywords[BASE_YEAR_CONSTANT] ?: return emptyList()
-    val dateConstruction = keywords[DATE_CONSTRUCTION] ?: return emptyList()
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        // Both shapes are reported where one text carries both, and report assembly keeps the one A12 raises
-        // first: the constant at its own token, the construction at its closing parenthesis.
-        conditionTexts(element.kind, body).map { (member, text) ->
-            listOfNotNull(
-                baseYearTokenIn(text, baseYear)?.let { constantFinding(baseYear, element, member, it.spanIn(member)) },
-                callShapes(text, conditionLanguage, syntaxEntryOf(member))
-                    .filter { it.operator == dateConstruction }
-                    .firstNotNullOfOrNull { shape -> yearlessFinding(shape, element, member) },
-            )
-        }.firstOrNull { it.isNotEmpty() }.orEmpty()
+    val construction = keywords[DATE_CONSTRUCTION] ?: return emptyList()
+    return execution.recognition.sites.mapNotNull { site ->
+        when (site) {
+            is SyntaxSite.Completion -> {
+                if (site.kind == SyntaxSite.Kind.CONSTANT) {
+                    if (execution.carrier.text.substring(site.start, site.end) != baseYear) return@mapNotNull null
+                    val span = execution.carrier.semanticSpan(site.start, site.end) ?: return@mapNotNull null
+                    return@mapNotNull ConditionFinding(element.key, site, constantFinding(baseYear, element, span.member, span))
+                }
+                if (site.kind != SyntaxSite.Kind.CALL) return@mapNotNull null
+                val shape = execution.callsByStart.getValue(site.start)
+                if (shape.operator != construction) return@mapNotNull null
+                val span = execution.carrier.semanticSpan(shape.at, shape.end) ?: return@mapNotNull null
+                yearlessFinding(shape, element, span.member)?.let {
+                    ConditionFinding(element.key, site, it.copy(span = span))
+                }
+            }
+            else -> null
+        }
     }
 }
 
@@ -75,57 +78,27 @@ internal fun TrackedFactBase.baseYearRequirementFindings(): List<Finding> {
  * `${'$'}BaseYear${'$'}`, or with the signed offset it admits unbounded — draws the unprefixed `NO_BASE_YEAR`
  * rather than `MVK_NO_BASE_YEAR`, measured on both language spellings
  * (`rulekit.validate.laws.RuleMessageParameterLanguageLawsTest`). The carrier decides the class, so this and
- * [baseYearRequirementFindings] cannot share a code however alike the question is.
+ * [baseYearContributions] cannot share a code however alike the question is.
  *
  * **And A12 judges it only beside a sound condition or operation**, on either carrier, which report assembly
  * applies rather than this family. That includes a condition naming the constant too: its `MVK_NO_BASE_YEAR`
  * is a DSL class, so the model is reported once, on the condition
  * (`rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`, [KF338]).
  */
-internal fun TrackedFactBase.messageBaseYearFindings(): List<Finding> {
-    if (hasBaseYear) {
-        return emptyList()
-    }
-    return declarations().mapNotNull { element ->
-        messageConstantFinding(element, element.body ?: return@mapNotNull null)
-    }
+internal fun TrackedFactBase.messageBaseYearFindings(): List<Finding> = declarations().flatMap { element ->
+    messageContributions(element) { messageBaseYearFindings(element, it) }.map { it.finding }
 }
 
-private fun TrackedFactBase.messageConstantFinding(
-    element: TrackedDeclaration,
-    body: kotlinx.serialization.json.JsonObject,
-): Finding? {
-    val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return null
-    return messages.examined(declaredLocales).firstNotNullOfOrNull { message ->
-        if (message.text.carriesAnOffendingCharacter()) {
-            return@firstNotNullOfOrNull null
-        }
-        messageParameterBodies(message.text)
-            .firstOrNull { nameTerminalOf(it, conditionLanguage) == NameTerminal.BASE_YEAR }
-            ?.let { parameter ->
-                Finding(
-                    FindingCategory.A12_CONSTRAINT,
-                    FindingSeverity.ERROR,
-                    "NO_BASE_YEAR",
-                    "in `errorMessage`: `${'$'}$parameter${'$'}` interpolates the model's reference year, and " +
-                        "this model declares none — set `modelInfo.baseYear`, or write the year the message " +
-                        "means",
-                    element.path,
-                )
-            }
-    }
+internal fun TrackedFactBase.messageBaseYearFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> {
+    if (hasBaseYear || message.text.carriesAnOffendingCharacter()) return emptyList()
+    val parameter = messageParameterBodies(message.text)
+        .firstOrNull { nameTerminalOf(it, conditionLanguage) == NameTerminal.BASE_YEAR } ?: return emptyList()
+    return listOf(Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, "NO_BASE_YEAR",
+        "in `errorMessage`: `${'$'}$parameter${'$'}` interpolates the model's reference year, and " +
+            "this model declares none — set `modelInfo.baseYear`, or write the year the message means", element.path))
 }
 
 private const val BASE_YEAR_CONSTANT = "BaseYear"
-
-/**
- * The first place the text names the constant as a NAME token of its own, or null where it does not.
- *
- * Read off the token stream rather than the text so a field or a rule whose name merely contains the word
- * is not mistaken for it — the reason this is not a substring search.
- */
-private fun baseYearTokenIn(text: String, baseYear: String): Token? =
-    tokenize(text).firstOrNull { it.kind == TokenKind.NAME && it.text == baseYear }
 
 /** Raised by `konstanteReferenzjahr`, whose production is the constant's one token. */
 private fun constantFinding(baseYear: String, element: TrackedDeclaration, member: String, span: TextSpan) = Finding(

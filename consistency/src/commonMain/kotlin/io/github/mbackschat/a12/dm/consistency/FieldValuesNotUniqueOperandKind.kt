@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * What KIND of field `FieldValuesNotUnique` admits in its list, and how their date SPELLINGS must agree.
@@ -36,17 +35,19 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * `UnspecifiedType` and the two boolean kinds — because the refusal set is an allow-list of what was
  * measured, never the complement of the admitted one.
  */
-internal fun TrackedFactBase.fieldValuesNotUniqueOperandKindFindings(): List<Finding> {
+internal fun TrackedFactBase.fieldValuesNotUniqueOperandKindFindings(): List<Finding> = declarations().flatMap { element ->
+    fieldValuesNotUniqueContributions(element).take(1).map { it.finding }
+}
+
+internal fun TrackedFactBase.fieldValuesNotUniqueContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carrier = keywords[FIELD_VALUES_NOT_UNIQUE] ?: return emptyList()
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator == carrier }
-                .firstNotNullOfOrNull { call -> operandKindFinding(call, declaringGroup, element, member) }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        if (call.operator == carrier) operandKindFinding(call, group, element, member) else null
     }
 }
 

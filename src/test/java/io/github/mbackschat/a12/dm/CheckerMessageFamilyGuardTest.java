@@ -23,16 +23,16 @@ import org.junit.jupiter.api.Test;
  * Every error-text code the portable checker states comes from a family it withholds behind a refused DSL.
  *
  * <p><b>The defect this exists to stop, measured 2026-09-24.</b> A12 examines a declaration's message only
- * once its condition or operation is sound ({@code KERNEL-FINDINGS KF338}), and {@code Check.kt} applies that
- * law by FAMILY: a finding is withheld when its family is in {@code MESSAGE_MEMBER_FAMILIES}. The Base Year and
+ * once its condition or operation is sound ({@code KERNEL-FINDINGS KF338}), and {@code ReportExecution.kt} applies that
+ * law through explicit message-stage contributions. The Base Year and
  * no-text classes were drawn from inside the condition and slot families, so they co-fired beside a refused DSL
  * until each arm became a family of its own. Nothing went red, because each family's own tests build its
  * findings directly and never meet report assembly.
  *
  * <p><b>What is read, and from where.</b> The error-text vocabulary is the kernel's own enum
  * ({@link KernelErrorVocabulary}); the files stating each code are {@link CheckerReportedCodes}'s; the family
- * each file hosts is read from {@code CheckProducers.kt}'s registrations; the withheld families from
- * {@code Check.kt}. A file stating a code must host a withheld family. Where it also hosts a family that is
+ * each file hosts is read from {@code CheckProducers.kt}'s registrations; the message-stage families from
+ * those same registrations. A file stating a code must host a withheld family. Where it also hosts a family that is
  * NOT withheld, the literal's function must reach only the withheld family's entry, through the calls made
  * inside that file, which is exactly the shape the two historical cases had. A family judging a carrier with no
  * DSL at all is exempt by name, each with the measurement that says nothing withholds it.
@@ -80,8 +80,7 @@ class CheckerMessageFamilyGuardTest {
         Set<String> vocabulary = KernelErrorVocabulary.errorTextCodes();
         Map<String, Set<String>> reported = CheckerReportedCodes.bySource(vocabulary::contains);
         assertTrue(reported.size() >= 20, "the scan found only " + reported.size() + " error-text codes");
-        Set<String> withheld = familiesIn(block(read(SOURCES.resolve("Check.kt")),
-                "internal val MESSAGE_MEMBER_FAMILIES = setOf("));
+        Set<String> withheld = messageFamilies();
         Map<String, List<Registration>> byFile = registrationsByFile();
         Set<String> hosts = new TreeSet<>(withheld);
         hosts.addAll(NO_DSL_FAMILIES.keySet());
@@ -96,7 +95,7 @@ class CheckerMessageFamilyGuardTest {
             Set<String> entriesWithheld = entries(hosted, hosts, true);
             Set<String> entriesNot = entries(hosted, hosts, false);
             if (entriesWithheld.isEmpty()) {
-                leaks.put(code + " in " + file, "the file hosts no family in MESSAGE_MEMBER_FAMILIES");
+                leaks.put(code + " in " + file, "the file hosts no explicit message-stage family");
                 return;
             }
             if (!entriesNot.isEmpty()) {
@@ -108,7 +107,7 @@ class CheckerMessageFamilyGuardTest {
             }
         }));
         assertEquals(Map.of(), leaks, "an error-text class reaches a family A12's message law does not withhold, "
-                + "so it co-fires beside a refused DSL; list the family in MESSAGE_MEMBER_FAMILIES or move the arm "
+                + "so it co-fires beside a refused DSL; register the family at the message stage or move the arm "
                 + "into a family of its own");
     }
 
@@ -116,8 +115,7 @@ class CheckerMessageFamilyGuardTest {
     @Test
     void theRegistrationsParse() {
         Map<String, List<Registration>> byFile = registrationsByFile();
-        Set<String> withheld = familiesIn(block(read(SOURCES.resolve("Check.kt")),
-                "internal val MESSAGE_MEMBER_FAMILIES = setOf("));
+        Set<String> withheld = messageFamilies();
         assertTrue(withheld.size() >= 8 && withheld.contains("ERROR_TEXT_PRESENCE"), "withheld: " + withheld);
         Set<String> registered = new TreeSet<>();
         byFile.values().forEach(list -> list.forEach(r -> registered.addAll(r.families())));
@@ -158,6 +156,18 @@ class CheckerMessageFamilyGuardTest {
 
     /** One `CHECK_PRODUCERS` entry: the families it completes and the functions it calls. */
     private record Registration(Set<String> families, Set<String> entries) {
+    }
+
+    /** R5 declares message-stage entry at registration; no code or parallel family table selects it. */
+    private static Set<String> messageFamilies() {
+        Set<String> families = new TreeSet<>();
+        for (String entry : entriesOf(block(read(SOURCES.resolve("CheckProducers.kt")),
+                "internal val CHECK_PRODUCERS: List<CheckProducer> = listOf("))) {
+            if (entry.stripLeading().startsWith("messages(") || entry.contains("DeclarationStage.MESSAGE)")) {
+                families.addAll(familiesIn(entry));
+            }
+        }
+        return families;
     }
 
     private static Map<String, List<Registration>> registrationsByFile() {

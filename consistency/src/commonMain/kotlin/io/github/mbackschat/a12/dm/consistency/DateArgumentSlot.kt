@@ -2,9 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
-import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
+import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
@@ -56,25 +56,24 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * the extractions typed here; and on a slot whose repetition stars do not match its repeating levels, where
  * a wildcard-validity class answers ahead of everything in this family.
  */
-internal fun TrackedFactBase.dateArgumentSlotFindings(): List<Finding> {
+internal fun TrackedFactBase.dateArgumentSlotFindings(): List<Finding> = declarations().flatMap { element ->
+    dateArgumentContributions(element).map { it.finding }
+}
+
+internal fun TrackedFactBase.dateArgumentContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
+    if (execution == null) return emptyList()
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val carriers = DATE_SLOTS_OF.mapNotNull { (id, slots) -> keywords[id]?.let { it to slots } }.toMap()
     val numericExtractors = NUMERIC_EXTRACTIONS.mapNotNull { keywords[it] }.toSet()
-    if (carriers.isEmpty()) {
-        return emptyList()
-    }
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member)).flatMap { call ->
-                val slots = carriers[call.operator] ?: return@flatMap emptyList()
-                slots.mapNotNull { slot ->
-                    val operand = call.operands.getOrNull(slot) ?: return@mapNotNull null
-                    slotDefect(operand, call.inAFilterBody, numericExtractors, group, element)
-                        ?.let { finding(it, call, operand, element, member) }
-                }
-            }
+    val group = element.path.substringBeforeLast('/')
+    return execution.recognition.sites.filterIsInstance<SyntaxSite.DateArgument>().mapNotNull { site ->
+        val span = execution.carrier.semanticSpan(site.tokens.first().start, site.tokens.last().end)
+            ?: return@mapNotNull null
+        val operand = operandOf(site.tokens, conditionLanguage, execution.carrier.text)
+        slotDefect(operand, site.inFilter, numericExtractors, group, element)?.let {
+            ConditionFinding(element.key, site, finding(it, site.operator, operand, element, span.member).copy(span = span))
         }
     }
 }
@@ -84,18 +83,6 @@ private val NUMERIC_EXTRACTIONS = listOf(
     "YearFromDate", "MonthFromDate", "DayFromDate", "QuarterFromDate",
     "HoursFromTime", "MinutesFromTime", "SecondsFromTime",
 )
-
-/** The extractions that yield a date, which a date slot therefore takes. */
-private val TEMPORAL_EXTRACTIONS = listOf("DateFromDateTime", "TimeFromDateTime")
-
-/** Every operator holding a date-argument slot, with the operand positions that are one. */
-private val DATE_SLOTS_OF: Map<String, List<Int>> = buildMap {
-    listOf("Days", "Months", "Years", "Hours", "Minutes", "Seconds").forEach { unit ->
-        put("DifferenceIn$unit", listOf(0, 1))
-        put("Add$unit", listOf(0))
-    }
-    (NUMERIC_EXTRACTIONS + TEMPORAL_EXTRACTIONS).forEach { put(it, listOf(0)) }
-}
 
 private class DateArgumentDefect(val code: String, val said: String)
 
@@ -167,7 +154,7 @@ private fun TrackedFactBase.slotDefect(
 
 private fun finding(
     defect: DateArgumentDefect,
-    call: ConditionCall,
+    operator: String,
     operand: CallOperand,
     element: TrackedDeclaration,
     member: String,
@@ -175,7 +162,7 @@ private fun finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     defect.code,
-    "in `$member`: `${call.operator}`'s date argument ${defect.said}",
+    "in `$member`: `$operator`'s date argument ${defect.said}",
     element.path,
     // Its gates are `checkDatumAngabe`'s, raised once this argument is read rather than the whole call.
     operand.spanIn(member),

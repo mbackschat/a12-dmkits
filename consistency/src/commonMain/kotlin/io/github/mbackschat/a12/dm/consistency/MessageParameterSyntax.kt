@@ -27,19 +27,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.messageParametersAreUnterm
  * **A refused condition or operation withholds this verdict too**, as it does every class read out of a message
  * member; report assembly applies that, not this family ([KF338]).
  */
-internal fun TrackedFactBase.messageParameterSyntaxFindings(): List<Finding> {
-    return declarations().filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.examined(declaredLocales).mapNotNull { message ->
-            if (message.text.carriesAnOffendingCharacter() ||
-                !messageParametersAreUnterminated(message.text)
-            ) {
-                return@mapNotNull null
-            }
-            finding(message, element)
-        }
-    }
+internal fun TrackedFactBase.messageParameterSyntaxFindings(): List<Finding> = declarations().flatMap { element ->
+    messageContributions(element) { messageParameterSyntaxFindings(element, it) }.map { it.finding }
+}
+
+internal fun TrackedFactBase.messageParameterSyntaxFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> {
+    if (message.text.carriesAnOffendingCharacter() || !messageParametersAreUnterminated(message.text)) return emptyList()
+    return listOf(finding(message, element))
 }
 
 private fun finding(message: AuthoredMessage, element: TrackedDeclaration): Finding = Finding(

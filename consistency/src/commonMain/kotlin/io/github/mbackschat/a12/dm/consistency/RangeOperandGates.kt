@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * What the two SUBSTRING operators demand of the field they cut, and of the interval that cuts it.
@@ -40,22 +39,23 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * **Silent on a `TypeDefType` or `UnspecifiedType` field**, whose effective type this reader does not
  * resolve, and on an interval whose bounds are not both written as integers.
  */
-internal fun TrackedFactBase.rangeOperandGateFindings(): List<Finding> {
+internal fun TrackedFactBase.rangeOperandGateFindings(): List<Finding> = declarations().flatMap { element ->
+    rangeOperandContributions(element).map { it.finding }
+}
+
+internal fun TrackedFactBase.rangeOperandContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = RANGE_OPERATORS.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator in carriers }
-                .mapNotNull { call ->
-                    rangeDefect(call, declaringGroup, element)?.let { finding(it, call, element, member) }
-                }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        if (call.operator !in carriers) return@callContributions null
+        rangeDefect(call, group, element)?.let { finding(it, call, element, member) }
     }
 }
 

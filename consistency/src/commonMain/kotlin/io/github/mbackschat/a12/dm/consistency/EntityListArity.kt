@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 
@@ -60,24 +59,23 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
  * any operator's own switch is reached. The first two are [entityListPreGateFindings]', which is why the
  * shared reader this family yields to is that family's; they are a silence here, not in the report.
  */
-internal fun TrackedFactBase.entityListArityFindings(): List<Finding> {
+internal fun TrackedFactBase.entityListArityFindings(): List<Finding> = declarations().flatMap { element ->
+    entityListArityContributions(element).take(1).map { it.finding }
+}
+
+internal fun TrackedFactBase.entityListArityContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val laws = ARITY_OF.mapNotNull { (id, law) -> keywords[id]?.let { it to law } }.toMap()
     if (laws.isEmpty()) {
         return emptyList()
     }
     val filterKeyword = keywords[HAVING]
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .firstNotNullOfOrNull { call ->
-                    laws[call.operator]?.let { law ->
-                        arityFinding(call, law, filterKeyword, group, element, member)
-                    }
-                }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        laws[call.operator]?.let { arityFinding(call, it, filterKeyword, group, element, member) }
     }
 }
 

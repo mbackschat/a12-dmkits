@@ -41,7 +41,7 @@ class ErrorTextExaminedEntriesTest {
     @Test
     fun everyTextFamilyHasARow() {
         assertEquals(
-            (MESSAGE_MEMBER_FAMILIES - CheckFamily.ERROR_TEXT_PRESENCE).map { it.name }.sorted(),
+            CHECK_PRODUCERS.filterIsInstance<CheckProducer.Messages>().flatMap { it.completes }.toSet().map { it.name }.sorted(),
             DEFECTS.map { it.first }.sorted(),
             "one defective text per message family that judges a text",
         )

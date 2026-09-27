@@ -38,7 +38,7 @@ internal fun scopedWalkDivergences(model: ModelSource): List<String> {
     val prepared = prepare(admitted)
     return schedule(TrackedFactBase(prepared, ReadTranscript()))
         .filter { it.key.producer is CheckProducer.PerDeclarationWalk }
-        .groupBy({ it.key.producer }, { it.produce().first })
+        .groupBy({ it.key.producer }, { it.produce().findings })
         .mapValues { (_, passes) -> passes.flatten() }
         .mapNotNull { (producer, scopedFindings) ->
             val whole = (producer as CheckProducer.PerDeclarationWalk)

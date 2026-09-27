@@ -124,7 +124,7 @@ class ErrorFieldReferenceTest {
      * by this grid: every other row here holds the condition flat, so "the target is unreferenced" and
      * "nothing iterates" were one thing across all of them.
      *
-     * **And the class A12 draws is now NAMED rather than merely yielded to**: [operandRepetitionScopeFindings]
+     * **And the class A12 draws is now NAMED rather than merely yielded to**: [operandScopeContributions]
      * owns `MVK_NO_WILDCARD`, so the two unstarred rows carry it instead of reporting nothing. The pre-emption
      * this test locks is unchanged — what moved is that the report no longer goes silent on a model A12
      * refuses.

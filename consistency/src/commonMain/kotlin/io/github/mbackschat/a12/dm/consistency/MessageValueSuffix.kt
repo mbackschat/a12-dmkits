@@ -27,31 +27,28 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
  * forms, and [plainParameterName] hands those over unrecognised; judging one here would claim a gate that
  * form never reaches.
  */
-internal fun TrackedFactBase.messageValueSuffixFindings(): List<Finding> {
-    val membership = entitiesReadByDeclaration()
-    return declarations().filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val read = membership[element.path] ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        val starredOnly = pathsReadThroughAStarAlone(element, group)
-        val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.examined(declaredLocales).flatMap { message ->
-            if (message.text.carriesAnOffendingCharacter()) {
-                return@flatMap emptyList()
-            }
-            messageParameterBodies(message.text).mapNotNull { parameter ->
-                if (!parameter.trim().endsWith(VALUE_SUFFIX)) {
-                    return@mapNotNull null
-                }
-                val name = plainParameterName(parameter.trim(), conditionLanguage) ?: return@mapNotNull null
-                val path = (resolveEntity(group, name, element.origin) as? Reference.Resolved)?.path
-                    ?: return@mapNotNull null
-                if (path !in read) {
-                    return@mapNotNull null
-                }
-                suffixDefect(path, starredOnly)?.let { code -> finding(code, name, element) }
-            }
+internal fun TrackedFactBase.messageValueSuffixFindings(): List<Finding> = declarations().flatMap { element ->
+    messageContributions(element) { messageValueSuffixFindings(element, it) }.map { it.finding }
+}
+
+internal fun TrackedFactBase.messageValueSuffixFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> {
+    val read = entitiesReadBy(element)
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    val starredOnly = pathsReadThroughAStarAlone(element, group)
+    if (message.text.carriesAnOffendingCharacter()) {
+        return emptyList()
+    }
+    return messageParameterBodies(message.text).mapNotNull { parameter ->
+        if (!parameter.trim().endsWith(VALUE_SUFFIX)) {
+            return@mapNotNull null
         }
+        val name = plainParameterName(parameter.trim(), conditionLanguage) ?: return@mapNotNull null
+        val path = (resolveEntity(group, name, element.origin) as? Reference.Resolved)?.path
+            ?: return@mapNotNull null
+        if (path !in read) {
+            return@mapNotNull null
+        }
+        suffixDefect(path, starredOnly)?.let { code -> finding(code, name, element) }
     }
 }
 

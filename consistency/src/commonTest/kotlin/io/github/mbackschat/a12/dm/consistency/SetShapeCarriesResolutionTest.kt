@@ -195,7 +195,7 @@ class SetShapeCarriesResolutionTest {
         val lookup = TrackedFactBase(before, ReadTranscript())
         val lookupCell = lookup.cellFor(cell.key, before) {
             lookup.defaultVariantFieldAt("/Order/Lines/Code")?.body
-            emptyList<Finding>() to emptyList<CoverageGap>()
+            CheckOutput(emptyList())
         }
         assertEquals(setOf(FactRead.DeclarationSetShape, FactRead.DeclarationContent("/Order/Lines/Code")),
             lookupCell.readValues.keys)

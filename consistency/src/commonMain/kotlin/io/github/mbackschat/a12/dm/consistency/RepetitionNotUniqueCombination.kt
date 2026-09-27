@@ -22,8 +22,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  *
  * **A construct class answers ahead of it**: A12 runs this gate only once the condition parsed, so a
  * condition with two calls and a bad `@From` scope draws `MVK_GROUP_NOT_REPEATABLE` alone. This family judges
- * the count as if the text were sound, and the report withholds its class behind any positioned one
- * (`POST_PARSE_CONDITION_CODES`).
+ * the count only at PostParseCheck.REPEATED_UNIQUENESS, reached after successful condition checks (R5).
  *
  * **A call inside a `Having` filter is NOT counted**, and that is a correction rather than a simplification:
  * the call scanner does descend into a filter body, so counting naively named this class on a condition A12
@@ -66,3 +65,10 @@ internal fun TrackedFactBase.repetitionNotUniqueCombinationFindings(
         )
     }
 }
+
+internal fun TrackedFactBase.repeatedUniquenessContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> = execution?.postParse(PostParseCheck.REPEATED_UNIQUENESS) {
+    repetitionNotUniqueCombinationFindings(element)
+}.orEmpty()

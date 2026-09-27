@@ -181,14 +181,6 @@ private fun PreparedModel.resolveSegments(
 
 private const val UP = ".."
 
-/**
- * Whether A12's walk meets this outcome only after the segments ahead of it, so an [earlierSegmentGate] can
- * answer first: a name that does not resolve, a misplaced up-step, or a climb above the root one step after
- * a starred leading `..*` (`rulekit.validate.laws.PathSegmentWalkLawsTest`).
- */
-internal val Reference.isMetAfterTheSegmentsAhead: Boolean
-    get() = this is Reference.Undeclared || this is Reference.MisplacedUpStep || this is Reference.AboveRoot
-
 /** A per-segment gate that answers for an EARLIER segment of a path, ahead of a later one's resolution. */
 internal enum class EarlierSegmentGate {
     /** The H-model `.*` suffix, `MVK_POINT_IN_A12_MODEL`, which outranks the landing site. */
@@ -412,7 +404,7 @@ internal fun TrackedFactBase.unstarredRepeatableLevels(
  * answers next — measured on the six group carriers that have one and on a rounding, a date and a value-list
  * slot (`rulekit.validate.laws.KeyedParallelGroupOperandLawsTest`), and ASSUMED for the other operand gates,
  * which read their operand after the same walk. A target outside the declaring group is never joint here,
- * because `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` answers ahead of the walk ([operandRepetitionScopeFindings]).
+ * because `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` answers ahead of the walk ([operandScopeContributions]).
  */
 internal fun TrackedFactBase.iteratesJointly(level: String, element: TrackedDeclaration): Boolean {
     val targetGroup = iterationGroupOf(element) ?: return false

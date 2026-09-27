@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.DATE_CONSTRUCTION
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
-import io.github.mbackschat.a12.dm.consistency.syntax.callShapes
 import io.github.mbackschat.a12.dm.consistency.syntax.isName
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 
@@ -51,24 +50,27 @@ import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
  * **Silent on a `TypeDefType` or `UnspecifiedType` subject**, whose effective type this reader does not
  * resolve, and on a subject shape it cannot reduce to one bare path.
  */
-internal fun TrackedFactBase.validityConditionOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.validityConditionOperandFindings(): List<Finding> = declarations().flatMap { element ->
+    validityConditionContributions(element).take(1).map { it.finding }
+}
+
+internal fun TrackedFactBase.validityConditionContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = VALIDITY_CONDITIONS.mapNotNull { keywords[it] }.toSet()
     val dateConstruction = keywords[DATE_CONSTRUCTION] ?: return emptyList()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            val shapes = callShapes(text, conditionLanguage, syntaxEntryOf(member))
-            shapes.filter { it.operator in carriers }
-                .firstNotNullOfOrNull { shape ->
-                    validityDefect(shape, shapes, dateConstruction, group, element)
-                        ?.let { finding(it, shape, element, member) }
-                }
-        }
+    if (execution == null) return emptyList()
+    val group = element.path.substringBeforeLast('/')
+    return callContributions(element, execution) { member, call ->
+        if (call.operator !in carriers) return@callContributions null
+        val shape = execution.callsByStart.getValue(call.at)
+        validityDefect(shape, execution.recognition.calls, dateConstruction, group, element)
+            ?.let { finding(it, shape, element, member) }
     }
 }
 

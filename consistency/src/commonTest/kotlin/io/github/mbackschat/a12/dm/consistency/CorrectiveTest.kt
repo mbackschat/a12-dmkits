@@ -233,35 +233,12 @@ class CorrectiveTest {
         assertNull(finding.corrective)
     }
 
-    /**
-     * The codes the checker SPELLS without ever reporting them, so their guidance cannot ride a finding.
-     *
-     * `MVK_NEG_CONDITION_IN_ITERATION` is named by the phase list that withholds a post-parse class behind a
-     * positioned one. It has a real owner corrective and a real consumer — a CLI user meeting the kernel's
-     * own verdict — but no family emits it here, and the list deliberately carries inert members so that the
-     * next family to report one cannot start over-reporting silently (2026-09-14, KERNEL-FINDINGS KF410).
-     *
-     * Named rather than subtracted, for the reason the test below gives: a set that grew silently would
-     * stop catching the dead entry this guard exists for.
-     */
-    private val spelledButNeverReported = setOf("MVK_NEG_CONDITION_IN_ITERATION")
-
-    /**
-     * Every projected entry is reachable from a real report, save the ones the checker never reports.
-     *
-     * This is the enforcement locus for the projection's own claim, and it cannot live on the Java side: the
-     * generator scans source TEXT, and a textual scan cannot tell a code the checker reports from one it only
-     * spells — an inert member of a phase list, above — so the residue is named here rather than filtered
-     * there.
-     *
-     * Asserting the whole residue as a set, rather than subtracting it, is what makes a NEW dead entry fail:
-     * guidance shipped for a code no consumer can receive is bytes on every wire and a promise to nobody.
-     */
+    /** The complete projected vocabulary must be reachable; deleting the phase table removed its inert member. */
     @Test
-    fun everyProjectedEntryIsReachableExceptTheCodesTheCheckerNeverReports() {
+    fun everyProjectedEntryIsReachable() {
         val reported = checkRead(reachability).findings.map { it.code }.toSet()
         assertEquals(
-            spelledButNeverReported,
+            emptySet(),
             KERNEL_CORRECTIVES.keys - reported,
             "the corrective table carries guidance no report can deliver — drop the family's emission or " +
                 "the entry, or add a declaration above that draws the code",

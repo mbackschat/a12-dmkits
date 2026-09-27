@@ -1,10 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
-import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexKeysIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 
 /**
@@ -40,58 +39,28 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * **Silent on a key that does not resolve** (`MVK_INVALID_ENTITY`, the reference family's) and on a LITERAL
  * key, which puts a string in the key position and is subject to the value gates instead.
  */
-internal fun TrackedFactBase.semanticIndexKeyFindings(): List<Finding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val keyword = keywords[SEMANTIC_INDEX] ?: return emptyList()
-    val filterKeyword = keywords[HAVING]
-    val targets = declaredReferences().associateBy { it.declaredAt }
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        val targetGroup = (targets[element.path]?.target as? Reference.Resolved)?.path
-            ?.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            val filtered = keysInsideAFilter(text, member, filterKeyword, keyword)
-            val uses = semanticIndexUsesIn(text, conditionLanguage, keyword).associateBy { it.start }
-            semanticIndexKeysIn(text, conditionLanguage, keyword)
-                .distinctBy { it.written }
-                .mapNotNull { key ->
-                    // A key's production ends where the index chain it opens does, which the uses reader
-                    // follows; an up-step key, which that reader does not take, ends with its own run.
-                    val span = uses[key.start]?.spanIn(member) ?: TextSpan(member, key.start, key.end)
-                    keyFinding(key.written, group, targetGroup, element, member, key.written in filtered, span)
-                }
-        }
+internal fun TrackedFactBase.semanticIndexKeyContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    val execution = conditionExecution(element) ?: return emptyList()
+    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
+    val uses = semanticIndexUsesIn(execution.carrier.text, conditionLanguage, keyword).associateBy { it.keywordAt }
+    val group = element.path.substringBeforeLast('/')
+    val targetGroup = (element.declaredReference()?.target as? Reference.Resolved)?.path?.substringBeforeLast('/')
+    val iteration = entityContributions(element, EntityCheck.ADDRESS, execution) { entity, span ->
+        if (!entity.indexKey) return@entityContributions null
+        keyIterationFinding(normalizedPath(entity.path.dropWhile { it.text == "$" }), group, targetGroup,
+            element, span.member, entity.inFilter, span)
     }
+    val fields = execution.recognition.sites.filterIsInstance<SyntaxSite.Completion>().mapNotNull { site ->
+        if (site.kind != SyntaxSite.Kind.INDEX) return@mapNotNull null
+        val use = uses[site.start] ?: return@mapNotNull null
+        val key = use.keyPath ?: return@mapNotNull null
+        val span = execution.carrier.semanticSpan(site.start, site.end) ?: return@mapNotNull null
+        keyFieldFinding(key, group, element, span.member, span)?.let { ConditionFinding(element.key, site, it) }
+    }
+    return iteration + fields
 }
 
-/**
- * The index keys written inside a `Having` filter, whose ANCHORING is the filtered entity rather than the
- * rule's error target.
- *
- * A12 draws no iteration class for such a key: two measured shapes inside a filter are answered by the
- * key-kind gate and by the filter's own branch instead ([KERNEL-FINDINGS KF377],
- * `rulekit.validate.laws.SemanticIndexInFilterLawsTest`), where outside one the iteration class pre-empts
- * both. So the gate below is asked only of a key the rule reads directly.
- */
-private fun TrackedFactBase.keysInsideAFilter(
-    text: String,
-    member: String,
-    filterKeyword: String?,
-    indexKeyword: String,
-): Set<String> {
-    if (filterKeyword == null) {
-        return emptySet()
-    }
-    return callsIn(text, conditionLanguage, syntaxEntryOf(member))
-        .flatMap { it.operands }
-        .flatMap { operand -> operand.clauses.filter { it.keyword == filterKeyword } }
-        .flatMap { clause -> semanticIndexKeysIn(clause.text, conditionLanguage, indexKeyword) }
-        .mapTo(mutableSetOf()) { it.written }
-}
-
-/** The finding one key draws, in A12's order, or null for every shape it answers with another class. */
-private fun TrackedFactBase.keyFinding(
+private fun TrackedFactBase.keyIterationFinding(
     key: String,
     group: String,
     targetGroup: String?,
@@ -118,6 +87,14 @@ private fun TrackedFactBase.keyFinding(
             span,
         )
     }
+    return null
+}
+
+private fun TrackedFactBase.keyFieldFinding(
+    key: String, group: String, element: TrackedDeclaration, member: String, span: TextSpan,
+): Finding? {
+    if ('*' in key) return null
+    val resolved = resolveEntity(group, key, element.origin) as? Reference.Resolved ?: return null
     val named = declarationAt(resolved.path, DeclaredKind.GROUP)
         ?: return null
     if (repeatsAnywhereOnThePathTo(named.path)) {

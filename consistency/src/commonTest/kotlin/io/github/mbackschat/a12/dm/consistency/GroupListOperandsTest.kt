@@ -156,8 +156,8 @@ class GroupListOperandsTest {
 
     /**
      * Within one call the exact duplicate wins, and across calls the first violation answers, as in A12
-     * (`rulekit.validate.laws.GroupListDuplicateReachLawsTest.theGateReadsOneCallsOperandList`). A second call
-     * drawing the SAME class is reported too, the repeat report assembly keeps so each place to fix is shown.
+     * (`rulekit.validate.laws.GroupListDuplicateReachLawsTest.theGateReadsOneCallsOperandList`). Equal codes
+     * at separate calls still stop at the first action (A12ReportStreamTest's R5-LC callback cross).
      */
     @Test
     fun exactWinsInsideACallAndTheFirstViolatingCallAnswers() {
@@ -171,7 +171,7 @@ class GroupListOperandsTest {
         val expected = mutableMapOf<String, List<String>>()
         expected["an exact duplicate and an overlap in ONE call"] = listOf(exact)
         expected["an overlap in one call and an exact duplicate in another"] = listOf(overlap)
-        expected["an exact duplicate in each of two calls"] = listOf(exact, exact)
+        expected["an exact duplicate in each of two calls"] = listOf(exact)
         assertEquals(expected, actual, "which violating calls are reported")
     }
 

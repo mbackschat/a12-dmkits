@@ -1,5 +1,13 @@
 package io.github.mbackschat.a12.dm.consistency
 
+internal class CheckOutput(
+    val contributions: List<ReportFinding>,
+    val gaps: List<CoverageGap> = emptyList(),
+) {
+    val findings: List<Finding> get() = contributions.map { it.finding }
+}
+
+
 /**
  * One producer's output, and the value every fact it read HAD when it read it.
  *
@@ -10,16 +18,17 @@ package io.github.mbackschat.a12.dm.consistency
  * footprint could not offer: a transcript cannot be too narrow, because it IS the read
  * (`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "L-b's design is DECIDED").
  *
- * **It holds PRE-composition output, deliberately.** `checkPrepared` filters the composed finding list
- * through four model-wide passes, and those read state the producer never saw — so a cell of composed
- * findings would be keyed on a transcript that does not cover its own content. The passes re-run every time
- * and cost `O(findings)`.
+ * Cells retain local execution origins, before declaration and model stages select the report.
+ * Those stages read current model state beyond a producer's transcript and must run again on reuse.
  */
 internal class CheckCell(
-    val findings: List<Finding>,
+    val contributions: List<ReportFinding>,
     val gaps: List<CoverageGap>,
     val readValues: Map<FactRead, Any?>,
-)
+) {
+    val findings: List<Finding> get() = contributions.map { it.finding }
+}
+
 
 /**
  * The cells one check can hand to the next check over a NEARBY model — an editor's keystroke, in practice.
@@ -139,19 +148,19 @@ internal class CheckCells(private val byKey: Map<CellKey, CheckCell>) {
 /**
  * Run [produce] in [key]'s own bucket and key what it produced on the values it read out of [model].
  *
- * The two output channels ride one [Pair] rather than two calls because a cell is one decision: a producer
+ * The two output channels ride one [CheckOutput] rather than two calls because a cell is one decision: a producer
  * whose findings were reused while its gaps were recomputed would report two halves of two different models.
- * They cannot be swapped by accident — `List<Finding>` and `List<CoverageGap>` are different types.
+ * They cannot be swapped by accident — `List<ReportFinding>` and `List<CoverageGap>` are different types.
  */
 internal fun TrackedFactBase.cellFor(
     key: CellKey,
     model: PreparedModel,
-    produce: () -> Pair<List<Finding>, List<CoverageGap>>,
+    produce: () -> CheckOutput,
 ): CheckCell {
-    val (findings, gaps) = whileProducing(key, produce)
+    val output = whileProducing(key, produce)
     return CheckCell(
-        findings = findings,
-        gaps = gaps,
+        gaps = output.gaps,
+        contributions = output.contributions,
         readValues = observedWhileProducing(key).associateWith { model.valueOf(it) },
     )
 }
@@ -182,4 +191,40 @@ internal fun PreparedModel.valueOf(read: FactRead): Any? = when (read) {
         ModelFact.DECLARED_TYPE_DEFINITION_IDS -> declaredTypeDefinitionIds
         ModelFact.REPEATABLE_GROUP_SET -> repeatableGroupPathList
     }
+}
+
+internal class ExecutedChecks(
+    val scheduled: List<ScheduledCell>,
+    val cells: Map<CellKey, CheckCell>,
+    val reused: Int,
+) {
+    fun selectedConditions(tracked: TrackedFactBase): List<ConditionFinding> {
+        val byOwner = cells.values.flatMap { it.contributions }.filterIsInstance<ConditionFinding>().groupBy { it.owner }
+        val declarations = tracked.declarations()
+        val owners = declarations.mapTo(mutableSetOf()) { it.key }
+        require(byOwner.keys.all { it in owners })
+        val ordered = declarations.filter { it.declaredKind == DeclaredKind.COMPUTATION } +
+            declarations.filter { it.declaredKind != DeclaredKind.COMPUTATION }
+        return ordered.flatMap { declaration ->
+            val local = byOwner[declaration.key].orEmpty()
+            if (local.isEmpty()) emptyList() else checkNotNull(tracked.conditionExecution(declaration)).selected(local)
+        }
+    }
+}
+
+internal fun executeChecks(
+    tracked: TrackedFactBase,
+    prepared: PreparedModel,
+    carried: CheckCells,
+    producers: List<CheckProducer> = CHECK_PRODUCERS,
+): ExecutedChecks {
+    val scheduled = schedule(tracked, producers)
+    val sweep = carried.sweepOver(prepared)
+    var reused = 0
+    val cells = scheduled.associate { item ->
+        val previous = sweep.validIn(item.key)
+        if (previous != null) reused++
+        item.key to (previous ?: tracked.cellFor(item.key, prepared, item.produce))
+    }
+    return ExecutedChecks(scheduled, cells, reused)
 }

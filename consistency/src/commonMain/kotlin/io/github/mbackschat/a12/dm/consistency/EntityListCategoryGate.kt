@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * A category inside an entity list whose carrier refuses one: `MVK_CATEGORY_NOT_ALLOWED`.
@@ -22,24 +21,26 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  *
  * **Only an Enumeration's declared category reaches the gate.** The spec's own category gate runs while the
  * operand is read, ahead of any list gate, and refuses a group, a field declaring no enumeration and an
- * undeclared category itself ([categoryReferenceFindings]).
+ * undeclared category itself ([categoryContributions]).
  *
  * **Silent unless every operand reads cleanly**: a plain one the reference reader addresses, a categorized one
  * an Enumeration declaring its category. Anything else meets a class raised while the list is read, and that
  * class, not this one, is A12's answer.
  */
-internal fun TrackedFactBase.entityListCategoryFindings(): List<Finding> {
+internal fun TrackedFactBase.entityListCategoryFindings(): List<Finding> = declarations().flatMap { element ->
+    entityListCategoryContributions(element).take(1).map { it.finding }
+}
+
+internal fun TrackedFactBase.entityListCategoryContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     if (categoryGatesByKeyword().isEmpty()) {
         return emptyList()
     }
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member)).firstNotNullOfOrNull { call ->
-                categoryGateOf(call.operator)?.let { gate -> categoryGateFinding(call, gate, group, element, member) }
-            }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        categoryGateOf(call.operator)?.let { categoryGateFinding(call, it, group, element, member) }
     }
 }
 

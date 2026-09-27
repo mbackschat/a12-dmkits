@@ -41,31 +41,28 @@ import kotlinx.serialization.json.JsonPrimitive
  * **One finding per computation, not per offending reference.** A12 answers a computation with one class
  * however many of its reads are self-reads, measured across both operand orders of a two-entry list.
  */
-internal fun TrackedFactBase.computationSelfReadFindings(): List<Finding> {
+internal fun TrackedFactBase.computationSelfReadFindings(): List<Finding> =
+    declarations().flatMap { computationSelfReadContributions(it).map { contribution -> contribution.finding } }
+
+internal fun TrackedFactBase.computationSelfReadContributions(element: TrackedDeclaration): List<DeclarationFinding> {
+    if (element.declaredKind != DeclaredKind.COMPUTATION) return emptyList()
     val operators = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val contextEscape = operators[GROUP_FILLED]
-    val repetitionOf = operators[CURRENT_REPETITION]
-    val indexKeyword = operators[SEMANTIC_INDEX]
-    return declarations()
-        .filter { it.declaredKind == DeclaredKind.COMPUTATION }
-        .mapNotNull { element ->
-            val target = computedTargetOf(element) ?: return@mapNotNull null
-            if (!scaleGateStandsAside(target, element)) {
-                return@mapNotNull null
-            }
-            val texts = conditionTexts(element.kind, element.body ?: return@mapNotNull null)
-            val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-            texts.firstNotNullOfOrNull { (member, text) ->
-                projectedSelfReadIn(text, target, group, element, indexKeyword)
-                    ?.let { projectedFinding(element, member, it) }
-            } ?: texts.firstNotNullOfOrNull { (member, text) ->
-                val exempt = exemptOperandsIn(text, member, contextEscape, repetitionOf)
-                referencesIn(text, conditionLanguage)
-                    .filter { it !in exempt }
-                    .firstOrNull { readsTheTarget(it, target, group, element) }
-                    ?.let { selfReadFinding(element, target, member, it) }
-            }
-        }
+    val target = computedTargetOf(element) ?: return emptyList()
+    if (!scaleGateStandsAside(target, element)) return emptyList()
+    val texts = conditionTexts(element.kind, element.body ?: return emptyList())
+    val group = element.path.substringBeforeLast('/')
+    val projected = texts.firstNotNullOfOrNull { (member, text) ->
+        projectedSelfReadIn(text, target, group, element, operators[SEMANTIC_INDEX])
+            ?.let { projectedFinding(element, member, it) }
+    }
+    if (projected != null) return listOf(DeclarationFinding(element.key, DeclarationStage.CALCULATION_STRUCTURE, projected))
+    val plain = texts.firstNotNullOfOrNull { (member, text) ->
+        val exempt = exemptOperandsIn(text, member, operators[GROUP_FILLED], operators[CURRENT_REPETITION])
+        referencesIn(text, conditionLanguage).filter { it !in exempt }
+            .firstOrNull { readsTheTarget(it, target, group, element) }
+            ?.let { selfReadFinding(element, target, member, it) }
+    }
+    return listOfNotNull(plain?.let { DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES, it) })
 }
 
 private const val GROUP_FILLED = "GroupFilled"

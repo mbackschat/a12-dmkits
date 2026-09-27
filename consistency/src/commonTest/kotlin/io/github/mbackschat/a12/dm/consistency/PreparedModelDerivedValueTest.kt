@@ -44,8 +44,8 @@ class PreparedModelDerivedValueTest {
         val prepared = prepare(admit(ModelSource(MODEL)) as Admission.Admitted)
 
         assertSame(prepared.resolvableByPath, prepared.resolvableByPath, "resolvableByPath is rebuilt per call")
-        assertSame(prepared.declaredReferenceByPath, prepared.declaredReferenceByPath,
-            "declaredReferenceByPath is rebuilt per call, which is the quadratic scan it replaced")
+        assertSame(prepared.declaredReferenceByDeclaration, prepared.declaredReferenceByDeclaration,
+            "declaredReferenceByDeclaration is rebuilt per call, which is the quadratic scan it replaced")
         assertSame(prepared.bodiesByPath, prepared.bodiesByPath, "bodiesByPath is rebuilt per call")
         assertSame(prepared.rowsByPath, prepared.rowsByPath, "rowsByPath is rebuilt per call")
         assertSame(

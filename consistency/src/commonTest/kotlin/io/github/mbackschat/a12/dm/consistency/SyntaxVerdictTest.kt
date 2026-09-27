@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailure
 import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailureAhead
@@ -187,6 +189,18 @@ class SyntaxVerdictTest {
         assertEquals(listOf("Items*"), referencesIn("FieldFilled(Items*/NoSuch.)", ConditionLanguage.EN))
         assertEquals(listOf("Items*/NoSuch"), referencesIn("FieldFilled(Items*/NoSuch/)", ConditionLanguage.EN))
         assertEquals(emptyList(), referencesIn("FieldFilled(Items/NoSuch/)", ConditionLanguage.EN))
+        val paths = mapOf(
+            "Items*/NoSuch." to listOf("Items*"),
+            "Items*/NoSuch/" to listOf("Items*", "Items*/NoSuch"),
+            "Items/NoSuch/" to emptyList(),
+        )
+        for ((path, expected) in paths) {
+            val text = "FieldFilled($path)"
+            val sites = ConditionRecognizer(text, ConditionLanguage.EN).recognize(SyntaxEntry.CONDITION).sites
+            assertEquals(expected, sites.filterIsInstance<SyntaxSite.Completion>()
+                .filter { it.kind == SyntaxSite.Kind.PATH_STEP }.map { text.substring(it.start, it.end) }, text)
+            assertIs<SyntaxSite.Failure>(sites.last(), text)
+        }
     }
 
     @Test

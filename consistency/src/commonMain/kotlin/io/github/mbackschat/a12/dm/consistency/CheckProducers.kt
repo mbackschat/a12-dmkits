@@ -14,13 +14,13 @@ package io.github.mbackschat.a12.dm.consistency
  * registration object itself is the bucket's key: it is a singleton in [CHECK_PRODUCERS], compares by
  * identity, and needs no name that could be spelled two ways.
  *
- * **Three shapes for two granularities of cell.** A [ModelWide] producer answers about the model and is
+ * **Two granularities of cell.** A [ModelWide] producer answers about the model and is
  * cached once. [PerDeclaration] and [PerDeclarationWalk] are both asked once per declaration and cached per
  * declaration, so a keystroke fells one declaration's cell instead of the family's whole verdict; they
  * differ in HOW the subject reaches the family — as a parameter, or as a fact base scoped to it — and that
  * difference is what the walk's equivalence claim is about. The split is a sealed hierarchy rather than a
- * nullable lambda so the dispatcher's `when` is exhaustive and a fourth shape cannot be added without every
- * dispatch site being made to account for it.
+ * nullable lambda so dispatch is exhaustive. [Condition] retains reached-site contributions through the
+ * same per-declaration cache boundary, before report selection (reconstruction proposal §5, R5).
  */
 internal sealed interface CheckProducer {
 
@@ -31,16 +31,6 @@ internal sealed interface CheckProducer {
     val completes: Set<CheckFamily>
 
     /**
-     * Whether A12 raises this producer's classes only once the condition has PARSED, whatever their codes.
-     *
-     * A code does not own its phase: the filter walk raises `MVK_SEMANTIC_INDEX_NOT_ALLOWED` during the parse, and
-     * `ParserService.checkNormalRule` raises it again after the parse for a read the walk skipped
-     * ([KERNEL-FINDINGS KF487]). So report assembly reads a finding's phase off the producer that raised it
-     * before it reads it off the code.
-     */
-    val raisesAfterTheParse: Boolean get() = false
-
-    /**
      * A family whose verdict is about the whole model, cached against one transcript.
      *
      * @param findings its findings, empty for a producer whose whole output is a coverage gap.
@@ -48,9 +38,9 @@ internal sealed interface CheckProducer {
      */
     class ModelWide(
         override val completes: Set<CheckFamily>,
+        val stage: ModelStage,
         val findings: (TrackedFactBase) -> List<Finding> = { emptyList() },
         val gaps: (TrackedFactBase) -> List<CoverageGap> = { emptyList() },
-        override val raisesAfterTheParse: Boolean = false,
     ) : CheckProducer
 
     /**
@@ -70,8 +60,25 @@ internal sealed interface CheckProducer {
      * set facts through `allDeclarations`; what stays [ModelWide] is a family whose subject IS a relation
      * between declarations — a dependency circle, a key's containment in an iteration scope.*
      */
+    class Condition(
+        override val completes: Set<CheckFamily>,
+        val gaps: (TrackedFactBase, TrackedDeclaration) -> List<CoverageGap> = { _, _ -> emptyList() },
+        val contributions: (TrackedFactBase, TrackedDeclaration) -> List<ConditionFinding>,
+    ) : CheckProducer
+
+    class Messages(
+        override val completes: Set<CheckFamily>,
+        val findings: (TrackedFactBase, TrackedDeclaration, AuthoredMessage) -> List<Finding>,
+    ) : CheckProducer
+
+    class Declaration(
+        override val completes: Set<CheckFamily>,
+        val contributions: (TrackedFactBase, TrackedDeclaration) -> List<OwnedFinding>,
+    ) : CheckProducer
+
     class PerDeclaration(
         override val completes: Set<CheckFamily>,
+        val stage: DeclarationStage,
         val findings: (TrackedFactBase, TrackedDeclaration) -> List<Finding>,
     ) : CheckProducer
 
@@ -97,6 +104,7 @@ internal sealed interface CheckProducer {
      */
     class PerDeclarationWalk(
         override val completes: Set<CheckFamily>,
+        val stage: DeclarationStage,
         val findings: (TrackedFactBase) -> List<Finding>,
     ) : CheckProducer
 }
@@ -126,47 +134,64 @@ internal data class CellKey(val producer: CheckProducer, val at: DeclarationKey?
 /** One cell a check must produce: what it is about, and how to produce it. */
 internal class ScheduledCell(
     val key: CellKey,
-    val produce: () -> Pair<List<Finding>, List<CoverageGap>>,
+    val produce: () -> CheckOutput,
 )
 
 /**
- * Every cell one check over [tracked] must produce, in the order their output reaches the report.
+ * Every cell one check over [tracked] must produce, in stable producer/declaration order.
  *
- * Producer-major, declarations in declaration order — which is exactly the order a per-declaration family
- * produced while it walked itself, so moving the walk out here changes no report.
+ * This schedules local work, not public notification order; [reportFindings] consumes its owned outputs.
  *
  * **The walk charges the COMPOSITION and not any cell**, which `ReadTranscript` argues is sound as well as
  * necessary: set membership is handled by this list existing, since a declaration that is gone is never
  * scheduled and a new one has no cell to be stale.
  *
- * **The ordinal is computed here because this is the only place that sees the whole list.** Two declarations
- * at one path — a model A12 refuses and this checker still reports on — must get two keys, or the second's
- * findings would overwrite the first's and leave the report short.
+ * Preparation assigns each declaration's occurrence key before any producer can filter the list, so
+ * scheduling and target resolution agree even when two declaration kinds share a path (R5).
  */
-internal fun schedule(tracked: TrackedFactBase): List<ScheduledCell> {
-    val seen = mutableMapOf<String, Int>()
+internal fun schedule(
+    tracked: TrackedFactBase,
+    producers: List<CheckProducer> = CHECK_PRODUCERS,
+): List<ScheduledCell> {
     val walked = tracked.declarations().map { cursor ->
-        val ordinal = seen.getOrElse(cursor.path) { 0 }
-        seen[cursor.path] = ordinal + 1
-        val at = DeclarationKey(cursor.path, ordinal)
+        val at = cursor.key
         // One scoped view per declaration, shared by every per-declaration producer: the scope holds no
         // facts, but a view per producer per declaration would allocate one for nothing.
         Walked(at, cursor, tracked.scopedTo(at, cursor))
     }
-    return CHECK_PRODUCERS.flatMap { producer ->
+    return producers.flatMap { producer ->
         when (producer) {
             is CheckProducer.ModelWide -> listOf(
                 ScheduledCell(CellKey(producer)) {
-                    producer.findings(tracked) to producer.gaps(tracked)
+                    CheckOutput(producer.findings(tracked).map { ModelFinding(producer.stage, it) }, producer.gaps(tracked))
                 },
             )
+            is CheckProducer.Condition -> walked.map { (at, cursor, _) ->
+                ScheduledCell(CellKey(producer, at)) {
+                    tracked.chargeDeclarationRow(at)
+                    val contributions = producer.contributions(tracked, cursor)
+                    CheckOutput(contributions, producer.gaps(tracked, cursor))
+                }
+            }
+            is CheckProducer.Messages -> walked.map { (at, cursor, _) ->
+                ScheduledCell(CellKey(producer, at)) {
+                    tracked.chargeDeclarationRow(at)
+                    CheckOutput(tracked.messageContributions(cursor) { producer.findings(tracked, cursor, it) })
+                }
+            }
+            is CheckProducer.Declaration -> walked.map { (at, cursor, _) ->
+                ScheduledCell(CellKey(producer, at)) {
+                    tracked.chargeDeclarationRow(at)
+                    CheckOutput(producer.contributions(tracked, cursor))
+                }
+            }
             is CheckProducer.PerDeclaration -> walked.map { (at, cursor, _) ->
                 ScheduledCell(CellKey(producer, at)) {
                     // A family taking its declaration as a parameter never calls `declarations()`, so
                     // nothing else would say which declaration its cell answered about
                     // ([FactRead.DeclarationRow]).
                     tracked.chargeDeclarationRow(at)
-                    producer.findings(tracked, cursor) to emptyList()
+                    CheckOutput(producer.findings(tracked, cursor).map { DeclarationFinding(at, producer.stage, it) })
                 }
             }
             // No charge here, deliberately: a scoped `declarations()` records the row itself, and the
@@ -178,39 +203,29 @@ internal fun schedule(tracked: TrackedFactBase): List<ScheduledCell> {
             // return on `hasBaseYear` goes unseen. That one is sound: the fact is charged, and the answer it
             // gives is empty whatever the declaration holds.
             is CheckProducer.PerDeclarationWalk -> walked.map { (at, _, scoped) ->
-                ScheduledCell(CellKey(producer, at)) { producer.findings(scoped) to emptyList() }
+                ScheduledCell(CellKey(producer, at)) {
+                    CheckOutput(producer.findings(scoped).map { DeclarationFinding(at, producer.stage, it) })
+                }
             }
         }
     }
 }
 
-/**
- * The families `checkPrepared`'s own composition answers for, which therefore have no registration.
- *
- * Resolving a declared reference and resolving a condition's entities are done once for the whole model,
- * ahead of every family, because several families then ask what those passes found rather than re-resolving.
- * They are the boundary L-b's design draws around per-family reuse: a composition pass reads the whole model
- * by definition, so a cell keyed on what it read could never be reused.
- */
-internal val COMPOSED_FAMILIES = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES)
+/** Declared targets are resolved before condition execution (reconstruction proposal §5, R5). */
+internal val COMPOSED_FAMILIES = setOf(CheckFamily.DECLARED_REFERENCES)
 
 /** The single-family, findings-only registration, which is the great majority of those below. */
 private fun produces(
     family: CheckFamily,
     findings: (TrackedFactBase) -> List<Finding>,
-): CheckProducer = CheckProducer.ModelWide(setOf(family), findings)
-
-/** …and its twin for classes A12 raises only once the condition has parsed ([CheckProducer.raisesAfterTheParse]). */
-private fun producesAfterTheParse(
-    family: CheckFamily,
-    findings: (TrackedFactBase) -> List<Finding>,
-): CheckProducer = CheckProducer.ModelWide(setOf(family), findings, raisesAfterTheParse = true)
+): CheckProducer = CheckProducer.ModelWide(setOf(family), ModelStage.DECLARATION, findings)
 
 /** …and its per-declaration twin, for a family whose verdict is about one declaration at a time. */
 private fun perDeclaration(
     family: CheckFamily,
+    stage: DeclarationStage,
     findings: (TrackedFactBase, TrackedDeclaration) -> List<Finding>,
-): CheckProducer = CheckProducer.PerDeclaration(setOf(family), findings)
+): CheckProducer = CheckProducer.PerDeclaration(setOf(family), stage, findings)
 
 /**
  * A family that still writes its own WALK, asked once per declaration through a fact base scoped to it.
@@ -222,48 +237,52 @@ private fun perDeclaration(
  */
 private fun perDeclarationWalk(
     family: CheckFamily,
+    stage: DeclarationStage,
     findings: (TrackedFactBase) -> List<Finding>,
-): CheckProducer = CheckProducer.PerDeclarationWalk(setOf(family), findings)
+): CheckProducer = CheckProducer.PerDeclarationWalk(setOf(family), stage, findings)
 
-/**
- * Every family that runs, in the order their findings reach the report.
- *
- * **The order is load-bearing for the findings and not for the gaps.** A report's findings are read in the
- * order they are produced, so this list preserves the concatenation it replaces exactly; the gaps were
- * emitted in an unrelated hand-written order and now follow this one, which is the single observable
- * difference and one no consumer can depend on — a gap is identified by its `at` and its reason.
- *
- * The order is family-major, so moving an arm into a family of its own reorders what a reader sees, though
- * the report shape promises no order (`docs/CONSISTENCY-API.md`). Splitting [CheckFamily.ERROR_TEXT_PRESENCE]
- * and [CheckFamily.MESSAGE_BASE_YEAR] out of the slot and Base Year families (2026-09-24) did exactly that:
- * `RULE_HAS_NO_ERRORTEXT` now follows every slot finding in the model rather than its own declaration's, and
- * `NO_BASE_YEAR` follows the message-reference classes rather than preceding them.
- *
- * **[CheckFamily.DECLARED_REFERENCES] and [CheckFamily.CONDITION_REFERENCES] are absent on purpose.** They
- * are produced by `checkPrepared`'s own composition passes rather than by a family, which is the boundary
- * L-b's design draws: the composition is outside the per-family cells, so it has no registration to be given
- * one. `checkPrepared` adds them to the derived set and says why.
- */
+private fun condition(
+    family: CheckFamily,
+    contributions: (TrackedFactBase, TrackedDeclaration) -> List<ConditionFinding>,
+): CheckProducer = CheckProducer.Condition(setOf(family), contributions = contributions)
+
+private fun messages(
+    family: CheckFamily,
+    check: (TrackedFactBase, TrackedDeclaration, AuthoredMessage) -> List<Finding>,
+): CheckProducer = CheckProducer.Messages(setOf(family), check)
+
+private fun syntax(family: CheckFamily): CheckProducer = condition(family) { facts, element ->
+    listOfNotNull(facts.conditionExecution(element)?.syntaxContribution(family))
+}
+
+private fun path(family: CheckFamily): CheckProducer = condition(family) { facts, element ->
+    facts.pathContributions(element).filter { it.family == family }.map { it.contribution }
+}
+
+/** Local outputs are cached in registry order; reached sites and outer stages assemble the public report. */
 internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.DECLARATION_SLOTS) { it.declarationSlotFindings() },
-    perDeclarationWalk(CheckFamily.ERROR_TEXT_PRESENCE) { it.errorTextPresenceFindings() },
-    perDeclarationWalk(CheckFamily.COMPUTATION_ALTERNATIVES) { it.computationAlternativeFindings() },
-    perDeclarationWalk(CheckFamily.COMPUTATION_ROUNDING) { it.computationRoundingFindings() },
-    perDeclarationWalk(CheckFamily.SUPPRESSED_WARNINGS) { it.suppressedWarningFindings() },
-    perDeclaration(CheckFamily.RULE_CONDITION_AND_TARGET) { base, at ->
-        base.ruleConditionAndTargetFindings(at)
+    perDeclarationWalk(CheckFamily.ERROR_TEXT_PRESENCE, DeclarationStage.MESSAGE) { it.errorTextPresenceFindings() },
+    CheckProducer.Declaration(setOf(CheckFamily.COMPUTATION_ALTERNATIVES)) { base, at -> base.computationAlternativeContributions(at) },
+    perDeclarationWalk(CheckFamily.COMPUTATION_ROUNDING, DeclarationStage.CALCULATION_EXTRACTION) { it.computationRoundingFindings() },
+    perDeclarationWalk(CheckFamily.SUPPRESSED_WARNINGS, DeclarationStage.PREAMBLE) { it.suppressedWarningFindings() },
+    CheckProducer.Declaration(setOf(CheckFamily.RULE_CONDITION_AND_TARGET)) { base, at ->
+        base.ruleMemberContributions(at)
     },
     CheckProducer.ModelWide(
+        stage = ModelStage.DECLARATION,
         completes = setOf(CheckFamily.VARIANT_FILTER),
         findings = { it.variantFilterFindings() },
         gaps = { it.variantFilterGaps() },
     ),
-    perDeclaration(CheckFamily.CONDITION_LEXICALITY) { base, at -> base.conditionLexicalFindings(at) },
-    perDeclaration(CheckFamily.CONDITION_COMPLETENESS) { base, at -> base.conditionCompletenessFindings(at) },
-    perDeclaration(CheckFamily.CONNECTIVE_AGREEMENT) { base, at -> base.connectiveAgreementFindings(at) },
-    perDeclaration(CheckFamily.CONDITION_GRAMMAR) { base, at -> base.conditionGrammarFindings(at) },
+    path(CheckFamily.CONDITION_REFERENCES),
+    syntax(CheckFamily.CONDITION_LEXICALITY),
+    syntax(CheckFamily.CONDITION_COMPLETENESS),
+    condition(CheckFamily.CONNECTIVE_AGREEMENT) { base, at -> base.connectiveContributions(at) },
+    syntax(CheckFamily.CONDITION_GRAMMAR),
     produces(CheckFamily.ELEMENT_NAME_UNIQUENESS) { it.elementNameFindings() },
     CheckProducer.ModelWide(
+        stage = ModelStage.DECLARATION,
         completes = setOf(
             CheckFamily.GROUP_ORDERING_REFERENCES,
             CheckFamily.GROUP_ORDERING_FIELD_TYPE,
@@ -271,97 +290,102 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         ),
         findings = { it.groupOrderingFindings() },
     ),
-    perDeclaration(CheckFamily.GROUP_REPETITION_COUNT) { base, at ->
+    perDeclaration(CheckFamily.GROUP_REPETITION_COUNT, DeclarationStage.INDEPENDENT) { base, at ->
         listOfNotNull(base.groupRepetitionCountFinding(at))
     },
-    perDeclarationWalk(CheckFamily.RULE_PRESENTATION_MEMBERS) { it.presentationMemberFindings() },
-    perDeclaration(CheckFamily.STRING_SLOT_BINDING) { base, at -> base.stringSlotFindings(at) },
+    perDeclarationWalk(CheckFamily.RULE_PRESENTATION_MEMBERS, DeclarationStage.INDEPENDENT) { it.presentationMemberFindings() },
+    perDeclaration(CheckFamily.STRING_SLOT_BINDING, DeclarationStage.INDEPENDENT) { base, at -> base.stringSlotFindings(at) },
     CheckProducer.ModelWide(
+        stage = ModelStage.DECLARATION,
         completes = setOf(CheckFamily.FIELD_TYPE_BINDING),
         findings = { it.fieldTypeBindingFindings() },
         gaps = { it.fieldTypeBindingGaps() },
     ),
-    perDeclaration(CheckFamily.TEMPORAL_CONFIG) { base, at -> base.temporalConfigFindings(at) },
-    perDeclaration(CheckFamily.FIELD_NAME_RESERVED_SEGMENT) { base, at ->
+    perDeclaration(CheckFamily.TEMPORAL_CONFIG, DeclarationStage.INDEPENDENT) { base, at -> base.temporalConfigFindings(at) },
+    perDeclaration(CheckFamily.FIELD_NAME_RESERVED_SEGMENT, DeclarationStage.INDEPENDENT) { base, at ->
         listOfNotNull(base.fieldNameReservedSegmentFinding(at))
     },
-    perDeclaration(CheckFamily.ELEMENT_NAME_ALPHABET) { base, at ->
+    perDeclaration(CheckFamily.ELEMENT_NAME_ALPHABET, DeclarationStage.INDEPENDENT) { base, at ->
         base.elementNameAlphabetFindings(at)
     },
     CheckProducer.ModelWide(
+        stage = ModelStage.DECLARATION,
         completes = setOf(CheckFamily.ENUM_CATEGORY_ALIGNMENT),
         findings = { it.enumCategoryFindings() },
         gaps = { it.enumCategoryGaps() },
     ),
     CheckProducer.ModelWide(
+        stage = ModelStage.DECLARATION,
         completes = setOf(CheckFamily.ENUM_VALUE_CHARACTERS),
         findings = { it.supportedCharacterFindings() },
         gaps = { it.supportedCharacterGaps() },
     ),
     CheckProducer.ModelWide(
+        stage = ModelStage.DECLARATION,
         completes = setOf(CheckFamily.ENUM_TEXT_FORBIDDEN_CHARACTERS),
         findings = { it.enumTextForbiddenCharacterFindings() },
         gaps = { it.enumTextForbiddenCharacterGaps() },
     ),
     CheckProducer.ModelWide(
+        stage = ModelStage.METAMODEL,
         completes = setOf(CheckFamily.MODEL_TEXT_REPERTOIRE),
         findings = { it.modelTextRepertoireFindings() },
     ),
     CheckProducer.ModelWide(
+        stage = ModelStage.DECLARATION,
         completes = setOf(CheckFamily.HINT_LIST_VALUES),
         findings = { it.hintListValueFindings() },
         gaps = { it.hintListValueGaps() },
     ),
-    perDeclarationWalk(CheckFamily.TABLE_ENUM_OPERAND) { it.tableEnumOperandFindings() },
-    CheckProducer.ModelWide(
+    condition(CheckFamily.TABLE_ENUM_OPERAND) { base, at -> base.tableEnumContributions(at) },
+    CheckProducer.Condition(
         completes = setOf(CheckFamily.H_MODEL_FORM_CONSTRUCT),
-        findings = { it.hModelFormConstructFindings() },
-        gaps = { it.hModelFormConstructGaps() },
+        contributions = { base, at -> base.hModelFormContributions(at) },
+        gaps = { base, at -> base.scopedTo(at.key, at).hModelFormConstructGaps() },
     ),
     CheckProducer.ModelWide(
+        stage = ModelStage.DECLARATION,
         completes = setOf(CheckFamily.STRING_PATTERN_ADMISSION),
         findings = { it.declaredPatternFindings() },
         gaps = { it.declaredPatternGaps() },
     ),
-    perDeclarationWalk(CheckFamily.EMPTY_GROUP_OPERAND) { it.emptyGroupOperandFindings() },
-    produces(CheckFamily.ERROR_FIELD_REFERENCE) { it.errorFieldReferenceFindings() },
-    CheckProducer.ModelWide(
+    condition(CheckFamily.EMPTY_GROUP_OPERAND) { base, at -> base.emptyGroupContributions(at) },
+    condition(CheckFamily.ERROR_FIELD_REFERENCE) { base, at -> base.errorFieldReferenceContributions(at) },
+    CheckProducer.Condition(
         completes = setOf(
             CheckFamily.GROUP_LIST_OPERANDS,
             CheckFamily.GROUP_LIST_ROOT_OPERAND,
             CheckFamily.GROUP_LIST_OPERAND_KIND,
         ),
-        findings = { it.groupListOperandFindings() },
+        contributions = { base, at -> base.groupListContributions(at) },
     ),
-    perDeclarationWalk(CheckFamily.REPETITION_WILDCARD_TARGET) { it.repetitionWildcardFindings() },
-    perDeclarationWalk(CheckFamily.COMPUTED_TARGET_KIND) { it.computedTargetKindFindings() },
-    perDeclarationWalk(CheckFamily.COMPUTED_TARGET_INDEX_FIELD) { it.computedTargetIndexFieldFindings() },
-    perDeclarationWalk(CheckFamily.RAW_TYPE_LENGTH) { it.rawTypeLengthFindings() },
-    perDeclaration(CheckFamily.COMPUTATION_PRECONDITION_FEATURES) { base, at ->
+    path(CheckFamily.REPETITION_WILDCARD_TARGET),
+    perDeclarationWalk(CheckFamily.COMPUTED_TARGET_KIND, DeclarationStage.TARGET) { it.computedTargetKindFindings() },
+    perDeclarationWalk(CheckFamily.COMPUTED_TARGET_INDEX_FIELD, DeclarationStage.CALCULATION_TARGET) { it.computedTargetIndexFieldFindings() },
+    condition(CheckFamily.RAW_TYPE_LENGTH) { base, at -> base.rawLengthContributions(at) },
+    perDeclaration(CheckFamily.COMPUTATION_PRECONDITION_FEATURES, DeclarationStage.CALCULATION_NORMAL_FORM) { base, at ->
         base.computationPreconditionFeatureFindings(at)
     },
-    produces(CheckFamily.COMPUTATION_CYCLE) { it.computationCycleFindings() },
-    perDeclarationWalk(CheckFamily.COMPUTATION_SELF_READ) { it.computationSelfReadFindings() },
-    perDeclarationWalk(CheckFamily.REPETITION_KEY_LIST) { it.repetitionKeyListFindings() },
-    perDeclarationWalk(CheckFamily.REPETITION_KEY_PLACEMENT) { it.repetitionKeyPlacementFindings() },
-    perDeclarationWalk(CheckFamily.REPETITION_SCOPE_GROUP) { it.repetitionScopeGroupFindings() },
-    produces(CheckFamily.REPETITION_KEY_CONTAINMENT) { it.repetitionKeyContainmentFindings() },
-    produces(CheckFamily.FILTER_BODY_GATES) { it.filterBodyGateFindings() },
-    producesAfterTheParse(CheckFamily.FILTER_BODY_GATES) { it.filterBodyPostParseIndexFindings() },
-    perDeclarationWalk(CheckFamily.OUTER_MARKER_POSITION) { it.outerMarkerPositionFindings() },
-    perDeclarationWalk(CheckFamily.GROUP_CONDITION_WILDCARD) { it.groupConditionWildcardFindings() },
-    perDeclarationWalk(CheckFamily.SUM_OF_PRODUCTS_OPERANDS) { it.sumOfProductsOperandFindings() },
-    perDeclaration(CheckFamily.OPERAND_LIST_CONSTANT_BUDGET) { base, at ->
-        base.operandListConstantFindings(at)
+    CheckProducer.ModelWide(setOf(CheckFamily.COMPUTATION_CYCLE), ModelStage.GENERATION, { it.computationCycleFindings() }),
+    CheckProducer.Declaration(setOf(CheckFamily.COMPUTATION_SELF_READ)) { base, at -> base.computationSelfReadContributions(at) },
+    condition(CheckFamily.REPETITION_KEY_LIST) { base, at -> base.repetitionKeyListContributions(at) },
+    condition(CheckFamily.REPETITION_KEY_PLACEMENT) { base, at -> base.repetitionKeyPlacementContributions(at) },
+    condition(CheckFamily.REPETITION_SCOPE_GROUP) { base, at -> base.repetitionScopeContributions(at) },
+    condition(CheckFamily.REPETITION_KEY_CONTAINMENT) { base, at -> base.repetitionContainmentContributions(at) },
+    condition(CheckFamily.FILTER_BODY_GATES) { base, at ->
+        val execution = base.conditionExecution(at)
+        base.filterBodyContributions(at, execution) + base.filterBodyIndexContributions(at, execution)
     },
-    produces(CheckFamily.SEMANTIC_INDEX_STRUCTURE) { it.semanticIndexStructureFindings() },
-    produces(CheckFamily.SEMANTIC_INDEX_KEY) { it.semanticIndexKeyFindings() },
-    perDeclaration(CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION) { base, at ->
-        base.repetitionNotUniqueCombinationFindings(at)
-    },
-    produces(CheckFamily.PARALLEL_ITERATION_UNIQUENESS) { it.parallelIterationUniquenessFindings() },
-    produces(CheckFamily.FILTERED_ENTITY_ITERATION) { it.filteredEntityIterationFindings() },
-    CheckProducer.PerDeclaration(
+    condition(CheckFamily.OUTER_MARKER_POSITION) { base, at -> base.outerMarkerContributions(at) },
+    condition(CheckFamily.GROUP_CONDITION_WILDCARD) { base, at -> base.groupWildcardContributions(at) },
+    condition(CheckFamily.SUM_OF_PRODUCTS_OPERANDS) { base, at -> base.sumOfProductsContributions(at) },
+    condition(CheckFamily.OPERAND_LIST_CONSTANT_BUDGET) { base, at -> base.operandListConstantContributions(at) },
+    condition(CheckFamily.SEMANTIC_INDEX_STRUCTURE) { base, at -> base.semanticIndexStructureContributions(at) },
+    condition(CheckFamily.SEMANTIC_INDEX_KEY) { base, at -> base.semanticIndexKeyContributions(at) },
+    condition(CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION) { base, at -> base.repeatedUniquenessContributions(at) },
+    condition(CheckFamily.PARALLEL_ITERATION_UNIQUENESS) { base, at -> base.parallelIterationContributions(at) },
+    condition(CheckFamily.FILTERED_ENTITY_ITERATION) { base, at -> base.filteredEntityContributions(at) },
+    CheckProducer.Condition(
         completes = setOf(
             CheckFamily.TEMPORAL_AGGREGATE_OPERANDS,
             CheckFamily.ARITHMETIC_OPERATION_GATES,
@@ -373,56 +397,54 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
             CheckFamily.PATTERN_COMPARISON_OPERANDS,
             CheckFamily.ENUM_DISPLAY_COMPARABILITY,
         ),
-        findings = { facts, element -> facts.operationFindings(element) },
+        contributions = { facts, element -> facts.operationContributions(element) },
     ),
-    produces(CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND) { it.valueInFieldsConstantKindFindings() },
-    perDeclarationWalk(CheckFamily.VALUE_LIST_CONDITION_GATES) { it.valueListConditionGateFindings() },
-    produces(CheckFamily.ENTITY_LIST_ARITY) { it.entityListArityFindings() },
-    perDeclarationWalk(CheckFamily.ENTITY_LIST_PRE_GATES) { it.entityListPreGateFindings() },
-    perDeclarationWalk(CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND) {
-        it.fieldValuesNotUniqueOperandKindFindings()
-    },
-    produces(CheckFamily.FIELD_LIST_OPERATION_OPERANDS) { it.fieldListOperationOperandFindings() },
-    perDeclarationWalk(CheckFamily.DATE_ARITHMETIC_OPERANDS) { it.dateArithmeticOperandFindings() },
-    perDeclarationWalk(CheckFamily.ROUNDING_OPERANDS) { it.roundingOperandFindings() },
-    perDeclarationWalk(CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS) { it.fieldValueOperatorOperandFindings() },
-    perDeclarationWalk(CheckFamily.FIELD_VALUE_READ_OPERAND) { it.fieldValueReadOperandFindings() },
-    produces(CheckFamily.OPERAND_REPETITION_SCOPE) { it.operandRepetitionScopeFindings() },
-    produces(CheckFamily.DATE_CONSTRUCTION_SLOT) { it.dateConstructionSlotFindings() },
-    perDeclarationWalk(CheckFamily.H_MODEL_PATH_SUFFIX) { it.hModelPathSuffixFindings() },
-    produces(CheckFamily.FIELD_OPERAND_KIND) { it.fieldOperandKindFindings() },
-    produces(CheckFamily.FILTERED_OPERAND_KIND) { it.filteredOperandKindFindings() },
-    perDeclarationWalk(CheckFamily.CATEGORY_REFERENCE) { it.categoryReferenceFindings() },
-    perDeclarationWalk(CheckFamily.ENTITY_LIST_CATEGORY_GATE) { it.entityListCategoryFindings() },
-    produces(CheckFamily.SCALAR_VALUE_LIST_GATES) { it.scalarValueListGateFindings() },
-    produces(CheckFamily.DATE_ARGUMENT_SLOT) { it.dateArgumentSlotFindings() },
-    produces(CheckFamily.DATE_RANGE_OPERAND_LIST) { it.dateRangeOperandListFindings() },
-    perDeclarationWalk(CheckFamily.VALIDITY_CONDITION_OPERANDS) { it.validityConditionOperandFindings() },
-    perDeclarationWalk(CheckFamily.BASE_YEAR_REQUIREMENT) { it.baseYearRequirementFindings() },
-    produces(CheckFamily.RANGE_OPERAND_GATES) { it.rangeOperandGateFindings() },
-    produces(CheckFamily.VALUE_AS_DATE_OPERAND) { it.valueAsDateOperandFindings() },
-    perDeclarationWalk(CheckFamily.ENUM_COMPUTATION_SOURCE) { it.enumComputationSourceFindings() },
-    perDeclarationWalk(CheckFamily.ERROR_TARGET_ITERATION) { it.errorTargetIterationFindings() },
-    produces(CheckFamily.ERROR_TARGET_CONTAINMENT) { it.errorTargetContainmentFindings() },
-    perDeclarationWalk(CheckFamily.MESSAGE_PARAMETER_REFERENCE) { it.messageParameterFindings() },
-    perDeclarationWalk(CheckFamily.ERROR_TEXT_SEMANTIC_INDEX) { it.errorTextSemanticIndexFindings() },
-    perDeclarationWalk(CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX) { it.errorTextCategorySuffixFindings() },
-    produces(CheckFamily.ERROR_TEXT_INDEX_TERMINAL) { it.errorTextIndexTerminalFindings() },
-    perDeclarationWalk(CheckFamily.MESSAGE_TEXT_CHARACTERS) { it.messageTextCharacterFindings() },
-    perDeclarationWalk(CheckFamily.MESSAGE_PARAMETER_SYNTAX) { it.messageParameterSyntaxFindings() },
-    produces(CheckFamily.MESSAGE_GROUP_PARAMETER) { it.messageGroupParameterFindings() },
-    produces(CheckFamily.MESSAGE_VALUE_SUFFIX) { it.messageValueSuffixFindings() },
-    perDeclarationWalk(CheckFamily.MESSAGE_BASE_YEAR) { it.messageBaseYearFindings() },
-    perDeclaration(CheckFamily.STRING_PATTERN_MESSAGE) { base, at ->
+    condition(CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND) { base, at -> base.valueInFieldsConstantContributions(at) },
+    condition(CheckFamily.VALUE_LIST_CONDITION_GATES) { base, at -> base.valueListConditionContributions(at) },
+    condition(CheckFamily.ENTITY_LIST_ARITY) { base, at -> base.entityListArityContributions(at) },
+    condition(CheckFamily.ENTITY_LIST_PRE_GATES) { base, at -> base.entityListPreGateContributions(at) },
+    condition(CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND) { base, at -> base.fieldValuesNotUniqueContributions(at) },
+    condition(CheckFamily.FIELD_LIST_OPERATION_OPERANDS) { base, at -> base.fieldListOperationContributions(at) },
+    condition(CheckFamily.DATE_ARITHMETIC_OPERANDS) { base, at -> base.dateArithmeticContributions(at) },
+    condition(CheckFamily.ROUNDING_OPERANDS) { base, at -> base.roundingContributions(at) },
+    condition(CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS) { base, at -> base.fieldValueOperatorContributions(at) },
+    condition(CheckFamily.FIELD_VALUE_READ_OPERAND) { base, at -> base.fieldValueReadContributions(at) },
+    condition(CheckFamily.OPERAND_REPETITION_SCOPE) { base, at -> base.operandScopeContributions(at) },
+    condition(CheckFamily.DATE_CONSTRUCTION_SLOT) { base, at -> base.dateConstructionContributions(at) },
+    path(CheckFamily.H_MODEL_PATH_SUFFIX),
+    condition(CheckFamily.FIELD_OPERAND_KIND) { base, at -> base.fieldOperandKindContributions(at) },
+    condition(CheckFamily.FILTERED_OPERAND_KIND) { base, at -> base.filteredOperandContributions(at) },
+    condition(CheckFamily.CATEGORY_REFERENCE) { base, at -> base.categoryContributions(at) },
+    condition(CheckFamily.ENTITY_LIST_CATEGORY_GATE) { base, at -> base.entityListCategoryContributions(at) },
+    condition(CheckFamily.SCALAR_VALUE_LIST_GATES) { base, at -> base.scalarValueListContributions(at) },
+    condition(CheckFamily.DATE_ARGUMENT_SLOT) { base, at -> base.dateArgumentContributions(at) },
+    condition(CheckFamily.DATE_RANGE_OPERAND_LIST) { base, at -> base.dateRangeOperandContributions(at) },
+    condition(CheckFamily.VALIDITY_CONDITION_OPERANDS) { base, at -> base.validityConditionContributions(at) },
+    condition(CheckFamily.BASE_YEAR_REQUIREMENT) { base, at -> base.baseYearContributions(at) },
+    condition(CheckFamily.RANGE_OPERAND_GATES) { base, at -> base.rangeOperandContributions(at) },
+    condition(CheckFamily.VALUE_AS_DATE_OPERAND) { base, at -> base.valueAsDateContributions(at) },
+    perDeclarationWalk(CheckFamily.ENUM_COMPUTATION_SOURCE, DeclarationStage.CALCULATION_ALTERNATIVES) { it.enumComputationSourceFindings() },
+    condition(CheckFamily.ERROR_TARGET_ITERATION) { base, at -> base.errorTargetIterationContributions(at) },
+    condition(CheckFamily.ERROR_TARGET_CONTAINMENT) { base, at -> base.errorContainmentContributions(at) },
+    messages(CheckFamily.MESSAGE_PARAMETER_REFERENCE) { base, at, message -> base.messageParameterFindings(at, message) },
+    messages(CheckFamily.ERROR_TEXT_SEMANTIC_INDEX) { base, at, message -> base.errorTextSemanticIndexFindings(at, message) },
+    messages(CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX) { base, at, message -> base.errorTextCategorySuffixFindings(at, message) },
+    messages(CheckFamily.ERROR_TEXT_INDEX_TERMINAL) { base, at, message -> base.errorTextIndexTerminalFindings(at, message) },
+    messages(CheckFamily.MESSAGE_TEXT_CHARACTERS) { base, at, message -> base.messageTextCharacterFindings(at, message) },
+    messages(CheckFamily.MESSAGE_PARAMETER_SYNTAX) { base, at, message -> base.messageParameterSyntaxFindings(at, message) },
+    messages(CheckFamily.MESSAGE_GROUP_PARAMETER) { base, at, message -> base.messageGroupParameterFindings(at, message) },
+    messages(CheckFamily.MESSAGE_VALUE_SUFFIX) { base, at, message -> base.messageValueSuffixFindings(at, message) },
+    messages(CheckFamily.MESSAGE_BASE_YEAR) { base, at, message -> base.messageBaseYearFindings(at, message) },
+    perDeclaration(CheckFamily.STRING_PATTERN_MESSAGE, DeclarationStage.INDEPENDENT) { base, at ->
         base.stringTypeMessageFindings(at)
     },
     produces(CheckFamily.FIELD_TYPE_MESSAGE_TEXT) { it.fieldTypeMessageTextFindings() },
-    perDeclarationWalk(CheckFamily.STRING_TYPE_PARAMETERS) { it.stringTypeParameterFindings() },
-    perDeclarationWalk(CheckFamily.NUMBER_TYPE_DIGITS) { it.numberTypeDigitFindings() },
-    perDeclarationWalk(CheckFamily.ENUM_VALUE_LABELS) { it.enumValueLabelFindings() },
-    perDeclarationWalk(CheckFamily.ENUM_S_VALUE_DOMAIN) { it.enumSpecialValueFindings() },
+    perDeclarationWalk(CheckFamily.STRING_TYPE_PARAMETERS, DeclarationStage.INDEPENDENT) { it.stringTypeParameterFindings() },
+    perDeclarationWalk(CheckFamily.NUMBER_TYPE_DIGITS, DeclarationStage.INDEPENDENT) { it.numberTypeDigitFindings() },
+    perDeclarationWalk(CheckFamily.ENUM_VALUE_LABELS, DeclarationStage.INDEPENDENT) { it.enumValueLabelFindings() },
+    perDeclarationWalk(CheckFamily.ENUM_S_VALUE_DOMAIN, DeclarationStage.INDEPENDENT) { it.enumSpecialValueFindings() },
     // The one producer that completes no family: `content.typeDefinitions` declare field types no family
     // examines, so its whole output is the disclosure that they were not examined. It is registered rather
     // than called beside the loop so that its reads are attributed like every other producer's.
-    CheckProducer.ModelWide(completes = emptySet(), gaps = { it.typeDefinitionBodyGaps() }),
+    CheckProducer.ModelWide(stage = ModelStage.DECLARATION, completes = emptySet(), gaps = { it.typeDefinitionBodyGaps() }),
 )

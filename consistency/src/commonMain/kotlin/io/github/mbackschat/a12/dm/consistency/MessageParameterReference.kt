@@ -36,52 +36,49 @@ import io.github.mbackschat.a12.dm.consistency.syntax.plainParameterName
  * parameter form beyond the plain one — the category suffix, the semantic-index key, the row specifier, the
  * base-year terminal. What this reader takes, and why it takes so little, is [plainMessageParameters].
  */
-internal fun TrackedFactBase.messageParameterFindings(): List<Finding> {
-    val readBy = entitiesReadByDeclaration()
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val membership = readBy[element.path] ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
-        messages.examined(declaredLocales).flatMap { message ->
-            // A12 gates the text on its CHARACTERS before it reads a parameter out of it, so a message
-            // carrying a control character draws that class and nothing about its parameters — wherever the
-            // character sits, which is what makes this a gate rather than a race (KF343). Applied per
-            // message, because a sibling locale's text is judged on its own.
-            if (message.text.carriesAnOffendingCharacter()) {
-                return@flatMap emptyList()
-            }
-            messageParameterBodies(message.text).mapNotNull { parameter ->
-                // The TERMINALS are recognised before any lookup, and each language recognises only its own
-                // spelling — so the other's is an ordinary name here and draws a reference class below.
-                when (nameTerminalOf(parameter, conditionLanguage)) {
-                    NameTerminal.RULE_GROUP -> return@mapNotNull ruleGroupFinding(parameter, element)
-                    // The model's own declaration answers this one, from [messageBaseYearFindings].
-                    NameTerminal.BASE_YEAR -> return@mapNotNull null
-                    null -> Unit
-                }
-                formLineParameterName(parameter, conditionLanguage)?.let { addressed ->
-                    return@mapNotNull formLineDefect(addressed, group, element, parameter)
-                }
-                val name = plainParameterName(parameter, conditionLanguage) ?: return@mapNotNull null
-                val address = resolveEntity(group, name, element.origin)
-                val resolved = (address as? Reference.Resolved)?.path
-                    ?: return@mapNotNull address.asFinding(ReferenceRole.MESSAGE_PARAMETER, element.path,
-                        "errorMessage")
-                if (resolved in membership) {
-                    return@mapNotNull null
-                }
-                Finding(
-                    FindingCategory.A12_CONSTRAINT,
-                    FindingSeverity.ERROR,
-                    "INVALID_FIELD",
-                    "in `errorMessage`: `$name` resolves to `$resolved`, which this declaration never " +
-                        "reads — A12 interpolates a parameter from what the declaration has in hand, so " +
-                        "either name it in the `${membership.memberName}` or drop the parameter",
-                    element.path,
-                )
-            }
+internal fun TrackedFactBase.messageParameterFindings(): List<Finding> = declarations().flatMap { element ->
+    messageContributions(element) { messageParameterFindings(element, it) }.map { it.finding }
+}
+
+internal fun TrackedFactBase.messageParameterFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> {
+    val membership = entitiesReadBy(element)
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    // A12 gates the text on its CHARACTERS before it reads a parameter out of it, so a message
+    // carrying a control character draws that class and nothing about its parameters — wherever the
+    // character sits, which is what makes this a gate rather than a race (KF343). Applied per
+    // message, because a sibling locale's text is judged on its own.
+    if (message.text.carriesAnOffendingCharacter()) {
+        return emptyList()
+    }
+    return messageParameterBodies(message.text).mapNotNull { parameter ->
+        // The TERMINALS are recognised before any lookup, and each language recognises only its own
+        // spelling — so the other's is an ordinary name here and draws a reference class below.
+        when (nameTerminalOf(parameter, conditionLanguage)) {
+            NameTerminal.RULE_GROUP -> return@mapNotNull ruleGroupFinding(parameter, element)
+            // The model's own declaration answers this one, from [messageBaseYearFindings].
+            NameTerminal.BASE_YEAR -> return@mapNotNull null
+            null -> Unit
         }
+        formLineParameterName(parameter, conditionLanguage)?.let { addressed ->
+            return@mapNotNull formLineDefect(addressed, group, element, parameter)
+        }
+        val name = plainParameterName(parameter, conditionLanguage) ?: return@mapNotNull null
+        val address = resolveEntity(group, name, element.origin)
+        val resolved = (address as? Reference.Resolved)?.path
+            ?: return@mapNotNull address.asFinding(ReferenceRole.MESSAGE_PARAMETER, element.path,
+                "errorMessage")
+        if (resolved in membership) {
+            return@mapNotNull null
+        }
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "INVALID_FIELD",
+            "in `errorMessage`: `$name` resolves to `$resolved`, which this declaration never " +
+                "reads — A12 interpolates a parameter from what the declaration has in hand, so " +
+                "either name it in the `${membership.memberName}` or drop the parameter",
+            element.path,
+        )
     }
 }
 
@@ -134,28 +131,12 @@ private fun ruleGroupFinding(parameter: String, element: TrackedDeclaration): Fi
     element.path,
 )
 
-/**
- * Which entities each rule and computation READS, keyed by the declaration's path.
- *
- * Built once for the whole model rather than per declaration, because [conditionReferences] walks every
- * element's texts and asking it per declaration would rescan the model for each message.
- */
-internal fun TrackedFactBase.entitiesReadByDeclaration(): Map<String, Membership> {
-    val computedTarget = declaredReferences()
-        .filter { it.role == ReferenceRole.COMPUTED_TARGET }
-        .mapNotNull { d -> (d.target as? Reference.Resolved)?.path?.let { d.declaredAt to it } }
-        .toMap()
-    val read = mutableMapOf<String, MutableSet<String>>()
-    conditionReferences().forEach { reference ->
-        (reference.target as? Reference.Resolved)?.path?.let {
-            read.getOrPut(reference.declaredAt) { mutableSetOf() }.add(it)
-        }
-    }
-    return declarations().filter { it.kind == "Rule" || it.kind == "Computation" }.associate { element ->
-        val paths = read[element.path].orEmpty() + listOfNotNull(computedTarget[element.path])
-        val memberName = if (element.kind == "Rule") "errorCondition" else "computation's own members"
-        element.path to Membership(paths, memberName)
-    }
+/** Message membership belongs to the actual declaration occurrence, including its computed target. */
+internal fun TrackedFactBase.entitiesReadBy(element: TrackedDeclaration): Membership {
+    val paths = conditionReferencesOf(element).mapNotNull { (it.target as? Reference.Resolved)?.path }.toSet() +
+        listOfNotNull(element.declaredReference()?.takeIf { it.role == ReferenceRole.COMPUTED_TARGET }
+            ?.target?.let { (it as? Reference.Resolved)?.path })
+    return Membership(paths, if (element.kind == "Rule") "errorCondition" else "computation's own members")
 }
 
 /**

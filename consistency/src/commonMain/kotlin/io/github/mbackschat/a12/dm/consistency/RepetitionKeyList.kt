@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.FROM_SCOPE
 import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * What a `RepetitionNotUnique` KEY LIST has to hold before either branch of the operator's check runs.
@@ -26,8 +25,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * first. A reader walking each key through all four gates names the star.
  *
  * **Every class here answers ahead of both branches** — the `@From` scope's gates and the placement gates
- * alike — so [repetitionKeyListIsSound] is how [repetitionScopeGroupFindings],
- * [repetitionKeyContainmentFindings] and [repetitionKeyPlacementFindings] know they may speak at all.
+ * alike — so [repetitionKeyListIsSound] is how [repetitionScopeContributions],
+ * [repetitionContainmentContributions] and [repetitionKeyPlacementFindings] know they may speak at all.
  *
  * **Silent wherever something earlier answers**, and each silence is another family's class rather than a
  * gap: a key the reference reader does not address (resolved first, [KERNEL-FINDINGS KF356]), a duplicate
@@ -38,19 +37,18 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * **Rules only**: A12's calculation module refuses the operator in a computation outright
  * ([KERNEL-FINDINGS KF333]), so a computation carrying one has a different defect.
  */
-internal fun TrackedFactBase.repetitionKeyListFindings(): List<Finding> {
+internal fun TrackedFactBase.repetitionKeyListFindings(): List<Finding> =
+    declarations().filter { it.kind == "Rule" }.flatMap { repetitionKeyListContributions(it).map { contribution -> contribution.finding } }
+
+internal fun TrackedFactBase.repetitionKeyListContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
+    if (element.kind != "Rule") return emptyList()
     val spelling = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(REPETITION_NOT_UNIQUE) ?: return emptyList()
-    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator == spelling }
-                .mapNotNull { call ->
-                    (keyListOf(call, declaringGroup, element) as? KeyList.Defective)
-                        ?.let { finding(it, call, element, member) }
-                }
-        }
+    val group = element.path.substringBeforeLast('/')
+    return callContributions(element, execution) { member, call ->
+        if (call.operator == spelling) (keyListOf(call, group, element) as? KeyList.Defective)?.let { finding(it, call, element, member) } else null
     }
 }
 

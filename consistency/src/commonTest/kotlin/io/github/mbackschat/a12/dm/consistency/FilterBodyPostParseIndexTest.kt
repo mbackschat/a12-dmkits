@@ -2,6 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 
 /**
  * The filter index gate's post-parse site on both targets: a `$`-marked keyed read in a `Having` body.
@@ -13,8 +16,7 @@ import kotlin.test.assertEquals
  */
 class FilterBodyPostParseIndexTest {
 
-    private fun codes(condition: String): List<String> = checkRead(
-        ModelSource(
+    private fun source(condition: String): ModelSource = ModelSource(
             """
             {"header":{"id":"claims-policy","locales":[{"code":"en_US"}]},
              "content":{"modelRoot":{"rootGroups":[
@@ -39,8 +41,38 @@ class FilterBodyPostParseIndexTest {
               ]}}
              ]}}}
             """.trimIndent(),
-        ),
-    ).findings.filter { it.justifiesRejection }.map { it.code }
+        )
+
+    private fun codes(condition: String): List<String> =
+        checkRead(source(condition)).findings.filter { it.justifiesRejection }.map { it.code }
+
+    @Test
+    fun theTwoFilterArmsCarryTheirActualSites() {
+        val first = "Sum(Parties*/Count Having [Parties/Name] == [\$Orders/Note For \"A\"]) > 0"
+        for (condition in listOf(first, first + " And Sum(Parties*/Count Having [Orders/Note] == \"y\") > 0")) {
+            val facts = TrackedFactBase(prepare(assertIs<Admission.Admitted>(admit(source(condition)))), ReadTranscript())
+            val element = facts.declarations().single { it.declaredKind == DeclaredKind.RULE }
+            val execution = assertNotNull(facts.conditionExecution(element))
+            val post = facts.filterBodyIndexContributions(element, execution).single()
+            assertEquals(PostParseCheck.FILTER_SEMANTIC_INDEX, post.site)
+            assertEquals(element.key, post.owner)
+            assertEquals("MVK_SEMANTIC_INDEX_NOT_ALLOWED", post.finding.code)
+            val parsed = facts.filterBodyContributions(element, execution)
+            if (condition == first) {
+                assertEquals(emptyList(), parsed)
+                assertEquals(listOf(post), execution.selected(listOf(post)))
+            } else {
+                val refusal = parsed.single()
+                val gate = assertIs<EntityCheckSite>(refusal.site)
+                assertEquals(EntityCheck.FILTER, gate.check)
+                val site = gate.entity
+                assertEquals(SyntaxSite.Kind.ENTITY, site.kind)
+                assertEquals(element.key, refusal.owner)
+                assertEquals("MVK_INVALID_ITERATION_IN_FILTER_CONDITION", refusal.finding.code)
+                assertEquals(listOf(refusal), execution.selected(listOf(post, refusal)))
+            }
+        }
+    }
 
     @Test
     fun aMarkedKeyedReadIsRefusedOnceTheParseIsDone() {

@@ -4,6 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * That a family's verdict is answered from an earlier check when — and only when — every fact it read holds.
@@ -65,6 +67,72 @@ class FamilyCellReuseTest {
             CheckCells(scheduled.associate { it.key to tracked.cellFor(it.key, base, it.produce) }),
             scheduled.map { it.key },
         )
+    }
+
+    @Test
+    fun cachedConditionContributionsAreSelectedAgainAfterASiblingEdit() {
+        val paths = CheckProducer.Condition(setOf(CheckFamily.CONDITION_REFERENCES)) { facts, declaration ->
+            facts.pathContributions(declaration).filter { it.family == CheckFamily.CONDITION_REFERENCES }
+                .map { it.contribution }
+        }
+        val syntaxFamilies = setOf(CheckFamily.CONDITION_LEXICALITY, CheckFamily.CONDITION_GRAMMAR,
+            CheckFamily.CONDITION_COMPLETENESS)
+        val syntax = CheckProducer.Condition(syntaxFamilies) { facts, declaration ->
+            val execution = facts.conditionExecution(declaration)
+            syntaxFamilies.mapNotNull { execution?.syntaxContribution(it) }
+        }
+        val original = prepared("FieldFilled(NoSuchField) And FieldFilled(NorThisOne)")
+        val first = original.elements.single { it.declaredKind == DeclaredKind.RULE }
+        fun withCondition(text: String) = first.copy(declaration = JsonObject(first.declaration +
+            (first.kind to JsonObject(first.body!! + ("errorCondition" to JsonPrimitive(text))))))
+        fun run(model: PreparedModel, carried: CheckCells = CheckCells.NONE,
+            producers: List<CheckProducer> = listOf(paths, syntax)): Pair<ExecutedChecks, List<ConditionFinding>> {
+            val facts = TrackedFactBase(model, ReadTranscript())
+            val executed = executeChecks(facts, model, carried, producers)
+            return executed to executed.selectedConditions(facts)
+        }
+        for (samePath in listOf(false, true)) {
+            fun sibling(text: String): DeclaredElement {
+                val changed = withCondition(text)
+                if (samePath) return changed
+                val name = first.name + "Other"
+                return changed.copy(path = first.path + "Other", name = name, id = "r1",
+                    declaration = JsonObject(changed.declaration + mapOf(
+                        "name" to JsonPrimitive(name), "id" to JsonPrimitive("r1"))))
+            }
+            val before = original.copy(elements = original.elements + sibling("FieldFilled(Code)"))
+            val after = original.copy(elements = original.elements + sibling("FieldFilled("))
+            val (cold, coldFindings) = run(before)
+            assertEquals(listOf("MVK_INVALID_ENTITY"), coldFindings.map { it.finding.code })
+            val firstKey = CellKey(paths, DeclarationKey(first.path, 0))
+            assertEquals(2, cold.cells.getValue(firstKey).contributions.size,
+                "cells retain local results before first-failure selection")
+            val (reused, editedFindings) = run(after, CheckCells(cold.cells))
+            if (!samePath) assertTrue(cold.cells.getValue(firstKey) === reused.cells.getValue(firstKey))
+            assertTrue(reused.reused > 0 && reused.reused < reused.cells.size)
+            assertEquals(listOf("MVK_INVALID_ENTITY", "MVK_INCOMPLETE_INPUT"), editedFindings.map { it.finding.code })
+            assertEquals(if (samePath) listOf(0, 1) else listOf(0, 0), editedFindings.map { it.owner.amongSamePath })
+            assertEquals(editedFindings, run(after).second, "reused and cold ordered findings differ")
+            assertEquals(listOf("MVK_INVALID_ENTITY"), run(after, CheckCells(reused.cells), listOf(paths))
+                .second.map { it.finding.code })
+            assertEquals(listOf("MVK_INCOMPLETE_INPUT"), run(after, CheckCells(reused.cells), listOf(syntax))
+                .second.map { it.finding.code })
+            val repaired = after.copy(elements = after.elements.mapIndexed { index, element ->
+                if (index == original.elements.indexOf(first)) withCondition("FieldFilled(Code)") else element
+            })
+            val (last, remaining) = run(repaired, CheckCells(reused.cells))
+            val siblingKey = CellKey(syntax, DeclarationKey(if (samePath) first.path else first.path + "Other",
+                if (samePath) 1 else 0))
+            if (!samePath) assertTrue(reused.cells.getValue(siblingKey) === last.cells.getValue(siblingKey))
+            assertEquals(listOf("MVK_INCOMPLETE_INPUT"), remaining.map { it.finding.code })
+            assertEquals(remaining, run(repaired).second)
+        }
+        val competing = prepared("FieldFilled(NoSuchField) And FieldFilled(")
+        val (both, firstStop) = run(competing)
+        assertEquals(listOf("MVK_INVALID_ENTITY"), firstStop.map { it.finding.code })
+        assertEquals(listOf("MVK_INCOMPLETE_INPUT"), run(competing, CheckCells(both.cells), listOf(syntax))
+            .second.map { it.finding.code }, "a disabled path producer must not veto the selected syntax result")
+
     }
 
     @Test

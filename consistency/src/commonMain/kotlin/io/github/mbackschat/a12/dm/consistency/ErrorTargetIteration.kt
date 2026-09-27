@@ -29,7 +29,7 @@ package io.github.mbackschat.a12.dm.consistency
  * than one of its variables: A12's containment gate throws during the parse, where both these classes come
  * from a pass over the finished reference set, so neither is reachable with the target outside
  * ([KERNEL-FINDINGS KF372]). The shape arrives only as stored DM-JSON, our own builder refusing the pair —
- * and it is not unreported: [errorTargetContainmentFindings] owns it, which is why this family's silence
+ * and it is not unreported: [errorContainmentContributions] owns it, which is why this family's silence
  * there costs an author nothing.
  *
  * **Only the rule's own ITERATING reads count**, which is what `IterationChecker` decides over: it keeps a
@@ -45,59 +45,33 @@ package io.github.mbackschat.a12.dm.consistency
  * already treats it as reaching. An unresolvable operand pre-empts A12's own gate, so reporting would name a
  * second fix for one typo. A computation carries no error field and is not judged at all.
  */
-internal fun TrackedFactBase.errorTargetIterationFindings(): List<Finding> {
-    val named = conditionReferences().groupBy { it.declaredAt }
-    return declaredReferences()
-        .filter { it.role == ReferenceRole.ERROR_TARGET }
-        .mapNotNull { declared ->
-            val target = (declared.target as? Reference.Resolved)?.path ?: return@mapNotNull null
-            val references = named[declared.declaredAt].orEmpty()
-            if (references.isEmpty() ||
-                references.any { it.target !is Reference.Resolved } ||
-                namesTheRulesOwnGroup(declared)
-            ) {
-                return@mapNotNull null
-            }
-            val element = declarationAt(declared.declaredAt) ?: return@mapNotNull null
-            val rulesOwn = rulesOwnReferences(element).let { own -> references.filter { it.written in own } }
-            val ruleGroup = declared.declaredAt.substringBeforeLast('/', missingDelimiterValue = "")
-            // A target OUTSIDE the rule's group is `MVK_ERROR_FIELD_NOT_IN_RULEGROUP`, drawn at the top of
-            // `checkIndicesForA12Model` on the first iterating level — where these two classes come from
-            // `IterationChecker`, which runs after the parse. Every row of both grids that measured them
-            // held the target inside the declaring group, so the containment demand was a constant of the
-            // set rather than something any row tested; measured 2026-09-14 (KERNEL-FINDINGS KF372), and
-            // the reason this shape is silent HERE — `ERROR_TARGET_CONTAINMENT` reports it. It reaches a
-            // checker only through stored DM-JSON, `Rule.build()` refusing the pair up front.
-            if (!(target == ruleGroup || target.startsWith("$ruleGroup/"))) {
-                return@mapNotNull null
-            }
-            // REACHED-but-not-pinned is the whole shape. A condition that reaches the target from at or
-            // below the rule's group has pinned the repetition; one that does not reach it AT ALL is
-            // `MVK_ERROR_FIELD_NOT_REFERENCED`'s, and A12 draws that class alone there. Every row of the
-            // first grid carried a reaching reference, so the two silences looked like one until the
-            // reference family's own mirror went red on a condition naming a sibling field.
-            if (rulesOwn.none { it.reaches(target) } ||
-                rulesOwn.any { it.reaches(target) && it.sitsWithin(ruleGroup) }
-            ) {
-                return@mapNotNull null
-            }
-            val unkeyed = rulesOwnUnkeyedReferences(element)
-            val read = rulesOwn.filter { it.written in unkeyed }.mapNotNull { reference ->
-                (reference.target as? Reference.Resolved)?.path?.takeIf { path ->
-                    unstarredRepeatableLevels(reference.written, path, ruleGroup, element)?.isNotEmpty() == true
-                }
-            }
-            val errorFieldGroup = target.substringBeforeLast('/', missingDelimiterValue = "")
-            // There has to BE a repetition for A12 to be unable to choose one. Measured on a flat model:
-            // a rule reaching its error field from above while reading a sibling is ADMITTED when nothing
-            // repeats. The error field's group repeats on every row of the two grids above, so this was a
-            // constant rather than a condition — and the family refused an ordinary two-field rule in the
-            // variant-filter family's own fixture before the cell existed.
-            if (!repeats(errorFieldGroup)) {
-                return@mapNotNull null
-            }
-            iterationFinding(read, target, errorFieldGroup, declared.declaredAt)
+internal fun TrackedFactBase.errorTargetIterationFindings(): List<Finding> =
+    declarations().flatMap { errorTargetIterationFindings(it) }
+
+private fun TrackedFactBase.errorTargetIterationFindings(element: TrackedDeclaration): List<Finding> {
+    val declared = element.declaredReference()?.takeIf { it.role == ReferenceRole.ERROR_TARGET }
+        ?: return emptyList()
+    val target = (declared.target as? Reference.Resolved)?.path ?: return emptyList()
+    val references = conditionReferencesOf(element)
+    if (references.isEmpty() || references.any { it.target !is Reference.Resolved } ||
+        namesTheRulesOwnGroup(element)
+    ) return emptyList()
+    val rulesOwn = rulesOwnReferences(element).let { own -> references.filter { it.written in own } }
+    val ruleGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    // KF372: a target outside the declaring group is refused before the iteration pass.
+    if (!(target == ruleGroup || target.startsWith("$ruleGroup/"))) return emptyList()
+    if (rulesOwn.none { it.reaches(target) } ||
+        rulesOwn.any { it.reaches(target) && it.sitsWithin(ruleGroup) }
+    ) return emptyList()
+    val unkeyed = rulesOwnUnkeyedReferences(element)
+    val read = rulesOwn.filter { it.written in unkeyed }.mapNotNull { reference ->
+        (reference.target as? Reference.Resolved)?.path?.takeIf { path ->
+            unstarredRepeatableLevels(reference.written, path, ruleGroup, element)?.isNotEmpty() == true
         }
+    }
+    val errorFieldGroup = target.substringBeforeLast('/', missingDelimiterValue = "")
+    if (!repeats(errorFieldGroup)) return emptyList()
+    return listOfNotNull(iterationFinding(read, target, errorFieldGroup, element.path))
 }
 
 /**
@@ -159,3 +133,10 @@ private fun finding(code: String, explain: String, at: String) =
 /** Whether [path] names a group A12 gives repetitions — the ambiguity this family reports needs one. */
 private fun TrackedFactBase.repeats(path: String): Boolean =
     repeatableGroups().any { it.path == path }
+
+internal fun TrackedFactBase.errorTargetIterationContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> = execution?.postParse(PostParseCheck.ERROR_TARGET_ITERATION) {
+    errorTargetIterationFindings(element)
+}.orEmpty()

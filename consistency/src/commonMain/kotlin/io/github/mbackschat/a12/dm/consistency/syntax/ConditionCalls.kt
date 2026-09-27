@@ -98,7 +98,7 @@ data class CallOperand(
  *
  * **Reading a clause is what lets a family see a shape it would otherwise have to stay silent on.** Until
  * this existed every clause-carrying operand reduced to nothing at all, so a law about the `@From` scope or
- * the `Having` filter had no operand to judge — [repetitionScopeGroupFindings] is the first consumer and
+ * the `Having` filter had no operand to judge — [repetitionScopeContributions] is the first consumer and
  * the reason this landed.
  *
  * @param keyword the clause keyword AS SPELLED, so a consumer matches it through [CONDITION_KEYWORDS] for
@@ -536,7 +536,7 @@ internal data class FieldValueRead(
 )
 
 /** Every `Having` body in [text], each placed by its own offset. */
-private fun filterBodiesIn(text: String, language: ConditionLanguage): List<OperandClause> {
+internal fun filterBodiesIn(text: String, language: ConditionLanguage): List<OperandClause> {
     val filter = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
     return clausedOperandsIn(text, language).flatMap { operand -> operand.clauses.filter { it.keyword == filter } }
 }

@@ -1,8 +1,17 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
-import io.github.mbackschat.a12.dm.consistency.syntax.markedReferenceSpansIn
-import io.github.mbackschat.a12.dm.consistency.syntax.withoutFilterConditions
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
+
+internal fun TrackedFactBase.outerMarkerContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    if (element.declaredKind != DeclaredKind.RULE) return emptyList()
+    return entityContributions(element, EntityCheck.OUTER_MARKER) { entity, span ->
+        if (entity.path.first().text != "$" || entity.inFilter) return@entityContributions null
+        val written = normalizedPath(entity.path.drop(1))
+        if (resolveEntity(element.path.substringBeforeLast('/'), written, element.origin) !is Reference.Resolved)
+            return@entityContributions null
+        finding(written, span.member, element, span)
+    }
+}
 
 /**
  * Where the `$` outer marker may stand: inside a `Having` filter, and nowhere else.
@@ -29,35 +38,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.withoutFilterConditions
  * computation's own slots have not been measured against here, and the calculation module refuses several
  * constructs outright, so a computation carrying a marker is left alone rather than judged on transfer.
  */
-internal fun TrackedFactBase.outerMarkerPositionFindings(): List<Finding> {
-    val unsound = declarationsWithUnsoundDsl()
-    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        if (element.path in unsound) {
-            return@flatMap emptyList()
-        }
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            if (OUTER_MARKER !in text) {
-                return@flatMap emptyList()
-            }
-            // `checkOuter` runs in the marked spec's own `checkEntitySpec`, once the spec is read.
-            markedPathsOutsideAFilter(text)
-                .filter { marked -> resolveEntity(group, marked.written, element.origin) is Reference.Resolved }
-                .map { marked -> finding(marked.written, member, element, TextSpan(member, marked.start, marked.end)) }
-        }
-    }
-}
-
-/**
- * The paths of the `$`-marked references this text writes OUTSIDE every `Having` clause it carries.
- *
- * The filter conditions are blanked by position first ([withoutFilterConditions]), so what remains is exactly
- * the region A12 parses with `isInFilterCondition` false, the rest of a body after a nested filter included — a conjunct that happens to spell a body is outside it
- * and keeps its marker, as A12 reads it (`rulekit.validate.laws.FilterBodyTextRepeatedOutsideLawsTest`).
- */
-private fun TrackedFactBase.markedPathsOutsideAFilter(text: String): List<ReferenceSpan> =
-    markedReferenceSpansIn(withoutFilterConditions(text, conditionLanguage))
+internal fun TrackedFactBase.outerMarkerPositionFindings(): List<Finding> =
+    declarations().flatMap { outerMarkerContributions(it) }.map { it.finding }
 
 private fun finding(written: String, member: String, element: TrackedDeclaration, span: TextSpan) = Finding(
     FindingCategory.A12_CONSTRAINT,

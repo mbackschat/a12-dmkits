@@ -2,13 +2,12 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CUSTOM_CONDITION
-import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
-import io.github.mbackschat.a12.dm.consistency.syntax.OperandClause
 import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
 import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.markedReferenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
@@ -65,15 +64,15 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * **A filter whose index has an ENTITY key is left alone entirely**, which is an under-report and a
  * deliberate one: A12 answers those from the index's own spec gates, which run while the spec is parsed and
  * so ahead of this walk, and their order among themselves inside a filter is measured on two shapes that
- * disagree with the order [semanticIndexKeyFindings] applies outside one. Judging such a body here would
+ * disagree with the order [semanticIndexKeyContributions] applies outside one. Judging such a body here would
  * name a third class beside a pair that is already one too many.
  *
  * **A filter an entity key owns is walked against the KEY.** A `Having` after an entity key is the key's
- * ([OperandClause.filtersKey]), so A12 asks every gate here of the key's spec while the key is parsed, ahead of the
+ * ([SyntaxSite.FilterEntry.indexKey]), so A12 asks every gate here of the key's spec while the key is parsed, ahead of the
  * index gates the outer spec asks of the key once it is complete: `[Orders/Note]` in the body of a filter the
  * starred key `Parties* / Name` owns is the iteration class, not the key's star class. An index in such a body sits
  * inside the key's own index and is refused as a nested one while the body is parsed; that class is
- * [semanticIndexStructureFindings]', spanned on the inner index, so report assembly places it ahead of this walk's
+ * [semanticIndexStructureContributions]', spanned on the inner index, so report assembly places it ahead of this walk's
  * (`adapter.laws.CheckerFilterBodyAgreementTest`, [KERNEL-FINDINGS KF485]).
  *
  * **A level is "ridden" by ending at it as much as by passing through it.** `CurrentRepetition(Legs)`
@@ -88,77 +87,64 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * measured this until 2026-09-15 and are not the same question.
  *
  * **A `$`-marked reference is not walked.** `extractFilterIterationEntityRefs` skips it, and A12 checks it
- * against the rule's target instead, as the same read outside any filter is — [operandRepetitionScopeFindings]'
+ * against the rule's target instead, as the same read outside any filter is — [operandScopeContributions]'
  * question ([rulesOwnReadsIn]). So it clears no gate here: a body reading nothing else is the scope class, where
  * the same body unmarked, reading another repetition, is the iteration class. A marked read inside a nested
  * filter reaches the RULE, not the filter it stands in (`adapter.laws.CheckerFilterBodyAgreementTest`,
  * [KERNEL-FINDINGS KF487]). A marked read's semantic index is not the walk's either; A12 refuses it only once
  * the parse is done ([filterBodyPostParseIndexFindings]).
  */
-internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> = walkedFilters().mapNotNull { (element, filters) ->
-    filters.firstNotNullOfOrNull { walked ->
-        walked.verdict?.defect?.let { filterFinding(it, element, walked.member, walked.span) }
+internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> = declarations().mapNotNull { element ->
+    filterBodyContributions(element).firstOrNull()?.finding
+}
+
+internal fun TrackedFactBase.filterBodyContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> = walkedFilters(element, execution).mapNotNull { walked ->
+    walked.verdict?.defect?.let {
+        ConditionFinding(element.key, EntityCheckSite(walked.site, EntityCheck.FILTER), filterFinding(it, element, walked.span.member, walked.span))
     }
 }
 
-/**
- * The index gate's POST-PARSE site: a `$`-marked read in a filter body that selects one row by a semantic index.
- *
- * The walk skips a marked read, so its index passes the parse, and `ParserService.checkNormalRule` then refuses
- * any semantic index in a filter condition, marked or not ([KERNEL-FINDINGS KF487],
- * `adapter.laws.CheckerFilterBodyAgreementTest`). It is the walk's own code raised in the other phase, so it
- * answers only where nothing in the parse did: a parse-time class later in the same text wins against it. Report
- * assembly applies that because this producer is registered as raising after the parse
- * ([CheckProducer.raisesAfterTheParse]), and so this reports every such read and leaves the order to assembly.
- * It stands down where any filter of the declaration goes unjudged, since that filter may hold a parse-time
- * class this checker does not report. No measured row reaches that stand-down, and it can only withhold: a
- * control would need a parse-time class that no family reports.
- */
-internal fun TrackedFactBase.filterBodyPostParseIndexFindings(): List<Finding> =
-    walkedFilters().mapNotNull { (element, filters) ->
-        if (filters.any { it.verdict == null }) {
-            return@mapNotNull null
-        }
-        filters.firstNotNullOfOrNull { walked ->
-            walked.verdict?.markedKeyedRead?.let { read ->
-                Finding(
-                    FindingCategory.A12_CONSTRAINT,
-                    FindingSeverity.ERROR,
-                    "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
-                    "in `${walked.member}`: the filter reads `$read` through a semantic index — a filter condition " +
-                        "takes no semantic index, `$OUTER_MARKER`-marked or not; select the row outside the filter",
-                    element.path,
-                    walked.span,
-                )
-            }
-        }
-    }
+/** KF487: the filter walk skips marked keys; their index is refused only after successful parsing. */
+internal fun TrackedFactBase.filterBodyPostParseIndexFindings(): List<Finding> = declarations().flatMap {
+    filterBodyIndexContributions(it).map { contribution -> contribution.finding }
+}
 
-/** One filter in a declaration's texts: the member it stands in, its span, and the walk's verdict, null if unjudged. */
-private class WalkedFilter(val member: String, val span: TextSpan, val verdict: FilterVerdict?)
+internal fun TrackedFactBase.filterBodyIndexContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> = execution?.postParse(PostParseCheck.FILTER_SEMANTIC_INDEX) {
+    val filters = walkedFilters(element, execution)
+    if (filters.any { it.verdict == null }) emptyList() else listOfNotNull(filters.firstNotNullOfOrNull { walked ->
+        walked.verdict?.markedKeyedRead?.let { read ->
+            Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
+                "in `${walked.span.member}`: the filter reads `$read` through a semantic index — a filter condition " +
+                    "takes no semantic index, `$OUTER_MARKER`-marked or not; select the row outside the filter",
+                element.path, walked.span)
+        }
+    })
+}.orEmpty()
 
-/** Every declaration's filters, in text order, each with what the walk decides about it. */
-private fun TrackedFactBase.walkedFilters(): List<Pair<TrackedDeclaration, List<WalkedFilter>>> {
+private class WalkedFilter(val site: SyntaxSite.Completion, val span: TextSpan, val verdict: FilterVerdict?)
+
+private fun TrackedFactBase.walkedFilters(
+    element: TrackedDeclaration,
+    execution: ConditionExecution?,
+): List<WalkedFilter> {
+    if (execution == null) return emptyList()
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val filterKeyword = keywords[HAVING] ?: return emptyList()
     val callable = keywords.values.toSet()
-    // A scope in the body is a shape with no measured cell; a nested filter and a semantic index no longer
-    // are — the walk reads a nested spec like any other, and an index has its own branch of it.
     val clauseKeywords = setOfNotNull(keywords[FROM])
     val indexKeyword = keywords[SEMANTIC_INDEX]
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        element to conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member)).flatMap { it.operands }.mapNotNull { operand ->
-                val filter = operand.clauses.firstOrNull { it.keyword == filterKeyword } ?: return@mapNotNull null
-                WalkedFilter(
-                    member,
-                    ownerSpanOf(operand, filter, member),
-                    filterVerdictOf(operand, filter, indexKeyword, clauseKeywords, callable, keywords, group, element),
-                )
-            }
-        }
+    val group = element.path.substringBeforeLast('/')
+    return execution.recognition.sites.filterIsInstance<SyntaxSite.FilterExit>().mapNotNull { exit ->
+        val site = execution.entitiesByStart[exit.entry.start] ?: return@mapNotNull null
+        val span = execution.carrier.semanticSpan(site.start, site.end) ?: return@mapNotNull null
+        val text = execution.carrier.text.substring(exit.entry.end, exit.end)
+        WalkedFilter(site, span, filterVerdictOf(normalizedPath(exit.entry.path), text,
+            indexKeyword, clauseKeywords, callable, keywords, group, element))
     }
 }
 
@@ -197,8 +183,8 @@ private data class FilterVerdict(val defect: FilterDefect?, val markedKeyedRead:
  * scope gate — which is checked only once every reference has been read, exactly as the kernel does.
  */
 private fun TrackedFactBase.filterVerdictOf(
-    operand: CallOperand,
-    filter: OperandClause,
+    written: String,
+    text: String,
     indexKeyword: String?,
     clauseKeywords: Set<String>,
     callable: Set<String>,
@@ -206,17 +192,15 @@ private fun TrackedFactBase.filterVerdictOf(
     group: String,
     element: TrackedDeclaration,
 ): FilterVerdict? {
-    // A filter written after an entity key filters the KEY ([OperandClause.filtersKey]): A12 asks every gate
+    // A filter written after an entity key filters the KEY ([SyntaxSite.FilterEntry.indexKey]): A12 asks every gate
     // below of the key's spec, while the key is parsed, so the key is the filtered entity here.
-    val key = filter.filtersKey
-    val written = (if (key == null) operand.base else key.path) ?: return null
     // A scope clause and the rule-context keyword each put a shape in the body that this walk has no measured
     // cell for, carrying indices A12 reads and no path this reader can resolve. A starred bracket read is the
     // field-value read's star gate, which A12 raises as the bracket is read.
-    val marked = markedReferenceSpansIn(filter.text)
-    if (namesRuleContext(filter.text, conditionLanguage) ||
-        namesKeyword(filter.text, clauseKeywords) != null ||
-        fieldValueReadsIn(filter.text, conditionLanguage, syntaxEntryOf("errorCondition")).any { it.path?.contains('*') == true }
+    val marked = markedReferenceSpansIn(text)
+    if (namesRuleContext(text, conditionLanguage) ||
+        namesKeyword(text, clauseKeywords) != null ||
+        fieldValueReadsIn(text, conditionLanguage, syntaxEntryOf("errorCondition")).any { it.path?.contains('*') == true }
     ) {
         return null
     }
@@ -240,9 +224,9 @@ private fun TrackedFactBase.filterVerdictOf(
     // A marked read's index is not the walk's: the walk skips the marked spec, and A12 refuses the index only
     // after the parse ([filterBodyPostParseIndexFindings]).
     val (markedUses, uses) = indexKeyword
-        ?.let { semanticIndexUsesIn(filter.text, conditionLanguage, it) }
+        ?.let { semanticIndexUsesIn(text, conditionLanguage, it) }
         .orEmpty()
-        .partition { use -> marked.any { it.end <= use.keywordAt && filter.text.substring(it.end, use.keywordAt).isBlank() } }
+        .partition { use -> marked.any { it.end <= use.keywordAt && text.substring(it.end, use.keywordAt).isBlank() } }
     // An ENTITY key leaves the whole operand unjudged. A12 answers such a body from the index's own spec
     // gates, which run while the spec is parsed and so ahead of this walk — measured on two shapes, one
     // answered by the key-kind gate and one by the filter branch, neither by anything this walk asks. On a
@@ -251,7 +235,7 @@ private fun TrackedFactBase.filterVerdictOf(
         return null
     }
     val indexed = uses.mapNotNullTo(mutableSetOf()) { it.valuePath }
-    val markedKeyedRead = markedUses.firstOrNull()?.let { filter.text.substring(it.start, it.end).trim() }
+    val markedKeyedRead = markedUses.firstOrNull()?.let { text.substring(it.start, it.end).trim() }
     fun verdict(defect: FilterDefect?) = FilterVerdict(defect, markedKeyedRead)
     var boundSeen = false
     // Every spec in the body is walked, a nested aggregate's operand and a nested filter's body included
@@ -259,7 +243,7 @@ private fun TrackedFactBase.filterVerdictOf(
     // is a WILDCARD, which asks nothing but marks the levels after it, and an unstarred repeatable one is an
     // ITERATION, asked the path question first and the below-star one second (source-read; measured,
     // `adapter.laws.CheckerFilterBodyAgreementTest`).
-    referencesIn(withoutSpans(filter.text, marked), conditionLanguage)
+    referencesIn(withoutSpans(text, marked), conditionLanguage)
         .filterNot { it in callable }
         .forEach { reference ->
             val wildcards = starredLevelsOf(reference, group, element) ?: return null
@@ -294,7 +278,7 @@ private fun TrackedFactBase.filterVerdictOf(
     // A12's LAST gate over the body, and it runs only here: `checkNoDisallowedConstructsInFilterCondition`
     // sits after the index walk in `checkFilterCondition`, so every class above pre-empts it and it is
     // reachable only from a filter that is otherwise legal.
-    return verdict(disallowedConstructIn(filter.text, keywords)?.let { FilterDefect(FilterGate.DISALLOWED_CONSTRUCT, it) })
+    return verdict(disallowedConstructIn(text, keywords)?.let { FilterDefect(FilterGate.DISALLOWED_CONSTRUCT, it) })
 }
 
 /**
@@ -308,17 +292,6 @@ private fun disallowedConstructIn(text: String, keywords: Map<String, String>): 
     listOfNotNull(keywords[HAVING], keywords[CUSTOM_CONDITION], keywords[REPETITION_NOT_UNIQUE])
         .firstOrNull { namesKeyword(text, setOf(it)) != null }
 
-/**
- * Where A12 raises this filter's classes: at the end of the spec that owns it, which for a key's filter is the
- * key itself — enclosed by the index span, so report assembly places the body's class ahead of the index
- * classes A12 asks of the key once it is complete (`adapter.laws.CheckerFilterBodyAgreementTest`).
- */
-private fun ownerSpanOf(operand: CallOperand, filter: OperandClause, member: String): TextSpan {
-    val key = filter.filtersKey ?: return operand.spanIn(member)
-    return TextSpan(member, key.at, filter.at + filter.text.length)
-}
-
-/** Every gate here runs in the filtered operand's `checkEntitySpec`, once its whole spec is read. */
 private fun filterFinding(defect: FilterDefect, element: TrackedDeclaration, member: String, span: TextSpan) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,

@@ -3,7 +3,9 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
+import io.github.mbackschat.a12.dm.consistency.syntax.Recognition
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
 import io.github.mbackschat.a12.dm.consistency.syntax.textOf
 import kotlinx.serialization.json.JsonArray
@@ -34,46 +36,54 @@ internal data class OperationValue(
 }
 
 /** One declaration owns recognition, derived results and the tracked model reads that justify them. */
-internal class OperationAnalysis(val facts: TrackedFactBase, val element: TrackedDeclaration, val carrier: ConditionText) {
+internal class OperationAnalysis(
+    val facts: TrackedFactBase,
+    val element: TrackedDeclaration,
+    val carrier: ConditionText,
+    val recognition: Recognition = ConditionRecognizer(carrier.text, facts.conditionLanguage).recognize(SyntaxEntry.CONDITION),
+) {
     val text = carrier.text
-    val recognition = ConditionRecognizer(text, facts.conditionLanguage).recognize(SyntaxEntry.CONDITION)
     private val group = element.path.substringBeforeLast('/')
     private val identities = CONDITION_OPERATOR_KEYWORDS.getValue(facts.conditionLanguage)
         .entries.associate { (id, spelling) -> spelling to id }
     private val values = mutableMapOf<OperationShape, OperationValue>()
-    val findings = mutableListOf<Finding>()
+    val contributions = mutableListOf<ConditionFinding>()
+    val findings: List<Finding> get() = contributions.map { it.finding }
 
     fun value(shape: OperationShape?): OperationValue = values[shape] ?: UNKNOWN
     fun written(shape: OperationShape): String = text.substring(shape.at, shape.end)
 
     fun analyze() {
-        for (shape in recognition.operations) values[shape] = when (shape) {
-            is OperationShape.Literal -> literal(written(shape))
-            is OperationShape.Read -> with(facts) {
-                if (fieldValueReadIsRefused(shape.read, group, element)) UNKNOWN
-                else bareReferenceField(written(shape), group, element,
-                    shape.read.inAFilterBody && !shape.read.outerMarker)?.let(::field) ?: UNKNOWN
+        for (site in recognition.sites) when (site) {
+            is SyntaxSite.Operation -> values[site.shape] = operation(site.shape)
+            is SyntaxSite.Comparison -> comparisonFinding(site.shape)?.let {
+                contributions += ConditionFinding(element.key, site, it)
             }
-            is OperationShape.Group -> value(shape.child).copy(field = null, constant = null)
-            is OperationShape.Arithmetic -> arithmetic(shape)
-            is OperationShape.Call -> call(shape)
+            else -> Unit
         }
     }
 
+    private fun operation(shape: OperationShape): OperationValue = when (shape) {
+        is OperationShape.Literal -> literal(written(shape))
+        is OperationShape.Read -> with(facts) {
+            if (fieldValueReadIsRefused(shape.read, group, element)) UNKNOWN
+            else bareReferenceField(written(shape), group, element,
+                shape.read.inAFilterBody && !shape.read.outerMarker)?.let(::field) ?: UNKNOWN
+        }
+        is OperationShape.Group -> value(shape.child).copy(field = null, constant = null)
+        is OperationShape.Arithmetic -> arithmetic(shape)
+        is OperationShape.Call -> call(shape)
+    }
+
     fun finding(code: String, at: Int, end: Int, because: (String) -> String): Finding? {
-        val origin = carrier.at(at)?.takeIf { it.authored }
-            ?: carrier.at((end - 1).coerceAtLeast(at))?.takeIf { it.member != null }
-            ?: return null
-        val member = origin.member ?: return null
-        val authored = carrier.parts.single { it.authored && it.member == member }
-        val length = authored.end - authored.start
-        val start = (at - authored.start).coerceIn(0, length)
-        return Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, because(member), element.path,
-            TextSpan(member, start, (end - authored.start).coerceIn(start, length)))
+        val span = carrier.semanticSpan(at, end) ?: return null
+        return Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, because(span.member), element.path, span)
     }
 
     private fun refuse(code: String, shape: OperationShape, reason: String): OperationValue {
-        finding(code, shape.at, shape.end) { "in `$it`: $reason" }?.let { findings += it }
+        finding(code, shape.at, shape.end) { "in `$it`: $reason" }?.let {
+            contributions += ConditionFinding(element.key, SyntaxSite.Operation(shape), it)
+        }
         return UNKNOWN
     }
 

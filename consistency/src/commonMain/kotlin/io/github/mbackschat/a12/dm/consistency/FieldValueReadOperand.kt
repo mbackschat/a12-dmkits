@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.FieldValueRead
-import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 
 /**
  * The completed field read's group, star, raw-value and partial-Date gates (KF473, KF496).
@@ -11,16 +11,20 @@ import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
  * filter state, including reads whose enclosing construct fails later, so each position has one producer.
  * Computation targets are synthetic reads before their operations (KF483).
  */
-internal fun TrackedFactBase.fieldValueReadOperandFindings(): List<Finding> = declarations().flatMap { element ->
-    val body = element.body ?: return@flatMap emptyList()
+internal fun TrackedFactBase.fieldValueReadOperandFindings(): List<Finding> =
+    declarations().flatMap { element -> fieldValueReadContributions(element).map { it.finding } }
+
+internal fun TrackedFactBase.fieldValueReadContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    val execution = conditionExecution(element) ?: return emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    conditionTexts(element.kind, body).flatMap { (member, text) ->
-        val target = loweredComparisonOf(element, body, member, text)?.targetRead?.let { read ->
-            readDefect(read, group, element)?.let { defect -> targetFinding(defect, element, member, read) }
-        }
-        listOfNotNull(target) + fieldValueReadsIn(text, conditionLanguage, syntaxEntryOf(member)).mapNotNull { read ->
-            readDefect(read, group, element)?.let { defect -> finding(defect, element, member, read) }
-        }
+    return execution.recognition.sites.filterIsInstance<SyntaxSite.FieldRead>().mapNotNull { site ->
+        val read = site.read
+        val defect = readDefect(read, group, element) ?: return@mapNotNull null
+        val span = execution.carrier.semanticSpan(read.at, read.end) ?: return@mapNotNull null
+        val finding = if (execution.carrier.at(read.at)?.authored == false)
+            targetFinding(defect, element, span)
+        else finding(defect, element, span)
+        finding?.let { ConditionFinding(element.key, site, it) }
     }
 }
 
@@ -55,7 +59,7 @@ private fun TrackedFactBase.readDefect(
         everyLevelAddressed = read.inAFilterBody && !read.outerMarker) ?: return null
     val target = declarationAt(addressed) ?: return null
     when (target.declaredKind) {
-        // The spec's own category gate asks the group question first ([categoryReferenceFindings]).
+        // The spec's own category gate asks the group question first ([categoryContributions]).
         DeclaredKind.GROUP -> return if (read.category != null) null else ReadDefect(ReadGate.GROUP, written, target.path)
         DeclaredKind.FIELD -> Unit
         else -> return null
@@ -75,7 +79,7 @@ private fun TrackedFactBase.readDefect(
     }
 }
 
-private fun finding(defect: ReadDefect, element: TrackedDeclaration, member: String, read: FieldValueRead): Finding {
+private fun finding(defect: ReadDefect, element: TrackedDeclaration, span: TextSpan): Finding {
     val because = when (defect.gate) {
         ReadGate.GROUP -> "names the group `${defect.target}`, and a field-value read takes one field"
         ReadGate.STAR -> "is read across a repetition, and a field-value read takes one addressed value — " +
@@ -88,14 +92,14 @@ private fun finding(defect: ReadDefect, element: TrackedDeclaration, member: Str
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         defect.gate.code,
-        "in `$member`: `[${defect.written}]` $because",
+        "in `${span.member}`: `[${defect.written}]` $because",
         element.path,
-        TextSpan(member, read.at, read.end),
+        span,
     )
 }
 
 /** A computation target's own read, whose corrective is about what to compute INTO rather than how to read. */
-private fun targetFinding(defect: ReadDefect, element: TrackedDeclaration, member: String, read: FieldValueRead): Finding? {
+private fun targetFinding(defect: ReadDefect, element: TrackedDeclaration, span: TextSpan): Finding? {
     val because = when (defect.gate) {
         // A group target never reaches the read, and a target path is never starred.
         ReadGate.GROUP, ReadGate.STAR -> return null
@@ -108,8 +112,8 @@ private fun targetFinding(defect: ReadDefect, element: TrackedDeclaration, membe
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         defect.gate.code,
-        "in `$member`: A12 compares the computed field `[${defect.written}]` with this operation, and it $because",
+        "in `${span.member}`: A12 compares the computed field `[${defect.written}]` with this operation, and it $because",
         element.path,
-        TextSpan(member, read.at, read.end),
+        span,
     )
 }

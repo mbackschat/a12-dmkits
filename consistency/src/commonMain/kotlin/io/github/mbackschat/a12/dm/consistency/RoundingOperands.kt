@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
  * What the six rounding operators demand of the thing they round and of the digit count they round to.
@@ -32,23 +31,23 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * never reported: A12 refuses it and this reader cannot see it, so the silence is an under-report rather
  * than a disagreement.
  */
-internal fun TrackedFactBase.roundingOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.roundingOperandFindings(): List<Finding> = declarations().flatMap { element ->
+    roundingContributions(element).map { it.finding }
+}
+
+internal fun TrackedFactBase.roundingContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = OPERAND_KIND_OF.mapNotNull { (id, kind) -> keywords[id]?.let { it to kind } }.toMap()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .mapNotNull { call ->
-                    val kind = carriers[call.operator] ?: return@mapNotNull null
-                    roundingDefect(call, kind, declaringGroup, element)
-                        ?.let { defect -> finding(defect, call, element, member) }
-                }
-        }
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return callContributions(element, execution) { member, call ->
+        val kind = carriers[call.operator] ?: return@callContributions null
+        roundingDefect(call, kind, group, element)?.let { finding(it, call, element, member) }
     }
 }
 

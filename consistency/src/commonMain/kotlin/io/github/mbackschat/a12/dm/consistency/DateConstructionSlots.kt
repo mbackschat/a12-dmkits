@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.consistency
 
+
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
-import io.github.mbackschat.a12.dm.consistency.syntax.callShapes
 import io.github.mbackschat.a12.dm.consistency.syntax.inAFilterBody
 import io.github.mbackschat.a12.dm.consistency.syntax.isName
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
@@ -59,23 +59,16 @@ import kotlinx.serialization.json.intOrNull
  * ([KF423](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf423)). Only its measured law is reported — an extract operator in either
  * year slot — because the pair's constant and entity arms answer to gates this grid did not separate.
  */
-internal fun TrackedFactBase.dateConstructionSlotFindings(): List<Finding> {
+internal fun TrackedFactBase.dateConstructionContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    val execution = conditionExecution(element) ?: return emptyList()
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val constructions = TemporalConstruction.entries.mapNotNull { c -> keywords[c.id]?.let { it to c } }.toMap()
-    if (constructions.isEmpty()) {
-        return emptyList()
-    }
     val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
-    return declarations().mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            callShapes(text, conditionLanguage, syntaxEntryOf(member))
-                .firstNotNullOfOrNull { shape ->
-                    val construction = constructions[shape.operator] ?: return@firstNotNullOfOrNull null
-                    construction.firstDefectiveSlot(this, element, shape, extractOps)
-                        ?.let { slotFinding(it, shape.operator, element, member, shape.spanIn(member)) }
-                }
-        }
+    return callContributions(element, execution) { member, call ->
+        val construction = constructions[call.operator] ?: return@callContributions null
+        val shape = execution.callsByStart.getValue(call.at)
+        construction.firstDefectiveSlot(this, element, shape, extractOps)
+            ?.let { slotFinding(it, shape.operator, element, member, shape.spanIn(member)) }
     }
 }
 
@@ -119,7 +112,7 @@ internal fun TrackedFactBase.readDateConstruction(
     val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
     val construction = TemporalConstruction.DATE
     // The COMPLETE shape only. A year-less construction's own law is `MVK_MISSING_YEAR`, asked before the
-    // validity question and owned by [baseYearRequirementFindings]; reading it here would put a second
+    // validity question and owned by [baseYearContributions]; reading it here would put a second
     // finding — and the wrong class — on a model A12 refuses once.
     if (operands.size != construction.slots.size) {
         return null
@@ -206,7 +199,7 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
      * Which written arities this walk judges.
      *
      * A12 runs the day and month gates whatever the arity, so the two-parameter `Date` is judged here too —
-     * its MISSING year is a law of its own ([baseYearRequirementFindings]) and its present slots are still
+     * its MISSING year is a law of its own ([baseYearContributions]) and its present slots are still
      * this walk's. The four-parameter split-year form is admitted here as well: it is reachable in an A12
      * model, measured, and carries one law of its own.
      */
@@ -228,7 +221,7 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
      *
      * A12 runs the day and month gates before it asks about the year at all, so a shape this construction
      * does not admit still has those two gates answered — which is what the base-year law needs to know
-     * ([baseYearRequirementFindings]) and what [firstDefectiveSlot] deliberately declines to look at.
+     * ([baseYearContributions]) and what [firstDefectiveSlot] deliberately declines to look at.
      */
     fun defectAmongSlots(
         model: TrackedFactBase,

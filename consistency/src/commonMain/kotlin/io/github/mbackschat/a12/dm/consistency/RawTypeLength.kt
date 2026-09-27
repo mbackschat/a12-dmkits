@@ -35,15 +35,23 @@ import kotlinx.serialization.json.booleanOrNull
  * reproduce, so the class is left to the Kernel and recorded as a gap rather than guessed at. Silence here
  * under-reports, which is safe; a guess would not be.
  */
-internal fun TrackedFactBase.rawTypeLengthFindings(): List<Finding> {
+internal fun TrackedFactBase.rawTypeLengthFindings(): List<Finding> =
+    declarations().flatMap { rawTypeLengthFindings(it) }
+
+internal fun TrackedFactBase.rawLengthContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> = execution?.postParse(PostParseCheck.RAW_LENGTH) {
+    rawTypeLengthFindings(element)
+}.orEmpty()
+
+private fun TrackedFactBase.rawTypeLengthFindings(element: TrackedDeclaration): List<Finding> {
     val length = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get("Length") ?: return emptyList()
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).mapNotNull { (member, text) ->
-            val raw = rawTypeRead(text, member, group, element.origin, length) ?: return@mapNotNull null
-            rawLengthOffence(text, member, raw, length, element)
-        }
+    val body = element.body ?: return emptyList()
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return conditionTexts(element.kind, body).mapNotNull { (member, text) ->
+        val raw = rawTypeRead(text, member, group, element.origin, length) ?: return@mapNotNull null
+        rawLengthOffence(text, member, raw, length, element)
     }
 }
 

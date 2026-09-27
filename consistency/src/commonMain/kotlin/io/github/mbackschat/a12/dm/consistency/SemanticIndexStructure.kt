@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
+
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
@@ -10,7 +12,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  *
  * `[Coverages/Limit For key]` addresses one repetition, and its own structure carries nine rejection classes
  * decided by one chain ([KERNEL-FINDINGS KF371], `rulekit.validate.laws.SemanticIndexStructureLawsTest`).
- * [semanticIndexKeyFindings] owns the first of them — the key must be a field — and this family owns the
+ * [semanticIndexKeyContributions] owns the first of them — the key must be a field — and this family owns the
  * rest, including the two that read the KEY against the indexed group ([KERNEL-FINDINGS KF404],
  * `rulekit.validate.laws.SemanticIndexKeyGateLawsTest`).
  *
@@ -29,7 +31,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  *
  * **Silent where A12's ITERATION gate answers first.** An entity key whose read ITERATES — one reaching into
  * a repetition the rule does not itself sit in, without a star — draws `MVK_SEMANTIC_INDEX_INVALID_ITER`
- * whatever else is wrong with the index, and [semanticIndexKeyFindings] owns that class. What binds a level
+ * whatever else is wrong with the index, and [semanticIndexKeyContributions] owns that class. What binds a level
  * is the rule's own anchoring, so a key inside a repetition is judged here whenever the rule is declared in
  * that repetition; treating every such key as opaque would lose `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX`
  * entirely, since a key inside the indexed group is anchored by definition. Silent too on a GROUP key, which
@@ -45,16 +47,16 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * the kind's rule is not one it can reproduce, such as a declared String pattern outside [KeyPattern]'s subset; a
  * later class named on such an index would be the wrong class on a correct rejection.
  */
-internal fun TrackedFactBase.semanticIndexStructureFindings(): List<Finding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val keyword = keywords[SEMANTIC_INDEX] ?: return emptyList()
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body).mapNotNull { (member, text) ->
-            firstClassIn(semanticIndexUsesIn(text, conditionLanguage, keyword), group, element)
-                ?.let { (code, use) -> structureFinding(code, element, member, use.spanIn(member)) }
-        }
+internal fun TrackedFactBase.semanticIndexStructureContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    val execution = conditionExecution(element) ?: return emptyList()
+    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
+    val uses = semanticIndexUsesIn(execution.carrier.text, conditionLanguage, keyword).associateBy { it.keywordAt }
+    return execution.recognition.sites.filterIsInstance<SyntaxSite.Completion>().mapNotNull { site ->
+        if (site.kind != SyntaxSite.Kind.INDEX) return@mapNotNull null
+        val use = uses[site.start] ?: return@mapNotNull null
+        val verdict = firstClassIn(listOf(use), element.path.substringBeforeLast('/'), element) ?: return@mapNotNull null
+        val span = execution.carrier.semanticSpan(site.start, site.end) ?: return@mapNotNull null
+        ConditionFinding(element.key, site, structureFinding(verdict.first, element, span.member, span))
     }
 }
 

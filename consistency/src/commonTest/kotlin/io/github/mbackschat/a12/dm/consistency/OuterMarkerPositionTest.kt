@@ -40,11 +40,7 @@ class OuterMarkerPositionTest {
         // RESOLUTION ANSWERS FIRST. A12 draws `MVK_INVALID_ENTITY` here, from a gate that runs before the
         // marker's — so naming this class would be the wrong class on a model A12 refuses for its address.
         expected["a marker outside a filter, on a path that RESOLVES TO NOTHING"] = emptyList()
-        // A12 DOES report the marker here, the marked reference standing first in the text — but the second
-        // defect makes the declaration's DSL unsound, and every family in this checker withholds its verdict
-        // on such a declaration rather than judging a text whose membership set is short. A disclosed
-        // under-report shared with the estate, not a stance this family takes alone.
-        expected["a marker outside a filter, AHEAD of an unrelated defect"] = emptyList()
+        expected["a marker outside a filter, AHEAD of an unrelated defect"] = listOf(outer)
         assertEquals(expected, actual, "where the outer marker may stand")
     }
 

@@ -11,7 +11,40 @@ internal data class Recognition(
     val fieldReads: List<FieldValueRead>,
     val completedSteps: Map<Int, Int>,
     val unfinishedAt: Int?,
+    val sites: List<SyntaxSite>,
+    val entities: List<RecognizedEntity>,
 )
+
+internal data class RecognizedEntity(
+    val site: SyntaxSite.Completion,
+    val path: List<Token>,
+    val indexKey: Boolean,
+    val inFilter: Boolean,
+    val indexed: Boolean,
+    val filtered: Boolean,
+    val category: Token?,
+)
+
+internal interface ConditionSite
+
+/** Source coordinates identify occurrences; recognition order is independent of editor spans. */
+internal sealed interface SyntaxSite : ConditionSite {
+    data class Completion(val kind: Kind, val start: Int, val end: Int) : SyntaxSite
+    data class FilterEntry(val start: Int, val end: Int, val path: List<Token>,
+        val indexed: Boolean, val indexKey: Boolean) : SyntaxSite
+    data class FilterExit(val entry: FilterEntry, val end: Int) : SyntaxSite
+    data class Operation(val shape: OperationShape) : SyntaxSite
+    data class Comparison(val shape: ComparisonShape) : SyntaxSite
+    data class FieldRead(val read: FieldValueRead) : SyntaxSite
+    data class DateArgument(val operator: String, val tokens: List<Token>, val inFilter: Boolean) : SyntaxSite
+    data class Connective(val first: Token, val current: Token, val end: Int) : SyntaxSite
+    data class Failure(val verdict: ShapeFailure) : SyntaxSite
+
+    enum class Kind {
+        PREAMBLE, PATH_STEP, ENTITY, INDEX,
+        CALL, FORM_NAME, CONSTANT,
+    }
+}
 
 /** Model-independent recognition; only completed structures become scanner inputs. */
 internal class ConditionRecognizer(private val source: String, language: ConditionLanguage) {
@@ -24,6 +57,8 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private val operations = mutableListOf<OperationShape>()
     private val fieldReads = mutableListOf<FieldValueRead>()
     private val completedSteps = mutableMapOf<Int, Int>()
+    private val sites = mutableListOf<SyntaxSite>()
+    private val entities = mutableListOf<RecognizedEntity>()
     private val openings = mutableListOf<Int>()
     private var cursor = 0
     private var filterActive = false
@@ -45,7 +80,14 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         } catch (stop: RecognitionStop) {
             stop.failure
         }
-        return Recognition(failure, calls, comparisons, operations, fieldReads, completedSteps, openings.lastOrNull())
+        failure?.let { sites += SyntaxSite.Failure(it) }
+        return Recognition(failure, calls, comparisons, operations, fieldReads, completedSteps, openings.lastOrNull(), sites, entities)
+    }
+
+    private fun completed(kind: SyntaxSite.Kind, start: Int, end: Int = tokens[cursor - 1].end, record: Boolean = true) {
+        // A demanded lexical failure precedes the action whose production has just been consumed (KF311).
+        peek()
+        if (record) sites += SyntaxSite.Completion(kind, start, end)
     }
 
     private fun peek(ahead: Int = 0): Token? {
@@ -95,6 +137,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private fun connective(): Boolean = kind(peek()) != null && peek()?.text in CONNECTIVES
 
     private fun preamble() {
+        val start = peek()?.start ?: return
         if (!consume("@")) return
         if (kind(peek()) == null || peek()?.text !in setOf("SuppressWarning", "UnterdrueckeWarnung"))
             fail(SyntaxFailureKind.MATCH)
@@ -102,17 +145,24 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         requireName()
         while (consume(",")) requireName()
         require(")")
+        completed(SyntaxSite.Kind.PREAMBLE, start)
     }
 
     private fun condition() {
         comments()
+        var first: Token? = null
         conditionPart()
         while (true) {
             comments()
             if (!connective()) return
-            take()
+            val current = take()
             comments()
             conditionPart()
+            val previous = first
+            if (previous == null) first = current else {
+                peek()
+                sites += SyntaxSite.Connective(previous, current, tokens[cursor - 1].end)
+            }
         }
     }
 
@@ -144,7 +194,10 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         take()
         val right = cursor
         operation()
-        comparisons += ComparisonShape(tokens.subList(left, operatorAt), operator, tokens.subList(right, cursor))
+        val shape = ComparisonShape(tokens.subList(left, operatorAt), operator, tokens.subList(right, cursor))
+        comparisons += shape
+        peek()
+        sites += SyntaxSite.Comparison(shape)
     }
 
     private fun operation(): OperationShape {
@@ -174,6 +227,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         // KF497: demanding the next token precedes the completed operation's action.
         peek()
         operations += shape
+        sites += SyntaxSite.Operation(shape)
         return shape
     }
 
@@ -195,12 +249,13 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                 peek()
                 val read = fieldValueRead(spec, token.start, end, filterActive, keywords)
                 fieldReads += read
+                sites += SyntaxSite.FieldRead(read)
                 complete(OperationShape.Read(read))
             }
             consume("-") -> { digits(decimal = true); complete(OperationShape.Literal(token.start, tokens[cursor - 1].end)) }
             token.kind == TokenKind.NUMBER -> { digits(decimal = true); complete(OperationShape.Literal(token.start, tokens[cursor - 1].end)) }
             token.kind == TokenKind.STRING || kind(token) == KeywordKind.CONSTANT -> {
-                take(); complete(OperationShape.Literal(token.start, token.end))
+                constantToken(); complete(OperationShape.Literal(token.start, token.end))
             }
             kind(token) == KeywordKind.FUNCTION ||
                 kind(token) != null && token.text == "AnzahlAngegebenerVordrucke" -> {
@@ -214,6 +269,11 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         }
     }
 
+    private fun constantToken() {
+        val token = take()
+        completed(SyntaxSite.Kind.CONSTANT, token.start, token.end)
+    }
+
     private fun digits(decimal: Boolean = false) {
         val token = peek()
         if (token?.kind != TokenKind.NUMBER || token.text.any { it !in '0'..'9' }) fail(SyntaxFailureKind.MATCH)
@@ -224,6 +284,8 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private fun call(): CallShape {
         val operator = take()
         val id = identity(operator)
+        if (operator.text in FORM_CONSTRUCTS && operator.text != "AnzahlAngegebenerVordrucke")
+            completed(SyntaxSite.Kind.FORM_NAME, operator.start, operator.end)
         require("(")
         val operands = mutableListOf<List<Token>>()
         var lastOperandStart = cursor
@@ -273,9 +335,13 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                         take()
                     }
                     Slot.ENTITY -> entity()
-                    Slot.DATE -> date()
+                    Slot.DATE -> {
+                        date()
+                        peek()
+                        sites += SyntaxSite.DateArgument(operator.text, tokens.subList(from, cursor), filterActive)
+                    }
                     Slot.COMPONENT -> component()
-                    null -> argument()
+                    null -> argument(reference = operator.text !in FORM_CONSTRUCTS)
                     }
                 }
                 operands += tokens.subList(from, cursor)
@@ -291,14 +357,17 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             operands[operands.lastIndex] = tokens.subList(lastOperandStart, cursor)
         }
         require(")")
-        return CallShape(operator.text, operator.start, tokens[cursor - 1].end, operands, source).also { calls += it }
+        return CallShape(operator.text, operator.start, tokens[cursor - 1].end, operands, source).also {
+            calls += it
+            completed(SyntaxSite.Kind.CALL, it.at, it.end)
+        }
     }
 
     private fun constant() {
         when {
             consume("-") -> digits(decimal = true)
             peek()?.kind == TokenKind.NUMBER -> digits(decimal = true)
-            peek()?.kind == TokenKind.STRING || kind(peek()) == KeywordKind.CONSTANT -> take()
+            peek()?.kind == TokenKind.STRING || kind(peek()) == KeywordKind.CONSTANT -> constantToken()
             else -> fail(SyntaxFailureKind.DECISION)
         }
     }
@@ -306,7 +375,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private fun date() {
         when {
             name(peek()) || peek()?.text in PATH_STARTS -> entity()
-            peek()?.kind == TokenKind.STRING || identity(peek()) in setOf("Today", "Now", "BaseYear") -> take()
+            peek()?.kind == TokenKind.STRING || identity(peek()) in setOf("Today", "Now", "BaseYear") -> constantToken()
             identity(peek()) in DATE_FUNCTIONS -> call()
             else -> fail(SyntaxFailureKind.DECISION)
         }
@@ -321,20 +390,24 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         }
     }
 
-    private fun argument() {
+    private fun argument(reference: Boolean = true) {
         val token = peek()
-        if (name(token) || token?.text in PATH_STARTS || token?.text in RULE_CONTEXT_SPELLINGS) entity()
+        if (name(token) || token?.text in PATH_STARTS || token?.text in RULE_CONTEXT_SPELLINGS) entity(reference)
         else operation()
-        if (kind(peek()) != null && peek()?.text in LIST_WORDS) { take(); argument() }
+        if (kind(peek()) != null && peek()?.text in LIST_WORDS) { take(); argument(reference) }
     }
 
-    private fun entity() {
+    private fun entity(reference: Boolean = true, indexKey: Boolean = false) {
+        val pathStart = cursor
         val firstToken = peek() ?: fail(SyntaxFailureKind.DECISION)
         val start = firstToken.start
         val outer = consume("$")
         var walked = consume("/") && outer
         fun finishStep() {
-            if (walked) completedSteps[start] = tokens[cursor - 1].end
+            if (walked) {
+                completedSteps[start] = tokens[cursor - 1].end
+                completed(SyntaxSite.Kind.PATH_STEP, start, record = reference)
+            }
         }
         fun step(first: Boolean) {
             if (consume("..")) {
@@ -370,24 +443,42 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             throw RecognitionStop(failure(SyntaxFailureKind.DECISION, firstToken))
         }
         completedSteps[start] = tokens[cursor - 1].end
+        if (!walked) completed(SyntaxSite.Kind.PATH_STEP, start, record = reference)
+        val path = tokens.subList(pathStart, cursor)
+        var indexed = false
+        var filtered = false
         while (true) {
             when {
                 identity(peek()) == "SemanticIndex" -> {
+                    val indexStart = peek()!!.start
                     take()
-                    if (peek()?.kind == TokenKind.STRING) take() else entity()
+                    if (peek()?.kind == TokenKind.STRING) take() else entity(indexKey = true)
+                    completed(SyntaxSite.Kind.INDEX, indexStart)
+                    indexed = true
                 }
                 identity(peek()) == "Having" -> {
-                    take(); filterActive = true; condition()
+                    val keyword = take()
+                    peek()
+                    val entry = SyntaxSite.FilterEntry(start, keyword.end, path, indexed, indexKey)
+                    sites += entry
+                    filterActive = true
+                    condition()
+                    peek()
+                    sites += SyntaxSite.FilterExit(entry, tokens[cursor - 1].end)
+                    filtered = true
                     // KF486: finishing a nested filter clears the flag instead of restoring its parent.
                     filterActive = false
                 }
                 else -> break
             }
         }
-        if (consume("->")) {
+        val category = if (consume("->")) {
             if (!name(peek())) fail(if (walked) SyntaxFailureKind.MATCH else SyntaxFailureKind.DECISION)
             take()
-        }
+        } else null
+        completed(SyntaxSite.Kind.ENTITY, start, record = reference)
+        if (reference) entities += RecognizedEntity(sites.last() as SyntaxSite.Completion,
+            path, indexKey, filterActive, indexed, filtered, category)
     }
 
     private fun scopeFollows(): Boolean = isText("@") && peek(1)?.text == spellings["FromScope"]?.removePrefix("@")

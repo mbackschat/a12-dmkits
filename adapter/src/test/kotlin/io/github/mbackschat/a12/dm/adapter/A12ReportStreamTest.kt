@@ -13,6 +13,7 @@ import com.mgmtp.a12.kernel.core.tool.a12internal.api.error.IProblem
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.IRule
 import com.mgmtp.a12.kernel.md.model.internal.service.codegen.GroovyCodeGeneratorConfig
 import com.mgmtp.a12.model.notification.RankedNotification
+import io.github.mbackschat.a12.dm.consistency.TextSpan
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
@@ -29,6 +30,90 @@ import java.io.File
 
 /** R5 measures raw/public notification boundaries and member correspondence before report assembly is replaced. */
 class A12ReportStreamTest {
+    @Test
+    fun blankOperationsFollowEarlierReachedFailures() {
+        val host = DocumentModelDraft.named("order-blank-work").locale("en_US")
+            .rootGroup("Order") { it.numberField("Gate") { n -> n.fractionDigits(0) }
+                .numberField("Result") { n -> n.fractionDigits(0) } }.build().toJson()
+        val model = BoundModel.ofJson(host)
+        val gate = model.num("/Order/Gate")
+        val calculation = model.computation(model.num("/Order/Result")).name("Total")
+            .commonPrecondition(gate.filled()).calc(gate.plus(1)).message(Dsl.en("Check total")).build().draft()
+        val validator = RuleValidator()
+        val mismatches = mutableListOf<String>()
+        var count = 0
+        for (missing in listOf(false, true)) for (first in listOf(false, true)) for (second in listOf(false, true)) {
+            val common = calculation.commonPrecondition().let { if (missing) it.replace("Gate", "Missing") else it }
+            val work = calculation.alternatives().single().operation()
+            val computation = DraftComputation(calculation.groupPath(), calculation.name(), calculation.computedFieldRelPath(),
+                common, listOf(first, second).map { blank ->
+                    DraftComputation.Alternative(calculation.commonPrecondition(), if (blank) "" else work)
+                }, calculation.errorCodesToSuppress(), calculation.roundingMode(), calculation.messages())
+            val json = validator.inject(host, computation)
+            val expected = when {
+                missing -> listOf("MVK_INVALID_ENTITY")
+                first || second -> listOf("MVK_UNEXPECTED_TOKEN")
+                else -> emptyList()
+            }
+            val whole = originalOutcome(json)
+            val id = "$missing:$first:$second"
+            assertEquals(null, whole.failure, id)
+            assertEquals(expected, whole.callbacks.map { code(it.message) }.filter { it.startsWith("MVK_") }, "$id kernel")
+            val portable = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }
+            if (expected != portable) mismatches += "$id: expected $expected, portable $portable"
+            count++
+        }
+        assertEquals(8, count)
+        assertEquals(emptyList<String>(), mismatches)
+    }
+
+    @Test
+    fun repeatedLocalFailuresStopAtTheirFirstReachedAction() {
+        val host = DocumentModelDraft.named("order-report-compatibility").locale("en_US")
+            .rootGroup("Order") { it
+                .numberField("Gate") { n -> n.fractionDigits(0) }
+                .numberField("Left") { n -> n.fractionDigits(0) }
+                .numberField("Right") { n -> n.fractionDigits(0) }
+                .numberField("Result") { n -> n.fractionDigits(0) }
+                .group("Shipping") { g -> g.stringField("City") { } }
+                .group("Billing") { g -> g.stringField("City") { } } }.build().toJson()
+        val model = BoundModel.ofJson(host)
+        val gate = model.num("/Order/Gate")
+        val rule = model.rule(model.group("/Order")).name("Addresses").errorField(gate)
+            .`when`(gate.filled().and(Dsl.allGroupsFilled(model.group("/Order/Shipping"), model.group("/Order/Billing"))))
+            .code("ADDRESSES").message(Dsl.en("Check addresses")).build().draft()
+        val calculation = model.computation(model.num("/Order/Result")).name("Total")
+            .commonPrecondition(gate.filled().and(model.num("/Order/Left").gt(0)))
+            .calc(model.num("/Order/Right").plus(1)).message(Dsl.en("Check total")).build().draft()
+        val validator = RuleValidator()
+        var count = 0
+        for (first in listOf(false, true)) for (second in listOf(false, true)) {
+            val firstCall = rule.errorCondition().let { if (first) it.replace("Billing", "Shipping") else it }
+            val secondCall = rule.errorCondition().let { if (second) it.replace("Shipping", "Billing") else it }
+            val computation = DraftComputation(calculation.groupPath(), calculation.name(), calculation.computedFieldRelPath(),
+                calculation.commonPrecondition().let { if (first) it.replace("[Left]", "[MissingOne]") else it },
+                calculation.alternatives().map { alternative -> DraftComputation.Alternative(alternative.precondition(),
+                    alternative.operation().let { if (second) it.replace("[Right]", "[MissingTwo]") else it }) },
+                calculation.errorCodesToSuppress(), calculation.roundingMode(), calculation.messages())
+            for ((carrier, json, code) in listOf(
+                Triple("rule", validator.inject(host, rule.withErrorCondition("$firstCall And $secondCall")), "MVK_DUPLICATE_PARAM1"),
+                Triple("computation", validator.inject(host, computation), "MVK_INVALID_ENTITY"))) {
+                val id = "$carrier:$first:$second"
+                val expected = if (first || second) listOf(code) else emptyList()
+                val prepared = KernelModelPreparation.expand(json, ReferenceResolvers.selfContained())
+                val raw = mutableListOf<RankedNotification>()
+                prepared.service().generateValidationCode(prepared.model(), GroovyCodeGeneratorConfig(null), null) { raw += it }
+                val whole = originalOutcome(json)
+                assertEquals(null, whole.failure, id)
+                assertEquals(if (carrier == "computation") expected + expected else expected, raw.map { code(it.message) }, "$id raw")
+                assertEquals(expected, whole.callbacks.map { code(it.message) }, "$id public")
+                assertEquals(expected, check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }, "$id portable")
+                count++
+            }
+        }
+        assertEquals(8, count)
+    }
+
     @Test
     fun versionCompletedReportHostsKeepTheirDeclarations() = reportHosts(HostCompletion.VERSION)
 
@@ -98,7 +183,14 @@ class A12ReportStreamTest {
                 val outcome = originalOutcome(json)
                 val reported = outcome.callbacks.map { code(it.message) }
                 val a12 = kernelModelClasses(json)
-                val ours = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }
+                val report = check(ModelSource(json))
+                val findings = report.findings.filter { it.justifiesRejection }
+                val ours = findings.map { it.code }
+                if (completion == HostCompletion.METADATA && outcome.failure == null) {
+                    if (ours != reported) misses += "$id: completed report differs: A12=$reported, portable=$ours"
+                    if (case.id == "repeat" && suffix == "completed")
+                        assertEquals(listOf(TextSpan("errorCondition", 12, 23)), findings.map { it.span }, id)
+                }
                 val expectedCodes = if (suffix == "completed") case.completedCodes else case.controlCodes
                 val failureType = when {
                     suffix == "completed" && case.control == HostControl.FIRST_RULE_NAME -> IllegalArgumentException::class.java
