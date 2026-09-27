@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.modelkit.ElementDraft
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText
+import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -18,13 +19,15 @@ internal object HarvestedCheckerPopulation {
     private val mapper = ObjectMapper()
     private val validator = RuleValidator()
 
-    fun completed(original: String): String {
+    fun completed(original: String, expectedHostClasses: Set<String> = emptySet()): String {
         val source = ModelDocument.read(original)
         val state = source.authoredState()
         val root = state.groups().keys.single { it.count { c -> c == '/' } == 1 }
         val host = ModelDocument.read(DocumentModelDraft.named(source.id()).locale("en_US")
             .rootGroup(root.removePrefix("/")) { }.build().toJson())
         source.config().conditionLanguage().takeIf { it.isNotEmpty() }?.let { host.setConditionLanguage(it) }
+        source.baseYear().ifPresent { host.setBaseYear(it) }
+        assertEquals(source.baseYear(), host.baseYear(), "Base Year survives completion")
         for (element in state.elements()) {
             val path = element.path()
             val parent = path.substringBeforeLast('/')
@@ -57,7 +60,7 @@ internal object HarvestedCheckerPopulation {
         assertEquals(state.groups().mapValues { it.value.structure() },
             host.authoredState().groups().mapValues { it.value.structure() }, "group structure survives completion")
         val json = host.toJson()
-        assertEquals(emptySet<String>(), kernelModelClasses(json), "completed host control")
+        assertEquals(expectedHostClasses, kernelModelClasses(json), "completed host control")
         val declaration = state.elements().single { it.type() == ElementType.RULE || it.type() == ElementType.COMPUTATION }
         val tree = mapper.readTree(original)
         val body = tree.findValues(declaration.type().wireName()).single()
@@ -73,6 +76,9 @@ internal object HarvestedCheckerPopulation {
                 .severity(body.path("severity").asText("ERROR")).messages(messages).build())
             ElementType.COMPUTATION -> validator.inject(json, DraftComputation.builder().groupPath(group).name(name)
                 .computedFieldRelPath(body.path("computedFieldRelPath").asText())
+                .commonPrecondition(body.get("commonPrecondition")?.asText())
+                .errorCodesToSuppress(body.path("errorCodesToSuppress").map { it.asText() })
+                .roundingMode(body.get("roundingMode")?.asText()?.let(RoundingMode::fromWire))
                 .alternatives(body.path("computationAlternatives").map {
                     DraftComputation.Alternative(it.get("precondition")?.asText(), it.path("operation").asText())
                 }).messages(messages).build())
@@ -84,11 +90,15 @@ internal object HarvestedCheckerPopulation {
         val expectedBody = body.deepCopy<ObjectNode>()
         when (declaration.type()) {
             ElementType.RULE -> expectedBody.put("severity", body.path("severity").asText("ERROR"))
-            ElementType.COMPUTATION -> expectedBody.remove("errorCode")
+            ElementType.COMPUTATION -> {
+                expectedBody.remove("errorCode")
+                if (expectedBody.path("errorCodesToSuppress").isArray &&
+                    expectedBody.path("errorCodesToSuppress").isEmpty) expectedBody.remove("errorCodesToSuppress")
+            }
             else -> error("not a harvested declaration")
         }
         assertEquals(expectedBody, mapper.readTree(completed).findValues(declaration.type().wireName()).single(),
-            "declaration survives completion, except default severity and the stray computation errorCode")
+            "declaration survives completion, except default severity, empty suppression and the stray computation errorCode")
         return completed
     }
 }

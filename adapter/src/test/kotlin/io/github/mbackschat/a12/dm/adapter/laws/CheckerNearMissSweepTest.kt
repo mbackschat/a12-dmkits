@@ -45,6 +45,50 @@ class CheckerNearMissSweepTest {
     private val validator = RuleValidator()
 
     @Test
+    fun harvestedOperationsPreserveTheirKernelComparisonPopulation() {
+        val clusters = sortedMapOf<String, Int>()
+        val examples = mutableListOf<String>()
+        var compared = 0
+        fun compare(id: String, model: String, expected: Set<String>) {
+            val a12 = kernelModelClasses(model)
+            assertEquals(expected, a12, id)
+            val ours = check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            compared++
+            checkerVerdict(a12, ours)?.let { verdict ->
+                val signature = key(verdict, a12, ours)
+                clusters[signature] = clusters.getOrDefault(signature, 0) + 1
+                examples += "$signature\t$id"
+            }
+        }
+        for (row in OperationHarvest.checks()) {
+            val id = row.get("id").asText()
+            val original = row.get("model").asText()
+            compare("original:$id", original, row.get("originalKernelClasses").map { it.asText() }.toSet())
+            val completed = HarvestedCheckerPopulation.completed(original,
+                row.get("hostClasses").map { it.asText() }.toSet())
+            compare("completed:$id", completed, row.get("completedKernelClasses").map { it.asText() }.toSet())
+        }
+        for (row in OperationHarvest.laws()) {
+            val expected = row.get("observedClasses").map { it.asText() }
+            val assertion = row.get("assertion").asText()
+            val claimed = row.get("classes").map { it.asText() }
+            when (assertion) {
+                "admitted" -> assertEquals(emptyList<String>(), expected)
+                "contains" -> assertTrue(expected.containsAll(claimed) && claimed.isNotEmpty())
+                "ordered" -> assertEquals(claimed, expected)
+                else -> error("unknown harvested assertion: $assertion")
+            }
+            compare("law:${row.get("id").asText()}", row.get("model").asText(), expected.toSet())
+        }
+        assertEquals(419, compared, "183 original + 183 completed + 53 laws")
+        val directory = File("build/checker-near-miss").apply { mkdirs() }
+        File(directory, "operation-harvest.tsv").writeText(render(clusters))
+        File(directory, "operation-harvest-examples.tsv").writeText(examples.joinToString("\n"))
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/operation-harvest.tsv")).readText(),
+            render(clusters))
+    }
+
+    @Test
     fun numericNamesHaveOnlyLedgeredDifferences() {
         assertModelLedger(NumericNamePopulation.rows(), 27, "numeric-names")
     }
