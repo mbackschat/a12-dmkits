@@ -4,6 +4,8 @@ Every run of the routine performance gate writes one **text** file here. Nothing
 
 **Coverage starts where each environment's first file does** — `linux-amd64-ci/2026-08-11T183803Z`, `darwin-aarch64/2026-08-13T231207Z`. Seven `darwin-aarch64` runs cited in the docs, dated 2026-08-11 to 2026-08-13, are **gone**: they were measured while the gate still emitted to `adapter/build/perf-observations.jsonl`, so `clean` took them. Those citations keep the run id as a plain code span and carry no link, which is why `DocRelativeLinkGuardTest` is green rather than excusing them. This is the concrete loss the "never store surviving data under `build/`" rule was adopted to stop, and it is why a record here is committed the moment it is written.
 
+The separate [footprint capture](footprint/2026-09-28-numeric-tokens/README.md) retains native worker JSON for the standing heap anchor and its original-reader control. It is not a routine JSON-Lines run and is not consumed by the timing history tools.
+
 **Layout.** `perf-results/<environment>/<utc-timestamp>.jsonl`, one file per run. The environment key is `<os>-<arch>[-ci]`, so a laptop and a hosted runner never mix: absolute timings are only comparable within one of them.
 
 **Format.** JSON Lines, no database, no binary. Line 1 is the run header, then one line per record. Four kinds follow it, told apart by `kind`: an **`observation`** (one engine's median for one lane/scenario/scale/clock), a **`warm`** outcome (how one engine instance's steady-state warm ended), a **`cost`** row (what one lane spent measuring one scenario), and a **`margin`** row (one kernel arm's cross-engine headroom, against its committed floor).
