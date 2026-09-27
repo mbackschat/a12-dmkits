@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.modelkit.SortOrder
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -26,6 +27,11 @@ class FieldVariantStageLawsTest {
         assertPredictions(FieldVariantPopulation.mixedRows(), 78)
     }
 
+    @Test
+    fun orderingReferencesUseThePredictedVariantLookup() {
+        assertPredictions(FieldVariantPopulation.orderingLookupRows(), 30)
+    }
+
     private fun assertPredictions(rows: List<FieldVariantPopulation.Row>, expectedSize: Int) {
         assertEquals(expectedSize, rows.size, "the partition's frozen witness denominator")
         assertEquals(rows.size, rows.map { it.label }.distinct().size, "each witness must have a distinct label")
@@ -44,6 +50,11 @@ class FieldVariantStageLawsTest {
     @Test
     fun theMixedFieldPopulationHasOnlyLedgeredCheckerDifferences() {
         assertLedger(FieldVariantPopulation.mixedRows(), 78, "variants-mixed")
+    }
+
+    @Test
+    fun theOrderingPopulationHasOnlyLedgeredCheckerDifferences() {
+        assertLedger(FieldVariantPopulation.orderingLookupRows(), 30, "variants-ordering")
     }
 
     private fun assertLedger(rows: List<FieldVariantPopulation.Row>, expectedSize: Int, name: String) {
@@ -75,7 +86,7 @@ class FieldVariantStageLawsTest {
 
 }
 
-/** P3: each defect and its valid control, each under all three default-variant filter modes. */
+/** P3 uses one generator so kernel predictions and checker comparisons receive identical models. */
 internal object FieldVariantPopulation {
     private val mapper = ObjectMapper()
     private val order = DocumentModelDraft.named("order-variant-stages").locale("en_US")
@@ -89,6 +100,8 @@ internal object FieldVariantPopulation {
         .build().toJson()
 
     enum class Filter { ABSENT, ONLY, ALL_EXCEPT }
+
+    private enum class Ordering { INDEX, SORT }
 
     private enum class FilterEffect { REMOVES_REFUSAL, RETAINS_REFUSAL }
 
@@ -260,6 +273,79 @@ internal object FieldVariantPopulation {
             row("null mode", true) { it.putObject("variantFilter").putNull("filterType") },
             row("object mode", true) { it.putObject("variantFilter").putObject("filterType") },
             row("numeric mode", true) { it.putObject("variantFilter").put("filterType", 9) },
+        )
+    }
+
+    fun orderingLookupRows(): List<Row> = Ordering.entries.flatMap { ordering ->
+        val base = DocumentModelDraft.named("order-variant-lookup").locale("en_US")
+            .rootGroup("Order") { root -> root.stringField("Key") { it.lineBreaks() }
+                .group("Items") { items ->
+                    items.repeatable(2).stringField("Key") { it.lineBreaks() }
+                        .stringField("Spare") { it.lineBreaks() }
+                    when (ordering) {
+                        Ordering.INDEX -> items.indexField("Key")
+                        Ordering.SORT -> items.sortField("Key", SortOrder.ASC)
+                    }
+                } }.build().toJson()
+        val invalid = "MVK_INVALID_${ordering.name}_FIELD"
+        val raw = "MVK_${ordering.name}_FIELD_NO_VALUE_VALIDATION"
+        fun element(group: ObjectNode, name: String): ObjectNode =
+            group.withArray("elements").single { it.path("name").asText() == name } as ObjectNode
+        fun filter(group: ObjectNode, name: String, mode: Filter = Filter.ONLY) {
+            element(group, name).withObject("/Field/variantFilter").put("filterType", mode.name)
+                .putArray("variants").add("premium")
+        }
+        fun raw(group: ObjectNode, name: String) {
+            element(group, name).withObject("/Field/fieldType/StringType").put("noValueValidation", true)
+        }
+        fun remove(group: ObjectNode) {
+            val elements = group.withArray("elements")
+            elements.remove(elements.indexOfFirst { it.path("name").asText() == "Key" })
+        }
+        fun row(
+            label: String,
+            reference: String = "Key",
+            code: String? = null,
+            mutate: (ObjectNode, ObjectNode) -> Unit = { _, _ -> },
+        ): Row {
+            val root = mapper.readTree(base) as ObjectNode
+            val parent = root.withObject("/content/modelRoot/rootGroups/0/Group")
+            val local = element(parent, "Items").withObject("/Group")
+            when (ordering) {
+                Ordering.INDEX -> local.put("indexFieldName", reference)
+                Ordering.SORT -> (local.withArray("sortFields").get(0) as ObjectNode).put("name", reference)
+            }
+            mutate(parent, local)
+            return Row("ordering/$ordering/$label", root.toString(), code?.let(::setOf) ?: emptySet())
+        }
+        listOf(
+            row("direct control"),
+            row("direct ONLY", code = invalid) { _, local -> filter(local, "Key") },
+            row("direct ALL_EXCEPT") { _, local -> filter(local, "Key", Filter.ALL_EXCEPT) },
+            row("direct absent", code = "CK_MODEL_NOT_BUILDABLE") { _, local -> remove(local) },
+            row("remote control", "../Key"),
+            row("remote ONLY", "../Key") { parent, _ -> filter(parent, "Key") },
+            row("remote absent", "../Key", "CK_MODEL_NOT_BUILDABLE") { parent, _ -> remove(parent) },
+            row("local ONLY", "../Key", invalid) { _, local -> filter(local, "Key") },
+            row("both ONLY", "../Key", invalid) { parent, local -> filter(parent, "Key"); filter(local, "Key") },
+            row("local absent", "../Key", invalid) { _, local -> remove(local) },
+            row("remote raw", "../Key") { parent, _ -> raw(parent, "Key") },
+            row("local raw", "../Key", raw) { _, local -> raw(local, "Key") },
+            row("first twin filtered", code = raw) { _, local ->
+                filter(local, "Key")
+                raw(local, "Spare")
+                element(local, "Spare").put("name", "Key")
+            },
+            row("second twin filtered", code = raw) { _, local ->
+                filter(local, "Spare")
+                raw(local, "Key")
+                element(local, "Spare").put("name", "Key")
+            },
+            row("both twins filtered", code = invalid) { _, local ->
+                filter(local, "Key")
+                filter(local, "Spare")
+                element(local, "Spare").put("name", "Key")
+            },
         )
     }
 

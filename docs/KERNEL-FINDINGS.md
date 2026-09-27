@@ -5743,7 +5743,7 @@ The two members a stored rule cannot work without, measured because `Rule.Builde
 
 *(Locked: `rulekit.validate.laws.ElementNameUniquenessLawsTest` — three grids, each with its own control.)*
 
-## §10 supplement — a group's `indexFieldName` and `sortFields[].name`: resolved from the group, judged by what they land on (`checkConsistency`, measured, 2026-09-12) <a id="kf295"></a>
+## §10 supplement — a group's `indexFieldName` and `sortFields[].name`: original binding, then the local surviving short name (`checkConsistency`, measured, 2026-09-12; extended 2026-09-27) <a id="kf295"></a>
 
 > Fold: not-foldable — a model-structure reference law on the group element, outside the evaluation scope.
 
@@ -5774,7 +5774,7 @@ The two relative field references A12 declares on a GROUP. No lock covered eithe
 | `../Sku` from `/Order/Items`, with NO `/Order/Sku` | **NOT BUILDABLE** — it lands on nothing, so it never reaches the second gate |
 | `../Label` from `/Order/Items`, with `/Order/Sku` declared | `MVK_INVALID_INDEX_FIELD` — the NAME decides, not the duplication |
 
-**And passing both gates is still not sufficient: the landed field's own TYPE is gated.** A `noValueValidation` string draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION`, and as a sort field `MVK_SORT_FIELD_NO_VALUE_VALIDATION`, even as a direct child of its group. Every admitted row above names a plain value-validating string, so "a field of this group" and "a field A12 will accept as a key" were one predicate across the whole set. *(Amended 2026-09-12: this said the table-enum gate beside it, `MVK_INDEX_FIELD_NO_TABLE_ENUM`, was unmeasured. It is now measured and DEAD for A12 input — the shape it rejects cannot be read at all — and the whole type gate, including the index/sort asymmetry in its source, is enumerated in [KF296](#kf296).)*
+**And passing both gates is still not sufficient: the selected local field's TYPE is gated.** A `noValueValidation` string draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION`, and as a sort field `MVK_SORT_FIELD_NO_VALUE_VALIDATION`, even as a direct child of its group. Every admitted row above names a plain value-validating string, so "a field of this group" and "a field A12 will accept as a key" were one predicate across the whole set. *(Amended 2026-09-12: this said the table-enum gate beside it, `MVK_INDEX_FIELD_NO_TABLE_ENUM`, was unmeasured. It is now measured and DEAD for A12 input — the shape it rejects cannot be read at all — and the whole type gate, including the index/sort asymmetry in its source, is enumerated in [KF296](#kf296). Corrected 2026-09-27: “landed field” was ambiguous between the remote referent and the selected local field; the controls below distinguish them.)*
 
 **An ABSENT member is legal and a BLANK one is fatal**, which inverts the blank-counts-as-absent law three sibling slots follow ([KF290](#kf290), [KF291](#kf291)) and does so in the harshest direction available.
 
@@ -5786,11 +5786,26 @@ The two relative field references A12 declares on a GROUP. No lock covered eithe
 
 *(Locked: `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest` — one assertion per member.)*
 
+**Default-variant discrimination (measured 2026-09-27, Kernel 30.8.1).** On an authored Order model, `/Order/Key` and repeatable `/Order/Items/Key` share a name. For both index and ascending sort, `Key` or `../Key` is read from Items. All fields are String with line breaks permitted; `raw` below changes only noValueValidation. The original binding followed by surviving-local-name account predicts all 30 inputs (15 scenarios per member), including the remote/local 2×2 ONLY-filter cross. These are class-set admission observations through `BoundModel.ofJson` and the kernel consistency check, not a trace of internal timing.
+
+| Discriminating input | Observed on each member |
+|---|---|
+| direct Key, local ONLY premium / ALL_EXCEPT premium / physically absent | member's INVALID_FIELD / admitted / load-build refusal |
+| ../Key, remote ONLY premium / physically absent, local present | admitted / load-build refusal |
+| ../Key, local ONLY premium or absent, remote present; both remote and local ONLY | member's INVALID_FIELD |
+| ../Key, only remote raw / only local raw | admitted / member's FIELD_NO_VALUE_VALIDATION |
+| direct Key, two local declarations of that name with distinct ids: first filtered and second raw; then first raw and second filtered | member's FIELD_NO_VALUE_VALIDATION in both positions |
+| same two local declarations, both filtered | member's INVALID_FIELD |
+
+Thus filtering the initial binding would give the wrong outcome, and preserving an original first match for the local lookup would miss the surviving second twin's type. The exact classes are MVK_INVALID_INDEX_FIELD / MVK_INVALID_SORT_FIELD and MVK_INDEX_FIELD_NO_VALUE_VALIDATION / MVK_SORT_FIELD_NO_VALUE_VALIDATION. Load/build is the harness's combined CK_MODEL_NOT_BUILDABLE category. Locale en_US, one nested repeatable group, no rules, computations or mounts are fixed; group filtering, deeper topology, order/site/multiplicity and runtime behavior are unmeasured. The BA search for variant, indexFieldName, sortFields and both invalid-field classes returned only two unrelated variant paragraphs; it supplied no contract for this contrast.
+
+*Locked by:* `adapter.laws.FieldVariantStageLawsTest.orderingReferencesUseThePredictedVariantLookup`; the identical 30 inputs reach O1 in `theOrderingPopulationHasOnlyLedgeredCheckerDifferences` with [variants-ordering.tsv](../adapter/src/test/resources/checker-near-miss/variants-ordering.tsv). [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md) retains the pre-run predictions and evidence limits.
+
 ## §10 supplement — the ordering members' TYPE gate: a pair of live codes, and one that no stored A12 model can reach (`checkConsistency`, measured + source-verified, 2026-09-12) <a id="kf296"></a>
 
 > Fold: not-foldable — a model-structure law on the group element, outside the evaluation scope.
 
-[KF295](#kf295) established that a group's `indexFieldName` / `sortFields[].name` must resolve to one of the group's own fields, and noted that the landed field's own TYPE is gated beyond that. This entry enumerates that gate, because "the type is gated too" turned out to name three source branches of which only two can fire.
+[KF295](#kf295) established that a group's `indexFieldName` / `sortFields[].name` must first resolve to a field, then its short name selects a local field whose TYPE is gated. Corrected 2026-09-27: a remote referent can supply the name; KF295's remote/local raw-String controls establish that the selected local field supplies the type. This entry enumerates that gate, because "the type is gated too" turned out to name three source branches of which only two can fire.
 
 **`NoMetaModelChecks.checkIndexField` runs three gates and returns at the first that fires**, so a type verdict is only ever reached by a reference that already resolved — the two verdicts are exclusive, never cumulative:
 
