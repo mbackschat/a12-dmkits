@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Runs {@code scripts/selftest-test-evidence.sh}, so the evidence reporter's own controls execute in the build
@@ -37,8 +38,9 @@ class TestEvidenceScriptTest {
     private static final int MIN_CASES = 8;
 
     @Test
-    void everyEvidenceReporterSelftestCasePasses() throws Exception {
+    void everyEvidenceReporterSelftestCasePasses(@TempDir Path scratch) throws Exception {
         var builder = CHECKOUT.command(List.of("/bin/bash", CHECKOUT.resolve("scripts/selftest-test-evidence.sh").toString()));
+        builder.environment().put("TMPDIR", scratch.toString());
         builder.redirectErrorStream(true);
 
         Process process = builder.start();
@@ -52,6 +54,9 @@ class TestEvidenceScriptTest {
 
         assertEquals(0, exitCode, () -> "scripts/selftest-test-evidence.sh failed. That script is what stops a "
                 + "build verdict being believed on the strength of result files an earlier run wrote:\n" + output);
+        try (var leftovers = Files.list(scratch)) {
+            assertEquals(List.of(), leftovers.toList(), "the selftest must remove every fixture tree on exit");
+        }
     }
 
     @Test

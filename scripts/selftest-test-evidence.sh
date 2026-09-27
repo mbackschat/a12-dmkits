@@ -26,20 +26,18 @@ check() {
 }
 
 trees=()
-cleanup() { local t; for t in "${trees[@]:-}"; do [[ -n "$t" ]] && rm -rf "$t"; done; return 0; }
+cleanup() { local t; for t in "${trees[@]:-}"; do [[ -n "$t" ]] && /bin/rm -rf "$t"; done; return 0; }
 trap cleanup EXIT
 
 # A fabricated repository: the script locates its root as `dirname $0/..`, so a copy under `<tmp>/scripts`
 # makes `<tmp>` the tree it scans. Nothing here touches the real build.
 mk_tree() {
-  local tmp
-  tmp="$(mktemp -d)"
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/a12-test-evidence.XXXXXX")"
+  trees+=("$tmp")
   mkdir -p "$tmp/scripts/typescript" "$tmp/build"
   cp "$SCRIPT" "$tmp/scripts/test-evidence.sh"
   cp "$TYPESCRIPT_LAUNCHER" "$tmp/scripts/run-typescript.sh"
   cp "$IMPLEMENTATION" "$tmp/scripts/typescript/test-evidence.ts"
-  trees+=("$tmp")
-  printf '%s\n' "$tmp"
 }
 
 suite() { printf '<testsuite name="%s" tests="%s" failures="0" errors="0"/>\n' "$1" "$2"; }
@@ -48,7 +46,7 @@ run() { /bin/dash "$1/scripts/test-evidence.sh" "$1/build/run.log" 2>&1; }
 # ---- the measured incident: a directory whose task this log never mentions -----------------------------------
 echo "does NOT count — results the run did not produce"
 
-tmp="$(mk_tree)"
+mk_tree
 mkdir -p "$tmp/build/test-results/docGuardTest" "$tmp/cli/build/test-results/docGuardTest"
 printf '> Task :cli:docGuardTest\nBUILD SUCCESSFUL in 6s\n' > "$tmp/build/run.log"
 sleep 1
@@ -63,7 +61,7 @@ check "…and its tests are not added to the total" \
 check "the task the log DOES report is counted" \
   "70" "$(grep -oE '[0-9]+ tests' <<<"$out" | head -1 | grep -oE '[0-9]+')"
 
-tmp="$(mk_tree)"
+mk_tree
 mkdir -p "$tmp/cli/build/test-results/docGuardTest"
 printf '> Task :cli:docGuardTest FROM-CACHE\nBUILD SUCCESSFUL in 2s\n' > "$tmp/build/run.log"
 sleep 1
@@ -76,7 +74,7 @@ check "a FROM-CACHE task is not reported as this run's execution" \
 # ---- the original defect: an executed task's unmatched siblings ----------------------------------------------
 echo "does NOT count — stale classes inside a task that DID run"
 
-tmp="$(mk_tree)"
+mk_tree
 mkdir -p "$tmp/cli/build/test-results/docGuardTest"
 printf '> Task :cli:docGuardTest\nBUILD SUCCESSFUL in 2s\n' > "$tmp/build/run.log"
 suite Old 500 > "$tmp/cli/build/test-results/docGuardTest/TEST-Old.xml"
@@ -91,7 +89,7 @@ check "a --tests filter's unmatched siblings stay out of the count" \
 # ---- does count: the ordinary run ----------------------------------------------------------------------------
 echo "does count — what the run actually executed"
 
-tmp="$(mk_tree)"
+mk_tree
 mkdir -p "$tmp/build/test-results/docGuardTest" "$tmp/cli/build/test-results/docGuardTest"
 printf '> Task :docGuardTest\n> Task :cli:docGuardTest\nBUILD SUCCESSFUL in 6s\n' > "$tmp/build/run.log"
 sleep 1
@@ -107,7 +105,7 @@ out="$(/bin/dash "$tmp/scripts/test-evidence.sh" --class CliReal "$tmp/build/run
 check "the class report credits the matching in-run class and its count" \
   "credited" "$(grep -q 'CliReal.*YES.*70 tests, 0 failures' <<<"$out" && echo credited || echo withheld)"
 
-tmp="$(mk_tree)"
+mk_tree
 mkdir -p "$tmp/cli/build/test-results/docGuardTest"
 printf '> Task :cli:docGuardTest\nBUILD SUCCESSFUL in 2s\n' > "$tmp/build/run.log"
 sleep 1
@@ -121,7 +119,7 @@ check "valid single-quoted XML attributes retain their counts" \
 # A later execution overwrites XML while the completed log stays unchanged (G-EVIDENCE, 2026-09-27).
 echo 'does NOT count — newer results beside a historical log'
 
-tmp="$(mk_tree)"
+mk_tree
 mkdir -p "$tmp/cli/build/test-results/docGuardTest"
 printf '> Task :cli:docGuardTest FAILED\n4 tests completed, 4 failed\nBUILD FAILED in 2s\n' > "$tmp/build/run.log"
 sleep 1
@@ -137,7 +135,7 @@ check "the class report must not credit the later execution either" \
 echo 'the cutoff — derived from the log verdict, not from metadata that `>` does not reset'
 
 now="$(date +%s)"
-tmp="$(mk_tree)"
+mk_tree
 mkdir -p "$tmp/build"
 printf '> Task :x\nBUILD SUCCESSFUL in 1s\n' > "$tmp/build/run.log"
 # A reused path keeps its birth time; only the mtime moves. Pushing the mtime far out is the same shape as a
@@ -147,14 +145,14 @@ cutoff="$(/bin/dash "$tmp/scripts/test-evidence.sh" --print-cutoff "$tmp/build/r
 check "a stale birth time cannot pin the cutoff — the verdict line wins" \
   "later" "$(awk -v c="$cutoff" -v n="$now" 'BEGIN { print (c > n + 31536000) ? "later" : "at-birth" }')"
 
-tmp="$(mk_tree)"
+mk_tree
 mkdir -p "$tmp/build"
 printf '> Task :x\nBUILD SUCCESSFUL in 3600s\n' > "$tmp/build/run.log"
 cutoff="$(/bin/dash "$tmp/scripts/test-evidence.sh" --print-cutoff "$tmp/build/run.log")"
 check "…and on a freshly created log the birth time still wins, so a long run does not widen the window" \
   "at-birth" "$(awk -v c="$cutoff" -v n="$now" 'BEGIN { print (c > n - 60) ? "at-birth" : "widened" }')"
 
-tmp="$(mk_tree)"
+mk_tree
 mkdir -p "$tmp/build"
 printf '> Task :x\n' > "$tmp/build/run.log"
 out="$(run "$tmp")"
