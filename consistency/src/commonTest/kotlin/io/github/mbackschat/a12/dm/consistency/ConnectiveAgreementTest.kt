@@ -1,11 +1,16 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.KeywordKind
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
+import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailure
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -148,9 +153,18 @@ class ConnectiveAgreementTest {
      */
     @Test
     fun theGermanConnectivesAreJudgedInAGermanModelOnly() {
+        val words = CONDITION_OPERATOR_KEYWORDS.getValue(ConditionLanguage.DE)
+        val germanA = "${words.getValue("FieldFilled")}(Price)"
+        val germanB = "${words.getValue("FieldFilled")}(Sku)"
+        val germanC = "${words.getValue("FieldNotFilled")}(Price)"
+        val mixed = "$germanA Und $germanB Oder $germanC"
+        val single = "$germanA Und $germanB"
+        assertNull(shapeFailure(mixed, ConditionLanguage.DE, SyntaxEntry.CONDITION))
+        assertNull(shapeFailure(single, ConditionLanguage.DE, SyntaxEntry.CONDITION))
+        assertNotNull(shapeFailure("$a Und $b Oder $c", ConditionLanguage.DE, SyntaxEntry.CONDITION))
         val actual = mutableMapOf<String, List<String>>()
-        actual["a German mix in a German model"] = codesFor("$a Und $b Oder $c", language = "de_DE")
-        actual["a German single connective — the liveness control"] = codesFor("$a Und $b", language = "de_DE")
+        actual["a German mix in a German model"] = codesFor(mixed, language = "de_DE")
+        actual["a German single connective — the liveness control"] = codesFor(single, language = "de_DE")
         actual["an English mix in an English model"] = codesFor("$a And $b Or $c")
         actual["a German mix in an ENGLISH model"] = codesFor("$a Und $b Oder $c")
 
@@ -186,8 +200,12 @@ class ConnectiveAgreementTest {
         actual["both in non-canonical case"] = codesFor("(FieldFilled(A) and FieldFilled(B) OR FieldFilled(A))")
         actual["a case the lexer does NOT resolve"] =
             codesFor("(FieldFilled(A) aNd FieldFilled(B) Or FieldFilled(A))")
-        actual["German ODER against Und"] =
-            codesFor("(FeldGefuellt(A) Und FeldGefuellt(B) ODER FeldGefuellt(A))", "de_DE")
+        val filled = CONDITION_OPERATOR_KEYWORDS.getValue(ConditionLanguage.DE).getValue("FieldFilled")
+        val german = "($filled(A) Und $filled(B) ODER $filled(A))"
+        assertNull(shapeFailure(german, ConditionLanguage.DE, SyntaxEntry.CONDITION))
+        assertNotNull(shapeFailure("(FeldGefuellt(A) Und FeldGefuellt(B) ODER FeldGefuellt(A))",
+            ConditionLanguage.DE, SyntaxEntry.CONDITION))
+        actual["German ODER against Und"] = codesFor(german, "de_DE")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["the canonical mix — the control"] = listOf("MVK_BRACKET_MISSING")
