@@ -45,6 +45,30 @@ class CheckerNearMissSweepTest {
     private val validator = RuleValidator()
 
     @Test
+    fun numericNamesHaveOnlyLedgeredDifferences() {
+        val rows = NumericNamePopulation.rows()
+        assertEquals(27, rows.size)
+        assertEquals(27, rows.map { it.id }.distinct().size)
+        val predictions = mutableListOf<String>()
+        val clusters = sortedMapOf<String, Int>()
+        val examples = mutableListOf<String>()
+        rows.forEach { row ->
+            val a12 = kernelModelClasses(row.model)
+            if (a12 != setOfNotNull(row.expected)) predictions += "${row.id}: $a12"
+            val ours = check(ModelSource(row.model)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            val verdict = checkerVerdict(a12, ours) ?: return@forEach
+            val signature = key(verdict, a12, ours)
+            clusters[signature] = clusters.getOrDefault(signature, 0) + 1
+            examples += "$signature\t${row.id}"
+        }
+        val directory = File("build/checker-near-miss").apply { mkdirs() }
+        File(directory, "numeric-names.tsv").writeText(render(clusters))
+        File(directory, "numeric-names-examples.tsv").writeText(examples.joinToString("\n"))
+        assertEquals(emptyList<String>(), predictions, "kernel predictions differed")
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/numeric-names.tsv")).readText(), render(clusters))
+    }
+
+    @Test
     fun fieldReadActionsHaveOnlyLedgeredDifferences() {
         assertFieldReadLedger(FieldReadPopulation.rows(), 22, "field-reads")
     }
@@ -129,17 +153,28 @@ class CheckerNearMissSweepTest {
 
     @Test
     fun harvestedFieldReadsHaveOnlyLedgeredDifferences() {
-        val rows = ObjectMapper().readTree(checkNotNull(javaClass.getResource(
-            "/checker-near-miss/harvested-field-reads.json")).readText())
         val sources = mapOf(
             "FilterWildcardTest.onlyAStarredRepeatableGroupInsideTheFilterIsReported" to 7,
             "FieldValueReadOperandTest.aStarredReadIsTheStarsClassWhereverTheBracketStands" to 13,
             "FieldValueReadOperandTest.theGatesAnswerInTheirOrderAfterTheReadersOwnClasses" to 19,
             "FieldValueReadOperandTest.theGatesReachEveryCarrierOfTheRead" to 11,
         )
+        assertHarvestedLedger("harvested-field-reads", "field-read-harvest", sources)
+    }
+
+    @Test
+    fun harvestedNumericKeysHaveOnlyLedgeredDifferences() {
+        assertHarvestedLedger("harvested-numeric-keys", "numeric-key-harvest",
+            mapOf("LiteralIndexKeyTest.aDigitSequenceKeyIsAnEntityName" to 18))
+    }
+
+    private fun assertHarvestedLedger(resource: String, ledgerName: String, sources: Map<String, Int>) {
+        val rows = ObjectMapper().readTree(checkNotNull(javaClass.getResource(
+            "/checker-near-miss/$resource.json")).readText())
+        val count = sources.values.sum()
         assertEquals(sources.flatMap { (source, count) -> (1..count).map { "$source#$it" } }.toSet(),
             rows.map { it.get("id").asText() }.toSet())
-        assertEquals(50, rows.size())
+        assertEquals(count, rows.size())
         val clusters = sortedMapOf<String, Int>()
         val predictions = mutableListOf<String>()
         var compared = 0
@@ -157,15 +192,15 @@ class CheckerNearMissSweepTest {
             val id = row.get("id").asText()
             val original = row.get("model").asText()
             assertEquals(setOf("CK_MODEL_NOT_BUILDABLE"), compare(original), id)
-            val a12 = compare(HarvestedFieldReadPopulation.completed(original))
-            val onlyCode = row.get("onlyCode").takeUnless { it.isNull }?.asText()
+            val a12 = compare(HarvestedCheckerPopulation.completed(original))
+            val onlyCode = row.get("onlyCode")?.takeUnless { it.isNull }?.asText()
             val expected = row.get("classes").map { it.asText() }.toSet()
             if (a12.filter { onlyCode == null || it == onlyCode }.toSet() != expected)
                 predictions += "$id: ${a12.sorted()}"
         }
-        assertEquals(100, compared, "both original and completed models reach O1")
+        assertEquals(2 * count, compared, "both original and completed models reach O1")
         assertEquals(emptyList<String>(), predictions, "old expectations versus kernel")
-        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/field-read-harvest.tsv")).readText(),
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/$ledgerName.tsv")).readText(),
             render(clusters))
     }
 

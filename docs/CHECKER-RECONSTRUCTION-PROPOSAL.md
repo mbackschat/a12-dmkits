@@ -254,6 +254,8 @@ Both test classes and their private fixture helpers retire with the replacement.
 
 ### R3b-N contract — numeric entity names
 
+The implemented contract is in [CONSISTENCY-API](CONSISTENCY-API.md#syntax-verdicts-and-positions); the finite matrix below retains the original predictions and deletion obligations.
+
 **Scope.** Close DG93 by binding digit sequences when recognition places them in an entity path. An operation literal, rounding precision, quoted key or application-condition name remains outside entity binding. The existing reference resolver owns existence and addressing checks; there is no new numeric-name family or operator-name table. The interpreter parser, operation typing, default-variant preparation and public report ordering remain outside this partition.
 
 **Representation and compatibility.** Recognition must expose completed entity-path positions, including a digit-led path that completes before a later syntax failure. Unresolved prediction contributes no completed path; a walked path contributes only its completed steps. Preserve the source occurrence, normalized digit spelling (including leading zeros), outer-marker handling and semantic-index key role. Reuse the existing completed-step representation where it carries these facts; do not add a parallel parser or a general event framework. The scanner retains its public malformed-text/name behavior and its use on standalone operand fragments. In particular, numeric keys in fragments still bind when the fragment has no enclosing condition, while an isolated numeric operation remains a literal. The source inventory must cover those fragment consumers before retiring the existing digit-key special case.

@@ -67,6 +67,7 @@ class SemanticsMapResolveTest {
             Path.of("../interpreter/src/commonTest"));
     private static final List<Path> EXPLICIT_LOCK_FILES = List.of(
             Path.of("../consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/FieldReadContractTest.kt"),
+            Path.of("../consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/NumericNameContractTest.kt"),
             Path.of("../consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/SyntaxVerdictTest.kt"),
             Path.of("../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/A12ParseTraceTest.kt"));
     private static final Pattern WORKSPACE_PREPARATION_LOCK =

@@ -599,6 +599,7 @@ tasks.register('semanticsMapGuardTest', Test) {
             'adapter/laws (kotlin)'   : rootProject.fileTree('adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws'),
             'checker syntax verdict lock': rootProject.file('consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/SyntaxVerdictTest.kt'),
             'checker field-read contract lock': rootProject.file('consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/FieldReadContractTest.kt'),
+            'checker numeric-name contract lock': rootProject.file('consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/NumericNameContractTest.kt'),
             'checker syntax trace lock': rootProject.file('adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/A12ParseTraceTest.kt'),
             'adapter preparation locks': rootProject.fileTree(
                     'adapter/src/test/java/io/github/mbackschat/a12/dm/adapter') {

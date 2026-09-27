@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.adapter.laws.NearMissPopulation
 import io.github.mbackschat.a12.dm.adapter.laws.NearMissPopulation.Family
 import io.github.mbackschat.a12.dm.adapter.laws.HarvestedSyntaxPopulation
 import io.github.mbackschat.a12.dm.adapter.laws.FieldReadPopulation
+import io.github.mbackschat.a12.dm.adapter.laws.NumericNamePopulation
 import io.github.mbackschat.a12.dm.adapter.laws.ledgerClass
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
@@ -70,6 +71,18 @@ import com.fasterxml.jackson.databind.ObjectMapper
 class A12ParseTraceTest {
 
     private val validator = RuleValidator()
+
+    @Test
+    fun numericNamesFollowTheirRecognizedRoleAndCompletion() {
+        val rows = NumericNamePopulation.rows()
+        assertEquals(27, rows.size)
+        val observed = rows.map { row ->
+            val service = mvkService(row.model)
+            val rule = (service.iec as ElementContainer).allRules.single()
+            row.id to trace(service, rule, rule.errorConditionText).code
+        }
+        assertEquals(rows.map { it.id to it.expected }, observed)
+    }
 
     @Test
     fun completedFieldReadsFailBeforeTheirEnclosingConstructs() {

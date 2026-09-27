@@ -89,7 +89,7 @@ class CheckerArgumentSlotAgreementTest {
         )
         val wrong = rows.mapNotNull { (text, a12) ->
             val observed = compare("FieldFilled(Total) And $text")
-            val expected = a12 to (OURS[text] ?: a12)
+            val expected = a12 to a12
             if (observed == expected) null else "$text: expected (A12, ours) $expected, observed $observed"
         }
         assertTrue(wrong.isEmpty(), wrong.joinToString("\n", "${wrong.size} of ${rows.size} rows disagree:\n"))
@@ -148,15 +148,5 @@ class CheckerArgumentSlotAgreementTest {
         val TOKEN = setOf("MVK_UNEXPECTED_TOKEN")
         val ENTITY = setOf("MVK_INVALID_ENTITY")
 
-        /**
-         * The rows where the checker answers otherwise, with what it answers: a digit sequence that leads an
-         * entity slot, which the reference scanner does not read as a name
-         * ([CONSISTENCY-GAPS DG93](../../../../../../../../../../../docs/CONSISTENCY-GAPS.md)).
-         */
-        val OURS: Map<String, Set<String>> = mapOf(
-            "FieldFilled(5)" to ADMITTED,
-            "AbsValue(5) > 0" to ADMITTED,
-            "MinValue(1 + Items*/Count) > 1" to TOKEN,
-        )
     }
 }

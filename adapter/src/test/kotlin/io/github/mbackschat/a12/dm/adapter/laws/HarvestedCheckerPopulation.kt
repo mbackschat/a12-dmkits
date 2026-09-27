@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
 
 /** Original P4 bytes remain separate from hosts completed through the typed authoring surface. */
-internal object HarvestedFieldReadPopulation {
+internal object HarvestedCheckerPopulation {
     private val mapper = ObjectMapper()
     private val validator = RuleValidator()
 
@@ -24,6 +24,7 @@ internal object HarvestedFieldReadPopulation {
         val root = state.groups().keys.single { it.count { c -> c == '/' } == 1 }
         val host = ModelDocument.read(DocumentModelDraft.named(source.id()).locale("en_US")
             .rootGroup(root.removePrefix("/")) { }.build().toJson())
+        source.config().conditionLanguage().takeIf { it.isNotEmpty() }?.let { host.setConditionLanguage(it) }
         for (element in state.elements()) {
             val path = element.path()
             val parent = path.substringBeforeLast('/')
@@ -42,6 +43,11 @@ internal object HarvestedFieldReadPopulation {
                 else -> Unit
             }
         }
+        state.groups().forEach { (path, group) ->
+            group.structure().indexField().ifPresent { host.setIndexField(path, it) }
+        }
+        assertEquals(source.config().conditionLanguage().ifEmpty { "en_US" }, host.config().conditionLanguage(),
+            "completion materializes absent condition language as English")
         val bareNumber = FieldTypeSpec.NumberSpec.builder().build()
         val fields = state.fields().mapValues { (_, field) ->
             if (field.type() != bareNumber) field else ModelDocument.FieldState(field.path(),

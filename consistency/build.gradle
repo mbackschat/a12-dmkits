@@ -685,11 +685,12 @@ def syntaxVerdicts = rootProject.file('adapter/src/test/resources/checker-near-m
 def computationInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/computation-inputs.json')
 def fieldReadInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-field-reads.json')
 def fieldReadOrigins = rootProject.file('adapter/src/test/resources/checker-near-miss/field-read-origins.json')
+def numericKeyInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-numeric-keys.json')
 def generatedSyntaxDir = layout.buildDirectory.dir('generated/syntaxFixtures/commonTest/kotlin').get().asFile
 def generatedSyntax = new File(generatedSyntaxDir,
         'io/github/mbackschat/a12/dm/consistency/SyntaxFixtureData.kt')
 def generateSyntaxFixtures = tasks.register('generateSyntaxFixtures') {
-    inputs.files(syntaxInputs, syntaxVerdicts, computationInputs, fieldReadInputs, fieldReadOrigins)
+    inputs.files(syntaxInputs, syntaxVerdicts, computationInputs, fieldReadInputs, fieldReadOrigins, numericKeyInputs)
     outputs.file(generatedSyntax)
     doLast {
         def parser = new groovy.json.JsonSlurper()
@@ -704,6 +705,7 @@ internal object SyntaxFixtureData {
     val computations = listOf(${rows(parser.parse(computationInputs))})
     val fieldReads = listOf(${rows(parser.parse(fieldReadInputs))})
     val fieldReadOrigins = listOf(${rows(parser.parse(fieldReadOrigins))})
+    val numericKeys = listOf(${rows(parser.parse(numericKeyInputs))})
 }
 """
     }

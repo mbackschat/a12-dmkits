@@ -5,8 +5,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The checker's half of `rulekit.validate.laws.LiteralIndexKeyLawsTest`: a literal semantic-index key is a string
- * constant the index field's own validation judges, or a digit sequence the grammar reads as an entity name
+ * The checker's half of `rulekit.validate.laws.LiteralIndexKeyLawsTest`: an Enumeration index admits its
+ * declared tokens as literal semantic-index keys
  * ([KERNEL-FINDINGS KF479]).
  *
  * Every row mirrors one measured against the kernel and names A12's class. Each runs under both
@@ -97,33 +97,6 @@ class LiteralIndexKeyTest {
             "an unaddressed read ahead of a declared token" to listOf("MVK_NO_WILDCARD"),
         )
         assertEquals<Map<String, List<String>>>(expected, actual, "which constant keys an enumeration index admits, $language")
-    }
-
-    @Test
-    fun aDigitSequenceKeyIsAnEntityName() = ConditionLanguage.entries.forEach { language ->
-        val actual = linkedMapOf(
-            "one digit" to codes(sum("Claims/Amount For 5"), language),
-            "several digits" to codes(sum("Claims/Amount For 12"), language),
-            "a leading zero" to codes(sum("Claims/Amount For 05"), language),
-            "over an enumeration index" to codes(sum("Endorsements/Amount For 5"), language),
-            "over a Number index" to codes(sum("Instalments/Amount For 5"), language),
-            "quoted, over a Number index" to codes(sum("Instalments/Amount For \"5\""), language),
-            "ahead of an unaddressed read" to codes("${sum("Claims/Amount For 5")} And $UNADDRESSED", language),
-            "behind an unaddressed read" to codes("$UNADDRESSED And ${sum("Claims/Amount For 5")}", language),
-            "a decimal, which is no digit sequence" to codes(sum("Claims/Amount For 5.5"), language),
-        )
-        val expected = linkedMapOf(
-            "one digit" to listOf("MVK_INVALID_ENTITY"),
-            "several digits" to listOf("MVK_INVALID_ENTITY"),
-            "a leading zero" to listOf("MVK_INVALID_ENTITY"),
-            "over an enumeration index" to listOf("MVK_INVALID_ENTITY"),
-            "over a Number index" to listOf("MVK_INVALID_ENTITY"),
-            "quoted, over a Number index" to listOf("MVK_PARAMSIZE_INVALIDN"),
-            "ahead of an unaddressed read" to listOf("MVK_INVALID_ENTITY"),
-            "behind an unaddressed read" to listOf("MVK_NO_WILDCARD"),
-            "a decimal, which is no digit sequence" to listOf("MVK_UNEXPECTED_TOKEN"),
-        )
-        assertEquals<Map<String, List<String>>>(expected, actual, "what a digit-sequence key names, $language")
     }
 
     private companion object {

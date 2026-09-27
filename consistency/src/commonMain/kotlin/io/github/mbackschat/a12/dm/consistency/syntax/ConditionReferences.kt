@@ -48,13 +48,7 @@ data class ReferenceSpan(val written: String, val start: Int, val end: Int)
 internal fun firstReferenceSpansIn(text: String, language: ConditionLanguage): List<ReferenceSpan> =
     referenceSpansIn(text, language).distinctBy { it.written }
 
-private fun scanOf(text: String, language: ConditionLanguage) = ReferenceScan(
-    tokenize(text),
-    CONDITION_KEYWORDS.getValue(language),
-    CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION],
-    CONDITION_OPERATOR_KEYWORDS.getValue(language)[SEMANTIC_INDEX],
-    ConditionRecognizer(text, language).recognize(SyntaxEntry.CONDITION).completedSteps,
-)
+private fun scanOf(text: String, language: ConditionLanguage) = ReferenceScan(text, language)
 
 /**
  * Whether the text names the RULE-CONTEXT entity — A12's `RuleGroup` / `RegelKontext`.
@@ -84,13 +78,7 @@ internal fun namesRuleContext(text: String, language: ConditionLanguage): Boolea
  * words and only the catalog knows which one this model speaks.
  */
 internal fun semanticIndexKeysIn(text: String, language: ConditionLanguage, keyword: String): List<ReferenceSpan> =
-    ReferenceScan(
-        tokenize(text),
-        CONDITION_KEYWORDS.getValue(language),
-        CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION],
-        keyword,
-        ConditionRecognizer(text, language).recognize(SyntaxEntry.CONDITION).completedSteps,
-    ).semanticIndexKeys()
+    ReferenceScan(text, language, keyword).semanticIndexKeys()
 
 /**
  * The `->` CATEGORY accesses in the text, each as the reference it hangs off and the name behind the arrow.
@@ -199,12 +187,14 @@ private fun pathRunAt(tokens: List<Token>, from: Int): Pair<String, Int>? {
 internal fun List<Token>.namesAnEntity(): Boolean = any { it.isName() || it.text == UP_STEP }
 
 private class ReferenceScan(
-    private val tokens: List<Token>,
-    private val keywords: Map<String, KeywordKind>,
-    private val customCondition: String?,
-    private val semanticIndex: String? = null,
-    private val completedSteps: Map<Int, Int> = emptyMap(),
+    private val source: String,
+    private val language: ConditionLanguage,
+    private val semanticIndex: String? = CONDITION_OPERATOR_KEYWORDS.getValue(language)[SEMANTIC_INDEX],
 ) {
+    private val tokens = tokenize(source)
+    private val keywords = CONDITION_KEYWORDS.getValue(language)
+    private val customCondition = CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION]
+    private val completedSteps = ConditionRecognizer(source, language).recognize(SyntaxEntry.CONDITION).completedSteps
 
     private var at = 0
     private val found = LinkedHashSet<String>()
@@ -246,7 +236,6 @@ private class ReferenceScan(
                 }
                 tokens[at].text == "->" -> skipCategoryName()
                 startsReference(at) -> readReference()
-                startsDigitKey(at) -> readDigitKey()
                 else -> at++
             }
         }
@@ -328,27 +317,20 @@ private class ReferenceScan(
 
     private fun startsReference(index: Int): Boolean {
         val token = tokens[index]
-        return token.isName() || token.text == ".." || token.text == "/"
+        return token.isName() || token.text == ".." || token.text == "/" ||
+            token.kind == TokenKind.NUMBER && completedBoundary(index) != null
     }
 
-    /**
-     * Whether a semantic-index key at [index] is a bare DIGIT SEQUENCE, which names an entity called by its
-     * digits: an unquoted key is an entity spec, and a segment admits `ZiffernFolge` beside a name
-     * (`nameOhnePunkt: … | ZiffernFolge`), so `For 5` and `For 05` both draw `MVK_INVALID_ENTITY`
-     * ([KERNEL-FINDINGS KF479], `rulekit.validate.laws.LiteralIndexKeyLawsTest`). Only a LONE sequence is
-     * read: a decimal is no entity spec at all (`MVK_UNEXPECTED_TOKEN`), and a digit segment a path continues
-     * was not measured.
-     */
-    private fun startsDigitKey(index: Int): Boolean {
-        val token = tokens[index]
-        return index == keyBegins && token.kind == TokenKind.NUMBER && token.text.all { it in '0'..'9' } &&
-            tokens.getOrNull(index + 1)?.text !in PATH_PUNCTUATION
-    }
+    private fun referenceStart(index: Int): Int =
+        if (tokens.getOrNull(index - 1)?.text == OUTER_MARKER_TOKEN) tokens[index - 1].start
+        else tokens[index].start
 
-    private fun readDigitKey() {
-        val token = tokens[at]
-        record(ReferenceSpan(token.text, token.start, token.end), atKey = true)
-        at++
+    private fun completedBoundary(index: Int): Int? {
+        val start = referenceStart(index)
+        completedSteps[start]?.let { return it }
+        // Operand fragments have no condition entry; their key still uses the same entity recognizer.
+        if (index != keyBegins) return null
+        return ConditionRecognizer(source.substring(start), language).recognizeEntity().completedSteps[0]?.plus(start)
     }
 
     private fun record(span: ReferenceSpan, atKey: Boolean) {
@@ -381,17 +363,16 @@ private class ReferenceScan(
     private fun readReference() {
         val begin = at
         val run = entityRunAt(tokens, begin, ::startsSegment)
+        val boundary = completedBoundary(begin)
         val end = when {
-            run.closes -> run.end
+            run.closes && tokens[begin].kind != TokenKind.NUMBER -> run.end
             else -> {
-                val start = if (tokens.getOrNull(begin - 1)?.text == OUTER_MARKER_TOKEN) tokens[begin - 1].start
-                    else tokens[begin].start
-                val boundary = completedSteps[start] ?: tokens[begin].start
-                (begin until run.end).lastOrNull { tokens[it].end <= boundary }?.plus(1) ?: begin
+                (begin until run.end).lastOrNull { tokens[it].end <= (boundary ?: tokens[begin].start) }
+                    ?.plus(1) ?: begin
             }
         }
         val path = tokens.subList(begin, end)
-        if (path.namesAnEntity()) {
+        if (path.namesAnEntity() || path.isNotEmpty() && boundary != null) {
             record(ReferenceSpan(normalizedPath(path), tokens[begin].start, tokens[end - 1].end),
                 atKey = begin == keyBegins)
         }

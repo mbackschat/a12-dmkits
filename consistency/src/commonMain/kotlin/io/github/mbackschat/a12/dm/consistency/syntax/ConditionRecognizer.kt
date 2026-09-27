@@ -26,12 +26,18 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private var cursor = 0
     private var filterActive = false
 
-    fun recognize(entry: SyntaxEntry): Recognition {
+    fun recognize(entry: SyntaxEntry): Recognition = recognize {
+        when (entry) {
+            SyntaxEntry.CONDITION -> { preamble(); condition() }
+            SyntaxEntry.OPERATION -> operation()
+        }
+    }
+
+    internal fun recognizeEntity(): Recognition = recognize { entity() }
+
+    private fun recognize(body: () -> Unit): Recognition {
         val failure = try {
-            when (entry) {
-                SyntaxEntry.CONDITION -> { preamble(); condition() }
-                SyntaxEntry.OPERATION -> operation()
-            }
+            body()
             if (peek() != null) fail(SyntaxFailureKind.MATCH)
             null
         } catch (stop: RecognitionStop) {
@@ -324,6 +330,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         if (!walked && isText("@") && !scopeFollows()) {
             throw RecognitionStop(failure(SyntaxFailureKind.DECISION, firstToken))
         }
+        completedSteps[start] = tokens[cursor - 1].end
         while (true) {
             when {
                 identity(peek()) == "SemanticIndex" -> {
