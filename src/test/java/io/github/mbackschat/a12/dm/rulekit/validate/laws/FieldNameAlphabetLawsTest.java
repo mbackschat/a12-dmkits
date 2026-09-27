@@ -76,7 +76,7 @@ class FieldNameAlphabetLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("Slots2 — letters and digits", KernelLaws.ADMITTED);
         expected.put("Slot_List — an interior underscore", KernelLaws.ADMITTED);
-        // The field alphabet is ASCII where the group's is Unicode — the reverse of the underscore row below,
+        // KF315 admits the sampled German letter on the group but refuses it on the field — the reverse of the underscore row below,
         // so neither carrier is simply the stricter one.
         expected.put("Sloets with a non-ASCII letter", "MVK_PATH_INVALID");
         expected.put("1Slots — digit-initial", "MVK_PATH_INVALID,MVK_NAME_STARTS_WITH_DIGIT_A12_DV");

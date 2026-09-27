@@ -218,7 +218,7 @@ class GroupNameAlphabetLawsTest {
         expected.put("Slot:List — a colon", "MVK_PATH_INVALID");
         expected.put("60 characters — the stated limit", KernelLaws.ADMITTED);
         expected.put("61 characters — one over", KernelLaws.REFUSED_CODELESS);
-        assertEquals(expected, actual, "a leading underscore is reserved, and 'letters' means Unicode letters");
+        assertEquals(expected, actual, "a leading underscore is reserved, and the sampled German letter is admitted");
     }
 
     /** Quoting a segment moves the refusal a layer earlier — for three characters out of four. */

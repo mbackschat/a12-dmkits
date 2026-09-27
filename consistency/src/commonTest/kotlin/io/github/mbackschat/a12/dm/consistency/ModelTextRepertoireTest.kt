@@ -135,14 +135,15 @@ class ModelTextRepertoireTest {
 
     /**
      * The PATH is a carrier: a group name is reported on the group and on each element beneath it. A12 also
-     * names the path class there, which the name family leaves to it for any non-ASCII character.
+     * names the path class there (ModelTextRepertoireLawsTest), independently of those repertoire findings.
      */
     @Test
     fun aDefectiveGroupNameIsReportedOnEveryElementBeneathIt() {
         val inner = """{"type":"Rule","id":"r1","name":"InnerRule","Rule":{"errorCondition":"FieldFilled(Detail)",
             "errorEntityRelPath":"../Detail","errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
         assertEquals(
-            setOf("$CODE at /Claim/Part$GRIN", "$CODE at /Claim/Part$GRIN/Detail", "$CODE at /Claim/Part$GRIN/InnerRule"),
+            setOf("$CODE at /Claim/Part$GRIN", "$CODE at /Claim/Part$GRIN/Detail", "$CODE at /Claim/Part$GRIN/InnerRule",
+                "MVK_PATH_INVALID at /Claim/Part$GRIN"),
             reported(model(nested("Part$GRIN", "origin", "kept", inner))).toSet(),
         )
     }

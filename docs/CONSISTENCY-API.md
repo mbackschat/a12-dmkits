@@ -124,6 +124,10 @@ The grouped producer retains all nine public `CheckFamily` assignments. Its trac
 
 The fixed operation population in `CheckerNearMissSweepTest`, paired with `A12ParseTraceTest`, checks child-result typing and completion boundaries against A12. Existing joined-computation, field-copy, keyed-reference and filter differentials cover their respective carriers; those measurements do not establish types for every unmodeled call.
 
+### Element paths and names
+
+`ELEMENT_NAME_ALPHABET` and the reach check for `FIELD_TYPE_MESSAGE_TEXT` share one carrier-sensitive path predicate. Root groups, nested groups and fields have distinct leading-character and segment rules; field-name restrictions remain separate from path admission. A field removed from the default variant is not checked. `ElementPathStageLawsTest` compares the fixed name/carrier/message/filter populations with A12, retaining additional codeless notifications as explicit ledger differences. `ElementNameAlphabetTest` and `FieldTypeMessageTextTest` retain portable report contracts on JVM/JS. This does not promise complete codeless diagnostics, H-model rules, or every interaction with other model checks.
+
 ## Checking an EDIT — `checkEdit`, for a candidate you have not saved
 
 `checkEdit(baseline, edited)` answers a different question from `check`: not *is this model acceptable* but **what did this edit do**. It is what an editor wants before saving, and what `dmtool rule check --engine portable` uses for a candidate rule.

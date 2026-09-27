@@ -110,10 +110,9 @@ class ElementNameAlphabetTest {
         expected["a NESTED group named __attachment_meta_photo"] = emptyList()
         expected["a NESTED group named __other"] = underscore
         expected["a ROOT group named __other"] = emptyList()
-        // Silent on BOTH carriers, and for different reasons: A12 admits it on a group, and on a field only
-        // one such character has been measured — so refusing the class would rest a rejection on one row.
+        // KF315 and the R4 carrier population admit the German letter on groups, but refuse it on fields.
         expected["a GROUP with a non-ASCII letter"] = emptyList()
-        expected["a FIELD with a non-ASCII letter"] = emptyList()
+        expected["a FIELD with a non-ASCII letter"] = pathInvalid
         assertEquals(expected, actual, "the two carriers' own name laws")
     }
 
@@ -232,19 +231,26 @@ class ElementNameAlphabetTest {
     /** The finding locates the character, which is the only part an author cannot see in a long name. */
     @Test
     fun theFindingNamesTheCharacterAndItsOffset() {
-        val finding = checkRead(
-            ModelSource(
-                """
-                {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
-                  {"type":"Group","id":"g0","name":"Cata-log","Group":{"elements":[
-                    {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}}
-                  ]}}
-                 ]}}}
-                """.trimIndent(),
-            ),
-        ).findings.single()
-        assertEquals("MVK_PATH_INVALID", finding.code)
-        assertEquals(true, finding.explain.contains("`-` at offset 4"), finding.explain)
+        for ((group, field, character) in listOf(
+            Triple("Cata-log", "Price", '-'),
+            Triple("Cata/log", "Price", '/'),
+            Triple("Catalog", "Pri/ce", '/'),
+        )) {
+            val finding = checkRead(
+                ModelSource(
+                    """
+                    {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+                     "content":{"modelRoot":{"rootGroups":[
+                      {"type":"Group","id":"g0","name":"$group","Group":{"elements":[
+                        {"type":"Field","id":"f0","name":"$field","Field":{"fieldType":{"type":"StringType"}}}
+                      ]}}
+                     ]}}}
+                    """.trimIndent(),
+                ),
+            ).findings.single()
+            assertEquals(if (character == '/') "MVK_PATHS_INCONSISTENT" else "MVK_PATH_INVALID", finding.code)
+            val offset = if (group == "Catalog") 3 else 4
+            assertEquals(true, finding.explain.contains("`$character` at offset $offset"), finding.explain)
+        }
     }
 }

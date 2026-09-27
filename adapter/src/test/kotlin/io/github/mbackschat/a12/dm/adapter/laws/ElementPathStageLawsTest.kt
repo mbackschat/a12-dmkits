@@ -17,14 +17,14 @@ class ElementPathStageLawsTest {
 
     @Test
     fun pathNamesAndMessagesFollowTheirPredictedStages() {
-        val path = "MVK_PATH_INVALID"
+        val path = "MVK_PATH_INVALID,$UNKEYED_A12_CLASS"
         val dot = "MVK_NAME_INVALID_DOT_COLON_A12_DV"
         val names = listOf(
             Name("Code"),
             *listOf("Codeé", "éCode", "Code中", "中Code", "Code١", "١Code").map { Name(it, path) }.toTypedArray(),
             Name("Codeä", field = path), Name("Codeß", field = path),
             Name("äCode", nested = path), Name("ßCode", nested = path),
-            Name("1Code", "MVK_NAME_STARTS_WITH_DIGIT", path, "$path,MVK_NAME_STARTS_WITH_DIGIT_A12_DV"),
+            Name("1Code", "MVK_NAME_STARTS_WITH_DIGIT", path, "MVK_PATH_INVALID,MVK_NAME_STARTS_WITH_DIGIT_A12_DV"),
             Name("_Code", nested = "NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN", field = ""),
             Name("xmlCode", "MVK_NAME_STARTS_WITH_XML", field = "MVK_NAME_STARTS_WITH_XML_A12_DV"),
             *listOf("Co.de", "Co:de", ":Code").map { Name(it, path, field = dot) }.toTypedArray(),
@@ -33,6 +33,22 @@ class ElementPathStageLawsTest {
             Name("Id", "MVK_ROOT_GROUP_NAME_INVALID", nested = ""),
         )
         assertEquals(24, names.size)
+        assertPopulation(names, 432, "element-paths")
+    }
+
+    @Test
+    fun mixedNamesFollowThePredictedPathGate() {
+        val path = "MVK_PATH_INVALID,$UNKEYED_A12_CLASS"
+        val names = listOf(
+            Name("1Co.de", path, field = "MVK_PATH_INVALID,MVK_NAME_INVALID_DOT_COLON_A12_DV,MVK_NAME_STARTS_WITH_DIGIT_A12_DV"),
+            Name("1Codeé", path), Name("xmlCodeé", path), Name("_Codeé", path),
+            Name("Co/-de", "MVK_PATH_INVALID", nested = path), Name("-Co/de", path),
+        )
+        assertPopulation(names, 108, "element-paths-mixed")
+    }
+
+    private fun assertPopulation(names: List<Name>, expectedCount: Int, ledgerName: String) {
+        val path = "MVK_PATH_INVALID"
         val host = DocumentModelDraft.named("order-element-paths").locale("en_US")
             .rootGroup("Order") { order -> order.stringField("Reference") { }
                 .group("Part") { part -> part.stringField("Sibling") { }
@@ -65,8 +81,7 @@ class ElementPathStageLawsTest {
                 Carrier.NESTED -> name.nested
                 Carrier.FIELD -> if (filter == Filter.ONLY) "" else name.field
             }.split(',').filter { it.isNotEmpty() }.toSet()
-            val expected = nameCodes + (if (nameCodes == setOf(path)) setOf(UNKEYED_A12_CLASS) else emptySet()) +
-                if (tab && filter != Filter.ONLY &&
+            val expected = nameCodes + if (tab && filter != Filter.ONLY &&
                 path !in nameCodes && "MVK_PATHS_INCONSISTENT" !in nameCodes) setOf("INVALID_CHARACTERS") else emptySet()
             val kernel = kernelModelClasses(json)
             if (expected != kernel) predictions += "$label: predicted $expected, observed $kernel"
@@ -77,16 +92,16 @@ class ElementPathStageLawsTest {
                 examples += "$key\t$label"
             }
         }
-        assertEquals(432, models.size, "every population member is a distinct model")
+        assertEquals(expectedCount, models.size, "every population member is a distinct model")
         val actual = clusters.entries.joinToString("") { "${it.value}\t${it.key}\n" }
         // Disposable run outputs; the resource ledger retains the comparison across runs.
         File("build/checker-element-paths").apply { mkdirs() }.also {
-            File(it, "actual.tsv").writeText(actual)
-            File(it, "examples.tsv").writeText(examples.joinToString("\n"))
-            File(it, "predictions.txt").writeText(predictions.joinToString("\n"))
+            File(it, "$ledgerName.tsv").writeText(actual)
+            File(it, "$ledgerName-examples.tsv").writeText(examples.joinToString("\n"))
+            File(it, "$ledgerName-predictions.txt").writeText(predictions.joinToString("\n"))
         }
         assertEquals(emptyList<String>(), predictions, "independent kernel predictions")
-        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/element-paths.tsv")).readText(), actual)
+        assertEquals(checkNotNull(javaClass.getResource("/checker-near-miss/$ledgerName.tsv")).readText(), actual)
     }
 
     private fun column(codes: Set<String>) = codes.sorted().joinToString(",").ifEmpty { "(none)" }

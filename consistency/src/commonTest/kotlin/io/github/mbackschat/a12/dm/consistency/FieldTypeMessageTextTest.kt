@@ -155,8 +155,8 @@ class FieldTypeMessageTextTest {
     }
 
     /**
-     * Only this family's classes are compared, because the path rows draw the name families' classes too and
-     * one of them names a class A12 does not give for `Co.1de` (docs/CONSISTENCY-GAPS.md DG113).
+     * This isolates message reach; ElementPathStageLawsTest independently compares the full path/name
+     * class sets against the kernel on the R4 carrier population (KF315).
      */
     @Test
     fun anInvalidPathStopsTheCheck() {

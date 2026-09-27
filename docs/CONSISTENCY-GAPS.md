@@ -9,7 +9,6 @@
 ## 1. Open
 
 - **DG102 — a constant key the checker cannot judge.** A12 tests a constant key against the index field's value validation ([KF481](KERNEL-FINDINGS.md#kf481)). The checker matches only a regex-free pattern subset (`consistency.KeyPattern`), so beside `.{2}`, an escape, a group or an alternation the key is unjudged (`adapter.laws.CheckerIndexKeyConstantAgreementTest`). A type-definition or custom index field is unjudged and unmeasured. Settled by a Java-compatible pattern judge on JVM and JS and by P3's typedef and custom-index hosts; independent of the rebuild.
-- **DG113 — element names against A12's path alphabet.** A group `Parté` and a field `Codeé` are `MVK_PATH_INVALID` in A12, whose group alphabet takes the German umlauts and `ß` and no other non-ASCII letter ([KF315](KERNEL-FINDINGS.md#kf315)); the checker is silent. A field `Co.1de` is `MVK_PATH_INVALID` alone, and the checker names `MVK_NAME_INVALID_DOT_COLON_A12_DV` (`validate.laws.FieldTypeMessageTextLawsTest.anInvalidPathStopsTheCheck`). Settled by R4 with P3's name edits.
 
 ## 2. Out of scope
 

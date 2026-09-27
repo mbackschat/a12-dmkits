@@ -115,59 +115,6 @@ private fun ConditionLanguage.fieldMessageParameters(): List<String> = when (thi
 
 private val SURROGATES = 0xD800..0xDFFF
 
-/**
- * Whether A12's per-element walk reaches this declaration on its own account.
- *
- * A12 checks each GROUP and FIELD's path before its content and returns there, beneath it included
- * (`NoMetaModelChecks.checkEntity`, source-read in kernel `30.8.1`; every arm below measured by
- * `rulekit.validate.laws.FieldTypeMessageTextLawsTest.anInvalidPathStopsTheCheck`). The path alphabet is its
- * own, and it is neither ASCII nor the name families' laws:
- *
- * - the ROOT group's segment is letters, digits, `_` and the German umlauts and `ß`, a leading digit included;
- * - a group segment below it is the same set, beginning with a letter or `_`;
- * - a field's segment is ASCII letters, digits, `_` and `:` in pieces joined by `.`, each piece after a dot
- *   beginning with a letter — and not beginning with a digit, which A12 waives only for an H-model this checker
- *   does not recognise, so there it withholds and under-reports.
- *
- * A name carrying `/` stops the walk too: its path then disagrees with the tree ([ElementNameAlphabet]'s
- * `MVK_PATHS_INCONSISTENT`). Only a group's or a field's reach is asked here; other kinds are always reached.
- */
-internal fun TrackedDeclaration.reachedByTheElementWalk(): Boolean {
-    val kind = declaredKind
-    if (kind != DeclaredKind.GROUP && kind != DeclaredKind.FIELD) {
-        return true
-    }
-    if ('/' in name) {
-        return false
-    }
-    val segments = path.split('/').drop(1)
-    return segments.withIndex().all { (index, segment) ->
-        when {
-            index == 0 -> segment.isNotEmpty() && segment.all { it.isGroupPathCharacter() }
-            index == segments.lastIndex && kind == DeclaredKind.FIELD -> segment.isFieldPathSegment()
-            else -> segment.firstOrNull()?.let { it.isAsciiLetter() || it == '_' } == true &&
-                segment.all { it.isGroupPathCharacter() }
-        }
-    }
-}
-
-private fun String.isFieldPathSegment(): Boolean {
-    if (isEmpty() || first().isAsciiDigit()) {
-        return false
-    }
-    return split('.').withIndex().all { (index, piece) ->
-        piece.isNotEmpty() && (index == 0 || piece.first().isAsciiLetter()) &&
-            piece.all { it.isAsciiLetter() || it.isAsciiDigit() || it == '_' || it == ':' }
-    }
-}
-
-private fun Char.isGroupPathCharacter(): Boolean =
-    isAsciiLetter() || isAsciiDigit() || this == '_' || this in "äöüÄÖÜß"
-
-private fun Char.isAsciiLetter(): Boolean = this in 'a'..'z' || this in 'A'..'Z'
-
-private fun Char.isAsciiDigit(): Boolean = this in '0'..'9'
-
 /** Every group path enclosing this one, outermost first: `/A/B/C` gives `/A` and `/A/B`. */
 private fun String.enclosingPaths(): List<String> =
     indices.filter { it > 0 && this[it] == '/' }.map { substring(0, it) }
