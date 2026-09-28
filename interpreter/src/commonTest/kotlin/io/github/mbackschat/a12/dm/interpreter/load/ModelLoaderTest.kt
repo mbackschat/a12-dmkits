@@ -93,26 +93,31 @@ class ModelLoaderTest {
 
     @Test
     fun retainsPatternAndRequirednessMessagesAsDistinctChannels() {
-        val source = """
-            { "header": { "id": "m", "modelType": "document" }, "content": { "modelRoot": { "rootGroups": [
-              { "type": "Group", "id": "/G", "name": "G", "Group": { "repeatability": 1, "elements": [
-                { "type": "Field", "id": "/G/Code", "name": "Code", "Field": {
-                  "requirednessConfig": {
-                    "mode": "absoluteOrRelativeToNextRepAncestor",
-                    "errorMessage": [ {"locale":"en_US","text":"Required ${'$'}${'$'} ${'$'}field${'$'}"} ]
-                  },
-                  "fieldType": { "type": "StringType", "StringType": {
-                    "pattern": "[A-Z]+",
-                    "errorMessage": [ {"locale":"en_US","text":"Value [${'$'}field.value${'$'}]"} ]
-                  } }
-                } }
-              ] } } ] } } }
-        """.trimIndent()
+        for ((type, configuration) in listOf(
+            "StringType" to "\"pattern\": \"[A-Z]+\"",
+            "EnumerationType" to "\"values\": [{\"value\":\"OPEN\"}]",
+        )) {
+            val source = """
+                { "header": { "id": "m", "modelType": "document" }, "content": { "modelRoot": { "rootGroups": [
+                  { "type": "Group", "id": "/G", "name": "G", "Group": { "repeatability": 1, "elements": [
+                    { "type": "Field", "id": "/G/Code", "name": "Code", "Field": {
+                      "requirednessConfig": {
+                        "mode": "absoluteOrRelativeToNextRepAncestor",
+                        "errorMessage": [ {"locale":"en_US","text":"Required ${'$'}${'$'} ${'$'}field${'$'}"} ]
+                      },
+                      "fieldType": { "type": "$type", "$type": {
+                        $configuration,
+                        "errorMessage": [ {"locale":"en_US","text":"Value [${'$'}field.value${'$'}]"} ]
+                      } }
+                    } }
+                  ] } } ] } } }
+            """.trimIndent()
 
-        val field = ModelLoader.load(source).fields.single()
+            val field = ModelLoader.load(source).fields.single()
 
-        assertEquals(mapOf("en_US" to "Value [\$field.value\$]"), field.patternMessages)
-        assertEquals(mapOf("en_US" to "Required \$\$ \$field\$"), field.requiredMessages)
+            assertEquals(mapOf("en_US" to "Value [\$field.value\$]"), field.patternMessages)
+            assertEquals(mapOf("en_US" to "Required \$\$ \$field\$"), field.requiredMessages)
+        }
     }
 
     @Test

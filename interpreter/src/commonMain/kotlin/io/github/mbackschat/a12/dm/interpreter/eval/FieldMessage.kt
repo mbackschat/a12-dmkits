@@ -1,32 +1,27 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
+import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 
 /**
- * Render the measured `en_US` String-pattern message grammar (EXP-2026-07-30-01). The scan is deliberately
- * over the original template exactly once: stored bytes inserted for `$field.value$` are opaque output and can
- * never become a second-stage `$field$` token. Unlike a rule message, `$$` is not a literal-dollar escape here.
- * The kernel's model consistency refuses it inside the text and at its start as an empty parameter, but admits a
- * pair at the very end and `$$` alone (KERNEL-FINDINGS KF490); what those render is unmeasured, so this declines
- * them (INTERPRETER-GAPS IG159).
+ * Render String-pattern and enum invalid-value text in one pass; inserted values remain opaque.
+ * FieldConstraintFormalDiffTest's dual-strategy grid separates condition-language tokens from display locale
+ * and locks literal terminal dollar pairs (KF42/KF490). Requiredness has its own producer contract below.
  */
 internal fun renderPatternFieldMessage(
     template: String,
-    locale: String,
+    language: ConditionLanguage,
     fieldLabel: String,
     storedValue: String,
-): String {
-    requireEnglishFieldTemplate(locale, "String-pattern")
-    return renderFixedFieldTokens(
-        template = template,
-        producer = "String-pattern",
-        replacements = mapOf(
-            "\$field.value\$" to storedValue,
-            "\$field\$" to fieldLabel,
-        ),
-        preserveDollarPair = false,
-    )
-}
+): String = renderFixedFieldTokens(
+    template = template,
+    producer = "invalid-value",
+    replacements = when (language) {
+        ConditionLanguage.EN -> mapOf("\$field.value\$" to storedValue, "\$field\$" to fieldLabel)
+        ConditionLanguage.DE -> mapOf("\$Feld.Wert\$" to storedValue, "\$Feld\$" to fieldLabel)
+    },
+    preserveDollarPair = false,
+)
 
 /**
  * Render the measured `en_US` requiredness message grammar. Its fixed `$field$` replacement is distinct from
@@ -75,9 +70,12 @@ private fun renderFixedFieldTokens(
                 out.append(replacements.getValue(token))
                 index = dollar + token.length
             }
-            preserveDollarPair && template.startsWith("\$\$", dollar) -> {
-                out.append("\$\$")
-                index = dollar + 2
+            template.startsWith("\$\$", dollar) &&
+                (preserveDollarPair || ((template.length - dollar) % 2 == 0 &&
+                    (dollar until template.length).all { template[it] == '$' })) -> {
+                val end = if (preserveDollarPair) dollar + 2 else template.length
+                out.append(template, dollar, end)
+                index = end
             }
             else -> {
                 val close = template.indexOf('$', dollar + 1)

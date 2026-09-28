@@ -221,6 +221,8 @@ The v1 API provides:
 - `compute(snapshot, options?)`, whose retained `ComputationReport` exposes report-all `results`, source-relative `actions`, formal operand diagnostics, target diagnostics, status, and `applyTo(destination)`;
 - `applyComputations(snapshot, options?)`, the exact same-document convenience for `compute(snapshot).applyTo(snapshot)`.
 
+Declared String-pattern and Enumeration invalid-value messages are rendered from their per-locale `errorMessage` arrays. Fixed token names follow the model's condition language (`$field$` / `$field.value$` in English, `$Feld$` / `$Feld.Wert$` in German), independently of the requested display locale used for the field label. Inserted values are opaque, and terminal `$$` remains two literal dollars. Requiredness is a separate producer. The measured boundary and exact dual-strategy/common-runtime locks are [IF345](INTERPRETER-FINDINGS.md#if345); no complete grammar claim follows beyond those witnesses.
+
 ### 5.1 Kernel API correspondence and deliberate differences
 
 Audited 2026-07-31 against Kernel 30.8.1's Java `IDocumentRtService`/`IDocumentComputationResult` and TypeScript `DocumentRtService`/`DocumentComputationResult`:

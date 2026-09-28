@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
 import io.github.mbackschat.a12.dm.interpreter.eval.MANDATORY_FIELD
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -39,6 +40,29 @@ class FieldOwnedMessageTest {
     }
 
     @Test
+    fun patternTokensFollowConditionLanguageAndKeepTerminalDollarPairs() {
+        for (language in ConditionLanguage.entries) {
+            val fieldToken = if (language == ConditionLanguage.EN) "field" else "Feld"
+            val valueToken = if (language == ConditionLanguage.EN) "field.value" else "Feld.Wert"
+            for ((template, expected) in mapOf(
+                "$$fieldToken$: $$valueToken$" to "Code: bad",
+                "Cost \$\$" to "Cost \$\$",
+                "\$\$" to "\$\$",
+            )) {
+                for (locale in listOf("en_US", "de_DE")) {
+                    val field = FieldDef(CODE, Kind.STRING, pattern = "[A-Z]+",
+                        patternMessages = mapOf(locale to template))
+                    val model = ModelDef(listOf(field), emptyList(), conditionLanguage = language)
+                    val doc = model.newDocument().group(ORDER, 1).field(CODE, "bad", 1, 1)
+                    val outcome = DmInterpreter(model).validate(doc, locale)
+                    assertEquals(emptyList(), outcome.unsupported, "$language/$locale/$template")
+                    assertEquals(listOf(expected), outcome.messages.map { it.text }, "$language/$locale/$template")
+                }
+            }
+        }
+    }
+
+    @Test
     fun requirednessTemplatePreservesLiteralDollarPair() {
         val field = FieldDef(
             CODE,
@@ -59,21 +83,21 @@ class FieldOwnedMessageTest {
     }
 
     @Test
-    fun unmeasuredProducerFormsAndLocalesAreReportedUnsupported() {
+    fun invalidPatternTokensAndUnmeasuredRequirednessFormsAreReportedUnsupported() {
         val patternField = FieldDef(
             CODE,
             Kind.STRING,
             pattern = "[A-Z]+",
-            patternMessages = mapOf("de_DE" to "Wert \$field\$"),
+            patternMessages = mapOf("en_US" to "Value \$Field\$"),
         )
         val patternModel = ModelDef(listOf(patternField), emptyList())
         val invalid = patternModel.newDocument().group(ORDER, 1).field(CODE, "bad", 1, 1)
 
-        val localeOutcome = DmInterpreter(patternModel).validate(invalid, "de_DE")
+        val localeOutcome = DmInterpreter(patternModel).validate(invalid)
         assertEquals(emptyList(), localeOutcome.messages)
-        assertTrue(localeOutcome.unsupported.single().reason.contains("de_DE"))
+        assertTrue(localeOutcome.unsupported.single().reason.contains("\$Field\$"))
         assertFailsWith<IllegalStateException> {
-            DmInterpreter(patternModel).validateFull(invalid, "de_DE")
+            DmInterpreter(patternModel).validateFull(invalid)
         }
 
         val requiredField = FieldDef(

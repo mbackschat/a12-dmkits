@@ -10,9 +10,12 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.edit.EditSession
+import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.function.Executable
 import java.util.Locale
 
 /**
@@ -27,7 +30,7 @@ class FieldConstraintFormalDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
 
     /**
-     * EXP-2026-07-30-01 — field-owned templates have a locale-fixed token grammar distinct from rule messages.
+     * EXP-2026-07-30-01 — field-owned templates have a condition-language-fixed token grammar distinct from rule messages.
      * Keep this on the typed modelkit surface: the experiment is about the kernel's text checker and runtime
      * renderer, not about whether hand-written DM-JSON happens to bind.
      */
@@ -81,26 +84,57 @@ class FieldConstraintFormalDiffTest {
     }
 
     @Test
-    fun fieldOwnedPatternValueReplacementIsStagedOnce() {
-        assertFieldErrorText("Value [\$field.value\$]", "\$field\$", "Value [\$field\$]")
-    }
-
-    private fun assertFieldErrorText(template: String, value: String, expected: String) {
-        val model = fieldMessageModel(template)
-        val document = RuntimeLaws.doc().group("/Order", 1).field("/Order/Code", value, 1, 1)
-        val dynamic = RuntimeLaws.errorTextOf(model, "stringFalschesMuster", document, Locale.US).orElseThrow()
-        val java = RuntimeLaws.kernelJavaEngine(model)
-        val generated = java.errorTextOf(java.instance(document), "stringFalschesMuster", Locale.US).orElseThrow()
-        val definition = ModelLoader.load(model)
-        val interpreterDocument = definition.newDocument()
-            .group("/Order", 1)
-            .field("/Order/Code", value, 1, 1)
-        val interpreter = DmInterpreter(definition).validate(interpreterDocument).messages
-            .single { it.code == "stringFalschesMuster" }.text
-
-        assertEquals(expected, dynamic, "$template — dynamic Groovy")
-        assertEquals(dynamic, generated, "$template — generated Java")
-        assertEquals(dynamic, interpreter, "$template — dynamic Groovy vs interpreter")
+    fun fieldTypeMessageRuntimeGrid() {
+        data class Row(
+            val template: String,
+            val value: String = "bad",
+            val language: String = "en_US",
+            val locale: Locale = Locale.US,
+            val expected: List<String>,
+        )
+        val rows = listOf(
+            Row("Rejected", expected = listOf("Rejected")),
+            Row("\$field\$: \$field.value\$", expected = listOf("Code label: bad")),
+            Row("Value [\$field.value\$]", value = "\$field\$", expected = listOf("Value [\$field\$]")),
+            Row("Cost \$\$", expected = listOf("Cost \$\$")),
+            Row("\$\$", expected = listOf("\$\$")),
+            Row("\$field\$: \$field.value\$", locale = Locale.GERMANY, expected = listOf("Kennung: bad")),
+            Row("\$Feld\$: \$Feld.Wert\$", language = "de_DE", expected = listOf("Code label: bad")),
+            Row("\$Feld\$: \$Feld.Wert\$", language = "de_DE", locale = Locale.GERMANY,
+                expected = listOf("Kennung: bad")),
+            Row("Rejected", value = "OPEN", expected = emptyList()),
+        )
+        assertAll(listOf(false, true).flatMap { enumeration -> rows.map { row -> Executable {
+            val draft = DocumentModelDraft.named("order-field-message").locale("en_US").locale("de_DE")
+                .rootGroup("Order") { order ->
+                    if (enumeration) {
+                        order.enumField("Code") { it.value("OPEN").invalidValueMessage(row.template)
+                            .label("en_US", "Code label").label("de_DE", "Kennung") }
+                    } else {
+                        order.stringField("Code") { it.pattern("[A-Z]+", row.template)
+                            .label("en_US", "Code label").label("de_DE", "Kennung") }
+                    }
+                }.build()
+            val edit = EditSession.read(draft.toJson())
+            edit.config().conditionLanguage(row.language)
+            val model = edit.toJson()
+            val id = "enum=$enumeration $row"
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model), "$id admission")
+            val document = RuntimeLaws.doc().group("/Order", 1).field("/Order/Code", row.value, 1, 1)
+            val dynamic = RuntimeLaws.errorTextsOf(model, "stringFalschesMuster", document, row.locale)
+            val java = RuntimeLaws.kernelJavaEngine(model)
+            val generated = java.errorTextsOf(java.instance(document), "stringFalschesMuster", row.locale)
+            val definition = ModelLoader.load(model)
+            val interpreterDocument = definition.newDocument().group("/Order", 1)
+                .field("/Order/Code", row.value, 1, 1)
+            val interpreted = DmInterpreter(definition).validate(interpreterDocument, row.locale.toString())
+            assertAll(id,
+                { assertEquals(row.expected, dynamic, "dynamic Groovy") },
+                { assertEquals(row.expected, generated, "generated Java") },
+                { assertEquals(emptyList<Any>(), interpreted.unsupported, "supported field message") },
+                { assertEquals(row.expected, interpreted.messages.map { it.text }, "interpreter") },
+            )
+        } } })
     }
 
     private fun fieldMessageModel(template: String): String =

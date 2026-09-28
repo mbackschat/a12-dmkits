@@ -399,7 +399,8 @@ object ModelLoader {
         minLength = typedInt(node, "StringType", "minLength"),
         maxLength = typedInt(node, "StringType", "maxLength"),
         pattern = stringTypeText(node, "pattern"),
-        patternMessages = localizedTexts(typed(node, "StringType").path("errorMessage")),
+        patternMessages = localizedTexts((typed(node, "StringType") ?: typed(node, "EnumerationType"))
+            .path("errorMessage")),
         requiredMessages = localizedTexts(node.path("Field").path("requirednessConfig").path("errorMessage")),
         noValueValidation = typedBool(node, "StringType", "noValueValidation"),
         minValue = numberTypeText(node, "minValue"),

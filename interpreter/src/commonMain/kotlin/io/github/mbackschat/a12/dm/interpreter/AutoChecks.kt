@@ -348,9 +348,9 @@ internal class AutoChecks(
         }
         val template = declared[locale]
             ?: throw UnsupportedConstructException(
-                "String-pattern field-owned error template has no exact '$locale' declaration",
+                "Invalid-value field-owned error template has no exact '$locale' declaration",
             )
-        return renderPatternFieldMessage(template, locale, messageLabel(path, locale, reps), raw)
+        return renderPatternFieldMessage(template, model.conditionLanguage, messageLabel(path, locale, reps), raw)
     }
 
     /**

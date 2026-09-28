@@ -737,7 +737,7 @@
     },
     "kf490": {
       "sha256": "562cd88d86b3034ed64c6a3eb1f981250b7883c2bead95a5fe6bcc69b69e4b61",
-      "task": "DG115",
+      "task": "IG159",
       "scope": {
         "adapter": [
           "kernel static-message oracle"
@@ -750,7 +750,8 @@
           "CLI typedef schema"
         ],
         "interpreter": [
-          "field-owned runtime message assessment"
+          "field-owned runtime message assessment",
+          "field-message JVM and JS"
         ],
         "checker": [
           "declared-locale and no-pattern message coverage"
@@ -799,9 +800,18 @@
           }
         },
         "interpreter": {
-          "state": "OPEN",
-          "basis": "IG159 owns runtime enum/String field-message evidence, including language and terminal-dollar forms; static admission alone cannot close it.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "IG159 measures the admitted enum/String forms under both runtime strategies and implements their shared language-aware one-pass renderer. This scoped runtime assessment does not make MVK classification an interpreter contract.",
+          "evidence": {
+            "field-owned runtime message assessment": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FieldConstraintFormalDiffTest.kt#fieldTypeMessageRuntimeGrid",
+              "witness": "Eighteen admitted inputs, both kernel strategies and exact interpreter text/multiplicity."
+            },
+            "field-message JVM and JS": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/FieldOwnedMessageTest.kt#patternTokensFollowConditionLanguageAndKeepTerminalDollarPairs",
+              "witness": "Language/locale separation and literal terminal dollar pairs on both common runtimes."
+            }
+          }
         },
         "checker": {
           "state": "OPEN",
@@ -811,6 +821,67 @@
         "a12-kernel-lean": {
           "state": "OPEN",
           "basis": "Downloads handback carries exact kernel rows and the committed revision when available; peer adoption requires its own evidence and remains F-USE-BACKLOG.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf42": {
+      "sha256": "3e07a8fc7819724889318fb927a5bb3e529be6ceb45c1c00e893eedd718a93d7",
+      "task": "IG159",
+      "scope": {
+        "adapter": [
+          "field-message runtime oracle"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "field-message loading",
+          "field-message rendering"
+        ],
+        "checker": [],
+        "a12-kernel-lean": [
+          "specification",
+          "executable and proofs",
+          "evidence"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "RuntimeLaws uses the same explicit label-or-name provider on dynamic Groovy and generated Java; this grid measures both.",
+          "evidence": {
+            "field-message runtime oracle": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FieldConstraintFormalDiffTest.kt#fieldTypeMessageRuntimeGrid",
+              "witness": "The two producers agree on all eighteen predicted inputs, including valid controls."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This review scopes KF42 to its new runtime observations. Existing modelkit authoring represents both message arrays; no authoring/schema shape or catalog operator changes are required. DG115 separately owns preservation. The CLI consumes the corrected interpreter; published rendering contract is INTERPRETER-API-SPEC section 5.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Enum declarations join the existing invalid-value channel; its renderer uses condition-language tokens and requested-locale labels, retaining opaque values and literal terminal pairs.",
+          "evidence": {
+            "field-message loading": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/load/ModelLoaderTest.kt#retainsPatternAndRequirednessMessagesAsDistinctChannels",
+              "witness": "String and enum serialized message maps remain distinct from requiredness."
+            },
+            "field-message rendering": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FieldConstraintFormalDiffTest.kt#fieldTypeMessageRuntimeGrid",
+              "witness": "Same admitted models and document inputs compared against both kernel runtime strategies."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The new KF42 observations are runtime rendering only. Static token/locale admission remains KF490 and its outstanding generated-population assessment; runtime agreement is not a checker completeness claim.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The known-unsent Downloads handback carries the bounded grid and will add the verified revision. Peer implementation/proof adoption requires peer evidence, not preparation or delivery.",
           "evidence": {}
         }
       }
