@@ -166,9 +166,9 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                     case IndexedFieldValue indexed -> collect(indexed, refs);
                 }
             });
-            case PatternCondition p -> refs.field(p.field().path().value());
+            case PatternCondition p -> collectOperand(p.field(), refs);
             case ValueListCondition v -> {
-                refs.field(v.field().path().value());
+                collectOperand(v.field(), refs);
                 v.values().forEach(value -> collect(value, refs));
             }
             case FieldListValueListCondition v -> {
@@ -197,7 +197,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     private static void collect(Calculation calculation, Refs refs) {
         switch (calculation) {
             case FieldValue v -> refs.field(v.field().path().value());
-            case LengthOf l -> refs.field(l.field().path().value());
+            case LengthOf l -> collectOperand(l.field(), refs);
             case NumberLiteral n -> { }
             case StringLiteral s -> { }
             case DateLiteral d -> { }

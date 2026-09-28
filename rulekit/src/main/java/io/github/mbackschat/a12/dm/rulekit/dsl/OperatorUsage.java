@@ -49,8 +49,11 @@ public final class OperatorUsage {
             case IndexedPresenceCondition p -> ops.add(p.index().operatorId());   // the SemanticIndex operator
             case IndexedGroupPresenceCondition ignored -> ops.add("SemanticIndex");
             case GroupListPredicate ignored -> { }
-            case PatternCondition ignored -> { }
-            case ValueListCondition v -> v.values().forEach(value -> collect(value, ops));
+            case PatternCondition p -> collectOperand(p.field(), ops);
+            case ValueListCondition v -> {
+                collectOperand(v.field(), ops);
+                v.values().forEach(value -> collect(value, ops));
+            }
             case FieldListValueListCondition v -> {
                 v.fields().forEach(f -> collectOperand(f, ops));
                 v.values().forEach(value -> collect(value, ops));
@@ -76,7 +79,10 @@ public final class OperatorUsage {
             case DateTimeLiteral ignored -> { }
             case EnumValueLiteral ignored -> { }
             case BoolLiteral b -> ops.add(b.operatorId());
-            case LengthOf l -> ops.add(l.operatorId());
+            case LengthOf l -> {
+                ops.add(l.operatorId());
+                collectOperand(l.field(), ops);
+            }
             case EnumCategoryAccess c -> ops.add(c.operatorId());
             case CountAggregate a -> {
                 ops.add(a.operatorId());
@@ -203,6 +209,8 @@ public final class OperatorUsage {
     private static void collectOperand(ValueListOperand operand, Set<String> ops) {
         if (operand instanceof EnumCategoryAccess c) {
             ops.add(c.operatorId());   // the `->` category projection is its own catalog operator
+        } else if (operand instanceof IndexedFieldValue index) {
+            ops.add(index.operatorId());
         } else if (operand instanceof FieldListRef list) {
             list.filter().ifPresent(filter -> {
                 ops.add("Having");

@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition
@@ -192,7 +193,7 @@ internal class Predicates(private val mapping: Mapping) {
         if (args.size < 2) {
             throw UnmappedConstructException("$operator needs a field and at least one value")
         }
-        val ref = mapping.typedRef(args[0])
+        val ref = if (args[0] is Expr.SemanticIndex) mapping.indexedValue(args[0]) else mapping.typedRef(args[0])
         val values = args.subList(1, args.size)
         if (values.all { it is Expr.StrLit }) {
             return stringValueList(ref, values, included, operator)
@@ -219,6 +220,9 @@ internal class Predicates(private val mapping: Mapping) {
         val rest = literals.copyOfRange(1, literals.size)
         return when (ref) {
             is StringRef -> if (included) ref.`in`(literals[0], *rest) else ref.notIn(literals[0], *rest)
+            is IndexedFieldValue -> {
+                if (included) ref.`in`(literals[0], *rest) else ref.notIn(literals[0], *rest)
+            }
             is EnumRef -> if (included) ref.`in`(literals[0], *rest) else ref.notIn(literals[0], *rest)
             else -> throw UnmappedConstructException(
                 "$operator with a string-literal value list against a field with no matching value-list builder"

@@ -443,6 +443,13 @@ class FunctionsTest {
         assertInstanceOf(LengthOf::class.java, left("Length(CustomerName) > 10"))
     }
 
+    @Test
+    fun anIndexedStringCellKeepsItsKeyInsideLength() {
+        val length = assertInstanceOf(LengthOf::class.java,
+            left("Length(Items/Sku For \"S-1\") > 1"))
+        assertEquals("Items/Sku For \"S-1\"", length.field().renderedPath().removePrefix("/Order/"))
+    }
+
     /** No MVK code — the typed-string accessor's own kind gate. */
     @Test
     fun aNonStringLengthOperandIsRejected() {

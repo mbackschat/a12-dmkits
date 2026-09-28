@@ -56,7 +56,7 @@ class ConditionsTest {
             translate("[ProductCode] PatternMatched \"[A-Z]{2}-[0-9]{4}\""),
         )
         assertEquals("PatternMatched", c.operatorId())
-        assertEquals("/Order/ProductCode", c.field().path().value())
+        assertEquals("/Order/ProductCode", c.field().field().path().value())
     }
 
     @Test
@@ -66,6 +66,18 @@ class ConditionsTest {
             translate("[BillingAddress/PostalCode] PatternViolated \"[0-9]{5}\""),
         )
         assertEquals("PatternViolated", c.operatorId())
+    }
+
+    @Test
+    fun anIndexedStringCellKeepsItsKeyInPatternAndLiteralListPositions() {
+        assertEquals(
+            "[/Order/Items/Sku For \"S-1\"] PatternMatched \"[A-Z]{2}\"",
+            RENDER.render(translate("[Items/Sku For \"S-1\"] PatternMatched \"[A-Z]{2}\"")),
+        )
+        assertEquals(
+            "AtLeastOneFieldValueIncludedInValueList(/Order/Items/Sku For \"S-1\", /Order/CustomerName In \"x\")",
+            RENDER.render(translate("AtLeastOneFieldValueIncludedInValueList(Items/Sku For \"S-1\", CustomerName In \"x\")")),
+        )
     }
 
     /** The German keyword reaches the same node — the parser canonicalises before the AST exists. */

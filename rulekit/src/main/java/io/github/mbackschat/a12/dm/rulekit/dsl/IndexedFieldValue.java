@@ -18,8 +18,18 @@ import java.util.Optional;
  * check is added for this: the two identity switches that already exist for {@link FieldRef} are where
  * that gate lives, widened to this type via {@link #duplicateIdentity()}.
  */
-public sealed interface IndexedFieldValue extends Calculation, FieldOperand, GroupListOperand
+public sealed interface IndexedFieldValue extends Calculation, FieldOperand.Cell
         permits SemanticIndexValue, SemanticIndexFieldValue {
+
+    /** Literal membership of this selected cell; the kernel settles the declared-kind domain (DG71). */
+    default Condition in(String first, String... rest) {
+        return new ValueListCondition(this, true, StringRef.stringValues(first, rest));
+    }
+
+    /** Literal non-membership of this selected cell; see {@link #in(String, String...)}. */
+    default Condition notIn(String first, String... rest) {
+        return new ValueListCondition(this, false, StringRef.stringValues(first, rest));
+    }
 
     /** The field whose indexed cell this reads. */
     FieldRef field();

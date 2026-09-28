@@ -10,6 +10,9 @@ import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue;
+
+import java.util.List;
 
 /**
  * F9 explain — the structured {@code tree} projection (2026-06-05, normalized same day). The flat
@@ -61,6 +64,18 @@ class ExplanationTreeTest {
         // the tree round-trips into the explain JSON, with operator backlinks (not inlined meanings)
         String json = ex.toJson();
         assertTrue(json.contains("\"tree\"") && json.contains("\"operator\" : \"Sum\""), json);
+    }
+
+    @Test
+    void keyedLiteralListMemberAppearsInTheExplanationTree() {
+        BoundModel m = Fixtures.logistics();
+        IndexedFieldValue indexed = m.field("/Shipment/Lines/LineRef").semanticIndex("L1").index();
+        Condition condition = Dsl.atLeastOneFieldValueIncludedInValueList(
+                List.of("L1"), indexed, m.field("/Shipment/ShipmentRef"));
+
+        RuleExplanation explanation = new ModelContext(m).explain(condition);
+        assertEquals(List.of("SemanticIndex"), explanation.tree().children().stream()
+                .map(RuleExplanation.Node::operator).toList());
     }
 
     private static Stream<String> allOperators(RuleExplanation.Node n) {

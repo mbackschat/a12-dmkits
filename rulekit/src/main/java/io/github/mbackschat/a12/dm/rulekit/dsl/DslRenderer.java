@@ -259,8 +259,8 @@ public final class DslRenderer {
                             .collect(Collectors.joining(", "))
                     + ")";
             case PatternCondition p ->
-                    "[" + path(p.field()) + "] " + keyword(p.operatorId()) + " " + quote(p.regex());
-            case ValueListCondition v -> keyword(v.operatorId()) + "(" + path(v.field()) + ", "
+                    "[" + entityOperand(p.field()) + "] " + keyword(p.operatorId()) + " " + quote(p.regex());
+            case ValueListCondition v -> keyword(v.operatorId()) + "(" + entityOperand(v.field()) + ", "
                     + v.values().stream().map(this::render).collect(Collectors.joining(", "))
                     + ")";
             case CustomConditionRef c -> keyword(c.operatorId()) + " " + quoteSegment(c.name());
@@ -461,7 +461,7 @@ public final class DslRenderer {
             case DateTimeLiteral dt -> quote(dt.value());
             case EnumValueLiteral e -> quote(e.value());
             case BoolLiteral b -> keyword(b.operatorId());
-            case LengthOf l -> keyword(l.operatorId()) + "(" + path(l.field()) + ")";
+            case LengthOf l -> keyword(l.operatorId()) + "(" + entityOperand(l.field()) + ")";
             case EnumCategoryAccess c ->
                     "[" + (c.outer() ? "$" : "") + path(c.field()) + " " + keyword(c.operatorId())
                             + " " + c.category() + "]";

@@ -634,7 +634,7 @@ class PredicatesTest {
         val c = assertInstanceOf(ValueListCondition::class.java,
             translate("FieldValueIncludedInValueList(ProductCode, \"ABC\", \"XYZ\")"))
         assertEquals(true, c.included())
-        assertEquals("/Order/ProductCode", c.field().path().value())
+        assertEquals("/Order/ProductCode", c.field().field().path().value())
         assertEquals(2, c.values().size)
     }
 
@@ -645,12 +645,21 @@ class PredicatesTest {
         assertEquals(false, c.included())
     }
 
+    @Test
+    fun anIndexedStringSubjectKeepsItsKeyInValueListMembership() {
+        val condition = translate("FieldValueIncludedInValueList(Items/Sku For \"S-1\", \"ABC\")")
+        assertEquals(
+            "FieldValueIncludedInValueList(/Order/Items/Sku For \"S-1\", \"ABC\")",
+            io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer().render(condition),
+        )
+    }
+
     /** An enumeration field's literal list is domain-checked (catalog constraint). */
     @Test
     fun fieldValueIncludedInValueListOverAnEnumerationFieldConverts() {
         val c = assertInstanceOf(ValueListCondition::class.java,
             translate("FieldValueIncludedInValueList(Priority, \"EXPRESS\", \"OVERNIGHT\")"))
-        assertEquals("/Order/Priority", c.field().path().value())
+        assertEquals("/Order/Priority", c.field().field().path().value())
         assertEquals(2, c.values().size)
     }
 
@@ -670,7 +679,7 @@ class PredicatesTest {
     fun fieldValueIncludedInValueListOverANumberFieldConverts() {
         val c = assertInstanceOf(ValueListCondition::class.java,
             translate("FieldValueIncludedInValueList(Quantity, 0, 5, 10)"))
-        assertEquals("/Order/Quantity", c.field().path().value())
+        assertEquals("/Order/Quantity", c.field().field().path().value())
         assertEquals(3, c.values().size)
     }
 

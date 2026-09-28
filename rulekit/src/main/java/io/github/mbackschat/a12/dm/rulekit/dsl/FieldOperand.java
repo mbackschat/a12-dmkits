@@ -4,7 +4,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * A field-typed operand for <em>list slots</em> (presence quantifiers, count/numeric aggregates,
  * uniqueness, date-range overlap, and value-list quantifiers): either a plain {@link FieldRef} or a
  * flattened repetition list ({@link FieldListRef}, the {@code Group*}{@code /Field} syntax). Scalar
- * slots keep taking {@link FieldRef} directly — that type split is what erases
+ * slots take {@link Cell}, a plain or index-selected single field — that type split erases
  * {@code MVK_NO_WILDCARDS_ALLOWED} (verified 2026-06-04, KERNEL-FINDINGS §9).
  *
  * <p>A field operand is also a {@link ValueListOperand}; the value-list quantifiers accept the wider
@@ -18,7 +18,12 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * a THIRD arm, satisfies both sealed hierarchies at once.
  */
 public sealed interface FieldOperand extends ValueListOperand, AggregateOperand
-        permits FieldRef, FieldListRef, IndexedFieldValue {
+        permits FieldOperand.Cell, FieldListRef {
+
+    /** One field cell: a plain reference or the cell selected by a semantic index (DG71, KF387). */
+    sealed interface Cell extends FieldOperand, GroupListOperand permits FieldRef, IndexedFieldValue {
+        FieldRef field();
+    }
 
     /**
      * The declared value kind of the referenced field. Declared HERE rather than on {@link ValueListOperand}

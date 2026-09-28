@@ -8,7 +8,8 @@ import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
  * {@code AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In v1, v2)} — a quantifier
  * over several fields' membership in one literal list. The kernel requires the field list to be
  * type-homogeneous ({@code MVK_VARYING_TYPES_NOT_ALLOWED}, verified 2026-06-04) — the typed
- * {@link Dsl} entry points (all-{@link StringRef} or all-{@link EnumRef}) erase that. The {@code In}
+ * {@link Dsl} entry points for plain fields (all-{@link StringRef} or all-{@link EnumRef}) erase that;
+ * the indexed-cell entry point defers declared-kind agreement to the kernel. The {@code In}
  * separator is a language-independent grammar literal (like the comparison symbols).
  *
  * <p>The fields side is {@code List<}{@link ValueListOperand}{@code >} — a plain field, a flattened

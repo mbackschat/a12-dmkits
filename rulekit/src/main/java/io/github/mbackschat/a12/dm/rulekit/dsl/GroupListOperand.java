@@ -22,5 +22,5 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * it admits a checked field and reads it as the selected cell's presence (INTERPRETER-FINDINGS IF335).
  */
 public sealed interface GroupListOperand extends DuplicateOperand
-        permits FieldRef, GroupListRef, IndexedGroupValue, IndexedFieldValue {
+        permits FieldOperand.Cell, GroupListRef, IndexedGroupValue {
 }

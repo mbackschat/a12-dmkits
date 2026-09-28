@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.adapter.profile.ConditionComplexity.Construct;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
 /**
  * {@link ConditionComplexity} — the shape/cost walk that powers {@code model profile}. The third sibling
@@ -17,6 +19,26 @@ import io.github.mbackschat.a12.dm.adapter.profile.ConditionComplexity.Construct
  * operator histogram (with multiplicity), and the performance-sensitive {@link Construct} tags.
  */
 class ConditionComplexityTest {
+
+    @Test
+    void anIndexedCellIsCountedInsideEveryFieldOnlyCarrier() {
+        BoundModel model = BoundModel.ofJson(DocumentModelDraft.named("shop").locale("en_US")
+                .rootGroup("Order", order -> order.field("Title", FieldKind.STRING)
+                        .group("Items", items -> items.repeatable(5).indexField("Sku")
+                                .field("Sku", FieldKind.STRING).field("Label", FieldKind.STRING)))
+                .build().toJson());
+        IndexedFieldValue cell = model.field("/Order/Items/Label").semanticIndex("S-1").index();
+        for (Condition condition : java.util.List.of(
+                Dsl.matches(cell, "[A-Z]+"),
+                new ValueListCondition(cell, true, java.util.List.of(new StringLiteral("A"))),
+                Dsl.length(cell).gt(1),
+                Dsl.atLeastOneFieldValueIncludedInValueList(java.util.List.of("A"), cell,
+                        model.field("/Order/Title")))) {
+            ConditionComplexity complexity = ConditionComplexity.of(condition);
+            assertTrue(complexity.constructs().contains(Construct.SEMANTIC_INDEX));
+            assertEquals(1, complexity.operatorHistogram().get("SemanticIndex"));
+        }
+    }
 
     private static final BoundModel m = BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
     private static final String FEE = "/Subscription/Addons/MonthlyFee";

@@ -26,6 +26,29 @@ class TierAProjectionShapeTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String PATTERN = "[0-9]{5}";
 
+    @Test
+    void indexedPatternIsCarriedWithoutProjectingAConstraintOnEveryRow() throws Exception {
+        String structure = DocumentModelDraft.named("Order").locale("en_US")
+                .rootGroup("Root", g -> g.field("Title", FieldKind.STRING)
+                        .group("Items", i -> i.repeatable(5).indexField("Sku")
+                                .field("Sku", FieldKind.STRING).field("Label", FieldKind.STRING)))
+                .build().toJson();
+        BoundModel m = BoundModel.ofJson(structure);
+        StringRef title = m.str("/Root/Title");
+        Rule rule = m.rule(m.group("/Root")).name("SelectedLabel")
+                .errorField(title)
+                .when(title.filled().and(Dsl.violates(
+                        m.field("/Root/Items/Label").semanticIndex("S-1").index(), "[A-Z]+")))
+                .code("LABEL_FORMAT").severity(Severity.ERROR)
+                .message(Dsl.en("The selected item label must be uppercase."))
+                .build();
+        JsonSchemaExporter.ExportResult exported = new JsonSchemaExporter().export(m.add(rule).toJson());
+        JsonNode label = MAPPER.readTree(exported.jsonSchema()).path("properties").path("Items")
+                .path("items").path("properties").path("Label");
+        assertFalse(label.has("pattern"), "a selected row does not constrain every item label");
+        assertTrue(exported.jsonSchema().contains(Carriage.X_RULE));
+    }
+
     private static String modelWithPatternRule() {
         String structure = DocumentModelDraft.named("Order")
                 .locale("en_US")

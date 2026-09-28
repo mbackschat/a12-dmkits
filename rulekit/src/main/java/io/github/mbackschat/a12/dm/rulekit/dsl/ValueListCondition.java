@@ -8,18 +8,22 @@ import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
  * {@code FieldValueIncludedInValueList(field, v1, v2, …)} / {@code FieldValueNotIncludedInValueList(…)}
  * — membership of a single field's value in a literal list. The kernel's slot rules (verified
  * 2026-06-04, KERNEL-FINDINGS): only string/enum/number fields ({@code MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED}),
- * the field is a bare path, values must match the field's kind ({@code MVK_INVALID_TYPES_FOR_COMPARISON}),
+ * the subject is a plain or index-selected field cell (DG71), values must match its kind ({@code MVK_INVALID_TYPES_FOR_COMPARISON}),
  * and numeric values are <em>integer literals only</em> (grammar). The typed handles
- * ({@code in}/{@code notIn} on {@link StringRef}/{@link NumberRef}/{@link EnumRef}) make all of
- * that unrepresentable.
+ * ({@code in}/{@code notIn} on {@link StringRef}/{@link NumberRef}/{@link EnumRef}) enforce their
+ * respective kind and literal domains; the indexed-cell arm retains the key for kernel validation.
  *
  * <p><b>The value list admits field REFERENCES beside literals</b> ({@code in(StringRef, …)},
  * {@code in(NumberRef, …)} — DG10), which makes this a duplicate carrier: the kernel builds one union of the
  * value list plus the subject field and checks it for a repeated reference. Only the exact arm applies — a
  * group operand is refused outright here ({@code MVK_NO_GROUPS_ALLOWED}), so nothing can contain anything.
  */
-public record ValueListCondition(FieldRef field, boolean included, List<Calculation> values)
+public record ValueListCondition(FieldOperand.Cell field, boolean included, List<Calculation> values)
         implements Condition {
+
+    public ValueListCondition(FieldRef field, boolean included, List<Calculation> values) {
+        this((FieldOperand.Cell) field, included, values);
+    }
 
     public ValueListCondition {
         values = List.copyOf(values);
@@ -45,7 +49,7 @@ public record ValueListCondition(FieldRef field, boolean included, List<Calculat
      * (Locked: {@code validate.laws.ValueListQuantifierDuplicateSiblingLawsTest}'s competing-collision pair,
      * and {@code dsl.ScalarValueListDuplicateGateTest}'s client-side twin.)
      */
-    private static List<DuplicateOperand> union(FieldRef field, List<Calculation> values) {
+    private static List<DuplicateOperand> union(FieldOperand.Cell field, List<Calculation> values) {
         var union = new java.util.ArrayList<DuplicateOperand>();
         for (Calculation value : values) {
             if (value instanceof DuplicateOperand operand) {

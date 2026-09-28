@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -8,6 +9,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 
 /**
  * What a PATTERN comparison demands of its two sides, in the order it asks.
@@ -98,7 +101,7 @@ class PatternComparisonOperandLawsTest {
     /**
      * The first question is about SHAPE, and a keyed read passes it: {@code [Field For key]} is a plain field
      * read to this gate, not a call. The type question still follows, so a keyed NUMBER cell draws the kind class.
-     * Written as text, because the typed surface cannot author a pattern over a keyed cell (DEV-API-GAPS DG71).
+     * Kernel text is the admission oracle; DG71's typed indexed-cell factory is checked separately.
      */
     @Test
     void aKeyedFieldReadIsAPlainFieldReadToTheShapeQuestion() {
@@ -115,6 +118,27 @@ class PatternComparisonOperandLawsTest {
         expected.put("a keyed number cell", KIND);
         expected.put("a call over the keyed cell", SHAPE);
         assertEquals(expected, actual, "a keyed read is a field read; the kind question still applies");
+    }
+
+    @Test
+    void keyedKindAndPatternAdmissionPrecedence() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("string and valid pattern", keyedVerdict("[/Order/Parcels/Label For \"P1\"] PatternMatched \"a+\""));
+        actual.put("string and invalid pattern", keyedVerdict("[/Order/Parcels/Label For \"P1\"] PatternMatched \"a++\""));
+        actual.put("number and valid pattern", keyedVerdict("[/Order/Parcels/Weight For \"P1\"] PatternMatched \"a+\""));
+        actual.put("number and invalid pattern", keyedVerdict("[/Order/Parcels/Weight For \"P1\"] PatternMatched \"a++\""));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("string and valid pattern", KernelLaws.ADMITTED);
+        expected.put("string and invalid pattern", "MVK_INVALID_PATTERN");
+        expected.put("number and valid pattern", KIND);
+        expected.put("number and invalid pattern", KIND);
+        assertEquals(expected, actual, "kind precedes pattern admission on the keyed number cell");
+
+        BoundModel model = BoundModel.ofJson(PARCELS_JSON);
+        assertDoesNotThrow(() -> Dsl.matches(model.num("/Order/Parcels/Weight")
+                .semanticIndex("P1").index(), "a++"),
+                "typed construction must let the kernel report the preceding kind class");
     }
 
     /** Parcels is an index group, so its fields can be read under a key. */

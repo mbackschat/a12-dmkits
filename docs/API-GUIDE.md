@@ -237,6 +237,8 @@ The fragments show how the shipped primitives compose into the **business idioms
 
 The per-row threshold uses the **semantic index** `num(f).forIndex(key)` — read *this field's value in the row whose index field equals `key`*. It is **not number-only**: `forIndex` lives on every comparable ref (`num`/`str`/`enumOf`/`date`/`time`/`dateTime`/`dateRange`), and the key is either a **constant** (`forIndex("AUTO")`) or **another field** (`forIndex(m.field("/Policy/PreferredCode"))`). The kernel places no kind restriction on the indexed field — its own flagship example indexes an *enum* (`[Addresses/Country For PreferredAddress]`) — so the ref you call it on decides the result kind. (Finding 55 / DEV-API-GAPS DG15.)
 
+For a **field-only** operator, keep the selected cell rather than turning it into a general value expression: `IndexedFieldValue carrier = m.field("/Order/Packages/Carrier").semanticIndex("P1").index();` then `Dsl.matches(carrier, "[A-Z]{2}")`, `Dsl.length(carrier).gt(10)`, `carrier.in("DHL", "UPS")`, or `Dsl.atLeastOneFieldValueIncludedInValueList(List.of("DHL"), carrier, m.field("/Order/Title"))`. The same selected-cell type works with a field-valued key. The renderer and both read paths retain the `For` key; `FieldOperand.Cell` excludes a starred field list and any calculated string expression ([AF176](API-FINDINGS.md#af176)).
+
 ### 3.3 A domain fragment library — packaging reuse
 
 <!-- teaser -->

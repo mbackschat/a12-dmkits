@@ -806,8 +806,9 @@ final class ConditionConverter {
             List<String> paths = entities.stream().map(IEntityId::getFullName).toList();
             return switch (homogeneousKind(paths, node)) {
                 case STRING -> {
-                    StringRef[] r = paths.stream().map(model::str).toArray(StringRef[]::new);
-                    StringRef[] rest = Arrays.copyOfRange(r, 1, r.length);
+                    FieldOperand.Cell[] r = entities.stream().map(this::toScalarCell)
+                            .toArray(FieldOperand.Cell[]::new);
+                    FieldOperand.Cell[] rest = Arrays.copyOfRange(r, 1, r.length);
                     yield switch (name) {
                         case AtLeastOneFieldValueIncludedInValueList ->
                                 Dsl.atLeastOneFieldValueIncludedInValueList(values, r[0], rest);
@@ -927,6 +928,21 @@ final class ConditionConverter {
         return unindexedFieldOperand(entity);
     }
 
+    /** A field-only slot can carry a semantic index, but never a flattened repetition list (KF387). */
+    private FieldOperand.Cell toScalarCell(IEntityId entity) {
+        FieldOperand operand = toFieldOperand(entity);
+        if (operand instanceof FieldOperand.Cell cell) {
+            return cell;
+        }
+        throw unsupported("starred field in a scalar cell slot", entity);
+    }
+
+    private NumberExpr lengthOf(IEntityId entity) {
+        return hasSemanticIndex(entity)
+                ? Dsl.length(semanticIndex(entity, entity).index())
+                : model.str(entity.getFullName()).length();
+    }
+
     /** {@link #toFieldOperand} without the index, for {@code FirstFilledValue}, which keys its own operand. */
     private FieldOperand unindexedFieldOperand(IEntityId entity) {
         FieldOperand op = isWildcard(entity)
@@ -1028,10 +1044,10 @@ final class ConditionConverter {
         // FieldValueIncludedInValueList(Product, [Other]) — build the node with mixed value operands.
         boolean anyFieldEntry = valueList.getValueList().stream().anyMatch(op ->
                 op instanceof IFieldIdOperation f && f.getOperatorName() == FieldIdOperationName.FieldValue);
-        if (anyFieldEntry) {
+        if (anyFieldEntry || hasSemanticIndex(valueList.getField())) {
             List<Calculation> vals = valueList.getValueList().stream()
                     .map(op -> valueListEntry(op, kind, valueList)).toList();
-            return new ValueListCondition(model.field(path), included, vals);
+            return new ValueListCondition(toScalarCell(valueList.getField()), included, vals);
         }
         List<String> values = valueList.getValueList().stream().map(op -> constantValue(op, valueList)).toList();
         return switch (kind) {
@@ -1170,7 +1186,7 @@ final class ConditionConverter {
             };
         }
         if (left instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
-            return numberExprComparison(model.str(lenOp.getField().getFullName()).length(), op, right, comparison);
+            return numberExprComparison(lengthOf(lenOp.getField()), op, right, comparison);
         }
         // a ValueAsDate(field, FirstDay|LastDay) on the left — compare it as a date operand
         if (left instanceof IFieldIdOperationWithParameters vad
@@ -1252,7 +1268,15 @@ final class ConditionConverter {
         // equals X — it rides on getSemanticIndex(). The kernel's index is always a single element: a constant
         // String key ([field For "x"]) or a field-ref IEntityId key ([field For keyField]).
         if (hasSemanticIndex(field.getField())) {
-            Calculation semantic = semanticIndex(field.getField(), origin).index();
+            IndexedFieldValue semantic = semanticIndex(field.getField(), origin).index();
+            if (kind == ValueKind.STRING && other instanceof IConstantOperation constant) {
+                if (op == ComparisonOperation.WM) {
+                    return Dsl.matches(semantic, constant.getValue());
+                }
+                if (op == ComparisonOperation.NM) {
+                    return Dsl.violates(semantic, constant.getValue());
+                }
+            }
             return switch (kind) {
                 case NUMBER -> numberExprComparison(new NumberExpr(semantic), op, other, origin);
                 case STRING -> stringExprComparison(new StringExpr(semantic), op, other, origin);
@@ -1694,7 +1718,7 @@ final class ConditionConverter {
             return new NumberExpr(new BaseYear());
         }
         if (operand instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
-            return model.str(lenOp.getField().getFullName()).length();
+            return lengthOf(lenOp.getField());
         }
         // numeric coercions (family 4): RangeAsNumber(field, s, e) — 1-based syntax over the kernel's 0-based start
         if (operand instanceof IFieldIdOperationWithParameters params

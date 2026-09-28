@@ -37,6 +37,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupPresenceCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RuleGroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf;
@@ -100,9 +101,12 @@ final class ExplanationTreeBuilder {
             case IndexedPresenceCondition p -> List.of();
             case IndexedGroupPresenceCondition p -> List.of();
             case GroupListPredicate p -> List.of();
-            case PatternCondition p -> List.of();
-            case ValueListCondition v -> List.of();
-            case FieldListValueListCondition v -> List.of();
+            case PatternCondition p -> cell(p.field());
+            case ValueListCondition v -> cell(v.field());
+            case FieldListValueListCondition v -> v.fields().stream()
+                    .filter(IndexedFieldValue.class::isInstance)
+                    .map(IndexedFieldValue.class::cast)
+                    .flatMap(index -> operand(index).stream()).toList();
             case FieldListEntityListCondition v -> List.of();
             case RepetitionNotUniqueCondition r -> List.of();
             case CustomConditionRef c -> List.of();
@@ -123,7 +127,7 @@ final class ExplanationTreeBuilder {
             case DateTimeLiteral dt -> List.of();
             case EnumValueLiteral e -> List.of();
             case BoolLiteral b -> List.of();
-            case LengthOf l -> List.of(leaf(l.operatorId(), l));
+            case LengthOf l -> List.of(new RuleExplanation.Node(l.operatorId(), renderer.render(l), cell(l.field())));
             case EnumCategoryAccess c -> List.of(leaf(c.operatorId(), c));
             case CountAggregate a -> List.of(leaf(a.operatorId(), a));
             case ListAggregate a -> List.of(leaf(a.operatorId(), a));
@@ -180,6 +184,11 @@ final class ExplanationTreeBuilder {
 
     private RuleExplanation.Node leaf(String op, Calculation calc) {
         return new RuleExplanation.Node(op, renderer.render(calc), List.of());
+    }
+
+    private List<RuleExplanation.Node> cell(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand.Cell cell) {
+        return cell instanceof io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue index
+                ? operand(index) : List.of();
     }
 
     private static List<RuleExplanation.Node> concat(List<RuleExplanation.Node> a, List<RuleExplanation.Node> b) {

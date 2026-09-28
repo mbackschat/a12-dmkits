@@ -170,13 +170,13 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                     });
                     yield 1;
                 }
-                case PatternCondition ignored -> {
+                case PatternCondition pattern -> {
                     constructs.add(Construct.PATTERN);
-                    yield 1;
+                    yield 1 + cellDepth(pattern.field());
                 }
                 case ValueListCondition v -> {
                     constructs.add(Construct.VALUE_LIST);
-                    yield 1 + maxCalcDepth(v.values());
+                    yield 1 + Math.max(cellDepth(v.field()), maxCalcDepth(v.values()));
                 }
                 case FieldListValueListCondition v -> {
                     constructs.add(Construct.VALUE_LIST);
@@ -217,7 +217,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 case DateTimeLiteral ignored -> 1;
                 case EnumValueLiteral ignored -> 1;
                 case BoolLiteral b -> { op(b.operatorId()); yield 1; }
-                case LengthOf l -> { op(l.operatorId()); yield 1; }
+                case LengthOf l -> { op(l.operatorId()); yield 1 + cellDepth(l.field()); }
                 case EnumCategoryAccess c -> { op(c.operatorId()); yield 1; }
                 case CountAggregate a -> {
                     op(a.operatorId());
@@ -360,6 +360,11 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
          *  list also carries a Having condition subtree. Accepts the wider {@link ValueListOperand}. */
         private int operandDepth(ValueListOperand operand) {
             nodeCount++;
+            if (operand instanceof IndexedFieldValue index) {
+                op(index.operatorId());
+                constructs.add(Construct.SEMANTIC_INDEX);
+                return 1;
+            }
             if (operand instanceof EnumCategoryAccess c) {
                 op(c.operatorId());                              // [field -> Cat] as a value-list member
                 return 1;
@@ -377,6 +382,10 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 }
             }
             return 1;
+        }
+
+        private int cellDepth(FieldOperand.Cell cell) {
+            return cell instanceof IndexedFieldValue index ? depth(index) : 0;
         }
 
         /** A group scope contributes no operand depth: it is one slot whose extent the kernel expands. */

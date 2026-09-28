@@ -93,14 +93,33 @@ public final class Dsl {
         return field.length();
     }
 
+    /** {@code Length(field For key)} retains the selected cell (DG71; KF387). catalog:Length */
+    public static NumberExpr length(IndexedFieldValue field) {
+        return new NumberExpr(new LengthOf(field));
+    }
+
     /** {@code [field] PatternMatched "regex"} — anchored whole-value match; the factory peer of {@link StringRef#matches}. catalog:PatternMatched */
     public static Condition matches(StringRef field, String regex) {
         return field.matches(regex);
     }
 
+    /** The indexed-cell arm of {@code PatternMatched} (DG71; KF387). catalog:PatternMatched */
+    public static Condition matches(IndexedFieldValue field, String regex) {
+        return indexedPattern(field, true, regex);
+    }
+
     /** {@code [field] PatternViolated "regex"} — anchored whole-value non-match; the factory peer of {@link StringRef#violates}. catalog:PatternViolated */
     public static Condition violates(StringRef field, String regex) {
         return field.violates(regex);
+    }
+
+    /** The indexed-cell arm of {@code PatternViolated} (DG71; KF387). catalog:PatternViolated */
+    public static Condition violates(IndexedFieldValue field, String regex) {
+        return indexedPattern(field, false, regex);
+    }
+
+    private static Condition indexedPattern(IndexedFieldValue field, boolean matched, String regex) {
+        return new PatternCondition(field, matched, regex);
     }
 
     // --- filled-count aggregates — comparable numeric expressions ------------------------------
@@ -1765,9 +1784,8 @@ public final class Dsl {
     }
 
     // --- field-list × value-list quantifiers — Name(f1, f2 In v1, v2) --------------------------
-    // Typed entry points keep the field list type-homogeneous (MVK_VARYING_TYPES_NOT_ALLOWED
-    // erased); the enum variants domain-check every value against every field (the kernel's
-    // MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY pre-checked).
+    // StringRef entry points keep the field list type-homogeneous; enum refs also domain-check values.
+    // The scalar-cell arm keeps keyed identity and delegates kind/domain admission to the kernel.
 
     /** {@code AtLeastOneFieldValueIncludedInValueList(f1, f2 In "v1", "v2")} — at least one listed field's value is in the value list. catalog:AtLeastOneFieldValueIncludedInValueList */
     public static Condition atLeastOneFieldValueIncludedInValueList(
@@ -1785,6 +1803,24 @@ public final class Dsl {
     public static Condition notAllFieldValuesIncludedInValueList(
             List<String> values, StringRef first, StringRef... rest) {
         return stringListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
+    }
+
+    /** A literal-list quantifier over plain or indexed scalar field cells (DG71). catalog:AtLeastOneFieldValueIncludedInValueList */
+    public static Condition atLeastOneFieldValueIncludedInValueList(
+            List<String> values, FieldOperand.Cell first, FieldOperand.Cell... rest) {
+        return cellListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, first, rest);
+    }
+
+    /** A literal-list quantifier over plain or indexed scalar field cells (DG71). catalog:NoFieldValueIncludedInValueList */
+    public static Condition noFieldValueIncludedInValueList(
+            List<String> values, FieldOperand.Cell first, FieldOperand.Cell... rest) {
+        return cellListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, first, rest);
+    }
+
+    /** A literal-list quantifier over plain or indexed scalar field cells (DG71). catalog:NotAllFieldValuesIncludedInValueList */
+    public static Condition notAllFieldValuesIncludedInValueList(
+            List<String> values, FieldOperand.Cell first, FieldOperand.Cell... rest) {
+        return cellListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
     }
 
     // Group-scope value-list quantifiers — the field side is a GROUP, whose contained fields the kernel expands
@@ -1879,6 +1915,15 @@ public final class Dsl {
         for (StringRef r : rest) {
             fields.add(r.field());
         }
+        var literals = values.stream().<Calculation>map(StringLiteral::new).toList();
+        return new FieldListValueListCondition(q, fields, literals);
+    }
+
+    private static Condition cellListQuantifier(
+            ValueListQuantifier q, List<String> values, FieldOperand.Cell first, FieldOperand.Cell... rest) {
+        var fields = new ArrayList<ValueListOperand>();
+        fields.add(first);
+        fields.addAll(List.of(rest));
         var literals = values.stream().<Calculation>map(StringLiteral::new).toList();
         return new FieldListValueListCondition(q, fields, literals);
     }

@@ -82,8 +82,15 @@ internal class Conditions(private val mapping: Mapping) {
                 "pattern operand " + node.pattern.javaClass.simpleName + " — the node takes a string constant"
             )
         }
-        val field = stringRef(mapping.fieldRef(node.value))
-        return if (node.expectMatch) Dsl.matches(field, regex.v) else Dsl.violates(field, regex.v)
+        return when (val cell = mapping.aggregateOperand(node.value)) {
+            is FieldRef -> {
+                val field = stringRef(cell)
+                if (node.expectMatch) Dsl.matches(field, regex.v) else Dsl.violates(field, regex.v)
+            }
+            is IndexedFieldValue ->
+                if (node.expectMatch) Dsl.matches(cell, regex.v) else Dsl.violates(cell, regex.v)
+            else -> throw UnmappedConstructException("pattern needs a scalar field cell")
+        }
     }
 
     // --- Tolerance ----------------------------------------------------------------------------
@@ -370,16 +377,25 @@ internal class Conditions(private val mapping: Mapping) {
                 ValueListQuantOp.NOT_ALL -> Dsl.notAllFieldValuesIncludedInValueList(values, lists[0], *rest)
             }
         }
-        return when (fieldRefOperand(op, head).kind()) {
+        val firstCell = head as? FieldOperand.Cell ?: throw UnmappedConstructException(
+            op.kernelName + " needs a scalar field cell"
+        )
+        return when (firstCell.kind()) {
             ValueKind.STRING -> {
-                val refs = operands.map { stringRef(fieldRefOperand(op, it)) }.toTypedArray()
-                val rest = refs.copyOfRange(1, refs.size)
+                val cells = operands.map {
+                    val cell = it as? FieldOperand.Cell ?: throw UnmappedConstructException(
+                        op.kernelName + " mixing a scalar field with " + it.renderedPath()
+                    )
+                    stringRef(cell.field())
+                    cell
+                }.toTypedArray()
+                val rest = cells.copyOfRange(1, cells.size)
                 when (op) {
                     ValueListQuantOp.AT_LEAST_ONE ->
-                        Dsl.atLeastOneFieldValueIncludedInValueList(values, refs[0], *rest)
-                    ValueListQuantOp.NO -> Dsl.noFieldValueIncludedInValueList(values, refs[0], *rest)
+                        Dsl.atLeastOneFieldValueIncludedInValueList(values, cells[0], *rest)
+                    ValueListQuantOp.NO -> Dsl.noFieldValueIncludedInValueList(values, cells[0], *rest)
                     ValueListQuantOp.NOT_ALL ->
-                        Dsl.notAllFieldValuesIncludedInValueList(values, refs[0], *rest)
+                        Dsl.notAllFieldValuesIncludedInValueList(values, cells[0], *rest)
                 }
             }
             ValueKind.ENUMERATION -> {

@@ -24,7 +24,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  */
 public record FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boolean correlated,
         Optional<Set<EntityPath>> repeatingAncestors)
-        implements FieldOperand, NumericTextSource, GroupListOperand, TemporalComponent, HasEntityPath {
+        implements FieldOperand.Cell, NumericTextSource, TemporalComponent, HasEntityPath {
 
     /**
      * Ancestor repetition is a model fact used only to withhold an ungrounded diagnostic class (KF458).

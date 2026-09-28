@@ -28,6 +28,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberOfValueInFields
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef
@@ -389,7 +390,11 @@ internal class Functions(private val mapping: Mapping) {
         if (args.size != 1) {
             throw UnmappedConstructException("Length with " + args.size + " operands")
         }
-        return Dsl.length(stringRef(args[0], "Length")).expression()
+        return when (val cell = mapping.aggregateOperand(args[0])) {
+            is FieldRef -> Dsl.length(stringRef(args[0], "Length")).expression()
+            is IndexedFieldValue -> Dsl.length(cell).expression()
+            else -> throw UnmappedConstructException("Length needs a scalar field cell")
+        }
     }
 
     /**

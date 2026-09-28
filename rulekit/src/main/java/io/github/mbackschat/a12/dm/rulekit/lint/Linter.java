@@ -618,8 +618,8 @@ public final class Linter {
                 collectSubstitutable(a.right(), found);
             }
             case LengthOf l -> {
-                if (asZero("Length", 0, l.field().kind())) {
-                    found.add(l.field());
+                if (l.field() instanceof FieldRef field && asZero("Length", 0, field.kind())) {
+                    found.add(field);
                 }
             }
             case DateExtraction e -> {
@@ -682,8 +682,8 @@ public final class Linter {
                     case DIVIDE, POWER -> null;
                 };
             }
-            case LengthOf l -> l.field().path().value().equals(emptyField)
-                    && asZero("Length", 0, l.field().kind()) ? BigDecimal.ZERO : null;
+            case LengthOf l -> l.field() instanceof FieldRef field && field.path().value().equals(emptyField)
+                    && asZero("Length", 0, field.kind()) ? BigDecimal.ZERO : null;
             case DateExtraction e -> e.source() instanceof FieldValue fv
                     && fv.field().path().value().equals(emptyField)
                     && asZero(e.operatorId(), 0, fv.field().kind()) ? BigDecimal.ZERO : null;

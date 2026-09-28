@@ -32,6 +32,23 @@ class SemanticIndexFieldOperandPositionReadTest {
 
     private static final RuleValidator VALIDATOR = new RuleValidator();
 
+    @Test
+    void anIndexedScalarCellReadsBackInFieldOnlyPositions() {
+        assertReadsBack(List.of(
+                "[/Order/Packages/Carrier For \"P1\"] PatternMatched \"[A-Z]{2}\"",
+                "[/Order/Packages/Carrier For \"P1\"] PatternViolated \"[A-Z]{2}\"",
+                "Length(/Order/Packages/Carrier For \"P1\") > 10",
+                "FieldValueIncludedInValueList(/Order/Packages/Carrier For \"P1\", \"DHL\", \"UPS\")",
+                "FieldValueNotIncludedInValueList(/Order/Packages/Carrier For \"P1\", \"DHL\")",
+                "AtLeastOneFieldValueIncludedInValueList(/Order/Packages/Carrier For \"P1\", /Order/Title In \"n/a\")",
+                "NoFieldValueIncludedInValueList(/Order/Packages/Carrier For \"P1\", /Order/Title In \"n/a\")",
+                "NotAllFieldValuesIncludedInValueList(/Order/Packages/Carrier For \"P1\", /Order/Title In \"n/a\")",
+                "[/Order/Packages/Carrier For /Order/Title] PatternMatched \"[A-Z]{2}\"",
+                "Length(/Order/Packages/Carrier For /Order/Title) > 10",
+                "FieldValueIncludedInValueList(/Order/Packages/Carrier For /Order/Title, \"DHL\")",
+                "AtLeastOneFieldValueIncludedInValueList(/Order/Packages/Carrier For /Order/Title, /Order/Packages/Carrier For \"P1\" In \"n/a\")"));
+    }
+
     /** Every entity-list slot: the members go through one shared field-operand conversion. */
     @Test
     void anIndexedFieldReadsBackAsAnEntityListMember() {

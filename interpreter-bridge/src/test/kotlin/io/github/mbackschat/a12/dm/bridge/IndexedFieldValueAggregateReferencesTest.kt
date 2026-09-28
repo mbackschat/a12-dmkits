@@ -9,6 +9,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
+import io.github.mbackschat.a12.dm.rulekit.dsl.OperatorUsage
+import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral
+import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition
 
 /**
  * `IndexedFieldValue` became a [FieldOperand] (commit
@@ -92,5 +95,24 @@ class IndexedFieldValueAggregateReferencesTest {
             ConditionReferences.of(viaAggregate).fieldPaths().contains("/Order/Items/Sku"),
             "the key field must stay a reference when the same indexed operand sits inside Sum(...)",
         )
+    }
+
+    @Test
+    fun fieldOnlyCellsKeepTheProjectedReadAndKeyDependency() {
+        val key = model.field("/Order/ProductCode")
+        val cell = model.field("/Order/Items/Sku").semanticIndex(key).index()
+        val conditions = listOf(
+            Dsl.matches(cell, "[A-Z]+"),
+            ValueListCondition(cell, true, listOf(StringLiteral("A"))),
+            Dsl.length(cell).gt(1),
+            Dsl.atLeastOneFieldValueIncludedInValueList(listOf("A"), cell,
+                model.field("/Order/CustomerName")),
+        )
+        for (condition in conditions) {
+            assertEquals(ConditionReferences.ReadMode.PROJECTED,
+                ConditionReferences.readMode(condition, "/Order/Items/Sku"))
+            assertTrue(ConditionReferences.of(condition).fieldPaths().contains("/Order/ProductCode"))
+            assertTrue(OperatorUsage.of(condition).contains("SemanticIndex"))
+        }
     }
 }
