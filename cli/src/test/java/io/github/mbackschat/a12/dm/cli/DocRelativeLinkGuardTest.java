@@ -19,13 +19,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * <b>A relative link in a doc must point at a file that exists.</b> {@link DocAnchorResolveGuardTest} checks
+ * <b>A relative link in a doc must point at a tracked target that exists.</b> {@link DocAnchorResolveGuardTest} checks
  * the <i>fragment</i> half of a link — that {@code #ifNN} resolves inside its target doc — and says nothing
  * about the <i>path</i> half, so a link to a file that was never committed or has since been deleted reads as
  * a working citation forever.
  *
- * <p><b>Why this is the cheapest guard in the estate to justify.</b> Its oracle is {@link Files#exists} — for a
- * target this repository contains. For one that leaves the repository it is not an oracle at all, and that
+ * <p><b>Why this is the cheapest guard in the estate to justify.</b> Its oracle is {@link Files#exists} plus the
+ * Git index — a local file excluded by a global ignore rule disappears from CI. For a target that leaves the
+ * repository neither check is an oracle, and that
  * distinction is load-bearing: see {@link #UNVERIFIABLE_OUTSIDE_THE_REPO}. Measured 2026-08-16 <i>through this
  * class's own rule</i>: <b>2432</b> relative link targets across <b>66</b> docs, of which <b>7</b> were dead when it
  * landed — a 0.3 % rate, all seven from one cause.
@@ -91,6 +92,8 @@ class DocRelativeLinkGuardTest {
     @Test
     void everyRelativeLinkTargetExists() throws IOException {
         Path docs = locate();
+        Path root = docs.toAbsolutePath().normalize().getParent();
+        Set<Path> tracked = trackedTargets(root);
         List<Path> scanned = markdown(docs);
         assertTrue(scanned.size() >= MIN_DOCS,
                 () -> "scanned only " + scanned.size() + " docs (floor " + MIN_DOCS + ") — a skip filter or a "
@@ -98,9 +101,11 @@ class DocRelativeLinkGuardTest {
 
         List<String> targets = new ArrayList<>();
         List<String> dead = new ArrayList<>();
+        List<String> untracked = new ArrayList<>();
         Set<String> outside = new LinkedHashSet<>();
         for (Path doc : scanned) {
-            audit(docs, doc.getFileName().toString(), Files.readString(doc), targets, dead, outside);
+            audit(root, doc.getParent(), doc.getFileName().toString(), Files.readString(doc), targets, dead,
+                    outside, tracked, untracked);
         }
 
         assertEquals(UNVERIFIABLE_OUTSIDE_THE_REPO, outside,
@@ -113,6 +118,8 @@ class DocRelativeLinkGuardTest {
                 + "this half, so a dead path reads as a working citation forever. Point it at a live file, or, "
                 + "if the artifact is genuinely gone, keep its identifier as a plain code span and drop the "
                 + "link:\n  " + String.join("\n  ", dead));
+        assertTrue(untracked.isEmpty(), () -> "links whose target exists locally but is not tracked by Git, so "
+                + "it will be absent from a clean checkout:\n  " + String.join("\n  ", untracked));
     }
 
     /**
@@ -143,6 +150,7 @@ class DocRelativeLinkGuardTest {
     @Test
     void everyRelativeLinkOutsideDocsAlsoResolves() throws IOException {
         Path root = locate().toAbsolutePath().normalize().getParent();
+        Set<Path> tracked = trackedTargets(root);
         List<Path> scanned = new ArrayList<>();
         Set<String> mirrorSourcesSeen = new LinkedHashSet<>();
         try (Stream<Path> files = Files.walk(root)) {
@@ -172,10 +180,11 @@ class DocRelativeLinkGuardTest {
 
         List<String> targets = new ArrayList<>();
         List<String> dead = new ArrayList<>();
+        List<String> untracked = new ArrayList<>();
         Set<String> outside = new LinkedHashSet<>();
         for (Path file : scanned) {
             audit(root, file.getParent(), root.relativize(file).toString(), Files.readString(file),
-                    targets, dead, outside);
+                    targets, dead, outside, tracked, untracked);
         }
 
         assertTrue(targets.size() >= MIN_TARGETS_OUTSIDE_DOCS,
@@ -187,6 +196,8 @@ class DocRelativeLinkGuardTest {
         assertTrue(dead.isEmpty(), () -> "links whose TARGET FILE does not exist. A module README's citations "
                 + "are read far more often than docs/, and nothing else checks them:\n  "
                 + String.join("\n  ", dead));
+        assertTrue(untracked.isEmpty(), () -> "links whose target exists locally but is not tracked by Git, so "
+                + "it will be absent from a clean checkout:\n  " + String.join("\n  ", untracked));
     }
 
     /** Sanity floor on the non-docs scan set — 60 tracked markdown files outside docs/ (2026-09-20). */
@@ -222,6 +233,22 @@ class DocRelativeLinkGuardTest {
                         + "(a bare fragment and an external URL are neither checked nor counted), got " + targets);
     }
 
+    @Test
+    void theGuardRejectsAnUntrackedFileThatExistsLocally(@TempDir Path dir) throws IOException {
+        Files.writeString(dir.resolve("local.patch.gz"), "patch");
+        List<String> targets = new ArrayList<>();
+        List<String> dead = new ArrayList<>();
+        Set<String> outside = new LinkedHashSet<>();
+        List<String> untracked = new ArrayList<>();
+
+        audit(dir, dir, "record.md", "[candidate](local.patch.gz)", targets, dead, outside,
+                Set.of(dir.resolve("record.md")), untracked);
+
+        assertEquals(List.of("record.md → local.patch.gz"), untracked);
+        assertTrue(dead.isEmpty());
+        assertTrue(outside.isEmpty());
+    }
+
     /**
      * Collect every relative target, those that do not exist, and those that leave the repository.
      *
@@ -237,6 +264,11 @@ class DocRelativeLinkGuardTest {
     /** As above, with the containment root stated rather than derived from the scanned file's own depth. */
     private static void audit(Path root, Path base, String name, String markdown, List<String> targets,
             List<String> dead, Set<String> outside) {
+        audit(root, base, name, markdown, targets, dead, outside, null, null);
+    }
+
+    private static void audit(Path root, Path base, String name, String markdown, List<String> targets,
+            List<String> dead, Set<String> outside, Set<Path> tracked, List<String> untracked) {
         Matcher link = LINK.matcher(withoutCode(markdown));
         while (link.find()) {
             String target = link.group(1);
@@ -253,8 +285,20 @@ class DocRelativeLinkGuardTest {
             }
             if (!Files.exists(resolved)) {
                 dead.add(name + " → " + target);
+            } else if (tracked != null && !tracked.contains(resolved)) {
+                untracked.add(name + " → " + target);
             }
         }
+    }
+
+    private static Set<Path> trackedTargets(Path root) {
+        Set<Path> paths = new LinkedHashSet<>();
+        for (Path file : RepoWalk.trackedFiles(root)) {
+            for (Path path = file; path.startsWith(root); path = path.getParent()) {
+                paths.add(path);
+            }
+        }
+        return paths;
     }
 
     /** Blank out fenced blocks and inline code spans, so prose *about* a link is not read as one. */
