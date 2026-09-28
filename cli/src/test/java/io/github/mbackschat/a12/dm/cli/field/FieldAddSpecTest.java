@@ -101,12 +101,13 @@ class FieldAddSpecTest {
         Files.writeString(specFile, """
             {"group":"/Doc","name":"Zip","kind":"STRING",
              "string":{"pattern":"[0-9]{5}","patternMessage":"five digits",
-                       "patternMessages":{"en_US":"five digits","de_DE":"fuenf Ziffern"}}}""");
+                       "patternMessages":{"en_US":"five digits","de_DE":"fuenf Ziffern","fr_FR":"cinq chiffres"}}}""");
         var res = CliTestSupport.run("-m", model.toString(), "field", "add", specFile.toString());
         assertEquals(0, res.code(), res::err);
         String written = Files.readString(model);
         assertTrue(written.contains("five digits"), "en_US pattern message emitted");
         assertTrue(written.contains("fuenf Ziffern"), "de_DE pattern message emitted (per-locale, not the en_US text)");
+        assertTrue(written.contains("cinq chiffres"), "undeclared locale message preserved");
     }
 
     @Test

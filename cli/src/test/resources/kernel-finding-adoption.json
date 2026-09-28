@@ -734,6 +734,86 @@
           "evidence": {}
         }
       }
+    },
+    "kf490": {
+      "sha256": "562cd88d86b3034ed64c6a3eb1f981250b7883c2bead95a5fe6bcc69b69e4b61",
+      "task": "DG115",
+      "scope": {
+        "adapter": [
+          "kernel static-message oracle"
+        ],
+        "dmkits": [
+          "modelkit shared writer",
+          "CLI field output",
+          "modelkit standalone message maps",
+          "CLI field schema",
+          "CLI typedef schema"
+        ],
+        "interpreter": [
+          "field-owned runtime message assessment"
+        ],
+        "checker": [
+          "declared-locale and no-pattern message coverage"
+        ],
+        "a12-kernel-lean": [
+          "specification",
+          "executable and proofs",
+          "evidence"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The existing kernel-backed law harness observes admission/classification; this scoped static evidence is not runtime message rendering.",
+          "evidence": {
+            "kernel static-message oracle": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/FieldTypeMessageTextLawsTest.java#aMessageWithoutAPatternDependsOnItsLocaleAndText",
+              "witness": "Six no-pattern rows, including the no-message control, isolate locale and empty/space/tab text."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "DG115 preserves explicit map content through the shared modelkit writer and its CLI consumers. Scalar pattern/fallback pairing is unchanged; no blanket map refusal is introduced. Core/rulekit/adapter keep their existing validation roles; no catalog operator semantics change.",
+          "evidence": {
+            "modelkit shared writer": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/FieldConfigTest.java#everyAuthoredPatternMessageSurvivesDraftAndTypedEditing",
+              "witness": "Direct field and typedef: declared fallback/override and undeclared text survive typed emission and read/retype."
+            },
+            "CLI field output": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/field/FieldAddSpecTest.java#stringSpecWithPerLocalePatternMessages",
+              "witness": "Actual field add persists the extra undeclared French message."
+            },
+            "modelkit standalone message maps": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/FieldConfigTest.java#explicitMessagesWithoutAPatternArePreservedForValidation",
+              "witness": "Explicit declared and undeclared messages survive on direct fields and typedefs; the no-message control stays omitted."
+            },
+            "CLI field schema": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/SchemaExamplesGuardTest.java#fieldAddExamplesAreAcceptedByTheTool",
+              "witness": "The schema example with a standalone fr_FR message executes through field add."
+            },
+            "CLI typedef schema": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/SchemaExamplesGuardTest.java#typedefAddExamplesAreAcceptedByTheTool",
+              "witness": "The same undeclared-locale standalone message payload executes through typedef add."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "IG159 owns runtime enum/String field-message evidence, including language and terminal-dollar forms; static admission alone cannot close it.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "M4/M5 must assess the locale/no-pattern carrier through the existing generated message population. This authoring fix adds no checker refusal and claims no full KF490 adoption.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Downloads handback carries exact kernel rows and the committed revision when available; peer adoption requires its own evidence and remains F-USE-BACKLOG.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

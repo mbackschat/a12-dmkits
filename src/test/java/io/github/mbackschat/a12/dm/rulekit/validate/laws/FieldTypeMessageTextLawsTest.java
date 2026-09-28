@@ -151,6 +151,27 @@ class FieldTypeMessageTextLawsTest {
         assertEquals(expected, actual, "which field messages the checker reaches");
     }
 
+    @Test
+    void aMessageWithoutAPatternDependsOnItsLocaleAndText() {
+        String plain = patterned(f -> { }, "en_US");
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("no message", KernelLaws.verdictOf(plain));
+        for (var row : Map.of("declared", "en_US", "undeclared", "fr_FR").entrySet()) {
+            actual.put(row.getKey(), KernelLaws.verdictOf(patterned(
+                    f -> f.patternMessage(row.getValue(), "capitals"), "en_US")));
+        }
+        for (var row : Map.of("empty", "", "space", " ", "tab", "\t").entrySet()) {
+            actual.put(row.getKey(), unpatterned(row.getValue()));
+        }
+        assertEquals(Map.of(
+                "no message", KernelLaws.ADMITTED,
+                "declared", "MVK_ERROR_MESSAGE_AND_NO_PATTERN",
+                "undeclared", KernelLaws.ADMITTED,
+                "empty", KernelLaws.ADMITTED,
+                "space", KernelLaws.ADMITTED,
+                "tab", "INVALID_CHARACTERS"), actual);
+    }
+
     /**
      * The locales are asked in the order the model DECLARES them, not the order the entries are written in.
      *
@@ -335,20 +356,14 @@ class FieldTypeMessageTextLawsTest {
         messages.addAll(entries);
     }
 
-    /**
-     * The String type's own message with no pattern beside it, written into the tree because the typed builder
-     * drops a message that has no pattern ({@code DEV-API-GAPS} DG115).
-     */
     private static String unpatterned(String text) {
-        return edited(patterned(f -> { }, "en_US"), fieldType -> fieldType.putObject("StringType")
-                .putArray("errorMessage").addObject().put("locale", "en_US").put("text", text));
+        return KernelLaws.verdictOf(patterned(f -> f.patternMessage("en_US", text), "en_US"));
     }
 
     /** A plain pattern message, and a defective one for {@code fr_FR}, which the model does not declare. */
     private static String inAnUndeclaredLocale(String text) {
-        return edited(patterned(f -> f.pattern("[A-Z]+", "capitals only"), "en_US"), fieldType ->
-                ((ArrayNode) fieldType.path("StringType").path("errorMessage")).addObject()
-                        .put("locale", "fr_FR").put("text", text));
+        return KernelLaws.verdictOf(patterned(f -> f.pattern("[A-Z]+", "capitals only")
+                .patternMessage("fr_FR", text), "en_US"));
     }
 
     private static String edited(String json, Consumer<ObjectNode> codeFieldType) {

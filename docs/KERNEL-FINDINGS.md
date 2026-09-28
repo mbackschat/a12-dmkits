@@ -11700,6 +11700,9 @@ Measured on KF348's shape with a fixed root, plus an unkeyed repeatable `Returns
 
 *Locked by:* `rulekit.validate.laws.FieldTypeMessageTextLawsTest`, and the field column of `…ErrorTextCharacterGateLawsTest`. Mirrored by `consistency.FieldTypeMessageTextTest`.
 
+
+Extended 2026-09-28 on the same own Claim/Code fixture, changing only locale or message text with no pattern: a declared `en_US` message `capitals` draws `MVK_ERROR_MESSAGE_AND_NO_PATTERN`; moving that exact text to undeclared `fr_FR` is admitted. Declared empty and single-space texts are admitted; a declared tab-only text draws `INVALID_CHARACTERS` without the pairing class. The no-message control is admitted. These six rows are locked by `FieldTypeMessageTextLawsTest.aMessageWithoutAPatternDependsOnItsLocaleAndText`; the existing `a\tb` row still draws both character and pairing classes. This is the measured boundary that prevents fixing authored-message loss with an unconditional refusal of every no-pattern locale map.
+
 ## §12 supplement — a reference's class is raised where its `entitySpec` production CLOSES, so a path the parser stops inside raises none (source-read + measured, 2026-09-26) <a id="kf491"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law at the parser, not an evaluation behaviour.

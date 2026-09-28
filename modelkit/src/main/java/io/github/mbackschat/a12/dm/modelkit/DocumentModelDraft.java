@@ -407,16 +407,15 @@ public final class DocumentModelDraft {
             case FieldTypeSpec.StringSpec s -> {
                 if (s.minLength() != null || s.maxLength() != null || s.pattern() != null
                         || s.lineBreaksPermitted() || s.alphabeticalSorting() || !s.suggestions().isEmpty()
-                        || s.noValueValidation()) {
+                        || s.noValueValidation() || !s.patternMessages().isEmpty()) {
                     ObjectNode inner = fieldType.putObject("StringType");
-                    // a pattern needs an error text for every declared locale (MVK_ERROR_MESSAGE_AND_PATTERN_INVALID).
-                    // A per-locale override (patternMessages) wins for its locale; the single patternMessage is the
-                    // fallback for the rest — so a bilingual model can carry a localized pattern error (G23).
+                    // KF490 judges declared locales; undeclared entries are legal authored content too.
+                    Map<String, String> messages = new LinkedHashMap<>();
                     if (s.pattern() != null) {
-                        ArrayNode messages = inner.putArray(DmKeys.ERROR_MESSAGE);
-                        locales.forEach(loc -> messages.addObject().put(DmKeys.LOCALE, loc)
-                                .put(DmKeys.TEXT, s.patternMessages().getOrDefault(loc, s.patternMessage())));
+                        locales.forEach(loc -> messages.put(loc, s.patternMessage()));
                     }
+                    messages.putAll(s.patternMessages());
+                    writeLocalizedText(inner, DmKeys.ERROR_MESSAGE, messages);
                     if (s.minLength() != null) {
                         inner.put("minLength", s.minLength());
                     }

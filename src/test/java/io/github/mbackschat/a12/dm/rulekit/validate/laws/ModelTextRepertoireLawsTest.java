@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,10 +13,11 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
@@ -195,10 +195,11 @@ class ModelTextRepertoireLawsTest {
                 f -> f.pattern("[A-Z]+", "capitals only").patternMessage("en_US", "see " + GRIN), "OPEN only")));
         actual.put("an enumeration's invalid-value message", rule(fieldMessages(
                 f -> f.pattern("[A-Z]+", "capitals only"), "see " + GRIN)));
-        // Written into the tree: the builder drops a message for an undeclared locale, so a builder-made row
-        // would be admitted for having no such entry at all.
-        actual.put("a pattern message in an undeclared locale", rule(withPatternMessage(fieldMessages(
-                f -> f.pattern("[A-Z]+", "capitals only"), "OPEN only"), "de_DE", "see " + GRIN)));
+        String undeclaredMessage = fieldMessages(f -> f.pattern("[A-Z]+", "capitals only")
+                .patternMessage("de_DE", "see " + GRIN), "OPEN only");
+        assertEquals("see " + GRIN, ((FieldTypeSpec.StringSpec) ModelDocument.read(undeclaredMessage)
+                .authoredState().fields().get("/Claim/Code").type()).patternMessages().get("de_DE"));
+        actual.put("a pattern message in an undeclared locale", rule(undeclaredMessage));
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put(ACUTE + " message", ADMITTED);
         expected.put(ACUTE + " condition literal", ADMITTED);
@@ -310,22 +311,4 @@ class ModelTextRepertoireLawsTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /** {@code json} with a further pattern message on {@code Code}, and a check that the entry is there. */
-    private static String withPatternMessage(String json, String locale, String text) {
-        try {
-            ObjectNode root = (ObjectNode) MAPPER.readTree(json);
-            for (JsonNode element : root.path("content").path("modelRoot").path("rootGroups").get(0)
-                    .path("Group").path("elements")) {
-                if ("Code".equals(element.path("name").asText())) {
-                    ((ArrayNode) element.path("Field").path("fieldType")
-                            .path("StringType").path("errorMessage")).addObject().put("locale", locale).put("text", text);
-                }
-            }
-            String edited = root.toString();
-            assertEquals(true, edited.contains("\"locale\":\"" + locale + "\""), "the entry was not written");
-            return edited;
-        } catch (IOException unreadable) {
-            throw new UncheckedIOException("the builder's own output must parse", unreadable);
-        }
-    }
 }

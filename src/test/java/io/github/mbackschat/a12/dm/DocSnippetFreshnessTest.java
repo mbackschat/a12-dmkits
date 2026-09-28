@@ -147,6 +147,8 @@ class DocSnippetFreshnessTest {
             new Lock("computation-suppress", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("model-diff", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/review/ModelDiffComputationTest.java"),
+            new Lock("pattern-message-locales", "docs/API-GUIDE.md",
+                    "src/test/java/io/github/mbackschat/a12/dm/modelkit/FieldConfigTest.java"),
             new Lock("authored-state", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/modelkit/ModelDocumentAuthoredFieldRuleStateTest.java"),
             new Lock("authored-references", "docs/API-GUIDE.md",

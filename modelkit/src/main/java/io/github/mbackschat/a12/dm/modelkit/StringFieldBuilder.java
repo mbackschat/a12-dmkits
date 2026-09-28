@@ -36,7 +36,9 @@ public final class StringFieldBuilder extends FieldAttrs<StringFieldBuilder> {
     /**
      * A per-locale override for the pattern error message — for that locale it wins over the single message
      * set by {@link #pattern}, which remains the fallback for unspecified locales (the string sibling of an
-     * enum's per-locale invalid-value text, G23). Lets a bilingual model carry a localized pattern error.
+     * enum's per-locale invalid-value text, G23). Entries for undeclared locales are preserved too.
+     * Without a pattern the explicit entries still survive emission; kernel validation decides their
+     * legality in the model's declared locales (KERNEL-FINDINGS KF490).
      */
     public StringFieldBuilder patternMessage(String locale, String text) {
         this.patternMessages.put(locale, text);

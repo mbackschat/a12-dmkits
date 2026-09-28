@@ -2,17 +2,22 @@ package io.github.mbackschat.a12.dm.modelkit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalInt;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ModelIndex;
+import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
@@ -45,6 +50,63 @@ class FieldConfigTest {
         } catch (Exception e) {
             throw new RuntimeException("emitted DM-JSON failed checkConsistency:\n" + draft.toJson(), e);
         }
+    }
+
+    @Test
+    void everyAuthoredPatternMessageSurvivesDraftAndTypedEditing() {
+        Map<String, String> expected = Map.of("en_US", "capitals", "de_DE", "Grossbuchstaben",
+                "fr_FR", "majuscules");
+        // tag::pattern-message-locales[]
+        Consumer<StringFieldBuilder> messages = text -> text.pattern("[A-Z]+", "capitals")
+                .patternMessage("de_DE", "Grossbuchstaben")
+                .patternMessage("fr_FR", "majuscules");
+        // end::pattern-message-locales[]
+        for (boolean typedef : List.of(false, true)) {
+            ModelDocument document = patternMessageDocument(typedef, messages);
+            FieldTypeSpec.StringSpec type = messageType(document, typedef);
+            assertEquals(expected, type.patternMessages());
+            ModelLoader.loadSelfContained(document.toJson());
+            if (typedef) {
+                document.setTypeDefinitionType("CodeType", type);
+            } else {
+                document.setFieldType("/Order/Code", type);
+            }
+            assertEquals(expected, messageType(ModelDocument.read(document.toJson()), typedef).patternMessages());
+            ModelLoader.loadSelfContained(document.toJson());
+        }
+    }
+
+    @Test
+    void explicitMessagesWithoutAPatternArePreservedForValidation() {
+        for (boolean typedef : List.of(false, true)) {
+            for (var row : Map.of("declared", "en_US", "undeclared", "fr_FR").entrySet()) {
+                for (String message : List.of("capitals", "", " ", "\t")) {
+                    ModelDocument document = patternMessageDocument(typedef,
+                            text -> text.patternMessage(row.getValue(), message));
+                    assertEquals(Map.of(row.getValue(), message), messageType(document, typedef).patternMessages());
+                }
+            }
+            ModelDocument plain = patternMessageDocument(typedef, text -> { });
+            assertEquals(Map.of(), messageType(plain, typedef).patternMessages());
+            assertFalse(plain.toJson().contains("\"errorMessage\""));
+        }
+    }
+
+    private static ModelDocument patternMessageDocument(boolean typedef, Consumer<StringFieldBuilder> configure) {
+        DocumentModelDraft.Builder model = DocumentModelDraft.named("order-messages").locale("en_US").locale("de_DE");
+        if (typedef) {
+            model.typeDef("CodeType", type -> type.string(configure))
+                    .rootGroup("Order", order -> order.typedefField("Code", "CodeType"));
+        } else {
+            model.rootGroup("Order", order -> order.stringField("Code", configure));
+        }
+        return ModelDocument.read(model.build().toJson());
+    }
+
+    private static FieldTypeSpec.StringSpec messageType(ModelDocument document, boolean typedef) {
+        return assertInstanceOf(FieldTypeSpec.StringSpec.class, typedef
+                ? document.typeDefinitions().get("CodeType").type()
+                : document.authoredState().fields().get("/Order/Code").type());
     }
 
     @Test
