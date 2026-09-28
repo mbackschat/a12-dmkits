@@ -38,10 +38,14 @@ class PortableConsistencyGateTest {
         assertEquals(ConsistencyStatus.Invalid.INSTANCE, run.report().getStatus());
         assertTrue(codes(run).contains("MVK_ERROR_FIELD_MISSING"),
                 "the checker's own vocabulary, not a re-derivation: " + codes(run));
+        assertEquals(run.report().getFindings().stream().map(f -> f.getCode()).toList(), codes(run),
+                "the gate carries every checker finding without collapsing the paired rejection");
         // A STRUCTURE locus. A `Where.rule` would promise a locus the caller can dereference into a rulekit
         // Rule handle, and the checker names a declared path — it holds no rulekit object at all.
-        assertEquals(List.of(Optional.of("/Order/CodeRequired")),
-                run.validation().diagnostics().stream().map(d -> d.where().path()).toList());
+        assertEquals(run.report().getFindings().stream().map(f -> Optional.ofNullable(f.getAt())).toList(),
+                run.validation().diagnostics().stream().map(d -> d.where().path()).toList(),
+                "every checker finding retains its structure locus, including findings sharing a path");
+        assertEquals(Optional.of("/Order/CodeRequired"), run.validation().diagnostics().getFirst().where().path());
     }
 
     /**

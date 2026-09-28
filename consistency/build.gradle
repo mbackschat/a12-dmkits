@@ -1310,11 +1310,13 @@ def verifyConsistencyShippedFiles = tasks.register('verifyConsistencyShippedFile
                     'false for every bundler that does not shim it.')
         }
 
-        // The jvm carrier, enumerated by package ROOT rather than by package: a subpackage of our own root is
-        // ours by construction, where a package outside it is a shaded or copied dependency — which is the
-        // thing with no POM entry for a resolution guard to find. `:predicates` publishes its own jar, so the
-        // shared leaf is deliberately NOT expected here, and its arrival would be a bundling change.
-        def permittedJarRoots = ['io/github/mbackschat/a12/dm/consistency/']
+        // The JVM jar compiles both this module and the shared-regex source set declared above. Both package
+        // roots are project-owned; an unlisted root can be a shaded or copied dependency with no POM edge.
+        // `:predicates` publishes its own jar and remains outside this enumeration.
+        def permittedJarRoots = [
+            'io/github/mbackschat/a12/dm/consistency/',
+            'io/github/mbackschat/a12/dm/regex/',
+        ]
         def jar = tasks.named('jvmJar').get().archiveFile.get().asFile
         def jarPackages = [] as Set
         new java.util.zip.ZipFile(jar).withCloseable { zip ->
