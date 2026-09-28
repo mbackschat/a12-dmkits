@@ -42,6 +42,40 @@ internal object JavaPatternModelPopulation {
         Case("NegatedNonSpacePlus", "[^\\S]+", "  ", " a"),
     ))
 
+
+    fun caseClosure(): List<ConditionCase> = population(listOf(
+        Case("HexUpper", "(?i)\\x41", "a", "b"),
+        Case("UnicodeLower", "(?i)\\u0062", "B", "A"),
+        Case("BracedUpper", "(?i)\\x{43}", "c", "d"),
+        Case("ScopedHex", "(?i:\\x44)e", "de", "dE"),
+        Case("ResetHex", "(?i)\\x45(?-i)f", "ef", "eF"),
+        Case("MixedRange", "(?i)[Z-a]", "z", "b"),
+        Case("LowerRange", "(?i)[@-B]", "a", "c"),
+        Case("UpperRange", "(?i)[y-~]", "Y", "X"),
+        Case("NegatedRange", "(?i)[^Z-a]", "b", "z"),
+        Case("EmptyIntersection", "[a&&b]", null, "a"),
+        Case("NegatedEmpty", "[^a&&b]", "a", "aa"),
+        Case("NegatedIntersection", "[^a-c&&b-d]", "a", "b"),
+        Case("FoldedIntersection", "(?i)[A-C&&b-d]", "B", "a"),
+    ))
+
+
+    fun intersections(): List<ConditionCase> = population(listOf(
+        Case("OmittedRight", "[a&&]", "a", "b"),
+        Case("OmittedLeft", "[&&a]", "a", "b"),
+        Case("CaretIntersection", "[a^&&^]", "^", "a"),
+        Case("TripleIntersection", "[a-z&&b-f&&d-h]", "e", "b"),
+        Case("ComplementIntersection", "[\\S&&\\D]", "@", "2"),
+        Case("OuterIntersection", "[^a-z&&b-d]", "a", "b"),
+    ))
+
+    fun classTokens(): List<ConditionCase> = population(listOf(
+        Case("EscapedLeftAmpersand", "[\\&&]", "&", "\\"),
+        Case("EscapedRightAmpersand", "[&\\&]", "&", "\\"),
+        Case("CaretRangeIntersection", "[z&&^-z]", "z", "a"),
+        Case("CaretRangeUnion", "[\\D^-z]", "z", "2"),
+    ))
+
     fun rows(): List<ConditionCase> = population(cases)
 
     private fun population(cases: List<Case>): List<ConditionCase> {

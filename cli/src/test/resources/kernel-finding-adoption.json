@@ -503,7 +503,7 @@
   },
   "reviews": {
     "kf481": {
-      "sha256": "e37d27956004e946ff4e7e7125e0f09a9cb4f24eee73ce84ef9b4c13890a8a6d",
+      "sha256": "32d4e65552195df0817dd1a0c3a10dfd0e212c127e42722be175986ec4406514",
       "task": "DG102",
       "scope": {
         "adapter": ["kernel index-key class oracle"],
@@ -537,16 +537,16 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "The E populations contain 90 kernel-confirmed inputs. Terminal review identified decoded-scalar/range case-folding and empty-set defects outside the E mechanisms; DG102-F must settle them before checker adoption closes.",
+          "state": "APPLIED",
+          "basis": "All 138 frozen inputs agree with the kernel and replay on JVM/Node. Scalar/range case closure and predicate-based intersection, including empty sets and omitted operands, are verified with independent finite-alphabet controls. The documented unsupported domain remains unjudged on both targets; this is bounded agreement, not universal Java Pattern conformance.",
           "evidence": {
             "O1 index-key class comparison": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerNearMissSweepTest.kt#indexKeyPatternsHaveOnlyLedgeredDifferences",
-              "witness": "Five frozen populations, 90 models in total, compare exact kernel classes; the same method locks all factored replay bytes."
+              "witness": "Eight frozen populations, 138 models in total, compare exact kernel classes; the same method locks all factored replay bytes."
             },
             "JVM and Node pattern support boundary": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/KeyPatternTest.kt#unsupportedOrKernelRejectedPatternsStayUnjudged",
-              "witness": "Six common tests exercise whole-model replay, represented and excluded domains, class algebra, whole-expression flag scope, final-line anchors and the complete Latin-1 literal/key relation."
+              "witness": "Eight common tests exercise whole-model replay, represented and excluded domains, class algebra, whole-expression flag scope, final-line anchors and the complete Latin-1 literal/key relation."
             }
           }
         },

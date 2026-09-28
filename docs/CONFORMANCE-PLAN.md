@@ -152,8 +152,8 @@ M5 starts early with a bounded generalization gate; that gate does not complete 
 | **G-TRACE** | gap IDs in commit messages | staged numbered gap-entry changes require cited IDs; placement and closure consistency enforced through the existing hook, tested through Dash | **done** 2026-09-28; Node/Dash controls red/green, terminal review findings closed; CI uses the existing TypeScript test glob |
 | **G-GAP-SPLIT** | compact active interpreter ledger | move deferred/declined bodies unchanged; preserve ID tracking and reopening links | **done** 2026-09-28; nine disposition bodies and IG159 preserved byte-for-byte; active ledger 42,468 → 1,655 bytes; hook/deleted-gap controls red/green |
 | **IG159** | field-owned runtime messages | exact enum and String-template outcomes against both kernel strategies, JVM/JS and relevant performance gates | **done** 2026-09-28; [IF345](INTERPRETER-FINDINGS.md#if345) locks exact messages, call/step-owned callbacks remove the new allocation breach; five-fork JVM/Node footprint and paired B1/B2 timing meet the frozen matrix, with only four smaller, previously accepted Node allocation exceptions remaining; [IF347](INTERPRETER-FINDINGS.md#if347) |
-| **DG102** | portable constant index-key validation | freeze Java-regex and typedef/custom-index support boundaries before implementation; exact supported-domain comparison on JVM/JS | E1/E2 and quantified-atom correction verified on 90 kernel inputs; DG102 remains OPEN for F: decoded-scalar/range case closure and empty-set representation identified by terminal review |
-| **REGEX-ORACLE** | interpreter regex platform contract | measure native A12-JS runtime separately and reconcile IF154/IF164 with the narrower IF136 decision before changing the interpreter policy | recorded for host-policy assessment; DG102 uses JVM consistency semantics only |
+| **DG102** | portable constant index-key validation | freeze Java-regex and typedef/custom-index support boundaries before implementation; exact supported-domain comparison on JVM/JS | DONE: bounded-domain agreement on 138 kernel model inputs and JVM/Node replay; interpreter structural adoption is the separate REGEX-CLASS partition |
+| **REGEX-ORACLE** | interpreter regex platform contract | measure native A12-JS runtime separately and reconcile IF154/IF164 with the narrower IF136 decision before changing the interpreter policy | recorded for host-policy assessment; audit the retained legacy intersection parser/serializer and captured-backreference guard against that host-specific oracle; DG102 uses JVM consistency semantics only |
 | **IG155** | key and descendant-star runtime composition | fixed admission/runtime matrix, shared selection/expansion implementation, affected JVM/JS/performance controls | **done** 2026-09-28; twelve-row kernel risk grid plus FirstFilledValue/partial/compute qualification; existing-class JVM/Node controls; shared parent selection, no parser change; [IF340](INTERPRETER-FINDINGS.md#if340) |
 | **DG71** | typed plain/keyed scalar cells | field-only operations remain field-only; authoring/read-back/bridge and public compatibility verified | **done**: four carriers, field-key and three quantifier polarities read back; schema export does not project one selected row as a global pattern; API delta reviewed (0.x accessor break) |
 | **DG69** | typed keyed field collections | key/star topology preserved by all aggregate/quantifier operand consumers | queued after DG71 |
@@ -331,3 +331,72 @@ The nested-class exclusion controls pass without a production edit; they do not 
 Terminal-review discriminator, before its run: quantified negated classes must quantify the whole predicate/consume atom. Predict `[^ab]+` and `[^ab]{2}` match `cc` and miss `ca`; `[^ab]?a` matches `a` and misses `ba`; `[^\S]+` matches two spaces and misses space + `a`. The current ungrouped assertion/consume lowering is expected to invert the four discriminators identified by review. Add the four pairs plus an admitted host as an O1 population; this tests the already-promised class algebra/repetition invariant rather than opening another regex mechanism. The correction groups the whole atom, with no new syntax branch.
 
 Terminal review found the quantified-negation atom defect; the four negative discriminators failed on Node before grouping and pass afterward, with all nine new kernel predictions confirmed. The frozen E landing preserves five populations (90 inputs). Two pre-existing mechanisms contradict the proposed closure: ASCII case folding misses decoded scalar escapes and mixed ranges, and empty intersection emits invalid JS syntax. Direct JDK/Node review probes establish these differences, not kernel admission. Freeze E and keep DG102 open for F; do not expand E into another implementation/review cycle or advertise the supported domain as complete. F must first put the review discriminators and siblings through a typed kernel population.
+
+### DG102-F — scalar case closure and empty sets (before runs)
+
+The next finite partition applies the effective ASCII case relation to decoded scalar escapes and every ASCII member of a range, then gives an empty intersection a valid one-character predicate. Native JS case-insensitive mode is a rejected simpler rival: it would fold Unicode characters that Java's ASCII-only flag leaves distinct. Folding only raw letters or wholly alphabetic ranges is falsified by the review witnesses. An empty predicate must remain empty under alternation, negation and quantification; a syntactically invalid JS class cannot represent it. Preserve interpreter compilation and the ninety existing model bytes. One terminal review follows the combined kernel and portable checks.
+
+| Frozen pattern / keys | Predicted direct-JDK match / miss | Kernel oracle / rival discriminator |
+|---|---|---|
+| `(?i)\x41`; `(?i)\u0062`; `(?i)\x{43}` | `a` / `b`; `B` / `A`; `c` / `d` | Three scalar encodings, each admitted key reaches PARAMSIZE_INVALIDN and each miss INDEX_VALUE_INVALID; folding raw spelling alone fails |
+| `(?i:\x44)e`; `(?i)\x45(?-i)f` | `de` / `dE`; `ef` / `eF` | Effective flag scope, not one global JS flag |
+| `(?i)[Z-a]`; `(?i)[@-B]`; `(?i)[y-~]`; `(?i)[^Z-a]` | `z` / `b`; `a` / `c`; `Y` / `X`; `b` / `z` | Mixed interval closure and negation; same kernel oracle |
+| `[a&&b]`; `[^a&&b]`; `[^a-c&&b-d]`; `(?i)[A-C&&b-d]` | no match / `a`; `a` / `aa`; `a` / `b`; `B` / `a` | Empty set and its complement, outer negation of a nonempty intersection, case closure before intersection; same kernel oracle |
+
+The typed population has 26 inputs including its admitted host. Predict each direct-JDK row before asking the kernel, preserve any admission/prediction miss, then include exact model replay on JVM and Node. A common finite-alphabet control additionally covers all ASCII scalar values in all three escape encodings against every ASCII key, and every ASCII key for the three mixed ranges and their complements; expected relations derive from code points, not the translator. Existing explicit exclusions (including case-insensitive named/class escapes) remain unchanged; this partition repairs wrongly certified forms, not a full Java Pattern engine.
+
+F oracle result: all 25 written key predictions and the admitted host agree with Kernel 30.8.1; the JVM checker ledger is empty. Before production changes, Node fails `(?i)\x41` on `a` (false instead of true). The kernel run reached only the expected replay-refresh failure (90 stored versus 116 generated models), from which the exact 26 new models are harvested without another export run.
+
+F implementation result: all 116 model classes agree through O1 and exact replay on JVM/Node. All 49,152 ASCII escape/key combinations and 768 mixed-range/key combinations agree with the independent finite relation on both targets; empty-set/complement, alternation and repetition controls pass. The fixes add scalar case closure, interval/ASCII intersection closure, and a valid empty-class representation on the checker branch only. No interpreter runtime policy or support boundary changes. DG102 closure is subject to the terminal review and mandatory guards; DG69 follows it.
+
+### DG102-F2 — intersection model revision (convergence gate, before runs)
+
+Freeze F1’s scalar and range results; withdraw the empty-set emission change as a closure argument. Review falsified the old intersection parser/serializer: omitted right or left operands are not the empty set, and a singleton caret must not become a negated empty class. The replacement partition composes already-parsed one-character predicates: intersection is simultaneous membership, outer negation applies afterward, and syntactically omitted operands are identities if the kernel confirms the following rows. This removes checker reliance on enumerating characters and printing them back as raw regex syntax; the interpreter’s historical helper is separate. The simpler patch of escaping one caret would leave every other punctuation and operand-spelling distinction unexplained.
+
+| Typed-host pattern | Predicted match / miss | Oracle and discriminator |
+|---|---|---|
+| `[a&&]`; `[&&a]` | `a` / `b` | JDK then kernel: omitted operand is identity, unlike `[a&&b]` whose intersection is empty |
+| `[a^&&^]` | `^` / `a` | JDK then kernel: literal set membership, not emitted caret syntax |
+| `[a-z&&b-f&&d-h]` | `e` / `b` | JDK then kernel: intersection composes associatively across three operands |
+| `[\S&&\D]` | `@` / `2` | JDK then kernel: intersect complete predicates, not only raw ASCII literals |
+| `[^a-z&&b-d]` | `a` / `b` | JDK then kernel: outer complement of the complete intersection |
+
+F2 has thirteen inputs including its host. Retain all F1 inputs and predictions; rerun the combined portable population. Reject an all-omitted intersection as unrepresented unless separately admitted and measured. This is a new mechanism partition, not an extra spelling branch in the falsified helper. F1 and F2 share the eventual verification landing; no known-wrong intermediate implementation is committed.
+
+F2 oracle result: all twelve direct-JDK key predictions and the admitted host agree with the kernel. The old checker leaves both three-way and complement intersections SILENT; Node also reproduces the omitted-operand wrong judgment. Before replacement, these outcomes are recorded in `/tmp/a12-dg102-f2-red.log`. The new representation will compose complete one-character predicates and encode ASCII class punctuation as characters; the former checker set enumerator is no longer its mechanism.
+
+F2 verification: all 129 kernel model inputs agree; direct matcher controls pass on JVM and Node. Before the final run, add identity-composition controls `[a&&]`, `[&&a]`, `[&&a&&]`, `[a&&&&a]` (only `a` matches), versus `[a&&&&b]` (none of `a`, `b`, `^` matches). Their oracle is original JDK Pattern on JVM and independent Node lowering; these are grammar controls, not additional kernel-admission claims. All 116 earlier replay model bytes are retained exactly.
+
+REGEX-ORACLE follow-up is explicit: the interpreter still compiles through the legacy enumerated intersection helper. Review found omitted-operand and caret serialization defects through the checker’s former use of that helper; those measurements do not establish the interpreter’s native-JS contract. Assess `[a&&]`, `[&&a]`, `[a^&&^]` and the earlier captured-backreference discriminator against the selected runtime oracle before changing interpreter semantics. This is retained risk, not a claim that the interpreter inherited the checker fix.
+
+
+### DG102-F3 — preserve class tokens through lowering (before runs)
+
+Freeze F1 and F2's 129 model inputs. The final F2 review found two violations of its literal-preservation invariant: splitting raw text promotes an escaped ampersand into an intersection delimiter, and printing an unflagged range endpoint raw promotes a caret into class negation. The corrective model recognizes delimiters only between unescaped tokens and emits literal endpoints independently of their syntactic position. Escaping only the reported caret or replacing a particular ampersand spelling is rejected because it cannot predict sibling punctuation. Escaped range endpoints remain outside certification until represented as decoded range operands.
+
+| Pattern | Predicted JDK match / miss | Oracle / discriminator |
+|---|---|---|
+| `[\&&]` | `&` / backslash | JDK then typed kernel host; an escaped first ampersand cannot start an intersection |
+| `[&\&]` | `&` / backslash | JDK then same host; escaped second ampersand is also literal |
+| `[z&&^-z]` | `z` / `a` | JDK then same host; range endpoint stays literal after intersection lowering |
+| `[\D^-z]` | `z` / `2` | JDK then same host; same endpoint after complement-union splitting |
+
+Nine new model inputs include the admitted host. Portable controls also enumerate all ASCII keys for these four classes; the independent expected sets are ampersand-only, singleton z, and nondigits respectively. Preserve the first 129 replay models exactly. A red/green run settles the review findings; another general review is not needed for these bounded corrections. Interpreter structural reuse is a separate acceptance partition under its existing IF164 Java-semantics contract, without claiming native A12-JS fidelity.
+
+
+### REGEX-CLASS — apply DG102 structural findings to the interpreter (before runs)
+
+The interpreter's existing IF164 contract is Java-pattern semantics on JVM and Node. Reuse the scalar case relation, interval closure and class-predicate algebra under that contract; delete the older intersection enumerator rather than maintain divergent semantics. This does not select a new native A12-JS policy and does not share condition parsers. Keep checker-only domain certification separate. Ordinary non-intersection classes should retain compact native class output; compound classes need composed predicates.
+
+| Inputs / predicted result | Oracle | Rival discriminator |
+|---|---|---|
+| `[a&&]`, `[&&a]`: `a` true, `b` false; `[a^&&^]`: `^` true, `a` false | Common JVM Pattern/Node parity, typed dynamic-Groovy/static-Java runtime differential | Omitted operands are identities and winning punctuation is literal |
+| `[a&&b]`: `a` false; `[^a&&b]`: `a` true | Same | Empty predicate must compile and compose |
+| `[\&&]`: `&` true; `[z&&^-z]`: `z` true; `[\D^-z]`: `2` false | Same | Escaping and range membership survive lowering |
+| `(?i)\x41`: `a` true; `(?i)[Z-a]`: `z` true, `b` false | Same | Effective case folding applies to decoded scalars and all interval members |
+| Existing twelve parity methods; distinct-pattern registry; pattern-rich preparation and match workload | JVM/Node tests and before/after time/allocation measurements | Existing ordinary patterns must remain correct; preparation cost is distinct from per-row matching |
+
+Freeze this partition before editing the interpreter path. Captured-backreference backtracking and native A12-JS policy remain independent mechanisms under REGEX-ORACLE, not quietly claimed fixed by the stateless class model.
+
+
+F3 verification: all eight key predictions and the admitted host agree with Kernel 30.8.1. The red run reproduced checker misjudgment/silence and interpreter SyntaxError separately. After token-preserving lowering, all 138 exact models agree on JVM and Node and eight common checker tests pass per target (`/tmp/a12-dg102-f3-final.log`). All previous 129 model bytes are unchanged. This closes DG102 within the documented certified domain; the interpreter regression is deliberately not counted as fixed by this checker landing.

@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **DG102 — constant index-key pattern certification is incomplete.** The original five residuals and quantified negation are fixed; ninety frozen model inputs agree with the kernel ([KF481](KERNEL-FINDINGS.md#kf481)). Terminal review found existing case-folding omissions for decoded scalar escapes and mixed ranges, plus a nonportable empty-intersection representation. Direct pinned-JDK/Node discriminators establish these defects; the next partition must measure them through the kernel on a typed host, fix scalar/set closure structurally, and replay the full population on JVM and Node. The [bounded-domain contract](CONSISTENCY-API.md#constant-index-keys-bounded-jvm-consistency-semantics) does not excuse wrong judgments within its domain. Native-JS runtime behavior remains a separate assessment.
+_None open._
 
 ## 2. Out of scope
 

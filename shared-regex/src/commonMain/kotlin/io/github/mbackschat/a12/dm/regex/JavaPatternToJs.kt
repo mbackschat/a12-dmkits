@@ -282,11 +282,15 @@ internal object JavaPatternToJs {
                 'x' -> if (source.getOrNull(index) == '{') {
                     index++
                     val hex = certifiedCodePoint(takeUntil('}'))
-                    "\\u{$hex}"
+                    scalarEscape(hex, "\\u{$hex}", flags)
                 } else {
-                    "\\x" + certifiedCodePoint(take(2))
+                    val hex = certifiedCodePoint(take(2))
+                    scalarEscape(hex, "\\x$hex", flags)
                 }
-                'u' -> "\\u" + certifiedCodePoint(take(4))
+                'u' -> {
+                    val hex = certifiedCodePoint(take(4))
+                    scalarEscape(hex, "\\u$hex", flags)
+                }
                 'N' -> {
                     if (source.getOrNull(index) != '{') throw UnsupportedJavaPattern("malformed named character")
                     index++
@@ -344,9 +348,12 @@ internal object JavaPatternToJs {
             }
             if (!closed) throw UnsupportedJavaPattern("unclosed character class")
             val body = raw.toString()
-            if (forConsistency && !body.contains("&&")) {
-                val union = classUnion(body, flags)
-                return if (negated) "(?:(?!$union)[\\s\\S])" else union
+            if (forConsistency) {
+                // DG102-F2: intersect complete predicates; an omitted operand is an identity, not an empty set.
+                val terms = classTerms(body).map { classUnion(it, flags) }
+                if (terms.isEmpty()) throw UnsupportedJavaPattern("intersection without a represented operand")
+                val predicate = terms.dropLast(1).joinToString("") { "(?=$it)" } + terms.last()
+                return if (negated) "(?:(?!$predicate)[\\s\\S])" else "(?:$predicate)"
             }
             if (!negated && body == "\\H") return "[^$H]"
             if (!negated && body == "\\V") return "[^$V]"
@@ -355,6 +362,26 @@ internal object JavaPatternToJs {
             }
             val translated = if (body.contains("&&")) intersection(body, flags) else classBody(body, flags)
             return "[" + (if (negated) "^" else "") + translated + "]"
+        }
+
+        /** DG102-F3: an operator starts only between tokens, never inside an escaped literal. */
+        private fun classTerms(raw: String): List<String> {
+            val terms = mutableListOf<String>()
+            var start = 0
+            var i = 0
+            while (i < raw.length) {
+                when {
+                    raw[i] == '\\' -> i += 2
+                    raw.startsWith("&&", i) -> {
+                        if (i > start) terms += raw.substring(start, i)
+                        i += 2
+                        start = i
+                    }
+                    else -> i++
+                }
+            }
+            if (start < raw.length) terms += raw.substring(start)
+            return terms
         }
 
         /** DG102-E: union complete one-character predicates before applying the enclosing class negation. */
@@ -428,6 +455,13 @@ internal object JavaPatternToJs {
                 }
                 out.append(
                     when (e) {
+                        in "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~" -> {
+                            if (forConsistency) {
+                                // Escaped range operands need decoding before the range can be certified.
+                                if (raw.getOrNull(i + 2) == '-' || raw.getOrNull(i - 1) == '-') hasUnverifiedMapping = true
+                                classLiteral(e)
+                            } else "\\$e"
+                        }
                         'h' -> H
                         'v' -> V
                         's' -> if (flags.unicodeClasses) "\\p{White_Space}" else S
@@ -446,7 +480,18 @@ internal object JavaPatternToJs {
 
         private fun appendClassRange(out: StringBuilder, first: Char, last: Char, flags: Flags) {
             if (!flags.caseInsensitive) {
-                out.append(first).append('-').append(last)
+                out.append(if (forConsistency) classLiteral(first) else first).append('-')
+                    .append(if (forConsistency) classLiteral(last) else last)
+                return
+            }
+            if (forConsistency) {
+                out.append(classLiteral(first)).append('-').append(classLiteral(last))
+                // DG102-F: close every ASCII letter in the interval, including mixed punctuation/letter ranges.
+                for ((lower, upper, shift) in listOf(Triple('A', 'Z', 32), Triple('a', 'z', -32))) {
+                    val start = maxOf(first, lower)
+                    val end = minOf(last, upper)
+                    if (start <= end) out.append((start.code + shift).toChar()).append('-').append((end.code + shift).toChar())
+                }
                 return
             }
             when {
@@ -518,15 +563,26 @@ internal object JavaPatternToJs {
                 if (inClass) out.append(c.lowercaseChar()).append(c)
                 else out.append('[').append(c.lowercaseChar()).append(c).append(']')
             } else {
-                out.append(c)
+                if (forConsistency && inClass) out.append(classLiteral(c)) else out.append(c)
             }
         }
+
+        /** DG102-F2: ASCII class punctuation denotes characters, never emitted regex structure. */
+        private fun classLiteral(c: Char): String = if (c.code <= 0x7f) "\\u{${c.code.toString(16)}}" else c.toString()
 
         private fun take(length: Int): String {
             if (index + length > source.length) throw UnsupportedJavaPattern("short escape")
             val value = source.substring(index, index + length)
             index += length
             return value
+        }
+
+        private fun scalarEscape(hex: String, encoded: String, flags: Flags): String {
+            if (!forConsistency || !flags.caseInsensitive) return encoded
+            val code = hex.toIntOrNull(16)
+            if (code == null || code !in 'A'.code..'Z'.code && code !in 'a'.code..'z'.code) return encoded
+            // DG102-F: escape spelling does not change a decoded letter's effective case flag.
+            return buildString { appendLiteral(this, code.toChar(), flags) }
         }
 
         private fun certifiedCodePoint(hex: String): String {

@@ -13,7 +13,7 @@ class KeyPatternTest {
 
     @Test
     fun theKernelPatternPopulationAgreesOnEachPortableTarget() {
-        assertEquals(90, SyntaxFixtureData.keyPatterns.size)
+        assertEquals(138, SyntaxFixtureData.keyPatterns.size)
         for (json in SyntaxFixtureData.keyPatterns) {
             val row = Json.parseToJsonElement(json).jsonObject
             val expected = row.getValue("classes").jsonArray.map { it.jsonPrimitive.content }.toSet()
@@ -121,6 +121,55 @@ class KeyPatternTest {
         assertEquals(null, matches("(?iu:é)e", "ÉE"))
         assertEquals(null, matches("(?iu:(?-i:é))", "É"))
         assertEquals(null, matches("(?m:a$)", "a"))
+    }
+
+    @Test
+    fun asciiCaseClosureAppliesToDecodedScalarsAndRangeMembers() {
+        fun folded(code: Int): Int = if (code in 65..90) code + 32 else code
+        for (literal in 0..127) {
+            val hex = literal.toString(16)
+            for (escape in listOf("\\x" + hex.padStart(2, '0'), "\\u" + hex.padStart(4, '0'), "\\x{$hex}")) {
+                val compiled = KeyPattern.parse("(?i)$escape")
+                for (value in 0..127) assertEquals(folded(literal) == folded(value),
+                    compiled?.matches(value.toChar().toString()), "$escape / $value")
+            }
+        }
+        for ((first, last) in listOf('Z' to 'a', '@' to 'B', 'y' to '~')) {
+            val included = (first..last).map { folded(it.code) }.toSet()
+            for (negated in listOf(false, true)) {
+                val pattern = "(?i)[" + (if (negated) "^" else "") + "$first-$last]"
+                val compiled = KeyPattern.parse(pattern)
+                for (value in 0..127) assertEquals((folded(value) in included) != negated,
+                    compiled?.matches(value.toChar().toString()), "$pattern / $value")
+            }
+        }
+        for (value in listOf("a", "b", "c", "é", "😀")) {
+            assertEquals(false, matches("[a&&b]", value))
+            assertEquals(true, matches("[^a&&b]", value))
+        }
+        for (body in listOf("a&&", "&&a", "&&a&&", "a&&&&a", "a&&&&b")) {
+            for (value in listOf("a", "b", "^")) assertEquals(body != "a&&&&b" && value == "a",
+                matches("[$body]", value), "$body / $value")
+        }
+        assertEquals(true, matches("[a&&]", "a"))
+        assertEquals(true, matches("[&&a]", "a"))
+        assertEquals(false, matches("[a^&&^]", "a"))
+        assertEquals(true, matches("[a-z&&b-f&&d-h]", "e"))
+        assertEquals(true, matches("[\\S&&\\D]", "@"))
+        assertEquals(true, matches("[a&&b]*", ""))
+        assertEquals(true, matches("[a&&b]|c", "c"))
+        assertEquals(false, matches("[^a&&b]{2}", "a"))
+    }
+
+    @Test
+    fun classTokensKeepTheirMeaningAcrossPredicateBoundaries() {
+        for (value in 0..127) {
+            val key = value.toChar().toString()
+            for (pattern in listOf("[\\&&]", "[&\\&]"))
+                assertEquals(key == "&", matches(pattern, key), "$pattern / $value")
+            assertEquals(key == "z", matches("[z&&^-z]", key), "intersection / $value")
+            assertEquals(value !in 48..57, matches("[\\D^-z]", key), "union / $value")
+        }
     }
 
     @Test
