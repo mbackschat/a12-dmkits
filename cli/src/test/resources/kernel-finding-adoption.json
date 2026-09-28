@@ -1342,7 +1342,7 @@
       }
     },
     "kf458": {
-      "sha256": "5e900423728558d8b205b3c9babab23b86d3298b7c752dde5c14fb2cd9764f3c",
+      "sha256": "207dfecdfbcd77a8119ddf54c658bd03dda3cfad7562f43d68589849d83f3050",
       "task": "DG75",
       "scope": {
         "adapter": [],
@@ -1361,47 +1361,47 @@
       "consumers": {
         "adapter": {
           "state": "NOT_APPLICABLE",
-          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "basis": "This revision corrects dmkits attribution for an existing RNU duplicate-key law. It changes no kernel semantic claim, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
           "evidence": {}
         },
         "dmkits": {
           "state": "APPLIED",
-          "basis": "Field references carry model-derived repetition provenance through the shared operand-read decision.",
+          "basis": "RepetitionNotUnique treats unstarred repeating keys as its own iteration: known duplicate keys retain the kernel code, while correlated or unbound keys withhold it.",
           "evidence": {
             "record diagnostic attribution": {
-              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/EntityListReadStageLawsTest.java#rulekitWithholdsFromTheFirstOperandThatAStageMayRefuse",
-              "witness": "Record and bound routes withhold on the existing duplicate and mixed-kind repetition inputs; the adjacent kernel methods preserve both rule contexts."
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/ListGateReadWithholdingTest.java#repetitionNotUniqueWithholdsBehindAMarkedKey",
+              "witness": "The record cites duplicate known keys and withholds behind a marked or unbound key; RepetitionNotUniqueKeyPathLawsTest and RepetitionNotUniqueGateOrderLawsTest pin the kernel code and its precedence."
             }
           }
         },
         "interpreter": {
           "state": "NOT_APPLICABLE",
-          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "basis": "This revision corrects dmkits attribution for an existing RNU duplicate-key law. It changes no kernel semantic claim, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
           "evidence": {}
         },
         "checker": {
           "state": "NOT_APPLICABLE",
-          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "basis": "This revision corrects dmkits attribution for an existing RNU duplicate-key law. It changes no kernel semantic claim, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
           "evidence": {}
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
-          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "basis": "This revision corrects dmkits attribution for an existing RNU duplicate-key law. It changes no kernel semantic claim, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
           "evidence": {}
         },
         "json-schema-import": {
           "state": "NOT_APPLICABLE",
-          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "basis": "This revision corrects dmkits attribution for an existing RNU duplicate-key law. It changes no kernel semantic claim, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
           "evidence": {}
         },
         "json-schema-export": {
           "state": "NOT_APPLICABLE",
-          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "basis": "This revision corrects dmkits attribution for an existing RNU duplicate-key law. It changes no kernel semantic claim, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
           "evidence": {}
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "A Downloads handover will carry the exact verified DG75 revision; preparation does not establish receipt or adoption.",
+          "basis": "Peer receipt and adoption of this corrected dmkits attribution remain unverified.",
           "evidence": {}
         }
       }

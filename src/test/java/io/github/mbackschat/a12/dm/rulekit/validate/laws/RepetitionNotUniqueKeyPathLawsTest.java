@@ -63,6 +63,8 @@ class RepetitionNotUniqueKeyPathLawsTest {
                 verdict("/Basket", "../Lines/Sku", "RepetitionNotUnique(Lines/Sku, Lines/Variant)"));
         actual.put("a repeated key",
                 verdict("/Basket", "../Lines/Sku", "RepetitionNotUnique(Lines/Sku, Lines/Sku)"));
+        actual.put("a repeated key without a repeatable ancestor",
+                verdict("/Basket", "../Lines/Sku", "RepetitionNotUnique(BasketRef, BasketRef)"));
         actual.put("an unresolvable key path",
                 verdict("/Basket", "../Lines/Sku", "RepetitionNotUnique(Lines/Nope)"));
         actual.put("a starred key path",
@@ -88,6 +90,7 @@ class RepetitionNotUniqueKeyPathLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("two keys in the one repeatable group", "admitted");
         expected.put("a repeated key", "MVK_DUPLICATE_PARAM1");
+        expected.put("a repeated key without a repeatable ancestor", "MVK_DUPLICATE_PARAM1");
         expected.put("an unresolvable key path", "MVK_INVALID_ENTITY");
         expected.put("a starred key path", "MVK_NO_WILDCARDS_ALLOWED");
         expected.put("rule group is the repeated group | absolute key", "MVK_REPEATABLE_GROUP_MISSING");

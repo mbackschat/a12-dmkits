@@ -163,6 +163,8 @@ class ListGateReadWithholdingTest {
         assertEquals(UNCODED, verdict(() -> new RepetitionNotUniqueCondition(
                 List.of(M.field("/Item/Keyed/Amount").outer(), key, key), Optional.empty())));
         assertEquals(DUPLICATE, verdict(() -> new RepetitionNotUniqueCondition(List.of(key, key), Optional.empty())));
+        FieldRef unbound = new FieldRef(key.path(), key.kind(), key.styleHint(), false);
+        assertEquals(UNCODED, verdict(() -> new RepetitionNotUniqueCondition(List.of(unbound, unbound), Optional.empty())));
     }
 
     /**

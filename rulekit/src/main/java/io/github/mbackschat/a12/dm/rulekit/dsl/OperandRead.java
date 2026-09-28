@@ -29,6 +29,12 @@ final class OperandRead {
         return operands.stream().anyMatch(OperandRead::mayRefuse) ? refusal.withheld() : refusal;
     }
 
+    /** RepetitionNotUnique consumes an unstarred repeating key as its own iteration (RepetitionNotUniqueKeyPathLawsTest). */
+    static IllegalArgumentException citedRepetitionKeys(KernelCodeRefusal refusal, List<FieldRef> keys) {
+        return keys.stream().anyMatch(key -> key.correlated() || key.repeatingAncestors().isEmpty())
+                ? refusal.withheld() : refusal;
+    }
+
     /** Whether A12 may refuse this operand while reading it, from a fact the operand does not carry. */
     static boolean mayRefuse(DuplicateOperand operand) {
         return switch (operand) {

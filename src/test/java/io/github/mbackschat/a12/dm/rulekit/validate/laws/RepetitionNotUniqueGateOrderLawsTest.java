@@ -64,6 +64,8 @@ class RepetitionNotUniqueGateOrderLawsTest {
         actual.put("a key carrying a SEMANTIC INDEX",
                 verdict("RepetitionNotUnique(Claims/Amount For \"C-1\")"));
         actual.put("a key without VALUE VALIDATION", verdict("RepetitionNotUnique(Claims/RawNote)"));
+        actual.put("a repeated key without VALUE VALIDATION",
+                verdict("RepetitionNotUnique(Claims/RawNote, Claims/RawNote)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a well-formed key — the control", KernelLaws.ADMITTED);
@@ -72,6 +74,7 @@ class RepetitionNotUniqueGateOrderLawsTest {
         expected.put("a STARRED key", "MVK_NO_WILDCARDS_ALLOWED");
         expected.put("a key carrying a SEMANTIC INDEX", "MVK_SEMANTIC_INDEX_NOT_ALLOWED");
         expected.put("a key without VALUE VALIDATION", "MVK_INVALID_RAW_TYPE");
+        expected.put("a repeated key without VALUE VALIDATION", "MVK_DUPLICATE_PARAM1");
         assertEquals(expected, actual, "which key-list gate reports");
     }
 

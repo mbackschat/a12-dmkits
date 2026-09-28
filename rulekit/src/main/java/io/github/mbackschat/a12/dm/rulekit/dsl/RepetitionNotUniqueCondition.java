@@ -29,7 +29,7 @@ public record RepetitionNotUniqueCondition(List<FieldRef> keys, Optional<GroupRe
         try {
             DuplicateGate.rejectExactDuplicates("RepetitionNotUnique", keys);
         } catch (KernelCodeRefusal refusal) {
-            throw OperandRead.cited(refusal, keys);
+            throw OperandRead.citedRepetitionKeys(refusal, keys);
         }
     }
 
