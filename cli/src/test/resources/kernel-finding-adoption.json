@@ -521,9 +521,7 @@
         "checker": [
           "portable keyed-list topology verdict"
         ],
-        "a12-kernel-lean": [
-          "specification and executable laws"
-        ],
+        "a12-kernel-lean": ["specification", "evidence"],
         "dmtool-cli": [
           "rule check and rule read"
         ],
@@ -579,9 +577,18 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "This consumer's independent behavior has not been established by the static kernel grid or the typed API tests; F-USE-BACKLOG owns transfer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Peer applied the keyed lower-field-list admission rows to spec/08; it has no Lean keyed lower-star operand surface.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-keyed-lower-lists",
+              "witness": "Peer records the spec/08 admission paragraph for KF500."
+            },
+            "evidence": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-keyed-lower-lists",
+              "witness": "Peer identifies the 24-row keyed lower-list law and six-row group-count control, read rather than rerun."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "OPEN",
@@ -608,7 +615,7 @@
         "dmkits": ["typed index-field authoring", "delegated model validation"],
         "interpreter": ["runtime selection of admitted indexed keys"],
         "checker": ["O1 index-key class comparison", "JVM and Node pattern support boundary"],
-        "a12-kernel-lean": ["specification", "executable and proofs", "evidence"],
+        "a12-kernel-lean": ["specification", "evidence"],
         "dmtool-cli": ["rule check admission and diagnostics"],
         "json-schema-import": ["index-key model constraints and loss reporting"],
         "json-schema-export": ["index-key model constraints and loss reporting"]
@@ -649,9 +656,18 @@
           }
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The DG102-E measurements are prepared in the unsent Downloads handback; an exact peer adoption receipt remains outstanding. Preparation is not adoption.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Peer applied the index-key dialect and line-terminator rows to spec/08; Lean takes key fit as an input.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-index-key-dialect",
+              "witness": "Peer records the spec/08 String-key sentence for KF481."
+            },
+            "evidence": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-index-key-dialect",
+              "witness": "Peer identifies the named checker and index-key populations, read rather than rerun."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "OPEN",
@@ -686,11 +702,7 @@
           "syntax verdict JVM and JS",
           "EOF discriminator JVM and JS"
         ],
-        "a12-kernel-lean": [
-          "specification",
-          "executable and proofs",
-          "evidence"
-        ],
+        "a12-kernel-lean": [],
         "dmtool-cli": [
           "CLI rejected-candidate diagnostics",
           "CLI admission control"
@@ -747,8 +759,8 @@
           }
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "No exact peer adoption receipt. F-USE-BACKLOG owns the remaining assessment. The Downloads handback is prepared evidence, not confirmed adoption.",
+          "state": "NOT_APPLICABLE",
+          "basis": "Peer explicitly declined the parser/report model because a12-kernel-lean models neither a parser nor a report stream; applicable Kernel-behavior rows entered spec/12 through other findings.",
           "evidence": {}
         },
         "dmtool-cli": {
@@ -799,11 +811,7 @@
           "generated corrective",
           "syntax JVM and JS"
         ],
-        "a12-kernel-lean": [
-          "specification",
-          "executable and proofs",
-          "evidence"
-        ],
+        "a12-kernel-lean": ["specification", "evidence"],
         "dmtool-cli": [
           "CLI corrective"
         ],
@@ -880,9 +888,18 @@
           }
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "No exact peer adoption receipt. F-USE-BACKLOG owns the remaining assessment. The Downloads handback is prepared evidence, not confirmed adoption.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Peer applied the bounded numeric-token whitespace and sign rows to spec/12; it has no Lean parser.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-number-literal-whitespace",
+              "witness": "Peer records the spec/12 sign paragraph for KF76."
+            },
+            "evidence": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-number-literal-whitespace",
+              "witness": "Peer identifies the five-document, both-strategy numeric-token law, read rather than rerun."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "APPLIED",
@@ -922,11 +939,7 @@
         "checker": [
           "numeric entity-name finding"
         ],
-        "a12-kernel-lean": [
-          "specification",
-          "executable and proofs",
-          "evidence"
-        ],
+        "a12-kernel-lean": ["specification", "historical KF492 adoption review"],
         "dmtool-cli": [
           "CLI applicability and public behavior"
         ],
@@ -960,8 +973,13 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "This revision only relocates the historical R3b-N matrix citation into the archive. No semantic claim changed; broader consumer adoption is unassessed and remains owned by F-USE-BACKLOG.",
-          "evidence": {}
+          "basis": "Peer applied the bounded token-demand rows to spec/12 and has no Lean parser; the broader historical KF492 adoption review remains F-USE-BACKLOG.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-token-demand",
+              "witness": "Peer records the token-demand rows in spec/12."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "OPEN",
@@ -998,11 +1016,7 @@
         "checker": [
           "declared-locale and no-pattern message coverage"
         ],
-        "a12-kernel-lean": [
-          "specification",
-          "executable and proofs",
-          "evidence"
-        ],
+        "a12-kernel-lean": ["specification", "trailing-dollar rendering lock", "evidence"],
         "dmtool-cli": [
           "CLI field output",
           "CLI field schema",
@@ -1060,9 +1074,22 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Downloads handback carries exact kernel rows and the committed revision when available; peer adoption requires its own evidence and remains F-USE-BACKLOG.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Peer applied the field-message rows to spec/11 and locked trailing-dollar rendering in Lean; it has no Lean no-pattern message surface. The receipt says the locks were read, not run.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-field-message-render",
+              "witness": "Peer records the KF490 field-message clauses in spec/11."
+            },
+            "evidence": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-field-message-render",
+              "witness": "Peer identifies the field-message laws and its Lean lock, read rather than rerun."
+            },
+            "trailing-dollar rendering lock": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-field-message-render",
+              "witness": "StringPatternMessage locks Cost $$ and $$ rendering verbatim."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "APPLIED",
@@ -1107,11 +1134,7 @@
           "field-message rendering"
         ],
         "checker": [],
-        "a12-kernel-lean": [
-          "specification",
-          "executable and proofs",
-          "evidence"
-        ],
+        "a12-kernel-lean": ["specification", "trailing-dollar rendering lock", "evidence"],
         "dmtool-cli": [
           "CLI applicability and public behavior"
         ],
@@ -1158,9 +1181,22 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The known-unsent Downloads handback carries the bounded grid and will add the verified revision. Peer implementation/proof adoption requires peer evidence, not preparation or delivery.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Peer applied the field-message render rows to spec/11 and locked trailing-dollar rendering in Lean; it has no Lean no-pattern message surface. The receipt says the locks were read, not run.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-field-message-render",
+              "witness": "Peer records the KF42 render clauses in spec/11."
+            },
+            "evidence": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-field-message-render",
+              "witness": "Peer identifies the field-message laws and its Lean lock, read rather than rerun."
+            },
+            "trailing-dollar rendering lock": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-field-message-render",
+              "witness": "StringPatternMessage locks Cost $$ and $$ rendering verbatim."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "OPEN",
@@ -1204,9 +1240,7 @@
         "json-schema-export": [
           "JSON Schema export applicability and rule carriage"
         ],
-        "a12-kernel-lean": [
-          "specification, executable and evidence adoption"
-        ]
+        "a12-kernel-lean": ["specification", "evidence"]
       },
       "consumers": {
         "adapter": {
@@ -1255,9 +1289,18 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The known-unsent Downloads handback carries the measured grid; delivery and peer adoption require their own evidence.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Peer applied keyed-parent-with-descendant-stars selection to spec/08; it has no Lean surface for this operand.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-keyed-parent-stars",
+              "witness": "Peer records the spec/08 selection paragraph for KF475."
+            },
+            "evidence": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-keyed-parent-stars",
+              "witness": "Peer identifies the keyed-group runtime differential on both strategies, read rather than rerun."
+            }
+          }
         }
       }
     },
@@ -1284,9 +1327,7 @@
         "json-schema-export": [
           "CurrentRepetition static-gate adoption"
         ],
-        "a12-kernel-lean": [
-          "CurrentRepetition static-gate adoption"
-        ]
+        "a12-kernel-lean": ["specification", "CurrentRepetition static-gate adoption"]
       },
       "consumers": {
         "adapter": {
@@ -1336,8 +1377,13 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The new 24-case static measurement will be recorded in the current unsent Downloads handover; peer receipt and adoption remain separate.",
-          "evidence": {}
+          "basis": "Peer applied the CurrentRepetition cascade to spec/08; its Lean implementation remains open under SG19.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-current-repetition",
+              "witness": "Peer records the 24-input CurrentRepetition cascade in spec/08."
+            }
+          }
         }
       }
     },
@@ -1354,9 +1400,7 @@
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "a12-kernel-lean": [
-          "DG75 adoption notice"
-        ]
+        "a12-kernel-lean": ["DG75 adoption notice"]
       },
       "consumers": {
         "adapter": {
@@ -1400,9 +1444,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Peer receipt and adoption of this corrected dmkits attribution remain unverified.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer reports that the KF458 rows already conform to its clauses; the DG75 attribution notice was receipted without a Lean change.",
+          "evidence": {
+            "DG75 adoption notice": {
+              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-consistent",
+              "witness": "Peer lists KF458 \u00a740.42 among the already-conforming rows."
+            }
+          }
         }
       }
     }
