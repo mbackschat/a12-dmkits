@@ -4,16 +4,28 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The checker's half of the four single-field value operators' operand gates.
+ * The checker's half of the single-entity value operators' operand gates.
  *
- * Every row mirrors one measured against the real kernel by
- * `rulekit.validate.laws.FieldValueOperatorOperandLawsTest`.
+ * Field rows mirror `rulekit.validate.laws.FieldValueOperatorOperandLawsTest`;
+ * CurrentRepetition rows mirror the kernel-measured `PathGatePopulation.repetitionRows`.
  *
  * The rows that carry the file are the two that invert a reader's expectation: `FieldValueAsString` demands
  * a NUMBER, and `FieldValueAsNumber` is the one arm that admits a CATEGORY and then reads that category's
  * values rather than the enumeration's.
  */
 class FieldValueOperatorOperandsTest {
+
+    @Test
+    fun aRepetitionValueRequiresOneGroupAfterItsPathReads() {
+        val rows = mapOf(
+            "CurrentRepetition(Bundle) > 0" to emptyList(),
+            "CurrentRepetition(Bundle/BundleQty) > 0" to listOf("MVK_NO_FIELDS_ALLOWED"),
+            "CurrentRepetition(Lines*) > 0" to listOf("MVK_NO_WILDCARDS_ALLOWED"),
+            "CurrentRepetition(Lines*/LineQty) > 0" to listOf("MVK_NO_FIELDS_ALLOWED"),
+            "Sum(Lines*/LineQty Having CurrentRepetition(Lines*) > 0) > 0" to listOf("MVK_NO_WILDCARDS_ALLOWED"),
+        )
+        for ((condition, expected) in rows) assertEquals(expected, subject(condition), condition)
+    }
 
     private fun codes(condition: String): List<String> = checkRead(
         ModelSource(

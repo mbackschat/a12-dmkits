@@ -515,9 +515,9 @@ enum class CheckFamily {
     ROUNDING_OPERANDS,
 
     /**
-     * What each of the four single-field value operators demands of the one field it reads. One constant for
-     * the four classes because `CheckFeldOpImpl.check` is one switch on the operator token behind one shared
-     * head, so which class answers is decided by the same read that decides whether anything answers at all.
+     * Single-entity value operators' kind, star and type gates after their operand read. The four field
+     * operators require a field; CurrentRepetition requires a group (KF122). The historical family name
+     * remains stable while the shared local-gate implementation covers both required kinds.
      */
     FIELD_VALUE_OPERATOR_OPERANDS,
 

@@ -72,6 +72,11 @@ class CheckerNearMissSweepTest {
     }
 
     @Test
+    fun repetitionValuePathsHaveOnlyLedgeredDifferences() {
+        assertModelLedger(PathGatePopulation.repetitionRows(), 24, "repetition-value-paths")
+    }
+
+    @Test
     fun harvestedOperationsPreserveTheirKernelComparisonPopulation() {
         val clusters = sortedMapOf<String, Int>()
         val examples = mutableListOf<String>()

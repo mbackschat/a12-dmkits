@@ -10,7 +10,9 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 
 /**
- * What each of the four single-field value operators demands of the one field it reads.
+ * The single-entity value operators' kind and star gates, followed by each field operator's type gate.
+ * `CurrentRepetition` requires a group where the other arms require a field (KF122); the generated
+ * `PathGatePopulation.repetitionRows` locks kind before star, and read failure before either local gate.
  *
  * `CheckFeldOpImpl.check` gates the operand as a field without a repetition star and then switches on the
  * operator token — so the four share a head and part company completely after it
@@ -68,9 +70,10 @@ internal fun TrackedFactBase.fieldValueOperatorContributions(
 }
 
 /** One arm of A12's switch on the operator token. */
-private enum class ValueOperatorArm { ABSOLUTE, LENGTH, AS_NUMBER, AS_STRING }
+private enum class ValueOperatorArm { ABSOLUTE, LENGTH, AS_NUMBER, AS_STRING, REPETITION }
 
 private val ARM_OF = mapOf(
+    "CurrentRepetition" to ValueOperatorArm.REPETITION,
     "AbsValue" to ValueOperatorArm.ABSOLUTE,
     "Length" to ValueOperatorArm.LENGTH,
     "FieldValueAsNumber" to ValueOperatorArm.AS_NUMBER,
@@ -112,11 +115,13 @@ private fun TrackedFactBase.valueOperandDefect(
     val (written, keyed, category) = operandSpec(operand, declaringGroup, element) ?: return null
     val target = addressedTargetOf(written, declaringGroup, element, keyed, call.inAFilterBody) ?: return null
     val declared = declarationAt(target) ?: return null
-    if (declared.declaredKind == DeclaredKind.GROUP) {
-        return ValueOperandDefect("MVK_NO_GROUPS_ALLOWED", "reads `$target`, which is a group — read one field of it")
-    }
-    if (declared.declaredKind != DeclaredKind.FIELD) {
-        return null
+    val requiredKind = if (arm == ValueOperatorArm.REPETITION) DeclaredKind.GROUP else DeclaredKind.FIELD
+    if (declared.declaredKind != requiredKind) {
+        return when (declared.declaredKind) {
+            DeclaredKind.GROUP -> ValueOperandDefect("MVK_NO_GROUPS_ALLOWED", "reads `$target`, which is a group — read one field of it")
+            DeclaredKind.FIELD -> ValueOperandDefect("MVK_NO_FIELDS_ALLOWED", "reads `$target`, which is a field — read its group's repetition")
+            else -> null
+        }
     }
     if ('*' in written) {
         return ValueOperandDefect(
@@ -124,6 +129,7 @@ private fun TrackedFactBase.valueOperandDefect(
             "reads `$target` through a repetition star, and this operator reads one addressed value",
         )
     }
+    if (arm == ValueOperatorArm.REPETITION) return null
     if (arm != ValueOperatorArm.AS_NUMBER && category != null) {
         return ValueOperandDefect(
             "MVK_CATEGORY_NOT_ALLOWED",
@@ -132,6 +138,7 @@ private fun TrackedFactBase.valueOperandDefect(
     }
     val type = declared.declaredFieldType() ?: return null
     return when (arm) {
+        ValueOperatorArm.REPETITION -> null
         ValueOperatorArm.ABSOLUTE, ValueOperatorArm.AS_STRING ->
             if (type in PLAINLY_NON_NUMBER_TYPES) {
                 ValueOperandDefect(

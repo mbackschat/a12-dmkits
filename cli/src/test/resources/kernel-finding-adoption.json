@@ -1092,6 +1092,86 @@
           "evidence": {}
         }
       }
+    },
+    "kf122": {
+      "sha256": "99148718951036321a710da7f965777dc6f48c88e88541648035c3a698031b76",
+      "task": "M3-GROUP-OP",
+      "scope": {
+        "adapter": [
+          "CurrentRepetition static-gate adoption"
+        ],
+        "dmkits": [
+          "CurrentRepetition static-gate adoption"
+        ],
+        "interpreter": [],
+        "checker": [
+          "CurrentRepetition static-gate adoption"
+        ],
+        "dmtool-cli": [
+          "CurrentRepetition static-gate adoption"
+        ],
+        "json-schema-import": [
+          "CurrentRepetition static-gate adoption"
+        ],
+        "json-schema-export": [
+          "CurrentRepetition static-gate adoption"
+        ],
+        "a12-kernel-lean": [
+          "CurrentRepetition static-gate adoption"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Whole-model kernel consistency checks every predicted input; the checker uses shared single-entity kind/star gates after path reads.",
+          "evidence": {
+            "CurrentRepetition static-gate adoption": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerNearMissSweepTest.kt#repetitionValuePathsHaveOnlyLedgeredDifferences",
+              "witness": "The generated 24-case cross retains admitted controls and distinguishes read/kind/star/filter precedence."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "Assess this new static-gate evidence on the consumer\u2019s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This KF122 revision measures rejection classes for malformed operator operands and their filter precedence. It adds no runtime behavior, valid syntax or model shape; the already-known fixed-group admission control does not change the interpreter\u2019s accepted domain.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "Whole-model kernel consistency checks every predicted input; the checker uses shared single-entity kind/star gates after path reads.",
+          "evidence": {
+            "CurrentRepetition static-gate adoption": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerNearMissSweepTest.kt#repetitionValuePathsHaveOnlyLedgeredDifferences",
+              "witness": "The generated 24-case cross retains admitted controls and distinguishes read/kind/star/filter precedence."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "Assess this new static-gate evidence on the consumer\u2019s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Assess this new static-gate evidence on the consumer\u2019s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Assess this new static-gate evidence on the consumer\u2019s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The new 24-case static measurement will be recorded in the current unsent Downloads handover; peer receipt and adoption remain separate.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

@@ -22,6 +22,32 @@ internal object PathGatePopulation {
 
     fun aggregateRows(): List<ConditionCase> = rows(aggregate = true)
 
+    fun repetitionRows(): List<ConditionCase> {
+        val model = BoundModel.ofJson(host)
+        val total = model.num("/Policy/Total")
+        val rule = model.rule(model.group("/Policy")).name("RepetitionProbe").errorField(total)
+            .`when`(total.filled()).code("REPETITION_PROBE").message(Dsl.en("Check policy repetitions")).build().draft()
+        val validator = RuleValidator()
+        return listOf(false, true).flatMap { filter -> Segment.entries.flatMap { segment ->
+            listOf(false, true).flatMap { starred -> listOf(false, true).map { field ->
+                val path = segment.name + (if (starred) "*" else "") + (if (field) "/Amount" else "")
+                val expected = when {
+                    segment == Segment.Missing -> "MVK_INVALID_ENTITY"
+                    starred && segment == Segment.Fixed -> "MVK_INVALID_WILDCARD"
+                    segment == Segment.Repeating && !starred && !filter -> "MVK_NO_WILDCARD"
+                    field -> "MVK_NO_FIELDS_ALLOWED"
+                    starred -> "MVK_NO_WILDCARDS_ALLOWED"
+                    filter && segment == Segment.Fixed -> "MVK_NO_ITERATION_FOR_WILDCARD"
+                    else -> null
+                }
+                val comparison = "CurrentRepetition($path) > 0"
+                val probe = if (filter) "Sum(Repeating*/Amount Having $comparison) > 0" else comparison
+                ConditionCase("filter=$filter:$path", validator.inject(host,
+                    rule.withErrorCondition(rule.errorCondition() + " And $probe")), expected)
+            } }
+        } }
+    }
+
     private fun rows(aggregate: Boolean): List<ConditionCase> {
         val model = BoundModel.ofJson(host)
         val total = model.num("/Policy/Total")
