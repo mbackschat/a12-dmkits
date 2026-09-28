@@ -127,19 +127,20 @@ class CheckerNearMissSweepTest {
 
     @Test
     fun indexKeyPatternsHaveOnlyLedgeredDifferences() {
-        assertModelLedger(IndexKeyPatternPopulation.rows(), 27, "index-key-patterns")
-    }
-
-    @Test
-    fun javaPatternModelHasOnlyLedgeredDifferences() {
-        val rows = JavaPatternModelPopulation.rows()
-        assertModelLedger(rows, 17, "java-pattern-model")
+        val populations = listOf(
+            Triple("java-pattern-model", 17, JavaPatternModelPopulation.rows()),
+            Triple("index-key-patterns", 27, IndexKeyPatternPopulation.rows()),
+            Triple("pattern-boundaries", 21, JavaPatternModelPopulation.boundaries()),
+            Triple("key-normalization", 16, IndexKeyNormalizationPopulation.rows()),
+            Triple("pattern-compositions", 9, JavaPatternModelPopulation.compositions()),
+        )
+        populations.forEach { (name, count, rows) -> assertModelLedger(rows, count, name) }
         val mapper = ObjectMapper()
-        val replay = mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(rows.map {
+        val replay = mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(populations.flatMap { it.third }.map {
             mapOf("id" to it.id, "model" to it.model, "classes" to listOfNotNull(it.expected))
         })
         val stored = mapper.readTree(checkNotNull(javaClass.getResource("/checker-near-miss/java-pattern-replay.json")))
-        assertEquals(replay.toList(), HarvestedModels.expand(stored), "portable replay must retain the kernel population")
+        assertEquals(replay.toList(), HarvestedModels.expand(stored), "portable replay must retain all five kernel populations")
     }
 
     @Test

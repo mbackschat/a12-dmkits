@@ -19,6 +19,14 @@ Two statuses exist today:
 
 **Every report also says what it did NOT check.** `checksCompleted` names the families that ran and `gaps` names what nobody examined — a measured storefront model returns 39 families and 5 gaps (2026-09-13). A consumer that shows a user "no problems found" without surfacing the gaps is reporting a verdict the checker did not give.
 
+## Constant index keys: bounded JVM consistency semantics
+
+For String index fields, the checker normalizes CRLF to LF (preserving lone CR), checks positive declared length bounds, then applies whole-value Java-pattern semantics. A String type definition contributes its referenced constraints. Custom index types contribute their static length bounds; this is not execution of a custom validator. The oracle is A12's **JVM consistency check on both checker targets**, not the native JavaScript runtime's RegExp behavior ([KF481](KERNEL-FINDINGS.md#kf481)).
+
+Pattern judgment is deliberately bounded. The compiler represents ordinary literals, groups/alternation/repetition, its character-class algebra and non-multiline anchors, and supported scalar escapes and Basic Latin character names. Java/JS differences require a certified pattern/key domain: general-letter properties and word boundaries use ASCII keys, graphemes use printable ASCII, and Unicode case folding uses Latin-1 source atoms and keys with a flag scope covering the whole expression. Unsupported names/properties/escapes and nested classes, nonuniform Unicode-case scopes, unverified flags, captured backreferences and keys outside those domains remain unjudged on **both** targets. This is not a complete Java Pattern implementation, and absence of a key finding never establishes validity.
+
+The enforcement points are `KeyPattern.parse`/`matches` and `admitsIndexConstant`; `KeyPatternTest` locks positive, negative and unsupported controls on JVM/Node. `CheckerNearMissSweepTest.indexKeyPatternsHaveOnlyLedgeredDifferences` checks the fixed kernel populations and their byte-exact portable replay. Known portability defects within that intended domain are tracked in [DG102](CONSISTENCY-GAPS.md); the coverage exclusions do not dispose of those defects. A wider claim requires new oracle evidence, not a host-dependent guess.
+
 ## The entry point
 
 Strings in, strings out — and that is the durable decision, not the number of calls. The checker's Kotlin types are still moving, so exporting *them* would publish an ABI that changes under every consumer; a JSON string commits to the wire shape below and to nothing else.

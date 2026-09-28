@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **DG102 — legal constant index keys outside the portable pattern domain remain unjudged.** A12 tests a key against the index field's value validation ([KF481](KERNEL-FINDINGS.md#kf481)). The 27-input typed population now judges twenty-one keyed cells and leaves five legal SILENT cells (three admitted, two refused): class non-space, scoped Unicode case and final-line anchors. A separate 17-input predictive Java-Pattern population now agrees completely. The checker certifies the pattern and key together, using measured character domains where Java and JS differ; unsupported domains, including captured backreferences, remain INCONCLUSIVE on both targets. This is the JVM consistency oracle, not native A12 JavaScript runtime behavior. Close this gap only after the residual mechanisms are certified or explicitly disposed under the conformance plan; finite population agreement is not universal Java-pattern conformance.
+- **DG102 — constant index-key pattern certification is incomplete.** The original five residuals and quantified negation are fixed; ninety frozen model inputs agree with the kernel ([KF481](KERNEL-FINDINGS.md#kf481)). Terminal review found existing case-folding omissions for decoded scalar escapes and mixed ranges, plus a nonportable empty-intersection representation. Direct pinned-JDK/Node discriminators establish these defects; the next partition must measure them through the kernel on a typed host, fix scalar/set closure structurally, and replay the full population on JVM and Node. The [bounded-domain contract](CONSISTENCY-API.md#constant-index-keys-bounded-jvm-consistency-semantics) does not excuse wrong judgments within its domain. Native-JS runtime behavior remains a separate assessment.
 
 ## 2. Out of scope
 

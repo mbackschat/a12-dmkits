@@ -11,6 +11,8 @@ internal object JavaPatternToJs {
     private const val H = "\\t\\x20\\xA0\\u1680\\u180E\\u2000-\\u200A\\u202F\\u205F\\u3000"
     private const val V = "\\n\\x0B\\f\\r\\x85\\u2028\\u2029"
     private const val S = "\\t\\n\\x0B\\f\\r\\x20"
+    // DG102-E: CRLF is one final terminator; its interior is not an end-anchor position.
+    private const val JAVA_FINAL_ANCHOR = "(?:(?![\\s\\S])|(?=\\r\\n(?![\\s\\S]))|(?=[\\r\\u0085\\u2028\\u2029](?![\\s\\S]))|(?<!\\r)(?=\\n(?![\\s\\S])))"
     private const val DOT_TERMINATORS = "\\n\\r\\u0085\\u2028\\u2029"
 
     data class BackReferenceGuard(val capture: Int, val marker: Int)
@@ -134,16 +136,18 @@ internal object JavaPatternToJs {
                         )
                     }
                     '^' -> {
-                        hasUnverifiedMapping = true
+                        if (!forConsistency || flags.multiline) hasUnverifiedMapping = true
                         index++
                         out.append(if (flags.multiline) {
                             if (flags.unixLines) "(?:^|(?<=\\n))" else "(?:^|(?<=[$DOT_TERMINATORS]))"
                         } else "^")
                     }
                     '$' -> {
-                        hasUnverifiedMapping = true
+                        if (!forConsistency || flags.multiline) hasUnverifiedMapping = true
                         index++
-                        out.append(if (flags.multiline) {
+                        out.append(if (forConsistency && !flags.multiline) {
+                            JAVA_FINAL_ANCHOR
+                        } else if (flags.multiline) {
                             if (flags.unixLines) "(?:$|(?=\\n))" else "(?:$|(?=[$DOT_TERMINATORS]))"
                         } else "$")
                     }
@@ -222,8 +226,14 @@ internal object JavaPatternToJs {
                 }
                 ':' -> {
                     index++
-                    if (sawUnicodeCase || (globalUnicodeCase && sawCaseFlag)) hasUnverifiedMapping = true
+                    val wholeUnicodeScope = forConsistency && groupStart == 0 &&
+                        modified.caseInsensitive && modified.unicodeCase && sawUnicodeCase
+                    if (wholeUnicodeScope) {
+                        globalUnicodeCase = true
+                        requireDomain(ValueDomain.LATIN1)
+                    } else if (sawUnicodeCase || (globalUnicodeCase && sawCaseFlag)) hasUnverifiedMapping = true
                     val body = sequence(modified, nested = true)
+                    if (wholeUnicodeScope && index != source.length) hasUnverifiedMapping = true
                     "(?:${body.text})" to enclosing
                 }
                 else -> throw UnsupportedJavaPattern("malformed inline flag group")
@@ -250,6 +260,10 @@ internal object JavaPatternToJs {
                 return "()\\$capture"
             }
             return when (e) {
+                'n', 'r', 't', 'f' -> {
+                    if (!forConsistency) hasUnverifiedMapping = true
+                    "\\$e"
+                }
                 'R' -> "(?:\\r\\n|[$V])"
                 'h' -> "[$H]"
                 'H' -> "[^$H]"
@@ -330,6 +344,10 @@ internal object JavaPatternToJs {
             }
             if (!closed) throw UnsupportedJavaPattern("unclosed character class")
             val body = raw.toString()
+            if (forConsistency && !body.contains("&&")) {
+                val union = classUnion(body, flags)
+                return if (negated) "(?:(?!$union)[\\s\\S])" else union
+            }
             if (!negated && body == "\\H") return "[^$H]"
             if (!negated && body == "\\V") return "[^$V]"
             if (body.contains("\\H") || body.contains("\\V")) {
@@ -337,6 +355,39 @@ internal object JavaPatternToJs {
             }
             val translated = if (body.contains("&&")) intersection(body, flags) else classBody(body, flags)
             return "[" + (if (negated) "^" else "") + translated + "]"
+        }
+
+        /** DG102-E: union complete one-character predicates before applying the enclosing class negation. */
+        private fun classUnion(raw: String, flags: Flags): String {
+            val members = mutableListOf<String>()
+            var start = 0
+            var i = 0
+            while (i < raw.length) {
+                if (raw[i] != '\\' || i + 1 >= raw.length) {
+                    i++
+                    continue
+                }
+                val positive = when (raw[i + 1]) {
+                    'S' -> S
+                    'D' -> "0-9"
+                    'W' -> "a-zA-Z_0-9"
+                    'H' -> H
+                    'V' -> V
+                    else -> null
+                }
+                if (positive != null) {
+                    if (raw.getOrNull(i - 1) == '-' || raw.getOrNull(i + 2) == '-') {
+                        throw UnsupportedJavaPattern("complement range endpoint")
+                    }
+                    if (i > start) members += "[${classBody(raw.substring(start, i), flags)}]"
+                    members += "[^$positive]"
+                    start = i + 2
+                }
+                i += 2
+            }
+            if (start < raw.length) members += "[${classBody(raw.substring(start), flags)}]"
+            if (members.isEmpty()) throw UnsupportedJavaPattern("empty character class")
+            return members.joinToString("|", "(?:", ")")
         }
 
         private fun classBody(raw: String, flags: Flags): String {

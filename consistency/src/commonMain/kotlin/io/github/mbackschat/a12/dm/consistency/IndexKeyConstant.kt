@@ -19,7 +19,8 @@ import kotlinx.serialization.json.intOrNull
  * Unjudged, and therefore safe to under-report: a constant meeting its length bounds beside a declared String
  * pattern outside [KeyPattern]'s represented Java-to-JS domain; a table-backed enumeration, whose values a model does
  * not carry; a non-String or ambiguous type definition, an unspecified field, and a constant
- * holding a CR, which A12 strips from a CRLF before the test, so the spelling it tests is not the written one.
+ * holding a CR on another type. String keys normalize CRLF to LF before both length and pattern checks
+ * (DG102-E2 kernel population); a lone CR is preserved.
  */
 internal fun TrackedFactBase.admitsIndexConstant(field: TrackedDeclaration, constant: String): Boolean? {
     val fieldType = field.declaredFieldType() ?: return null
@@ -35,11 +36,11 @@ internal fun TrackedFactBase.admitsIndexConstant(field: TrackedDeclaration, cons
     if (type == FieldType.STRING && typeBody.constrainsNoString()) {
         return true
     }
-    if ('\r' in constant) {
+    if ('\r' in constant && type != FieldType.STRING) {
         return null
     }
     return when (type) {
-        FieldType.STRING -> typeBody?.stringAdmits(constant)
+        FieldType.STRING -> typeBody?.stringAdmits(constant.replace("\r\n", "\n"))
         FieldType.NUMBER -> numberShapeAdmits(
             minFraction = maxOf(typeBody?.declaredInt("minFractionalDigits") ?: 0, 0),
             maxFraction = typeBody?.declaredInt("maxFractionalDigits") ?: 0,

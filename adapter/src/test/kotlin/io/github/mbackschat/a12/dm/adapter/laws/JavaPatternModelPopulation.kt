@@ -8,7 +8,7 @@ import java.util.regex.Pattern
 
 /** DG102-C tests Java Pattern as a predictive model of the kernel's indexed String gate. */
 internal object JavaPatternModelPopulation {
-    private data class Case(val group: String, val pattern: String, val match: String, val miss: String)
+    private data class Case(val group: String, val pattern: String, val match: String?, val miss: String, val kernelMatch: Boolean = true)
 
     private val cases = listOf(
         Case("NamedB", "\\N{LATIN CAPITAL LETTER B}", "B", "A"),
@@ -21,41 +21,63 @@ internal object JavaPatternModelPopulation {
         Case("Intersection", "[a-z&&b-d]", "c", "a"),
     )
 
-    private val host = DocumentModelDraft.named("policy-index-pattern-model").locale("en_US")
-        .rootGroup("Policy") { policy ->
-            policy.stringField("Reference") { }
-            for (case in cases) {
-                policy.group(case.group) { group ->
-                    group.repeatable(5).indexField("K")
-                        .stringField("K") { it.pattern(case.pattern, "policy code") }
-                        .numberField("Amount") { it.fractionDigits(2) }
+    fun boundaries(): List<ConditionCase> = population(listOf(
+        Case("NonSpaceUnion", "[\\S@]", "\u00A0", " "),
+        Case("NegatedUnion", "[^\\S ]", "\t", "\u00A0"),
+        Case("NonDigitUnion", "[\\D0]", "0", "2"),
+        Case("NonHorizontalUnion", "[\\H@]", "@", " "),
+        Case("NegatedVertical", "[^\\Vx]", "\n", "x"),
+        Case("WholeFlagScope", "(?iu:è|é)", "È", "e"),
+        Case("FinalCRLF", "a$\\r\\n", "a\r\n", "a\n", kernelMatch = false),
+        Case("FinalNEL", "a$\\u0085", "a\u0085", "a\n"),
+        Case("SplitCRLF", "a\\r$\\n", null, "a\r\n"),
+        Case("MultipleLines", "a$\\n\\n", null, "a\n\n"),
+        Case("UnanchoredCRLF", "a\\r\\n", "a\r\n", "a\n", kernelMatch = false),
+    ))
+
+    fun compositions(): List<ConditionCase> = population(listOf(
+        Case("NegatedPlus", "[^ab]+", "cc", "ca"),
+        Case("NegatedCount", "[^ab]{2}", "cc", "ca"),
+        Case("NegatedOptional", "[^ab]?a", "a", "ba"),
+        Case("NegatedNonSpacePlus", "[^\\S]+", "  ", " a"),
+    ))
+
+    fun rows(): List<ConditionCase> = population(cases)
+
+    private fun population(cases: List<Case>): List<ConditionCase> {
+        val host = DocumentModelDraft.named("policy-index-pattern-model").locale("en_US")
+            .rootGroup("Policy") { policy ->
+                policy.stringField("Reference") { }
+                for (case in cases) {
+                    policy.group(case.group) { group ->
+                        group.repeatable(5).indexField("K")
+                            .stringField("K") { it.pattern(case.pattern, "policy code") }
+                            .numberField("Amount") { it.fractionDigits(2) }
+                    }
                 }
-            }
-        }.build().toJson()
+            }.build().toJson()
 
-    private val validator = RuleValidator()
-    private val baseRule = BoundModel.ofJson(host).let { model ->
-        val reference = model.str("/Policy/Reference")
-        model.rule(model.group("/Policy")).name("IndexModelProbe").errorField(reference)
-            .`when`(reference.filled()).code("INDEX_MODEL_PROBE")
-            .message(Dsl.en("Check policy code")).build().draft()
-    }
+        val validator = RuleValidator()
+        val baseRule = BoundModel.ofJson(host).let { model ->
+            val reference = model.str("/Policy/Reference")
+            model.rule(model.group("/Policy")).name("IndexModelProbe").errorField(reference)
+                .`when`(reference.filled()).code("INDEX_MODEL_PROBE")
+                .message(Dsl.en("Check policy code")).build().draft()
+        }
 
-    fun rows(): List<ConditionCase> {
         for (case in cases) {
-            check(Pattern.matches(case.pattern, case.match)) { "direct Java prediction failed: ${case.group} match" }
+            case.match?.let { check(Pattern.matches(case.pattern, it)) { "direct Java prediction failed: ${case.group} match" } }
             check(!Pattern.matches(case.pattern, case.miss)) { "direct Java prediction failed: ${case.group} miss" }
+        }
+        fun row(group: String, constant: String, accepted: Boolean, kernelAccepts: Boolean = accepted): ConditionCase {
+            val condition = baseRule.errorCondition() + " And Sum($group/Amount For \"$constant\") > 0"
+            return ConditionCase("$group-${if (accepted) "match" else "miss"}",
+                validator.inject(host, baseRule.withErrorCondition(condition)),
+                if (kernelAccepts) "MVK_PARAMSIZE_INVALIDN" else "MVK_INDEX_VALUE_INVALID")
         }
         return listOf(ConditionCase("admitted-control", validator.inject(host, baseRule), null)) +
             cases.flatMap { case ->
-                listOf(row(case.group, case.match, true), row(case.group, case.miss, false))
+                listOfNotNull(case.match?.let { row(case.group, it, true, case.kernelMatch) }, row(case.group, case.miss, false))
             }
-    }
-
-    private fun row(group: String, constant: String, accepted: Boolean): ConditionCase {
-        val condition = baseRule.errorCondition() + " And Sum($group/Amount For \"$constant\") > 0"
-        return ConditionCase("$group-${if (accepted) "match" else "miss"}",
-            validator.inject(host, baseRule.withErrorCondition(condition)),
-            if (accepted) "MVK_PARAMSIZE_INVALIDN" else "MVK_INDEX_VALUE_INVALID")
     }
 }

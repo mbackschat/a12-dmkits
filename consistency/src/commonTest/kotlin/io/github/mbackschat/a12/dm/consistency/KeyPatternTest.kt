@@ -13,7 +13,7 @@ class KeyPatternTest {
 
     @Test
     fun theKernelPatternPopulationAgreesOnEachPortableTarget() {
-        assertEquals(17, SyntaxFixtureData.keyPatterns.size)
+        assertEquals(90, SyntaxFixtureData.keyPatterns.size)
         for (json in SyntaxFixtureData.keyPatterns) {
             val row = Json.parseToJsonElement(json).jsonObject
             val expected = row.getValue("classes").jsonArray.map { it.jsonPrimitive.content }.toSet()
@@ -100,16 +100,38 @@ class KeyPatternTest {
     }
 
     @Test
+    fun classAlgebraWholeExpressionFlagsAndFinalAnchors() {
+        val rows = listOf(
+            Triple("[\\S]", "\u00A0", true), Triple("[\\S]", " ", false),
+            Triple("[\\S@]", "\u00A0", true), Triple("[^\\S ]", "\t", true),
+            Triple("[^ab]+", "ca", false), Triple("[^ab]{2}", "ca", false),
+            Triple("[^ab]?a", "a", true), Triple("[^\\S]+", " a", false),
+            Triple("[^\\S ]", "\u00A0", false), Triple("[\\D0]", "0", true),
+            Triple("[\\D0]", "2", false), Triple("[\\H@]", "@", true),
+            Triple("[\\H@]", " ", false), Triple("[^\\Vx]", "\n", true),
+            Triple("[^\\Vx]", "x", false),
+            Triple("(?iu:é)", "É", true), Triple("(?iu:è|é)", "È", true),
+            Triple("(?iu:è|é)", "e", false),
+            Triple("a$\n", "a\n", true), Triple("a$", "a\n", false),
+            Triple("a$\r\n", "a\r\n", true), Triple("a$\u0085", "a\u0085", true),
+            Triple("a\r$\n", "a\r\n", false), Triple("a$\n\n", "a\n\n", false),
+            Triple("^a$", "a", true), Triple("b^a", "ba", false),
+        )
+        rows.forEach { (pattern, value, expected) -> assertEquals(expected, matches(pattern, value), "$pattern / $value") }
+        assertEquals(null, matches("(?iu:é)e", "ÉE"))
+        assertEquals(null, matches("(?iu:(?-i:é))", "É"))
+        assertEquals(null, matches("(?m:a$)", "a"))
+    }
+
+    @Test
     fun unsupportedOrKernelRejectedPatternsStayUnjudged() {
+        assertEquals(null, matches("[a[b]]", "b"))
+        assertEquals(null, matches("[a-z&&[^aeiou]]", "b"))
         assertEquals(null, matches("(a|(b))\\2c", "ac"))
         assertEquals(null, matches("(a|(b))\\2c", "bbc"))
         assertEquals(null, matches("(a|(b))\\2c|ac", "ac"))
         assertEquals(null, matches("\\N{LATIN CAPITAL LETTER B}((a|(b))\\3c|ac)", "Bac"))
-        assertEquals(null, matches("[\\S]", "\u00A0"))
         assertEquals(null, matches("[\\p{Lower}]", "a"))
-        assertEquals(null, matches("(?iu:é)", "É"))
-        assertEquals(null, matches("a$\n", "a\n"))
-        assertEquals(null, matches("a$", "a\n"))
         assertEquals(null, matches("\\b{g}", "a"))
         assertEquals(null, matches("a++", "aaa"))
         assertEquals(null, matches("(?<=A)B", "B"))
