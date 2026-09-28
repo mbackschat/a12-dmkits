@@ -33,6 +33,14 @@ final class BoundedLruCache<K, V> {
         return created;
     }
 
+    synchronized V get(K key) {
+        return entries.get(key);
+    }
+
+    synchronized void put(K key, V value) {
+        entries.put(key, value);
+    }
+
     synchronized int size() {
         return entries.size();
     }

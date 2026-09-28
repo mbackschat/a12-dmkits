@@ -13,8 +13,6 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -61,6 +59,7 @@ final class KernelModelCodeCache implements IModelCodeCache {
     private static final String ENABLED_PROPERTY = "rk.kernelCodeCache";
 
     private static final String DIRECTORY_PROPERTY = "rk.kernelCodeCacheDir";
+    private static final int RESIDENT_LIMIT = 64;
 
     /**
      * The {@code .noindex} suffix is load-bearing on macOS, and it was measured rather than assumed.
@@ -73,12 +72,8 @@ final class KernelModelCodeCache implements IModelCodeCache {
      */
     private static final Path DEFAULT_DIRECTORY = Path.of("build/kernel-model-code.noindex");
 
-    /**
-     * Reused across engines within a JVM so a fork pays the disk round trip once per model rather than per engine.
-     * {@link RuntimeLaws} already caches engines by model text, but bounded — beyond that bound an evicted model
-     * would otherwise re-read from disk.
-     */
-    private static final Map<String, IModelCode> RESIDENT = new ConcurrentHashMap<>();
+    /** Reuse hot generated code across engines without retaining every model a long-lived test fork visits. */
+    private static final BoundedLruCache<String, IModelCode> RESIDENT = new BoundedLruCache<>(RESIDENT_LIMIT);
 
     /**
      * Forget what this JVM is holding, so the next lookup goes to disk.
@@ -88,6 +83,10 @@ final class KernelModelCodeCache implements IModelCodeCache {
      */
     static void clearResident() {
         RESIDENT.clear();
+    }
+
+    static int residentSize() {
+        return RESIDENT.size();
     }
 
     private final Path directory;

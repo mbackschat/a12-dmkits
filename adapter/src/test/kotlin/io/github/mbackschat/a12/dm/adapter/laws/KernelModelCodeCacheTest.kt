@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import com.mgmtp.a12.kernel.md.rt.api.IModelCode
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -10,6 +11,7 @@ import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -98,6 +100,25 @@ class KernelModelCodeCacheTest {
 
         assertTrue(Files.walk(dir).noneMatch { it.toString().endsWith(".ser.gz") },
             "a lane that did not opt in must leave no entry, or a perf lane could still read one")
+    }
+
+    @Test
+    fun residentCodeIsBoundedAndEvictedCodeStillLoadsFromDisk() {
+        withCache(enabled = true) {
+            val cache = KernelModelCodeCache.forModel(model(threshold = 5))
+            val first = StubModelCode("hash-0")
+            cache.addModelCode("code-0", first)
+            for (index in 1..64) cache.addModelCode("code-$index", StubModelCode("hash-$index"))
+
+            assertEquals(64, KernelModelCodeCache.residentSize())
+            val reloaded = cache.getModelCode("code-0")
+            assertNotSame(first, reloaded, "a cold entry must come from disk after eviction")
+            assertEquals("hash-0", reloaded.modelHash)
+        }
+    }
+
+    private data class StubModelCode(private val hash: String) : IModelCode {
+        override fun getModelHash(): String = hash
     }
 
     // ---- fixtures --------------------------------------------------------------------------------
