@@ -194,6 +194,9 @@ private fun Interpreter.filledFieldsValue(args: List<Expr>): Val = filledFieldsC
 private fun Interpreter.filledFieldsCount(args: List<Expr>): Int? {
     var count = 0
     for (arg in expandGroupStars(args)) when (arg) {
+        is Expr.EntitySpec -> count += withIndexedStar(arg, 0, null) {
+            filledFieldsCount(listOf(it))
+        } ?: return null
         is Expr.Star -> {
             if (arg.having != null) {
                 // The count HONORS a Having filter (IF94 — the kernel's `anzahlAngegebenerFelder` rides the
@@ -312,6 +315,28 @@ private fun Expr.Field.semanticIndex(index: Expr.EntityIndex): Expr.SemanticInde
         indexFieldOuter = index.outer,
     )
 }
+
+/** Select the indexed parent once, then let the existing star reader expand only that parent's children. */
+internal fun <T> Interpreter.withIndexedStar(
+    operand: Expr.EntitySpec,
+    absent: T,
+    unavailable: T,
+    read: Interpreter.(Expr.Star) -> T,
+): T {
+    val source = operand.source as? Expr.Star
+        ?: throw UnsupportedConstructException("this field-list operand requires a starred source")
+    val indexField = indexFieldOf(source.path)
+        ?: throw UnsupportedConstructException("SemanticIndex needs an index field on ${source.path}")
+    val parent = Expr.Field(indexField.substringBeforeLast('/'), source.outer)
+    return when (val cells = keyedGroupCells(parent.semanticIndex(checkNotNull(operand.semanticIndex)))) {
+        is KeyedGroupCells.Selected -> cells.interpreter.read(source.copy(outer = false))
+        KeyedGroupCells.Empty -> absent
+        KeyedGroupCells.Undecided -> unavailable
+    }
+}
+
+internal fun Expr.isIndexedStar(): Boolean =
+    this is Expr.EntitySpec && source is Expr.Star && semanticIndex != null
 
 /** `[field For "value"]` — the field's value in the row whose index field equals the value; an absent row
  *  or empty cell reads as the kind's EMPTY value (a number → 0, fillable), matching a missing field ref.
@@ -1085,15 +1110,36 @@ private fun Interpreter.roundExpr(args: List<Expr>, mode: RoundMode): Val {
  */
 private fun Interpreter.numberOfValueInFields(args: List<Expr>): Val {
     val target = evalExpr(args[0])
+    return countValueInFields(target, args.subList(1, args.size))?.let { Val.Num(dec(it)) } ?: Val.Unknown
+}
+
+private fun Interpreter.countValueInFields(target: Val, operands: List<Expr>): Int? {
     var count = 0
-    // `args[0]` is the counted constant and never an operand, so only the tail is expanded. BOTH repetition
+    // The counted value is already resolved; only entity operands are expanded. BOTH repetition
     // shapes of a GROUP operand go through the shared owner: unexpanded, the `Expr.Star` arm below took the
     // group's PARENT rows and read a value at the group path, where no field is declared, while the plain arm
     // asked `filled` of that same valueless path — so the count was 0 on every document either way. Measured
     // on both: the kernel ADMITS the starred operand and counts one match per row across two rows (IF287's
     // class, eighth instance), and it ADMITS the UNSTARRED one over a non-repeatable group and expands its
     // direct declarations, where the interpreter still answered 0 (a12-kernel-lean SPEC-2026-08-24-05, IF311).
-    for (arg in expandGroupOperands(args.subList(1, args.size))) {
+    for (arg in expandGroupOperands(operands)) {
+        if (isKeyedGroup(arg)) {
+            val keyed = arg as Expr.SemanticIndex
+            val value = when (val cells = keyedGroupCells(keyed)) {
+                is KeyedGroupCells.Selected -> cells.interpreter.countValueInFields(target, listOf(Expr.Field(keyed.path)))
+                KeyedGroupCells.Empty -> 0
+                KeyedGroupCells.Undecided -> null
+            }
+            count += value ?: return null
+            continue
+        }
+        if (arg.isIndexedStar()) {
+            val value = withIndexedStar(arg as Expr.EntitySpec, 0, null) {
+                countValueInFields(target, listOf(it))
+            }
+            count += value ?: return null
+            continue
+        }
         when (arg) {
             is Expr.Star -> {                    // a `Group* / Field` list (kernel: a group/wildcard expansion)
                 val group = arg.path.substringBeforeLast('/')
@@ -1107,7 +1153,7 @@ private fun Interpreter.numberOfValueInFields(args: List<Expr>): Val {
                     val v = rc.field(arg.path)
                     if (v is Val.Unknown) {                                                    // kept malformed → suppress
                         if (computeMode) throw PoisonedReadException(arg.path)
-                        return Val.Unknown
+                        return null
                     }
                     if (ValCompare.equal(v, target)) count++
                 }
@@ -1118,12 +1164,12 @@ private fun Interpreter.numberOfValueInFields(args: List<Expr>): Val {
                 // is the OUTER one for a `$`-marked node ([IF287]'s fourteenth/twenty-third instances).
                 if (!ctxOf(arg).filled(path)) continue  // empty → not counted (kernel: b == FALSE)
                 val v = evalExpr(arg)
-                if (v is Val.Unknown) return Val.Unknown // a filled-but-malformed operand → non-evaluable
+                if (v is Val.Unknown) return null // a filled-but-malformed operand → non-evaluable
                 if (ValCompare.equal(v, target)) count++
             }
         }
     }
-    return Val.Num(dec(count))
+    return count
 }
 
 /**
@@ -1960,7 +2006,13 @@ private fun Interpreter.firstFilledEntitySpec(
         is Expr.Field -> operand.semanticIndex?.let { firstFilledOperand(source.semanticIndex(it), walk) }
             ?: firstFilledOperand(source, walk)
         is Expr.Star -> {
-            require(operand.semanticIndex == null) { "a wildcard entitySpec cannot carry a semantic index" }
+            if (operand.semanticIndex != null) {
+                val step = withIndexedStar(operand, FirstFilledStep.Continue, FirstFilledStep.Stop(Val.Unknown)) {
+                    if (category == null) firstFilledOperand(it, walk) else firstFilledStar(it, walk, category)
+                }
+                if (step == FirstFilledStep.Continue) walk.fillable = true
+                return step
+            }
             return firstFilledStar(source, walk, category)
         }
     }
@@ -2194,6 +2246,7 @@ private fun Interpreter.refuseGroupOperandUnderMinMax(f: Expr.Func) {
 private fun Interpreter.starVals(f: Expr.Func): List<Val> = f.args.flatMap { aggOperandVals(it) }
 
 private fun Interpreter.aggOperandVals(arg: Expr): List<Val> = when (arg) {
+    is Expr.EntitySpec -> withIndexedStar(arg, emptyList(), listOf(Val.Unknown)) { starOperandVals(it) }
     is Expr.Star -> starOperandVals(arg)
     // A keyed GROUP contributes the selected row's cells as the bare group arm below contributes its instance's
     // (IF340); a keyed FIELD its one cell, dropped when empty like a plain field's.

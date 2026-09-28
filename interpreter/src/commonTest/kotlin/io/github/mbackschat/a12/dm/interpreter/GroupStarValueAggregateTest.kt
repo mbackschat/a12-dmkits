@@ -25,16 +25,18 @@ class GroupStarValueAggregateTest {
     private val FEE = "/Invoice/Charges/Fee"
     private val TAX = "/Invoice/Charges/Tax"
     private val SURCHARGE = "/Invoice/Charges/Extras/Surcharge"
+    private val CODE = "/Invoice/Charges/Code"
 
-    private fun model(operation: String) = ModelDef(
+    private fun model(operation: String, keyed: Boolean = false) = ModelDef(
         fields = listOf(
             FieldDef(TOTAL, Kind.NUMBER, scale = 2), FieldDef(AMOUNT, Kind.NUMBER, scale = 2),
             FieldDef(FEE, Kind.NUMBER, scale = 2), FieldDef(TAX, Kind.NUMBER, scale = 2),
             FieldDef(SURCHARGE, Kind.NUMBER, scale = 2),
-        ),
+        ) + if (keyed) listOf(FieldDef(CODE, Kind.STRING)) else emptyList(),
         rules = emptyList(),
         computations = listOf(ComputationDef(TOTAL, "/Invoice", listOf(ComputationAlternative(null, operation)))),
         repeatableGroups = setOf("/Invoice/Lines", "/Invoice/Charges", "/Invoice/Charges/Extras"),
+        indexFields = if (keyed) setOf(CODE) else emptySet(),
     )
 
     private fun total(def: ModelDef, build: (io.github.mbackschat.a12.dm.interpreter.eval.Document) -> Unit): String {
@@ -75,5 +77,26 @@ class GroupStarValueAggregateTest {
 
     @Test fun emptyGroupStarIsTheEmptySelectionZero() {
         assertEquals("VALUE|0", total(model("Sum(/Invoice/Lines*)")) { })
+    }
+
+    @Test fun theKeyBindsTheParentAndLeavesItsChildRowsFree() {
+        val operand = "/Invoice/Charges/Extras*/Surcharge For \"P1\""
+        val operations = mapOf(
+            "Sum($operand)" to "3", "MinValue($operand)" to "1", "MaxValue($operand)" to "2",
+            "NumberOfFilledFields($operand)" to "2", "NumberOfDifferentValues($operand)" to "2",
+            "NumberOfValueInFields(2 In $operand)" to "1", "FirstFilledValue($operand)" to "1",
+            "Sum(/Invoice/Charges/Extras*/Surcharge For \"missing\")" to "0",
+            "FirstFilledValue(/Invoice/Charges/Extras* For \"P1\")" to "1",
+        )
+        for ((operation, expected) in operations) {
+            val actual = total(model(operation, keyed = true)) { doc ->
+                doc.group("/Invoice/Charges", 1, 1).field(CODE, "P1", 1, 1, 1)
+                doc.group("/Invoice/Charges/Extras", 1, 1, 1).field(SURCHARGE, "1", 1, 1, 1, 1)
+                doc.group("/Invoice/Charges/Extras", 1, 1, 2).field(SURCHARGE, "2", 1, 1, 2, 1)
+                doc.group("/Invoice/Charges", 1, 2).field(CODE, "P2", 1, 2, 1)
+                doc.group("/Invoice/Charges/Extras", 1, 2, 1).field(SURCHARGE, "100", 1, 2, 1, 1)
+            }
+            assertEquals("VALUE|$expected", actual, operation)
+        }
     }
 }

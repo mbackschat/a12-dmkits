@@ -450,6 +450,8 @@ private data class AggregateFillState(
 
 /** Resolve one legal numeric aggregate operand to the presence/missingness of its declared contributors. */
 private fun Interpreter.aggregateFillState(arg: Expr): AggregateFillState? = when (arg) {
+    is Expr.EntitySpec -> withIndexedStar(arg,
+        AggregateFillState(false, true, false), AggregateFillState.EMPTY) { aggregateFillState(it) }
     // A keyed GROUP's contributors are the selected row's, read as the bare group arm below reads an instance's
     // (IF340); an absent row's are all missing. An undecided key leaves the aggregate non-evaluable, so no
     // message carries this operand's polarity. A keyed FIELD is its one cell.
@@ -692,7 +694,7 @@ private fun Interpreter.predType(p: Cond.Pred): MsgType {
     // found to skip wildcarded operands (SPEC-2026-07-23-09), which makes `NoGroupFilled(G*, G*)` legal: at
     // zero rows every operand contributes nothing, so `f` is 0, the fixed-arity range `1..f` is empty, and
     // requiring a SOLE star typed the firing VALUE where the kernel says OMISSION.
-    val fillable = if (op.countsGroups && p.args.any { it is Expr.Star })
+    val fillable = if (op.countsGroups && p.args.any { it is Expr.Star || it.isIndexedStar() })
         !quantifierFires(op, t + 1, f, n + 1) || (1..f).any { j -> !quantifierFires(op, t + j, f - j, n) }
     else (1..f).any { j -> !quantifierFires(op, t + j, f - j, n) }
     return if (fillable) MsgType.OMISSION else MsgType.VALUE
@@ -708,6 +710,7 @@ private fun Interpreter.leafOmission(e: Expr): Boolean = when (e) {
     // filtered-iterator escalation (IF101/IF104). FirstFilledValue delegates to its ordered scan so a filter
     // on an unvisited later slot is excluded (IF184). An ordinary unfiltered star keeps [EvalContext.starOmission].
     is Expr.Star -> e.having != null || ctx.starOmission(e.path, e.bindDepth)
+    is Expr.EntitySpec -> if (e.isIndexedStar()) withIndexedStar(e, true, false) { leafOmission(it) } else false
     is Expr.Func -> if (FunctionOp.byName(e.name) == FunctionOp.FIRST_FILLED_VALUE)
         firstFilledScan(e).fill.let { it.canGrow || it.canShrink }
     else e.args.any { leafOmission(it) }

@@ -235,7 +235,7 @@ private class ConditionParser(
      * `-> Category` followed by an optional `For <index>` — in BOTH a `[...]` value ref AND a bare
      * predicate/aggregate argument (`FieldValueAsString(Product For MaxNumber)`, string-concat operands). The
      * `For` key is a literal (`For "value"`) or another field (`For keyField`). A starred source may carry a
-     * category and a later `Having`, but not a semantic index (the owner rejects wildcard + index).
+     * category, index and a later `Having`; the prepared audit checks the index/star placement (KF351, KF475).
      */
     private fun entitySuffix(e: Expr): Expr {
         val source = e as? Expr.EntitySource ?: return e

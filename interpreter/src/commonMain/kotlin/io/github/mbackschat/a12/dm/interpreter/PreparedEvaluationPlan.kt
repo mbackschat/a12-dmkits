@@ -269,7 +269,7 @@ internal class PreparedEvaluationPlan(
                 if (!isField && !groupSemanticIndexAllowed) {
                     throw UnsupportedConstructException(
                         "a group semantic index is only an entity of FirstFilledValue, a group-presence condition, " +
-                            "a field-fill quantifier, NumberOfFilledFields, Sum, MaxValue or MinValue")
+                            "a field-fill quantifier or a supported field-list aggregate")
                 }
                 if (nearestIndexFieldOf(model.indexFields, expr.path) == null) {
                     throw UnsupportedConstructException(
@@ -283,8 +283,19 @@ internal class PreparedEvaluationPlan(
                 auditExpr(expr.source, outerAllowed, starAllowed, groupSemanticIndexAllowed)
                 val index = expr.semanticIndex
                 if (index != null) {
-                    val source = expr.source as? Expr.Field
-                        ?: throw UnsupportedConstructException("a wildcard entitySpec cannot carry a semantic index")
+                    val source = when (val entity = expr.source) {
+                        is Expr.Field -> entity
+                        is Expr.Star -> {
+                            if (!groupSemanticIndexAllowed) throw UnsupportedConstructException(
+                                "this operator does not support an indexed star")
+                            val indexPath = nearestIndexFieldOf(model.indexFields, entity.path)
+                                ?: throw UnsupportedConstructException("SemanticIndex needs an index field on ${entity.path}")
+                            val parent = indexPath.substringBeforeLast('/')
+                            if (entity.bindDepth < parent.count { it == '/' }) throw UnsupportedConstructException(
+                                "a semantic index requires the wildcard below its indexed group")
+                            Expr.Field(parent, entity.outer)
+                        }
+                    }
                     val indexed = when (index) {
                         is Expr.EntityIndex.Literal -> Expr.SemanticIndex(
                             source.path,
@@ -323,11 +334,10 @@ internal class PreparedEvaluationPlan(
 
         /**
          * The aggregates that read a keyed group's cells, each measured on `KeyedGroupFieldListDiffTest` (IF340).
-         * `NumberOfDifferentValues` and `NumberOfValueInFields` expand through other owners and have no row over
-         * an unstarred keyed group, so they stay declined (INTERPRETER-GAPS IG155).
+         * Group operands share the selected-row field expansion, including the distinct and value counts.
          */
         val KEYED_GROUP_AGGREGATES = setOf(FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.SUM, FunctionOp.MAX_VALUE,
-            FunctionOp.MIN_VALUE)
+            FunctionOp.MIN_VALUE, FunctionOp.NUMBER_OF_DIFFERENT_VALUES, FunctionOp.NUMBER_OF_VALUE_IN_FIELDS)
         val VALUE_AS_DATE_BOUNDARIES = setOf("FirstDay", "LastDay")
     }
 }

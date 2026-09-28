@@ -525,7 +525,7 @@ class Interpreter(
      *  list is not a scope. */
     internal fun hasFillScopeOperand(args: List<Expr>): Boolean = args.any {
         (it is Expr.Star && it.having == null) || (it is Expr.Field && ctxOf(it).declaredKind(it.path) == null) ||
-            isKeyedGroup(it)
+            isKeyedGroup(it) || it.isIndexedStar()
     }
 
     /** Aggregate the [FillScope] tally across a fill quantifier's operands (a group scope expands to its
@@ -544,6 +544,8 @@ class Interpreter(
 
     /** The [FillScope] of one bare, starred or filtered operand of a fill quantifier's list. */
     private fun operandFillScope(a: Expr): FillScope {
+        if (a.isIndexedStar()) return withIndexedStar(a as Expr.EntitySpec,
+            cellFillScope(Tri.FALSE), cellFillScope(Tri.UNKNOWN)) { operandFillScope(it) }
         val path = scopePathOf(a)
         val c = ctxOf(a)
         return when {
@@ -699,6 +701,8 @@ class Interpreter(
         // FALSE — opposite directions, which is the signature of a quantifier over an EMPTY selection rather than
         // of a wrong verdict (IF287's class, seventh instance).
         for (a in expandGroupStars(args)) when {
+            a.isIndexedStar() -> yieldAll(withIndexedStar(a as Expr.EntitySpec,
+                sequenceOf(false), sequenceOf(false)) { scanFilled(listOf(it), declaredTail) })
             a is Expr.Star && a.having == null -> {
                 val c = ctxOf(a)
                 for (cell in c.starScanCells(a.path, a.bindDepth, declaredTail)) yield(filledOrPoison(cell))
@@ -851,6 +855,8 @@ class Interpreter(
      */
     internal fun groupFillStates(args: List<Expr>): Sequence<Tri> = sequence {
         for (arg in args) when {
+            arg.isIndexedStar() -> yieldAll(withIndexedStar(arg as Expr.EntitySpec,
+                sequenceOf(Tri.FALSE), sequenceOf(Tri.UNKNOWN)) { groupFillStates(listOf(it)) })
             arg is Expr.Star -> {
                 for (rc in ctxOf(arg).groupListEnvironments(arg.path, arg.bindDepth)) {
                     if (arg.having != null && !havingInterp(rc).fires(arg.having)) continue

@@ -1010,6 +1010,88 @@
           "evidence": {}
         }
       }
+    },
+    "kf475": {
+      "sha256": "33fa44aac26ca97a07d4ebc2baff46ecf9d7bc3b88dce15f198bf5ad90467c8c",
+      "task": "IG155",
+      "scope": {
+        "adapter": [
+          "keyed-star runtime oracle"
+        ],
+        "dmkits": [
+          "typed scalar and collection key composition"
+        ],
+        "interpreter": [
+          "keyed-star runtime evaluation"
+        ],
+        "checker": [
+          "keyed-star admission population"
+        ],
+        "dmtool-cli": [
+          "CLI applicability and public behavior"
+        ],
+        "json-schema-import": [
+          "JSON Schema import applicability and rule carriage"
+        ],
+        "json-schema-export": [
+          "JSON Schema export applicability and rule carriage"
+        ],
+        "a12-kernel-lean": [
+          "specification, executable and evidence adoption"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The existing dual-strategy differential compares admitted models and exact runtime signatures; the interpreter composes selected-parent lookup with the existing star readers.",
+          "evidence": {
+            "keyed-star runtime oracle": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedGroupFieldListDiffTest.kt#aKeySelectsTheParentBeforeItsStarredChildrenAreRead",
+              "witness": "All twelve predicted cases compare dynamic Groovy, static Java and interpreter outcomes; P1/P2 and duplicate-key controls distinguish selection, expansion and unknown."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "DG71 and DG69 own the remaining scalar-cell and keyed collection authoring surfaces; interpreter support does not close either API gap.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The existing dual-strategy differential compares admitted models and exact runtime signatures; the interpreter composes selected-parent lookup with the existing star readers.",
+          "evidence": {
+            "keyed-star runtime evaluation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedGroupFieldListDiffTest.kt#aKeySelectsTheParentBeforeItsStarredChildrenAreRead",
+              "witness": "All twelve predicted cases compare dynamic Groovy, static Java and interpreter outcomes; P1/P2 and duplicate-key controls distinguish selection, expansion and unknown."
+            }
+          }
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "Assessment remains explicit work under F-USE-BACKLOG and the owning mechanism; this runtime measurement does not establish adoption on this surface.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "Assessment remains explicit work under F-USE-BACKLOG and the owning mechanism; this runtime measurement does not establish adoption on this surface.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Assessment remains explicit work under F-USE-BACKLOG and the owning mechanism; this runtime measurement does not establish adoption on this surface.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Assessment remains explicit work under F-USE-BACKLOG and the owning mechanism; this runtime measurement does not establish adoption on this surface.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The known-unsent Downloads handback carries the measured grid; delivery and peer adoption require their own evidence.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

@@ -52,7 +52,7 @@ class KeyedGroupFieldListDiffTest {
         val malformed = listOf(Pkg("P1", "DHL", "3", "4"), Pkg("P2", length = "abc"))
     }
 
-    private val model = DocumentModelDraft.named("keyed-parcels").locale("en_US")
+    private fun model(numericItems: Boolean = false) = DocumentModelDraft.named("keyed-parcels").locale("en_US")
         .rootGroup("Order") { g ->
             g.stringField("Reference") { }
             g.stringField("Wanted") { }
@@ -67,8 +67,9 @@ class KeyedGroupFieldListDiffTest {
                     }
                     .group("Items") { i ->
                         i.repeatable(3)
-                            .stringField("Sku") { }
-                            .numberField("Weight") { it.fractionDigits(0, 0) }
+                        if (numericItems) i.numberField("Sku") { it.fractionDigits(0, 0) }
+                        else i.stringField("Sku") { }
+                        i.numberField("Weight") { it.fractionDigits(0, 0) }
                     }
             }
         }.build().toJson()
@@ -84,7 +85,7 @@ class KeyedGroupFieldListDiffTest {
      */
     private data class Row(val condition: String, val fires: Boolean, val packages: List<Pkg> = standard,
         val wanted: String? = "P3", val errorField: String = REFERENCE, val guarded: Boolean = true,
-        val relevant: Map<String, List<Int>>? = null)
+        val relevant: Map<String, List<Int>>? = null, val numericItems: Boolean = false)
 
     private fun build(b: Both, packages: List<Pkg>, wanted: String?) {
         b.group("/Order", 1).field(REFERENCE, "ORD-1", 1, 1)
@@ -113,7 +114,7 @@ class KeyedGroupFieldListDiffTest {
     private fun verdicts(row: Row): String {
         val group = row.errorField.substringBeforeLast('/')
         val condition = if (row.guarded) "FieldFilled(${row.errorField}) And ${row.condition}" else row.condition
-        val kModel = RuntimeLaws.withRule(model, group, "R", "../" + row.errorField.substringAfterLast('/'),
+        val kModel = RuntimeLaws.withRule(model(row.numericItems), group, "R", "../" + row.errorField.substringAfterLast('/'),
             RULE_CODE, condition)
         assertAdmitted(kModel)
         val def = ModelLoader.load(kModel)
@@ -157,12 +158,37 @@ class KeyedGroupFieldListDiffTest {
         assertEquals(expected, actual)
     }
 
-    /**
-     * `NumberOfFilledFields` counts the selected row's filled cells and the value aggregates fold them. `8` is the
-     * discriminator: it counts both of `P1`'s item rows, which only a reading with `Items` free reaches. A value
-     * aggregate cannot carry that row, because `Sum(Packages/Items For "P1")` is refused `MVK_NO_WILDCARD` and the
-     * starred spelling is the key composed with a star, which stays declined (INTERPRETER-GAPS IG155).
-     */
+    @Test
+    fun aKeySelectsTheParentBeforeItsStarredChildrenAreRead() = assertGrid(listOf(
+        Row("NoGroupFilled(/Order/Packages/Items* For \"P1\")", false),
+        Row("NoGroupFilled(/Order/Packages/Items* For \"P2\")", true),
+        Row("NoFieldFilled(/Order/Packages/Items* For \"P1\")", false),
+        Row("NoFieldFilled(/Order/Packages/Items* For \"P2\")", true),
+        Row("NumberOfFilledFields(/Order/Packages/Items*/Weight For \"P1\") == 2", true),
+        Row("Sum(/Order/Packages/Items*/Weight For \"P1\") == 7", true),
+        Row("MaxValue(/Order/Packages/Items*/Weight For \"P1\") == 5", true),
+        Row("MinValue(/Order/Packages/Items*/Weight For \"P1\") == 2", true),
+        Row("NumberOfDifferentValues(/Order/Packages/Dims For \"P1\") == 2", true),
+        Row("NumberOfValueInFields(3 In /Order/Packages/Dims For \"P1\") == 1", true),
+        Row("NoGroupFilled(/Order/Packages/Items* For $WANTED)", true, wanted = "P3"),
+        Row("NoFieldFilled(/Order/Packages/Items* For \"P1\")", false, duplicated)))
+
+    @Test
+    fun keyedStarSelectionKeepsFirstValueAndPartialCoverage() = assertGrid(listOf(
+        Row("FirstFilledValue(/Order/Packages/Items* For \"P1\") == 1", true,
+            packages = listOf(Pkg("P1", items = listOf("1" to "2", "3" to "5"))), numericItems = true),
+        Row("FirstFilledValue(/Order/Packages/Items*/Weight For \"P1\", $WIDTH For \"P1\") == 2", true),
+        Row("FirstFilledValue(/Order/Packages/Items*/Weight For \"P2\", $WIDTH For \"P1\") == 4", true),
+        Row("NoFieldFilled(/Order/Packages/Items* For \"P2\")", true,
+            relevant = mapOf("/Order" to listOf(0))),
+        Row("NoFieldFilled(/Order/Packages/Items* For \"P2\")", false,
+            relevant = mapOf(REFERENCE to listOf(0, 0))),
+        Row("Sum(/Order/Packages/Items*/Weight For \"P1\") == 7", true,
+            relevant = mapOf("/Order" to listOf(0))),
+        Row("Sum(/Order/Packages/Items*/Weight For \"P1\") == 7", false,
+            relevant = mapOf(REFERENCE to listOf(0, 0)))))
+
+    /** P1's count includes both item rows; the fixed Dims group alone cannot distinguish descendant expansion. */
     @Test
     fun anAggregateReadsTheCellsOfTheSelectedRow() = assertGrid(listOf(
         Row("NumberOfFilledFields(/Order/Packages For \"P1\") == 8", true),
@@ -186,7 +212,7 @@ class KeyedGroupFieldListDiffTest {
      *  number field, below the index group, which KF351 measured on other carriers. */
     @Test
     fun aRepeatableLevelBelowTheKeyMustBeStarred() {
-        fun errors(sum: String) = RuntimeLaws.consistencyMessages(RuntimeLaws.withRule(model, "/Order", "R",
+        fun errors(sum: String) = RuntimeLaws.consistencyMessages(RuntimeLaws.withRule(model(), "/Order", "R",
             "../Reference", RULE_CODE, "FieldFilled($REFERENCE) And $sum == 7")).filter { it.startsWith("ERROR") }
         val unstarred = errors("Sum(/Order/Packages/Items For \"P1\")")
         assertTrue(unstarred.any { Regex("\\bMVK_NO_WILDCARD\\b").containsMatchIn(it) }, unstarred.toString())
@@ -248,7 +274,7 @@ class KeyedGroupFieldListDiffTest {
      * and only a read that poisons leaves `Flag` cleared.
      */
     private fun computed(condition: String, packages: List<Pkg>): String {
-        val kModel = RuntimeLaws.withTieredComputation(model, "/Order", "FlagComp", "../Flag", null,
+        val kModel = RuntimeLaws.withTieredComputation(model(), "/Order", "FlagComp", "../Flag", null,
             listOf(RuntimeLaws.CompAlt(condition, "1"), RuntimeLaws.CompAlt("FieldFilled($REFERENCE)", "2")))
         assertAdmitted(kModel)
         val def = ModelLoader.load(kModel)
@@ -285,6 +311,10 @@ class KeyedGroupFieldListDiffTest {
     @Test
     fun aKeyedFieldListOperandComputesLikeTheKernel() {
         val rows = listOf(
+            ("NoGroupFilled(/Order/Packages/Items* For \"P2\")" to standard) to "VALUE|1",
+            ("NoFieldFilled(/Order/Packages/Items* For \"P1\")" to standard) to "VALUE|2",
+            ("Sum(/Order/Packages/Items*/Weight For \"P1\") == 7" to standard) to "VALUE|1",
+            ("Sum(/Order/Packages/Items*/Weight For \"P1\") == 7" to duplicated) to "CLEARED",
             ("AtLeastOneFieldFilled(/Order/Packages For \"P2\")" to standard) to "VALUE|1",
             ("NoFieldFilled(/Order/Packages For \"P3\")" to standard) to "VALUE|1",
             ("AllFieldsFilled(/Order/Packages/Dims For \"P2\")" to standard) to "VALUE|2",
