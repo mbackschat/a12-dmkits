@@ -8,7 +8,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 
-/** The finite role and completion population of CHECKER-RECONSTRUCTION-PROPOSAL, R3b-N. */
+/** The finite role and completion population of the archived CHECKER-RECONSTRUCTION-PROPOSAL, R3b-N. */
 internal object NumericNamePopulation {
     private val host = DocumentModelDraft.named("order-numeric-names").locale("en_US")
         .rootGroup("Order") { root -> root

@@ -94,9 +94,9 @@ Lock-tree classes whose subject is not one kernel-semantics section — the conc
 | …and on a model A12 REJECTS, that every A12 class the checker names is one A12 named too — the wrong-class direction the silence sweeps cannot see | `CheckerClassAgreementTest` |
 | …and at a SIZE no committed model reaches, so a family whose over-report needs scale has somewhere to appear — the three above all draw on hand-authored models of a few dozen declarations | `CheckerSilenceOnSynthesizedModelsTest` |
 | …and over a spelled GRID of paths on one model, so a spelling nobody thought to write a row for still meets both engines; every known disagreement is a row of a committed ledger that a fix must delete | `CheckerPathGridAgreementTest` |
-| Checker syntax verdict, entry/language acceptance and recognition failure positions ([CHECKER-RECONSTRUCTION-PROPOSAL](CHECKER-RECONSTRUCTION-PROPOSAL.md) §5) | `SyntaxVerdictTest` |
-| Recognized field-read origins and harvested assertions whose code filters and multiplicity exceed the class-set sweep ([CHECKER-RECONSTRUCTION-PROPOSAL](CHECKER-RECONSTRUCTION-PROPOSAL.md) §5) | `FieldReadContractTest` |
-| Numeric entity spelling, fragment roles and harvested ordered code lists ([CHECKER-RECONSTRUCTION-PROPOSAL](CHECKER-RECONSTRUCTION-PROPOSAL.md) §5) | `NumericNameContractTest` |
+| Checker syntax verdict, entry/language acceptance and recognition failure positions ([CONSISTENCY-API](CONSISTENCY-API.md#syntax-verdicts-and-positions)) | `SyntaxVerdictTest` |
+| Recognized field-read origins and harvested assertions whose code filters and multiplicity exceed the class-set sweep ([CONSISTENCY-API](CONSISTENCY-API.md#syntax-verdicts-and-positions)) | `FieldReadContractTest` |
+| Numeric entity spelling, fragment roles and harvested ordered code lists ([CONSISTENCY-API](CONSISTENCY-API.md#syntax-verdicts-and-positions)) | `NumericNameContractTest` |
 | Operation completion, incremental scale dependencies and harvested ordered assertions ([CONSISTENCY-API](CONSISTENCY-API.md#operation-results)) | `OperationContractTest` |
 | Operation harvest storage preserves exact model bytes and assertion metadata ([CONFORMANCE-PLAN](CONFORMANCE-PLAN.md) A2) | `OperationHarvestStorageTest` |
 | Report harvest retains original projection, multiplicity and relation assertions; occurrence-owned selection, reached origins and mandatory parse-action editor spans ([CONFORMANCE-PLAN](CONFORMANCE-PLAN.md) R5) | `ReportHarvestContractTest` |

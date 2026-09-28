@@ -149,10 +149,6 @@
     },
     {
       "at": null,
-      "reason": "the condition parser checks the SHAPE the grammar's productions share — a call is a name and a parenthesised argument list — and not each operator's own argument arity or operand kinds, so a call with the wrong number or kind of arguments is left to A12. Reproducing those per operator would be a second copy of the catalog, and every place the copy disagreed would refuse a condition A12 admits. A12's illegal-CHARACTER class IS reported, derived from the lexer's terminals. The message beside such a call is still judged, so a message class A12 withholds behind the refused condition can be reported in its place (CONSISTENCY-GAPS DG83)"
-    },
-    {
-      "at": null,
       "reason": "two entity filters sharing ONE argument list are treated as separate connective levels without a measurement saying they are — `SumOfProducts` is the only operator whose argument list takes two entity specs and it refuses a filter on either for a reason of its own, so no oracle for that shape exists. This is silence rather than a wrong verdict"
     },
     {

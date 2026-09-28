@@ -54,7 +54,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 /**
  * A12's own condition parser, instrumented, on every near-miss condition: plan item R2 of
  * [CONFORMANCE-PLAN](../../../../../../../../../../docs/CONFORMANCE-PLAN.md), which confirms the source-read parse
- * model of [CHECKER-RECONSTRUCTION-PROPOSAL](../../../../../../../../../../docs/CHECKER-RECONSTRUCTION-PROPOSAL.md)
+ * model of [CHECKER-RECONSTRUCTION-PROPOSAL](../../../../../../../../../../docs/archived/CHECKER-RECONSTRUCTION-PROPOSAL.md)
  * on A12 itself before the checker's parser is rebuilt from it.
  *
  * **Why an instrument.** A12 keeps nothing of a syntax failure but a message and a span: `MVKParserError` has no

@@ -807,38 +807,23 @@ enum class CheckFamily {
     CONDITION_LEXICALITY,
 
     /**
-     * That no DSL-bearing member ENDS before it is finished, in the one shape decidable without a grammar: a
-     * trailing infix operator or symbolic comparison in text whose delimiters are all closed, or a comma
-     * inside an open argument list. Its own constant rather than part of the lexical family because it is a
-     * grammar-adjacent claim about how the text ENDS, not a claim about its characters.
-     *
-     * Deliberately narrower than "ends on an operator": with an unclosed delimiter earlier in the text A12
-     * answers the same trailing operator with a different code, so this family reports nothing there.
+     * Recognition failures at EOF classified as incomplete input by the shared syntax verdict.
+     * KF493 distinguishes these from the expected-token and unexpected-token classes owned by
+     * [CONDITION_GRAMMAR]; the family selects a verdict rather than inferring one from trailing tokens.
      */
     CONDITION_COMPLETENESS,
 
     /**
-     * That no DSL-bearing member mixes `And` with `Or` inside one bracket PAIR, which A12 refuses outright
-     * rather than resolving by precedence. Separate from the two families above because it is the only one of
-     * the three whose verdict does not depend on where A12's parser stands: the refusal is a semantic action
-     * on a region the token stream already delimits.
-     *
-     * A level is a pair and not a depth — two filters one parenthesis deep in different calls are
-     * independent — and a filter's condition gets its own frame, since the grammar gives it no delimiter of
-     * its own.
+     * Mixed `And`/`Or` at a completed connective site, which A12 refuses without precedence.
+     * Recognition supplies independent frames for bracket pairs and filter conditions; report execution
+     * selects only reached sites (KF499), including sites completed before a later syntax failure.
      */
     CONNECTIVE_AGREEMENT,
 
     /**
-     * That every DSL-bearing member FORMS a condition — or, for a computation's `operation`, an expression.
-     * The last of the syntax phases and the only one that needs a parser, which is why it reports the two
-     * codes the earlier families cannot: a token the grammar cannot use where it stands, and a text that ends
-     * with a bracket still open.
-     *
-     * Its parser is deliberately looser than A12's grammar, checking the shape the productions share rather
-     * than each operator's own argument arity. A wrong-arity call is therefore not reported, which the
-     * report's gap says: over-rejection is the one direction this checker may not take, and a per-operator
-     * reproduction would be a second copy of the catalog.
+     * Unexpected-token and expected-token failures from the syntax verdict, including typed operator
+     * arguments and arity. KF493 supplies the classification contract; [CONDITION_COMPLETENESS]
+     * selects its distinct incomplete-input class from the same recognition result.
      */
     CONDITION_GRAMMAR,
 }
@@ -1160,16 +1145,6 @@ private val UNREAD_MEMBERS = listOf(
             "cite, and which characters it counts as letters rests on a handful of rows " +
             "(KERNEL-FINDINGS KF310), so a code such as `A-B` is left to A12. Re-open when this checker " +
             "owns a code of its own for it",
-    ),
-    CoverageGap(
-        at = null,
-        reason = "the condition parser checks the SHAPE the grammar's productions share — a call is a name " +
-            "and a parenthesised argument list — and not each operator's own argument arity or operand " +
-            "kinds, so a call with the wrong number or kind of arguments is left to A12. Reproducing those " +
-            "per operator would be a second copy of the catalog, and every place the copy disagreed would " +
-            "refuse a condition A12 admits. A12's illegal-CHARACTER class IS reported, derived from the " +
-            "lexer's terminals. The message beside such a call is still judged, so a message class A12 " +
-            "withholds behind the refused condition can be reported in its place (CONSISTENCY-GAPS DG83)",
     ),
     CoverageGap(
         at = null,

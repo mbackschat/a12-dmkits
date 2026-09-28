@@ -246,14 +246,15 @@ public final class StructuralKernelFix {
                             + "with no message of its own). The most common causes, in order: (1) a BOOLEAN literal "
                             + "must be CAPITALIZED — write `True` / `False`, not the JSON `true` / `false` "
                             + "(e.g. `[Flag] == True`); (2) a string value must be DOUBLE-QUOTED — `[Status] == \"OPEN\"`; "
-                            + "(3) operator/keyword names are case-sensitive PascalCase — `FieldFilled`, `And`, `Or`, "
-                            + "`Not`; (4) a FIELD used as a comparison VALUE must be BRACKETED — `[Approved] != True`, "
+                            + "(3) use the configured language's operator and keyword spellings; connective variants "
+                            + "are enumerated, for example `And`/`and`/`AND`, not arbitrary mixed case; "
+                            + "(4) a FIELD used as a comparison VALUE must be BRACKETED — `[Approved] != True`, "
                             + "not `Approved != True` (bare names belong only inside a function/predicate's parentheses, "
                             + "like `FieldFilled(Approved)`). Re-check the token at the reported position against these.",
                     "MVK_UNEXPECTED_TOKEN is the kernel's generic parse error — a token appeared where the grammar "
                             + "did not allow it — and it is raised WITHOUT a message, so the likely cause has to be "
                             + "inferred from the DSL's literal/keyword conventions (capitalized booleans True/False, "
-                            + "double-quoted strings, case-sensitive PascalCase operators).")),
+                            + "double-quoted strings, and the configured language's admitted keyword spellings).")),
             Map.entry(KernelCode.MVK_INVALID_ENTITY, new Hint(
                     "The group or field name in the condition could not be resolved in the rule's scope. Use its "
                             + "ABSOLUTE path (a leading `/`, e.g. `/Order/Items/Sku`) rather than a bare or relative "

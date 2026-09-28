@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
+import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import kotlin.test.Test
@@ -37,6 +38,8 @@ class ValueListLiteralParseTest {
     fun numericTokensAllowWhitespaceButNotCommentsInsideTheLiteral() {
         val bodies = listOf("[Amount] > %s", "FieldValueIncludedInValueList(Amount, %s)", "[Amount] > {%s + [Tax]}")
         for (literal in listOf("-2.50", "2.50", "-0.00", "0.00")) {
+            assertEquals(Cond.Cmp(CmpOp.GT, Expr.Field("/Order/Amount"), Expr.NumLit(dec(literal))),
+                parseCondition("[Amount] > $literal", "/Order"))
             val sites = if (literal.startsWith('-')) listOf(1, 2, 3) else listOf(1, 2)
             for (body in bodies) {
                 val plain = body.replace("%s", literal)

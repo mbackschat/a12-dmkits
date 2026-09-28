@@ -8,7 +8,7 @@ Agent-first router: find your job, follow the links. The per-doc entries below d
 
 | You need to… | Start at |
 |---|---|
-| **pick up conformance work** on the checker, the interpreter or the dmkits — what to do next and how "done" is measured | [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md) *(the checker's rebuild design and A12's check model: [CHECKER-RECONSTRUCTION-PROPOSAL](CHECKER-RECONSTRUCTION-PROPOSAL.md))* |
+| **pick up conformance work** on the checker, the interpreter or the dmkits — what to do next and how "done" is measured | [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md) *(current checker contracts: [CONSISTENCY-API](CONSISTENCY-API.md#syntax-verdicts-and-positions))* |
 | answer a **kernel runtime-semantics** question (what fires, empty-value, iteration, polarity) | [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) → [SEMANTICS-MAP](SEMANTICS-MAP.md) → [KERNEL-FINDINGS](KERNEL-FINDINGS.md) |
 | **measure** a kernel runtime question over your own model + document, without writing a test | [KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md) |
 | know **where a new test goes** (which tier, which law lane) | [TESTING-SPEC](TESTING-SPEC.md) |
@@ -105,7 +105,6 @@ Agent-first router: find your job, follow the links. The per-doc entries below d
 ## Kernel truth & conformance
 
 - **[CONFORMANCE-PLAN.md](CONFORMANCE-PLAN.md)** — the **state carrier** for kernel conformance across the checker, the interpreter and the dmkits: why fixing measured differences did not converge, the rebuild along A12's own check structure, one generated population with three oracles and a clustered divergence ledger per oracle, the lean test-base policy, and the work-item table the next session continues from.
-- **[CHECKER-RECONSTRUCTION-PROPOSAL.md](CHECKER-RECONSTRUCTION-PROPOSAL.md)** — the **design for rebuilding the portable checker along A12's check structure** (PROPOSAL, 2026-09-26; state lives in CONFORMANCE-PLAN): the source-read model of how A12 checks a model and a condition (the ordered consistency rules, the parse stage's event order, the syntax-failure class as exception kind × end of text, which construct fails at which token), the inventories of A12's 57 check actions with their codes in order and of the decisions an A12 model reaches, the trace that must confirm the model on A12 itself, the rebuild's design, and the seed rows a review predicted.
 - **[KERNEL-SEMANTICS.md](KERNEL-SEMANTICS.md)** — the canonical kernel-truth prose: the validation language's truth model, empty-value/required semantics, and the per-topic evaluation rules, in 14 numbered sections (the `§n` taxonomy every other semantics surface mirrors); §2/§3/§11/§12 additionally carry a **findings-cited narrative layer** connecting the empty-value landscape, the not-check-relevant third state, the compute regime, and message polarity. Owner-authored; integrated in-repo 2026-07-09 from `a12-kernel-demo`.
 - **[KERNEL-FINDINGS.md](KERNEL-FINDINGS.md)** — experiment-verified kernel behaviors that **complement** the canonical [KERNEL-SEMANTICS.md](KERNEL-SEMANTICS.md). Section-numbered to mirror it; every entry is test-locked in this repo.
 - **[OPERATOR-INDEX.md](OPERATOR-INDEX.md)** — the **operator → entry index**: one row per catalog operator, listing every KERNEL-FINDINGS record and KERNEL-SEMANTICS section that names it. Generated from the catalog and those two docs (`./build.sh :cli:dumpOperatorIndex`, locked by `OperatorIndexGuardTest`), never hand-edited. It exists because a heading grep cannot find an operator here — 72 of the 106 discussed operators appear in no heading at all.
@@ -152,6 +151,8 @@ Agent-first router: find your job, follow the links. The per-doc entries below d
 - **[DOC-DISCIPLINE.md](DOC-DISCIPLINE.md)** — the **doc-workflow spec** (extracted 2026-07-09 from CLAUDE.md, which keeps the iron rules + the trigger table): where a finding lands (the finding homes, the KERNEL-SEMANTICS layer split, the source-over-jars golden rule with its traps), the kernel-coverage ledgers, every living surface's same-commit triggers (ARCHITECTURE, README, API-GUIDE, demos, index READMEs), writing style, the doc lifecycle (spec / proposal / `-GAPS` / `-LEDGER`; rationale-vs-disposition), and the full-sweep checklist.
 
 ## Archived
+
+- **[CHECKER-RECONSTRUCTION-PROPOSAL.md](archived/CHECKER-RECONSTRUCTION-PROPOSAL.md)** — retired 2026-09-28 after R0–R5/S1: the source-read A12 check model, confirmed syntax model, finite acceptance and deletion matrices, and review decisions. Current contracts live in [CONSISTENCY-API](CONSISTENCY-API.md); remaining work lives in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md).
 
 Resolved / parked / superseded proposals, kept for the record — full descriptions and graduation pointers in [archived/README.md](archived/README.md). The conformance-formalization and evidence-capture proposals keep fuller entries at the tail of *Kernel truth & conformance* above; the JSON-schema proposal's fuller pointer rides the SCHEMAKIT-SPEC entry.
 

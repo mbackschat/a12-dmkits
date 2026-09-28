@@ -45,6 +45,9 @@ class ChecksCompletedScopeTest {
         assertEquals(CheckFamily.entries.toSet(), report.checksCompleted,
             "deriving from the schedule may not narrow the ordinary case: every producer is asked at least " +
                 "once as soon as anything is declared")
+        assertTrue(report.gaps.none { "parser checks the SHAPE" in it.reason || "DG83" in it.reason },
+            "the rebuilt syntax/report stages must not publish the retired parser's limitation")
+        assertTrue(report.gaps.isNotEmpty(), "retiring one obsolete claim must preserve other coverage disclosures")
     }
 
     private companion object {

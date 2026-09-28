@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -74,6 +75,7 @@ class CheckVerbTest {
             if ("MVK_UNEXPECTED_TOKEN".equals(d.path("code").asText())) {
                 String fix = d.path("fix").asText("");
                 casingFix = fix.contains("True") && fix.contains("False");
+                assertTrue(fix.contains("`And`/`and`/`AND`"), res::out);
             }
         }
         assertTrue(casingFix, () -> "the MVK_UNEXPECTED_TOKEN reject carries the boolean-casing fix: " + res.out());
@@ -152,13 +154,23 @@ class CheckVerbTest {
 
     @Test
     void rejectsABadCandidateWithKernelDiagnostics(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "check",
-                "--field", "/Subscription/Addons/MonthlyFee",
-                "--condition", "@@@ not a condition @@@", "--code", "X");
-        assertEquals(1, res.code(), "a rejected candidate exits non-zero");
-        JsonNode j = MAPPER.readTree(res.out());
-        assertFalse(j.get("valid").asBoolean(), "valid is false");
-        assertTrue(j.get("diagnostics").size() > 0, () -> "with kernel diagnostics: " + res.out());
+        Path input = model(dir);
+        for (var row : Map.of(
+                "@@@ not a condition @@@", "MVK_UNEXPECTED_TOKEN",
+                "FieldFilled(MonthlyFee", "MVK_EXPECTED_TOKEN_NOT_FOUND",
+                "FieldFilled(MonthlyFee) And", "MVK_INCOMPLETE_INPUT").entrySet()) {
+            var res = CliTestSupport.run("-m", input.toString(), "rule", "check",
+                    "--field", "/Subscription/Addons/MonthlyFee", "--condition", row.getKey(), "--code", "X");
+            assertEquals(1, res.code(), "a rejected candidate exits non-zero");
+            JsonNode j = MAPPER.readTree(res.out());
+            assertFalse(j.get("valid").asBoolean(), "valid is false");
+            var codes = new java.util.HashSet<String>();
+            j.get("diagnostics").forEach(d -> {
+                String code = d.path("code").asText();
+                if (code.startsWith("MVK_")) codes.add(code);
+            });
+            assertEquals(java.util.Set.of(row.getValue()), codes, res::out);
+        }
     }
 
     @Test

@@ -503,30 +503,203 @@
   },
   "reviews": {
     "kf493": {
-      "sha256": "1c17b91b57ff05dc68752f9797910647b5f3887db0685e9da85daba9510ce960",
-      "task": "F-USE3",
+      "sha256": "b217718c45b8f15ada4dd202476cdbb2419d66ebcacc50d477b03e5b91a1d185",
+      "task": "F-USE3-P",
       "scope": {
         "adapter": [
           "syntax trace",
           "consistency oracle"
         ],
         "dmkits": [
-          "core",
-          "rulekit",
-          "modelkit",
-          "edit",
-          "schemakit",
-          "catalog",
-          "schema",
-          "CLI"
+          "core/rulekit delegated diagnostics",
+          "CLI admission control"
+        ],
+        "interpreter": [],
+        "checker": [
+          "syntax verdict JVM and JS",
+          "EOF discriminator JVM and JS"
+        ],
+        "a12-kernel-lean": [
+          "specification",
+          "executable and proofs",
+          "evidence"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The adapter supplies the kernel trace and compares uncensored recognition failures; semantic-action failures remain censored.",
+          "evidence": {
+            "syntax trace": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/A12ParseTraceTest.kt#everyParseFailureHasTheShapeTheModelPredicts",
+              "witness": "9 063 conditions; recognition kind and EOF discriminate the reported syntax class."
+            },
+            "consistency oracle": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/A12ParseTraceTest.kt#portableVerdictsMatchEveryUncensoredTrace",
+              "witness": "Each uncensored failure compares kind, code, offending text and position with the kernel trace."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Core Diagnostic and rulekit RuleValidator carry the delegated kernel class through CLI rule check. Modelkit, edit and schemakit carry authored condition text but do not classify recognition exceptions; operator catalog/schema authoring shapes do not promise this taxonomy. This disposition is limited to the delegated diagnostic boundary, not every authoring behavior.",
+          "evidence": {
+            "core/rulekit delegated diagnostics": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/CheckVerbTest.java#rejectsABadCandidateWithKernelDiagnostics",
+              "witness": "Actual kernel-backed validation: unexpected token, required-token EOF and choice EOF retain their distinct singleton MVK class sets."
+            },
+            "CLI admission control": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/CheckVerbTest.java#acceptsAValidCandidateRule",
+              "witness": "Valid candidate through the same command remains accepted."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "KF493 classifies recognition exceptions into MVK codes and diagnostic sites. The evaluation parser exposes AST or refusal, not that taxonomy. This does not waive admitted spelling or runtime semantics; KF76 and the runtime frontier own those obligations.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The rebuilt recognizer already implements the measured verdict contract; common tests execute on JVM and Node. No parser changes in this disposition.",
+          "evidence": {
+            "syntax verdict JVM and JS": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/SyntaxVerdictTest.kt#preservedInputsReplayTheKernelVerdictInBothRuntimes",
+              "witness": "77 preserved entries compare the kernel-recorded kind, code, text and span; censored semantic failures remain explicit."
+            },
+            "EOF discriminator JVM and JS": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/SyntaxVerdictTest.kt#theTraceDistinguishesRequiredTokensFromUnfinishedChoices",
+              "witness": "Required-token and prediction failures at EOF remain distinct on the fixed trace witnesses."
+            }
+          }
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "No exact peer adoption receipt. F-USE-BACKLOG owns the remaining assessment. The Downloads handback is prepared evidence, not confirmed adoption.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf76": {
+      "sha256": "5d6f90c857e18b58511fd2574ada01df6e19035123fe58c6f6349ad44a097fcd",
+      "task": "F-USE3-P",
+      "scope": {
+        "adapter": [
+          "connective kernel oracle",
+          "numeric runtime oracle"
+        ],
+        "dmkits": [
+          "rulekit diagnostic corrective",
+          "CLI corrective"
         ],
         "interpreter": [
-          "parser JVM",
-          "parser JS"
+          "numeric AST JVM and JS",
+          "EN keyword admission JVM and JS",
+          "DE keyword meaning JVM and JS",
+          "path whitespace JVM and JS",
+          "to/zu recognition boundary JVM and JS"
         ],
         "checker": [
-          "syntax verdict JVM",
-          "syntax verdict JS"
+          "generated corrective",
+          "syntax JVM and JS"
+        ],
+        "a12-kernel-lean": [
+          "specification",
+          "executable and proofs",
+          "evidence"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Existing kernel-law and numeric frontier populations provide the evidence used here; this is not universal runtime conformance.",
+          "evidence": {
+            "connective kernel oracle": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/ConnectiveCaseLawsTest.java#everyCaseOfAConnectiveJoinsAConditionTheSameWay",
+              "witness": "Kernel admission of enumerated EN connective variants; distinguishes the former blanket PascalCase hint."
+            },
+            "numeric runtime oracle": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ConformanceFrontierTest.kt#numericTokenBoundariesDistinguishWhitespaceFromComments",
+              "witness": "27 admitted numeric spellings and three comment refusals; kernel/interpreter runtime outcomes on five Documents per admitted spelling."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "Corrected StructuralKernelFix and its CLI projection to permit enumerated connective variants. No operator catalog or schema spelling change is needed for this generic syntax corrective; modelkit/edit/schemakit are not keyword lexers. Other historical KF76 authoring obligations remain part of F-USE-BACKLOG, not an inferred full-estate closure.",
+          "evidence": {
+            "rulekit diagnostic corrective": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/DiagnosticEnricherTest.java#unexpectedTokenGetsTheBooleanCasingSyntaxHint",
+              "witness": "Hint contains And/and/AND and no blanket PascalCase instruction."
+            },
+            "CLI corrective": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/CheckVerbTest.java#aLowercaseBooleanLiteralGetsTheCasingFix",
+              "witness": "Kernel-backed syntax rejection publishes the same enumerated-variant corrective."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Existing independent parser preserves the measured spellings and numeric value; common JVM/JS tests and the adapter runtime oracle are complementary. ValueNotConsistent remains explicitly unsupported: recognizing to/zu is not a runtime-support claim.",
+          "evidence": {
+            "numeric AST JVM and JS": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/ValueListLiteralParseTest.kt#numericTokensAllowWhitespaceButNotCommentsInsideTheLiteral",
+              "witness": "Four signed/zero decimal anchors, three syntax carriers, five whitespace characters and comment refusal; anchors prevent equally wrong contiguous and spaced parsing."
+            },
+            "EN keyword admission JVM and JS": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/KeywordCaseVariantParseTest.kt#caseVariantsComposeAcrossTheWholeCondition",
+              "witness": "Enumerated connective variants compose to the same canonical AST; sibling class methods cover each family and mixed-case refusal."
+            },
+            "DE keyword meaning JVM and JS": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/ConditionLanguageParseTest.kt#germanBooleanKeywordCaseVariantsProduceTheCanonicalAst",
+              "witness": "German connective variants compare with the canonical German parse; this is spelling-equivalence evidence, not an independent runtime oracle."
+            },
+            "path whitespace JVM and JS": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/PathWhitespaceParseTest.kt#spacedSlashInStarredPathIsAPathNotDivision",
+              "witness": "Explicit field-path AST distinguishes slash whitespace from arithmetic."
+            },
+            "to/zu recognition boundary JVM and JS": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/ToInfixParseTest.kt#toInfixMustMatchTheSelectedConditionLanguage",
+              "witness": "Foreign-language to/zu spellings are rejected; the two sibling methods separately lock the deliberate UnsupportedConstructException for each admitted EN/DE spelling."
+            }
+          }
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "No syntax change; the generated corrective now follows the same owner. The existing catalog and preserved-input tests retain syntax admission boundaries on JVM/JS.",
+          "evidence": {
+            "generated corrective": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/CheckerCorrectiveProjectionGuardTest.java#theCheckersCorrectiveTableIsTheOwnersProjection",
+              "witness": "Generated Kotlin fix/explain values equal StructuralKernelFix for the independently enumerated checker code domain."
+            },
+            "syntax JVM and JS": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/SyntaxVerdictTest.kt#bothEntriesAcceptTheLiveCatalogInItsOwnLanguage",
+              "witness": "Live catalog entries remain admitted in their own language; no blanket case-folding is introduced."
+            }
+          }
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "No exact peer adoption receipt. F-USE-BACKLOG owns the remaining assessment. The Downloads handback is prepared evidence, not confirmed adoption.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf492": {
+      "sha256": "5aa5202d79379d34810e2ff4b658d237867b5bff49d2863b321848557a74a57f",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "numeric entity-name finding"
+        ],
+        "dmkits": [
+          "numeric entity-name finding"
+        ],
+        "interpreter": [
+          "numeric entity-name finding"
+        ],
+        "checker": [
+          "numeric entity-name finding"
         ],
         "a12-kernel-lean": [
           "specification",
@@ -537,27 +710,27 @@
       "consumers": {
         "adapter": {
           "state": "OPEN",
-          "basis": "Reconcile the recorded trace law with current oracle and trace consumers.",
+          "basis": "This revision only relocates the historical R3b-N matrix citation into the archive. No semantic claim changed; broader consumer adoption is unassessed and remains owned by F-USE-BACKLOG.",
           "evidence": {}
         },
         "dmkits": {
           "state": "OPEN",
-          "basis": "Assess each kit and published surface; this scope does not assert that each needs a code change.",
+          "basis": "This revision only relocates the historical R3b-N matrix citation into the archive. No semantic claim changed; broader consumer adoption is unassessed and remains owned by F-USE-BACKLOG.",
           "evidence": {}
         },
         "interpreter": {
           "state": "OPEN",
-          "basis": "Assess syntax admission and runtime meaning separately; independent parser implementations do not establish alignment.",
+          "basis": "This revision only relocates the historical R3b-N matrix citation into the archive. No semantic claim changed; broader consumer adoption is unassessed and remains owned by F-USE-BACKLOG.",
           "evidence": {}
         },
         "checker": {
           "state": "OPEN",
-          "basis": "Bind the finding to the current portable syntax verdict on JVM and JS.",
+          "basis": "This revision only relocates the historical R3b-N matrix citation into the archive. No semantic claim changed; broader consumer adoption is unassessed and remains owned by F-USE-BACKLOG.",
           "evidence": {}
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Peer adoption in specification, executable account and evidence is unconfirmed; our trace does not settle it.",
+          "basis": "This revision only relocates the historical R3b-N matrix citation into the archive. No semantic claim changed; broader consumer adoption is unassessed and remains owned by F-USE-BACKLOG.",
           "evidence": {}
         }
       }
