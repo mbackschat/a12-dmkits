@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -15,6 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * IF141 (graduated from IG82) — the DELETED-GAP reference guard. Executable comments outlive the gaps they
@@ -77,11 +80,25 @@ public class StaleGapReferenceGuardTest {
         assertTrue(roots.contains(ROOT.resolve("edit/src")), "edit source must stay in the derived scan");
     }
 
-    /** The live gaps are the ledger's own row headers (`- **IGn — …`). A graduated gap's row is deleted, so it
-     *  drops out of this set and every bare cite of it becomes a violation. */
+    /** Deferred entries retain their identity in the companion; only resolution removes an ID (G-GAP-SPLIT). */
     private Set<Integer> liveGapRows() throws IOException {
-        assertTrue(Files.isRegularFile(LEDGER), "missing interpreter gap ledger: " + LEDGER);
-        List<String> lines = Files.readAllLines(LEDGER);
+        return liveGapRows(LEDGER, ROOT.resolve("docs/INTERPRETER-GAP-DISPOSITIONS.md"));
+    }
+
+    @Test
+    void movingToDispositionsRetainsTheIdAndStillRejectsDuplicates(@TempDir Path directory) throws IOException {
+        Path ledger = directory.resolve("open.md");
+        Path dispositions = directory.resolve("dispositions.md");
+        Files.writeString(ledger, "# interpreter — gaps\n## 1. Open\n- **IG1 — open.**\n## 2. Deferred\n## 3. Out of scope\n");
+        Files.writeString(dispositions, "# Dispositions\n- **IG2 — deferred.**\n");
+        assertEquals(Set.of(1, 2), liveGapRows(ledger, dispositions));
+        Files.writeString(dispositions, "# Dispositions\n- **IG1 — duplicate.**\n");
+        assertThrows(AssertionError.class, () -> liveGapRows(ledger, dispositions));
+    }
+
+    private Set<Integer> liveGapRows(Path ledger, Path dispositions) throws IOException {
+        assertTrue(Files.isRegularFile(ledger), "missing interpreter gap ledger: " + LEDGER);
+        List<String> lines = new ArrayList<>(Files.readAllLines(ledger));
         assertTrue(!lines.isEmpty() && lines.getFirst().equals("# interpreter — gaps"),
                 "unexpected interpreter gap ledger title/shape: " + LEDGER);
         assertTrue(lines.contains("## 1. Open")
@@ -89,6 +106,8 @@ public class StaleGapReferenceGuardTest {
                         && lines.stream().anyMatch(line -> line.startsWith("## 3. ")),
                 "interpreter gap ledger must retain its three lifecycle sections");
 
+        assertTrue(Files.isRegularFile(dispositions), "missing interpreter gap dispositions: " + dispositions);
+        lines.addAll(Files.readAllLines(dispositions));
         Set<Integer> live = new HashSet<>();
         List<String> malformed = new ArrayList<>();
         List<Integer> duplicates = new ArrayList<>();

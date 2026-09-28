@@ -2,11 +2,15 @@
 
 The rules an agent must hold every session stay in [`CLAUDE.md`](../CLAUDE.md) "Build"; this doc carries their EVIDENCE — the incidents that produced each rule, the measurements, and the detail you need when a run surprises you. Extracted 2026-09-05, paragraphs moved verbatim so no measurement was re-derived in the move.
 
+## Keep active gap ledgers small
+
+Keep active ledgers focused on open entries and a short lifecycle note. Move deferred work and accepted limits to a linked `*-GAP-DISPOSITIONS.md` companion, retaining IDs, evidence and reopening conditions; retain short forwarding sections where existing ordinal citations need them. A move changes location, never status or acceptance. Resolved rows are deleted, with rationale in findings/specifications and chronology in git. [INTERPRETER-GAPS](INTERPRETER-GAPS.md) and [its companion](INTERPRETER-GAP-DISPOSITIONS.md) implement this policy; the ID guards below continue to see both files.
+
 ## Gap IDs in commit messages
 
 For gap-related work, put the single gap ID in the subject, for example `fix(interpreter): preserve field messages (IG159)`. When citing several gaps, put every ID in the body. Use `Advances IG159` for partial work; use `Closes IG159` only after its acceptance criteria are met and its ledger entry is retired in the same commit.
 
-[The commit-message hook](../.githooks/commit-msg) compares numbered entries in HEAD and the Git index across live `docs/*-GAPS.md` ledgers. Added, changed, moved and deleted entries require their IDs in the message. Entries use the existing bold-bullet or numbered-heading forms; cross-references within an entry do not create obligations. Unstaged edits and Git comment lines cannot satisfy the check. A `Closes` claim requires the entry to exist in HEAD and disappear from every staged ledger, including deferred sections. The hook enforces placement for explicitly cited IDs even when no ledger changes. Acceptance evidence and code-only work that omits its required ledger update remain review responsibilities; ledger deletion alone does not prove completion.
+[The commit-message hook](../.githooks/commit-msg) compares numbered entries in HEAD and the Git index across live `docs/*-GAPS.md` ledgers and their `docs/*-GAP-DISPOSITIONS.md` companions. Added, changed, moved and deleted entries require their IDs in the message. Entries use the existing bold-bullet or numbered-heading forms; cross-references within an entry do not create obligations. Unstaged edits and Git comment lines cannot satisfy the check. A `Closes` claim requires the entry to exist in HEAD and disappear from every staged ledger, including deferred sections. The hook enforces placement for explicitly cited IDs even when no ledger changes. Acceptance evidence and code-only work that omits its required ledger update remain review responsibilities; ledger deletion alone does not prove completion.
 
 Enable the hooks with `git config core.hooksPath .githooks`; the gap check uses the repository's Node >=24.12 launcher. Existing generated Merge/Revert/fixup/squash/amend subject exemptions remain. [The source-adjacent tests](../scripts/typescript/commit-gaps.test.ts) exercise both the decision logic and the real hook through Dash in temporary Git repositories; the existing TypeScript-tool CI step runs them.
 

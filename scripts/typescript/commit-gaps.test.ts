@@ -118,11 +118,17 @@ test("Dash hook uses the index through add, partial stage, cross-ledger move and
   const refused = hook(dir, "fix: messages (IG159)\n\nCloses IG159.");
   assert.equal(refused.status, 1, "unstaged deletion cannot justify closure");
   assert.match(refused.stderr, /IG159/);
-  fs.writeFileSync(path.join(dir, "docs/DEV-API-GAPS.md"), "## Deferred\n- **IG159 — messages.** New.\n");
+  fs.unlinkSync(path.join(dir, "docs/DEV-API-GAPS.md"));
+  fs.writeFileSync(path.join(dir, "docs/INTERPRETER-GAP-DISPOSITIONS.md"), "## Deferred\n- **IG159 — messages.** New.\n");
   git(dir, "add", "docs");
   assert.equal(hook(dir, "docs: defer messages (IG159)\n\nCloses IG159.").status, 1);
   assert.equal(hook(dir, "docs: defer messages (IG159)").status, 0);
-  git(dir, "rm", "--cached", "docs/DEV-API-GAPS.md");
+  git(dir, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "-c", "core.hooksPath=/dev/null", "commit", "--quiet", "-m", "deferred fixture");
+  fs.writeFileSync(path.join(dir, "docs/INTERPRETER-GAP-DISPOSITIONS.md"), "## Deferred\n- **IG159 — messages.** Changed.\n");
+  git(dir, "add", "docs/INTERPRETER-GAP-DISPOSITIONS.md");
+  assert.equal(hook(dir, "docs: revise disposition").status, 1);
+  assert.equal(hook(dir, "docs: revise disposition (IG159)").status, 0);
+  git(dir, "rm", "--cached", "docs/INTERPRETER-GAP-DISPOSITIONS.md");
   assert.equal(hook(dir, "fix: messages (IG159)\n\nCloses IG159.").status, 0);
 });
 

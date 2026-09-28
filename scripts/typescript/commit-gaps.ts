@@ -57,7 +57,7 @@ function git(...args: string[]): string {
 function snapshot(revision: "HEAD" | ""): Map<string, string> {
   const files = revision ? git("ls-tree", "-r", "--name-only", "-z", revision, "--", "docs") : git("ls-files", "--cached", "-z", "--", "docs");
   const result = new Map<string, string>();
-  for (const file of files.split("\0").filter(file => /^docs\/[^/]+-GAPS\.md$/.test(file)).sort()) {
+  for (const file of files.split("\0").filter(file => /^docs\/[^/]+-(?:GAPS|GAP-DISPOSITIONS)\.md$/.test(file)).sort()) {
     for (const [id, body] of entries(git("show", `${revision}:${file}`))) {
       // Keep the owning path: moving an unchanged entry still needs a traceable commit (G-TRACE).
       result.set(id, (result.get(id) ?? "") + `${file}\n${body}\n`);
