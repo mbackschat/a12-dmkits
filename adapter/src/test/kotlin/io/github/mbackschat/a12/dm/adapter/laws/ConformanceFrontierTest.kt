@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Test
@@ -234,6 +235,35 @@ class ConformanceFrontierTest {
     }
 
     @Test
+    fun frontierLedgerCannotExchangeWhichCaseFails() {
+        val original = Frontier().apply {
+            add("UNSUPPORTED", "order-a")
+            add("UNSUPPORTED", "order-b")
+        }
+        val reordered = Frontier().apply {
+            add("UNSUPPORTED", "order-b")
+            add("UNSUPPORTED", "order-a")
+        }
+        val exchanged = Frontier().apply {
+            add("UNSUPPORTED", "order-a")
+            add("UNSUPPORTED", "order-c")
+        }
+        val duplicated = Frontier().apply {
+            add("UNSUPPORTED", "order-a")
+            add("UNSUPPORTED", "order-a")
+        }
+        assertEquals(original.render(), reordered.render())
+        assertEquals(original.counts, exchanged.counts)
+        assertEquals(original.counts, duplicated.counts)
+        assertNotEquals(original.render(), exchanged.render())
+        assertNotEquals(original.render(), duplicated.render())
+        original.add("UNSUPPORTED", "order-a")
+        reordered.add("UNSUPPORTED", "order-b")
+        assertEquals(original.counts, reordered.counts)
+        assertNotEquals(original.render(), reordered.render(), "equal distinct IDs must not erase multiplicity")
+    }
+
+    @Test
     fun frontierComparisonRetainsMultiplicityAndBothDirections() {
         val frontier = Frontier()
         val signature = "REQUIRED|VALIDATION_ERROR|/Order[1]/Reference"
@@ -327,11 +357,12 @@ class ConformanceFrontierTest {
     }
 
     private class Frontier {
-        val counts = sortedMapOf<String, Int>()
+        private val cases = sortedMapOf<String, MutableList<String>>()
+        val counts: Map<String, Int> get() = cases.mapValues { it.value.size }
         private val examples = mutableListOf<String>()
 
         fun add(key: String, id: String, detail: String = "") {
-            counts[key] = counts.getOrDefault(key, 0) + 1
+            cases.getOrPut(key) { mutableListOf() }.add(id)
             examples += "$key\t$id\t${detail.replace("\n", "\\n")}"
         }
 
@@ -353,7 +384,9 @@ class ConformanceFrontierTest {
             null
         }
 
-        fun render(): String = counts.entries.joinToString("") { (key, count) -> "$count\t$key\n" }
+        fun render(): String = cases.entries.joinToString("") { (key, ids) ->
+            "${ids.size}\t$key\t${MAPPER.writeValueAsString(ids.sorted())}\n"
+        }
         fun write(name: String) {
             File(OUTPUT, "$name.tsv").writeText(render())
             File(OUTPUT, "$name-examples.tsv").writeText(examples.joinToString("\n"))
