@@ -503,7 +503,7 @@
   },
   "reviews": {
     "kf481": {
-      "sha256": "cb38c4749af2402b013f315943a1e00dc0362f59c310216806a75cebc711b457",
+      "sha256": "84cbdaac6d515a2bcd16fbb51c54d03455e624fb6003d1fcdf7321800d8b5deb",
       "task": "DG102",
       "scope": {
         "adapter": ["kernel index-key class oracle"],
@@ -538,21 +538,21 @@
         },
         "checker": {
           "state": "OPEN",
-          "basis": "The represented pattern, typedef and custom-bound domain agrees with the kernel population, but nine legal cells with unverified cross-target mappings remain SILENT in O1. This is bounded coverage, not full Java-pattern conformance; M4 owns the residuals.",
+          "basis": "The represented pattern, typedef and custom-bound domain agrees with the kernel population, but five legal cells with unverified cross-target mappings remain SILENT in the first O1 population; the seventeen-input predictive model population agrees completely. This is bounded coverage, not full Java-pattern conformance; M4 owns the residuals.",
           "evidence": {
             "O1 index-key class comparison": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerNearMissSweepTest.kt#indexKeyPatternsHaveOnlyLedgeredDifferences",
-              "witness": "Twenty-seven typed inputs: seventeen keyed classes agree, nine legal residuals are five SILENT MVK_PARAMSIZE_INVALIDN and four SILENT MVK_INDEX_VALUE_INVALID rows, and the admitted control agrees."
+              "witness": "Twenty-seven typed inputs: twenty-one keyed classes agree, five legal residuals are three SILENT MVK_PARAMSIZE_INVALIDN and two SILENT MVK_INDEX_VALUE_INVALID rows, and the admitted control agrees. The separate javaPatternModelHasOnlyLedgeredDifferences method locks sixteen JDK-predicted kernel classes and its admitted control."
             },
             "JVM and Node pattern support boundary": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/KeyPatternTest.kt#unsupportedOrKernelRejectedPatternsStayUnjudged",
-              "witness": "Both targets decline the named character, class non-space, braced-hex, Unicode-case and anchor cases; represented positive and negative controls run in the companion matcher method."
+              "witness": "Both targets decline class non-space, scoped Unicode-case and anchor cases. The companion methods judge the new pattern/key domains, exclude off-domain source and values, and compare the complete Latin-1 literal/key relation against the JVM Pattern actual and Node."
             }
           }
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The DG102 measurements await a Downloads handback and an exact peer adoption receipt; a prepared letter is not adoption.",
+          "basis": "The DG102-D measurements await a Downloads handback and an exact peer adoption receipt; a prepared letter is not adoption.",
           "evidence": {}
         },
         "dmtool-cli": {

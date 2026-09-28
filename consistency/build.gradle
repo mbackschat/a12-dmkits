@@ -690,11 +690,12 @@ def operationCheckInputs = rootProject.file('adapter/src/test/resources/checker-
 def operationLawInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-operation-laws.json')
 def reportInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-report-checks.json')
 def numericKeyInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-numeric-keys.json')
+def keyPatternInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/java-pattern-replay.json')
 def generatedSyntaxDir = layout.buildDirectory.dir('generated/syntaxFixtures/commonTest/kotlin').get().asFile
 def generatedSyntax = new File(generatedSyntaxDir,
         'io/github/mbackschat/a12/dm/consistency/SyntaxFixtureData.kt')
 def generateSyntaxFixtures = tasks.register('generateSyntaxFixtures') {
-    inputs.files(syntaxInputs, syntaxVerdicts, computationInputs, fieldReadInputs, fieldReadOrigins, numericKeyInputs, operationCheckInputs, operationLawInputs, reportInputs)
+    inputs.files(syntaxInputs, syntaxVerdicts, computationInputs, fieldReadInputs, fieldReadOrigins, numericKeyInputs, operationCheckInputs, operationLawInputs, reportInputs, keyPatternInputs)
     outputs.file(generatedSyntax)
     doLast {
         def parser = new groovy.json.JsonSlurper()
@@ -725,6 +726,7 @@ def generateSyntaxFixtures = tasks.register('generateSyntaxFixtures') {
         generatedSyntax.text = """package io.github.mbackschat.a12.dm.consistency
 
 internal object SyntaxFixtureData {
+    val keyPatterns = listOf(${rows(harvestRows(keyPatternInputs))})
     val reportChecks = listOf(${rows(harvestRows(reportInputs))})
     val operationLaws = listOf(${rows(harvestRows(operationLawInputs))})
     val operationChecks = listOf(${rows(harvestRows(operationCheckInputs))})

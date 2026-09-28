@@ -1,0 +1,144 @@
+{
+  "groups": [
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"policy-index-pattern-model\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"policy-index-pattern-model\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Policy\",\n        \"name\" : \"Policy\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Policy/Reference\",\n            \"name\" : \"Reference\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/NamedB\",\n            \"name\" : \"NamedB\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/NamedB/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"\\\\N{LATIN CAPITAL LETTER B}\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/NamedB/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/ClassHex\",\n            \"name\" : \"ClassHex\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/ClassHex/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"[\\\\x{E9}]\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/ClassHex/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/ClassUnion\",\n            \"name\" : \"ClassUnion\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/ClassUnion/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"[\\\\s@]\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/ClassUnion/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/PropertyComplement\",\n            \"name\" : \"PropertyComplement\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/PropertyComplement/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"\\\\P{L}\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/PropertyComplement/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/Grapheme\",\n            \"name\" : \"Grapheme\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/Grapheme/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"\\\\X\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/Grapheme/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/WordBoundary\",\n            \"name\" : \"WordBoundary\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/WordBoundary/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"\\\\bA\\\\b.\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/WordBoundary/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/GlobalUnicodeCase\",\n            \"name\" : \"GlobalUnicodeCase\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/GlobalUnicodeCase/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"(?iu)é\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/GlobalUnicodeCase/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/Intersection\",\n            \"name\" : \"Intersection\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/Intersection/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"[a-z&&b-d]\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/Intersection/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Policy/IndexModelProbe\",\n            \"name\" : \"IndexModelProbe\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Reference\",\n              \"errorCode\" : \"INDEX_MODEL_PROBE\",\n              \"errorCondition\" : \"FieldFilled(Reference)",
+      "suffix": "\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check policy code\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "admitted-control",
+          "classes": [],
+          "modelMiddle": "",
+          "modelSha256": "b15ea64304540f92e26ee01c7bcd0a2eccbd78843b471cb09cae218aea84c88b"
+        },
+        {
+          "id": "NamedB-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(NamedB/Amount For \\\"B\\\") > 0",
+          "modelSha256": "c27725600147831fa5d6b4473c99fd028559ad984e7923e4d3a82f2da2c7e60a"
+        },
+        {
+          "id": "NamedB-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(NamedB/Amount For \\\"A\\\") > 0",
+          "modelSha256": "b2aed0a86596b5a5033fe3ff6fd7651e09b94e5b7ea1624a8fa9579fa4546d1f"
+        },
+        {
+          "id": "ClassHex-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(ClassHex/Amount For \\\"é\\\") > 0",
+          "modelSha256": "b24757d9f9dea79e4ea5ec777bd55248dfb12abf030a5c00a6b22a4ab304107b"
+        },
+        {
+          "id": "ClassHex-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(ClassHex/Amount For \\\"A\\\") > 0",
+          "modelSha256": "9131955b0d1ddacda0df23b05f55f3fcaadeab9c0f2ec36b48661e3f96253bc5"
+        },
+        {
+          "id": "ClassUnion-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(ClassUnion/Amount For \\\"@\\\") > 0",
+          "modelSha256": "bd30bb7811d9a619332f4611a7cb4a2cefb21355dceb0e77bdf8283927004f40"
+        },
+        {
+          "id": "ClassUnion-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(ClassUnion/Amount For \\\" \\\") > 0",
+          "modelSha256": "ce7e176f02957efe8f96b32b04e6667ba3bae12ee9dcd37658f1ec81e0b136c6"
+        },
+        {
+          "id": "PropertyComplement-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(PropertyComplement/Amount For \\\"2\\\") > 0",
+          "modelSha256": "0ed2943c5a4d313798d833138000e4be8395bde9808935df762b65d941ae04f9"
+        },
+        {
+          "id": "PropertyComplement-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(PropertyComplement/Amount For \\\"a\\\") > 0",
+          "modelSha256": "d06a113f57b40d340823ed787341d568f17d43535710a7721ff31cef0e6997cf"
+        },
+        {
+          "id": "Grapheme-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(Grapheme/Amount For \\\"a\\\") > 0",
+          "modelSha256": "641bde056594168699f71cab3040ab233c0b47161a9d1c1d6afb323b23c77bf3"
+        },
+        {
+          "id": "Grapheme-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(Grapheme/Amount For \\\"ab\\\") > 0",
+          "modelSha256": "3d6e764039bff67a3104ebe46f4d267e919606f28e77a03494439edea5ce171c"
+        },
+        {
+          "id": "WordBoundary-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(WordBoundary/Amount For \\\"A!\\\") > 0",
+          "modelSha256": "c4f58baef52d4c20286dd85f166345a0a3f434e4250c87dcfa1634acf615eb64"
+        },
+        {
+          "id": "WordBoundary-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(WordBoundary/Amount For \\\"A_\\\") > 0",
+          "modelSha256": "ce3fa21d8d9a5d36ef0ce3510edd988d7fb39ef768333cbf2cb4e5ffa8d64907"
+        },
+        {
+          "id": "GlobalUnicodeCase-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(GlobalUnicodeCase/Amount For \\\"É\\\") > 0",
+          "modelSha256": "636042a400b68020e35d599c94649b4a2e332f3b7bc6fb21223033e6a1906312"
+        },
+        {
+          "id": "GlobalUnicodeCase-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(GlobalUnicodeCase/Amount For \\\"e\\\") > 0",
+          "modelSha256": "e3a46fbc101ab2179c95ad9ef7eed2c5f034852e72f40277645a7f556fd644f9"
+        },
+        {
+          "id": "Intersection-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(Intersection/Amount For \\\"c\\\") > 0",
+          "modelSha256": "7607cdeba45ff8a75084ae0f09e0dd0eda3a1ed17e00f166769708c051f48ed1"
+        },
+        {
+          "id": "Intersection-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(Intersection/Amount For \\\"a\\\") > 0",
+          "modelSha256": "e904b21fb87673536392bbbe91e777f91e9b93d2d7d18b239991af3e8e64c1ce"
+        }
+      ]
+    }
+  ]
+}

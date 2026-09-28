@@ -131,6 +131,18 @@ class CheckerNearMissSweepTest {
     }
 
     @Test
+    fun javaPatternModelHasOnlyLedgeredDifferences() {
+        val rows = JavaPatternModelPopulation.rows()
+        assertModelLedger(rows, 17, "java-pattern-model")
+        val mapper = ObjectMapper()
+        val replay = mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(rows.map {
+            mapOf("id" to it.id, "model" to it.model, "classes" to listOfNotNull(it.expected))
+        })
+        val stored = mapper.readTree(checkNotNull(javaClass.getResource("/checker-near-miss/java-pattern-replay.json")))
+        assertEquals(replay.toList(), HarvestedModels.expand(stored), "portable replay must retain the kernel population")
+    }
+
+    @Test
     fun operationTypesHaveOnlyLedgeredDifferences() {
         assertModelLedger(OperationTypingPopulation.rows(), 48, "operation-types")
     }

@@ -19,10 +19,17 @@ internal object JavaPatternToJs {
         val flags: String = "u",
         val backReferenceGuards: List<BackReferenceGuard> = emptyList(),
         val hasUnverifiedMapping: Boolean = false,
+        val certifiedValueDomain: ValueDomain = ValueDomain.ANY,
+        val globalUnicodeCase: Boolean = false,
     )
 
+    enum class ValueDomain { ANY, LATIN1, ASCII, PRINTABLE_ASCII }
+
     /** Translate a kernel-legal Java pattern. Unsupported legal syntax fails here, before host compilation. */
-    fun compile(java: String): Translation = Parser(java).translate()
+    fun compile(java: String): Translation = Parser(java, forConsistency = false).translate()
+
+    /** DG102 certifies the JVM consistency verdict; it does not change the interpreter's runtime dialect. */
+    fun compileForConsistency(java: String): Translation = Parser(java, forConsistency = true).translate()
 
     /** Kept as the small source-level seam used by translation tests. */
     fun translate(java: String): String = compile(java).source
@@ -62,18 +69,31 @@ internal object JavaPatternToJs {
         }
     }
 
-    private class Parser(private val source: String) {
+    private class Parser(private val source: String, private val forConsistency: Boolean) {
         private var index = 0
         private var javaCaptureCount = 0
         private var jsCaptureCount = 0
         private val captureMap = mutableMapOf<Int, Int>()
         private val guards = mutableListOf<BackReferenceGuard>()
         private var hasUnverifiedMapping = false
+        private var certifiedValueDomain = ValueDomain.ANY
+        private var globalUnicodeCase = false
+
+        private fun requireDomain(domain: ValueDomain) {
+            if (forConsistency && domain.ordinal > certifiedValueDomain.ordinal) certifiedValueDomain = domain
+        }
 
         fun translate(): Translation {
             val parsed = sequence(Flags(), nested = false)
             if (index != source.length) throw UnsupportedJavaPattern("unexpected pattern suffix at $index")
-            return Translation(parsed.text, backReferenceGuards = guards.toList(), hasUnverifiedMapping = hasUnverifiedMapping)
+            if (globalUnicodeCase && source.any { it.code > 0xff }) hasUnverifiedMapping = true
+            return Translation(
+                parsed.text,
+                backReferenceGuards = guards.toList(),
+                hasUnverifiedMapping = hasUnverifiedMapping,
+                certifiedValueDomain = certifiedValueDomain,
+                globalUnicodeCase = globalUnicodeCase,
+            )
         }
 
         private data class Sequence(val text: String, val flags: Flags)
@@ -139,6 +159,7 @@ internal object JavaPatternToJs {
 
         /** Returns emitted source and the enclosing sequence's possibly updated global flags. */
         private fun group(enclosing: Flags): Pair<String, Flags> {
+            val groupStart = index
             index++ // (
             if (index >= source.length || source[index] != '?') {
                 javaCaptureCount++
@@ -170,6 +191,8 @@ internal object JavaPatternToJs {
             var modified = enclosing
             var enabled = true
             var sawFlag = false
+            var sawUnicodeCase = false
+            var sawCaseFlag = false
             while (index < source.length) {
                 val c = source[index]
                 if (c == '-') {
@@ -179,7 +202,9 @@ internal object JavaPatternToJs {
                 }
                 if (c !in FLAG_LETTERS) break
                 sawFlag = true
-                if (c != 'i') hasUnverifiedMapping = true
+                if (c == 'u') sawUnicodeCase = true
+                else if (c == 'i') sawCaseFlag = true
+                else hasUnverifiedMapping = true
                 modified = modified.with(c, enabled)
                 index++
             }
@@ -187,10 +212,17 @@ internal object JavaPatternToJs {
             return when (source.getOrNull(index)) {
                 ')' -> {
                     index++
+                    if (forConsistency && groupStart == 0 && modified.caseInsensitive && modified.unicodeCase && sawUnicodeCase) {
+                        globalUnicodeCase = true
+                        requireDomain(ValueDomain.LATIN1)
+                    } else if (sawUnicodeCase || (globalUnicodeCase && sawCaseFlag)) {
+                        hasUnverifiedMapping = true
+                    }
                     "" to modified
                 }
                 ':' -> {
                     index++
+                    if (sawUnicodeCase || (globalUnicodeCase && sawCaseFlag)) hasUnverifiedMapping = true
                     val body = sequence(modified, nested = true)
                     "(?:${body.text})" to enclosing
                 }
@@ -235,19 +267,20 @@ internal object JavaPatternToJs {
                 } else "\\$e"
                 'x' -> if (source.getOrNull(index) == '{') {
                     index++
-                    val hex = takeUntil('}')
+                    val hex = certifiedCodePoint(takeUntil('}'))
                     "\\u{$hex}"
                 } else {
-                    "\\x" + take(2)
+                    "\\x" + certifiedCodePoint(take(2))
                 }
-                'u' -> "\\u" + take(4)
+                'u' -> "\\u" + certifiedCodePoint(take(4))
                 'N' -> {
                     if (source.getOrNull(index) != '{') throw UnsupportedJavaPattern("malformed named character")
                     index++
+                    if (flags.caseInsensitive && !globalUnicodeCase) hasUnverifiedMapping = true
                     namedCharacter(takeUntil('}'))
                 }
                 'X' -> {
-                    hasUnverifiedMapping = true
+                    requireDomain(ValueDomain.PRINTABLE_ASCII)
                     "(?:\\P{M}\\p{M}*)"
                 }
                 'b' -> if (source.startsWith("{g}", index)) {
@@ -255,14 +288,16 @@ internal object JavaPatternToJs {
                     hasUnverifiedMapping = true
                     "(?:^|$|(?=\\P{M}))"
                 } else {
-                    hasUnverifiedMapping = true
+                    requireDomain(ValueDomain.ASCII)
                     "\\b"
                 }
                 'P', 'p' -> {
                     if (source.getOrNull(index) != '{') throw UnsupportedJavaPattern("malformed property escape")
                     index++
-                    hasUnverifiedMapping = true
-                    "\\$e{" + takeUntil('}') + "}"
+                    val property = takeUntil('}')
+                    if (property == "L" && !flags.caseInsensitive) requireDomain(ValueDomain.ASCII)
+                    else hasUnverifiedMapping = true
+                    "\\$e{$property}"
                 }
                 else -> {
                     hasUnverifiedMapping = true
@@ -319,6 +354,27 @@ internal object JavaPatternToJs {
                     continue
                 }
                 val e = raw[i + 1]
+                if (forConsistency && e == 'x' && raw.getOrNull(i + 2) == '{') {
+                    val end = raw.indexOf('}', i + 3)
+                    if (end < 0) throw UnsupportedJavaPattern("unclosed class code point")
+                    val hex = certifiedCodePoint(raw.substring(i + 3, end))
+                    val codePoint = hex.toIntOrNull(16)
+                    if (hex.isEmpty() || codePoint == null || codePoint > 0x10ffff || codePoint in 0xd800..0xdfff) {
+                        throw UnsupportedJavaPattern("unrepresented class code point")
+                    }
+                    if (flags.caseInsensitive && !globalUnicodeCase) hasUnverifiedMapping = true
+                    out.append("\\u{").append(hex).append('}')
+                    i = end + 1
+                    continue
+                }
+                if (forConsistency && e == 'N' && raw.getOrNull(i + 2) == '{') {
+                    val end = raw.indexOf('}', i + 3)
+                    if (end < 0) throw UnsupportedJavaPattern("unclosed class character name")
+                    if (flags.caseInsensitive && !globalUnicodeCase) hasUnverifiedMapping = true
+                    out.append(namedCharacter(raw.substring(i + 3, end)))
+                    i = end + 1
+                    continue
+                }
                 out.append(
                     when (e) {
                         'h' -> H
@@ -422,6 +478,13 @@ internal object JavaPatternToJs {
             return value
         }
 
+        private fun certifiedCodePoint(hex: String): String {
+            if (!forConsistency || !globalUnicodeCase) return hex
+            val codePoint = hex.toIntOrNull(16)
+            if (codePoint == null || codePoint !in 0..0xff) hasUnverifiedMapping = true
+            return hex
+        }
+
         private fun takeUntil(end: Char): String {
             val start = index
             while (index < source.length && source[index] != end) index++
@@ -431,9 +494,16 @@ internal object JavaPatternToJs {
             return value
         }
 
-        private fun namedCharacter(name: String): String = when (name) {
-            "LATIN CAPITAL LETTER A" -> "\\u0041"
-            else -> throw UnsupportedJavaPattern("unsupported named character: $name")
+        private fun namedCharacter(name: String): String {
+            if (name == "LATIN CAPITAL LETTER A") return "\\u0041"
+            if (forConsistency) {
+                for ((prefix, base) in listOf("LATIN CAPITAL LETTER " to 'A', "LATIN SMALL LETTER " to 'a')) {
+                    if (name.startsWith(prefix) && name.length == prefix.length + 1 && name.last() in 'A'..'Z') {
+                        return "\\u{" + (base.code + name.last().code - 'A'.code).toString(16) + "}"
+                    }
+                }
+            }
+            throw UnsupportedJavaPattern("unsupported named character: $name")
         }
     }
 
