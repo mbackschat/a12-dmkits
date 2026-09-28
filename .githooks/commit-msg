@@ -53,4 +53,5 @@ if [ "$fail" -ne 0 ]; then
   printf 'commit-msg: rejected. Fix the message, or bypass once with --no-verify.\n' >&2
   exit 1
 fi
-exit 0
+root=$(git rev-parse --show-toplevel) || exit 1
+exec "$root/scripts/run-typescript.sh" commit-gaps "$root/scripts/typescript/commit-gaps.ts" "$msg_file"
