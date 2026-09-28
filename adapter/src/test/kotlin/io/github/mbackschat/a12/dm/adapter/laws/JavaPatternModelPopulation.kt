@@ -76,6 +76,13 @@ internal object JavaPatternModelPopulation {
         Case("CaretRangeUnion", "[\\D^-z]", "z", "2"),
     ))
 
+    fun classSetBoundaries(): List<ConditionCase> = population(listOf(
+        Case("LiteralHyphenNonDigit", "[a\\-\\D]", "-", "2"),
+        Case("LiteralHyphenNonSpace", "[\\-\\S]", "-", " "),
+        Case("NonDigitHyphen", "[\\D-a]", "-", "2"),
+        Case("NonSpaceHyphen", "[\\S-a]", "-", " "),
+    ))
+
     fun rows(): List<ConditionCase> = population(cases)
 
     private fun population(cases: List<Case>): List<ConditionCase> {

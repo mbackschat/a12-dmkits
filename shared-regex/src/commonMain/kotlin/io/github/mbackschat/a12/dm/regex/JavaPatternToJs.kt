@@ -348,20 +348,40 @@ internal object JavaPatternToJs {
             }
             if (!closed) throw UnsupportedJavaPattern("unclosed character class")
             val body = raw.toString()
-            if (forConsistency) {
-                // DG102-F2: intersect complete predicates; an omitted operand is an identity, not an empty set.
-                val terms = classTerms(body).map { classUnion(it, flags) }
-                if (terms.isEmpty()) throw UnsupportedJavaPattern("intersection without a represented operand")
-                val predicate = terms.dropLast(1).joinToString("") { "(?=$it)" } + terms.last()
-                return if (negated) "(?:(?!$predicate)[\\s\\S])" else "(?:$predicate)"
+            // IF164/DG102: both consumers use Java class algebra; certification stays caller-specific.
+            val terms = classTerms(body)
+            if (terms.isEmpty()) throw UnsupportedJavaPattern("intersection without a represented operand")
+            if (terms.size == 1 && !hasClassComplement(terms[0])) {
+                return "[" + (if (negated) "^" else "") + classBody(terms[0], flags) + "]"
             }
-            if (!negated && body == "\\H") return "[^$H]"
-            if (!negated && body == "\\V") return "[^$V]"
-            if (body.contains("\\H") || body.contains("\\V")) {
-                throw UnsupportedJavaPattern("combined class complement requires set subtraction")
+            val common = BooleanArray(129) { it < 128 }
+            var finite = true
+            val predicates = terms.map { term ->
+                if (hasClassComplement(term)) {
+                    finite = false
+                    classUnion(term, flags)
+                } else {
+                    val members = BooleanArray(129)
+                    val translated = classBody(term, flags, members)
+                    if (members[128]) finite = false
+                    for (code in 0..127) common[code] = common[code] && members[code]
+                    "[$translated]"
+                }
             }
-            val translated = if (body.contains("&&")) intersection(body, flags) else classBody(body, flags)
-            return "[" + (if (negated) "^" else "") + translated + "]"
+            // IF164 cost gate: serialize finite sets compactly; lookaheads add avoidable per-row work.
+            if (finite) return finiteClass(common, negated)
+            val predicate = predicates.dropLast(1).joinToString("") { "(?=$it)" } + predicates.last()
+            return if (negated) "(?:(?!$predicate)[\\s\\S])" else "(?:$predicate)"
+        }
+
+        private fun hasClassComplement(raw: String): Boolean {
+            var i = 0
+            while (i < raw.length) {
+                if (raw[i++] == '\\' && i < raw.length) {
+                    if (raw[i++] in "SDWHV") return true
+                }
+            }
+            return false
         }
 
         /** DG102-F3: an operator starts only between tokens, never inside an escaped literal. */
@@ -394,19 +414,9 @@ internal object JavaPatternToJs {
                     i++
                     continue
                 }
-                val positive = when (raw[i + 1]) {
-                    'S' -> S
-                    'D' -> "0-9"
-                    'W' -> "a-zA-Z_0-9"
-                    'H' -> H
-                    'V' -> V
-                    else -> null
-                }
+                val positive = if (raw[i + 1] in "SDWHV") predefinedClass(raw[i + 1].lowercaseChar(), flags) else null
                 if (positive != null) {
-                    if (raw.getOrNull(i - 1) == '-' || raw.getOrNull(i + 2) == '-') {
-                        throw UnsupportedJavaPattern("complement range endpoint")
-                    }
-                    if (i > start) members += "[${classBody(raw.substring(start, i), flags)}]"
+                    if (i > start) members += "[${classBody(raw.substring(start, i), flags, followedBySet = true)}]"
                     members += "[^$positive]"
                     start = i + 2
                 }
@@ -417,21 +427,32 @@ internal object JavaPatternToJs {
             return members.joinToString("|", "(?:", ")")
         }
 
-        private fun classBody(raw: String, flags: Flags): String {
+        private fun classBody(raw: String, flags: Flags, members: BooleanArray? = null, followedBySet: Boolean = false): String {
             val out = StringBuilder()
             var i = 0
             while (i < raw.length) {
-                if (raw[i] != '\\' || i + 1 >= raw.length) {
-                    if (i + 2 < raw.length && raw[i + 1] == '-' && raw[i + 2] != '\\') {
-                        appendClassRange(out, raw[i], raw[i + 2], flags)
-                        i += 3
-                        continue
+                val width = classLiteralWidth(raw, i)
+                if (width > 0) {
+                    if (width > 2) hasUnverifiedMapping = true
+                    val next = i + width
+                    if (followedBySet && next + 1 == raw.length && raw[next] == '-') {
+                        throw UnsupportedJavaPattern("range with a set-valued endpoint")
                     }
-                    appendLiteral(out, raw[i], flags, inClass = true)
-                    i++
+                    val endWidth = if (raw.getOrNull(next) == '-') classLiteralWidth(raw, next + 1) else 0
+                    if (endWidth > 0) {
+                        if (width > 1 || endWidth > 1) hasUnverifiedMapping = true
+                        appendClassRange(out, classLiteralValue(raw, i, width), classLiteralValue(raw, next + 1, endWidth), flags)
+                        includeAscii(members, classLiteralValue(raw, i, width), classLiteralValue(raw, next + 1, endWidth), flags)
+                        i = next + 1 + endWidth
+                    } else {
+                        appendLiteral(out, classLiteralValue(raw, i, width), flags, inClass = true)
+                        includeAscii(members, classLiteralValue(raw, i, width), classLiteralValue(raw, i, width), flags)
+                        i = next
+                    }
                     continue
                 }
                 val e = raw[i + 1]
+                if (members != null) members[128] = true
                 if (forConsistency && e == 'x' && raw.getOrNull(i + 2) == '{') {
                     val end = raw.indexOf('}', i + 3)
                     if (end < 0) throw UnsupportedJavaPattern("unclosed class code point")
@@ -455,18 +476,7 @@ internal object JavaPatternToJs {
                 }
                 out.append(
                     when (e) {
-                        in "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~" -> {
-                            if (forConsistency) {
-                                // Escaped range operands need decoding before the range can be certified.
-                                if (raw.getOrNull(i + 2) == '-' || raw.getOrNull(i - 1) == '-') hasUnverifiedMapping = true
-                                classLiteral(e)
-                            } else "\\$e"
-                        }
-                        'h' -> H
-                        'v' -> V
-                        's' -> if (flags.unicodeClasses) "\\p{White_Space}" else S
-                        'd' -> if (flags.unicodeClasses) "\\p{Nd}" else "0-9"
-                        'w' -> if (flags.unicodeClasses) "\\p{Alphabetic}\\p{M}\\p{Nd}\\p{Pc}\\u200C\\u200D" else "a-zA-Z_0-9"
+                        'h', 'v', 's', 'd', 'w' -> predefinedClass(e, flags)
                         else -> {
                             hasUnverifiedMapping = true
                             "\\$e"
@@ -478,81 +488,75 @@ internal object JavaPatternToJs {
             return out.toString()
         }
 
-        private fun appendClassRange(out: StringBuilder, first: Char, last: Char, flags: Flags) {
-            if (!flags.caseInsensitive) {
-                out.append(if (forConsistency) classLiteral(first) else first).append('-')
-                    .append(if (forConsistency) classLiteral(last) else last)
-                return
-            }
-            if (forConsistency) {
-                out.append(classLiteral(first)).append('-').append(classLiteral(last))
-                // DG102-F: close every ASCII letter in the interval, including mixed punctuation/letter ranges.
-                for ((lower, upper, shift) in listOf(Triple('A', 'Z', 32), Triple('a', 'z', -32))) {
-                    val start = maxOf(first, lower)
-                    val end = minOf(last, upper)
-                    if (start <= end) out.append((start.code + shift).toChar()).append('-').append((end.code + shift).toChar())
+        private fun predefinedClass(letter: Char, flags: Flags): String = when (letter) {
+            'h' -> H
+            'v' -> V
+            's' -> if (flags.unicodeClasses) "\\p{White_Space}" else S
+            'd' -> if (flags.unicodeClasses) "\\p{Nd}" else "0-9"
+            'w' -> if (flags.unicodeClasses) "\\p{Alphabetic}\\p{M}\\p{Nd}\\p{Pc}\\u200C\\u200D" else "a-zA-Z_0-9"
+            else -> error("not a predefined character class: $letter")
+        }
+
+        private fun includeAscii(members: BooleanArray?, first: Char, last: Char, flags: Flags) {
+            if (members == null) return
+            if (first.code > 127 || last.code > 127) members[128] = true
+            for (code in first.code..minOf(last.code, 127)) {
+                members[code] = true
+                if (flags.caseInsensitive) when (code) {
+                    in 65..90 -> members[code + 32] = true
+                    in 97..122 -> members[code - 32] = true
                 }
-                return
-            }
-            when {
-                first in 'a'..'z' && last in 'a'..'z' -> {
-                    out.append(first).append('-').append(last)
-                    out.append(first.uppercaseChar()).append('-').append(last.uppercaseChar())
-                }
-                first in 'A'..'Z' && last in 'A'..'Z' -> {
-                    out.append(first).append('-').append(last)
-                    out.append(first.lowercaseChar()).append('-').append(last.lowercaseChar())
-                }
-                else -> out.append(first).append('-').append(last)
             }
         }
 
-        private fun intersection(raw: String, flags: Flags): String {
-            val halves = raw.split("&&")
-            if (halves.size != 2) throw UnsupportedJavaPattern("unsupported class intersection")
-            val set = caseFoldAscii(asciiClass(halves[0]), flags).intersect(caseFoldAscii(asciiClass(halves[1]), flags))
-            if (set.isEmpty()) return "\\uFFFF&&[^\\uFFFF]"
+        private fun finiteClass(members: BooleanArray, negated: Boolean): String {
             val out = StringBuilder()
-            var i = 0
-            val ordered = set.sorted()
-            while (i < ordered.size) {
-                var j = i
-                while (j + 1 < ordered.size && ordered[j + 1].code == ordered[j].code + 1) j++
-                if (j - i >= 2) out.append(ordered[i]).append('-').append(ordered[j])
-                else for (k in i..j) out.append(ordered[k])
-                i = j + 1
+            var code = 0
+            while (code < 128) {
+                if (!members[code]) { code++; continue }
+                val first = code
+                while (code < 127 && members[code + 1]) code++
+                out.append(classLiteral(first.toChar()))
+                if (code > first) out.append('-').append(classLiteral(code.toChar()))
+                code++
             }
-            return out.toString()
+            if (out.isEmpty()) return if (negated) "[\\s\\S]" else "(?:(?!))"
+            return "[" + (if (negated) "^" else "") + out + "]"
         }
 
-        private fun caseFoldAscii(chars: Set<Char>, flags: Flags): Set<Char> {
-            if (!flags.caseInsensitive) return chars
-            return buildSet {
-                for (c in chars) {
-                    add(c)
-                    when (c) {
-                        in 'a'..'z' -> add(c.uppercaseChar())
-                        in 'A'..'Z' -> add(c.lowercaseChar())
-                    }
-                }
+        private fun classLiteralWidth(raw: String, at: Int): Int {
+            if (at >= raw.length) return 0
+            if (raw[at] != '\\') return 1
+            val escaped = raw.getOrNull(at + 1) ?: return 0
+            if (escaped in "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~" || escaped in "tnrfbae") return 2
+            val digits = when (escaped) { 'x' -> 2; 'u' -> 4; else -> return 0 }
+            if (at + 2 + digits > raw.length) return 0
+            for (i in at + 2 until at + 2 + digits) if (raw[i].digitToIntOrNull(16) == null) return 0
+            return digits + 2
+        }
+
+        private fun classLiteralValue(raw: String, at: Int, width: Int): Char {
+            if (width == 1) return raw[at]
+            if (width > 2) return raw.substring(at + 2, at + width).toInt(16).toChar()
+            return when (val escaped = raw[at + 1]) {
+                't' -> '\t'; 'n' -> '\n'; 'r' -> '\r'; 'f' -> '\u000c'
+                'b' -> '\u0008'; 'a' -> '\u0007'; 'e' -> '\u001b'
+                else -> escaped
             }
         }
 
-        private fun asciiClass(part: String): Set<Char> {
-            val result = linkedSetOf<Char>()
-            var i = 0
-            while (i < part.length) {
-                val first = part[i]
-                if (first == '\\' || first.code > 0x7f) throw UnsupportedJavaPattern("non-ASCII class intersection")
-                if (i + 2 < part.length && part[i + 1] == '-') {
-                    for (c in first..part[i + 2]) result += c
-                    i += 3
-                } else {
-                    result += first
-                    i++
-                }
-            }
-            return result
+        private fun appendClassRange(out: StringBuilder, first: Char, last: Char, flags: Flags) {
+            out.append(classLiteral(first)).append('-').append(classLiteral(last))
+            if (!flags.caseInsensitive) return
+            // DG102-F: close the interval's letters, including mixed punctuation/letter ranges.
+            appendFoldedRange(out, first, last, 'A', 'Z', 32)
+            appendFoldedRange(out, first, last, 'a', 'z', -32)
+        }
+
+        private fun appendFoldedRange(out: StringBuilder, first: Char, last: Char, lower: Char, upper: Char, shift: Int) {
+            val start = maxOf(first, lower)
+            val end = minOf(last, upper)
+            if (start <= end) out.append((start.code + shift).toChar()).append('-').append((end.code + shift).toChar())
         }
 
         private fun appendLiteral(out: StringBuilder, c: Char, flags: Flags, inClass: Boolean = false) {
@@ -563,12 +567,12 @@ internal object JavaPatternToJs {
                 if (inClass) out.append(c.lowercaseChar()).append(c)
                 else out.append('[').append(c.lowercaseChar()).append(c).append(']')
             } else {
-                if (forConsistency && inClass) out.append(classLiteral(c)) else out.append(c)
+                if (inClass) out.append(classLiteral(c)) else out.append(c)
             }
         }
 
         /** DG102-F2: ASCII class punctuation denotes characters, never emitted regex structure. */
-        private fun classLiteral(c: Char): String = if (c.code <= 0x7f) "\\u{${c.code.toString(16)}}" else c.toString()
+        private fun classLiteral(c: Char): String = if (c.code <= 0x7f && c !in 'a'..'z' && c !in 'A'..'Z' && c !in '0'..'9' && c != '_') "\\u{${c.code.toString(16)}}" else c.toString()
 
         private fun take(length: Int): String {
             if (index + length > source.length) throw UnsupportedJavaPattern("short escape")
@@ -578,7 +582,7 @@ internal object JavaPatternToJs {
         }
 
         private fun scalarEscape(hex: String, encoded: String, flags: Flags): String {
-            if (!forConsistency || !flags.caseInsensitive) return encoded
+            if (!flags.caseInsensitive) return encoded
             val code = hex.toIntOrNull(16)
             if (code == null || code !in 'A'.code..'Z'.code && code !in 'a'.code..'z'.code) return encoded
             // DG102-F: escape spelling does not change a decoded letter's effective case flag.

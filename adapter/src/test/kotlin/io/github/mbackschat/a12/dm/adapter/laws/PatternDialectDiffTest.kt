@@ -60,6 +60,31 @@ class PatternDialectDiffTest {
         agree("\\s", "\u00a0", true, "PatternViolated uses the same dialect", matched = false)
     }
 
+    @Test
+    fun classAlgebraAndDecodedCaseClosure() {
+        listOf(
+            Case("[a\\-\\D]", "-", true, "escaped hyphen before complement"),
+            Case("[\\-\\S]", "-", true, "escaped hyphen sibling"),
+            Case("[\\D-a]", "-", true, "hyphen after set member"),
+            Case("[\\S-a]", " ", false, "set member boundary"),
+            Case("(?U)[\\S]", "\u00a0", false, "Unicode complement flag"),
+            Case("(?U)[\\S]", "x", true, "Unicode complement positive control"),
+            Case("[a&&]", "a", true, "omitted right operand"),
+            Case("[a&&]", "b", false, "identity retains its boundary"),
+            Case("[&&a]", "a", true, "omitted left operand"),
+            Case("[a^&&^]", "^", true, "literal intersection result"),
+            Case("[a^&&^]", "a", false, "intersection removes other members"),
+            Case("[a&&b]", "a", false, "empty intersection"),
+            Case("[^a&&b]", "a", true, "complement of empty intersection"),
+            Case("[\\&&]", "&", true, "escaped delimiter"),
+            Case("[z&&^-z]", "z", true, "literal range endpoint"),
+            Case("[\\D^-z]", "2", false, "complement union"),
+            Case("(?i)\\x41", "a", true, "decoded case closure"),
+            Case("(?i)[Z-a]", "z", true, "mixed interval closure"),
+            Case("(?i)[Z-a]", "b", false, "interval closure boundary"),
+        ).forEach { agree(it.pattern, it.value, it.expected, it.description) }
+    }
+
     private companion object {
         data class Case(val pattern: String, val value: String, val expected: Boolean, val description: String)
         const val PC = "/Order/ProductCode"

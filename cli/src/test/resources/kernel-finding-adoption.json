@@ -503,7 +503,7 @@
   },
   "reviews": {
     "kf481": {
-      "sha256": "32d4e65552195df0817dd1a0c3a10dfd0e212c127e42722be175986ec4406514",
+      "sha256": "e0e17eadf66bfda7f7184ef80270fc7b896d1c2b29333c78eb25277e2956a615",
       "task": "DG102",
       "scope": {
         "adapter": ["kernel index-key class oracle"],
@@ -533,16 +533,16 @@
         },
         "interpreter": {
           "state": "OPEN",
-          "basis": "Static key admission does not settle interpreter selection of an admitted indexed key. The regex translator still needs its own runtime-semantic assessment.",
+          "basis": "Static key admission does not settle interpreter selection of an admitted indexed key. REGEX-CLASS applies shared class semantics with nineteen separately measured runtime-predicate outcomes and JVM/Node parity. Runtime indexed-key selection and the native-JS policy remain separate obligations.",
           "evidence": {}
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "All 138 frozen inputs agree with the kernel and replay on JVM/Node. Scalar/range case closure and predicate-based intersection, including empty sets and omitted operands, are verified with independent finite-alphabet controls. The documented unsupported domain remains unjudged on both targets; this is bounded agreement, not universal Java Pattern conformance.",
+          "basis": "All 147 frozen inputs agree with the kernel and replay on JVM/Node. Scalar/range case closure and predicate-based intersection, including empty sets and omitted operands, are verified with independent finite-alphabet controls. The documented unsupported domain remains unjudged on both targets; this is bounded agreement, not universal Java Pattern conformance.",
           "evidence": {
             "O1 index-key class comparison": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerNearMissSweepTest.kt#indexKeyPatternsHaveOnlyLedgeredDifferences",
-              "witness": "Eight frozen populations, 138 models in total, compare exact kernel classes; the same method locks all factored replay bytes."
+              "witness": "Nine frozen populations, 147 models in total, compare exact kernel classes; the same method locks all factored replay bytes."
             },
             "JVM and Node pattern support boundary": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/KeyPatternTest.kt#unsupportedOrKernelRejectedPatternsStayUnjudged",

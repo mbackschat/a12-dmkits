@@ -114,6 +114,36 @@ class PatternDialectParityTest {
         assertFalse(m("(?i:[a-c]+)DEF", "AbCdef"), "the scoped flag remains local after a class")
     }
 
+    @Test fun unicodeClassComplementsKeepTheEffectiveFlag() {
+        assertFalse(m("(?U)[\\S]", "\u00a0"))
+        assertTrue(m("(?U)[\\S]", "x"))
+        assertFalse(m("(?U)[\\D]", "\u0661"))
+        assertFalse(m("(?U)[\\W]", "é"))
+    }
+
+    @Test fun classAlgebraAndDecodedCaseClosure() {
+        val rows = listOf(
+            Triple("[a\\-\\D]", "-", true), Triple("[\\-\\S]", "-", true),
+            Triple("[\\D-a]", "-", true), Triple("[\\S-a]", "-", true),
+            Triple("(?i)[\\x41]", "a", true),
+            Triple("[a&&]", "a", true), Triple("[a&&]", "b", false),
+            Triple("[&&a]", "a", true), Triple("[a^&&^]", "^", true),
+            Triple("[a^&&^]", "a", false), Triple("[a&&b]", "a", false),
+            Triple("[^a&&b]", "a", true), Triple("[\\&&]", "&", true),
+            Triple("[z&&^-z]", "z", true), Triple("[\\D^-z]", "2", false),
+            Triple("(?i)\\x41", "a", true), Triple("(?i)[Z-a]", "z", true),
+            Triple("(?i)[Z-a]", "b", false),
+            Triple("[\\]&&\\]]", "]", true), Triple("[\\&&&\\&]", "&", true),
+            Triple("[\\^&&^]", "^", true), Triple("[\\^-_]", "_", true),
+            Triple("[\\^-_]", "-", false), Triple("[\\^-a]", "`", true),
+            Triple("[a-\\x63]", "b", true), Triple("[a-\\x63]", "-", false),
+            Triple("[\\u0061-c]", "b", true), Triple("[\\u0061-c]", "-", false),
+            Triple("(?i)[\\x61-c]", "B", true),
+            Triple("[a\\-c]", "-", true), Triple("[a\\-c]", "b", false),
+        )
+        for ((pattern, text, expected) in rows) assertEquals(expected, m(pattern, text), "$pattern / $text")
+    }
+
     // ── ordinary regex is untouched (the majority — must still work identically) ─────────────────────────────
     @Test fun ordinaryPatternsUnaffected() {
         assertTrue(m("\\d{3}-\\d{4}", "123-4567"), "digits")

@@ -13,7 +13,7 @@ class KeyPatternTest {
 
     @Test
     fun theKernelPatternPopulationAgreesOnEachPortableTarget() {
-        assertEquals(138, SyntaxFixtureData.keyPatterns.size)
+        assertEquals(147, SyntaxFixtureData.keyPatterns.size)
         for (json in SyntaxFixtureData.keyPatterns) {
             val row = Json.parseToJsonElement(json).jsonObject
             val expected = row.getValue("classes").jsonArray.map { it.jsonPrimitive.content }.toSet()
@@ -174,6 +174,8 @@ class KeyPatternTest {
 
     @Test
     fun unsupportedOrKernelRejectedPatternsStayUnjudged() {
+        assertEquals(null, matches("[\\^-_]", "_"))
+        assertEquals(null, matches("[a-\\x63]", "b"))
         assertEquals(null, matches("[a[b]]", "b"))
         assertEquals(null, matches("[a-z&&[^aeiou]]", "b"))
         assertEquals(null, matches("(a|(b))\\2c", "ac"))

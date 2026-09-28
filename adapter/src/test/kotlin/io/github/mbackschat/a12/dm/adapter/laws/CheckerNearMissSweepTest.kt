@@ -136,6 +136,7 @@ class CheckerNearMissSweepTest {
             Triple("case-closure", 26, JavaPatternModelPopulation.caseClosure()),
             Triple("class-intersections", 13, JavaPatternModelPopulation.intersections()),
             Triple("class-tokens", 9, JavaPatternModelPopulation.classTokens()),
+            Triple("class-set-boundaries", 9, JavaPatternModelPopulation.classSetBoundaries()),
         )
         populations.forEach { (name, count, rows) -> assertModelLedger(rows, count, name) }
         val mapper = ObjectMapper()
@@ -143,7 +144,7 @@ class CheckerNearMissSweepTest {
             mapOf("id" to it.id, "model" to it.model, "classes" to listOfNotNull(it.expected))
         })
         val stored = mapper.readTree(checkNotNull(javaClass.getResource("/checker-near-miss/java-pattern-replay.json")))
-        assertEquals(replay.toList(), HarvestedModels.expand(stored), "portable replay must retain all eight kernel populations")
+        assertEquals(replay.toList(), HarvestedModels.expand(stored), "portable replay must retain all nine kernel populations")
     }
 
     @Test

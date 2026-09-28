@@ -1135,6 +1135,82 @@
           "modelSha256": "8bb07e5ae081e61eda70bd9b0ac4d8abe493bc45ba5978b92e1edb6eec3bab77"
         }
       ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"policy-index-pattern-model\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"policy-index-pattern-model\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Policy\",\n        \"name\" : \"Policy\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Policy/Reference\",\n            \"name\" : \"Reference\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/LiteralHyphenNonDigit\",\n            \"name\" : \"LiteralHyphenNonDigit\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/LiteralHyphenNonDigit/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"[a\\\\-\\\\D]\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/LiteralHyphenNonDigit/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/LiteralHyphenNonSpace\",\n            \"name\" : \"LiteralHyphenNonSpace\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/LiteralHyphenNonSpace/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"[\\\\-\\\\S]\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/LiteralHyphenNonSpace/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/NonDigitHyphen\",\n            \"name\" : \"NonDigitHyphen\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/NonDigitHyphen/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"[\\\\D-a]\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/NonDigitHyphen/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Policy/NonSpaceHyphen\",\n            \"name\" : \"NonSpaceHyphen\",\n            \"Group\" : {\n              \"repeatability\" : 5,\n              \"indexFieldName\" : \"K\",\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/NonSpaceHyphen/K\",\n                \"name\" : \"K\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\",\n                    \"StringType\" : {\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"policy code\"\n                      } ],\n                      \"pattern\" : \"[\\\\S-a]\"\n                    }\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Policy/NonSpaceHyphen/Amount\",\n                \"name\" : \"Amount\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"NumberType\",\n                    \"NumberType\" : {\n                      \"maxFractionalDigits\" : 2\n                    }\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Policy/IndexModelProbe\",\n            \"name\" : \"IndexModelProbe\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Reference\",\n              \"errorCode\" : \"INDEX_MODEL_PROBE\",\n              \"errorCondition\" : \"FieldFilled(Reference)",
+      "suffix": "\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check policy code\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "admitted-control",
+          "classes": [],
+          "modelMiddle": "",
+          "modelSha256": "f3421b8bc287c4e9f851cf129c4a3302b4f6196b663f0f87f29766f46e004bb5"
+        },
+        {
+          "id": "LiteralHyphenNonDigit-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(LiteralHyphenNonDigit/Amount For \\\"-\\\") > 0",
+          "modelSha256": "aa2f379e6ee9bd885ac56a0f78e48fb4756c4d37ce32aaee56c242c0c7b34e8d"
+        },
+        {
+          "id": "LiteralHyphenNonDigit-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(LiteralHyphenNonDigit/Amount For \\\"2\\\") > 0",
+          "modelSha256": "3f6b585b2ff48ce251aa13bb82255218231f6056b0978927561eb343a5b9b49d"
+        },
+        {
+          "id": "LiteralHyphenNonSpace-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(LiteralHyphenNonSpace/Amount For \\\"-\\\") > 0",
+          "modelSha256": "faa05f8cfdfa73e077eecf17bb134eab5a9da7e4d10c5af5e6689a33436bbcfc"
+        },
+        {
+          "id": "LiteralHyphenNonSpace-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(LiteralHyphenNonSpace/Amount For \\\" \\\") > 0",
+          "modelSha256": "dd8bc7c9d059ed04abc0b52f7d7ed4221244b1195bbc8dbf544f9e4aea332f49"
+        },
+        {
+          "id": "NonDigitHyphen-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(NonDigitHyphen/Amount For \\\"-\\\") > 0",
+          "modelSha256": "d894a18164423651124fe59106dae3b3625388248f4c05d0eefa0201b2894acd"
+        },
+        {
+          "id": "NonDigitHyphen-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(NonDigitHyphen/Amount For \\\"2\\\") > 0",
+          "modelSha256": "c1695624cd8e1b6c56abfd088b4388189bbf70d12afc661b95983edf3f4b93d7"
+        },
+        {
+          "id": "NonSpaceHyphen-match",
+          "classes": [
+            "MVK_PARAMSIZE_INVALIDN"
+          ],
+          "modelMiddle": " And Sum(NonSpaceHyphen/Amount For \\\"-\\\") > 0",
+          "modelSha256": "17deedef44731c74bc7df7e3008423918d3425e1c5f5d3c73b70e5fcca0bc025"
+        },
+        {
+          "id": "NonSpaceHyphen-miss",
+          "classes": [
+            "MVK_INDEX_VALUE_INVALID"
+          ],
+          "modelMiddle": " And Sum(NonSpaceHyphen/Amount For \\\" \\\") > 0",
+          "modelSha256": "623c1af574bc34115c1608b943d5ea4608610a0328ab31232fc914fa2d1f63c8"
+        }
+      ]
     }
   ]
 }
