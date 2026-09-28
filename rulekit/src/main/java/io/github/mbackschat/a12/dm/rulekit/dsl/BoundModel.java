@@ -233,7 +233,14 @@ public final class BoundModel {
 
     /** A generic handle to the field at {@code path} (any kind). Throws if the path is not a field. */
     public FieldRef field(String path) {
-        return new FieldRef(path, index.kindOf(path));
+        ValueKind kind = index.kindOf(path);
+        var ancestors = new java.util.HashSet<EntityPath>();
+        String parent = path;
+        while (parent.lastIndexOf('/') > 0) {
+            parent = parent.substring(0, parent.lastIndexOf('/'));
+            if (index.isRepeating(parent)) ancestors.add(EntityPath.of(parent));
+        }
+        return new FieldRef(EntityPath.of(path), kind, PathStyle.CANONICAL, false, Optional.of(ancestors));
     }
 
     /** Package-private access to the underlying index — lets {@link FieldInfo} surface declared field config

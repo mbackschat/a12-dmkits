@@ -26,9 +26,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
  * <p>Neither class is fixed by the operand: an iterating rule binds the level, and a filter admits the marker,
  * and then the list gates answer ({@link #theRuleMovesTheIterationClass}; for {@code $},
  * {@code FirstFilledOperandShapeLawsTest}). An operand is built before its rule, so rulekit withholds from the
- * first such operand on, as it does behind an index. A {@code FieldRef} does not show whether its levels repeat,
- * so a record over an unstarred repeatable FIELD still cites its list gate, which is DEV-API-GAPS DG75; the
- * {@link BoundModel} factories read the model and withhold.
+ * first such operand on, as it does behind an index. Model-resolved {@code FieldRef} ancestry preserves
+ * that uncertainty through direct records as well as {@link BoundModel} factories (API-FINDINGS AF175).
  */
 class EntityListReadStageLawsTest {
 
@@ -68,13 +67,13 @@ class EntityListReadStageLawsTest {
                         () -> Dsl.sum(keyed, weight, weight).gt(0), UNCODED,
                         () -> M.sum(keyed, weight, weight).gt(0), UNCODED),
                 new Row("Sum(Keyed/Amount, Keyed/Amount) > 0", NO_WILDCARD,
-                        () -> Dsl.sum(amount, amount).gt(0), "MVK_DUPLICATE_PARAM1",
+                        () -> Dsl.sum(amount, amount).gt(0), UNCODED,
                         () -> M.sum(amount, amount).gt(0), UNCODED),
                 new Row("NumberOfFilledFields(Title, Keyed/Amount) > 0", NO_WILDCARD,
                         () -> Dsl.numberOfFilledFields(List.of(title, amount)).gt(0), ADMITTED,
                         () -> M.numberOfFilledFields(title, amount).gt(0), ADMITTED),
                 new Row("FirstFilledValue(Title, Keyed/Amount) > 0", NO_WILDCARD,
-                        () -> Dsl.firstFilledNumber(title, amount).gt(0), "MVK_VARYING_TYPES_NOT_ALLOWED",
+                        () -> Dsl.firstFilledNumber(title, amount).gt(0), UNCODED,
                         null, null),
                 // the $ stage: a correlated operand outside a filter
                 new Row("Sum($Hollow, Weight) > 0", OUTER,
@@ -109,7 +108,7 @@ class EntityListReadStageLawsTest {
 
     /**
      * rulekit's verdict through each surface. Where it admits, the kernel's verdict on what it RENDERS must be the
-     * row's, so an admitted row stands for its text; where it refuses, only the DG75 rows may carry a class.
+     * row's, so an admitted row stands for its text; refused rows in this matrix withhold their class.
      */
     @Test
     void rulekitWithholdsFromTheFirstOperandThatAStageMayRefuse() {

@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.Optional;
+import java.util.Objects;
+import java.util.List;
+import java.util.Set;
 import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.core.HasEntityPath;
 
@@ -19,8 +22,43 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * the remaining half of F10 and needs the converter to read {@code PathNotationConfig} off the kernel's
  * parse tree; until it does, {@link PathStyle#SHORT} has no producer and the renderer refuses it.
  */
-public record FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boolean correlated)
+public record FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boolean correlated,
+        Optional<Set<EntityPath>> repeatingAncestors)
         implements FieldOperand, NumericTextSource, GroupListOperand, TemporalComponent, HasEntityPath {
+
+    /**
+     * Ancestor repetition is a model fact used only to withhold an ungrounded diagnostic class (KF458).
+     * An absent set means unknown topology; a present empty set means fixed ancestry.
+     */
+    public FieldRef {
+        repeatingAncestors = repeatingAncestors.map(Set::copyOf);
+    }
+
+    /** Compatibility constructor: without a model, repetition topology is unknown. */
+    public FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boolean correlated) {
+        this(path, kind, styleHint, correlated, Optional.empty());
+    }
+
+    boolean mayCrossUnstarredRepetition(List<GroupRef> starred) {
+        return repeatingAncestors.map(paths -> paths.stream()
+                .anyMatch(path -> starred.stream().noneMatch(group -> group.path().equals(path))))
+                .orElse(true);
+    }
+
+    /**
+     * Diagnostic provenance must not change reference identity: equivalent legacy and model-derived
+     * references remain redundant operands (LinterTest.modelProvenanceDoesNotHideARedundantLegacyReference).
+     */
+    @Override
+    public final boolean equals(Object other) {
+        return other instanceof FieldRef ref && Objects.equals(path, ref.path) && kind == ref.kind
+                && styleHint == ref.styleHint && correlated == ref.correlated;
+    }
+
+    @Override
+    public final int hashCode() {
+        return Objects.hash(path, kind, styleHint, correlated);
+    }
 
     /** Its own path, already parsed — this ref stores the segments rather than the text. */
     @Override
@@ -43,7 +81,7 @@ public record FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boo
      * The one correlation verb shared with the value refs ({@link NumberRef#outer()}, …).
      */
     public FieldRef outer() {
-        return new FieldRef(path, kind, styleHint, true);
+        return new FieldRef(path, kind, styleHint, true, repeatingAncestors);
     }
 
     /**
@@ -56,7 +94,7 @@ public record FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boo
      * the relative form is the kernel's preferred one and survives a group rename.
      */
     public FieldRef absolute() {
-        return new FieldRef(path, kind, PathStyle.ABSOLUTE, correlated);
+        return new FieldRef(path, kind, PathStyle.ABSOLUTE, correlated, repeatingAncestors);
     }
 
     @Override

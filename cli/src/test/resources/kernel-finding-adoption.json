@@ -1172,6 +1172,71 @@
           "evidence": {}
         }
       }
+    },
+    "kf458": {
+      "sha256": "5e900423728558d8b205b3c9babab23b86d3298b7c752dde5c14fb2cd9764f3c",
+      "task": "DG75",
+      "scope": {
+        "adapter": [],
+        "dmkits": [
+          "record diagnostic attribution"
+        ],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "DG75 adoption notice"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "evidence": {}
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "Field references carry model-derived repetition provenance through the shared operand-read decision.",
+          "evidence": {
+            "record diagnostic attribution": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/EntityListReadStageLawsTest.java#rulekitWithholdsFromTheFirstOperandThatAStageMayRefuse",
+              "witness": "Record and bound routes withhold on the existing duplicate and mixed-kind repetition inputs; the adjacent kernel methods preserve both rule contexts."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes only the dmkits adoption paragraph for an existing kernel law. It changes no kernel observation, runtime behavior, DSL text, CLI or JSON import/export contract. Historical KF458 adoption remains in F-USE-BACKLOG.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "A Downloads handover will carry the exact verified DG75 revision; preparation does not establish receipt or adoption.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

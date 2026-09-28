@@ -15,10 +15,9 @@ import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
  *
  * <p>A record sees none of those outcomes: an index handle never sees the model, a group scope does not carry
  * its expansion, and a category projection does not carry the enumeration's categories. So on a list holding
- * such an operand, a list gate's refusal stands and its class is withheld (API-FINDINGS AF160). A plain field's
- * read can still answer first where it crosses a repeatable level the rule does not iterate, which a
- * {@link FieldRef} does not show (DEV-API-GAPS DG75); {@link BoundModel}'s factories read the model and answer
- * for groups themselves.
+ * such an operand, a list gate's refusal stands and its class is withheld (API-FINDINGS AF160). A field carries model-resolved repeating ancestors so this also covers an unstarred level that its
+ * future rule may not iterate (KF458). Manually constructed references have unknown topology and withhold
+ * conservatively; {@link BoundModel}'s factories read the model and answer for groups themselves.
  */
 final class OperandRead {
 
@@ -37,9 +36,9 @@ final class OperandRead {
             case IndexedGroupValue ignored -> true;
             case GroupListRef ignored -> true;
             case EnumCategoryAccess ignored -> true;
-            case FieldRef field -> field.correlated();
-            case FieldListRef list -> list.correlated();
-            case FieldValue value -> value.outer();
+            case FieldRef field -> field.correlated() || field.mayCrossUnstarredRepetition(List.of());
+            case FieldListRef list -> list.correlated() || list.field().mayCrossUnstarredRepetition(list.flattened());
+            case FieldValue value -> value.outer() || value.field().mayCrossUnstarredRepetition(List.of());
             case FirstFilledOperand first -> first.readMayAnswerFirst();
         };
     }

@@ -1735,6 +1735,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition imp
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.core.HasEntityPath, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent
   public FieldRef(io.github.mbackschat.a12.dm.core.EntityPath, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle, boolean)
+  public FieldRef(io.github.mbackschat.a12.dm.core.EntityPath, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle, boolean, java.util.Optional<java.util.Set<io.github.mbackschat.a12.dm.core.EntityPath>>)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef absolute()
@@ -1752,6 +1753,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.git
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef outer()
   public io.github.mbackschat.a12.dm.core.EntityPath path()
   public java.lang.String renderedPath()
+  public java.util.Optional<java.util.Set<io.github.mbackschat.a12.dm.core.EntityPath>> repeatingAncestors()
   public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle styleHint()

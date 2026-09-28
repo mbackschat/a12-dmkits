@@ -55,6 +55,16 @@ class LinterTest {
     }
 
     @Test
+    void modelProvenanceDoesNotHideARedundantLegacyReference() {
+        var resolved = m.field(NAME);
+        var legacy = new io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef(resolved.path(), resolved.kind(),
+                resolved.styleHint(), resolved.correlated());
+        assertEquals(resolved, legacy);
+        assertEquals(resolved.hashCode(), legacy.hashCode());
+        only(linter.lint(resolved.filled().and(legacy.filled())), "RK_REDUNDANT_OPERAND");
+    }
+
+    @Test
     void flagsNonComplementaryPresenceDisjunction() {
         // FieldFilled(X) Or FieldNotFilled(X) looks like a tautology but is NOT: a formal-error
         // value satisfies neither (the kernel gotcha — they are not strict complements).

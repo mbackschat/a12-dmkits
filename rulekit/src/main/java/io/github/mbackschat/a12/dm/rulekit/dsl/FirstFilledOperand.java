@@ -193,10 +193,11 @@ public final class FirstFilledOperand implements DuplicateOperand {
     /**
      * Whether A12's read of this operand may answer ahead of the list gates from what the operand cannot settle:
      * an index's resolution, an unstarred repeatable level, which the rule binds or not, and the {@code $} marker,
-     * which only a filter admits. A plain field's unstarred level is not visible here (DEV-API-GAPS DG75).
+     * which only a filter admits. Field targets retain their model-resolved repetition provenance (KF458).
      */
     boolean readMayAnswerFirst() {
-        return semanticIndex != null || unstarredRepetition || outer;
+        return semanticIndex != null || unstarredRepetition || outer
+                || field != null && OperandRead.mayRefuse(field);
     }
 
     /** Whether the target is a root group, which the list's root gate refuses once no duplicate answers first. */
@@ -314,9 +315,10 @@ public final class FirstFilledOperand implements DuplicateOperand {
 
     private static FieldOperand withoutOuter(FieldOperand field) {
         return switch (field) {
-            case FieldRef ref -> new FieldRef(ref.path(), ref.kind(), ref.styleHint(), false);
+            case FieldRef ref -> new FieldRef(ref.path(), ref.kind(), ref.styleHint(), false, ref.repeatingAncestors());
             case FieldListRef list -> new FieldListRef(
-                    new FieldRef(list.field().path(), list.field().kind(), list.field().styleHint(), false),
+                    new FieldRef(list.field().path(), list.field().kind(), list.field().styleHint(), false,
+                            list.field().repeatingAncestors()),
                     list.flattened(), list.filter(), false);
             // Provably unreachable: of(FieldOperand)'s switch routes an IndexedFieldValue to
             // of(IndexedFieldValue) before this method is ever called, and withoutOuter has no other
