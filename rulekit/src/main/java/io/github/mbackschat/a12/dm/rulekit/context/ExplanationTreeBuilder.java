@@ -38,6 +38,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RuleGroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf;
@@ -104,10 +106,12 @@ final class ExplanationTreeBuilder {
             case PatternCondition p -> cell(p.field());
             case ValueListCondition v -> cell(v.field());
             case FieldListValueListCondition v -> v.fields().stream()
-                    .filter(IndexedFieldValue.class::isInstance)
-                    .map(IndexedFieldValue.class::cast)
-                    .flatMap(index -> operand(index).stream()).toList();
-            case FieldListEntityListCondition v -> List.of();
+                    .flatMap(field -> indexedListMember(field).stream()).toList();
+            case FieldListEntityListCondition v -> {
+                List<ValueListOperand> members = new ArrayList<>(v.fields());
+                members.addAll(v.valueFields());
+                yield members.stream().flatMap(field -> indexedListMember(field).stream()).toList();
+            }
             case RepetitionNotUniqueCondition r -> List.of();
             case CustomConditionRef c -> List.of();
             case DateValidity v -> operand(v.dateConstruct());
@@ -180,6 +184,16 @@ final class ExplanationTreeBuilder {
             case DateRangeConstruction dr -> List.of(new RuleExplanation.Node(dr.operatorId(), renderer.render(dr),
                     concat(operand(dr.start()), operand(dr.end()))));
         };
+    }
+
+    private List<RuleExplanation.Node> indexedListMember(ValueListOperand field) {
+        if (field instanceof IndexedFieldValue index) {
+            return operand(index);
+        }
+        if (field instanceof FieldListRef list && list.semanticIndex().isPresent()) {
+            return List.of(new RuleExplanation.Node("SemanticIndex", renderer.render(list), List.of()));
+        }
+        return List.of();
     }
 
     private RuleExplanation.Node leaf(String op, Calculation calc) {

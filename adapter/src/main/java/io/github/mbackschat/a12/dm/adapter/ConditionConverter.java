@@ -123,6 +123,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier;
@@ -492,8 +494,7 @@ final class ConditionConverter {
             // into an unauthorable condition. Representing the list faithfully removes the whole class.
             List<AggregateOperand> operands = entities.stream()
                     .map(e -> e.isField()
-                            ? (AggregateOperand) (isWildcard(e) ? model.flatten(reconstructStarPath(e))
-                                    : model.field(e.getFullName()))
+                            ? (AggregateOperand) toFieldOperand(e)
                             : groupAggregateOperand(e, reconstructStarPath(e), entityList))
                     .toList();
             return Dsl.entityListPredicate(entityListQuantifier(name).orElseThrow(), operands);
@@ -538,7 +539,7 @@ final class ConditionConverter {
             // FieldFilled([Field For key]) / FieldNotFilled(...): the semantic index is part of the
             // entity id, not a separate condition node. Preserve it before the ordinary field-list
             // path below reduces the entity to getFullName().
-            if (single && hasSemanticIndex(entities.get(0))) {
+            if (single && hasSemanticIndex(entities.get(0)) && !isWildcard(entities.get(0))) {
                 SemanticIndex index = semanticIndex(entities.get(0), entityList);
                 return switch (name) {
                     case AllFieldsFilled -> index.filled();
@@ -551,7 +552,7 @@ final class ConditionConverter {
             // the quantifier over it. The plain path form below drops the wildcard + filter, so it must not
             // be taken here.
             if (single && entities.get(0).getFilterCondition() != null && isFieldFillQuantifier(name)) {
-                FieldListRef scope = flattenScope(entities.get(0));
+                FieldListRef scope = (FieldListRef) toFieldOperand(entities.get(0));
                 return fieldFillQuantifier(name, new FieldOperand[] {scope}, entityList);
             }
             // $-correlated presence predicate (e.g. NoFieldFilled($a, $b) inside a filter, D13): build
@@ -840,7 +841,7 @@ final class ConditionConverter {
         }
         if (entities.stream().allMatch(ConditionConverter::isWildcard)) {
             // flattenScope, not a bare flatten: the list keeps its Having filter, which this arm used to drop
-            FieldListRef[] r = entities.stream().map(this::flattenScope).toArray(FieldListRef[]::new);
+            FieldListRef[] r = entities.stream().map(e -> (FieldListRef) toFieldOperand(e)).toArray(FieldListRef[]::new);
             FieldListRef[] rest = Arrays.copyOfRange(r, 1, r.length);
             return switch (name) {
                 case AtLeastOneFieldValueIncludedInValueList ->
@@ -915,13 +916,17 @@ final class ConditionConverter {
      * <p>A field carrying a semantic index is the indexed cell, for the same reason: every entity-list slot A12
      * admits it in (the aggregates, the fill and uniqueness quantifiers, the value-list quantifiers) reached this
      * helper and lost the key, so the F10 index backstop kept each such rule {@code Opaque} (DEV-API-GAPS DG66).
-     * {@code IndexedFieldValue} holds one field, not a repetition list, so an index beside a star stays
-     * unsupported rather than losing the star.
+     * Starred fields retain the key on their list operand (DG69).
      */
     private FieldOperand toFieldOperand(IEntityId entity) {
         if (hasSemanticIndex(entity)) {
             if (isWildcard(entity)) {
-                throw unsupported("semantic index on a starred field operand", entity);
+                FieldListRef list = (FieldListRef) unindexedFieldOperand(entity);
+                IndexedFieldValue index = semanticIndex(entity, entity).index();
+                return switch (index) {
+                    case SemanticIndexValue literal -> list.forIndex(literal.indexValue());
+                    case SemanticIndexFieldValue field -> list.forIndex(field.indexField());
+                };
             }
             return semanticIndex(entity, entity).index();
         }
@@ -1488,7 +1493,7 @@ final class ConditionConverter {
                 default -> throw unsupported("group-scope aggregate operator " + name, aggregate);
             };
         }
-        FieldListRef scope = flattenScope(entities.get(0));
+        FieldListRef scope = (FieldListRef) toFieldOperand(entities.get(0));
         return switch (name) {
             case Sum -> Dsl.sum(scope);
             case MaxValue -> Dsl.maxValue(scope);

@@ -37,7 +37,7 @@ final class OperandRead {
             case GroupListRef ignored -> true;
             case EnumCategoryAccess ignored -> true;
             case FieldRef field -> field.correlated() || field.mayCrossUnstarredRepetition(List.of());
-            case FieldListRef list -> list.correlated() || list.field().mayCrossUnstarredRepetition(list.flattened());
+            case FieldListRef list -> list.semanticIndex().isPresent() || list.correlated() || list.field().mayCrossUnstarredRepetition(list.flattened());
             case FieldValue value -> value.outer() || value.field().mayCrossUnstarredRepetition(List.of());
             case FirstFilledOperand first -> first.readMayAnswerFirst();
         };

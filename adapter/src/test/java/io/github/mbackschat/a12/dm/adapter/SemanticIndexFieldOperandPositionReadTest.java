@@ -113,6 +113,24 @@ class SemanticIndexFieldOperandPositionReadTest {
                 "DifferenceInHours(/Order/AuditedAt, /Order/Packages/ScannedAt For \"P1\") > 2"));
     }
 
+    @Test
+    void anIndexedStarredFieldReadsBackThroughSingleAndMultipleOperandPaths() {
+        String label = "/Order/Packages/Parcels*/Label For \"P1\"";
+        String weight = "/Order/Packages/Parcels*/Weight For \"P1\"";
+        assertReadsBack(List.of(
+                "NumberOfFilledFields(" + label + ") > 0",
+                "NumberOfDifferentValues(" + label + ") > 0",
+                "NoFieldFilled(" + label + ")",
+                "FieldValuesNotUnique(" + label + ")",
+                "AtLeastOneFieldValueIncludedInValueList(" + label + " In \"X\")",
+                "Sum(" + weight + ") > 0",
+                "MaxValue(" + weight + ") > 0",
+                "MinValue(" + weight + ") > 0",
+                "Sum(" + weight + ", /Order/Packages/Parcels*/Weight For \"P2\") > 0",
+                "Sum(/Order/Packages/Parcels*/Weight For /Order/Title) > 0",
+                "SumOfProducts(" + weight + ", " + weight + ") > 0"));
+    }
+
     private static void assertReadsBack(List<String> conditions) {
         Map<String, String> expected = new LinkedHashMap<>();
         Map<String, String> actual = new LinkedHashMap<>();
@@ -154,6 +172,8 @@ class SemanticIndexFieldOperandPositionReadTest {
                                 .field("PackageCode", FieldKind.STRING)
                                 .field("Carrier", FieldKind.STRING)
                                 .field("Weight", FieldKind.NUMBER)
+                                .group("Parcels", p -> p.repeatable(5).field("Label", FieldKind.STRING)
+                                        .field("Weight", FieldKind.NUMBER))
                                 .enumField("Mode", e -> e.value("ROAD").value("AIR"))
                                 .numberField("Day", n -> n.min("1").max("31"))
                                 .group("Schedule", s -> s.dateField("ShippedOn", f -> f.format("yyyy-MM-dd"))

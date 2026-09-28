@@ -318,6 +318,10 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
      *  rather than a switch over the sealed type, so widening {@link FieldOperand} does not fail the build —
      *  a new arm has to be added by hand or it silently lands in the plain-field {@code else}. */
     private static void collectOperand(ValueListOperand op, Refs refs) {
+        if (op instanceof FieldListRef list && list.semanticIndex().isPresent()) {
+            collectFirstFilledOperand(list.firstFilledOperand(), refs);
+            return;
+        }
         if (op instanceof EnumCategoryAccess) {
             refs.projectedField(op.fieldPath());
         } else if (op instanceof SemanticIndexValue indexed) {

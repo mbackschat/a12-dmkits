@@ -14,11 +14,13 @@ import io.github.mbackschat.a12.dm.core.Refusals;
  * verifies every starred segment is a repeatable group ({@code MVK_INVALID_WILDCARD} pre-checked).
  *
  * <p>An optional {@link #having(Condition) Having} filter narrows the list to the repetitions where
- * a condition holds before an aggregate/quantifier consumes it. {@code Having} requires a starred
+ * a condition holds before an aggregate/quantifier consumes it. A keyed list retains its filter for
+ * faithful read-back; kernel admission of their combination is carrier-specific (KF500). {@code Having} requires a starred
  * field ({@code MVK_WILDCARDS_REQUIRED} — satisfied structurally, since only {@code FieldListRef}
  * offers it).
  */
-public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Condition> filter, boolean correlated)
+public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Condition> filter, boolean correlated,
+        Optional<FirstFilledOperand.SemanticIndexKey> semanticIndex)
         implements FieldOperand {
 
     public FieldListRef(FieldRef field, List<GroupRef> flattened) {
@@ -29,7 +31,34 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
         this(field, flattened, filter, false);
     }
 
+    public FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Condition> filter, boolean correlated) {
+        this(field, flattened, filter, correlated, Optional.empty());
+    }
+
+    /** Selects the indexed ancestor while retaining the lower repetition list (KF351, DG69). */
+    public FieldListRef forIndex(String key) {
+        return withIndex(new FirstFilledOperand.LiteralIndex(key));
+    }
+
+    /** The key remains a field read, including its outer-iteration correlation. */
+    public FieldListRef forIndex(FieldRef key) {
+        return withIndex(new FirstFilledOperand.FieldIndex(key));
+    }
+
+    private FieldListRef withIndex(FirstFilledOperand.SemanticIndexKey key) {
+        if (semanticIndex.isPresent()) {
+            throw new IllegalStateException("the list already has a semantic index");
+        }
+        return new FieldListRef(field, flattened, filter, correlated, Optional.of(key));
+    }
+
+    @Override
+    public String overlapModifier() {
+        return firstFilledOperand().overlapModifier();
+    }
+
     public FieldListRef {
+        semanticIndex = java.util.Objects.requireNonNull(semanticIndex, "semanticIndex");
         flattened = List.copyOf(flattened);
         if (flattened.isEmpty()) {
             throw new IllegalArgumentException("a repetition list needs at least one starred group"
@@ -43,7 +72,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
      * The one correlation verb shared with the value refs and {@link FieldRef#outer()} (was {@code asOuter()}).
      */
     public FieldListRef outer() {
-        return new FieldListRef(field, flattened, filter, true);
+        return new FieldListRef(field, flattened, filter, true, semanticIndex);
     }
 
     /**
@@ -62,7 +91,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
                     "a filter condition may not contain a semantic index");
         }
         rejectForbiddenInFilter(filter);
-        return new FieldListRef(field, flattened, Optional.of(filter), correlated);
+        return new FieldListRef(field, flattened, Optional.of(filter), correlated, semanticIndex);
     }
 
     private static void rejectForbiddenInFilter(Condition c) {
@@ -119,7 +148,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
 
     /** This list spelled ABSOLUTE, by hinting the field it flattens. See {@link FieldRef#absolute()}. */
     public FieldListRef absolute() {
-        return new FieldListRef(field.absolute(), flattened, filter, correlated);
+        return new FieldListRef(field.absolute(), flattened, filter, correlated, semanticIndex);
     }
 
     @Override

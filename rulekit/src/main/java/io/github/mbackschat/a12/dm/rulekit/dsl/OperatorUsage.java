@@ -212,6 +212,7 @@ public final class OperatorUsage {
         } else if (operand instanceof IndexedFieldValue index) {
             ops.add(index.operatorId());
         } else if (operand instanceof FieldListRef list) {
+            if (list.semanticIndex().isPresent()) ops.add("SemanticIndex");
             list.filter().ifPresent(filter -> {
                 ops.add("Having");
                 collect(filter, ops);

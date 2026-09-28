@@ -147,7 +147,7 @@ public record CountAggregate(CountOp op, List<AggregateOperand> operands) implem
             case IndexedFieldValue ignored -> true;
             case IndexedGroupValue ignored -> true;
             case FieldRef ignored -> false;
-            case FieldListRef ignored -> false;
+            case FieldListRef list -> list.semanticIndex().isPresent();
             case GroupListRef ignored -> false;
         };
     }

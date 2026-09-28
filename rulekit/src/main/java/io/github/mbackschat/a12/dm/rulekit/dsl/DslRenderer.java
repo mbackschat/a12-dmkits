@@ -413,6 +413,9 @@ public final class DslRenderer {
         if (op instanceof IndexedFieldValue indexed) {
             return indexBody(indexed);
         }
+        if (op instanceof FieldListRef list && list.semanticIndex().isPresent()) {
+            return firstFilledOperand(list.firstFilledOperand());
+        }
         // a $ outer-iteration correlation on a bare reference (D13): NoFieldFilled($a, $b), or the value
         // side of an entity-valued value-list ($Group*/field). Applies to both FieldRef and FieldListRef.
         String dollar = (op instanceof FieldRef fr && fr.correlated()) || (op instanceof FieldListRef fl && fl.correlated())
@@ -448,6 +451,11 @@ public final class DslRenderer {
         out.append(render(calculation));
         comments.afterOf(calculation).ifPresent(text -> out.append(" ;; ").append(text).append("\n"));
         return out.toString();
+    }
+
+    /** Renders a flattened field-list operand with its key, filter and path-style modifiers. */
+    public String render(FieldListRef list) {
+        return operand(list);
     }
 
     /** Renders a value expression — e.g. a computation slot's {@code operation}. */
@@ -626,7 +634,8 @@ public final class DslRenderer {
         if (operand.outerReference()) {
             rendered.append('$');
         }
-        rendered.append(path(operand.renderedPath()));
+        rendered.append(path(operand.renderedPath(),
+                operand.field().map(FieldOperand::styleHint).orElse(PathStyle.CANONICAL)));
         operand.category().ifPresent(category -> rendered.append(" ").append(keyword("EnumCategory"))
                 .append(" ").append(category));
         operand.semanticIndex().ifPresent(index -> {

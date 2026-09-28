@@ -354,7 +354,7 @@ public final class Dsl {
             case IndexedFieldValue ignored -> true;
             case IndexedGroupValue ignored -> true;
             case FieldRef field -> field.correlated() || model.crossesUnstarredRepetition(field);
-            case FieldListRef list -> list.correlated() || model.crossesUnstarredRepetition(list);
+            case FieldListRef list -> list.semanticIndex().isPresent() || list.correlated() || model.crossesUnstarredRepetition(list);
             case GroupListRef scope -> scope.correlated() || model.crossesUnstarredRepetition(scope);
         };
     }

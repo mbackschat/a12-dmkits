@@ -83,4 +83,38 @@ class IndexedFieldOperandTest {
         assertTrue(ConditionReferences.of(viaList).fieldPaths().contains("/Order/Items/Sku"),
                 () -> "the key must survive the slot: " + ConditionReferences.of(viaList).fieldPaths());
     }
+    @Test
+    void aKeyedFieldListKeepsItsModifiersAndFirstFilledNormalizesTheKey() {
+        var model = BoundModel.ofJson(io.github.mbackschat.a12.dm.ModelDrafts.shipping().toJson());
+        var plain = model.flatten("/Order/Packages/Parcels*/Label");
+        var key = model.field("/Order/Title");
+        var indexed = plain.forIndex(key);
+        assertEquals("NumberOfFilledFields(/Order/Packages/Parcels*/Label For /Order/Title) > 0",
+                new DslRenderer().render(Dsl.numberOfFilledFields(indexed).gt(0)));
+        assertEquals(ConditionReferences.ReadMode.PROJECTED,
+                ConditionReferences.readMode(Dsl.numberOfFilledFields(indexed).expression(), plain.fieldPath()));
+        assertEquals(ConditionReferences.ReadMode.PROJECTED,
+                ConditionReferences.readMode(Dsl.numberOfFilledFields(indexed).expression(), key.fieldPath()));
+        var decorated = indexed.outer().absolute().having(plain.field().filled());
+        assertEquals(indexed.semanticIndex(), decorated.semanticIndex());
+        assertTrue(decorated.correlated());
+        assertEquals(io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle.ABSOLUTE, decorated.styleHint());
+        assertTrue(new DslRenderer(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, "/Order")
+                .render(Dsl.numberOfFilledFields(decorated).gt(0))
+                .contains("$/Order/Packages/Parcels*/Label For Title Having "),
+                "outer correlation, absolute style, key and filter must render together");
+        assertTrue(io.github.mbackschat.a12.dm.rulekit.dsl.OperatorUsage.of(
+                Dsl.numberOfFilledFields(decorated).gt(0)).containsAll(java.util.Set.of("SemanticIndex", "Having")));
+        assertEquals("For:/Order/Title", indexed.overlapModifier());
+        assertEquals("For:\"P1\"", plain.forIndex("P1").overlapModifier());
+        assertEquals("", plain.overlapModifier());
+        var first = indexed.firstFilledOperand();
+        assertEquals(indexed.semanticIndex(), first.semanticIndex());
+        assertTrue(((io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef) first.field().orElseThrow())
+                .semanticIndex().isEmpty());
+        assertEquals("NumberOfFilledFields(/Order/Packages/Parcels*/Label For \"P1\") > 0",
+                new DslRenderer().render(Dsl.numberOfFilledFields(plain.forIndex("P1")).gt(0)));
+        assertTrue(plain.semanticIndex().isEmpty());
+    }
+
 }

@@ -78,6 +78,33 @@ class ExplanationTreeTest {
                 .map(RuleExplanation.Node::operator).toList());
     }
 
+    @Test
+    void keyedLowerStarLiteralListMemberAppearsInTheExplanationTree() {
+        BoundModel m = BoundModel.ofJson(io.github.mbackschat.a12.dm.ModelDrafts.shipping().toJson());
+        var labels = m.flatten("/Order/Packages/Parcels*/Label").forIndex("P1");
+        Condition condition = Dsl.atLeastOneFieldValueIncludedInValueList(List.of("X"), labels);
+
+        RuleExplanation explanation = new ModelContext(m).explain(condition);
+        assertEquals(List.of("SemanticIndex"), explanation.tree().children().stream()
+                .map(RuleExplanation.Node::operator).toList());
+        assertEquals("/Order/Packages/Parcels*/Label For \"P1\"",
+                explanation.tree().children().getFirst().text());
+    }
+
+    @Test
+    void keyedLowerStarEntityListMemberAppearsInTheExplanationTree() {
+        BoundModel m = BoundModel.ofJson(io.github.mbackschat.a12.dm.ModelDrafts.shipping().toJson());
+        var labels = m.flatten("/Order/Packages/Parcels*/Label").forIndex("P1");
+        Condition condition = Dsl.atLeastOneFieldValueIncludedInValueList(
+                List.of(m.field("/Order/Title")), labels);
+
+        RuleExplanation explanation = new ModelContext(m).explain(condition);
+        assertEquals(List.of("SemanticIndex"), explanation.tree().children().stream()
+                .map(RuleExplanation.Node::operator).toList());
+        assertEquals("/Order/Packages/Parcels*/Label For \"P1\"",
+                explanation.tree().children().getFirst().text());
+    }
+
     private static Stream<String> allOperators(RuleExplanation.Node n) {
         return Stream.concat(Stream.of(n.operator()),
                 n.children().stream().flatMap(ExplanationTreeTest::allOperators));

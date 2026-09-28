@@ -115,11 +115,20 @@ internal class Operands(private val mapping: Mapping) {
      *
      * An index-selected FIELD behaves like a single field entity here, so it routes to the same
      * [indexedValue] the scalar comparison path already uses, now that [IndexedFieldValue] is a
-     * [FieldOperand]. This is distinct from an [Expr.EntitySpec] with a semantic index (a starred
-     * navigational prefix plus a terminal index), which [fieldRef] still refuses — that shape's resolution
-     * path is not designed yet.
+     * [FieldOperand]. A starred [Expr.EntitySpec] retains its key on the list (DG69).
      */
     fun fieldOperand(node: Expr): FieldOperand {
+        val source = (node as? Expr.EntitySpec)?.source
+        if (node is Expr.EntitySpec && source is Expr.Star &&
+            node.category == null && !mapping.isGroup(source.path)) {
+            val list = fieldList(source)
+            return when (val key = node.semanticIndex) {
+                null -> list
+                is Expr.EntityIndex.Literal -> list.forIndex(key.value)
+                is Expr.EntityIndex.Field -> list.forIndex(
+                    correlate(mapping.model().field(declared(key.path)), key.outer))
+            }
+        }
         if (node is Expr.Star) {
             if (mapping.isGroup(node.path)) {
                 throw UnmappedConstructException(
@@ -203,6 +212,7 @@ internal class Operands(private val mapping: Mapping) {
      * rulekit's, not this bridge's).
      */
     fun aggregateOperand(node: Expr): AggregateOperand {
+        if (node is Expr.EntitySpec) return fieldOperand(node)
         if (node is Expr.Star) {
             // A starred GROUP is a group scope; a starred field is a flattened repetition list. Asking the
             // model which it is beats guessing from the path's shape.

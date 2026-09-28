@@ -502,6 +502,104 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf500": {
+      "sha256": "c64fa399254e01a12830edf8eb787afcd924cfd03eee169b9bbc76089bc4976b",
+      "task": "DG69",
+      "scope": {
+        "adapter": [
+          "kernel admission grid",
+          "keyed-list read-back"
+        ],
+        "dmkits": [
+          "typed keyed-list authoring",
+          "keyed-list explanation"
+        ],
+        "interpreter": [
+          "runtime keyed lower-list selection",
+          "bridge AST preservation"
+        ],
+        "checker": [
+          "portable keyed-list topology verdict"
+        ],
+        "a12-kernel-lean": [
+          "specification and executable laws"
+        ],
+        "dmtool-cli": [
+          "rule check and rule read"
+        ],
+        "json-schema-import": [
+          "keyed-list rule import and loss reporting"
+        ],
+        "json-schema-export": [
+          "keyed-list rule export and loss reporting"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The real kernel class grid and stored-rule read-back cover the stated static carriers.",
+          "evidence": {
+            "kernel admission grid": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/SemanticIndexWildcardPlacementLawsTest.java#indexedFieldListsRetainTheirListRoleAcrossConsumers",
+              "witness": "Twenty-four initial frozen cases and six separately controlled precedence cases use kernel checkConsistency; both prediction misses remain documented."
+            },
+            "keyed-list read-back": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/SemanticIndexFieldOperandPositionReadTest.java#anIndexedStarredFieldReadsBackThroughSingleAndMultipleOperandPaths",
+              "witness": "Every admitted stored rule reads into typed syntax and renders the same absolute condition."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "FieldListRef keeps a lower star and key together through the public aggregate and quantifier surface.",
+          "evidence": {
+            "typed keyed-list authoring": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/operators/IndexedFieldOperandTest.java#aKeyedFieldListKeepsItsModifiersAndFirstFilledNormalizesTheKey",
+              "witness": "Typed rendering, key references, modifier preservation, and FirstFilled normalization are locked."
+            },
+            "keyed-list explanation": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/context/ExplanationTreeTest.java#keyedLowerStarLiteralListMemberAppearsInTheExplanationTree",
+              "witness": "Literal and field-valued membership produce a SemanticIndex child whose text is the rendered keyed list."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "This consumer's independent behavior has not been established by the static kernel grid or the typed API tests; F-USE-BACKLOG owns transfer.",
+          "evidence": {
+            "bridge AST preservation": {
+              "reference": "interpreter-bridge/src/test/kotlin/io/github/mbackschat/a12/dm/bridge/OperandsTest.kt#indexedStarredFieldsPreserveTheirListSourceAndEachKeyKind",
+              "witness": "The bridge retains the star and both key forms; runtime row selection is not covered."
+            }
+          }
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "This consumer's independent behavior has not been established by the static kernel grid or the typed API tests; F-USE-BACKLOG owns transfer.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "This consumer's independent behavior has not been established by the static kernel grid or the typed API tests; F-USE-BACKLOG owns transfer.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "This consumer's independent behavior has not been established by the static kernel grid or the typed API tests; F-USE-BACKLOG owns transfer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "This consumer's independent behavior has not been established by the static kernel grid or the typed API tests; F-USE-BACKLOG owns transfer.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "This consumer's independent behavior has not been established by the static kernel grid or the typed API tests; F-USE-BACKLOG owns transfer.",
+          "evidence": {}
+        }
+      }
+    },
     "kf481": {
       "sha256": "e0e17eadf66bfda7f7184ef80270fc7b896d1c2b29333c78eb25277e2956a615",
       "task": "DG102",

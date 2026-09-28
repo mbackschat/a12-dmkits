@@ -147,6 +147,67 @@ class SemanticIndexWildcardPlacementLawsTest {
         }
     }
 
+    @Test
+    void indexedFieldListsRetainTheirListRoleAcrossConsumers() {
+        var edit = io.github.mbackschat.a12.dm.edit.EditSession.read(MODEL);
+        edit.group("/Order/Packages/Parcels")
+                .numberField("Amount", f -> f.fractionDigits(2))
+                .numberField("Weight", f -> f.fractionDigits(2))
+                .dateField("Due", f -> f.format("yyyy-MM-dd"));
+        String host = edit.toJson();
+        String label = "Packages/Parcels*/Label For \"P1\"";
+        String amount = "Packages/Parcels*/Amount For \"P1\"";
+        String weight = "Packages/Parcels*/Weight For \"P1\"";
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String operator : List.of("NumberOfFilledFields", "NumberOfDifferentValues")) {
+            expected.put(operator + "(" + label + ") > 0", ADMITTED);
+            expected.put(operator + "(Packages/Parcels*/Label For Title) > 0", ADMITTED);
+        }
+        for (String operator : List.of("NoFieldFilled", "AllFieldsFilled", "AtLeastOneFieldFilled", "FieldValuesNotUnique")) {
+            expected.put(operator + "(" + label + ")", ADMITTED);
+        }
+        for (String operator : List.of("Sum", "MinValue", "MaxValue")) {
+            expected.put(operator + "(" + amount + ") > 0", ADMITTED);
+            expected.put(operator + "(" + amount + ", " + weight + ") > 0", ADMITTED);
+        }
+        expected.put("NumberOfFilledFields(" + label + ", " + label + ") > 0", ADMITTED);
+        expected.put("AtLeastOneFieldValueIncludedInValueList(" + label + " In \"X\")", ADMITTED);
+        expected.put("AtLeastOneFieldValueIncludedInValueList(" + label + " In Title)", ADMITTED);
+        expected.put("NumberOfFilledFields(" + label + " Having FieldFilled(Packages/Parcels/Label)) > 0", "MVK_SEMANTIC_INDEX_NOT_ALLOWED");
+        expected.put("SumOfProducts(" + amount + ", " + weight + ") > 0", ADMITTED);
+        expected.put("NumberOfFilledFields(Packages*/Carrier For \"P1\") > 0", AND_WILDCARD);
+        expected.put("NumberOfFilledFields(Regions*/Stores/Manager For \"S1\") > 0", BELOW_WILDCARD);
+        expected.put("NumberOfFilledFields(Lines*/Sku For \"L1\") > 0", NO_INDEX_FIELD);
+        expected.put("NumberOfFilledFields($" + label + ") > 0", "MVK_INVALID_OUTER_ITERATION");
+        expected.put("NumberOfFilledFields(Packages/Parcels*/Label For $Title) > 0", "MVK_INVALID_OUTER_ITERATION");
+        Map<String, String> actual = new LinkedHashMap<>();
+        expected.keySet().forEach(condition -> actual.put(condition, verdict(
+                KernelLaws.checkModel(host, "/Order", "../Title", "FieldFilled(Title) And " + condition))));
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    void groupCountPrecedenceForAKeyedLowerStarField() {
+        String keyed = "Packages/Parcels*/Label For \"P1\"";
+        String group = "Packages/Parcels*";
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("NumberOfFilledGroups(" + keyed + ", " + group + ") > 0",
+                "MVK_NO_WILDCARD");
+        expected.put("NumberOfFilledGroups(" + group + ", " + keyed + ") > 0",
+                "MVK_NO_WILDCARD");
+        expected.put("NumberOfFilledGroups(" + keyed + ", Regions*) > 0",
+                "MVK_SEMANTIC_INDEX_NOT_ALLOWED");
+        expected.put("NumberOfFilledGroups(Regions*, " + keyed + ") > 0",
+                "MVK_SEMANTIC_INDEX_NOT_ALLOWED");
+        expected.put("NumberOfFilledGroups(Title, Regions*) > 0",
+                "MVK_NO_FIELDS_ALLOWED");
+        expected.put("NumberOfFilledGroups(Packages/Carrier For \"P1\", Regions*) > 0",
+                "MVK_SEMANTIC_INDEX_NOT_ALLOWED");
+        Map<String, String> actual = new LinkedHashMap<>();
+        expected.keySet().forEach(condition -> actual.put(condition, verdict(condition)));
+        assertEquals(expected, actual);
+    }
+
     private static String clientVerdict(Supplier<?> authoring) {
         try {
             authoring.get();

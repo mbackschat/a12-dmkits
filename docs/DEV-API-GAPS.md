@@ -40,7 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG69 — an index-selected field below a star has no typed aggregate operand.** `NumberOfFilledFields(/Order/Packages/Parcels*/Label For "P1") > 0` is kernel-admitted (measured 2026-09-23) and reads `Opaque`. `IndexedFieldValue` holds one `FieldRef`, so it cannot carry the starred list, and the converter refuses the shape rather than losing the star. `FirstFilledOperand` already carries a list with a key. Settled by an indexed field-list operand for the aggregates and quantifiers, with its kernel admission grid measured first, since A12's star-placement law was measured on group operands ([KF351](KERNEL-FINDINGS.md#kf351)).
+_None open._
 
 ## 3. Adjacent but out of scope
 

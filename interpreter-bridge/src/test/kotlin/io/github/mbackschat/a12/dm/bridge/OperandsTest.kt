@@ -49,6 +49,22 @@ class OperandsTest {
         return func.args[0]
     }
 
+    @Test
+    fun indexedStarredFieldsPreserveTheirListSourceAndEachKeyKind() {
+        for (key in listOf("\"S-1\"", "ProductCode")) {
+            val node = operand("Items*/Count For $key")
+            val field = assertInstanceOf(FieldListRef::class.java, operands.fieldOperand(node))
+            val aggregate = assertInstanceOf(FieldListRef::class.java, operands.aggregateOperand(node))
+            assertEquals(field, aggregate)
+            assertEquals("/Order/Items*/Count", field.renderedPath())
+            assertTrue(field.semanticIndex().isPresent)
+            val condition = io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.numberOfFilledFields(field).gt(0)
+            val expectedKey = if (key.startsWith("\"")) key else "/Order/$key"
+            assertEquals("NumberOfFilledFields(/Order/Items*/Count For $expectedKey) > 0",
+                io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer().render(condition))
+        }
+    }
+
     // --- Star ------------------------------------------------------------------------------------
 
     @Test
@@ -223,14 +239,6 @@ class OperandsTest {
         }
         assertTrue(e.message!!.contains("starred")) { "expected 'starred' in: ${e.message}" }
         assertTrue(e.message!!.contains("semantic index")) { "expected 'semantic index' in: ${e.message}" }
-    }
-
-    /** The same EntitySpec shape, reached through the aggregate slot's fallback to [Operands.fieldRef]. */
-    @Test
-    fun anEntitySpecOnAStarredSourceIsUnmappedInAnAggregateSlotToo() {
-        assertThrows(UnmappedConstructException::class.java) {
-            operands.aggregateOperand(operand("Items*/Count For \"S-1\""))
-        }
     }
 
     private companion object {

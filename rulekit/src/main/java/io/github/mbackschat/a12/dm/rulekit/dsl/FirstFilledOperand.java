@@ -73,8 +73,8 @@ public final class FirstFilledOperand implements DuplicateOperand {
     /**
      * A field, flattened field-list, or index-selected field owner entity. The index-selected arm
      * ({@link IndexedFieldValue}) routes to the dedicated {@link #of(IndexedFieldValue)} factory, which
-     * already builds the plain field entity and layers the semantic-index modifier on — no new logic
-     * here, just a route to code that already exists.
+     * already builds the plain field entity and layers the semantic-index modifier on. A keyed
+     * {@link FieldListRef} likewise moves its key here, leaving the inner list unkeyed.
      */
     public static FirstFilledOperand of(FieldOperand field) {
         Objects.requireNonNull(field, "field");
@@ -83,7 +83,8 @@ public final class FirstFilledOperand implements DuplicateOperand {
             case FieldRef ref ->
                     new FirstFilledOperand(withoutOuter(ref), null, List.of(), false, null, null, ref.correlated());
             case FieldListRef list ->
-                    new FirstFilledOperand(withoutOuter(list), null, List.of(), false, null, null, list.correlated());
+                    new FirstFilledOperand(withoutOuter(list), null, List.of(), false, null,
+                            list.semanticIndex().orElse(null), list.correlated());
         };
     }
 

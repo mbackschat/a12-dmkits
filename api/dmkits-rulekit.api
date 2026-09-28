@@ -1550,6 +1550,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
   public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
   public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
   public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
+  public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer.Rendered renderWithSpans(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
 
 public static record io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer.Rendered
@@ -1699,6 +1700,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef implements io
   public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
   public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>)
   public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, boolean)
+  public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, boolean, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand.SemanticIndexKey>)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef absolute()
   public boolean correlated()
   public final boolean equals(java.lang.Object)
@@ -1707,11 +1709,15 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef implements io
   public java.lang.String fieldPath()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition> filter()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> flattened()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef forIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef forIndex(java.lang.String)
   public final int hashCode()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef having(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef outer()
+  public java.lang.String overlapModifier()
   public java.lang.String renderedPath()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand.SemanticIndexKey> semanticIndex()
   public io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle styleHint()
   public final java.lang.String toString()
 
