@@ -129,18 +129,13 @@ class Interpreter(
         aggregateMemo = memo
     }
 
-    /** Validation-call-local relevance-scoped [IndexColumn]s, keyed like the document's own cache but owned by
-     *  the CALL — a relevance-scoped column may not enter [Document]'s cache, which outlives the call and is
-     *  shared by every relevant set of the same document. Installed only by [ValidationPass], and consulted only
-     *  when [cellRelevant] is non-null; see [indexColumnOf]. */
+    /** A scoped [IndexColumn] resolver. Validation owns relevance-filtered columns for one call because a
+     *  [Document] outlives that relevance set; computation owns derived columns for one overlay step because
+     *  the next step may write a column the earlier one read. See [indexColumnOf]. */
     private var indexColumnMemo: ((Pair<String, List<Int>>, () -> IndexColumn) -> IndexColumn)? = null
 
-    internal fun sharingIndexColumns(memo: MutableMap<Pair<String, List<Int>>, IndexColumn>): Interpreter = apply {
-        indexColumnMemo = { key, build -> memo.getOrPut(key, build) }
-    }
-
-    internal fun sharingIndexColumns(views: OverlayViews): Interpreter = apply {
-        indexColumnMemo = { (path, scope), build -> views.indexColumn(path, scope, build) }
+    internal fun sharingIndexColumns(resolve: (Pair<String, List<Int>>, () -> IndexColumn) -> IndexColumn): Interpreter = apply {
+        indexColumnMemo = resolve
     }
 
     /**

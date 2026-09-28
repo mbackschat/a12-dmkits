@@ -53,6 +53,12 @@ internal class ValidationPass(
     /** The call's relevance-scoped index columns ([Interpreter.indexColumnOf]). Empty and unread in a FULL
      *  validation, where the document's own column memo already answers every gate. */
     private val indexColumns = HashMap<Pair<String, List<Int>>, IndexColumn>()
+    private val invalidOperand: (EvalContext, String) -> Boolean = { reading, path ->
+        val reps = reading.repsOf(path)
+        !isRelevant(path, reps) || formalErrorAt(path, reps, reading) != null
+    }
+    private val resolveIndexColumn: (Pair<String, List<Int>>, () -> IndexColumn) -> IndexColumn =
+        { key, build -> indexColumns.getOrPut(key, build) }
 
     /**
      * The "unknown-operand" code of the field instance at [path] in [ctx], or null when the field is usable.
@@ -104,14 +110,10 @@ internal class ValidationPass(
     fun interpreterFor(ctx: EvalContext, errorPath: String,
             rnuOutcome: ((EvalContext) -> MsgType?)? = null): Interpreter =
         Interpreter(ctx, config, CustomConditionFieldPointer(errorPath, ctx.repsOf(errorPath)),
-            // Resolved in the READING context rather than in this rule row's: a `Having` filter rebinds the row,
-            // and a gate closed over `ctx` judged every filter row by the FIRST repetition's cell (IF319).
-            invalid = { c, path ->
-                val reps = c.repsOf(path)   // computed once, reused for the formal check AND relevance
-                !isRelevant(path, reps) || formalErrorAt(path, reps, c) != null
-            },
+            // The pass-owned gate takes the reading context so Having still judges its own row (IF319).
+            invalid = invalidOperand,
             rnuOutcome = rnuOutcome,
             customFormallyIncorrect = formallyIncorrect)
             .sharingAggregateMemo(aggregateMemo)
-            .sharingIndexColumns(indexColumns)
+            .sharingIndexColumns(resolveIndexColumn)
 }

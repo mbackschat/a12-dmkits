@@ -165,6 +165,10 @@ internal class ComputationEngine(
         val dup = checks.duplicateIndexCells(doc, valueAdmissions)
         val emptyIndexCells = checks.preliminaryEmptyIndexCells(doc)
         val formalResults = FormalResultCache(checks, locale, dup, valueAdmissions = valueAdmissions)
+        val invalidOperand: (EvalContext, String) -> Boolean = { reading, path ->
+            if (operandNotCheckRelevant(path, reading, formalResults, emptyIndexCells)) throw PoisonedReadException(path)
+            else false
+        }
         val operands = operandSelection(comps)
         val operandRelevant: Relevance = { path, _ -> path in operands.fields }
         val selectedIndexRelevant: Relevance = { path, _ -> path in operands.indexFields }
@@ -197,8 +201,8 @@ internal class ComputationEngine(
         ).forEach { formalErrorsInOperands[it.code to it.errorPath] = it }
         val computedErrors = LinkedHashMap<Pair<String, List<Int>>, Message>()
         // The compute-invariant config, built once for every instance's Interpreter (computeMode; no
-        // CustomCondition / relevance seams on the compute path). Only the per-instance `invalid` poison gate
-        // varies (it closes over the instance context), so it stays an Interpreter constructor arg.
+        // CustomCondition / relevance seams on the compute path). The poison gate uses the reading context
+        // supplied by each Interpreter, so its callback is shared across all rows of this compute call.
         // The compute path builds its own config, so it needs the ledger wired here too — counting only the
         // validation config would have left COMPUTE_OVERLAY reporting zero evaluation work.
         val computeConfig = EvalConfig(
@@ -231,6 +235,8 @@ internal class ComputationEngine(
             // written, so a cached index-column / correlation view over any OTHER column is stable and shared across
             // the step's outer rows (IF143); a new step starts clean so a self-write can't read a superseded view.
             val views = OverlayViews(cacheObserver())
+            val resolveIndexColumn: (Pair<String, List<Int>>, () -> IndexColumn) -> IndexColumn =
+                { (path, scope), build -> views.indexColumn(path, scope, build) }
             try {
                 val parsed = preparedModel.computation(comp)
                 // A computation iterates where it WRITES (the target's scope), not where it is DECLARED. When neither
@@ -250,14 +256,8 @@ internal class ComputationEngine(
                     val ectx = if (cascade.isEmpty) ctx
                         else OverlayContext(ctx, cascade, emptyOf, minFracOf, views, comp.targetPath)
                     val interp = Interpreter(ectx, computeConfig,
-                        // The compute gate THROWS (IF85): consulting it on a filled formally-invalid operand IS the
-                        // kernel's poisoning read (validation's gate stays Boolean → the 3VL exclusion).
-                        // Judged in the READING context, so a `Having` filter row poisons on ITS cell rather than
-                        // on the computation instance's first repetition (IF319, the compute arm of the same gate).
-                        invalid = { c, path ->
-                            if (operandNotCheckRelevant(path, c, formalResults, emptyIndexCells)) throw PoisonedReadException(path)
-                            else false
-                        }).sharingIndexColumns(views)
+                        // The call-owned gate still judges the reading context, including Having rows (IF319).
+                        invalid = invalidOperand).sharingIndexColumns(resolveIndexColumn)
                     // A read of a formally-invalid cell — an input field, or a POISONED computed dependency — aborts
                     // this instance (IF85, the kernel's CalculationFieldException → "fehlerhaft berechnet"): it skips
                     // the remaining alternatives, produces no value (reported CLEARED under the report-all contract;

@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **IG159 — field-owned runtime message qualification (2026-09-28).** The eighteen-input dual-strategy grid now agrees on enum invalid-value text, literal terminal dollar pairs and English/German condition-language tokens with independent display locale. Loader/rendering fixes and JVM/Node controls pass; [IF345](INTERPRETER-FINDINGS.md#if345) records the mechanism. The semantic fix is committed at `6e621795b` and terminal review is closed. The subsequent footprint capture changes the identities of the eight breaches; performance qualification remains before closure; [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md) owns the batch.
+_None open._
 
 ## 2. Deferred / ongoing-incremental
 
