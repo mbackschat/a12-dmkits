@@ -511,8 +511,7 @@
           "consistency oracle"
         ],
         "dmkits": [
-          "core/rulekit delegated diagnostics",
-          "CLI admission control"
+          "core/rulekit delegated diagnostics"
         ],
         "interpreter": [],
         "checker": [
@@ -523,6 +522,16 @@
           "specification",
           "executable and proofs",
           "evidence"
+        ],
+        "dmtool-cli": [
+          "CLI rejected-candidate diagnostics",
+          "CLI admission control"
+        ],
+        "json-schema-import": [
+          "JSON Schema import applicability, mapping and rule carriage"
+        ],
+        "json-schema-export": [
+          "JSON Schema export applicability, mapping and rule carriage"
         ]
       },
       "consumers": {
@@ -542,15 +551,11 @@
         },
         "dmkits": {
           "state": "ALREADY_CONFORMS",
-          "basis": "Core Diagnostic and rulekit RuleValidator carry the delegated kernel class through CLI rule check. Modelkit, edit and schemakit carry authored condition text but do not classify recognition exceptions; operator catalog/schema authoring shapes do not promise this taxonomy. This disposition is limited to the delegated diagnostic boundary, not every authoring behavior.",
+          "basis": "Core Diagnostic and rulekit RuleValidator carry the delegated kernel class; the cited CLI witness exercises this boundary. This disposition is limited to delegated diagnostics. CLI and both schema directions have independent dispositions.",
           "evidence": {
             "core/rulekit delegated diagnostics": {
               "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/CheckVerbTest.java#rejectsABadCandidateWithKernelDiagnostics",
               "witness": "Actual kernel-backed validation: unexpected token, required-token EOF and choice EOF retain their distinct singleton MVK class sets."
-            },
-            "CLI admission control": {
-              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/CheckVerbTest.java#acceptsAValidCandidateRule",
-              "witness": "Valid candidate through the same command remains accepted."
             }
           }
         },
@@ -577,6 +582,30 @@
           "state": "OPEN",
           "basis": "No exact peer adoption receipt. F-USE-BACKLOG owns the remaining assessment. The Downloads handback is prepared evidence, not confirmed adoption.",
           "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Existing CLI witnesses are reassigned from the dmkits disposition to their own consumer. Their original bounded behavioral claims are unchanged.",
+          "evidence": {
+            "CLI admission control": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/CheckVerbTest.java#acceptsAValidCandidateRule",
+              "witness": "Valid candidate through the same command remains accepted."
+            },
+            "CLI rejected-candidate diagnostics": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/CheckVerbTest.java#rejectsABadCandidateWithKernelDiagnostics",
+              "witness": "Actual kernel-backed validation: unexpected token, required-token EOF and choice EOF retain their distinct singleton MVK class sets."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Assess this finding against the independent JSON Schema import contract in SCHEMAKIT-SPEC, including mapping, rule carriage and loss reporting. Existing dmkits/CLI evidence does not settle this direction; F-USE-BACKLOG owns assessment alongside this review task.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Assess this finding against the independent JSON Schema export contract in SCHEMAKIT-SPEC, including mapping, rule carriage and loss reporting. Existing dmkits/CLI evidence does not settle this direction; F-USE-BACKLOG owns assessment alongside this review task.",
+          "evidence": {}
         }
       }
     },
@@ -589,8 +618,7 @@
           "numeric runtime oracle"
         ],
         "dmkits": [
-          "rulekit diagnostic corrective",
-          "CLI corrective"
+          "rulekit diagnostic corrective"
         ],
         "interpreter": [
           "numeric AST JVM and JS",
@@ -607,6 +635,15 @@
           "specification",
           "executable and proofs",
           "evidence"
+        ],
+        "dmtool-cli": [
+          "CLI corrective"
+        ],
+        "json-schema-import": [
+          "JSON Schema import applicability, mapping and rule carriage"
+        ],
+        "json-schema-export": [
+          "JSON Schema export applicability, mapping and rule carriage"
         ]
       },
       "consumers": {
@@ -626,15 +663,11 @@
         },
         "dmkits": {
           "state": "APPLIED",
-          "basis": "Corrected StructuralKernelFix and its CLI projection to permit enumerated connective variants. No operator catalog or schema spelling change is needed for this generic syntax corrective; modelkit/edit/schemakit are not keyword lexers. Other historical KF76 authoring obligations remain part of F-USE-BACKLOG, not an inferred full-estate closure.",
+          "basis": "Corrected StructuralKernelFix permits enumerated connective variants. This scope is the rulekit diagnostic corrective; CLI and both schema directions have independent dispositions. Other historical KF76 authoring obligations remain part of F-USE-BACKLOG.",
           "evidence": {
             "rulekit diagnostic corrective": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/DiagnosticEnricherTest.java#unexpectedTokenGetsTheBooleanCasingSyntaxHint",
               "witness": "Hint contains And/and/AND and no blanket PascalCase instruction."
-            },
-            "CLI corrective": {
-              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/CheckVerbTest.java#aLowercaseBooleanLiteralGetsTheCasingFix",
-              "witness": "Kernel-backed syntax rejection publishes the same enumerated-variant corrective."
             }
           }
         },
@@ -682,6 +715,26 @@
           "state": "OPEN",
           "basis": "No exact peer adoption receipt. F-USE-BACKLOG owns the remaining assessment. The Downloads handback is prepared evidence, not confirmed adoption.",
           "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Existing CLI witnesses are reassigned from the dmkits disposition to their own consumer. Their original bounded behavioral claims are unchanged.",
+          "evidence": {
+            "CLI corrective": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/CheckVerbTest.java#aLowercaseBooleanLiteralGetsTheCasingFix",
+              "witness": "Kernel-backed syntax rejection publishes the same enumerated-variant corrective."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Assess this finding against the independent JSON Schema import contract in SCHEMAKIT-SPEC, including mapping, rule carriage and loss reporting. Existing dmkits/CLI evidence does not settle this direction; F-USE-BACKLOG owns assessment alongside this review task.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Assess this finding against the independent JSON Schema export contract in SCHEMAKIT-SPEC, including mapping, rule carriage and loss reporting. Existing dmkits/CLI evidence does not settle this direction; F-USE-BACKLOG owns assessment alongside this review task.",
+          "evidence": {}
         }
       }
     },
@@ -705,6 +758,15 @@
           "specification",
           "executable and proofs",
           "evidence"
+        ],
+        "dmtool-cli": [
+          "CLI applicability and public behavior"
+        ],
+        "json-schema-import": [
+          "JSON Schema import applicability, mapping and rule carriage"
+        ],
+        "json-schema-export": [
+          "JSON Schema export applicability, mapping and rule carriage"
         ]
       },
       "consumers": {
@@ -732,6 +794,21 @@
           "state": "OPEN",
           "basis": "This revision only relocates the historical R3b-N matrix citation into the archive. No semantic claim changed; broader consumer adoption is unassessed and remains owned by F-USE-BACKLOG.",
           "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "CLI applicability and command-level evidence remain unassessed; interpreter or kit adoption does not establish CLI behavior. F-USE-BACKLOG owns assessment alongside this review task.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Assess this finding against the independent JSON Schema import contract in SCHEMAKIT-SPEC, including mapping, rule carriage and loss reporting. Existing dmkits/CLI evidence does not settle this direction; F-USE-BACKLOG owns assessment alongside this review task.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Assess this finding against the independent JSON Schema export contract in SCHEMAKIT-SPEC, including mapping, rule carriage and loss reporting. Existing dmkits/CLI evidence does not settle this direction; F-USE-BACKLOG owns assessment alongside this review task.",
+          "evidence": {}
         }
       }
     },
@@ -744,10 +821,7 @@
         ],
         "dmkits": [
           "modelkit shared writer",
-          "CLI field output",
-          "modelkit standalone message maps",
-          "CLI field schema",
-          "CLI typedef schema"
+          "modelkit standalone message maps"
         ],
         "interpreter": [
           "field-owned runtime message assessment",
@@ -760,6 +834,17 @@
           "specification",
           "executable and proofs",
           "evidence"
+        ],
+        "dmtool-cli": [
+          "CLI field output",
+          "CLI field schema",
+          "CLI typedef schema"
+        ],
+        "json-schema-import": [
+          "JSON Schema import applicability, mapping and rule carriage"
+        ],
+        "json-schema-export": [
+          "JSON Schema export applicability, mapping and rule carriage"
         ]
       },
       "consumers": {
@@ -775,27 +860,15 @@
         },
         "dmkits": {
           "state": "APPLIED",
-          "basis": "DG115 preserves explicit map content through the shared modelkit writer and its CLI consumers. Scalar pattern/fallback pairing is unchanged; no blanket map refusal is introduced. Core/rulekit/adapter keep their existing validation roles; no catalog operator semantics change.",
+          "basis": "DG115 preserves explicit map content through the shared modelkit writer. Scalar pattern/fallback pairing is unchanged; no blanket map refusal is introduced. CLI and both schema directions have independent dispositions.",
           "evidence": {
             "modelkit shared writer": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/FieldConfigTest.java#everyAuthoredPatternMessageSurvivesDraftAndTypedEditing",
               "witness": "Direct field and typedef: declared fallback/override and undeclared text survive typed emission and read/retype."
             },
-            "CLI field output": {
-              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/field/FieldAddSpecTest.java#stringSpecWithPerLocalePatternMessages",
-              "witness": "Actual field add persists the extra undeclared French message."
-            },
             "modelkit standalone message maps": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/FieldConfigTest.java#explicitMessagesWithoutAPatternArePreservedForValidation",
               "witness": "Explicit declared and undeclared messages survive on direct fields and typedefs; the no-message control stays omitted."
-            },
-            "CLI field schema": {
-              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/SchemaExamplesGuardTest.java#fieldAddExamplesAreAcceptedByTheTool",
-              "witness": "The schema example with a standalone fr_FR message executes through field add."
-            },
-            "CLI typedef schema": {
-              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/SchemaExamplesGuardTest.java#typedefAddExamplesAreAcceptedByTheTool",
-              "witness": "The same undeclared-locale standalone message payload executes through typedef add."
             }
           }
         },
@@ -822,6 +895,34 @@
           "state": "OPEN",
           "basis": "Downloads handback carries exact kernel rows and the committed revision when available; peer adoption requires its own evidence and remains F-USE-BACKLOG.",
           "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Existing CLI witnesses are reassigned from the dmkits disposition to their own consumer. Their original bounded behavioral claims are unchanged.",
+          "evidence": {
+            "CLI field output": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/field/FieldAddSpecTest.java#stringSpecWithPerLocalePatternMessages",
+              "witness": "Actual field add persists the extra undeclared French message."
+            },
+            "CLI field schema": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/SchemaExamplesGuardTest.java#fieldAddExamplesAreAcceptedByTheTool",
+              "witness": "The schema example with a standalone fr_FR message executes through field add."
+            },
+            "CLI typedef schema": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/SchemaExamplesGuardTest.java#typedefAddExamplesAreAcceptedByTheTool",
+              "witness": "The same undeclared-locale standalone message payload executes through typedef add."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Assess this finding against the independent JSON Schema import contract in SCHEMAKIT-SPEC, including mapping, rule carriage and loss reporting. Existing dmkits/CLI evidence does not settle this direction; F-USE-BACKLOG owns assessment alongside this review task.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Assess this finding against the independent JSON Schema export contract in SCHEMAKIT-SPEC, including mapping, rule carriage and loss reporting. Existing dmkits/CLI evidence does not settle this direction; F-USE-BACKLOG owns assessment alongside this review task.",
+          "evidence": {}
         }
       }
     },
@@ -842,6 +943,15 @@
           "specification",
           "executable and proofs",
           "evidence"
+        ],
+        "dmtool-cli": [
+          "CLI applicability and public behavior"
+        ],
+        "json-schema-import": [
+          "JSON Schema import applicability, mapping and rule carriage"
+        ],
+        "json-schema-export": [
+          "JSON Schema export applicability, mapping and rule carriage"
         ]
       },
       "consumers": {
@@ -857,7 +967,7 @@
         },
         "dmkits": {
           "state": "NOT_APPLICABLE",
-          "basis": "This review scopes KF42 to its new runtime observations. Existing modelkit authoring represents both message arrays; no authoring/schema shape or catalog operator changes are required. DG115 separately owns preservation. The CLI consumes the corrected interpreter; published rendering contract is INTERPRETER-API-SPEC section 5.",
+          "basis": "This review scopes KF42 to its new runtime observations. Modelkit represents both message arrays; this finding adds no authoring shape or catalog operator. DG115 separately owns preservation. CLI and both schema directions have independent dispositions.",
           "evidence": {}
         },
         "interpreter": {
@@ -882,6 +992,21 @@
         "a12-kernel-lean": {
           "state": "OPEN",
           "basis": "The known-unsent Downloads handback carries the bounded grid and will add the verified revision. Peer implementation/proof adoption requires peer evidence, not preparation or delivery.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "CLI applicability and command-level evidence remain unassessed; interpreter or kit adoption does not establish CLI behavior. F-USE-BACKLOG owns assessment alongside this review task.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Assess this finding against the independent JSON Schema import contract in SCHEMAKIT-SPEC, including mapping, rule carriage and loss reporting. Existing dmkits/CLI evidence does not settle this direction; F-USE-BACKLOG owns assessment alongside this review task.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Assess this finding against the independent JSON Schema export contract in SCHEMAKIT-SPEC, including mapping, rule carriage and loss reporting. Existing dmkits/CLI evidence does not settle this direction; F-USE-BACKLOG owns assessment alongside this review task.",
           "evidence": {}
         }
       }

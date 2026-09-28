@@ -23,6 +23,7 @@ import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -94,6 +95,9 @@ class KernelDocsFoldContractTest {
         @JsonProperty("dmkits") DMKITS,
         @JsonProperty("interpreter") INTERPRETER,
         @JsonProperty("checker") CHECKER,
+        @JsonProperty("dmtool-cli") DMTOOL_CLI,
+        @JsonProperty("json-schema-import") JSON_SCHEMA_IMPORT,
+        @JsonProperty("json-schema-export") JSON_SCHEMA_EXPORT,
         @JsonProperty("a12-kernel-lean") KERNEL_LEAN
     }
     private enum ReviewState { APPLIED, ALREADY_CONFORMS, NOT_APPLICABLE, OPEN }
@@ -188,7 +192,10 @@ class KernelDocsFoldContractTest {
     void eachConsumerAndItsDeclaredScopeIsMandatory() {
         FindingReview review = openReview();
         assertEquals(List.of(), consumerReviewProblems(review, Set.of("F-USE3"), ref -> true));
-        assertEquals(5, outstandingConsumers(review));
+        assertEquals(Set.of("ADAPTER", "DMKITS", "INTERPRETER", "CHECKER", "DMTOOL_CLI",
+                "JSON_SCHEMA_IMPORT", "JSON_SCHEMA_EXPORT", "KERNEL_LEAN"),
+                EnumSet.allOf(Consumer.class).stream().map(Enum::name).collect(Collectors.toSet()));
+        assertEquals(8, outstandingConsumers(review));
         for (Consumer consumer : Consumer.values()) {
             var consumers = new EnumMap<>(review.consumers());
             consumers.remove(consumer);
@@ -206,6 +213,26 @@ class KernelDocsFoldContractTest {
     }
 
     @Test
+    void cliAndSchemaDirectionsNeedTheirOwnEvidence() {
+        FindingReview open = openReview();
+        var consumers = new EnumMap<>(open.consumers());
+        for (Consumer consumer : Consumer.values()) {
+            if (consumer == Consumer.KERNEL_LEAN) continue;
+            consumers.put(consumer, new ConsumerReview(ReviewState.ALREADY_CONFORMS, "own fixture",
+                    Map.of("runtime", new ConsumerEvidence("known#case", "witness"))));
+        }
+        var review = new FindingReview("sha", "F-USE3", open.scope(), consumers);
+        assertEquals(List.of(), consumerReviewProblems(review, Set.of("F-USE3"), ref -> true));
+        for (String name : List.of("DMTOOL_CLI", "JSON_SCHEMA_IMPORT", "JSON_SCHEMA_EXPORT")) {
+            Consumer consumer = Consumer.valueOf(name);
+            ConsumerReview verified = consumers.put(consumer,
+                    new ConsumerReview(ReviewState.ALREADY_CONFORMS, "sibling passed", Map.of()));
+            assertTrue(!consumerReviewProblems(review, Set.of("F-USE3"), ref -> true).isEmpty(), name);
+            consumers.put(consumer, verified);
+        }
+    }
+
+    @Test
     void terminalDispositionsNeedEveryDeclaredSurfaceAndItsEvidence() {
         FindingReview open = openReview();
         var scope = new EnumMap<>(open.scope());
@@ -218,7 +245,7 @@ class KernelDocsFoldContractTest {
         assertTrue(!consumerReviewProblems(review, Set.of("F-USE3"), ref -> true).isEmpty(), "missing modelkit evidence");
         evidence.put("modelkit", new ConsumerEvidence("known#case", "witness"));
         assertEquals(List.of(), consumerReviewProblems(review, Set.of("F-USE3"), ref -> true));
-        assertEquals(4, outstandingConsumers(review));
+        assertEquals(7, outstandingConsumers(review));
         assertTrue(!consumerReviewProblems(review, Set.of("F-USE3"), ref -> false).isEmpty(), "unresolved test method");
         evidence.put("modelkit", new ConsumerEvidence("known#case", " "));
         assertTrue(!consumerReviewProblems(review, Set.of("F-USE3"), ref -> true).isEmpty(), "missing witness");
@@ -304,7 +331,7 @@ class KernelDocsFoldContractTest {
         Set<Consumer> required = EnumSet.allOf(Consumer.class);
         if (review.scope() == null || review.consumers() == null
                 || !review.scope().keySet().equals(required) || !review.consumers().keySet().equals(required)) {
-            problems.add("scope and dispositions must each name all five consumers");
+            problems.add("scope and dispositions must each name every required consumer: " + required);
             return problems;
         }
         for (Consumer consumer : Consumer.values()) {
