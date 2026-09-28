@@ -1,7 +1,7 @@
-package io.github.mbackschat.a12.dm.interpreter.regex
+package io.github.mbackschat.a12.dm.regex
 
 /**
- * Closed Java-Pattern-to-ES2018 translation used by the JS interpreter.
+ * Closed Java-Pattern-to-ES2018 translation used by the JS interpreter and portable checker.
  *
  * The model validator admits more Java syntax than a JavaScript RegExp understands. Keeping parsing, translation,
  * and unsupported classification in this one model prevents a legal pattern from leaking through to a host
@@ -18,6 +18,7 @@ internal object JavaPatternToJs {
         val source: String,
         val flags: String = "u",
         val backReferenceGuards: List<BackReferenceGuard> = emptyList(),
+        val hasUnverifiedMapping: Boolean = false,
     )
 
     /** Translate a kernel-legal Java pattern. Unsupported legal syntax fails here, before host compilation. */
@@ -67,11 +68,12 @@ internal object JavaPatternToJs {
         private var jsCaptureCount = 0
         private val captureMap = mutableMapOf<Int, Int>()
         private val guards = mutableListOf<BackReferenceGuard>()
+        private var hasUnverifiedMapping = false
 
         fun translate(): Translation {
             val parsed = sequence(Flags(), nested = false)
             if (index != source.length) throw UnsupportedJavaPattern("unexpected pattern suffix at $index")
-            return Translation(parsed.text, backReferenceGuards = guards.toList())
+            return Translation(parsed.text, backReferenceGuards = guards.toList(), hasUnverifiedMapping = hasUnverifiedMapping)
         }
 
         private data class Sequence(val text: String, val flags: Flags)
@@ -112,12 +114,14 @@ internal object JavaPatternToJs {
                         )
                     }
                     '^' -> {
+                        hasUnverifiedMapping = true
                         index++
                         out.append(if (flags.multiline) {
                             if (flags.unixLines) "(?:^|(?<=\\n))" else "(?:^|(?<=[$DOT_TERMINATORS]))"
                         } else "^")
                     }
                     '$' -> {
+                        hasUnverifiedMapping = true
                         index++
                         out.append(if (flags.multiline) {
                             if (flags.unixLines) "(?:$|(?=\\n))" else "(?:$|(?=[$DOT_TERMINATORS]))"
@@ -175,6 +179,7 @@ internal object JavaPatternToJs {
                 }
                 if (c !in FLAG_LETTERS) break
                 sawFlag = true
+                if (c != 'i') hasUnverifiedMapping = true
                 modified = modified.with(c, enabled)
                 index++
             }
@@ -241,17 +246,28 @@ internal object JavaPatternToJs {
                     index++
                     namedCharacter(takeUntil('}'))
                 }
-                'X' -> "(?:\\P{M}\\p{M}*)"
+                'X' -> {
+                    hasUnverifiedMapping = true
+                    "(?:\\P{M}\\p{M}*)"
+                }
                 'b' -> if (source.startsWith("{g}", index)) {
                     index += 3
+                    hasUnverifiedMapping = true
                     "(?:^|$|(?=\\P{M}))"
-                } else "\\b"
+                } else {
+                    hasUnverifiedMapping = true
+                    "\\b"
+                }
                 'P', 'p' -> {
                     if (source.getOrNull(index) != '{') throw UnsupportedJavaPattern("malformed property escape")
                     index++
+                    hasUnverifiedMapping = true
                     "\\$e{" + takeUntil('}') + "}"
                 }
-                else -> "\\$e"
+                else -> {
+                    hasUnverifiedMapping = true
+                    "\\$e"
+                }
             }
         }
 
@@ -310,7 +326,10 @@ internal object JavaPatternToJs {
                         's' -> if (flags.unicodeClasses) "\\p{White_Space}" else S
                         'd' -> if (flags.unicodeClasses) "\\p{Nd}" else "0-9"
                         'w' -> if (flags.unicodeClasses) "\\p{Alphabetic}\\p{M}\\p{Nd}\\p{Pc}\\u200C\\u200D" else "a-zA-Z_0-9"
-                        else -> "\\$e"
+                        else -> {
+                            hasUnverifiedMapping = true
+                            "\\$e"
+                        }
                     },
                 )
                 i += 2

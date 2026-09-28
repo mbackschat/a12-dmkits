@@ -58,7 +58,7 @@ class CheckerIndexKeyConstantAgreementTest {
     @Test
     fun theCheckerJudgesAConstantKeyAsA12Does() {
         val actual = ROWS.mapValues { (_, keyed) -> compare("Sum($keyed) > 0") }
-        val expected = ROWS.mapValues { (row, _) -> A12.getValue(row).let { it to (OURS[row] ?: it) } }
+        val expected = ROWS.mapValues { (row, _) -> A12.getValue(row).let { it to it } }
         assertEquals(expected, actual, "a constant key on each index kind, as (A12, ours)")
     }
 
@@ -104,9 +104,9 @@ class CheckerIndexKeyConstantAgreementTest {
             "String pattern and length, the length met and the pattern not" to "Caps/Amount For \"ab\"",
             "String pattern, a supplementary character counted once" to "Pairs/Amount For \"\uD83D\uDE00\"",
             "String pattern, a supplementary character and a letter" to "Pairs/Amount For \"\uD83D\uDE00a\"",
-            "String pattern outside the subset, matching" to "Loose/Amount For \"ab\"",
-            "String pattern outside the subset, not matching" to "Loose/Amount For \"a\"",
-            "String pattern outside the subset, the length not met" to "Brief/Amount For \"ab\"",
+            "String dot pattern, matching" to "Loose/Amount For \"ab\"",
+            "String dot pattern, not matching" to "Loose/Amount For \"a\"",
+            "String dot pattern, the length not met" to "Brief/Amount For \"ab\"",
             "Number 0 digits, a whole number" to "Seqs/Amount For \"5\"",
             "Number 0 digits, negative" to "Seqs/Amount For \"-5\"",
             "Number 0 digits, a leading zero" to "Seqs/Amount For \"05\"",
@@ -167,8 +167,8 @@ class CheckerIndexKeyConstantAgreementTest {
             "String pattern and length, the pattern met and the length not",
             "String pattern and length, the length met and the pattern not",
             "String pattern, a supplementary character counted once",
-            "String pattern outside the subset, not matching",
-            "String pattern outside the subset, the length not met",
+            "String dot pattern, not matching",
+            "String dot pattern, the length not met",
             "Number 0 digits, a fraction",
             "Number 0 digits, a plus sign",
             "Number 0 digits, a word",
@@ -206,14 +206,5 @@ class CheckerIndexKeyConstantAgreementTest {
             (if (it in REFUSED_ROWS) REFUSED else ADMITTED) + (if (it in CODELESS_ROWS) setOf(UNSUPPORTED) else emptySet())
         }
 
-        /**
-         * The rows where the checker answers otherwise, with what it answers. A declared pattern outside the
-         * subset both targets evaluate alike is Java regex this checker does not evaluate, so it leaves the key
-         * unjudged and every gate behind it stands down.
-         */
-        val OURS: Map<String, Set<String>> = mapOf(
-            "String pattern outside the subset, matching" to emptySet(),
-            "String pattern outside the subset, not matching" to emptySet(),
-        )
     }
 }

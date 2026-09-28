@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **DG102 — a constant key the checker cannot judge.** A12 tests a constant key against the index field's value validation ([KF481](KERNEL-FINDINGS.md#kf481)). The checker matches only a regex-free pattern subset (`consistency.KeyPattern`), so beside `.{2}`, an escape, a group or an alternation the key is unjudged (`adapter.laws.CheckerIndexKeyConstantAgreementTest`). A type-definition or custom index field is unjudged and unmeasured. Settled by a Java-compatible pattern judge on JVM and JS and by P3's typedef and custom-index hosts; independent of the rebuild.
+- **DG102 — legal constant index keys outside the portable pattern domain remain unjudged.** A12 tests a key against the index field's value validation ([KF481](KERNEL-FINDINGS.md#kf481)). The 27-input typed host population now judges seventeen of its twenty-six keyed cells, including groups, alternation, represented escapes, a String type definition and custom minimum/maximum lengths, on JVM and JS. Nine legal cells remain SILENT in O1 (five admitted, four refused): named-character escape, class `\\S`, braced hexadecimal escape, Unicode-case flag and line-anchor forms. The shared Java-to-JS translation marks mappings that lack a verified cross-target meaning, and the checker leaves those forms unjudged on both targets. Close this gap only after a measured portable judgment covers the legal residuals and the broader supported Java-pattern domain; the bounded support landing alone does not claim full kernel conformance.
 
 ## 2. Out of scope
 

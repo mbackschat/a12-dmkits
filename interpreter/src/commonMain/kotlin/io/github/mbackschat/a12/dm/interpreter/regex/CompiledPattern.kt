@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.regex
 
+import io.github.mbackschat.a12.dm.regex.JavaPatternToJs
+
 /**
  * A compiled regex carrying **Java-`Pattern` semantics on both hosts** (IF164; the owner decision — normative
  * dynamic-Groovy semantics, IF136). [matches] is a WHOLE-VALUE (full-region) test — the kernel's

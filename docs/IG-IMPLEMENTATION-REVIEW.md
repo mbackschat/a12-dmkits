@@ -78,7 +78,7 @@ Finally, setting big.js `PE`/`NE` to `±1,000,000` does not make rendering uncon
 
 **Severity:** High.
 
-**Evidence:** The kernel's `PatternUtils.isPatternValid` is a limited textual blacklist, not proof of Java/JavaScript compatibility. It forbids possessive quantifiers, every `(?<...` prefix (lookbehind and named captures), `(?>...)`, the exact escape letters `\A \G \Z \z \a \e \p \Q \E`, and a nested unescaped `[` form. It does not forbid uppercase `\P`, every class intersection, or the rest of Java's regex vocabulary. [`JavaPatternToJs.kt`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/regex/JavaPatternToJs.kt) rewrites only `R/h/H/v/V` and passes everything else through to an unflagged JS `RegExp`.
+**Evidence:** The kernel's `PatternUtils.isPatternValid` is a limited textual blacklist, not proof of Java/JavaScript compatibility. It forbids possessive quantifiers, every `(?<...` prefix (lookbehind and named captures), `(?>...)`, the exact escape letters `\A \G \Z \z \a \e \p \Q \E`, and a nested unescaped `[` form. It does not forbid uppercase `\P`, every class intersection, or the rest of Java's regex vocabulary. The initial version of [`JavaPatternToJs.kt`](../shared-regex/src/commonMain/kotlin/io/github/mbackschat/a12/dm/regex/JavaPatternToJs.kt) rewrote only `R/h/H/v/V` and passed everything else through to an unflagged JS `RegExp`.
 
 Verified kernel-legal Java-vs-JS discriminators include:
 

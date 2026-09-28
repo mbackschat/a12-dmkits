@@ -1067,10 +1067,10 @@ private fun PreparedModel.emptyFactBase(): List<CoverageGap> = if (elements.isNo
 }
 
 /**
- * A model's `content.typeDefinitions` declare field types that no family examines.
+ * A model's `content.typeDefinitions` declare field types that only the constant index-key path examines here.
  *
- * Preparation reads them for their IDS alone, so a `TypeDefType` reference can be resolved — but the type
- * each definition declares produces no element, and the enum, character and range-pair families are all
+ * Preparation retains their ids and unambiguous bodies so a `TypeDefType` reference and a String index key
+ * can be judged — but each definition produces no element, and the enum, character and range-pair families are all
  * keyed on a field's inline `fieldType`. The carrier is visibly in scope elsewhere in the same report, which
  * is exactly why its absence here has to be said rather than inferred.
  */
@@ -1081,9 +1081,9 @@ internal fun TrackedFactBase.typeDefinitionBodyGaps(): List<CoverageGap> = if (d
         CoverageGap(
             at = null,
             reason = "this model declares ${declaredTypeDefinitionIds.size} type definition(s) under " +
-                "`content.typeDefinitions`, read here for their ids alone — the field type each one " +
-                "declares was examined by no family, so a law this checker applies to an inline `fieldType` " +
-                "was not applied inside them",
+                "`content.typeDefinitions`; only an unambiguous String definition used as an index key " +
+                "was examined here, so other laws this checker applies to an inline `fieldType` were not " +
+                "applied inside the definitions",
         ),
     )
 }

@@ -196,6 +196,8 @@ class ReadTranscriptTest {
                 .filterIsInstance<FactRead.ModelMember>().toSet(),
             "declaredTypeDefinitionIds" to transcriptOf(source) { declaredTypeDefinitionIds }
                 .filterIsInstance<FactRead.ModelMember>().toSet(),
+            "typeDefinitionBody" to transcriptOf(source) { typeDefinitionBody("Missing") }
+                .filterIsInstance<FactRead.ModelMember>().toSet(),
         )
 
         assertEquals(
@@ -206,7 +208,8 @@ class ReadTranscriptTest {
                 "supportedCharacters" to setOf(FactRead.ModelMember(ModelFact.SUPPORTED_CHARACTERS)),
                 "unreadableLocaleCodes" to setOf(FactRead.ModelMember(ModelFact.UNREADABLE_LOCALE_CODES)),
                 "declaredTypeDefinitionIds" to
-                    setOf(FactRead.ModelMember(ModelFact.DECLARED_TYPE_DEFINITION_IDS)),
+                    setOf(FactRead.ModelMember(ModelFact.TYPE_DEFINITIONS)),
+                "typeDefinitionBody" to setOf(FactRead.ModelMember(ModelFact.TYPE_DEFINITIONS)),
             ),
             actual,
             "every accessor must charge the fact it names, or a cell is keyed on a fact nobody read",

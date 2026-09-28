@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.regex
 
+import io.github.mbackschat.a12.dm.regex.JavaPatternToJs
 import kotlin.js.RegExp
 
 /** JS actual. The post-match guards restore Java's “unmatched backreference fails” rule. */

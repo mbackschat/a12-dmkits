@@ -126,6 +126,11 @@ class CheckerNearMissSweepTest {
     }
 
     @Test
+    fun indexKeyPatternsHaveOnlyLedgeredDifferences() {
+        assertModelLedger(IndexKeyPatternPopulation.rows(), 27, "index-key-patterns")
+    }
+
+    @Test
     fun operationTypesHaveOnlyLedgeredDifferences() {
         assertModelLedger(OperationTypingPopulation.rows(), 48, "operation-types")
     }

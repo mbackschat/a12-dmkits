@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.regex
 
+import io.github.mbackschat.a12.dm.regex.JavaPatternToJs
+
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

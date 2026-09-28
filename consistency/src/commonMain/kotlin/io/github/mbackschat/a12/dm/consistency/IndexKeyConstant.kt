@@ -17,13 +17,20 @@ import kotlinx.serialization.json.intOrNull
  * `adapter.laws.CheckerIndexKeyConstantAgreementTest` ([KERNEL-FINDINGS KF481]).
  *
  * Unjudged, and therefore safe to under-report: a constant meeting its length bounds beside a declared String
- * pattern outside the subset [KeyPattern] evaluates as Java does on both targets; a table-backed enumeration, whose values a model does
- * not carry; a type definition, a custom type or an unspecified field, none of them measured; and a constant
+ * pattern outside [KeyPattern]'s represented Java-to-JS domain; a table-backed enumeration, whose values a model does
+ * not carry; a non-String or ambiguous type definition, an unspecified field, and a constant
  * holding a CR, which A12 strips from a CRLF before the test, so the spelling it tests is not the written one.
  */
-internal fun TrackedDeclaration.admitsIndexConstant(constant: String): Boolean? {
-    val type = declaredFieldType() ?: return null
-    val declared = body?.get("fieldType") as? JsonObject
+internal fun TrackedFactBase.admitsIndexConstant(field: TrackedDeclaration, constant: String): Boolean? {
+    val fieldType = field.declaredFieldType() ?: return null
+    val declared = if (fieldType == FieldType.TYPE_DEF) {
+        val id = field.boundTypeDefinitionId() ?: return null
+        typeDefinitionBody(id)?.get("fieldType") as? JsonObject ?: return null
+    } else {
+        field.body?.get("fieldType") as? JsonObject
+    }
+    val type = (if (fieldType == FieldType.TYPE_DEF) declared?.namedFieldType() else fieldType) ?: return null
+    if (fieldType == FieldType.TYPE_DEF && type != FieldType.STRING) return null
     val typeBody = type.bodyIn(declared)
     if (type == FieldType.STRING && typeBody.constrainsNoString()) {
         return true
@@ -40,15 +47,16 @@ internal fun TrackedDeclaration.admitsIndexConstant(constant: String): Boolean? 
         )
         FieldType.BOOLEAN -> constant == TRUE || constant == FALSE
         FieldType.CONFIRM -> constant == TRUE
-        FieldType.ENUMERATION -> enumerationAdmits(constant)
+        FieldType.ENUMERATION -> field.enumerationAdmits(constant)
         FieldType.DATE, FieldType.DATE_TIME, FieldType.TIME, FieldType.DATE_FRAGMENT ->
-            declaredTemporalFormatOf(this)?.let { temporalShapeAdmits(it, constant) }
+            declaredTemporalFormatOf(field)?.let { temporalShapeAdmits(it, constant) }
         FieldType.DATE_RANGE -> {
-            val format = declaredDateRangeFormatOf(this)
+            val format = declaredDateRangeFormatOf(field)
             val separator = typeBody?.declaredText("rangeSeparator")
             if (format == null || separator == null) null else dateRangeShapeAdmits(format, separator, constant)
         }
-        FieldType.TYPE_DEF, FieldType.CUSTOM_FIELD, FieldType.UNSPECIFIED -> null
+        FieldType.CUSTOM_FIELD -> typeBody?.stringAdmits(constant)
+        FieldType.TYPE_DEF, FieldType.UNSPECIFIED -> null
     }
 }
 
@@ -66,8 +74,7 @@ private val LENGTH_MEMBERS = listOf("minLength", "maxLength")
 
 /**
  * A length bound is asked only where it is positive, then the pattern, as `IStringType` asks them. A key must
- * meet both, so a pattern outside [KeyPattern]'s subset leaves unjudged only a constant whose length is met. The length counts UTF-16 units, as `String.length()` does, while the pattern
- * counts code points.
+ * meet both, so a pattern outside [KeyPattern]'s represented domain leaves unjudged only a constant whose length is met. The length counts UTF-16 units, as `String.length()` does, while the pattern uses Java's whole-region matcher.
  */
 private fun JsonObject.stringAdmits(constant: String): Boolean? {
     val max = declaredInt("maxLength")?.takeIf { it > 0 }

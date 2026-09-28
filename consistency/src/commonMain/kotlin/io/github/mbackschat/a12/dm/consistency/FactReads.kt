@@ -71,7 +71,7 @@ internal enum class ModelFact {
     HAS_BASE_YEAR,
     SUPPORTED_CHARACTERS,
     UNREADABLE_LOCALE_CODES,
-    DECLARED_TYPE_DEFINITION_IDS,
+    TYPE_DEFINITIONS,
 
     /**
      * Which groups repeat — a model-wide fact rather than a set-shape one, because repeatability is a BODY

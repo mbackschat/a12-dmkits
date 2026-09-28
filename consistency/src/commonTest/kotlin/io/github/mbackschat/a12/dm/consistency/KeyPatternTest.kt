@@ -2,53 +2,44 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
-/**
- * The declared-pattern subset on both targets. Each expected match is Java's own `String.matches` on the same
- * pattern and value, executed on JDK 21.0.12 on 2026-09-26; `adapter.laws.CheckerIndexKeyConstantAgreementTest`
- * asks the Kernel for its rows. This also locks the parser's boundary, which no Kernel row can, since a pattern
- * outside it is simply left to A12.
- */
+/** The checker uses the shared translator's represented domain and the host's whole-value Java meaning. */
 class KeyPatternTest {
-
     private fun matches(pattern: String, value: String): Boolean? = KeyPattern.parse(pattern)?.matches(value)
 
     @Test
-    fun theSubsetMatchesTheWholeValue() {
-        assertEquals(
-            listOf(true, false, false, true, false, false, true, true, false, true, false, true, false),
-            listOf(
-                matches("[A-Z]{2}[0-9]", "AB1"), matches("[A-Z]{2}[0-9]", "XAB1"), matches("[A-Z]{2}[0-9]", "ab1"),
-                matches("[A-Z]+-[0-9]{2,3}", "AB-12"), matches("[A-Z]+-[0-9]{2,3}", "AB-1234"),
-                matches("[A-Z]+-[0-9]{2,3}", "-12"),
-                matches("[^0-9]*", "abc"), matches("[a-z]?[0-9]*", "5"), matches("[a-z]?[0-9]*", "ab"),
-                matches("[0-9]{3,}", "12345"), matches("[0-9]{3,}", "12"),
-                matches("a_b c", "a_b c"), matches("[a-c ]+", "abd"),
-            ),
+    fun representedPatternsMatchWholeValues() {
+        val rows = listOf(
+            Triple(".{2}", "AB", true), Triple(".{2}", "A", false),
+            Triple("\\d{2}", "12", true), Triple("\\d{2}", "1A", false),
+            Triple("(AB|CD)", "CD", true), Triple("(AB|CD)", "CE", false),
+            Triple("(?i:ab)", "AB", true), Triple("(?i:ab)", "AC", false),
+            Triple("\\h{2}", "  ", true), Triple("\\h{2}", "A ", false),
+            Triple(".", "\u0085", false), Triple(".", "\uD83D\uDE00", true),
+            Triple("\\s", "\u00A0", false), Triple("\\R", "\r\n", true),
+            Triple("\\S", "\u00A0", true),
+            Triple("(a|(b))\\2c", "ac", false), Triple("(a|(b))\\2c", "bbc", true),
+            Triple("a_b c", "a_b c", true), Triple("[a-c ]+", "abd", false),
+            Triple("[^0-9]", Char(0xD83D).toString(), true),
+            Triple("[^0-9]{2}", Char(0xD83D) + "a", true),
+            Triple(".{2}", "AB\n", false),
         )
+        rows.forEach { (pattern, value, expected) -> assertEquals(expected, matches(pattern, value), "$pattern / $value") }
     }
 
-    /** Java matches code points, so a surrogate pair is one character and a lone surrogate is one too. */
     @Test
-    fun aSupplementaryCharacterIsOneCharacter() {
-        val grin = "\uD83D\uDE00"
-        assertEquals(
-            listOf(false, true, true, true, true),
-            listOf(
-                matches("[^0-9]{2}", grin), matches("[^0-9]", grin), matches("[^0-9]{2}", grin + "a"),
-                // A lone surrogate is built at run time: Kotlin/JS compiles one written as a literal to `?`.
-                matches("[^0-9]", Char(0xD83D).toString()), matches("[^0-9]{2}", Char(0xD83D) + "a"),
-            ),
-        )
-    }
-
-    /** Where Java and JavaScript regex part ways, or where a regex engine would be needed, the parser declines. */
-    @Test
-    fun everythingElseIsOutsideTheSubset() {
-        for (pattern in listOf(".{2}", "\\d+", "(AB)+", "A|B", "^AB$", "[a-z&&[^c]]", "[-a]", "[z-a]", "[]",
-                "A+?", "A++", "A{,3}", "A{3,2}", "A{2", "[A-Z")) {
-            assertNull(KeyPattern.parse(pattern), pattern)
-        }
+    fun unsupportedOrKernelRejectedPatternsStayUnjudged() {
+        assertEquals(null, matches("\\N{LATIN SMALL LETTER A}", "a"))
+        assertEquals(null, matches("[\\S]", "\u00A0"))
+        assertEquals(null, matches("[\\x{A0}]", "\u00A0"))
+        assertEquals(null, matches("[\\p{Lower}]", "a"))
+        assertEquals(null, matches("(?iu:é)", "É"))
+        assertEquals(null, matches("a$\n", "a\n"))
+        assertEquals(null, matches("a$", "a\n"))
+        assertEquals(null, matches("\\X", "a"))
+        assertEquals(null, matches("\\b{g}", "a"))
+        assertEquals(null, matches("a++", "aaa"))
+        assertEquals(null, matches("(?<=A)B", "B"))
+        assertEquals(null, matches("[", "A"))
     }
 }

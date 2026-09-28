@@ -362,9 +362,14 @@ internal class TrackedFactBase private constructor(
 
     val declaredTypeDefinitionIds: Set<String>
         get() {
-            transcript.record(FactRead.ModelMember(ModelFact.DECLARED_TYPE_DEFINITION_IDS))
+            transcript.record(FactRead.ModelMember(ModelFact.TYPE_DEFINITIONS))
             return model.declaredTypeDefinitionIds
         }
+
+    fun typeDefinitionBody(id: String): JsonObject? {
+        transcript.record(FactRead.ModelMember(ModelFact.TYPE_DEFINITIONS))
+        return model.typeDefinitionBodies[id]
+    }
 
     /**
      * Run [produce] with every read it makes charged to [key]'s own bucket.

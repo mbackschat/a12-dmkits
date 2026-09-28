@@ -11382,9 +11382,29 @@ The empty constant is refused ahead of the type's rule on every kind by source; 
 
 The pattern counts code points, as Java's regex does, while the length counts UTF-16 units: `😀` is one character to `[^0-9]{2}`. Both `😀` rows also draw the codeless `The field contains one or several unsupported signs.`, beside the index class: the charset refusal of [KF489](#kf489), met in a condition text.
 
-The portable checker had judged a constant only against an enumeration. It now reproduces every rule above. It reproduces each shape without a regex, so both targets decide it alike, and it evaluates a declared pattern the same way: only in a subset it matches itself, of letters, digits, spaces, `_` and `-`, bracket classes of them, and the quantifiers `?`, `*`, `+` and the counted ones. `.{2}` is outside it, since Java's `.` excludes U+0085 where JavaScript's admits it, so such a key stays unjudged once its length is met. A key must meet both, as the `[A-Z]+` rows show, so the `.{2}` row at most 1 long is refused on its length alone, `ab` matching `.{2}` ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG102).
+**Extended 2026-09-28 — regex syntax and referenced index types.** A second typed `/Policy` host varied one String pattern, one String type-definition body or one custom field length bound per indexed group, holding the same `Sum(<group>/Amount For "<constant>") > 0` probe and its class discriminator fixed. All twenty-six predicted kernel classes were confirmed:
 
-*Locked by:* `adapter.laws.CheckerIndexKeyConstantAgreementTest`, A12's class written out on every row and the checker required to name it; the checker's shape rules: `consistency.IndexKeyConstantShapeTest`; the pattern subset's boundary and its matches, the latter executed against Java's own `String.matches`: `consistency.KeyPatternTest`.
+| index field `K` | admitted constant | refused constant |
+|---|---|---|
+| String `.{2}` | `AB` | `A` |
+| String `\\d{2}` | `12` | `1A` |
+| String `(AB|CD)` | `CD` | `CE` |
+| String `(?i:ab)` | `AB` | `AC` |
+| String `(?iu:é)` | `É` | —; paired with the next row at the same key |
+| String `(?i:é)` | —; paired with the preceding row at the same key | `É` |
+| String `a$` followed by a line feed | `a` followed by a line feed | —; paired with the next row at the same key |
+| String `a$` | —; paired with the preceding row at the same key | `a` followed by a line feed |
+| String `\\h{2}` | two spaces | `A ` |
+| String `\\N{LATIN SMALL LETTER A}` | `a` | `b` |
+| String `[\\S]` | NBSP | ordinary space |
+| String `[\\x{A0}]` | NBSP | `A` |
+| Field using a String type definition with `.{2}` | `AB` | `A` |
+| Custom field with minimum length 2 | `AB` | `A` |
+| Custom field with maximum length 1 | `A` | `AB` |
+
+An admitted cell draws `MVK_PARAMSIZE_INVALIDN` after value admission, and a refused cell draws `MVK_INDEX_VALUE_INVALID`. The named-character escape is legal but unrepresented by the shared translator. Java admits NBSP under `[\\S]`, while JS's unchanged `\\S` means something else; Java also accepts `[\\x{A0}]` where JS rejects the spelling. Native Java and JS also differ for the Unicode-case and final-line anchor cells. The checker conservatively leaves nine cells unjudged on both targets, recorded as five SILENT `MVK_PARAMSIZE_INVALIDN` and four SILENT `MVK_INDEX_VALUE_INVALID` inputs in O1; the other seventeen keyed cells agree. This establishes the measured String typedef and custom minimum/maximum hosts, not every underlying typedef kind or custom validator rule. Both `[\\p{Lower}]` and `\\p{Lower}` were considered as discriminators but the typed builder refused the first under the existing kernel source-text pattern blacklist before the model reached this law. A key must meet both length and pattern, as the earlier `[A-Z]+` and `.{2}` rows show; a length rejection can therefore be decided even where the pattern is unrepresented.
+
+*Locked by:* `adapter.laws.CheckerIndexKeyConstantAgreementTest`, A12's class written out on every original row and the checker required to name it; `adapter.laws.CheckerNearMissSweepTest.indexKeyPatternsHaveOnlyLedgeredDifferences`, the new kernel-predicted population and clustered checker comparison; the checker's shape rules: `consistency.IndexKeyConstantShapeTest`; the represented Java-to-JS pattern boundary and JVM/Node matches: `consistency.KeyPatternTest`.
 
 ## §9 supplement — an entity list whose carrier calls `checkNoCategories` refuses an Enumeration's category, ahead of its duplicate walk on the counts and behind it elsewhere, and a category behind a group is the spec's group class on every carrier (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf482"></a>
 

@@ -198,6 +198,8 @@ data class PreparedModel(
      * referents are not elements at all.
      */
     val declaredTypeDefinitionIds: Set<String> = emptySet(),
+    /** Unambiguous authored definitions; a duplicate id stays unjudged on the index-key path. */
+    val typeDefinitionBodies: Map<String, JsonObject> = emptyMap(),
 ) {
     /**
      * The elements a reference may resolve to — [elements] minus everything A12 deletes at the default
@@ -439,6 +441,7 @@ fun prepare(
     collector.each(root, at = null, what = "content.modelRoot.rootGroups", scope = entry) {
         collector.collect(it, "", null, entry)
     }
+    val definitions = typeDefinitionsInClosure(admitted, providers)
     return PreparedModel(
         elements = collector.elements,
         fieldRefByShortNameAllowed = collector.flag(content, entry),
@@ -450,7 +453,8 @@ fun prepare(
         hasBaseYear = (content?.get("modelInfo") as? JsonObject)?.containsKey("baseYear") == true,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
-        declaredTypeDefinitionIds = typeDefinitionIdsInClosure(admitted, providers),
+        declaredTypeDefinitionIds = definitions.ids,
+        typeDefinitionBodies = definitions.bodies,
     )
 }
 
@@ -473,17 +477,33 @@ fun prepare(
  * consumer refuses a field whose id is ABSENT from it, so a member too many under-reports and a member too
  * few rejects a model A12 accepts.
  */
-private fun typeDefinitionIdsInClosure(
+private data class TypeDefinitions(val ids: Set<String>, val bodies: Map<String, JsonObject>)
+
+private fun typeDefinitionsInClosure(
     entry: Admission.Admitted,
     providers: Map<String, Admission.Admitted>,
-): Set<String> {
+): TypeDefinitions {
     val ids = mutableSetOf<String>()
+    val bodies = mutableMapOf<String, JsonObject>()
+    val ambiguous = mutableSetOf<String>()
     val visited = mutableSetOf(entry.modelId)
     val pending = ArrayDeque(listOf(entry))
     while (pending.isNotEmpty()) {
         val source = pending.removeFirst()
         val root = source.parsed as? JsonObject
-        ids += (root?.get("content") as? JsonObject).declaredTypeDefinitionIds()
+        val definitions = ((root?.get("content") as? JsonObject)?.get("typeDefinitions") as? JsonArray)
+            ?.filterIsInstance<JsonObject>().orEmpty()
+        for (definition in definitions) {
+            val id = (definition["id"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: continue
+            ids += id
+            if (id in ambiguous) continue
+            if (id in bodies) {
+                bodies.remove(id)
+                ambiguous += id
+            } else {
+                bodies[id] = definition
+            }
+        }
         ((root?.get("header") as? JsonObject)?.get("modelReferences") as? JsonArray)
             ?.filterIsInstance<JsonObject>()
             ?.forEach { reference ->
@@ -493,7 +513,7 @@ private fun typeDefinitionIdsInClosure(
                 }
             }
     }
-    return ids
+    return TypeDefinitions(ids, bodies)
 }
 
 /**
@@ -509,20 +529,6 @@ private fun JsonObject?.declaredSupportedCharacters(): List<String> =
     ((this?.get("modelConfig") as? JsonObject)?.get("supportedCharacters") as? JsonArray)
         ?.map { (it as? JsonPrimitive)?.takeIf { entry -> entry.isString }?.content ?: "" }
         ?: emptyList()
-
-/**
- * The ids under `content.typeDefinitions`, read as A12 reads them and no more strictly.
- *
- * A non-list member, an entry that is not an object, and an entry whose `id` is not text each contribute
- * nothing rather than being reported: this function answers "which ids exist", and a reference is only
- * refused when the id it names is absent from that set. Judging the DECLARATIONS' own shape is a separate
- * question nobody has measured, and guessing at it here would refuse models A12 loads.
- */
-private fun JsonObject?.declaredTypeDefinitionIds(): Set<String> =
-    (this?.get("typeDefinitions") as? JsonArray)
-        ?.mapNotNull { ((it as? JsonObject)?.get("id") as? JsonPrimitive)?.takeIf { id -> id.isString }?.content }
-        ?.toSet()
-        ?: emptySet()
 
 /**
  * The model currently being descended: its own header (an alias resolves against the model that WROTE it,

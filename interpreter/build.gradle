@@ -76,6 +76,7 @@ kotlin {
 
     sourceSets {
         commonMain {
+            kotlin.srcDir(rootProject.file('shared-regex/src/commonMain/kotlin'))
             dependencies {
                 // DM-JSON → ModelDef loader (proposal §6.2 / §11 fork F1): the TREE API only
                 // (Json.parseToJsonElement + a hand-written mapper) — the runtime library alone, NO compiler
@@ -528,7 +529,9 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
     group = 'verification'
     description = 'Fail on a forbidden import so the kernel-free engine cannot couple to the kernel/dmtool/JVM.'
     def srcRoot = file('src')
+    def sharedRegexRoot = rootProject.file('shared-regex/src/commonMain/kotlin')
     inputs.dir(srcRoot)
+    inputs.dir(sharedRegexRoot)
     doLast {
         // commonMain (the code that compiles to JS + native) is held to an ALLOWLIST, not just a blacklist:
         // every third-party dependency must be a DELIBERATE, reviewed boundary (proposal §11 fork F1). A new
@@ -537,7 +540,8 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
         def commonAllowedThirdParty = [
             'kotlinx.serialization.',   // F1: DM-JSON loader — TREE API only (Json.parseToJsonElement + hand mapper)
         ]
-        def commonAllowedPrefixes = ['kotlin.', 'io.github.mbackschat.a12.dm.interpreter.'] + commonAllowedThirdParty
+        def commonAllowedPrefixes = ['kotlin.', 'io.github.mbackschat.a12.dm.interpreter.',
+                                     'io.github.mbackschat.a12.dm.regex.'] + commonAllowedThirdParty
 
         // sourceSet -> forbidden import prefixes (+ why). commonMain must be pure common Kotlin (it compiles
         // to JS); the JVM shim may touch java.* but never the kernel; the JS shim is pure Kotlin/JS + externals.
@@ -561,9 +565,9 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
         ]
         def violations = []
         rules.each { sourceSet, rule ->
-            def dir = new File(srcRoot, sourceSet)
-            if (!dir.exists()) return
-            dir.eachFileRecurse { f ->
+            def sourceDirs = [new File(srcRoot, sourceSet)] +
+                (sourceSet == 'commonMain' ? [sharedRegexRoot] : [])
+            sourceDirs.findAll { it.exists() }.each { dir -> dir.eachFileRecurse { f ->
                 if (!f.name.endsWith('.kt')) return
                 f.eachLine { line, n ->
                     def m = (line =~ /^\s*import\s+([\w.]+)/)
@@ -581,7 +585,7 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
                         }
                     }
                 }
-            }
+            } }
         }
         // The filtered field-list traversal has ONE owner (SPEC-2026-07-23-12 follow-up, client-required):
         // keptRowsWithSuccessorLookahead in eval/ExprEval.kt. Every filtered field-list consumer

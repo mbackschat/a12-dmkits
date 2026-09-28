@@ -65,7 +65,7 @@ class CheckCellKeyTest {
         // `declaredLocales` alone, which is what the isolation assertion below then confirms rather than
         // takes on trust.
         ModelFact.UNREADABLE_LOCALE_CODES to prepared(locales = """[{"code":"en_US"},{"code":"!!"}]"""),
-        ModelFact.DECLARED_TYPE_DEFINITION_IDS to prepared(
+        ModelFact.TYPE_DEFINITIONS to prepared(
             typeDefinitions =
                 """"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],""",
         ),
@@ -100,6 +100,18 @@ class CheckCellKeyTest {
             "each fact must be keyed on the member it names, and the fixture must move that member alone")
         assertEquals(ModelFact.entries.size, moved.size,
             "a new ModelFact needs a row in `moved`, or its key is unmeasured")
+    }
+
+    @Test
+    fun typeDefinitionBodyEditInvalidatesItsFactWithoutAnIdChange() {
+        fun withMaximum(maximum: Int) = prepared(typeDefinitions =
+            """"typeDefinitions":[{"id":"Code","name":"Code","fieldType":{"type":"StringType","StringType":{"maxLength":$maximum}}}],""",
+        )
+        val before = withMaximum(2)
+        val after = withMaximum(3)
+        assertEquals(before.declaredTypeDefinitionIds, after.declaredTypeDefinitionIds)
+        assertTrue(before.valueOf(FactRead.ModelMember(ModelFact.TYPE_DEFINITIONS)) !=
+            after.valueOf(FactRead.ModelMember(ModelFact.TYPE_DEFINITIONS)))
     }
 
     @Test

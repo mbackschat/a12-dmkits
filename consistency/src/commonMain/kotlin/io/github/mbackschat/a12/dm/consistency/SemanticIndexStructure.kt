@@ -44,7 +44,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  *
  * **Silent on a literal key whose index field this reader cannot judge.** `isValueApplicable` runs the index
  * field's own value validation over the constant, and [admitsIndexConstant] reproduces it per kind except where
- * the kind's rule is not one it can reproduce, such as a declared String pattern outside [KeyPattern]'s subset; a
+ * the kind's rule is not one it can reproduce, such as a declared String pattern outside [KeyPattern]'s represented domain; a
  * later class named on such an index would be the wrong class on a correct rejection.
  */
 internal fun TrackedFactBase.semanticIndexStructureContributions(element: TrackedDeclaration): List<ConditionFinding> {
@@ -166,7 +166,7 @@ private fun TrackedFactBase.keyClassOf(
     element: TrackedDeclaration,
 ): IndexVerdict? {
     use.keyLiteral?.let { literal ->
-        val admitted = literal.isNotEmpty() && (indexField.admitsIndexConstant(literal) ?: return IndexVerdict.Opaque)
+        val admitted = literal.isNotEmpty() && (admitsIndexConstant(indexField, literal) ?: return IndexVerdict.Opaque)
         return if (admitted) null else IndexVerdict.Reported("MVK_INDEX_VALUE_INVALID")
     }
     val key = element(use.keyPath?.let { written -> resolveField(written, declaringGroup, element) })

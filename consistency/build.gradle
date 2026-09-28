@@ -60,6 +60,7 @@ kotlin {
 
     sourceSets {
         commonMain {
+            kotlin.srcDir(rootProject.file('shared-regex/src/commonMain/kotlin'))
             dependencies {
                 implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
                 // The shared-predicate leaf, and the ONE intra-repo edge this module may have: it is

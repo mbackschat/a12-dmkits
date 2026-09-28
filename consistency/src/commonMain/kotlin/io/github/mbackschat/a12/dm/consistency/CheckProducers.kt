@@ -443,8 +443,8 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclarationWalk(CheckFamily.NUMBER_TYPE_DIGITS, DeclarationStage.INDEPENDENT) { it.numberTypeDigitFindings() },
     perDeclarationWalk(CheckFamily.ENUM_VALUE_LABELS, DeclarationStage.INDEPENDENT) { it.enumValueLabelFindings() },
     perDeclarationWalk(CheckFamily.ENUM_S_VALUE_DOMAIN, DeclarationStage.INDEPENDENT) { it.enumSpecialValueFindings() },
-    // The one producer that completes no family: `content.typeDefinitions` declare field types no family
-    // examines, so its whole output is the disclosure that they were not examined. It is registered rather
+    // The one producer that completes no family: most type-definition laws are unexamined even though the
+    // constant index-key path can now read an unambiguous String definition. It is registered rather
     // than called beside the loop so that its reads are attributed like every other producer's.
     CheckProducer.ModelWide(stage = ModelStage.DECLARATION, completes = emptySet(), gaps = { it.typeDefinitionBodyGaps() }),
 )

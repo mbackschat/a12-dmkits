@@ -502,6 +502,76 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf481": {
+      "sha256": "cb38c4749af2402b013f315943a1e00dc0362f59c310216806a75cebc711b457",
+      "task": "DG102",
+      "scope": {
+        "adapter": ["kernel index-key class oracle"],
+        "dmkits": ["typed index-field authoring", "delegated model validation"],
+        "interpreter": ["runtime selection of admitted indexed keys"],
+        "checker": ["O1 index-key class comparison", "JVM and Node pattern support boundary"],
+        "a12-kernel-lean": ["specification", "executable and proofs", "evidence"],
+        "dmtool-cli": ["rule check admission and diagnostics"],
+        "json-schema-import": ["index-key model constraints and loss reporting"],
+        "json-schema-export": ["index-key model constraints and loss reporting"]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The adapter law asks the real kernel for the key's class on each original model; the portable comparison is separately owned by the checker.",
+          "evidence": {
+            "kernel index-key class oracle": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIndexKeyConstantAgreementTest.kt#theCheckerJudgesAConstantKeyAsA12Does",
+              "witness": "The original per-kind key grid fixes the kernel class on each probe; the separate O1 population owns the extension."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "The 27-input population uses typed DocumentModelDraft and RuleValidator, but consumer-local authoring and delegated-diagnostic obligations have not been separately assessed. F-USE-BACKLOG owns the remaining transfer.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "Static key admission does not settle interpreter selection of an admitted indexed key. The regex translator still needs its own runtime-semantic assessment.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "The represented pattern, typedef and custom-bound domain agrees with the kernel population, but nine legal cells with unverified cross-target mappings remain SILENT in O1. This is bounded coverage, not full Java-pattern conformance; M4 owns the residuals.",
+          "evidence": {
+            "O1 index-key class comparison": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerNearMissSweepTest.kt#indexKeyPatternsHaveOnlyLedgeredDifferences",
+              "witness": "Twenty-seven typed inputs: seventeen keyed classes agree, nine legal residuals are five SILENT MVK_PARAMSIZE_INVALIDN and four SILENT MVK_INDEX_VALUE_INVALID rows, and the admitted control agrees."
+            },
+            "JVM and Node pattern support boundary": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/KeyPatternTest.kt#unsupportedOrKernelRejectedPatternsStayUnjudged",
+              "witness": "Both targets decline the named character, class non-space, braced-hex, Unicode-case and anchor cases; represented positive and negative controls run in the companion matcher method."
+            }
+          }
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The DG102 measurements await a Downloads handback and an exact peer adoption receipt; a prepared letter is not adoption.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "The typed population does not establish the packaged CLI's admission and diagnostic projections; assess its rule check path separately.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Assess import mapping and loss reporting for indexed field constraints independently of the checker and delegated kernel check.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Assess export mapping and loss reporting for indexed field constraints independently of import and delegated kernel check.",
+          "evidence": {}
+        }
+      }
+    },
     "kf493": {
       "sha256": "b217718c45b8f15ada4dd202476cdbb2419d66ebcacc50d477b03e5b91a1d185",
       "task": "F-USE3-P",
