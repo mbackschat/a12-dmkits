@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import java.io.File
 import java.nio.file.Files
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail
@@ -121,6 +122,33 @@ class InterpreterMeasurementCurrencyGuardTest {
                 "a shallow checkout was not reported as undecidable — the shipped defect reported its single " +
                     "commit as unmeasured instead, which accuses a commit the guard never examined",
             )
+        } finally {
+            scratch.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun sharedProductionSourceInvalidatesMeasurementButTestSourceDoesNot() {
+        val scratch = Files.createTempDirectory("interp-currency-shared").toFile()
+        try {
+            InterpreterMeasurementCurrency.fabricateCurrentRepositoryWithNonProductionHead(scratch)
+            fun commitFile(path: String): String {
+                File(scratch, path).apply { parentFile.mkdirs(); writeText("val changed = 1\n") }
+                fun git(vararg args: String): String {
+                    val process = ProcessBuilder(listOf("git") + args).directory(scratch).redirectErrorStream(true).start()
+                    val output = process.inputStream.bufferedReader().readText().trim()
+                    assertEquals(0, process.waitFor(), output)
+                    return output
+                }
+                git("add", "-A")
+                git("commit", "--quiet", "-m", "change fixture source")
+                return git("rev-parse", "--short", "HEAD")
+            }
+            commitFile("shared-regex/src/commonTest/kotlin/Control.kt")
+            assertEquals(InterpreterMeasurementCurrency.Currency.Current, InterpreterMeasurementCurrency.currency(scratch))
+            val changed = commitFile("shared-regex/src/commonMain/kotlin/Engine.kt")
+            assertEquals(InterpreterMeasurementCurrency.Currency.Unmeasured(listOf(changed)),
+                InterpreterMeasurementCurrency.currency(scratch))
         } finally {
             scratch.deleteRecursively()
         }

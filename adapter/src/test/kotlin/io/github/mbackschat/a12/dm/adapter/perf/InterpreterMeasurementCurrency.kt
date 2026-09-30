@@ -20,6 +20,7 @@ internal object InterpreterMeasurementCurrency {
         "interpreter/src/commonMain",
         "interpreter/src/jvmMain",
         "interpreter/src/jsMain",
+        "shared-regex/src/commonMain",
     )
 
     /**
