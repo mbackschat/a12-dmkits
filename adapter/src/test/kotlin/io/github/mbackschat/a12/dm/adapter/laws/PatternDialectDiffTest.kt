@@ -135,4 +135,18 @@ class PatternDialectDiffTest {
         for ((pattern, value, expected) in rows) agree(pattern, value, expected, pattern)
     }
 
+    @Test
+    fun repetitionBoundDomainIsMeasuredAgainstJava() {
+        for (pattern in listOf("a{2147483648}", "a{0,2147483648}", "a{2147483648,}",
+            "a{0,9999999999999999999999999999}")) {
+            org.junit.jupiter.api.Assertions.assertThrows(java.util.regex.PatternSyntaxException::class.java) {
+                java.util.regex.Pattern.compile(pattern)
+            }
+        }
+        for ((pattern, expected) in listOf("a{0,2147483647}" to true, "a{2147483647}" to false,
+            "a{00000000000000000000000001}" to true, "a{1,}" to true)) {
+            assertEquals(expected, java.util.regex.Pattern.matches(pattern, "a"), pattern)
+        }
+    }
+
 }

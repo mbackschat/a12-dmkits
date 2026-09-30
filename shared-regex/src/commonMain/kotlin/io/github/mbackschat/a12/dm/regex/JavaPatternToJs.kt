@@ -178,7 +178,8 @@ internal object JavaPatternToJs {
             index++
             val bounds = raw.toString().split(',')
             if (bounds.size !in 1..2 || bounds[0].isEmpty() ||
-                bounds.any { bound -> bound.any { it !in '0'..'9' } }) {
+                bounds.any { bound -> bound.any { it !in '0'..'9' } ||
+                    (bound.isNotEmpty() && bound.toIntOrNull() == null) }) {
                 throw UnsupportedJavaPattern("malformed repetition")
             }
             return "{$raw}"

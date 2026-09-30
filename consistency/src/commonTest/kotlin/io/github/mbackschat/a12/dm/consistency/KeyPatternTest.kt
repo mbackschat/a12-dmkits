@@ -219,4 +219,16 @@ class KeyPatternTest {
             assertEquals(null, matches(pattern, "a"), pattern)
     }
 
+    @Test
+    fun repetitionBoundsRespectJavasIntegerDomain() {
+        for (pattern in listOf("a{2147483648}", "a{0,2147483648}", "a{2147483648,}",
+            "a{0,9999999999999999999999999999}")) {
+            assertEquals(null, matches(pattern, "a"), pattern)
+        }
+        assertEquals(true, matches("a{0,2147483647}", "a"))
+        assertEquals(false, matches("a{2147483647}", "a"))
+        assertEquals(true, matches("a{00000000000000000000000001}", "a"))
+        assertEquals(true, matches("a{1,}", "a"))
+    }
+
 }
