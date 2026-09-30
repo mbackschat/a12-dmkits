@@ -36,7 +36,7 @@ internal object ParserCorpora {
         System.getProperty("a12.corpus1.dir")?.let { Path.of(it) }?.takeIf { Files.isDirectory(it) }
 
     /**
-     * Every DISTINCT condition and operation string in the DocumentModels under [root], each with its own
+     * Every DISTINCT (text, condition-language) pair for conditions and operations in the DocumentModels under [root], each with its own
      * condition language. Object Models also have an `operation` member, but it is not DocumentModel DSL.
      *
      * The language is read from the model rather than assumed, because assuming it is how a sweep measures
@@ -49,8 +49,8 @@ internal object ParserCorpora {
      * than returning a constant; `ParserCorporaTest` supplies the model that does.
      */
     fun harvest(root: Path): Harvested {
-        val conditions = LinkedHashMap<String, String>()
-        val operations = LinkedHashMap<String, String>()
+        val conditions = linkedSetOf<Text>()
+        val operations = linkedSetOf<Text>()
         CorpusShrinkSupport.documentModels(root).forEach { file ->
             val tree = try {
                 MAPPER.readTree(Files.readString(file))
@@ -67,15 +67,15 @@ internal object ParserCorpora {
     private fun collect(
         node: JsonNode,
         language: String,
-        conditions: MutableMap<String, String>,
-        operations: MutableMap<String, String>,
+        conditions: MutableSet<Text>,
+        operations: MutableSet<Text>,
     ) {
         when {
             node.isObject -> node.fields().forEach { (key, value) ->
                 if (value.isTextual && value.asText().isNotBlank()) {
                     when (key) {
-                        "errorCondition", "precondition" -> conditions.putIfAbsent(value.asText(), language)
-                        "operation" -> operations.putIfAbsent(value.asText(), language)
+                        "errorCondition", "commonPrecondition", "precondition" -> conditions.add(Text(value.asText(), language))
+                        "operation" -> operations.add(Text(value.asText(), language))
                     }
                 }
                 collect(value, language, conditions, operations)
@@ -88,6 +88,8 @@ internal object ParserCorpora {
     /** The A12 default when a model declares none, which is what `ConditionLanguage.DEFAULT` resolves to. */
     private const val DEFAULT_LANGUAGE = "en_US"
 
-    /** Each text mapped to the condition-language code of the model that stores it. */
-    data class Harvested(val conditions: Map<String, String>, val operations: Map<String, String>)
+    /** Language is part of identity: the same bytes can exercise different parser behavior in EN and DE. */
+    data class Text(val text: String, val language: String)
+
+    data class Harvested(val conditions: Set<Text>, val operations: Set<Text>)
 }

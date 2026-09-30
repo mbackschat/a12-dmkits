@@ -6,6 +6,9 @@ import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
@@ -20,7 +23,7 @@ import java.nio.file.Path
  *    parse failure here is a straight regression, so the guard is unconditional.
  *  - **German catalog (always-on, must be 100%):** the same catalog examples localized from the catalog's live
  *    bilingual keyword pairs and parsed under [ConditionLanguage.DE].
- *  - **real corpora (opt-in, classified):** every distinct `errorCondition`/`precondition` (→ [parseCondition])
+ *  - **real corpora (opt-in, classified):** every distinct text/language pair from `errorCondition`/`commonPrecondition`/`precondition` (→ [parseCondition])
  *    and `operation` (→ [parseExpression]) harvested from the `a12-kernel-mm` metamodels and the A12 Tools
  *    workspaces. Both skip silently when absent (external-sibling pattern — the EUPL/proprietary corpora are
  *    never committed). Every failure must fall into an explicitly-classified [WontSupport] bucket with a
@@ -140,20 +143,80 @@ class ParserCorpusSweepTest {
 
     // ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
+    @Test
+    fun aGermanCorpusIsParsedInItsDeclaredLanguage(@TempDir root: Path) {
+        writeCallerFixture(root, "de_DE", "FeldAngegeben(Premium)", "Summe(Lines*/Amount)")
+        sweepCorpus("German caller control", root)
+    }
+
+    @Test
+    fun anEmptyCorpusCannotPassWithoutParsingAnything(@TempDir root: Path) {
+        assertThrows(AssertionError::class.java) { sweepCorpus("empty caller control", root) }
+    }
+
+    @Test
+    fun anUnsupportedDeclaredLanguageCannotSilentlyBecomeEnglish(@TempDir root: Path) {
+        writeCallerFixture(root, "fr_FR", "FieldFilled(Premium)", "Sum(Lines*/Amount)")
+        assertThrows(IllegalArgumentException::class.java) { sweepCorpus("unsupported caller control", root) }
+    }
+
+    @Test
+    fun aConditionOnlyCorpusCannotSkipOperationParsing(@TempDir root: Path) {
+        writeCallerFixture(root, "en_US", "FieldFilled(Premium)", "")
+        assertThrows(AssertionError::class.java) { sweepCorpus("condition-only control", root) }
+    }
+
+    @Test
+    fun anOperationOnlyCorpusCannotSkipConditionParsing(@TempDir root: Path) {
+        writeCallerFixture(root, "en_US", "", "Sum(Lines*/Amount)")
+        assertThrows(AssertionError::class.java) { sweepCorpus("operation-only control", root) }
+    }
+
+    @Test
+    fun aMalformedConditionCannotPassBesideAValidOperation(@TempDir root: Path) {
+        writeCallerFixture(root, "en_US", "FieldFilled(", "Sum(Lines*/Amount)")
+        assertThrows(AssertionError::class.java) { sweepCorpus("malformed condition control", root) }
+    }
+
+    @Test
+    fun aMalformedOperationCannotPassBesideAValidCondition(@TempDir root: Path) {
+        writeCallerFixture(root, "en_US", "FieldFilled(Premium)", "Sum(")
+        assertThrows(AssertionError::class.java) { sweepCorpus("malformed operation control", root) }
+    }
+
+    @Test
+    fun anUnsupportedOperationLanguageCannotHideBehindASupportedCondition(@TempDir root: Path) {
+        writeCallerFixture(root, "en_US", "FieldFilled(Premium)", "", "condition.json")
+        writeCallerFixture(root, "fr_FR", "", "Sum(Lines*/Amount)", "operation.json")
+        assertThrows(IllegalArgumentException::class.java) { sweepCorpus("operation language control", root) }
+    }
+
+    private fun writeCallerFixture(root: Path, code: String, condition: String, operation: String, file: String = "caller.json") {
+        // These are harvesting inputs, not kernel model-admission fixtures: only the transport members under test matter.
+        Files.writeString(root.resolve(file),
+            """{"header":{"modelType":"document"},"content":{"modelConfig":{"conditionLanguage":{"code":"$code"}},"errorCondition":"$condition","operation":"$operation"}}""")
+    }
+
     private fun sweepCorpus(label: String, root: Path) {
         val harvested = ParserCorpora.harvest(root)
-        val conditions = harvested.conditions.keys
-        val operations = harvested.operations.keys
+        val conditions = harvested.conditions
+        val operations = harvested.operations
         val condFailures = mutableListOf<Failure>()
         val opFailures = mutableListOf<Failure>()
-        conditions.forEach { tryParseCond(it, label, condFailures) }
-        operations.forEach { tryParseExpr(it, label, opFailures) }
+        assertTrue(conditions.isNotEmpty() && operations.isNotEmpty()) {
+            "$label must exercise both condition and operation parsing; an empty population is not evidence"
+        }
+        fun language(code: String): ConditionLanguage = requireNotNull(ConditionLanguage.entries.find { it.code == code }) {
+            "$label declares unsupported condition language $code"
+        }
+        conditions.forEach { (text, code) -> tryParseCond(text, label, condFailures, language(code)) }
+        operations.forEach { (text, code) -> tryParseExpr(text, label, opFailures, language(code)) }
 
         val condPass = conditions.size - condFailures.size
         val opPass = operations.size - opFailures.size
         println("\n[parser-sweep] $label: conditions ${condPass}/${conditions.size}, operations ${opPass}/${operations.size}")
 
-        // Every real-corpus string must either PARSE or match a reasoned won't-support bucket. Both pinned
+        // Every real-corpus text/language pair must either PARSE or match a reasoned won't-support bucket. Both pinned
         // corpora (kernel-mm @ current, A12 Tools workspaces @ 2025.06-ext5) parse 100%, so [unsupportedReason]
         // has no buckets yet; a NEW failure (a kernel bump, a fresh model) fails here and forces triage — fix
         // the parser, or record a reason. Print the residue either way so triage has the offending strings.

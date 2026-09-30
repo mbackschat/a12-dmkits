@@ -29,8 +29,8 @@ class ParserCorporaTest {
             """{"operation":"total","precondition":"settings-only"}""")
 
         val harvested = ParserCorpora.harvest(root)
-        assertEquals(mapOf("FieldFilled(Premium)" to "en_US"), harvested.conditions)
-        assertEquals(emptyMap<String, String>(), harvested.operations)
+        assertEquals(setOf("FieldFilled(Premium)" to "en_US"), harvested.conditions.map { (text, code) -> text to code }.toSet())
+        assertEquals(emptySet<Pair<String, String>>(), harvested.operations.map { (text, code) -> text to code }.toSet())
     }
 
     @Test
@@ -41,8 +41,8 @@ class ParserCorporaTest {
         val harvested = ParserCorpora.harvest(root)
 
         assertEquals(
-            mapOf("FeldAngegeben(Beitrag)" to "de_DE", "FieldFilled(Premium)" to "en_US"),
-            harvested.conditions,
+            setOf("FeldAngegeben(Beitrag)" to "de_DE", "FieldFilled(Premium)" to "en_US"),
+            harvested.conditions.map { (text, code) -> text to code }.toSet(),
         )
     }
 
@@ -57,7 +57,7 @@ class ParserCorporaTest {
             """{"header":{"modelType":"document"},"content":{"modelConfig":{"decimalSeparator":"."},"rules":[{"errorCondition":"FieldFilled(Premium)"}]}}""",
         )
 
-        assertEquals(mapOf("FieldFilled(Premium)" to "en_US"), ParserCorpora.harvest(root).conditions)
+        assertEquals(setOf("FieldFilled(Premium)" to "en_US"), ParserCorpora.harvest(root).conditions.map { (text, code) -> text to code }.toSet())
     }
 
     /** Operations are harvested under their own model's language too, not only conditions. */
@@ -65,7 +65,31 @@ class ParserCorporaTest {
     fun anOperationCarriesItsModelsLanguage(@TempDir root: Path) {
         writeModel(root.resolve("premium.json"), "de_DE", operation = "Summe(Positionen*/Betrag)")
 
-        assertEquals(mapOf("Summe(Positionen*/Betrag)" to "de_DE"), ParserCorpora.harvest(root).operations)
+        assertEquals(setOf("Summe(Positionen*/Betrag)" to "de_DE"), ParserCorpora.harvest(root).operations.map { (text, code) -> text to code }.toSet())
+    }
+
+    @Test
+    fun identicalTextInDifferentLanguagesRetainsBothObservations(@TempDir root: Path) {
+        for (code in listOf("en_US", "de_DE")) {
+            writeModel(root.resolve("condition-$code.json"), code, errorCondition = "[Premium] > 0")
+            writeModel(root.resolve("operation-$code.json"), code, operation = "[Premium] + 1")
+        }
+        val harvested = ParserCorpora.harvest(root)
+        assertEquals(setOf("[Premium] > 0" to "en_US", "[Premium] > 0" to "de_DE"),
+            harvested.conditions.map { (text, code) -> text to code }.toSet())
+        assertEquals(setOf("[Premium] + 1" to "en_US", "[Premium] + 1" to "de_DE"),
+            harvested.operations.map { (text, code) -> text to code }.toSet())
+    }
+
+    @Test
+    fun computationPreconditionsBelongToTheConditionPopulation(@TempDir root: Path) {
+        Files.writeString(root.resolve("common.json"),
+            """{"header":{"modelType":"document"},"content":{"Computation":{"commonPrecondition":"FieldFilled(Common)","computationAlternatives":[{"precondition":"FieldFilled(Alternative)","operation":"[Source]"}]}}}""")
+        val harvested = ParserCorpora.harvest(root)
+        assertEquals(setOf("FieldFilled(Common)" to "en_US", "FieldFilled(Alternative)" to "en_US"),
+            harvested.conditions.map { (text, code) -> text to code }.toSet())
+        assertEquals(setOf("[Source]" to "en_US"),
+            harvested.operations.map { (text, code) -> text to code }.toSet())
     }
 
     private fun writeModel(file: Path, code: String, errorCondition: String? = null, operation: String? = null) {
