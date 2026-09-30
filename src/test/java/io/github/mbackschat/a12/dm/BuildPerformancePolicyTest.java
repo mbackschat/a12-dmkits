@@ -21,6 +21,35 @@ import org.junit.jupiter.api.Test;
  * Locks the repository-level policies that make cold and clean-worktree Kotlin compilation reliable.
  */
 class BuildPerformancePolicyTest {
+    @Test
+    void bothOwnersShareCorpusForwardingAndFileInputs() throws IOException {
+        String build = SourceText.uncommented(locate("adapter/build.gradle"));
+        String start = "tasks.withType(Test).matching { it.name in ['test', 'checkerSilenceGuardTest'] }.configureEach {";
+        int from = build.indexOf(start);
+        assertTrue(from >= 0, "Both corpus owners need the shared configuration, not only adapter:test");
+        int to = build.indexOf("tasks.named('test')", from);
+        assertTrue(to > from);
+        String shared = build.substring(from, to);
+        for (String property : List.of("a12.kernel.mm.dir", "a12.corpus1.dir")) {
+            assertTrue(shared.contains("'" + property + "'"), property);
+            assertEquals(1, build.split("'" + property.replace(".", "\\.") + "'", -1).length - 1,
+                    property + " must have one forwarding owner");
+        }
+        for (String declaration : List.of(
+                "def configured = System.getProperty(key)",
+                "if (configured != null)",
+                "systemProperty key, configured",
+                "corpusRoots.add(file(configured))",
+                "file('../a12-kernel-mm/documentModels')",
+                "file('../../a12-kernel-mm/documentModels')",
+                "inputs.files(corpusRoots.collect { root -> fileTree(root) { include '**/*.json' } })",
+                ".withPropertyName('externalCorpusJson')",
+                "inputs.property('externalCorpusDirectories', corpusRoots.collect { it.isDirectory() })",
+                ".withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)")) {
+            assertTrue(shared.contains(declaration), "Missing corpus input/forwarding declaration: " + declaration);
+        }
+    }
+
 
     @Test
     void repositoryEnablesTheGradleBuildCache() throws IOException {

@@ -250,6 +250,25 @@ tasks.withType(Test).configureEach {
     if (System.getProperty('perf.trace') != null) systemProperty 'perf.trace', System.getProperty('perf.trace')
 }
 
+// ParserCorpora and the read/parity harnesses resolve these paths relative to the adapter test JVM.
+// Both owners need the properties AND the files: forwarding only to test silently skipped the checker lane;
+// forwarding without inputs would reuse a green result after an external corpus edit.
+tasks.withType(Test).matching { it.name in ['test', 'checkerSilenceGuardTest'] }.configureEach {
+    def corpusRoots = [file('../a12-kernel-mm/documentModels'), file('../../a12-kernel-mm/documentModels')]
+    ['a12.kernel.mm.dir', 'a12.corpus1.dir'].each { key ->
+        def configured = System.getProperty(key)
+        if (configured != null) {
+            systemProperty key, configured
+            corpusRoots.add(file(configured))
+        }
+    }
+    inputs.files(corpusRoots.collect { root -> fileTree(root) { include '**/*.json' } })
+        .withPropertyName('externalCorpusJson')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    // ParserCorpora chooses the first DIRECTORY, even if empty; JSON files alone cannot track that switch.
+    inputs.property('externalCorpusDirectories', corpusRoots.collect { it.isDirectory() })
+}
+
 tasks.named('test') {
     systemProperty 'perf.results.dir', rootProject.file('perf-results')
     // Gate tiering (docs/TESTING-SPEC "Test tiers"): the performance tests (@Tag 'perf' routine tier + @Tag
@@ -302,10 +321,10 @@ tasks.named('test') {
     // with -PtestForks=N. No maxParallelForks=1
     // guard is needed here — the native-agent reflection capture runs :cli:test, not :adapter.
     maxParallelForks = (project.findProperty('testForks') ?: Math.max(2, Math.min(4, Runtime.runtime.availableProcessors()))) as int
-    // Forward opt-in harness locations (read-only corpora) AND the opt-in perf knobs from the Gradle CLI to the
-    // test JVM, e.g. -Da12.kernel.mm.dir=… / -Dperf.profile=true / -Dperf.edge=true — harnesses skip (or gate)
+    // Forward opt-in probe and perf knobs from the Gradle CLI to the
+    // test JVM, e.g. -Dperf.profile=true / -Dperf.edge=true — harnesses skip (or gate)
     // when their property is unset.
-    ['a12.kernel.mm.dir', 'a12.corpus1.dir', 'corpus.sweep.java', 'ig44.model', 'ig44.seed', 'ig44.dump',
+    ['corpus.sweep.java', 'ig44.model', 'ig44.seed', 'ig44.dump',
      'ig44.vcv', 'ig47.kernel', 'ig47.interp', 'ig47.model', 'ig47.seed', 'ig47.dump',
      'atom.kernel', 'atom.interp', 'atom.model', 'atom.seed', 'atom.dump', 'atom.valuediff',
      'vf.model', 'vf.seed', 'vf.side', 'vf.sig', 'vf.kernelmm', 'vf.dump',
