@@ -286,7 +286,7 @@ internal class PreparedEvaluationPlan(
                     val source = when (val entity = expr.source) {
                         is Expr.Field -> entity
                         is Expr.Star -> {
-                            if (!groupSemanticIndexAllowed) throw UnsupportedConstructException(
+                            if (entity.path !in model.kinds && !groupSemanticIndexAllowed) throw UnsupportedConstructException(
                                 "this operator does not support an indexed star")
                             val indexPath = nearestIndexFieldOf(model.indexFields, entity.path)
                                 ?: throw UnsupportedConstructException("SemanticIndex needs an index field on ${entity.path}")
@@ -309,7 +309,10 @@ internal class PreparedEvaluationPlan(
                             indexFieldOuter = index.outer,
                         )
                     }
-                    auditExpr(indexed, outerAllowed, starAllowed = false, groupSemanticIndexAllowed)
+                    // The parent selects a field list's rows; it does not turn its field operand into a group.
+                    // KeyedGroupFieldListDiffTest locks this distinction across collection consumers.
+                    auditExpr(indexed, outerAllowed, starAllowed = false,
+                        groupSemanticIndexAllowed || expr.source.path in model.kinds)
                 }
             }
             is Expr.EnumCategory -> requireOuterAllowed(expr.outer, outerAllowed)

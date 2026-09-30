@@ -69,14 +69,14 @@ object Aggregates {
     /**
      * `SumOfProducts` — Σ aᵢ·bᵢ over two row-aligned value lists (the [Val.Num] products). Any Unknown cell in
      * EITHER list makes the whole sum non-evaluable → [Val.Unknown] (the formal-suppression mechanism). The lists
-     * are equal-length + row-aligned by construction (both stars resolve over the SAME repeatable group); the
-     * strategy does that resolution and passes the two lists. An empty cell arrives as the substituted 0, so its
-     * product is 0.
+     * can have different lengths when their semantic keys select different parents. Only paired positions
+     * contribute, but an invalid unpaired tail still suppresses the result (KeyedGroupFieldListDiffTest).
+     * An empty cell arrives as the substituted 0, so its product is 0.
      */
     fun sumOfProducts(a: List<Val>, b: List<Val>): Val {
         if (a.any { it is Val.Unknown } || b.any { it is Val.Unknown }) return Val.Unknown
         var sum = DEC_ZERO
-        for (i in a.indices) sum += numOf(a[i]) * numOf(b[i])
+        for (i in 0 until minOf(a.size, b.size)) sum += numOf(a[i]) * numOf(b[i])
         return Val.Num(sum)
     }
 

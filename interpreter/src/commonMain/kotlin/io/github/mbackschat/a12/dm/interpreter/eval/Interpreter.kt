@@ -1358,6 +1358,8 @@ class Interpreter(
      * measured basis is the defect class CLAUDE.md's "never broader than its measured basis" rule names.
      */
     private fun comparedCells(a: Expr): List<Val> {
+        if (a.isIndexedStar()) return withIndexedStar(a as Expr.EntitySpec,
+            emptyList(), listOf(Val.Unknown)) { comparedCells(it) }
         // Routed through the SHARED owner rather than expanding here. This site used to carry a complete private
         // copy — `containedFields` + `Expr.Star` construction + recursion — with only the depth formula delegated,
         // so the "one owner" claim was false and, worse, the copy DIVERGED: its starred arm passed `bindDepth` raw

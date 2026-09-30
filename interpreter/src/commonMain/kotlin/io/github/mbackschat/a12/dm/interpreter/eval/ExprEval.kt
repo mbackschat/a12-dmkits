@@ -1176,20 +1176,26 @@ private fun Interpreter.countValueInFields(target: Val, operands: List<Expr>): I
  * `SumOfProducts(a*, b*)` — Σ aᵢ·bᵢ over two parallel field lists of the SAME repeatable group, paired
  * **row-by-row** (the kernel zips the two row iterators). An empty cell reads as `0` (so its product is 0);
  * any malformed cell makes the whole sum non-evaluable → the rule is suppressed (the formal mechanism). Both
- * stars resolve over the same group, so `starAll` yields equal-length, row-aligned lists.
+ * independently keyed parents can have different row counts (KeyedGroupFieldListDiffTest).
  */
 private fun Interpreter.sumOfProducts(args: List<Expr>): Val {
     rejectHaving(args, "SumOfProducts")
-    if (computeMode) {
-        for (a in args) {
-            val st = a as Expr.Star
-            if (ctx.starScanStates(st.path, st.bindDepth).any { it == CellState.INVALID }) throw PoisonedReadException(st.path)
-        }
-    }
     // Resolve the two row-aligned star lists here (ctx-coupled); the Σ aᵢ·bᵢ fold is pure ([Aggregates], IF10).
-    return Aggregates.sumOfProducts(
-        (args[0] as Expr.Star).let { ctx.starAll(it.path, it.bindDepth) },
-        (args[1] as Expr.Star).let { ctx.starAll(it.path, it.bindDepth) })
+    return Aggregates.sumOfProducts(productOperandValues(args[0]), productOperandValues(args[1]))
+}
+
+private fun Interpreter.productOperandValues(operand: Expr): List<Val> = when (operand) {
+    is Expr.EntitySpec -> withIndexedStar(operand, emptyList(), listOf(Val.Unknown)) {
+        if (starFullyEnumerated?.invoke(it.path, it.bindDepth, ctx.repsOf(it.path)) == false) listOf(Val.Unknown)
+        else productOperandValues(it)
+    }
+    is Expr.Star -> {
+        val context = ctxOf(operand)
+        if (computeMode && context.starScanStates(operand.path, operand.bindDepth).any { it == CellState.INVALID })
+            throw PoisonedReadException(operand.path)
+        context.starAll(operand.path, operand.bindDepth)
+    }
+    else -> throw UnsupportedConstructException("SumOfProducts requires starred field lists")
 }
 
 /**

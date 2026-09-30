@@ -49,6 +49,11 @@ private class VlqOperand(val filtered: Boolean) {
 // value, `AtLeastOne` returned false and `No` returned true — the opposite-direction signature of an empty
 // selection rather than of a wrong verdict ([IF287]'s class; `GroupOperandValueListQuantifierDiffTest`).
 private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = expandGroupOperands(entries).map { e ->
+    if (e.isIndexedStar()) return@map withIndexedStar(e as Expr.EntitySpec,
+        VlqOperand(filtered = false).also { it.omittedTail = true },
+        VlqOperand(filtered = false).also { it.cells += Val.Unknown }) {
+            vlqOperands(listOf(it)).single()
+        }
     when (e) {
         is Expr.Star -> {
             val op = VlqOperand(filtered = e.having != null)

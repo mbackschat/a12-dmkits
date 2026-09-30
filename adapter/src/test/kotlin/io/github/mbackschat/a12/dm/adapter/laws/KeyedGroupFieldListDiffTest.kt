@@ -143,19 +143,50 @@ class KeyedGroupFieldListDiffTest {
     }
 
     private fun assertGrid(rows: List<Row>) {
-        val key = { r: Row ->
-            "${r.condition} [${r.packages.joinToString { "${it.code ?: "-"}/${it.items.size}" }}; Wanted=${r.wanted}" +
-                (if (r.errorField == REFERENCE) "" else "; error=${r.errorField}") +
-                (if (r.guarded) "" else "; unguarded") +
-                (r.relevant?.let { "; relevant=${it.keys}" } ?: "") + "]"
-        }
-        val actual = rows.associate { key(it) to verdicts(it) }
+        val actual = rows.map(::verdicts)
         // the kernel's own firing is the expectation; the tri-check then asks the other two engines to repeat it
-        val expected = rows.associate { r ->
-            val groovy = actual.getValue(key(r)).substringAfter("groovy=").substringBefore(" java=")
-            key(r) to "fires=${r.fires} groovy=$groovy java=$groovy interpreter=$groovy"
+        val expected = rows.zip(actual).map { (row, observed) ->
+            val groovy = observed.substringAfter("groovy=").substringBefore(" java=")
+            "fires=${row.fires} groovy=$groovy java=$groovy interpreter=$groovy"
         }
-        assertEquals(expected, actual)
+        assertEquals(expected, actual, rows.joinToString("\n"))
+    }
+
+    @Test
+    fun keyedFieldListsKeepTheirRoleAcrossCollectionConsumers() = assertGrid(listOf(
+        Row("FieldValuesNotUnique(/Order/Packages/Items*/Sku For \"P1\")", false),
+        Row("FieldValuesNotUnique(/Order/Packages/Items*/Sku For \"P1\")", true,
+            packages = listOf(Pkg("P1", items = listOf("S1" to "2", "S1" to "5")))),
+        Row("AtLeastOneFieldValueIncludedInValueList(/Order/Packages/Items*/Sku For \"P1\" In \"S1\")", true),
+        Row("NoFieldValueIncludedInValueList(/Order/Packages/Items*/Sku For \"P1\" In \"S1\")", false),
+        Row("NotAllFieldValuesIncludedInValueList(/Order/Packages/Items*/Sku For \"P1\" In \"S1\")", true),
+        Row("AtLeastOneFieldValueIncludedInValueList(/Order/Packages/Items*/Sku For $WANTED In \"S1\")", true,
+            wanted = "P1"),
+        Row("NoFieldValueIncludedInValueList(/Order/Packages/Items*/Sku For \"P3\" In \"S1\")", true),
+        Row("AtLeastOneFieldValueIncludedInValueList(/Order/Packages/Items*/Sku For \"P1\" In \"S1\")", false,
+            packages = duplicated),
+        Row("SumOfProducts(/Order/Packages/Items*/Weight For \"P1\", /Order/Packages/Items*/Weight For \"P1\") == 29", true),
+        Row("SumOfProducts(/Order/Packages/Items*/Weight For \"P1\", /Order/Packages/Items*/Weight For \"P1\") == 29", false,
+            relevant = mapOf(REFERENCE to listOf(0, 0))),
+        Row("SumOfProducts(/Order/Packages/Items*/Weight For \"P1\", /Order/Packages/Items*/Weight For \"P1\") == 29", false,
+            packages = listOf(Pkg("P1", items = listOf("S1" to "bad", "S2" to "5")))),
+        Row("SumOfProducts(/Order/Packages/Items*/Weight For \"P3\", /Order/Packages/Items*/Weight For \"P3\") == 0", true),
+        Row("SumOfProducts(/Order/Packages/Items*/Weight For \"P1\", /Order/Packages/Items*/Weight For \"P1\") == 29", false,
+            packages = duplicated)))
+
+    @Test
+    fun independentlyKeyedProductsRetainBothOperandExtents() {
+        val unequal = standard.dropLast(1) + Pkg("P2", items = listOf("S3" to "3"))
+        val badTail = listOf(Pkg("P1", items = listOf("S1" to "2", "S2" to "bad")),
+            Pkg("P2", items = listOf("S3" to "3")))
+        val sparse = listOf(Pkg("P1", items = listOf("S1" to "", "S2" to "5")),
+            Pkg("P2", items = listOf("S3" to "3")))
+        for ((left, right) in listOf("P1" to "P2", "P2" to "P1")) {
+            val sum = "SumOfProducts(/Order/Packages/Items*/Weight For \"$left\", /Order/Packages/Items*/Weight For \"$right\")"
+            assertGrid(listOf(Row("$sum == 0", true), Row("$sum == 6", true, packages = unequal),
+                Row("$sum == 0", true, packages = sparse), Row("$sum == 6", false, packages = badTail)))
+            assertEquals("groovy=CLEARED java=CLEARED interpreter=CLEARED", computed("$sum == 6", badTail))
+        }
     }
 
     @Test
@@ -301,6 +332,17 @@ class KeyedGroupFieldListDiffTest {
             onFailure = { "THREW ${it.message}" },
         )
         return "groovy=$groovy java=$javaStatic interpreter=$interpreter"
+    }
+
+    @Test
+    fun keyedProductsRetainComputePoisonAndEmptyCellPositions() {
+        val condition = "SumOfProducts(/Order/Packages/Items*/Weight For \"P1\", /Order/Packages/Items*/Weight For \"P1\") == 29"
+        for ((packages, expected) in listOf(
+            standard to "VALUE|1",
+            listOf(Pkg("P1", items = listOf("S1" to "", "S2" to "5"))) to "VALUE|2",
+            listOf(Pkg("P1", items = listOf("S1" to "bad", "S2" to "5"))) to "CLEARED",
+            duplicated to "CLEARED",
+        )) assertEquals("groovy=$expected java=$expected interpreter=$expected", computed(condition, packages))
     }
 
     /**
