@@ -381,24 +381,11 @@ internal class Conditions(private val mapping: Mapping) {
             op.kernelName + " needs a scalar field cell"
         )
         return when (firstCell.kind()) {
-            ValueKind.STRING -> {
-                val cells = operands.map {
-                    val cell = it as? FieldOperand.Cell ?: throw UnmappedConstructException(
-                        op.kernelName + " mixing a scalar field with " + it.renderedPath()
-                    )
-                    stringRef(cell.field())
-                    cell
-                }.toTypedArray()
-                val rest = cells.copyOfRange(1, cells.size)
-                when (op) {
-                    ValueListQuantOp.AT_LEAST_ONE ->
-                        Dsl.atLeastOneFieldValueIncludedInValueList(values, cells[0], *rest)
-                    ValueListQuantOp.NO -> Dsl.noFieldValueIncludedInValueList(values, cells[0], *rest)
-                    ValueListQuantOp.NOT_ALL ->
-                        Dsl.notAllFieldValuesIncludedInValueList(values, cells[0], *rest)
-                }
-            }
+            ValueKind.STRING -> scalarLiteralValueList(op, operands, values, ValueKind.STRING)
             ValueKind.ENUMERATION -> {
+                if (operands.any { it is IndexedFieldValue }) {
+                    return scalarLiteralValueList(op, operands, values, ValueKind.ENUMERATION)
+                }
                 val refs = operands.map { enumRef(fieldRefOperand(op, it)) }.toTypedArray()
                 val rest = refs.copyOfRange(1, refs.size)
                 when (op) {
@@ -414,6 +401,31 @@ internal class Conditions(private val mapping: Mapping) {
             else -> throw UnmappedConstructException(
                 op.kernelName + " over a " + fieldRefOperand(op, head).kind() + " field list"
             )
+        }
+    }
+
+    private fun scalarLiteralValueList(
+        op: ValueListQuantOp,
+        operands: List<AggregateOperand>,
+        values: List<String>,
+        kind: ValueKind,
+    ): Condition {
+        val cells = operands.map {
+            val cell = it as? FieldOperand.Cell ?: throw UnmappedConstructException(
+                op.kernelName + " mixing a scalar field with " + it.renderedPath()
+            )
+            when (kind) {
+                ValueKind.STRING -> stringRef(cell.field())
+                ValueKind.ENUMERATION -> enumRef(cell.field())
+                else -> throw UnmappedConstructException(op.kernelName + " over a " + kind + " field list")
+            }
+            cell
+        }.toTypedArray()
+        val rest = cells.copyOfRange(1, cells.size)
+        return when (op) {
+            ValueListQuantOp.AT_LEAST_ONE -> Dsl.atLeastOneFieldValueIncludedInValueList(values, cells[0], *rest)
+            ValueListQuantOp.NO -> Dsl.noFieldValueIncludedInValueList(values, cells[0], *rest)
+            ValueListQuantOp.NOT_ALL -> Dsl.notAllFieldValuesIncludedInValueList(values, cells[0], *rest)
         }
     }
 

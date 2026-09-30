@@ -318,7 +318,7 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
         return new ValueListCondition(field, false, fieldValues(first, rest));
     }
 
-    private static List<Calculation> integerValues(long first, long... rest) {
+    static List<Calculation> integerValues(long first, long... rest) {
         var values = new ArrayList<Calculation>();
         values.add(NumberLiteral.of(first));
         for (long v : rest) {

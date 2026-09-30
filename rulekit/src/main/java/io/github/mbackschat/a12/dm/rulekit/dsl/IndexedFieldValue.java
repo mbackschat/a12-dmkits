@@ -31,6 +31,16 @@ public sealed interface IndexedFieldValue extends Calculation, FieldOperand.Cell
         return new ValueListCondition(this, false, StringRef.stringValues(first, rest));
     }
 
+    /** Integer-literal membership; the kernel settles the selected cell's declared-kind domain (DG71). */
+    default Condition in(long first, long... rest) {
+        return new ValueListCondition(this, true, NumberRef.integerValues(first, rest));
+    }
+
+    /** Integer-literal non-membership; see {@link #in(long, long...)}. */
+    default Condition notIn(long first, long... rest) {
+        return new ValueListCondition(this, false, NumberRef.integerValues(first, rest));
+    }
+
     /** The field whose indexed cell this reads. */
     FieldRef field();
 

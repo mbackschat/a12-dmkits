@@ -242,7 +242,7 @@ internal class Predicates(private val mapping: Mapping) {
         included: Boolean,
         operator: String,
     ): Condition {
-        if (ref !is NumberRef) {
+        if (ref !is NumberRef && ref !is IndexedFieldValue) {
             throw UnmappedConstructException(
                 "$operator with a numeric-literal value list against a field with no matching value-list builder"
             )
@@ -259,7 +259,11 @@ internal class Predicates(private val mapping: Mapping) {
             }
         }
         val rest = literals.copyOfRange(1, literals.size)
-        return if (included) ref.`in`(literals[0], *rest) else ref.notIn(literals[0], *rest)
+        return when (ref) {
+            is NumberRef -> if (included) ref.`in`(literals[0], *rest) else ref.notIn(literals[0], *rest)
+            is IndexedFieldValue -> if (included) ref.`in`(literals[0], *rest) else ref.notIn(literals[0], *rest)
+            else -> throw UnmappedConstructException("$operator needs a numeric field cell")
+        }
     }
 
     /**

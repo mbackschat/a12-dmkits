@@ -33,6 +33,24 @@ class SemanticIndexFieldOperandPositionReadTest {
     private static final RuleValidator VALIDATOR = new RuleValidator();
 
     @Test
+    void indexedEnumAndNumericMembershipKeepBothKeyForms() {
+        var conditions = new java.util.ArrayList<String>();
+        for (String key : List.of("\"P1\"", "/Order/Title")) {
+            for (String operator : List.of("AtLeastOneFieldValueIncludedInValueList",
+                    "NoFieldValueIncludedInValueList", "NotAllFieldValuesIncludedInValueList")) {
+                conditions.add(operator + "(/Order/Packages/Mode For " + key + ", /Order/Mode In \"ROAD\")");
+                conditions.add(operator + "(/Order/Mode, /Order/Packages/Mode For " + key + " In \"ROAD\")");
+                conditions.add(operator + "(/Order/Packages/Mode For " + key
+                        + ", /Order/Packages/Mode For \"P2\" In \"ROAD\")");
+            }
+            for (String operator : List.of("FieldValueIncludedInValueList", "FieldValueNotIncludedInValueList")) {
+                conditions.add(operator + "(/Order/Packages/Weight For " + key + ", 0, 5)");
+            }
+        }
+        assertReadsBack(conditions);
+    }
+
+    @Test
     void anIndexedScalarCellReadsBackInFieldOnlyPositions() {
         assertReadsBack(List.of(
                 "[/Order/Packages/Carrier For \"P1\"] PatternMatched \"[A-Z]{2}\"",

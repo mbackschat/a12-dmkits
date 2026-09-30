@@ -41,6 +41,15 @@ class IndexedFieldOperandTest {
     private final FieldRef sku = ORDER.field("/Order/Items/Sku");
 
     @Test
+    void numericMembershipUsesTheSelectedCellWithEitherKeyForm() {
+        var renderer = new DslRenderer();
+        assertEquals("FieldValueIncludedInValueList(/Order/Items/Count For \"SKU-1\", 0, 5)",
+                renderer.render(count.semanticIndex("SKU-1").index().in(0, 5)));
+        assertEquals("FieldValueNotIncludedInValueList(/Order/Items/Count For /Order/Items/Sku, 0, 5)",
+                renderer.render(count.semanticIndex(sku).index().notIn(0, 5)));
+    }
+
+    @Test
     void anIndexSelectedFieldFillsAnEntityListSlot() {
         assertEquals("NumberOfFilledFields(/Order/Items/Count For \"SKU-1\", /Order/Items/UnitWeight) > 0",
                 new DslRenderer().render(

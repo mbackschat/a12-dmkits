@@ -806,21 +806,12 @@ final class ConditionConverter {
         if (entities.stream().allMatch(e -> e.isField() && !isWildcard(e))) {
             List<String> paths = entities.stream().map(IEntityId::getFullName).toList();
             return switch (homogeneousKind(paths, node)) {
-                case STRING -> {
-                    FieldOperand.Cell[] r = entities.stream().map(this::toScalarCell)
-                            .toArray(FieldOperand.Cell[]::new);
-                    FieldOperand.Cell[] rest = Arrays.copyOfRange(r, 1, r.length);
-                    yield switch (name) {
-                        case AtLeastOneFieldValueIncludedInValueList ->
-                                Dsl.atLeastOneFieldValueIncludedInValueList(values, r[0], rest);
-                        case NoFieldValueIncludedInValueList ->
-                                Dsl.noFieldValueIncludedInValueList(values, r[0], rest);
-                        case NotAllFieldValuesIncludedInValueList ->
-                                Dsl.notAllFieldValuesIncludedInValueList(values, r[0], rest);
-                        default -> throw unsupported("entity+value-list condition " + name, node);
-                    };
-                }
+                case STRING -> scalarLiteralValueList(node, entities, values);
                 case ENUMERATION -> {
+                    if (entities.stream().anyMatch(ConditionConverter::hasSemanticIndex)
+                            && entities.stream().allMatch(e -> e.getCategoryName() == null || e.getCategoryName().isEmpty())) {
+                        yield scalarLiteralValueList(node, entities, values);
+                    }
                     // preserve each member's exact projection: a direct enum reference vs a category
                     // access ([field -> Cat]) are distinct members, and literals ride the union of their
                     // domains (SPEC-2026-07-22-05) — so build EnumListRefs off the ENTITIES, not the paths.
@@ -854,6 +845,21 @@ final class ConditionConverter {
             };
         }
         throw unsupported("entity+value-list over a mixed (plain + wildcard) scope", node);
+    }
+
+    private Condition scalarLiteralValueList(IEntityListAndValueListCondition node,
+            List<IEntityId> entities, List<String> values) {
+        FieldOperand.Cell[] cells = entities.stream().map(this::toScalarCell).toArray(FieldOperand.Cell[]::new);
+        FieldOperand.Cell[] rest = Arrays.copyOfRange(cells, 1, cells.length);
+        return switch (node.getConditionName()) {
+            case AtLeastOneFieldValueIncludedInValueList ->
+                    Dsl.atLeastOneFieldValueIncludedInValueList(values, cells[0], rest);
+            case NoFieldValueIncludedInValueList ->
+                    Dsl.noFieldValueIncludedInValueList(values, cells[0], rest);
+            case NotAllFieldValuesIncludedInValueList ->
+                    Dsl.notAllFieldValuesIncludedInValueList(values, cells[0], rest);
+            default -> throw unsupported("entity+value-list condition " + node.getConditionName(), node);
+        };
     }
 
     /**
