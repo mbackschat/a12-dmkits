@@ -2,29 +2,25 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
-import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 
 /**
- * What an error message's `$#…$` GROUP position may name: a group that CONTAINS the rule's own.
+ * What an error message's `$#…$` group position may name: an ancestor or a group reached by the condition.
  *
  * This is a different position from the parameter NAME one and resolves the same words differently — there
  * `RootGroup` draws `INVALID_ENTITY` and `RuleGroup` draws `INVALID_PARAMETER`, here both are admitted
  * shorthands ([KERNEL-FINDINGS KF198], `rulekit.validate.laws.RuleMessageGroupParameterLawsTest`).
- * Containment runs the opposite way from most reach laws in this checker: the NAMED group must contain the
- * rule's, not the other way round.
+ * A referenced descendant is admitted too, relatively or absolutely. The earlier ancestor-only grid kept
+ * every condition read inside the rule's own group (KF214, corrected by MessageGroupFootprintAgreementTest).
  *
  * | the `$#…$` argument | class |
  * |---|---|
  * | an absolute path whose FIRST segment names no declared root | `INVALID_ROOT_GROUP` |
- * | anything else that does not contain the rule's group | `INVALID_GROUP` |
+ * | a group unavailable to the declaration | `INVALID_GROUP` |
  * | `Zeile` or `Usb`, the retired terminals | `PARAM_INVALID_IN_NEW_WORLD` |
  * | `RuleGroup`, where the rule sits IN a root group | `RULEGROUP_IMMEDIATELY_BELOW_ROOT` |
  *
- * **Existence is not part of the law, which one measurement settled against a source read.** A source read
- * of `CheckIdNameImpl.checkAndCreateFullName` predicted `INVALID_ENTITY` for an absolute path under a
- * declared root that resolves to nothing; measured, it is `INVALID_GROUP`, because in this position
- * `resolveAndStoreEntity`'s group branch answers. So containment alone decides and this family never asks
- * whether the named group is there — a chain the source suggests and the kernel collapses.
+ * An unresolved group under a declared root draws `INVALID_GROUP`, like an unreferenced sibling. That
+ * shared diagnostic does not make existence and reference membership the same gate (KF214).
  *
  * **The terminal match is on the RAW argument, before quotes are stripped.** `'RootGroup'` and `'RuleGroup'`
  * are looked up as ordinary group names and draw `INVALID_GROUP`, while `/'Policy'/'Cover'` reaches the same
@@ -76,7 +72,7 @@ internal fun TrackedFactBase.messageGroupParameterFindings(element: TrackedDecla
         val argument = parameter.trim().removePrefix(GROUP_MARKER).takeIf {
             parameter.trim().startsWith(GROUP_MARKER)
         } ?: return@mapNotNull null
-        val defect = groupArgumentDefect(argument, ruleGroup, roots, conditionLanguage)
+        val defect = groupArgumentDefect(argument, ruleGroup, roots, element)
             ?: starredIterationDefect(argument, ruleGroup, roots, element)
         defect?.let { code -> finding(code, argument, element) }
     }
@@ -96,14 +92,15 @@ private val RETIRED_TERMINALS = setOf("Zeile", "Usb")
  * The class this argument draws, or null where it is admitted or is a shape this family may not judge.
  *
  * The gates run in A12's order: the retired terminals and the two shorthands are matched on the RAW text
- * first, then an absolute path's root segment, then containment.
+ * first, then an absolute path's root segment, then the group's availability.
  */
-private fun groupArgumentDefect(
+private fun TrackedFactBase.groupArgumentDefect(
     argument: String,
     ruleGroup: String,
     roots: Set<String>,
-    language: ConditionLanguage,
+    element: TrackedDeclaration,
 ): String? {
+    val language = conditionLanguage
     if (argument in RETIRED_TERMINALS) {
         return RETIRED
     }
@@ -115,24 +112,22 @@ private fun groupArgumentDefect(
     if (argument == ROOT_GROUP_SPELLING[language]) {
         return null
     }
-    if (!argument.startsWith('/')) {
-        // A relative spelling of a real ancestor draws the containment class rather than the root one, so
-        // the root gate is reached only by an absolute path (measured on `Cover`, a genuine ancestor).
-        return GROUP
-    }
     val segments = argument.removePrefix("/").split('/')
     if (segments.any { it.isMalformed() }) {
         return null
     }
-    val named = "/" + segments.joinToString("/") { it.trim('\'') }
-    if ("/${segments.first().trim('\'')}" !in roots) {
+    if (argument.startsWith('/') && "/${segments.first().trim('\'')}" !in roots) {
         return ROOT_GROUP
     }
-    return if (ruleGroup == named || ruleGroup.startsWith("$named/")) null else GROUP
+    val named = namedGroup(argument, ruleGroup, roots, element) ?: return GROUP
+    if (ruleGroup == named || ruleGroup.startsWith("$named/")) return null
+    // The condition's footprint, not just the declaring group's ancestors, admits a group parameter
+    // (MessageGroupFootprintAgreementTest's relative/absolute descendant and unread-sibling controls).
+    return if (entitiesReadBy(element).reachesGroup(named)) null else GROUP
 }
 
 /**
- * The gate BEHIND containment: the condition must ride the named group without a repetition wildcard.
+ * Once the group is available, the condition must ride it without a repetition wildcard.
  *
  * A12 asks `refEntities.isNotReferencedWithoutWildcard` of the group the parameter resolved to, so the law
  * belongs to the POSITION and not to the shorthand its comment names — measured on both spellings of one
@@ -150,23 +145,26 @@ private fun TrackedFactBase.starredIterationDefect(
     roots: Set<String>,
     element: TrackedDeclaration,
 ): String? {
-    val named = namedGroup(argument, ruleGroup, roots, conditionLanguage) ?: return null
+    val named = namedGroup(argument, ruleGroup, roots, element) ?: return null
     return if (conditionRidesUnstarred(named, ruleGroup, element)) null else STARRED_ITERATION
 }
 
 /** The group an ADMITTED argument names, or null for one this family declined to judge. */
-private fun namedGroup(
+private fun TrackedFactBase.namedGroup(
     argument: String,
     ruleGroup: String,
     roots: Set<String>,
-    language: ConditionLanguage,
+    element: TrackedDeclaration,
 ): String? = when {
-    argument == RULE_GROUP_SPELLING[language] -> ruleGroup
-    argument == ROOT_GROUP_SPELLING[language] -> roots.firstOrNull { ruleGroup == it || ruleGroup.startsWith("$it/") }
-    !argument.startsWith('/') -> null
+    argument == RULE_GROUP_SPELLING[conditionLanguage] -> ruleGroup
+    argument == ROOT_GROUP_SPELLING[conditionLanguage] -> roots.firstOrNull { ruleGroup == it || ruleGroup.startsWith("$it/") }
     else -> {
-        val segments = argument.removePrefix("/").split('/')
-        if (segments.any { it.isMalformed() }) null else "/" + segments.joinToString("/") { it.trim('\'') }
+        if (argument.removePrefix("/").split('/').any { it.isMalformed() }) null
+        else {
+            val path = argument.split('/').joinToString("/") { it.trim('\'') }
+            val resolved = (resolveEntity(ruleGroup, path, element.origin) as? Reference.Resolved)?.path
+            resolved?.takeIf { declarationAt(it)?.declaredKind == DeclaredKind.GROUP }
+        }
     }
 }
 
@@ -184,24 +182,20 @@ private fun TrackedFactBase.conditionRidesUnstarred(
     ruleGroup: String,
     element: TrackedDeclaration,
 ): Boolean {
-    val body = element.body ?: return true
+    if (element.body == null) return true
     fun resolves(written: String): String? =
         (resolveEntity(ruleGroup, written, element.origin) as? Reference.Resolved)?.path
-    return conditionTexts(element.kind, body).any { (_, text) ->
-        referencesIn(text, conditionLanguage).any { written ->
-            val resolved = resolves(written.replace("*", "")) ?: return@any false
-            if (resolved != group && !resolved.startsWith("$group/")) {
-                return@any false
-            }
-            if ('*' !in written) {
-                return@any true
-            }
-            val segments = written.split('/')
-            val starred = segments.indexOfFirst { '*' in it }
-            val prefix = segments.take(starred + 1).joinToString("/").replace("*", "")
-            val starLevel = resolves(prefix) ?: return@any true
-            starLevel.startsWith("$group/")
+    return messageConditionReferences(element).any { written ->
+        val resolved = resolves(written.replace("*", "")) ?: return@any false
+        if (messageReferenceFootprint(resolved).none { it == group || it.startsWith("$group/") }) {
+            return@any false
         }
+        if ('*' !in written) return@any true
+        val segments = written.split('/')
+        val starred = segments.indexOfFirst { '*' in it }
+        val prefix = segments.take(starred + 1).joinToString("/").replace("*", "")
+        val starLevel = resolves(prefix) ?: return@any true
+        starLevel.startsWith("$group/")
     }
 }
 
@@ -232,8 +226,8 @@ private fun finding(code: String, argument: String, element: TrackedDeclaration)
         STARRED_ITERATION ->
             "names a group this declaration's condition reads only through a repetition wildcard — the " +
                 "parameter pins the message to ONE row, so give the condition an unstarred read of that level"
-        else -> "names a group that does not CONTAIN this rule's group — the position takes the rule's own " +
-            "group or one of its ancestors, spelled absolutely"
+        else -> "does not name an available group — use the rule's own group, one of its ancestors, " +
+            "or a group reached by its condition"
     },
     element.path,
 )

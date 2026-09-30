@@ -2342,13 +2342,14 @@ public final class Dsl {
      * {@code group}'s current repetition. Pairs naturally with a uniqueness/per-row rule:
      * {@code en("Row #" + repetitionIndex(items) + " is invalid.")}.
      *
-     * <p><b>The named group must CONTAIN the rule</b> — its own group, or any ancestor of it. A descendant, a
-     * sibling, or anything under another root is refused {@code INVALID_GROUP}, and a first segment that names
-     * no declared root is refused earlier still, {@code INVALID_ROOT_GROUP}
-     * (KERNEL-FINDINGS {@code KF214}). Acquiring the {@link GroupRef} from a BOUND model is what keeps this side of the trap closed:
+     * <p>The named group may be the rule's own group, an ancestor, or a group reached by its condition.
+     * A root-level rule reading a descendant's field may name that descendant; a group unavailable to the
+     * declaration draws {@code INVALID_GROUP}. A first segment naming no declared root draws
+     * {@code INVALID_ROOT_GROUP} (KERNEL-FINDINGS {@code KF214}; {@code MessageGroupFootprintAgreementTest}).
+     * Acquiring the {@link GroupRef} from a bound model ensures that the group exists:
      * {@code BoundModel.group(String)} refuses a path that does not resolve, so the token is emitted absolute. The
      * constructor is public and {@code EntityPath} is deliberately permissive, so a hand-built relative ref renders
-     * one verbatim — this method does not normalize, and nothing downstream refuses it before the kernel does.
+     * one verbatim. Relative group parameters can also be legal; this helper does not decide admission.
      */
     public static String repetitionIndex(GroupRef group) {
         return "$#" + group.path() + "$";

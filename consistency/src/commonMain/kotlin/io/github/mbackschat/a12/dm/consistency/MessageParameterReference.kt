@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
+import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.NameTerminal
 import io.github.mbackschat.a12.dm.consistency.syntax.formLineParameterName
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
@@ -131,13 +133,30 @@ private fun ruleGroupFinding(parameter: String, element: TrackedDeclaration): Fi
     element.path,
 )
 
-/** Message membership belongs to the actual declaration occurrence, including its computed target. */
+/** Message membership includes fields reached through group reads and the computation's own target. */
 internal fun TrackedFactBase.entitiesReadBy(element: TrackedDeclaration): Membership {
-    val paths = conditionReferencesOf(element).mapNotNull { (it.target as? Reference.Resolved)?.path }.toSet() +
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    val paths = messageConditionReferences(element).mapNotNull { written ->
+        (resolveEntity(group, written.replace("*", ""), element.origin) as? Reference.Resolved)?.path
+    }.flatMap { messageReferenceFootprint(it) }.toSet() +
         listOfNotNull(element.declaredReference()?.takeIf { it.role == ReferenceRole.COMPUTED_TARGET }
             ?.target?.let { (it as? Reference.Resolved)?.path })
     return Membership(paths, if (element.kind == "Rule") "errorCondition" else "computation's own members")
 }
+
+/** The rule-context token is a read too; the syntax reader deliberately returns only ordinary paths. */
+internal fun TrackedFactBase.messageConditionReferences(element: TrackedDeclaration): List<String> {
+    val body = element.body ?: return emptyList()
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    return conditionTexts(element.kind, body).flatMap { (_, text) ->
+        referencesIn(text, conditionLanguage) +
+            if (namesRuleContext(text, conditionLanguage)) listOf(group) else emptyList()
+    }
+}
+
+/** KF335's group-read witness applies to membership and wildcard gates, not just the plain parameter. */
+internal fun TrackedFactBase.messageReferenceFootprint(path: String): List<String> =
+    listOf(path) + declarationAt(path)?.let { fieldsUnder(it) }.orEmpty().map { it.path }
 
 /**
  * The entities one declaration reads, with the member a reader would have to edit to add one.
@@ -147,4 +166,5 @@ internal fun TrackedFactBase.entitiesReadBy(element: TrackedDeclaration): Member
  */
 internal data class Membership(private val paths: Set<String>, val memberName: String) {
     operator fun contains(path: String): Boolean = path in paths
+    fun reachesGroup(group: String): Boolean = paths.any { it == group || it.startsWith("$group/") }
 }

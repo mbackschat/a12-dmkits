@@ -27,7 +27,7 @@
         "additionalProperties": false,
         "properties": {
           "locale": { "type": "string", "description": "a full locale code, e.g. en_US (bare 'en' is rejected by the kernel)" },
-          "text": { "type": "string", "description": "the message text; may interpolate kernel tokens, each using a model path: $<Field>.value$ (the field's runtime value), $<Field>$ (its localized label), $#<Group>$ (a repeatable group's 1-based row index). The group token takes an ABSOLUTE path and the named group must CONTAIN this rule \u2014 its own group or any ancestor; RuleGroup and RootGroup are shorthands for the two ends of that chain, a group elsewhere is INVALID_GROUP, and a first segment naming no declared root is INVALID_ROOT_GROUP. A LITERAL dollar sign is written $$." }
+          "text": { "type": "string", "description": "the message text; may interpolate kernel tokens, each using a model path: $<Field>.value$ (the field's runtime value), $<Field>$ (its localized label), $#<Group>$ (a repeatable group's 1-based row index). The group token accepts absolute or relative paths to an available group: the rule's own group, an ancestor, or a group reached by its condition. A root-level rule reading Addons/MonthlyFee may name $#Addons$. RuleGroup and RootGroup name the owning group and its root; RuleGroup is refused for a rule directly in a root group. An unavailable group is INVALID_GROUP; an absolute first segment naming no declared root is INVALID_ROOT_GROUP. A LITERAL dollar sign is written $$." }
         }
       }
     },
@@ -45,6 +45,22 @@
       "messages": [
         { "locale": "en_US", "text": "Monthly fee is too high." },
         { "locale": "de_DE", "text": "Monatsgebühr zu hoch." }
+      ]
+    },
+    {
+      "field": "/Subscription/Addons/MonthlyFee",
+      "group": "/Subscription",
+      "condition": "FieldFilled(/Subscription/Addons/MonthlyFee)",
+      "code": "CHECK_ADDON",
+      "messages": [
+        {
+          "locale": "en_US",
+          "text": "Check addon $#Addons$."
+        },
+        {
+          "locale": "de_DE",
+          "text": "Zusatzoption $#Addons$ prüfen."
+        }
       ]
     }
   ]

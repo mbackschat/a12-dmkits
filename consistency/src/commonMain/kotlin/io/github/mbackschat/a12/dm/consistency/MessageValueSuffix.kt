@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
 import io.github.mbackschat.a12.dm.consistency.syntax.plainParameterName
-import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 
 /**
  * The two gates an error message's `.value` SUFFIX passes that its plain form does not.
@@ -72,13 +71,11 @@ private fun TrackedFactBase.suffixDefect(path: String, starredOnly: Set<String>)
 private fun TrackedFactBase.pathsReadThroughAStarAlone(element: TrackedDeclaration, group: String): Set<String> {
     val starred = mutableSetOf<String>()
     val plain = mutableSetOf<String>()
-    val body = element.body ?: return emptySet()
-    conditionTexts(element.kind, body).forEach { (_, text) ->
-        referencesIn(text, conditionLanguage).forEach { written ->
-            val resolved = (resolveEntity(group, written.replace("*", ""), element.origin) as? Reference.Resolved)
-                ?.path ?: return@forEach
-            if ('*' in written) starred += resolved else plain += resolved
-        }
+    messageConditionReferences(element).forEach { written ->
+        val resolved = (resolveEntity(group, written.replace("*", ""), element.origin) as? Reference.Resolved)
+            ?.path ?: return@forEach
+        val footprint = messageReferenceFootprint(resolved)
+        if ('*' in written) starred += footprint else plain += footprint
     }
     return starred - plain
 }

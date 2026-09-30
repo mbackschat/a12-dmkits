@@ -691,11 +691,12 @@ def operationLawInputs = rootProject.file('adapter/src/test/resources/checker-ne
 def reportInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-report-checks.json')
 def numericKeyInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-numeric-keys.json')
 def keyPatternInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/java-pattern-replay.json')
+def messageGroupInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/message-group-footprint.json')
 def generatedSyntaxDir = layout.buildDirectory.dir('generated/syntaxFixtures/commonTest/kotlin').get().asFile
 def generatedSyntax = new File(generatedSyntaxDir,
         'io/github/mbackschat/a12/dm/consistency/SyntaxFixtureData.kt')
 def generateSyntaxFixtures = tasks.register('generateSyntaxFixtures') {
-    inputs.files(syntaxInputs, syntaxVerdicts, computationInputs, fieldReadInputs, fieldReadOrigins, numericKeyInputs, operationCheckInputs, operationLawInputs, reportInputs, keyPatternInputs)
+    inputs.files(syntaxInputs, syntaxVerdicts, computationInputs, fieldReadInputs, fieldReadOrigins, numericKeyInputs, operationCheckInputs, operationLawInputs, reportInputs, keyPatternInputs, messageGroupInputs)
     outputs.file(generatedSyntax)
     doLast {
         def parser = new groovy.json.JsonSlurper()
@@ -726,6 +727,7 @@ def generateSyntaxFixtures = tasks.register('generateSyntaxFixtures') {
         generatedSyntax.text = """package io.github.mbackschat.a12.dm.consistency
 
 internal object SyntaxFixtureData {
+    val messageGroups = listOf(${rows(harvestRows(messageGroupInputs))})
     val keyPatterns = listOf(${rows(harvestRows(keyPatternInputs))})
     val reportChecks = listOf(${rows(harvestRows(reportInputs))})
     val operationLaws = listOf(${rows(harvestRows(operationLawInputs))})

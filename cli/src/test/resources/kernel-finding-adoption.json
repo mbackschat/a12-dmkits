@@ -1478,6 +1478,172 @@
           }
         }
       }
+    },
+    "kf214": {
+      "sha256": "50cf26ec7cf37c563d389811654c8b30cda4cfc15ff600ecd9e3cd53543a5181",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "message reference admission"
+        ],
+        "dmkits": [
+          "typed message authoring and documentation"
+        ],
+        "interpreter": [
+          "message rendering"
+        ],
+        "checker": [
+          "group reference footprint"
+        ],
+        "dmtool-cli": [
+          "message schema and admission"
+        ],
+        "json-schema-import": [
+          "message preservation"
+        ],
+        "json-schema-export": [
+          "message preservation"
+        ],
+        "a12-kernel-lean": [
+          "specification",
+          "evidence"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Complete typed models have measured kernel verdicts, with plain-message controls and genuine refusal controls.",
+          "evidence": {
+            "message reference admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageGroupFootprintAgreementTest.kt#messageReferencesFollowTheKernelGroupFootprint",
+              "witness": "Thirty-two models separate group reads from direct field reads, relative and absolute group parameters, suffix gates and computation preconditions."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The complete checker suite passes on JVM and Node, including the exact typed kernel witnesses and the existing quoted-path and refusal controls.",
+          "evidence": {
+            "group reference footprint": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupFootprintTest.kt#groupReadsRetainTheirMessageFootprintOnBothHosts",
+              "witness": "All thirty-two kernel-measured models retain ordered findings on both hosts, with admitted descendants, unread-field/group refusals, suffix gates and computation controls."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf335": {
+      "sha256": "4c680045e2619339f7af229b14a7a9d591a932a88a0d5de4b626ee1468b8eedc",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "message reference admission"
+        ],
+        "dmkits": [
+          "typed message authoring and documentation"
+        ],
+        "interpreter": [
+          "message rendering"
+        ],
+        "checker": [
+          "group reference footprint"
+        ],
+        "dmtool-cli": [
+          "message schema and admission"
+        ],
+        "json-schema-import": [
+          "message preservation"
+        ],
+        "json-schema-export": [
+          "message preservation"
+        ],
+        "a12-kernel-lean": [
+          "specification",
+          "evidence"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Complete typed models have measured kernel verdicts, with plain-message controls and genuine refusal controls.",
+          "evidence": {
+            "message reference admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageGroupFootprintAgreementTest.kt#messageReferencesFollowTheKernelGroupFootprint",
+              "witness": "Thirty-two models separate group reads from direct field reads, relative and absolute group parameters, suffix gates and computation preconditions."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The complete checker suite passes on JVM and Node, including the exact typed kernel witnesses and the existing quoted-path and refusal controls.",
+          "evidence": {
+            "group reference footprint": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupFootprintTest.kt#groupReadsRetainTheirMessageFootprintOnBothHosts",
+              "witness": "All thirty-two kernel-measured models retain ordered findings on both hosts, with admitted descendants, unread-field/group refusals, suffix gates and computation controls."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        }
+      }
     }
   }
 }
