@@ -21,6 +21,19 @@ import java.nio.file.Path
 class ParserCorporaTest {
 
     @Test
+    fun onlyDocumentModelsContributeDslText(@TempDir root: Path) {
+        writeModel(root.resolve("policy.json"), "en_US", errorCondition = "FieldFilled(Premium)")
+        Files.writeString(root.resolve("display.json"),
+            """{"header":{"modelType":"object"},"content":{"operation":"sum","errorCondition":"display-only"}}""")
+        Files.writeString(root.resolve("settings.json"),
+            """{"operation":"total","precondition":"settings-only"}""")
+
+        val harvested = ParserCorpora.harvest(root)
+        assertEquals(mapOf("FieldFilled(Premium)" to "en_US"), harvested.conditions)
+        assertEquals(emptyMap<String, String>(), harvested.operations)
+    }
+
+    @Test
     fun eachTextCarriesTheConditionLanguageOfTheModelThatStoresIt(@TempDir root: Path) {
         writeModel(root.resolve("policy.json"), "de_DE", errorCondition = "FeldAngegeben(Beitrag)")
         writeModel(root.resolve("claim.json"), "en_US", errorCondition = "FieldFilled(Premium)")
@@ -41,7 +54,7 @@ class ParserCorporaTest {
     fun aModelDeclaringNoLanguageIsHarvestedAsEnglish(@TempDir root: Path) {
         Files.writeString(
             root.resolve("renewal.json"),
-            """{"content":{"modelConfig":{"decimalSeparator":"."},"rules":[{"errorCondition":"FieldFilled(Premium)"}]}}""",
+            """{"header":{"modelType":"document"},"content":{"modelConfig":{"decimalSeparator":"."},"rules":[{"errorCondition":"FieldFilled(Premium)"}]}}""",
         )
 
         assertEquals(mapOf("FieldFilled(Premium)" to "en_US"), ParserCorpora.harvest(root).conditions)
@@ -62,7 +75,7 @@ class ParserCorporaTest {
         }
         Files.writeString(
             file,
-            """{"content":{"modelConfig":{"conditionLanguage":{"code":"$code"}},"modelRoot":{"members":[{$member}]}}}""",
+            """{"header":{"modelType":"document"},"content":{"modelConfig":{"conditionLanguage":{"code":"$code"}},"modelRoot":{"members":[{$member}]}}}""",
         )
     }
 }

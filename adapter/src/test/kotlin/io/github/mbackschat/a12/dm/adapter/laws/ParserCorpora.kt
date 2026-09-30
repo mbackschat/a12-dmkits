@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.extension
 
 /**
  * The real DSL corpora, harvested once for every parser that wants to be held to them.
@@ -37,8 +36,8 @@ internal object ParserCorpora {
         System.getProperty("a12.corpus1.dir")?.let { Path.of(it) }?.takeIf { Files.isDirectory(it) }
 
     /**
-     * Every DISTINCT condition and operation string stored under [root], each with its model's own condition
-     * language.
+     * Every DISTINCT condition and operation string in the DocumentModels under [root], each with its own
+     * condition language. Object Models also have an `operation` member, but it is not DocumentModel DSL.
      *
      * The language is read from the model rather than assumed, because assuming it is how a sweep measures
      * nothing: put through the wrong language every operator keyword reads as an undeclared name, so a
@@ -52,17 +51,15 @@ internal object ParserCorpora {
     fun harvest(root: Path): Harvested {
         val conditions = LinkedHashMap<String, String>()
         val operations = LinkedHashMap<String, String>()
-        Files.walk(root).use { paths ->
-            paths.filter { it.extension == "json" }.forEach { file ->
-                val tree = try {
-                    MAPPER.readTree(Files.readString(file))
-                } catch (_: Exception) {
-                    return@forEach
-                }
-                val language = tree.path("content").path("modelConfig").path("conditionLanguage")
-                    .path("code").asText("").ifEmpty { DEFAULT_LANGUAGE }
-                collect(tree, language, conditions, operations)
+        CorpusShrinkSupport.documentModels(root).forEach { file ->
+            val tree = try {
+                MAPPER.readTree(Files.readString(file))
+            } catch (_: Exception) {
+                return@forEach
             }
+            val language = tree.path("content").path("modelConfig").path("conditionLanguage")
+                .path("code").asText("").ifEmpty { DEFAULT_LANGUAGE }
+            collect(tree, language, conditions, operations)
         }
         return Harvested(conditions, operations)
     }
