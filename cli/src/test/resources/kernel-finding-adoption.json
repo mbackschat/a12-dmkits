@@ -608,17 +608,36 @@
       }
     },
     "kf481": {
-      "sha256": "e0e17eadf66bfda7f7184ef80270fc7b896d1c2b29333c78eb25277e2956a615",
+      "sha256": "49831d971106911916845fa7c31d43aad3f7765b458c3f92bcba5ead1e979987",
       "task": "DG102",
       "scope": {
-        "adapter": ["kernel index-key class oracle"],
-        "dmkits": ["typed index-field authoring", "delegated model validation"],
-        "interpreter": ["runtime selection of admitted indexed keys"],
-        "checker": ["O1 index-key class comparison", "JVM and Node pattern support boundary"],
-        "a12-kernel-lean": ["specification", "evidence"],
-        "dmtool-cli": ["rule check admission and diagnostics"],
-        "json-schema-import": ["index-key model constraints and loss reporting"],
-        "json-schema-export": ["index-key model constraints and loss reporting"]
+        "adapter": [
+          "kernel index-key class oracle"
+        ],
+        "dmkits": [
+          "typed index-field authoring",
+          "delegated model validation"
+        ],
+        "interpreter": [
+          "runtime selection of admitted indexed keys"
+        ],
+        "checker": [
+          "O1 index-key class comparison",
+          "JVM and Node pattern support boundary"
+        ],
+        "a12-kernel-lean": [
+          "specification",
+          "evidence"
+        ],
+        "dmtool-cli": [
+          "rule check admission and diagnostics"
+        ],
+        "json-schema-import": [
+          "index-key model constraints and loss reporting"
+        ],
+        "json-schema-export": [
+          "index-key model constraints and loss reporting"
+        ]
       },
       "consumers": {
         "adapter": {
@@ -638,36 +657,27 @@
         },
         "interpreter": {
           "state": "OPEN",
-          "basis": "Static key admission does not settle interpreter selection of an admitted indexed key. REGEX-CLASS applies shared class semantics with nineteen separately measured runtime-predicate outcomes and JVM/Node parity. Runtime indexed-key selection and the native-JS policy remain separate obligations.",
+          "basis": "Static key admission does not settle runtime indexed-key selection. PatternDialectDiffTest separately verifies admitted pattern predicates, including the 2026-09-30 provenance/recursive controls, with common JVM/Node primitive parity. Runtime indexed-key selection and the native-JS policy remain separate obligations.",
           "evidence": {}
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "All 147 frozen inputs agree with the kernel and replay on JVM/Node. Scalar/range case closure and predicate-based intersection, including empty sets and omitted operands, are verified with independent finite-alphabet controls. The documented unsupported domain remains unjudged on both targets; this is bounded agreement, not universal Java Pattern conformance.",
+          "basis": "All 177 frozen inputs agree with the kernel and replay on JVM/Node. The operand-provenance and recursive-intersection controls correct the previous omitted-operand generalization. This is bounded agreement; unsupported syntax and out-of-domain values remain unjudged.",
           "evidence": {
             "O1 index-key class comparison": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerNearMissSweepTest.kt#indexKeyPatternsHaveOnlyLedgeredDifferences",
-              "witness": "Nine frozen populations, 147 models in total, compare exact kernel classes; the same method locks all factored replay bytes."
+              "witness": "Ten frozen populations, 177 models in total, compare exact kernel classes; the same method locks all factored replay bytes."
             },
             "JVM and Node pattern support boundary": {
-              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/KeyPatternTest.kt#unsupportedOrKernelRejectedPatternsStayUnjudged",
-              "witness": "Eight common tests exercise whole-model replay, represented and excluded domains, class algebra, whole-expression flag scope, final-line anchors and the complete Latin-1 literal/key relation."
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/KeyPatternTest.kt#intersectionsRetainOperandProvenanceAndDelimiterRoles",
+              "witness": "Ten common tests retain represented/excluded domains, model replay, provenance, recursive operands, malformed syntax and Latin-1 controls."
             }
           }
         },
         "a12-kernel-lean": {
-          "state": "APPLIED",
-          "basis": "Peer applied the index-key dialect and line-terminator rows to spec/08; Lean takes key fit as an input.",
-          "evidence": {
-            "specification": {
-              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-index-key-dialect",
-              "witness": "Peer records the spec/08 String-key sentence for KF481."
-            },
-            "evidence": {
-              "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-index-key-dialect",
-              "witness": "Peer identifies the named checker and index-key populations, read rather than rerun."
-            }
-          }
+          "state": "OPEN",
+          "basis": "The prior 3831425df05ba9afecdf5805e80be4fad164ec6c receipt covers the earlier String-key dialect rows. The 2026-09-30 provenance extension needs a new peer receipt; the earlier receipt is not extended by inference.",
+          "evidence": {}
         },
         "dmtool-cli": {
           "state": "OPEN",

@@ -13,7 +13,7 @@ class KeyPatternTest {
 
     @Test
     fun theKernelPatternPopulationAgreesOnEachPortableTarget() {
-        assertEquals(147, SyntaxFixtureData.keyPatterns.size)
+        assertEquals(177, SyntaxFixtureData.keyPatterns.size)
         for (json in SyntaxFixtureData.keyPatterns) {
             val row = Json.parseToJsonElement(json).jsonObject
             val expected = row.getValue("classes").jsonArray.map { it.jsonPrimitive.content }.toSet()
@@ -188,4 +188,35 @@ class KeyPatternTest {
         assertEquals(null, matches("(?<=A)B", "B"))
         assertEquals(null, matches("[", "A"))
     }
+    @Test
+    fun intersectionsRetainOperandProvenanceAndDelimiterRoles() {
+        val rows = listOf(
+            Triple("[a&&&]", "a", true), Triple("[a&&&]", "&", true),
+            Triple("[a&&&b]", "b", true), Triple("[a&&&b]", "c", false),
+            Triple("[a&&&&b]", "a", false), Triple("[a&&&&b]", "b", false),
+            Triple("[a\\s&&]", "a", false), Triple("[a\\s&&]", " ", true),
+            Triple("[^a\\s&&]", "a", true), Triple("[^a\\s&&]", " ", false),
+            Triple("[xa-c&&]", "x", false), Triple("[xa-c&&]", "b", true),
+            Triple("[aÀ&&]", "a", true), Triple("[aĀ&&]", "a", false),
+            Triple("[aĀ&&]", "Ā", true),
+            Triple("(?iu)[aI&&]", "a", false), Triple("(?iu)[aI&&]", "i", true),
+            Triple("(?iu)[aA&&]", "a", true),
+            Triple("[a&&b&&&a]", "a", true), Triple("[a&&b&&&a]", "b", false),
+            Triple("[a&&\\]b&]", "a", false), Triple("[a&&\\]b&]", "&", false),
+            Triple("x[&&\\-\\&\\s&&]x", "x-x", false), Triple("x[&&\\-\\&\\s&&]x", "x x", true),
+            Triple("]", "]", true), Triple("]", "a", false),
+            Triple("}", "}", true), Triple("}", "a", false),
+            Triple("a{2}", "aa", true), Triple("a{2}", "a", false),
+            Triple("[a\\][b]]", "a", true), Triple("[a\\][b]]", "b", true),
+            Triple("[a\\][b]]", "]", true), Triple("[a\\][b]]", "c", false),
+        )
+        for ((pattern, value, expected) in rows) assertEquals(expected, matches(pattern, value), "$pattern / $value")
+    }
+
+    @Test
+    fun invalidOmittedOperandsCannotAcquireACertificate() {
+        for (pattern in listOf("[a-cx&&]", "[Āa&&]", "[z-a&&b]", "[a-\\s&&]"))
+            assertEquals(null, matches(pattern, "a"), pattern)
+    }
+
 }

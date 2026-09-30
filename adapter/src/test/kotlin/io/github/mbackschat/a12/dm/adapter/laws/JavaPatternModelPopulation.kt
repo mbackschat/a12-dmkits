@@ -83,6 +83,24 @@ internal object JavaPatternModelPopulation {
         Case("NonSpaceHyphen", "[\\S-a]", "-", " "),
     ))
 
+    fun operandProvenance(): List<ConditionCase> = population(listOf(
+        Case("OddAmpersands", "[a&&&]", "a", "c"),
+        Case("OddSuffix", "[a&&&b]", "b", "c"),
+        Case("EvenAmpersands", "[a&&&&b]", null, "a"),
+        Case("PredefinedTail", "x[a\\s&&]x", "x x", "xax"),
+        Case("NegatedTail", "x[^a\\s&&]x", "xax", "x x"),
+        Case("RangeTail", "[xa-c&&]", "b", "x"),
+        Case("LatinTail", "[aÀ&&]", "a", "b"),
+        Case("UnicodeTail", "[aĀ&&]", "Ā", "a"),
+        Case("SpecialCaseTail", "(?iu)[aI&&]", "i", "a"),
+        Case("OrdinaryCaseTail", "(?iu)[aA&&]", "a", "b"),
+        Case("ResumedUnion", "[a&&b&&&a]", "a", "b"),
+        Case("ClosingBracket", "]", "]", "a"),
+        Case("ClosingBrace", "}", "}", "a"),
+        Case("CountControl", "a{2}", "aa", "a"),
+        Case("NestedAfterEscape", "[a\\][b]]", "b", "c"),
+    ))
+
     fun rows(): List<ConditionCase> = population(cases)
 
     private fun population(cases: List<Case>): List<ConditionCase> {

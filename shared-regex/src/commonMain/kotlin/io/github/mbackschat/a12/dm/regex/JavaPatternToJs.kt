@@ -109,14 +109,7 @@ internal object JavaPatternToJs {
                     index++
                     return Sequence(out.toString(), flags)
                 }
-                if (flags.comments && c.isWhitespace()) {
-                    index++
-                    continue
-                }
-                if (flags.comments && c == '#') {
-                    while (index < source.length && source[index] != '\n' && source[index] != '\r') index++
-                    continue
-                }
+                if (skipCommentSpace(flags)) continue
                 when (c) {
                     '\\' -> out.append(escape(flags))
                     '[' -> out.append(characterClass(flags))
@@ -124,6 +117,11 @@ internal object JavaPatternToJs {
                         val group = group(flags)
                         out.append(group.first)
                         flags = group.second
+                    }
+                    '{' -> out.append(repetition(flags))
+                    ']', '}' -> {
+                        out.append('\\').append(c)
+                        index++
                     }
                     '.' -> {
                         index++
@@ -159,6 +157,31 @@ internal object JavaPatternToJs {
             }
             if (nested) throw UnsupportedJavaPattern("unclosed group")
             return Sequence(out.toString(), flags)
+        }
+
+        private fun skipCommentSpace(flags: Flags): Boolean {
+            if (!flags.comments) return false
+            if (source[index].isWhitespace()) { index++; return true }
+            if (source[index] != '#') return false
+            while (index < source.length && source[index] != '\n' && source[index] != '\r') index++
+            return true
+        }
+
+        private fun repetition(flags: Flags): String {
+            index++
+            val raw = StringBuilder()
+            while (index < source.length && source[index] != '}') {
+                if (skipCommentSpace(flags)) continue
+                raw.append(source[index++])
+            }
+            if (index == source.length) throw UnsupportedJavaPattern("unclosed repetition")
+            index++
+            val bounds = raw.toString().split(',')
+            if (bounds.size !in 1..2 || bounds[0].isEmpty() ||
+                bounds.any { bound -> bound.any { it !in '0'..'9' } }) {
+                throw UnsupportedJavaPattern("malformed repetition")
+            }
+            return "{$raw}"
         }
 
         /** Returns emitted source and the enclosing sequence's possibly updated global flags. */
@@ -325,53 +348,148 @@ internal object JavaPatternToJs {
         }
 
         private fun characterClass(flags: Flags): String {
-            index++ // [
-            val negated = source.getOrNull(index) == '^'
-            if (negated) index++
-            val raw = StringBuilder()
-            if (source.getOrNull(index) == ']') {
-                raw.append("\\]")
-                index++
+            val body = classSource()
+            var i = 0
+            var structural = false
+            while (i < body.length) {
+                when {
+                    body[i] == '\\' -> i += 2
+                    body[i] == '[' || body.startsWith("&&", i) -> { structural = true; break }
+                    else -> i++
+                }
             }
-            var closed = false
+            val negated = body.startsWith('^')
+            val raw = if (negated) body.substring(1) else body
+            if (!structural) {
+                if (!hasClassComplement(raw)) return "[" + (if (negated) "^" else "") + classBody(raw, flags) + "]"
+                val union = classUnion(raw, flags)
+                return if (negated) "(?:(?!$union)[\\s\\S])" else union
+            }
+            return ClassExpression(raw, flags).parse().let { render(if (negated) negate(it) else it) }
+        }
+
+        private fun classSource(): String {
+            index++
+            val out = StringBuilder()
+            if (source.getOrNull(index) == '^') out.append(source[index++])
+            if (source.getOrNull(index) == ']') { out.append("\\]"); index++ }
             while (index < source.length) {
-                val c = source[index++]
-                if (c == '\\') {
-                    if (index >= source.length) throw UnsupportedJavaPattern("trailing class escape")
-                    raw.append('\\').append(source[index++])
-                } else if (c == ']') {
-                    closed = true
-                    break
-                } else {
-                    raw.append(c)
+                when (val c = source[index]) {
+                    '\\' -> {
+                        if (index + 1 >= source.length) throw UnsupportedJavaPattern("trailing class escape")
+                        out.append(c).append(source[index + 1])
+                        index += 2
+                    }
+                    '[' -> out.append('[').append(classSource()).append(']')
+                    ']' -> { index++; return out.toString() }
+                    else -> { out.append(c); index++ }
                 }
             }
-            if (!closed) throw UnsupportedJavaPattern("unclosed character class")
-            val body = raw.toString()
-            // IF164/DG102: both consumers use Java class algebra; certification stays caller-specific.
-            val terms = classTerms(body)
-            if (terms.isEmpty()) throw UnsupportedJavaPattern("intersection without a represented operand")
-            if (terms.size == 1 && !hasClassComplement(terms[0])) {
-                return "[" + (if (negated) "^" else "") + classBody(terms[0], flags) + "]"
+            throw UnsupportedJavaPattern("unclosed character class")
+        }
+
+        private data class ClassPredicate(val source: String, val ascii: BooleanArray?)
+
+        private fun render(value: ClassPredicate): String = value.ascii?.let { finiteClass(it, false) } ?: value.source
+
+        private fun combine(a: ClassPredicate?, b: ClassPredicate, intersection: Boolean = false): ClassPredicate {
+            if (a == null) return b
+            if (a.ascii != null && b.ascii != null) {
+                val members = BooleanArray(128) { if (intersection) a.ascii[it] && b.ascii[it] else a.ascii[it] || b.ascii[it] }
+                return ClassPredicate("", members)
             }
-            val common = BooleanArray(129) { it < 128 }
-            var finite = true
-            val predicates = terms.map { term ->
-                if (hasClassComplement(term)) {
-                    finite = false
-                    classUnion(term, flags)
-                } else {
-                    val members = BooleanArray(129)
-                    val translated = classBody(term, flags, members)
-                    if (members[128]) finite = false
-                    for (code in 0..127) common[code] = common[code] && members[code]
-                    "[$translated]"
+            return ClassPredicate(if (intersection) "(?:(?=${render(a)})${render(b)})" else "(?:${render(a)}|${render(b)})", null)
+        }
+
+        private fun negate(value: ClassPredicate): ClassPredicate = ClassPredicate(
+            value.ascii?.let { finiteClass(it, true) } ?: "(?:(?!${render(value)})[\\s\\S])", null,
+        )
+
+        /** KF481: omission observes the preceding predicate's provenance, not just its set of characters. */
+        private inner class ClassExpression(private val raw: String, private val flags: Flags) {
+            private var at = 0
+
+            fun parse(): ClassPredicate = part() ?: throw UnsupportedJavaPattern("empty class expression")
+
+            private fun part(): ClassPredicate? {
+                var expression: ClassPredicate? = null
+                var previous: ClassPredicate? = null
+                var literals: StringBuilder? = null
+                var members: BooleanArray? = null
+                var pending = false
+
+                fun flush() {
+                    if (!pending) return
+                    val ascii = checkNotNull(members)
+                    val pool = ClassPredicate("[$literals]", if (ascii[128]) null else ascii)
+                    if (expression == null) previous = pool
+                    expression = combine(expression, pool)
+                    pending = false
                 }
+
+                while (at < raw.length && raw[at] != ']') {
+                    if (raw.startsWith("&&", at)) {
+                        flush()
+                        at += 2
+                        val next = raw.getOrNull(at)
+                        if (next != null && next != '&' && next != ']') previous = part() ?: previous
+                        val operand = previous ?: throw UnsupportedJavaPattern("intersection without a right predicate")
+                        expression = combine(expression, operand, intersection = true)
+                        continue
+                    }
+                    if (raw[at] == '[') {
+                        at++
+                        val negated = raw.getOrNull(at) == '^'
+                        if (negated) at++
+                        val nested = part() ?: throw UnsupportedJavaPattern("empty nested class")
+                        if (raw.getOrNull(at) != ']') throw UnsupportedJavaPattern("unclosed nested class")
+                        at++
+                        previous = if (negated) negate(nested) else nested
+                        expression = combine(expression, previous)
+                        continue
+                    }
+                    val width = classLiteralWidth(raw, at)
+                    val endWidth = if (width > 0 && raw.getOrNull(at + width) == '-') classLiteralWidth(raw, at + width + 1) else 0
+                    if (width > 0 && raw.getOrNull(at + width) == '-' &&
+                        raw.getOrNull(at + width + 1) == '\\' && endWidth == 0) {
+                        throw UnsupportedJavaPattern("range with a set-valued endpoint")
+                    }
+                    if (width > 0 && endWidth == 0 && pooled(classLiteralValue(raw, at, width))) {
+                        if (width > 2) hasUnverifiedMapping = true
+                        val c = classLiteralValue(raw, at, width)
+                        if (!pending) members = members?.copyOf() ?: BooleanArray(129)
+                        val pool = literals ?: StringBuilder().also { literals = it }
+                        appendLiteral(pool, c, flags, inClass = true)
+                        includeAscii(members, c, c, flags)
+                        pending = true
+                        previous = null
+                        at += width
+                    } else {
+                        val end = when {
+                            endWidth > 0 -> at + width + 1 + endWidth
+                            width > 0 -> at + width
+                            raw.getOrNull(at + 2) == '{' -> raw.indexOf('}', at + 3).let {
+                                if (it < 0) throw UnsupportedJavaPattern("unclosed class escape") else it + 1
+                            }
+                            else -> at + 2
+                        }
+                        val atom = raw.substring(at, end)
+                        val ascii = BooleanArray(129)
+                        val text = if (hasClassComplement(atom)) {
+                            ascii[128] = true
+                            classUnion(atom, flags)
+                        } else "[${classBody(atom, flags, ascii)}]"
+                        previous = ClassPredicate(text, if (ascii[128]) null else ascii)
+                        expression = combine(expression, previous)
+                        at = end
+                    }
+                }
+                flush()
+                return expression
             }
-            // IF164 cost gate: serialize finite sets compactly; lookaheads add avoidable per-row work.
-            if (finite) return finiteClass(common, negated)
-            val predicate = predicates.dropLast(1).joinToString("") { "(?=$it)" } + predicates.last()
-            return if (negated) "(?:(?!$predicate)[\\s\\S])" else "(?:$predicate)"
+
+            private fun pooled(c: Char): Boolean = c.code <= 255 &&
+                !(flags.caseInsensitive && flags.unicodeCase && c in "IiSsKkÅåµÿ")
         }
 
         private fun hasClassComplement(raw: String): Boolean {
@@ -382,26 +500,6 @@ internal object JavaPatternToJs {
                 }
             }
             return false
-        }
-
-        /** DG102-F3: an operator starts only between tokens, never inside an escaped literal. */
-        private fun classTerms(raw: String): List<String> {
-            val terms = mutableListOf<String>()
-            var start = 0
-            var i = 0
-            while (i < raw.length) {
-                when {
-                    raw[i] == '\\' -> i += 2
-                    raw.startsWith("&&", i) -> {
-                        if (i > start) terms += raw.substring(start, i)
-                        i += 2
-                        start = i
-                    }
-                    else -> i++
-                }
-            }
-            if (start < raw.length) terms += raw.substring(start)
-            return terms
         }
 
         /** DG102-E: union complete one-character predicates before applying the enclosing class negation. */
@@ -546,6 +644,7 @@ internal object JavaPatternToJs {
         }
 
         private fun appendClassRange(out: StringBuilder, first: Char, last: Char, flags: Flags) {
+            if (first > last) throw UnsupportedJavaPattern("descending character range")
             out.append(classLiteral(first)).append('-').append(classLiteral(last))
             if (!flags.caseInsensitive) return
             // DG102-F: close the interval's letters, including mixed punctuation/letter ranges.

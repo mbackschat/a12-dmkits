@@ -166,4 +166,40 @@ class PatternDialectParityTest {
             assertFalse(JavaPatternToJs.containsResidual(supported), "shared primitive construct must be supported: $supported")
         }
     }
+    @Test
+    fun intersectionsRetainOperandProvenanceAndDelimiterRoles() {
+        val rows = listOf(
+            Triple("[a&&&]", "a", true), Triple("[a&&&]", "&", true),
+            Triple("[a&&&b]", "b", true), Triple("[a&&&b]", "c", false),
+            Triple("[a&&&&b]", "a", false), Triple("[a&&&&b]", "b", false),
+            Triple("[a\\s&&]", "a", false), Triple("[a\\s&&]", " ", true),
+            Triple("[^a\\s&&]", "a", true), Triple("[^a\\s&&]", " ", false),
+            Triple("[xa-c&&]", "x", false), Triple("[xa-c&&]", "b", true),
+            Triple("[aÀ&&]", "a", true), Triple("[aĀ&&]", "a", false),
+            Triple("[aĀ&&]", "Ā", true),
+            Triple("(?iu)[aI&&]", "a", false), Triple("(?iu)[aI&&]", "i", true),
+            Triple("(?iu)[aA&&]", "a", true),
+            Triple("[a&&b&&&a]", "a", true), Triple("[a&&b&&&a]", "b", false),
+            Triple("[a&&\\]b&]", "a", false), Triple("[a&&\\]b&]", "&", false),
+            Triple("x[&&\\-\\&\\s&&]x", "x-x", false), Triple("x[&&\\-\\&\\s&&]x", "x x", true),
+            Triple("]", "]", true), Triple("]", "a", false),
+            Triple("}", "}", true), Triple("}", "a", false),
+            Triple("a{2}", "aa", true), Triple("a{2}", "a", false),
+            Triple("[a\\][b]]", "a", true), Triple("[a\\][b]]", "b", true),
+            Triple("[a\\][b]]", "]", true), Triple("[a\\][b]]", "c", false),
+        )
+        for ((pattern, value, expected) in rows) assertEquals(expected, m(pattern, value), "$pattern / $value")
+    }
+
+    @Test
+    fun commentsModeRemainsActiveInsideRepetition() {
+        val rows = listOf(
+            Triple("(?x)a{2 }", "aa", true),
+            Triple("(?x)a{2, 3}", "aaa", true),
+            Triple("(?x)a{2,#c\n3}", "aaa", true),
+            Triple("(?x)a{2,#c\n3}", "aaaa", false),
+        )
+        for ((pattern, value, expected) in rows) assertEquals(expected, m(pattern, value), pattern)
+    }
+
 }

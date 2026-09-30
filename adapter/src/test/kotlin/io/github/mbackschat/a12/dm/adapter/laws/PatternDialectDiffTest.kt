@@ -24,6 +24,7 @@ class PatternDialectDiffTest {
     private fun agree(rx: String, value: String, expected: Boolean, msg: String, matched: Boolean = true) {
         val cond = render(if (matched) m.str(PC).matches(rx) else m.str(PC).violates(rx))
         val model = RuntimeLaws.withRule(order, "/Order", "PD", "../ProductCode", "PDIA", cond)
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model).filter { it.startsWith("ERROR") }, rx)
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(PC, value, 1, 1)
         val groovy = RuntimeLaws.fires(model, "PDIA", kDoc)
         val engine = RuntimeLaws.kernelJavaEngine(model)
@@ -89,4 +90,49 @@ class PatternDialectDiffTest {
         data class Case(val pattern: String, val value: String, val expected: Boolean, val description: String)
         const val PC = "/Order/ProductCode"
     }
+    @Test
+    fun intersectionsRetainOperandProvenanceAndDelimiterRoles() {
+        val rows = listOf(
+            Triple("[a&&&]", "a", true), Triple("[a&&&]", "&", true),
+            Triple("[a&&&b]", "b", true), Triple("[a&&&b]", "c", false),
+            Triple("[a&&&&b]", "a", false), Triple("[a&&&&b]", "b", false),
+            Triple("x[a\\s&&]x", "xax", false), Triple("x[a\\s&&]x", "x x", true),
+            Triple("x[^a\\s&&]x", "xax", true), Triple("x[^a\\s&&]x", "x x", false),
+            Triple("[xa-c&&]", "x", false), Triple("[xa-c&&]", "b", true),
+            Triple("[aÀ&&]", "a", true), Triple("[aĀ&&]", "a", false),
+            Triple("[aĀ&&]", "Ā", true),
+            Triple("(?iu)[aI&&]", "a", false), Triple("(?iu)[aI&&]", "i", true),
+            Triple("(?iu)[aA&&]", "a", true),
+            Triple("[a&&b&&&a]", "a", true), Triple("[a&&b&&&a]", "b", false),
+            Triple("[a&&\\]b&]", "a", false), Triple("[a&&\\]b&]", "&", false),
+            Triple("x[&&\\-\\&\\s&&]x", "x-x", false), Triple("x[&&\\-\\&\\s&&]x", "x x", true),
+            Triple("]", "]", true), Triple("]", "a", false),
+            Triple("}", "}", true), Triple("}", "a", false),
+            Triple("a{2}", "aa", true), Triple("a{2}", "a", false),
+            Triple("[a\\][b]]", "a", true), Triple("[a\\][b]]", "b", true),
+            Triple("[a\\][b]]", "]", true), Triple("[a\\][b]]", "c", false),
+        )
+        for ((pattern, value, expected) in rows) agree(pattern, value, expected, "$pattern / $value")
+    }
+
+    @Test
+    fun malformedClassRangesAndOmittedOperandsAreRejectedByJava() {
+        for (pattern in listOf("[a-cx&&]", "[Āa&&]", "[z-a&&b]", "[a-\\s&&]")) {
+            org.junit.jupiter.api.Assertions.assertThrows(java.util.regex.PatternSyntaxException::class.java) {
+                java.util.regex.Pattern.compile(pattern)
+            }
+        }
+    }
+
+    @Test
+    fun commentsModeRemainsActiveInsideRepetition() {
+        val rows = listOf(
+            Triple("(?x)a{2 }", "aa", true),
+            Triple("(?x)a{2, 3}", "aaa", true),
+            Triple("(?x)a{2,#c\n3}", "aaa", true),
+            Triple("(?x)a{2,#c\n3}", "aaaa", false),
+        )
+        for ((pattern, value, expected) in rows) agree(pattern, value, expected, pattern)
+    }
+
 }
