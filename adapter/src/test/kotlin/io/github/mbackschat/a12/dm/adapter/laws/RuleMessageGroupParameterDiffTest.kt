@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -13,19 +15,20 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertAll
+import org.junit.jupiter.api.function.Executable
 import org.junit.jupiter.api.Test
 
 /**
  * Tri-engine lock for what the rule-message `$#…$` GROUP parameter RENDERS — the runtime half of a construct
- * whose admission half is [KF214]. That entry measured exhaustively which arguments the position accepts (the
- * rule's own group plus its ancestors, absolute, containment deciding) and said nothing about the text a user
- * then reads; nothing in this estate did.
+ * whose admission half is [KF214]. Its original ancestor-only grid did not vary the condition's group
+ * footprint; MessageGroupFootprintAgreementTest supplies the admitted descendant and relative-address
+ * controls. This class measures rendering separately, rather than inferring it from admission.
  *
  * <p><b>The discriminating row, and why the obvious document cannot serve.</b> The rule fires on rows 2 and 3
  * of a three-row document and NOT on row 1. A repetition-index account predicts `2` and `3`; a firing-ORDINAL
- * account predicts `1` and `2`; a row-count account predicts `3` and `3`. On any document whose rule fires from
- * row 1, or fires once, all three accounts agree — which is why the gap in the fixture matters more than the
- * number of rows in it.
+ * account predicts `1` and `2`; a row-count account predicts `3` and `3`. All three agree on a one-row document firing on row 1;
+ * the gap and distinct firing coordinates here separate them.
  *
  * <p>The `$Marker$` parameter rides in the same message as a within-message control: it renders the FIELD's
  * name, so the two positions are separated by their output rather than by their grammar, and a run where the
@@ -125,9 +128,9 @@ class RuleMessageGroupParameterDiffTest {
     private val nestedDefinition = ModelLoader.load(nested)
 
     /** One document mirrored across the kernel [RuntimeLaws.Doc] and the interpreter document. */
-    private inner class Build {
+    private inner class Build(model: ModelDef = definition) {
         val kDoc = RuntimeLaws.doc().group(CLAIM, 1)
-        val iDoc = definition.newDocument().group(CLAIM, 1)
+        val iDoc = model.newDocument().group(CLAIM, 1)
 
         fun row(row: Int, amount: String) {
             kDoc.group(LINES, 1, row)
@@ -172,7 +175,7 @@ class RuleMessageGroupParameterDiffTest {
     }
 
     /** Three rows, gated so the rule is silent on row 1 and fires on rows 2 and 3. */
-    private fun threeRows() = Build().apply {
+    private fun threeRows(model: ModelDef = definition) = Build(model).apply {
         reference()
         row(1, "50")
         row(2, "200")
@@ -195,6 +198,39 @@ class RuleMessageGroupParameterDiffTest {
         assertEquals(expected, dynamic, "normative Groovy-dynamic")
         assertEquals(dynamic, generated, "generated Java  kernel=$dynamic java=$generated")
         assertEquals(dynamic, interpreted, "interpreter  kernel=$dynamic interp=$interpreted")
+    }
+
+    @Test
+    fun relativeGroupArgumentsRenderTheSameCoordinatesAsTheirAbsoluteControls() {
+        assertAll(listOf(true, false).map { atRoot ->
+            Executable {
+                val edit = EditSession.read(model)
+                val claim = edit.group(CLAIM)
+                val lines = edit.group(claim.group("Lines").path().value())
+                val marker = lines.str("Marker")
+                val amount = lines.num("Amount")
+                val declaration = if (atRoot) claim else lines
+                val argument = if (atRoot) "Lines" else "../Lines"
+                val candidate = ModelWriter.addRule(model, declaration.rule {
+                    it.name("RelativeGroupMessage").code("RELATIVE_GROUP").errorField(marker.field())
+                        .`when`(marker.filled().and(amount.gt(100))).severity(Severity.ERROR)
+                        .message(Dsl.en("relative=[\$#$argument\$] absolute=[\$#$LINES\$]"))
+                        .build()
+                })
+                BoundModel.ofJson(candidate)
+                val loaded = ModelLoader.load(candidate)
+                val build = threeRows(loaded)
+                val dynamic = RuntimeLaws.errorTextsOf(candidate, "RELATIVE_GROUP", build.kDoc, Locale.US)
+                val java = RuntimeLaws.kernelJavaEngine(candidate)
+                val generated = java.errorTextsOf(java.instance(build.kDoc), "RELATIVE_GROUP", Locale.US)
+                val interpreted = DmInterpreter(loaded).validateFull(build.iDoc, "en_US")
+                    .filter { it.code == "RELATIVE_GROUP" }.map { it.text }
+                val expected = listOf("relative=[2] absolute=[2]", "relative=[3] absolute=[3]")
+                assertEquals(expected, dynamic, "dynamic, relative argument $argument")
+                assertEquals(dynamic, generated, "generated Java, relative argument $argument")
+                assertEquals(dynamic, interpreted, "interpreter, relative argument $argument")
+            }
+        })
     }
 
     /**

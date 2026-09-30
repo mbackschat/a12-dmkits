@@ -4016,7 +4016,9 @@ Graduated from `IG148`. The kernel renders an admitted group parameter as the na
 
 **The quote escape is per SEGMENT, and the old pattern only stripped the ends.** `$#/'Consignment'/'Boxes'$` is admitted and reaches the same group as its bare spelling ([KF214](KERNEL-FINDINGS.md#kf214)), but `'?([\w/]+)'?` cannot match a quote *inside* the path, so the token would have survived verbatim. Erasing quotes wherever they sit fixes the group position and the pre-existing field position in one place; it is safe because only kernel-admitted templates reach this renderer, so a quoted spelling the kernel would have read as a NAME never arrives.
 
-*Locked by:* `adapter.laws.RuleMessageGroupParameterDiffTest` (tri-engine, two fixtures — the gated three-row single level, and two stacked repeatable levels under a repeatable root where every argument carries a different integer) and `interpreter … RuleMessageGroupParameterRenderTest` (both condition languages on JVM and JS, including the other language's spelling surviving as its own token).
+**Relative addresses, corrected 2026-09-30.** The earlier ancestor-only admission account left legal child and parent-step addresses unimplemented. [KF245](KERNEL-FINDINGS.md#kf245) now measures `$#Lines$` from Claim and `$#../Lines$` from Lines against an absolute parameter in the same message, on both kernel strategies, with rows 2 and 3 firing. The renderer recognizes parent-step characters in the group position and resolves relative arguments from the declaring group before looking up coordinates. Unknown and above-root relative addresses retain their tokens. Existing absolute, quoted and bilingual controls still pass.
+
+*Locked by:* `adapter.laws.RuleMessageGroupParameterDiffTest` (tri-engine absolute, nested, German and relative-address controls) and `interpreter … RuleMessageGroupParameterRenderTest` (both condition languages on JVM and JS, including the other language's spelling surviving as its own token).
 
 ### IF324: a COMPUTATION's declared message was dropped at the loader, so every computation-validation text rendered empty (FIXED 2026-09-05) <a id="if324"></a>
 

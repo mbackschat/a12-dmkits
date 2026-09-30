@@ -8,10 +8,8 @@ import kotlin.test.assertEquals
 /**
  * Multiplatform (JVM + JS) lock for the rule-message `$#…$` GROUP parameter's two keyword shorthands in BOTH
  * condition languages. What the position renders on an English model is kernel-pinned by
- * `adapter.laws.RuleMessageGroupParameterDiffTest`; the German spellings are admitted by the kernel too
- * (`validate.laws.RuleMessageParameterLanguageLawsTest`, measured 2026-09-05) but no kernel RUNTIME fixture
- * carries a `de_DE` condition language, so this is where the German arm is locked — the same division
- * [KF198]'s sibling lock already uses for the Base Year terminal.
+ * `adapter.laws.RuleMessageGroupParameterDiffTest`, including its German runtime fixture and the relative
+ * group-address controls. Admission alone would not establish what a message renders.
  *
  * The shorthands are two of the five bilingual terminals, so rendering the other language's spelling as the
  * terminal would be a wrong VALUE rather than a refusal. The fixture fires on row 2 of a repeatable group so
@@ -79,4 +77,31 @@ class RuleMessageGroupParameterRenderTest {
     fun anAbsolutePathReadsItsOwnLevelAndTheQuoteEscapeIsPerSegment() =
         assertEquals("[2] [1] [2]",
             render("en_US", "[\$#/Order/Lines\$] [\$#/Order\$] [\$#/'Order'/'Lines'\$]"))
+    @Test
+    fun relativeGroupArgumentsReadTheSameCoordinatesAsAbsoluteArguments() {
+        for (atRoot in listOf(true, false)) {
+            val group = if (atRoot) "/Order" else "/Order/Lines"
+            val argument = if (atRoot) "Lines" else "../Lines"
+            val original = ModelLoader.load(order("en_US", "relative=[\$#$argument\$] absolute=[\$#/Order/Lines\$]"))
+            val rule = original.rules.single()
+            val model = original.copy(rules = listOf(rule.copy(
+                path = "$group/Probe", group = group,
+                conditionText = if (atRoot) "FieldFilled(Lines/Marker)" else rule.conditionText,
+                errorEntityRelPath = if (atRoot) "../Lines/Marker" else rule.errorEntityRelPath,
+            )))
+            val doc = model.newDocument().group("/Order", 1)
+                .group("/Order/Lines", 1, 1).group("/Order/Lines", 1, 2).group("/Order/Lines", 1, 3)
+                .field("/Order/Lines/Marker", "M-2", 1, 2, 1)
+                .field("/Order/Lines/Marker", "M-3", 1, 3, 1)
+            assertEquals(listOf("relative=[2] absolute=[2]", "relative=[3] absolute=[3]"),
+                DmInterpreter(model).validateFull(doc, "en_US").filter { it.code == "PROBE" }.map { it.text }, argument)
+        }
+    }
+
+    @Test
+    fun unresolvedRelativeGroupArgumentsPreserveTheirTokens() {
+        val message = "[\$#../Missing\$] [\$#../../../Missing\$] [\$#../../Order/Lines\$]"
+        assertEquals(message, render("en_US", message))
+    }
+
 }

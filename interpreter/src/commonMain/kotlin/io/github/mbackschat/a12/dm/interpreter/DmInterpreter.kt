@@ -1199,24 +1199,38 @@ class DmInterpreter private constructor(
      * The `$#…$` message parameter's value: the firing row's own 1-based index at the named group's level, and
      * `1` for a non-repeatable group ([KF245]).
      *
-     * <p>The argument is an ABSOLUTE group path, or one of the two keyword shorthands for the endpoints of the
-     * rule's own ancestor chain — spelled in the model's CONDITION language, which is why the comparison is
-     * against [messageTerminals] rather than against the English words ([KF198]'s five bilingual terminals).
-     * A `null` return leaves the token verbatim; the admission gate ([KF214]) has already refused anything
-     * outside the rule's ancestor chain, so an unresolvable argument here means the model was written past
-     * that gate rather than that the rendering has a case to cover.
+     * The argument is absolute, relative to the declaring group, or one of its condition-language shorthands.
+     * KF245's relative child and parent-step controls render the same coordinates as their absolute twins;
+     * KF214's old ancestor-only admission claim did not cover their reference footprint.
+     * A `null` return preserves the token when the address names no declared group.
      */
     private fun groupParameterIndex(argument: String, ruleGroup: String, ctx: EvalContext): String? {
         val path = when (argument) {
             messageTerminals.ruleGroup -> ruleGroup
             messageTerminals.rootGroup -> ruleGroup.split('/').take(2).joinToString("/")
-            else -> argument
+            else -> if (argument.startsWith('/')) argument
+                else relativeMessageGroup(argument, ruleGroup) ?: return null
         }
         // The declared-group test is what makes the verbatim fallback REAL: `repsOf` answers for any string,
         // padding an unknown path with 1s, so without it the other language's spelling would render `1`
         // rather than survive as its own token — a wrong VALUE where the kernel gives a refusal.
         if (path !in model.groupPaths) return null
         return ctx.repsOf(path).lastOrNull()?.toString()
+    }
+
+    private fun relativeMessageGroup(argument: String, ruleGroup: String): String? {
+        val parts = pathParts(ruleGroup).toMutableList()
+        for (segment in argument.split('/')) {
+            when (segment) {
+                "" -> return null
+                ".." -> {
+                    if (parts.size <= 1) return null
+                    parts.removeAt(parts.lastIndex)
+                }
+                else -> parts.add(segment)
+            }
+        }
+        return "/" + parts.joinToString("/")
     }
 
     private fun messageLabel(path: String, locale: String, ctx: EvalContext): String {

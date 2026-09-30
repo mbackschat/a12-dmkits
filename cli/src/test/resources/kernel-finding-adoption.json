@@ -1644,6 +1644,89 @@
           "evidence": {}
         }
       }
+    },
+    "kf245": {
+      "sha256": "54a0bde3a2644dfe95a8684efceaff3351d2fbafc27cc4d4993b84d24f0ec257",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "relative group message rendering"
+        ],
+        "dmkits": [
+          "relative group message authoring"
+        ],
+        "interpreter": [
+          "relative group message rendering"
+        ],
+        "checker": [
+          "relative group message admission"
+        ],
+        "dmtool-cli": [
+          "relative group message rendering"
+        ],
+        "json-schema-import": [
+          "message preservation"
+        ],
+        "json-schema-export": [
+          "message preservation"
+        ],
+        "a12-kernel-lean": [
+          "specification",
+          "evidence"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both complete models pass kernel admission; dynamic Groovy and generated Java render the same 2/3 coordinates for the relative and absolute parameters.",
+          "evidence": {
+            "relative group message rendering": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RuleMessageGroupParameterDiffTest.kt#relativeGroupArgumentsRenderTheSameCoordinatesAsTheirAbsoluteControls",
+              "witness": "Both complete models pass kernel admission; dynamic Groovy and generated Java render the same 2/3 coordinates for the relative and absolute parameters."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "The relative-address extension requires this consumer’s own evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The relative child and parent-step controls pass on JVM and Node and agree with the tri-engine measurement; existing absolute, quoted and bilingual controls pass.",
+          "evidence": {
+            "relative group message rendering": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/RuleMessageGroupParameterRenderTest.kt#relativeGroupArgumentsReadTheSameCoordinatesAsAbsoluteArguments",
+              "witness": "The relative child and parent-step controls pass on JVM and Node and agree with the tri-engine measurement; existing absolute, quoted and bilingual controls pass."
+            }
+          }
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "The relative-address extension requires this consumer’s own evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "The relative-address extension requires this consumer’s own evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "The relative-address extension requires this consumer’s own evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "The relative-address extension requires this consumer’s own evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The relative-address extension requires this consumer’s own evidence; no transfer is inferred from another carrier.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

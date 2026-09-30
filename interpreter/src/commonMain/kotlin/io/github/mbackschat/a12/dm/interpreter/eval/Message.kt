@@ -39,9 +39,9 @@ internal data class MessageTerminals(
  *    or unmapped cell renders the empty string, which is what the kernel does.
  *  - `$BaseYear$`, `$BaseYear+3$`, `$BaseYear-1$` → the model's declared base year with the signed offset
  *    applied, via [baseYearOf]; unbounded, and spelled per [terminals].
- *  - `$#<abspath>$`, `$#RuleGroup$`, `$#RootGroup$` → the firing row's 1-based repetition index at the named
- *    group's level, via [groupIndexOf]; the two shorthands are spelled per [terminals]. This position takes an
- *    ABSOLUTE path that must contain the rule's group ([KF214]) — nothing relative reaches it.
+ *  - `$#<group-path>$`, `$#RuleGroup$`, `$#RootGroup$` → the firing row's 1-based repetition index at the named
+ *    group's level, via [groupIndexOf]; the two shorthands are spelled per [terminals]. An
+ *    absolute or declaring-group-relative path is resolved by the callback ([KF245]).
  *  - `$<relpath>$` → the already-resolved display name via [labelOf].
  *
  * A name colliding with a terminal is written in the grammar's single-quote escape (`$'For'$`) and the quotes
@@ -122,7 +122,7 @@ private const val CATEGORY = 5
 private fun tokenPattern(terminals: MessageTerminals) = Regex(
     "\\\$\\\$" +
         "|\\\$" + terminals.baseYear + "([+-]\\d+)?\\\$" +
-        "|\\\$#([\\w/']+)\\\$" +
+        "|\\\$#([\\w/.']+)\\\$" +
         "|\\\$([\\w/']+)(?:\\.(" + terminals.value + ")|->(\\w+))?\\\$",
 )
 
