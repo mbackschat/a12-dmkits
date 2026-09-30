@@ -114,6 +114,9 @@ class SyntaxVerdictTest {
         val inputs = SyntaxFixtureData.inputs.map { Json.parseToJsonElement(it).jsonObject }
         val verdicts = SyntaxFixtureData.verdicts.map { Json.parseToJsonElement(it).jsonObject }
             .associateBy { it.getValue("id").jsonPrimitive.content }
+        assertEquals(SyntaxFixtureData.verdicts.size, verdicts.size, "duplicate verdict identities")
+        assertEquals(inputs.size, inputs.map { it.getValue("source") to it.getValue("row") }.toSet().size,
+            "duplicate syntax input identities")
         assertEquals(77, inputs.size)
         assertEquals(inputs.map { "${it.getValue("source").jsonPrimitive.content}#${it.getValue("row")}" }.toSet(),
             verdicts.keys)

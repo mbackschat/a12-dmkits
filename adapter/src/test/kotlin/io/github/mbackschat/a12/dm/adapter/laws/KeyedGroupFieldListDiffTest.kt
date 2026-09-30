@@ -356,6 +356,9 @@ class KeyedGroupFieldListDiffTest {
             ("NoGroupFilled(/Order/Packages/Items* For \"P2\")" to standard) to "VALUE|1",
             ("NoFieldFilled(/Order/Packages/Items* For \"P1\")" to standard) to "VALUE|2",
             ("Sum(/Order/Packages/Items*/Weight For \"P1\") == 7" to standard) to "VALUE|1",
+            ("Sum(/Order/Packages/Items*/Weight For \"P1\") == 7" to standard.map {
+                if (it.code == "P1") it.copy(items = listOf("S1" to "3", "S2" to "5")) else it
+            }) to "VALUE|2",
             ("Sum(/Order/Packages/Items*/Weight For \"P1\") == 7" to duplicated) to "CLEARED",
             ("AtLeastOneFieldFilled(/Order/Packages For \"P2\")" to standard) to "VALUE|1",
             ("NoFieldFilled(/Order/Packages For \"P3\")" to standard) to "VALUE|1",
@@ -367,11 +370,9 @@ class KeyedGroupFieldListDiffTest {
             ("NoFieldFilled(/Order/Packages/Dims For \"P2\")" to malformed) to "CLEARED",
             ("AtLeastOneFieldFilled(/Order/Packages For \"P2\")" to malformed) to "VALUE|1",
             ("Sum(/Order/Packages/Dims For \"P2\") == 0" to malformed) to "CLEARED")
-        val key = { c: String, p: List<Pkg> -> "$c [${p.joinToString { "${it.code ?: "-"}/${it.length}" }}]" }
-        val actual = rows.associate { (r, _) -> key(r.first, r.second) to computed(r.first, r.second) }
-        val expected = rows.associate { (r, outcome) ->
-            key(r.first, r.second) to "groovy=$outcome java=$outcome interpreter=$outcome"
+        rows.forEachIndexed { index, (row, outcome) ->
+            assertEquals("groovy=$outcome java=$outcome interpreter=$outcome",
+                computed(row.first, row.second), "row $index: $row")
         }
-        assertEquals(expected, actual)
     }
 }

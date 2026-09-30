@@ -115,6 +115,9 @@ A type-level erasure is the same defect one layer earlier and harder to see: no 
 
 The drill: **reproduce → root-cause → generalize (enumerate every site of the class) → fix at the shared root → lock with a guard that covers the siblings, not just the reported case.** Worked example: P1 — a raw stack trace from a duplicate `rule add` — root-caused to `RuleValidator.check` letting a kernel conversion exception escape, a path shared by six callers; the fix went in the validator and the guard covers `computation add` too, not only the reported `rule add`. This complements the anti-whack-a-mole mining below (mine constraints proactively) and the probe's proactive loop ([`docs/PROBE-SPEC.md`](docs/PROBE-SPEC.md)).
 
+**For a composition change, do not infer the combination from its parts.** Use the [witness-grid procedure](docs/TESTING-SPEC.md#witness-grid-design), retain each observation without collapsing display labels into map keys, and challenge the controlling test with a deliberately wrong result. The regression classes and duplicate-identity controls are named there. These are required checks regardless of the implementing model; additional prose or a second self-review is not a substitute for the oracle.
+
+
 ## Advertise nothing you cannot point at (standing requirement, 2026-07-16)
 
 **For every invariant a change *advertises* (a schema field, a declared policy, a guarantee in docs or help text), name the enforcement locus and the test that fails when it is violated.** "Parsed but never consumed" is a shipped class here: a boundary once parsed a request's declared policy and observation fields and enforced neither, and only an external consumer's independent audit caught it. A does-fire test proves that a *built* thing fires; this rule proves that a *claimed* thing was built at all.

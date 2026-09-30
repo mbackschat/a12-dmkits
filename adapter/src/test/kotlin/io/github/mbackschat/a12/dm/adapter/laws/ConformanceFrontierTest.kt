@@ -40,8 +40,9 @@ class ConformanceFrontierTest {
             "catalog#AddSeconds" to 8, "catalog#MonthFromDate" to 14, "catalog#HoursFromTime" to 24,
             "catalog#MinutesFromTime" to 20, "catalog#FieldValueAsNumber" to 29, "catalog#FirstFilledValue" to 24,
         )
-        val accepted = resource("accepted.tsv").lineSequence().filter { it.isNotEmpty() }
-            .associate { it.substringBefore('\t') to it.substringAfter('\t') }
+        val acceptedRows = resource("accepted.tsv").lines().filter { it.isNotEmpty() }
+        val accepted = acceptedRows.associate { it.substringBefore('\t') to it.substringAfter('\t') }
+        assertEquals(acceptedRows.size, accepted.size, "duplicate accepted-input identities")
         val misses = mutableListOf<String>()
         var count = 0
         for (seed in NearMissPopulation.seeds().filter { it.label in witnesses }) {

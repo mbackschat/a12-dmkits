@@ -187,8 +187,8 @@ class A12ReportStreamTest {
 
     private fun reportHosts(completion: HostCompletion) {
         val mapper = ObjectMapper()
-        val harvested = HarvestedModels.expand(mapper.readTree(checkNotNull(javaClass.getResource(
-            "/checker-near-miss/harvested-report-checks.json")).readText())).associateBy { it["id"].asText() }
+        val harvested = HarvestedModels.index(mapper.readTree(checkNotNull(javaClass.getResource(
+            "/checker-near-miss/harvested-report-checks.json")).readText()))
         val cases = listOf(
             HostCase("repeat", "ConditionMultipleDefectTest.aRepeatOfOneCodeIsKeptForEachPlaceToFix#1", HostControl.CONDITION,
                 listOf("MVK_INVALID_ENTITY"), emptyList()),

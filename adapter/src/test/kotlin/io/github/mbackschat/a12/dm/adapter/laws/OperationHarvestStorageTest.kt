@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -31,6 +32,25 @@ class OperationHarvestStorageTest {
             mutate(root["groups"][0] as ObjectNode)
             assertThrows(IllegalArgumentException::class.java, { HarvestedModels.expand(root) }, "mutation $index")
         }
+    }
+
+    @Test
+    fun duplicateIdentitiesCannotDisappearInALaterLookup() {
+        for (differentMetadata in listOf(false, true)) {
+            val root = fixture()
+            val groups = root["groups"] as ArrayNode
+            val duplicate = groups[0].deepCopy<ObjectNode>()
+            if (differentMetadata) (duplicate["rows"][0] as ObjectNode).put("onlyCodes", "different")
+            groups.add(duplicate)
+            assertEquals(2, HarvestedModels.expand(root).size)
+            assertThrows(IllegalArgumentException::class.java, { HarvestedModels.index(root) })
+        }
+        val distinct = fixture()
+        val groups = distinct["groups"] as ArrayNode
+        val other = groups[0].deepCopy<ObjectNode>()
+        (other["rows"][0] as ObjectNode).put("id", "sample#2")
+        groups.add(other)
+        assertEquals(listOf("sample#1", "sample#2"), HarvestedModels.index(distinct).keys.toList())
     }
 
     private fun fixture() = mapper.readTree("""

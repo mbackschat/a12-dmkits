@@ -7,6 +7,16 @@ import java.util.HexFormat
 
 /** Reconstruction preserves captured UTF-8 bytes rather than normalizing model JSON (CONFORMANCE-PLAN A2). */
 internal object HarvestedModels {
+    internal fun index(root: JsonNode): Map<String, JsonNode> = buildMap {
+        for (row in expand(root)) {
+            val identity = row["id"]
+            require(identity?.isTextual == true) { "Missing or non-text harvest id" }
+            val id = identity.asText()
+            require(id !in this) { "Duplicate harvest identity: $id" }
+            put(id, row)
+        }
+    }
+
     internal fun expand(root: JsonNode): List<JsonNode> {
         fun text(node: JsonNode, name: String): String {
             val value = node[name]

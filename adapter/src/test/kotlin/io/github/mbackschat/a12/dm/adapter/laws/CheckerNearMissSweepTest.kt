@@ -423,10 +423,13 @@ class CheckerNearMissSweepTest {
             .joinToString("") { "${it.value}\t${it.key}\n" }
 
     /** The committed ledger: each row a count, then its cluster key. */
-    private fun ledger(): Map<String, Int> =
-        checkNotNull(javaClass.getResource(LEDGER)) { "missing $LEDGER" }.readText().lines()
+    private fun ledger(): Map<String, Int> {
+        val rows = checkNotNull(javaClass.getResource(LEDGER)) { "missing $LEDGER" }.readText().lines()
             .filter { it.isNotBlank() && !it.startsWith("#") }
-            .associate { row -> row.substringAfter('\t') to row.substringBefore('\t').toInt() }
+        val indexed = rows.associate { row -> row.substringAfter('\t') to row.substringBefore('\t').toInt() }
+        assertEquals(rows.size, indexed.size, "duplicate cluster identities in $LEDGER")
+        return indexed
+    }
 
     private companion object {
         const val LEDGER = "/checker-near-miss/clusters.tsv"
