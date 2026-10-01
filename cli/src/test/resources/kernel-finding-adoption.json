@@ -1226,13 +1226,14 @@
       }
     },
     "kf475": {
-      "sha256": "7206800b8475e43c31d3738ad21430288249825c1958a9e0a6d3ca5dea3f3873",
+      "sha256": "1d7bc4694006793a3918ae012ee768a7f681be02abc7e7edc0cf3cd4ab61295a",
       "task": "IG155",
       "scope": {
         "adapter": [
           "keyed-star runtime oracle",
           "keyed-list membership and uniqueness",
-          "independently keyed product extents"
+          "independently keyed product extents",
+          "mixed absent-key product provenance"
         ],
         "dmkits": [
           "typed scalar and collection key composition"
@@ -1240,7 +1241,8 @@
         "interpreter": [
           "keyed-star runtime evaluation",
           "keyed-list membership and uniqueness",
-          "independently keyed product extents"
+          "independently keyed product extents",
+          "mixed absent-key product provenance"
         ],
         "checker": [
           "keyed-star admission population"
@@ -1275,6 +1277,10 @@
             "independently keyed product extents": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedGroupFieldListDiffTest.kt#independentlyKeyedProductsRetainBothOperandExtents",
               "witness": "Both operand orders compare nonempty unequal lists, empty lists, sparse first positions and invalid unpaired tails; invalid tails also clear computation."
+            },
+            "mixed absent-key product provenance": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/AbsentKeyedProductDiffTest.kt#anAbsentKeyMakesTheMixedProductZeroInEitherOperandOrder",
+              "witness": "Both kernel strategies and the interpreter lock both P1/absent-P3 orders against zero and one, exact omission attachment, and populated/absent square controls."
             }
           }
         },
@@ -1298,6 +1304,10 @@
             "independently keyed product extents": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedGroupFieldListDiffTest.kt#independentlyKeyedProductsRetainBothOperandExtents",
               "witness": "Both operand orders compare nonempty unequal lists, empty lists, sparse first positions and invalid unpaired tails; invalid tails also clear computation."
+            },
+            "mixed absent-key product provenance": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/AbsentKeyedProductDiffTest.kt#anAbsentKeyMakesTheMixedProductZeroInEitherOperandOrder",
+              "witness": "Both kernel strategies and the interpreter lock both P1/absent-P3 orders against zero and one, exact omission attachment, and populated/absent square controls."
             }
           }
         },
@@ -1323,7 +1333,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The earlier keyed-parent selection clause was receipted at 3831425df05ba9afecdf5805e80be4fad164ec6c. The September 30 membership and unequal-product extension is in the new outbound handback and has no peer receipt yet.",
+          "basis": "The September 30 reply receipts the keyed runtime extension and requests committed provenance for the mixed P1/absent-P3 row. AbsentKeyedProductDiffTest supplies that new lock; its outbound provenance response still requires peer receipt.",
           "evidence": {}
         }
       }
