@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
 class MessageGroupArgumentAgreementTest {
     private enum class Reads { ROOT_SHALLOW, ROOT_DEEP, OWN, DEEP, SIBLING, NESTED }
     private data class Input(val id: String, val reads: Reads, val parameter: String?, val code: String? = null,
-        val twin: Boolean = false, val declined: Boolean = false)
+        val twin: Boolean = false)
     data class Row(val id: String, val model: String, val classes: List<String>, val portableClasses: List<String> = classes)
 
     private fun base(twin: Boolean) = DocumentModelDraft.named("library-group-arguments").locale("en_US")
@@ -66,8 +66,8 @@ class MessageGroupArgumentAgreementTest {
     }
 
     private fun inputs(): List<Input> = buildList {
-        fun row(id: String, reads: Reads, argument: String, code: String? = null, twin: Boolean = false, declined: Boolean = false) {
-            add(Input(id, reads, "#$argument", code, twin, declined))
+        fun row(id: String, reads: Reads, argument: String, code: String? = null, twin: Boolean = false) {
+            add(Input(id, reads, "#$argument", code, twin))
         }
         row("shallow-relative", Reads.ROOT_SHALLOW, "Loans")
         row("shallow-absolute", Reads.ROOT_SHALLOW, "/Library/Loans")
@@ -126,12 +126,12 @@ class MessageGroupArgumentAgreementTest {
             row("message-lexer-known-$id", Reads.ROOT_SHALLOW, "Loans$suffix", "MVK_LEXER_STANDARD_ERROR")
             row("message-lexer-missing-$id", Reads.ROOT_SHALLOW, "Missing$suffix", "MVK_LEXER_STANDARD_ERROR")
         }
-        row("declined-rulegroup-root-slash", Reads.ROOT_SHALLOW, "RuleGroup/Loans", "RULEGROUP_IMMEDIATELY_BELOW_ROOT", declined = true)
-        row("declined-rulegroup-nested-slash", Reads.SIBLING, "RuleGroup/Details", "MVK_UNEXPECTED_TOKEN", declined = true)
-        row("declined-rulegroup-root-minus", Reads.ROOT_SHALLOW, "RuleGroup-x", "RULEGROUP_IMMEDIATELY_BELOW_ROOT", declined = true)
-        row("declined-rulegroup-nested-minus", Reads.SIBLING, "RuleGroup-x", "MVK_UNEXPECTED_TOKEN", declined = true)
-        row("declined-rootgroup-slash", Reads.ROOT_SHALLOW, "RootGroup/Loans", "INVALID_GROUP", declined = true)
-        row("declined-rootgroup-minus", Reads.ROOT_SHALLOW, "RootGroup-x", "MVK_UNEXPECTED_TOKEN", declined = true)
+        row("declined-rulegroup-root-slash", Reads.ROOT_SHALLOW, "RuleGroup/Loans", "RULEGROUP_IMMEDIATELY_BELOW_ROOT")
+        row("declined-rulegroup-nested-slash", Reads.SIBLING, "RuleGroup/Details", "MVK_UNEXPECTED_TOKEN")
+        row("declined-rulegroup-root-minus", Reads.ROOT_SHALLOW, "RuleGroup-x", "RULEGROUP_IMMEDIATELY_BELOW_ROOT")
+        row("declined-rulegroup-nested-minus", Reads.SIBLING, "RuleGroup-x", "MVK_UNEXPECTED_TOKEN")
+        row("declined-rootgroup-slash", Reads.ROOT_SHALLOW, "RootGroup/Loans", "INVALID_GROUP")
+        row("declined-rootgroup-minus", Reads.ROOT_SHALLOW, "RootGroup-x", "MVK_UNEXPECTED_TOKEN")
         row("wrong-turning-point-missing-child", Reads.SIBLING, "..Wrong/Missing", "INVALID_ENTITY")
         row("correct-turning-point-missing-child", Reads.SIBLING, "..Library/Missing", "INVALID_GROUP")
         row("turning-point-before-up", Reads.SIBLING, "..Library/..", "MVK_UNEXPECTED_TOKEN")
@@ -141,7 +141,7 @@ class MessageGroupArgumentAgreementTest {
 
     fun rows(): List<Row> = inputs().map {
         val classes = listOfNotNull(it.code)
-        Row(it.id, model(it), classes, if (it.declined) emptyList() else classes)
+        Row(it.id, model(it), classes, classes)
     }
 
     private fun kernelCodes(model: String): List<String> = KernelConsistencyOracle()
@@ -150,7 +150,7 @@ class MessageGroupArgumentAgreementTest {
             ?.groupValues?.get(1) ?: error(notification.message()) }
 
     @Test
-    fun groupArgumentsPreserveMeasuredClassesAndExplicitSilence() {
+    fun groupArgumentsPreserveMeasuredClasses() {
         for ((reads, twin) in inputs().map { it.reads to it.twin }.distinct()) {
             assertEquals(emptyList<String>(), kernelCodes(model(Input("plain-control", reads, null, twin = twin))),
                 "plain message: $reads, twin=$twin")

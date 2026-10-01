@@ -1,0 +1,2392 @@
+{
+  "groups": [
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-plain-root",
+          "classes": [],
+          "modelMiddle": "\"Check.\"",
+          "modelSha256": "ce31ab89c1bfbb92640e73369d892645c4c5269ad5cab7b520a7122aacb1d810"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckMessageArgument\",\n                \"name\" : \"CheckMessageArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : ",
+      "suffix": "\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-plain-own",
+          "classes": [],
+          "modelMiddle": "\"Check.\"",
+          "modelSha256": "6713515b85afa9858d9e8e404e91d89e52bdf94a760e471c60ff1108f1db67b4"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(RootGroup/Archive/Title)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-plain-keyword_read",
+          "classes": [],
+          "modelMiddle": "\"Check.\"",
+          "modelSha256": "613fd1754c4e340534bbe18e37f7623f810a41ba03f99122cd73af43dd889be5"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-plain-keyword_unread",
+          "classes": [],
+          "modelMiddle": "\"Check.\"",
+          "modelSha256": "b39759b96cd8a593661c7103ba0ef6173c238862c1988c0b1b727b325c2932b3"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Rule\",\n                    \"id\" : \"/Library/RootGroup/Archive/CheckMessageArgument\",\n                    \"name\" : \"CheckMessageArgument\",\n                    \"Rule\" : {\n                      \"errorEntityRelPath\" : \"../Title\",\n                      \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                      \"errorCondition\" : \"FieldFilled(Title)\",\n                      \"severity\" : \"ERROR\",\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : ",
+      "suffix": "\n                      } ]\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-plain-keyword_nested",
+          "classes": [],
+          "modelMiddle": "\"Check.\"",
+          "modelSha256": "8778cef8f52853465918c62e79b568b24c7ea0132db02e227062332e25915079"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-keyword-root-rule-end",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup$.\"",
+          "modelSha256": "1b51e493f695915402c690c4b75c764dba3f2e19404c7ebbf0cea2a08fa1f7f1"
+        },
+        {
+          "id": "en-keyword-root-rule-slash",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup/Loans$.\"",
+          "modelSha256": "2d089d4de0e24f2bef76c2327f8cfe392a51b9e31a8b41a39add4f3c307944da"
+        },
+        {
+          "id": "en-keyword-root-rule-minus-name",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup-x$.\"",
+          "modelSha256": "b72f0349578b6eccdbd0ef2fe9ce66460e51b72be7b009fd2528f450d26afe28"
+        },
+        {
+          "id": "en-keyword-root-rule-space-name",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup x$.\"",
+          "modelSha256": "81d062b2aba4c10905ea771f3b6bc7a03399ba513599753aef6d45dd04893bff"
+        },
+        {
+          "id": "en-keyword-root-rule-plus-number",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup+1$.\"",
+          "modelSha256": "ec20091e02ed32c1307b9dc9969411d309452c1679f2542a412abb4c4cae932b"
+        },
+        {
+          "id": "en-keyword-root-rule-minus-number",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup-1$.\"",
+          "modelSha256": "dd34185ce35524e6514b97b2f44f907013d483c9b0a7f9b28799bb83b1def84f"
+        },
+        {
+          "id": "en-keyword-root-rule-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup%$.\"",
+          "modelSha256": "7540dd688749c2eb324579c793b12b2ebd6d5c377920ce25f247d15fdf27fb08"
+        },
+        {
+          "id": "en-keyword-root-root-end",
+          "classes": [],
+          "modelMiddle": "\"Check $#RootGroup$.\"",
+          "modelSha256": "8bab702d03d0cfd07872c50fe03a3f9b6f79f27d89526bce05c69bc7578750a8"
+        },
+        {
+          "id": "en-keyword-root-root-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#RootGroup/Loans$.\"",
+          "modelSha256": "fd3420f3e127194a8d831335e948c99eee13f52fba33ee9d652f2c4cb7e53c99"
+        },
+        {
+          "id": "en-keyword-root-root-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RootGroup-x$.\"",
+          "modelSha256": "228b09ad4f06e042403f5ffaac05fcc674a34ddb9b89b048f81372e1ad8c4029"
+        },
+        {
+          "id": "en-keyword-root-root-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RootGroup x$.\"",
+          "modelSha256": "8c61dd6f711defe1e03d36d1511724d10bcb6b8d32fbe175829c31ec7912b911"
+        },
+        {
+          "id": "en-keyword-root-root-plus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RootGroup+1$.\"",
+          "modelSha256": "bbe40db5c2ad51b537affcc9a5ae63ade18121a53b98869a0b8e464a6d5ad764"
+        },
+        {
+          "id": "en-keyword-root-root-minus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RootGroup-1$.\"",
+          "modelSha256": "f265b0f53dbd1569dbba91738c2105e03f4cdf5342aa4ebb8a4d559724cf7694"
+        },
+        {
+          "id": "en-keyword-root-root-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#RootGroup%$.\"",
+          "modelSha256": "a7f659dfcdee18f9e0f54de71d7da7ed7d3f7a4fbf3dd8dedb35eed3afdc06c6"
+        },
+        {
+          "id": "en-keyword-root-line-end",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile$.\"",
+          "modelSha256": "7ab412dceb6e507695c5e0665fb41da2ad2b2dd4e3419fb20386de3f4e8b2dd8"
+        },
+        {
+          "id": "en-keyword-root-line-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Zeile/Loans$.\"",
+          "modelSha256": "a623068025486db53a520097e90049fcac83e7a3dcc680eef708ccc6db63dd4f"
+        },
+        {
+          "id": "en-keyword-root-line-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile-x$.\"",
+          "modelSha256": "17ed3e4939c9a4c28ade0126b6ae63854c6bcadc9fd65cdaee40ea050f6fd95b"
+        },
+        {
+          "id": "en-keyword-root-line-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile x$.\"",
+          "modelSha256": "dcd296876dd0324c3b1e429057161b2343920b3a1af429ba989b948c6134df74"
+        },
+        {
+          "id": "en-keyword-root-line-plus-number",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile+1$.\"",
+          "modelSha256": "ecfabc7c0f5c14fc69b038ef72751875ebe70c13b37b6a7bfe4ff163046403be"
+        },
+        {
+          "id": "en-keyword-root-line-minus-number",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile-1$.\"",
+          "modelSha256": "1fb9537e8e5bf6c18470e1cf52cfed353b503dc84e0424938b6e43336a110704"
+        },
+        {
+          "id": "en-keyword-root-line-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Zeile%$.\"",
+          "modelSha256": "7ff6b1077665f981f75cbc43b306659584f4da856bda2a4a6118c2f9889de22b"
+        },
+        {
+          "id": "en-keyword-root-usb-end",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Usb$.\"",
+          "modelSha256": "a37343d4c5f8b968ca057974cf52f90c9a8c5a22fb5f9b4316ae10e15dd12d35"
+        },
+        {
+          "id": "en-keyword-root-usb-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Usb/Loans$.\"",
+          "modelSha256": "e2d674e3774225503e09e9a34da6dad4d5331714dc56fcb837610cf881267446"
+        },
+        {
+          "id": "en-keyword-root-usb-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb-x$.\"",
+          "modelSha256": "61764b759b0000c9a62376fa4a84a7b5762466384d5109150de44439b3e76a70"
+        },
+        {
+          "id": "en-keyword-root-usb-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb x$.\"",
+          "modelSha256": "eace862ce9ea4a1600bc67d40d493fe466e0af638cc3082355b34e506609803b"
+        },
+        {
+          "id": "en-keyword-root-usb-plus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb+1$.\"",
+          "modelSha256": "b7592dae7d53fa19410ab93247e68740b7042e9e34605e66360ff51c58bb9f7b"
+        },
+        {
+          "id": "en-keyword-root-usb-minus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb-1$.\"",
+          "modelSha256": "8d3f5032ec6063ba35cfef996de6b1d5dd92917da4ca14d81c82cf28383d8db6"
+        },
+        {
+          "id": "en-keyword-root-usb-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Usb%$.\"",
+          "modelSha256": "979d8d4f0499150f1ffd799ff0cdb0b7b80b5f835a19017d06a0f980a3f819fd"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckMessageArgument\",\n                \"name\" : \"CheckMessageArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : ",
+      "suffix": "\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-keyword-own-rule-end",
+          "classes": [],
+          "modelMiddle": "\"Check $#RuleGroup$.\"",
+          "modelSha256": "e2ba5d1897fa93391b8e74be73b4048a4a4ce8368b8b22f908ea002ed3f26797"
+        },
+        {
+          "id": "en-keyword-own-rule-slash",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup/Loans$.\"",
+          "modelSha256": "f6fcfe71336936807d6b66537eb1a1b6d7044ad4a26ac932b50c6307711d5826"
+        },
+        {
+          "id": "en-keyword-own-rule-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup-x$.\"",
+          "modelSha256": "241f6e38448aa2d470d2dc2516f336ca358846b4833e3fb84f85e893dce7b91c"
+        },
+        {
+          "id": "en-keyword-own-rule-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup x$.\"",
+          "modelSha256": "c8e580b009fa3a405cb669d87fbe1bf426151670b04c3bd5eade6e57653c2d44"
+        },
+        {
+          "id": "en-keyword-own-rule-plus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup+1$.\"",
+          "modelSha256": "0c1691e1321a42a636b9702e25c4724c1766a89fba84a1dd5b38e56c6a3e3e86"
+        },
+        {
+          "id": "en-keyword-own-rule-minus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup-1$.\"",
+          "modelSha256": "742d6ea9f5dc7d0370218705d9001a99bdcfe17be26fcd3a3de8a874be3a5a42"
+        },
+        {
+          "id": "en-keyword-own-rule-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#RuleGroup%$.\"",
+          "modelSha256": "6b951be758fe1b804fd8f5d0723cde9e500924425f1eeaa0117f2a0807469a1b"
+        },
+        {
+          "id": "en-keyword-own-root-end",
+          "classes": [],
+          "modelMiddle": "\"Check $#RootGroup$.\"",
+          "modelSha256": "e9b15b33348b2699a185e03a06da2c739ec74eb79e6c2339e3d8568e4d76de45"
+        },
+        {
+          "id": "en-keyword-own-root-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#RootGroup/Loans$.\"",
+          "modelSha256": "a1430e2c0ec2cdbf5b2a5dc04bfdfc9e71f73caa16a95b42fb695e270d6c3478"
+        },
+        {
+          "id": "en-keyword-own-root-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RootGroup-x$.\"",
+          "modelSha256": "d127db393beb48a82fe52b09b69cd022520881152bee75f5ed1986de7637f49f"
+        },
+        {
+          "id": "en-keyword-own-root-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RootGroup x$.\"",
+          "modelSha256": "a498eb9c5fdf52192e3c0b6255764dfa9508b749a8662ea7dde71b135fb19fa6"
+        },
+        {
+          "id": "en-keyword-own-root-plus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RootGroup+1$.\"",
+          "modelSha256": "71fac417fed58fcc375035d866dde507f2d59f15de11a849275327e4429cfedb"
+        },
+        {
+          "id": "en-keyword-own-root-minus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RootGroup-1$.\"",
+          "modelSha256": "0d63cd98a41f5c32778a38e48ab863fc1b13a67f776be79e495349aabbcda694"
+        },
+        {
+          "id": "en-keyword-own-root-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#RootGroup%$.\"",
+          "modelSha256": "4883aeb52899b24ad02f9b7ed84121fe40f088bb42aa1861b6837bb34b73b1f0"
+        },
+        {
+          "id": "en-keyword-own-line-end",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile$.\"",
+          "modelSha256": "d88b4231fae123218cc99df73a608253edfe2bbd6cd3d25cdaa9652ecc375c33"
+        },
+        {
+          "id": "en-keyword-own-line-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Zeile/Loans$.\"",
+          "modelSha256": "4a85bf5da16d84f1d8495d8357c53f7646c14363fe33209c2b01654c913fbe7c"
+        },
+        {
+          "id": "en-keyword-own-line-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile-x$.\"",
+          "modelSha256": "c67e9e4f96ff76eba992831d378d73cdd295546b4aaac6f1851a29b2d7bd2886"
+        },
+        {
+          "id": "en-keyword-own-line-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile x$.\"",
+          "modelSha256": "9409a40c850bbd86c2bbb9058c6a306f0084381f5ffab6f17e558d253e45c257"
+        },
+        {
+          "id": "en-keyword-own-line-plus-number",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile+1$.\"",
+          "modelSha256": "8684945741f6a56ef4771bb38569ffd89c503b481844f4bb79fb4ed193b23a75"
+        },
+        {
+          "id": "en-keyword-own-line-minus-number",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile-1$.\"",
+          "modelSha256": "235b1bc71c93c4cb6cdc6b49fd71c677395cd72cff0362bc76589a9f98607e99"
+        },
+        {
+          "id": "en-keyword-own-line-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Zeile%$.\"",
+          "modelSha256": "925c383d916d1b3c2a71528d526a9f3d6a351b61dbbb59bf8f9707baac90d58c"
+        },
+        {
+          "id": "en-keyword-own-usb-end",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Usb$.\"",
+          "modelSha256": "e72d174f009855efd7428a5f6fdfcdc8ddea6e3fb51547a35dd5ef57db869e05"
+        },
+        {
+          "id": "en-keyword-own-usb-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Usb/Loans$.\"",
+          "modelSha256": "3ebc9c8d4d7a5657979b2110b505ca6cd4ddba5cc5e190200e490310aa6a7f64"
+        },
+        {
+          "id": "en-keyword-own-usb-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb-x$.\"",
+          "modelSha256": "c8967eb639d409e04f7cc224fe92c66eab74d6b8c9c9056d396ef5314919d189"
+        },
+        {
+          "id": "en-keyword-own-usb-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb x$.\"",
+          "modelSha256": "c031032ee78676bc0e775bdf3ba326b8fad47be3e813d5fd752224bab85ead3d"
+        },
+        {
+          "id": "en-keyword-own-usb-plus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb+1$.\"",
+          "modelSha256": "e0909109d442df154ca16d27d12e9e5828083b6b978af6248550527225247cea"
+        },
+        {
+          "id": "en-keyword-own-usb-minus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb-1$.\"",
+          "modelSha256": "4cbd9b687a408ce2c989ef4ca848bdf4d1cd2287713910a006f0e8daf5c7fcec"
+        },
+        {
+          "id": "en-keyword-own-usb-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Usb%$.\"",
+          "modelSha256": "b4accc361bf4f18eaeff6793afa75c175c88de7bef5c9118c130b09c49308569"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-offset-plus-missing",
+          "classes": [
+            "MVK_EXPECTED_TOKEN_NOT_FOUND"
+          ],
+          "modelMiddle": "\"Check $#Zeile+$.\"",
+          "modelSha256": "b5d86c1a8cb95a71ff64b9d050f22134437ad525345287e49fca8f256cf2a518"
+        },
+        {
+          "id": "en-offset-plus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile+1x$.\"",
+          "modelSha256": "6f44a1aae76596c66c28987514e95200639944cac460547d7a82268e278e5f96"
+        },
+        {
+          "id": "en-offset-plus-trailing",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile+1 x$.\"",
+          "modelSha256": "c9f1420f0f95b7475ca48df88a7836f8744b0ead60eb516836e4d3a39142673f"
+        },
+        {
+          "id": "en-offset-plus-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Zeile+1%$.\"",
+          "modelSha256": "280047ec627ce3355f764c23c2ecb31c1c1079d58c9a1b23f56eda04a552026b"
+        },
+        {
+          "id": "en-offset-plus-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#'Zeile'+1$.\"",
+          "modelSha256": "2cd130a464131bde1d2572843d9aaf6dfb84693d6465b5b09eaa2e579a06ec84"
+        },
+        {
+          "id": "en-offset-minus-missing",
+          "classes": [
+            "MVK_EXPECTED_TOKEN_NOT_FOUND"
+          ],
+          "modelMiddle": "\"Check $#Zeile-$.\"",
+          "modelSha256": "bbedd3b76380246f5eadf7ab5de0a30148891ea6d385f96d6b938d31f6ed5e51"
+        },
+        {
+          "id": "en-offset-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile-1x$.\"",
+          "modelSha256": "a4831e33fa252b501329049f045860ddfc3b8138ff6d635e90708560b79a7fbc"
+        },
+        {
+          "id": "en-offset-minus-trailing",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile-1 x$.\"",
+          "modelSha256": "e739f5004bc517938d1c306782f29dfcec60db474c8f3aa6339ba005c95818d1"
+        },
+        {
+          "id": "en-offset-minus-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Zeile-1%$.\"",
+          "modelSha256": "96219596bc1d3794960c2dbc021af1f46360b60461b58de28b7762fe20464c81"
+        },
+        {
+          "id": "en-offset-minus-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#'Zeile'-1$.\"",
+          "modelSha256": "6613082aeb4dc65e4c82519b63461b6b8db91c25a3690fdcdca92ae70c49cc6e"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(RootGroup/Archive/Title)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-named-group-keyword_read-bare",
+          "classes": [],
+          "modelMiddle": "\"Check $#RootGroup$.\"",
+          "modelSha256": "a1214f0fe9764e3a8ce0b27b37b382064ae0b80f85c6ec37f25232d31ace1a15"
+        },
+        {
+          "id": "en-named-group-keyword_read-quoted",
+          "classes": [],
+          "modelMiddle": "\"Check $#'RootGroup'$.\"",
+          "modelSha256": "18cae7815b90a08c88c923389374f7b1764e9d3e3eb5c261454c62b3a81866d3"
+        },
+        {
+          "id": "en-named-group-keyword_read-path",
+          "classes": [],
+          "modelMiddle": "\"Check $#RootGroup/Archive$.\"",
+          "modelSha256": "e8ba6bc2dccaffc7e575fb74c3d4a873a6c8ce806bb042f08c7cd43685806fa2"
+        },
+        {
+          "id": "en-named-group-keyword_read-quoted-path",
+          "classes": [],
+          "modelMiddle": "\"Check $#'RootGroup'/Archive$.\"",
+          "modelSha256": "a06e123ea72564c85ed670cd174c53cfa4f054bccab8956d2383f4b62315ad85"
+        },
+        {
+          "id": "en-named-group-keyword_read-absolute",
+          "classes": [],
+          "modelMiddle": "\"Check $#/Library/RootGroup/Archive$.\"",
+          "modelSha256": "837ad69c6d1dfa1279bec840a1fdce7376bfcda73f6720ba3f484e52c340429f"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-named-group-keyword_unread-bare",
+          "classes": [],
+          "modelMiddle": "\"Check $#RootGroup$.\"",
+          "modelSha256": "0266b7e83377270d52c786db3aea05e24d865da36b17dda29b81d6ae4930049f"
+        },
+        {
+          "id": "en-named-group-keyword_unread-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#'RootGroup'$.\"",
+          "modelSha256": "48e960283ea37af3f7ca5fc704cebf5917edff894d1dea192b23de86f3b4e3fa"
+        },
+        {
+          "id": "en-named-group-keyword_unread-path",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#RootGroup/Archive$.\"",
+          "modelSha256": "63c44cf2cca069d08648f10420057d5c5c759dd21633f039af87672b53b2d452"
+        },
+        {
+          "id": "en-named-group-keyword_unread-quoted-path",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#'RootGroup'/Archive$.\"",
+          "modelSha256": "6eac3d967dbd663b7d2de3e12165a4622fd6392be90d058df7079cf9ad0d5894"
+        },
+        {
+          "id": "en-named-group-keyword_unread-absolute",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#/Library/RootGroup/Archive$.\"",
+          "modelSha256": "be6bf269b9adef103c5d12be8639162abcd781692809aef9469b9738c57df9fc"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Rule\",\n                    \"id\" : \"/Library/RootGroup/Archive/CheckMessageArgument\",\n                    \"name\" : \"CheckMessageArgument\",\n                    \"Rule\" : {\n                      \"errorEntityRelPath\" : \"../Title\",\n                      \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                      \"errorCondition\" : \"FieldFilled(Title)\",\n                      \"severity\" : \"ERROR\",\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : ",
+      "suffix": "\n                      } ]\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-named-group-turning-point",
+          "classes": [],
+          "modelMiddle": "\"Check $#..RootGroup$.\"",
+          "modelSha256": "05241098e4e31cdc0c46f570e7fed55a559c088498553e1292121b8ff9caf57d"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-word-RuleGroup-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans/RuleGroup$.\"",
+          "modelSha256": "465bd14e1e5682b732d607dc9d150931555e658e44ef10d4dfc441154c065033"
+        },
+        {
+          "id": "en-word-RuleGroup-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'RuleGroup'$.\"",
+          "modelSha256": "10f8e5b4285b723cff55c0d1803bd088befa9ea49d0044c7bd0219332d4444b2"
+        },
+        {
+          "id": "en-word-For-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans/For$.\"",
+          "modelSha256": "e8431ba1d9f22660f21360d20896c90463f19fd5bada63cc6c6cd4d79e0b1a11"
+        },
+        {
+          "id": "en-word-For-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'For'$.\"",
+          "modelSha256": "43b5d2e5e9ad7132471e69626b1978627728afe352829d5d332500d8d944631b"
+        },
+        {
+          "id": "en-word-BaseYear-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans/BaseYear$.\"",
+          "modelSha256": "67d17ee7cc3f9f97d3b829a2e2869ce4545e3505bd9c79dc064cc0f0714c2fbe"
+        },
+        {
+          "id": "en-word-BaseYear-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'BaseYear'$.\"",
+          "modelSha256": "28f9aaa66d195ba20ae7a540b900500e18859d27ce9e825eed871c31cc02b127"
+        },
+        {
+          "id": "en-word-RootGroup-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/RootGroup$.\"",
+          "modelSha256": "d9eebcc84739ae642e162885e9029f672015e89174e414ebb4236817e1d0210f"
+        },
+        {
+          "id": "en-word-RootGroup-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'RootGroup'$.\"",
+          "modelSha256": "2598cfe81c56db30e05a1baa329cf55f6b93d6b6dfb2bd9483735bbbb72a5b5b"
+        },
+        {
+          "id": "en-word-Zeile-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/Zeile$.\"",
+          "modelSha256": "a6e4daabc0c819506cef6b90a6b9a2d19122da46346a27f053bd609e3cf48e32"
+        },
+        {
+          "id": "en-word-Zeile-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'Zeile'$.\"",
+          "modelSha256": "a60411c2d70d2d37e173fa9f367dbd5d2e2394d5fca1b6f2e51c4b48b58d4aa9"
+        },
+        {
+          "id": "en-word-Usb-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/Usb$.\"",
+          "modelSha256": "2cd37eab2f664fab4102867f8bbf6cbed476d210893c422b48327cd59ca47830"
+        },
+        {
+          "id": "en-word-Usb-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'Usb'$.\"",
+          "modelSha256": "0f10d3824d032ca1c3c027061991635c4eccf2f738619d3374072aa38f101314"
+        },
+        {
+          "id": "en-word-index-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/index$.\"",
+          "modelSha256": "0e725ac68e623fef011e5f37e10dcd624f2a7cf5d292f2426fa92f43707e9051"
+        },
+        {
+          "id": "en-word-index-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'index'$.\"",
+          "modelSha256": "a56e91155654904edfa63bd363dfa403001a9a24dbbce5eb458cdc7416a18ee1"
+        },
+        {
+          "id": "en-word-Vordruckname-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/Vordruckname$.\"",
+          "modelSha256": "8ac666b8c7de890f02f619a8c197138ce8f08c807b88ff29c07e302583540926"
+        },
+        {
+          "id": "en-word-Vordruckname-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'Vordruckname'$.\"",
+          "modelSha256": "364511f05c7101887367e7155e0ed0148ab807e6561c0afc7d70d52eeb83655a"
+        },
+        {
+          "id": "en-word-Vordruckzeile-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/Vordruckzeile$.\"",
+          "modelSha256": "b532ddfb15ba27c8f29c19d6890e2781a5a6a94374c1d38d6fa026555c270377"
+        },
+        {
+          "id": "en-word-Vordruckzeile-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'Vordruckzeile'$.\"",
+          "modelSha256": "3b4eb3301e208866b0858a5dc9c445a8ac4b5a467b4f94be7e0e6067e344cfd3"
+        },
+        {
+          "id": "en-word-value-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/value$.\"",
+          "modelSha256": "caf751b6c382c6fd36f8d6369e62cd5b9c2b00f4765835ad58c5c4532888f7e9"
+        },
+        {
+          "id": "en-word-value-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'value'$.\"",
+          "modelSha256": "343fb67c3b98f6a7212a878e3fc1201e7f5f9304ac2fa921ba165fba17054a86"
+        },
+        {
+          "id": "en-word-For-standalone",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#For$.\"",
+          "modelSha256": "76db5097d97a83822045c1adca1304293f4f874712181958182f0ecd04442421"
+        },
+        {
+          "id": "en-word-BaseYear-standalone",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#BaseYear$.\"",
+          "modelSha256": "730bcfaf158f81dd30923ecbd4c0d9a4c3e5a01417ccbb19b7d4d7e7bde62834"
+        },
+        {
+          "id": "en-word-rule-absolute",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#/Library/RuleGroup$.\"",
+          "modelSha256": "a6018de5d755a9ebad42ab3bf589610cbf1a321aafa3747af4be6797d1305578"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckMessageArgument\",\n                \"name\" : \"CheckMessageArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : ",
+      "suffix": "\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-word-rule-turning-point",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#..RuleGroup$.\"",
+          "modelSha256": "aaf15e595f63cef1086fa8f7b1c814317516cf7c3b5bfc67b7a3d093a6ea1129"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-fault-Loans-plain-control",
+          "classes": [],
+          "modelMiddle": "\"Check $#Loans$.\"",
+          "modelSha256": "b679f5acf6b26414fe9a98670971e26bdfdfdbd02a1b90385117fd7cb49fd166"
+        },
+        {
+          "id": "en-fault-Loans-minus-control",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans-x$.\"",
+          "modelSha256": "fa44236e4766633a5684f139e39d7d4cac5485c449f5044954bac9a502e1bafb"
+        },
+        {
+          "id": "en-fault-Loans-space-control",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans x$.\"",
+          "modelSha256": "aecc9fae0cc5801a97abbe484bd3354235c83fb9218d2fc530fceca26574058d"
+        },
+        {
+          "id": "en-fault-Loans-immediate",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Loans%$.\"",
+          "modelSha256": "8b6e594f4888a26b0f3ff7c8f3d02ac3db655d84cd6331ea22c4b415cf9bda6c"
+        },
+        {
+          "id": "en-fault-Loans-separator",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Loans/%$.\"",
+          "modelSha256": "3e015f6e9627149bcec8bb004b75dd5119d91b618edc7e5ed6b92acb06e418e2"
+        },
+        {
+          "id": "en-fault-Loans-double-separator",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans//%$.\"",
+          "modelSha256": "187eb91ca144d92f0d93ec3cb3d6374667b85d4112259a67fab20439d396f730"
+        },
+        {
+          "id": "en-fault-Loans-trailing-percent",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans x%$.\"",
+          "modelSha256": "93cc44ae524e2c067912a6f4b2ec281b877657551a088089e22b5ccf0e116e22"
+        },
+        {
+          "id": "en-fault-Loans-trailing-bracket",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans x[$.\"",
+          "modelSha256": "3b5ca6debeb41d6f9951e46c382ec019ffcdf707bd10d1835ab8eace8652ac26"
+        },
+        {
+          "id": "en-fault-Loans-trailing-quote",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans x'Bad$.\"",
+          "modelSha256": "0be385d013d11135d7a68a619af829f6dce90d13bc874e433aecc454a1d23a90"
+        },
+        {
+          "id": "en-fault-Returns-plain-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns$.\"",
+          "modelSha256": "bcadb28114fd45e5107fe9968360dd0f293ab9addb4c01701b91c91999084ebd"
+        },
+        {
+          "id": "en-fault-Returns-minus-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns-x$.\"",
+          "modelSha256": "5eb762c97fbbff504636431312f2a5225ba641657b7d990cf81f593c0a3049d4"
+        },
+        {
+          "id": "en-fault-Returns-space-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns x$.\"",
+          "modelSha256": "91161812b893f4b03733892a5dbec6d915f14c1bba274a12d444fce60b18f80c"
+        },
+        {
+          "id": "en-fault-Returns-immediate",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Returns%$.\"",
+          "modelSha256": "ffdee954b38caed31ee0dad00f6f2fb2c38756e89a353bb21ab5e39266b62b48"
+        },
+        {
+          "id": "en-fault-Returns-separator",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Returns/%$.\"",
+          "modelSha256": "3f3317a6fadb9a0dba07dc5075654b6eb33c187cd2f931f70d9c7026ca9623db"
+        },
+        {
+          "id": "en-fault-Returns-double-separator",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Returns//%$.\"",
+          "modelSha256": "c5ea935c7a8cb74293cc9d52280b9e9bc030f9b30977f797bf0bd03626b44bb4"
+        },
+        {
+          "id": "en-fault-Returns-trailing-percent",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns x%$.\"",
+          "modelSha256": "1937712ebd835adb9752e36431f5566f48d78f7efccee0f61bd8d07a828001c6"
+        },
+        {
+          "id": "en-fault-Returns-trailing-bracket",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns x[$.\"",
+          "modelSha256": "ca575c12c38bff77136b969ae7502ec6fc8c0d819d1cd32b1336dd6769147c2e"
+        },
+        {
+          "id": "en-fault-Returns-trailing-quote",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns x'Bad$.\"",
+          "modelSha256": "2f1794e779695cec4aa567f3ff3af72e8058dff5699e845a850f28eca349ef7f"
+        },
+        {
+          "id": "en-fault-Missing-plain-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing$.\"",
+          "modelSha256": "c8620976c878e605c8e72574f1279920c5ccb588a4416b8e781d66fca1f37d5c"
+        },
+        {
+          "id": "en-fault-Missing-minus-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing-x$.\"",
+          "modelSha256": "a833fdaff52a2783ed55a03ac2ef6209ff0a759cf5192c8cc945892b6f937570"
+        },
+        {
+          "id": "en-fault-Missing-space-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing x$.\"",
+          "modelSha256": "08b55e82dc7a7f07c1d71ab3bea3c7bb5528ddde1d740f955451f65c7aab0287"
+        },
+        {
+          "id": "en-fault-Missing-immediate",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Missing%$.\"",
+          "modelSha256": "2ef8ae3834e0cdec2fbc034b558372649bee5545cac8ccfdfac1bae09f245539"
+        },
+        {
+          "id": "en-fault-Missing-separator",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Missing/%$.\"",
+          "modelSha256": "e0b2ee3598855f3691a9191110b53206a594ed7590bbe851462e255c9e0690d2"
+        },
+        {
+          "id": "en-fault-Missing-double-separator",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Missing//%$.\"",
+          "modelSha256": "517299ee5d498c520ed4fad261706bcdfd27a7ebc376988c4bbe7f7dfcf46244"
+        },
+        {
+          "id": "en-fault-Missing-trailing-percent",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing x%$.\"",
+          "modelSha256": "3f785065944e103dcd5d64163baf543fcad4b53dd7ff83356e596a9529defa3c"
+        },
+        {
+          "id": "en-fault-Missing-trailing-bracket",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing x[$.\"",
+          "modelSha256": "ac4fe8422343b3736a67ab54442720b41cff4b16e2afd0b0970a4cd7198bde7f"
+        },
+        {
+          "id": "en-fault-Missing-trailing-quote",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing x'Bad$.\"",
+          "modelSha256": "8526f45d945480aac3a92d513a9dc32dade1d4c41425eb563f1db5af761e1b60"
+        },
+        {
+          "id": "en-fault-double-separator-bracket",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans//[$.\"",
+          "modelSha256": "b18677081c599f640e928bb016b4eeb5da94b15ae058a9abe1facd54a82dfd62"
+        },
+        {
+          "id": "en-fault-double-separator-quote",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans//'Bad$.\"",
+          "modelSha256": "1e123ff93c5d28dcfb77c16ac143ec04a48aea03289ec11ae096e548c1b3f015"
+        },
+        {
+          "id": "en-numeric-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#123$.\"",
+          "modelSha256": "266e22e44c218c9c36d2c6e7c9d0fb72b94f043cf809766b33736cecb7f5d589"
+        },
+        {
+          "id": "en-numeric-child",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/123$.\"",
+          "modelSha256": "a79132e54bf6b68aef5c7d2cbe87ab596db69166b6e22398a5b151035532197e"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckMessageArgument\",\n                \"name\" : \"CheckMessageArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : ",
+      "suffix": "\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-parent-label-incomplete",
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "modelMiddle": "\"Check $#..Wrong/$.\"",
+          "modelSha256": "6df1c98745132d3305886ff6712e2df1d82203fbd724e62221da0e5b6543f995"
+        },
+        {
+          "id": "en-parent-label-separator",
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "modelMiddle": "\"Check $#..Wrong//%$.\"",
+          "modelSha256": "cc40319e9180d0a8386ff5ef2bad753a02113e16dcfa06da6ba5b7cdf842ff92"
+        },
+        {
+          "id": "en-parent-correct-label-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#..Library/%$.\"",
+          "modelSha256": "832dd70198a7060fcacdd43d2197174663f73baca4ff5e42b5b903be9c570366"
+        },
+        {
+          "id": "en-parent-wrong-label-lexer",
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "modelMiddle": "\"Check $#..Wrong/%$.\"",
+          "modelSha256": "ef3d95f34b6fabaef84420d64867d76b9e242781c0fbe1c2048a78e868c0a66c"
+        },
+        {
+          "id": "en-parent-above-root-separator",
+          "classes": [
+            "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+          ],
+          "modelMiddle": "\"Check $#../../Loans//%$.\"",
+          "modelSha256": "3641613da72f770bfe6baca0832c1a362020ad9a5619b9376ca1701b29d74e78"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FeldAngegeben(Branch) Und FeldAngegeben(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-plain-root",
+          "classes": [],
+          "modelMiddle": "\"Check.\"",
+          "modelSha256": "e0a7348c955b263602d51f769a2a996d5afb370c2168417920e47e907f0e5356"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckMessageArgument\",\n                \"name\" : \"CheckMessageArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                  \"errorCondition\" : \"FeldAngegeben(Book)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : ",
+      "suffix": "\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-plain-own",
+          "classes": [],
+          "modelMiddle": "\"Check.\"",
+          "modelSha256": "07a83c375fbb462b95e91bf05d0d591e8deaddae0e7712d5f674dd3a857127f8"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FeldAngegeben(Branch) Und FeldAngegeben(LfdNr/Archive/Title)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-plain-keyword_read",
+          "classes": [],
+          "modelMiddle": "\"Check.\"",
+          "modelSha256": "ec943d381f5757e5e5dc5bca607384005dc852531742ffbdbccf566fa8c08400"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FeldAngegeben(Branch)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-plain-keyword_unread",
+          "classes": [],
+          "modelMiddle": "\"Check.\"",
+          "modelSha256": "9608c894e904f55bbfaa5587c39f98d88b42c22159b056e69159db486767a533"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Rule\",\n                    \"id\" : \"/Library/LfdNr/Archive/CheckMessageArgument\",\n                    \"name\" : \"CheckMessageArgument\",\n                    \"Rule\" : {\n                      \"errorEntityRelPath\" : \"../Title\",\n                      \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                      \"errorCondition\" : \"FeldAngegeben(Title)\",\n                      \"severity\" : \"ERROR\",\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : ",
+      "suffix": "\n                      } ]\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-plain-keyword_nested",
+          "classes": [],
+          "modelMiddle": "\"Check.\"",
+          "modelSha256": "2bd8c3388fe6c56e37db12d24466f4320d4735fd3486b16ac305baddac7d695c"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FeldAngegeben(Branch) Und FeldAngegeben(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-keyword-root-rule-end",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext$.\"",
+          "modelSha256": "6890aa74fc8a5488e17f5f368fd48707f6ce3c1160848a96576979c25c8263b3"
+        },
+        {
+          "id": "de-keyword-root-rule-slash",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext/Loans$.\"",
+          "modelSha256": "583603f5ff482c8f63b52288b7c57ac4c6b199760164f0c47366c96b2388f29c"
+        },
+        {
+          "id": "de-keyword-root-rule-minus-name",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext-x$.\"",
+          "modelSha256": "503473cce542249387129bb26570297a687e359ad94d78ee1916d24e9a6a193c"
+        },
+        {
+          "id": "de-keyword-root-rule-space-name",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext x$.\"",
+          "modelSha256": "15d00dfecac30c80d003cbb02f1f3114547b2725c66b7494bfe031bff1052d7b"
+        },
+        {
+          "id": "de-keyword-root-rule-plus-number",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext+1$.\"",
+          "modelSha256": "ac1dd83cd33c53cc5d27bb358b05cf24b8d7a1639bdc84ceae5d1efd3b7807de"
+        },
+        {
+          "id": "de-keyword-root-rule-minus-number",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext-1$.\"",
+          "modelSha256": "c29ab4ceceacb9aa2ae3e2da673f6fa80f5630b5e230bbcbfccb454f31ea4beb"
+        },
+        {
+          "id": "de-keyword-root-rule-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext%$.\"",
+          "modelSha256": "5687d36babaf34ed6186e8b5915d10d82d1ceb2c6aaccf6c19b3dd5d9f424f10"
+        },
+        {
+          "id": "de-keyword-root-root-end",
+          "classes": [],
+          "modelMiddle": "\"Check $#LfdNr$.\"",
+          "modelSha256": "39a8d0bd293686468068963786ba6fed9814888114976e637a5fde0b02c5f0dd"
+        },
+        {
+          "id": "de-keyword-root-root-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#LfdNr/Loans$.\"",
+          "modelSha256": "89b5d57105c4e7518603832fd9d9a9c3263641e8b04e0286c178b34e2fb06499"
+        },
+        {
+          "id": "de-keyword-root-root-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#LfdNr-x$.\"",
+          "modelSha256": "aaa978a60f98e4216d9d90bf5299f3b204e5c7939b23077685e0482ee4cabcf0"
+        },
+        {
+          "id": "de-keyword-root-root-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#LfdNr x$.\"",
+          "modelSha256": "cee178aa1b694bc46ff9acec57e0bb446a1545afa841f2252f153b706746df9a"
+        },
+        {
+          "id": "de-keyword-root-root-plus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#LfdNr+1$.\"",
+          "modelSha256": "afccf4e16a9138ec8750a4d298a31a0f6707c00424f5dc26b7803b9f2111cd91"
+        },
+        {
+          "id": "de-keyword-root-root-minus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#LfdNr-1$.\"",
+          "modelSha256": "e68e9d313b634e52dc0726a195139cb99f9a7e298741177db2393101898575a1"
+        },
+        {
+          "id": "de-keyword-root-root-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#LfdNr%$.\"",
+          "modelSha256": "b91da1f053622f9b4d8a3c5442612763e57cc14c68db052f495097e348cf4c1e"
+        },
+        {
+          "id": "de-keyword-root-line-end",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile$.\"",
+          "modelSha256": "56be970c27ee304b7cdd27bb327f5098f27232168c721f94ed4c0ade017c0549"
+        },
+        {
+          "id": "de-keyword-root-line-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Zeile/Loans$.\"",
+          "modelSha256": "aa4d92eabb24a3068c09748835ad3c6819f195f773b87ca0ba75d92ade6670a5"
+        },
+        {
+          "id": "de-keyword-root-line-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile-x$.\"",
+          "modelSha256": "a95668d3b0a3989fd9ee01bea48b00b72c8596412250b7f57d63a7328155abc0"
+        },
+        {
+          "id": "de-keyword-root-line-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile x$.\"",
+          "modelSha256": "25e67f963454b639d30c1e3b6a87406d3b67615250d83ece4bdb2d150a941324"
+        },
+        {
+          "id": "de-keyword-root-line-plus-number",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile+1$.\"",
+          "modelSha256": "1512f538ab503606825ab111825defc7203cb4623421f907ca7c09206174bff3"
+        },
+        {
+          "id": "de-keyword-root-line-minus-number",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile-1$.\"",
+          "modelSha256": "79ab1d420599cf802abfad46c9c7145cf25f94567b8e97545cf658ed33c8baae"
+        },
+        {
+          "id": "de-keyword-root-line-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Zeile%$.\"",
+          "modelSha256": "941d7a6f3cc40decba01bdf1273c53d97ca19019fe3826328c51ad7af94cd209"
+        },
+        {
+          "id": "de-keyword-root-usb-end",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Usb$.\"",
+          "modelSha256": "8435c560c062680224b8cf95c0ff1d3e23581b30b412791bbbb2a0f77039ff38"
+        },
+        {
+          "id": "de-keyword-root-usb-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Usb/Loans$.\"",
+          "modelSha256": "549a0d585c07fcf35d8cddf16519da02f9fa69986cb649021c7929333119921d"
+        },
+        {
+          "id": "de-keyword-root-usb-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb-x$.\"",
+          "modelSha256": "59e6cbcfbb6dcbfca5ed65352dc93246a027cec11b47d768d0912882a8136ab4"
+        },
+        {
+          "id": "de-keyword-root-usb-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb x$.\"",
+          "modelSha256": "235fbfb875e4af895095a8563805f25fa78fc1b0e210356476ae3e3927984cad"
+        },
+        {
+          "id": "de-keyword-root-usb-plus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb+1$.\"",
+          "modelSha256": "26e2f24720b1b6f3caa9682b8eeefd07ddae1cb22c2a07aded4583738209de28"
+        },
+        {
+          "id": "de-keyword-root-usb-minus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb-1$.\"",
+          "modelSha256": "7861e5ff0c59f94a545a71c8599c7ee43541d40f1a9cfd9298559b3373d17507"
+        },
+        {
+          "id": "de-keyword-root-usb-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Usb%$.\"",
+          "modelSha256": "78598fac5e4cbd31d40673a3d46a09ac435230a2726bab1a1524d8248bffced5"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckMessageArgument\",\n                \"name\" : \"CheckMessageArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                  \"errorCondition\" : \"FeldAngegeben(Book)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : ",
+      "suffix": "\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-keyword-own-rule-end",
+          "classes": [],
+          "modelMiddle": "\"Check $#RegelKontext$.\"",
+          "modelSha256": "22bebbfbd1b4cf718c6e6f9021491e60875dfd4190c69709186bd8feca8f5e14"
+        },
+        {
+          "id": "de-keyword-own-rule-slash",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext/Loans$.\"",
+          "modelSha256": "d8cc3d29f582956e775c47f9fcca443d759eb6ee8f95c06b51c195edec14e698"
+        },
+        {
+          "id": "de-keyword-own-rule-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext-x$.\"",
+          "modelSha256": "f1e3e9693be0475393d54075e106ece8009280be34722f77f6a1f07b24fb5169"
+        },
+        {
+          "id": "de-keyword-own-rule-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext x$.\"",
+          "modelSha256": "7a11a07fe7d9caf42850336fd9b86f04be53717399d324a70dd48e5049cbfd55"
+        },
+        {
+          "id": "de-keyword-own-rule-plus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext+1$.\"",
+          "modelSha256": "22d7432d6172aa40c448126f383744cb4583ae2dc8dbdafc7f8eca3be7131320"
+        },
+        {
+          "id": "de-keyword-own-rule-minus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext-1$.\"",
+          "modelSha256": "2b098a2f0158647c5b622a3d236f1a03e168a17a5b0f898e188a2744b07000da"
+        },
+        {
+          "id": "de-keyword-own-rule-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#RegelKontext%$.\"",
+          "modelSha256": "cae240f35d7fb58e2e1199020cf4191850e50fe292684f0807105877dfb87015"
+        },
+        {
+          "id": "de-keyword-own-root-end",
+          "classes": [],
+          "modelMiddle": "\"Check $#LfdNr$.\"",
+          "modelSha256": "6b2610f6665ee3860b2c37308e811422d27d7e34a262724cd7b31a75cae1d2b9"
+        },
+        {
+          "id": "de-keyword-own-root-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#LfdNr/Loans$.\"",
+          "modelSha256": "afa6f44226e02495ac0faabcd81727fd1208e675c27ab029f6c8084005b1b379"
+        },
+        {
+          "id": "de-keyword-own-root-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#LfdNr-x$.\"",
+          "modelSha256": "b79b0ff8df1484a3d82bc7a2b6ca34cb9316ffe3971cfc01d6db78b75d0fa1a5"
+        },
+        {
+          "id": "de-keyword-own-root-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#LfdNr x$.\"",
+          "modelSha256": "9e9005ff6b15fed9495a88b49e4e4981dce5d58d8a1d4a471d5d15ee253b0185"
+        },
+        {
+          "id": "de-keyword-own-root-plus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#LfdNr+1$.\"",
+          "modelSha256": "745e326f030e6f70968629058c535cdaf5688016493aee97f94f5a5b049973ae"
+        },
+        {
+          "id": "de-keyword-own-root-minus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#LfdNr-1$.\"",
+          "modelSha256": "82fcb600ca1fdb10b0686e9d357ca09944e70e20e94a8f34807aac87373444d6"
+        },
+        {
+          "id": "de-keyword-own-root-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#LfdNr%$.\"",
+          "modelSha256": "401e630bcb01aa770cf3f0aa975fe4ab71b7eb567ac7bf745a14d8af4b4ecc83"
+        },
+        {
+          "id": "de-keyword-own-line-end",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile$.\"",
+          "modelSha256": "cf686d029105a8aebdddc4831cffb9ad980ea803c3ecc9980f8648bffc710ad3"
+        },
+        {
+          "id": "de-keyword-own-line-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Zeile/Loans$.\"",
+          "modelSha256": "e911195144523beeab905ea184ac46844cb19563a8fad728c203fb2adfe291cc"
+        },
+        {
+          "id": "de-keyword-own-line-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile-x$.\"",
+          "modelSha256": "6e127f558ee960b57284676824cb3143a0e8f5c68975b5f90dcc7f78478bec85"
+        },
+        {
+          "id": "de-keyword-own-line-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile x$.\"",
+          "modelSha256": "2c20462d5fde881bb25def4063bb964de7fae782233839d42bf61b7b22d8fa21"
+        },
+        {
+          "id": "de-keyword-own-line-plus-number",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile+1$.\"",
+          "modelSha256": "64cc7a4a6c9062f5ffb0cd529357ffb58c3b08d164720614041655ace4556545"
+        },
+        {
+          "id": "de-keyword-own-line-minus-number",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile-1$.\"",
+          "modelSha256": "2203a31e4e0281773d1256809c120fbb47d0d696f2f088f9cbe3714dc42b803a"
+        },
+        {
+          "id": "de-keyword-own-line-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Zeile%$.\"",
+          "modelSha256": "d2ba5bdfbd52590ff7b2428c94435acf2b7d5810d94f41c41c308faebc72864f"
+        },
+        {
+          "id": "de-keyword-own-usb-end",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Usb$.\"",
+          "modelSha256": "7197bf72e52fa74f97e50812cee8d7294914776d4fef842b58a149ded92edb3d"
+        },
+        {
+          "id": "de-keyword-own-usb-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Usb/Loans$.\"",
+          "modelSha256": "2a748d019bb08f592740f72caf52ba66e252432a34f8b171e32c1cd4dcfb20ef"
+        },
+        {
+          "id": "de-keyword-own-usb-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb-x$.\"",
+          "modelSha256": "06282a50aa679d9320281c85f598d1b3b0b81dbc333cb00be4da3686375224aa"
+        },
+        {
+          "id": "de-keyword-own-usb-space-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb x$.\"",
+          "modelSha256": "4e02313d7e6711e6e5934c7c33db2bd19804e0d6ea0469b1375e2f3e46f1d553"
+        },
+        {
+          "id": "de-keyword-own-usb-plus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb+1$.\"",
+          "modelSha256": "30c32ef00979fbbbeb80e7fd23753d07ceb891f1b86c8cc4c63d0bf48cc5590e"
+        },
+        {
+          "id": "de-keyword-own-usb-minus-number",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Usb-1$.\"",
+          "modelSha256": "9c04559d7da09bc9b5566d31880820ad441be07961f30903759a1ae28310bd46"
+        },
+        {
+          "id": "de-keyword-own-usb-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Usb%$.\"",
+          "modelSha256": "addcab6e2e9cb02dc91097a1a425ac3573ca96aa167b1977d20e119acf4bc799"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FeldAngegeben(Branch) Und FeldAngegeben(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-offset-plus-missing",
+          "classes": [
+            "MVK_EXPECTED_TOKEN_NOT_FOUND"
+          ],
+          "modelMiddle": "\"Check $#Zeile+$.\"",
+          "modelSha256": "197589d2d8dda32b8af04743223cb6f23f986216be7c78569c749325034087c9"
+        },
+        {
+          "id": "de-offset-plus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile+1x$.\"",
+          "modelSha256": "703a5818ff0adcbb8c66b7208e429144635db18f76ee1897dbc1e82afba7cfcd"
+        },
+        {
+          "id": "de-offset-plus-trailing",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile+1 x$.\"",
+          "modelSha256": "1f4e3dc2eaacabcf91ac5071608141c6cbe1f89995fd75f73f208a8b59b5113f"
+        },
+        {
+          "id": "de-offset-plus-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Zeile+1%$.\"",
+          "modelSha256": "7941dbd2ba77a29ad61b40d45686c3f9744ccee09c5d717f090a289a97f646d3"
+        },
+        {
+          "id": "de-offset-plus-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#'Zeile'+1$.\"",
+          "modelSha256": "edcb3dd7d46db6b11ac7b2d0b0f38b1d8b2fdd6ec0cb44d7e2185a3b2cf79c4f"
+        },
+        {
+          "id": "de-offset-minus-missing",
+          "classes": [
+            "MVK_EXPECTED_TOKEN_NOT_FOUND"
+          ],
+          "modelMiddle": "\"Check $#Zeile-$.\"",
+          "modelSha256": "d915fd954fc73e138d79fce2ccec90b28932d16f7c4d3c539904bb806518d1e8"
+        },
+        {
+          "id": "de-offset-minus-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Zeile-1x$.\"",
+          "modelSha256": "a62c91bb2153cdca5f2b3b2e3204e800cab999fe9fe2a7d9ce90147ca4b80e0a"
+        },
+        {
+          "id": "de-offset-minus-trailing",
+          "classes": [
+            "PARAM_INVALID_IN_NEW_WORLD"
+          ],
+          "modelMiddle": "\"Check $#Zeile-1 x$.\"",
+          "modelSha256": "b66327522200d32d88736a7a554a57df9837ef7b19a0741e64d88b379eed7fcb"
+        },
+        {
+          "id": "de-offset-minus-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Zeile-1%$.\"",
+          "modelSha256": "fbbee92d1303640e695e6dda072763d609ea7d06e6e78353108746199f5edd08"
+        },
+        {
+          "id": "de-offset-minus-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#'Zeile'-1$.\"",
+          "modelSha256": "1e6bc00f0c2fa9b97ce3a857b588ee4db0116e4414de18a866ed228a8ab905a6"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FeldAngegeben(Branch) Und FeldAngegeben(LfdNr/Archive/Title)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-named-group-keyword_read-bare",
+          "classes": [],
+          "modelMiddle": "\"Check $#LfdNr$.\"",
+          "modelSha256": "2648fc2effbacd5ec29378c2b0e7fa9c93cbc85f8b339e7953b2131e05c958a8"
+        },
+        {
+          "id": "de-named-group-keyword_read-quoted",
+          "classes": [],
+          "modelMiddle": "\"Check $#'LfdNr'$.\"",
+          "modelSha256": "c1f82e1b97b873ae5cb350bd05f7b2363e41adf166228d3cfa162df9ad6794fe"
+        },
+        {
+          "id": "de-named-group-keyword_read-path",
+          "classes": [],
+          "modelMiddle": "\"Check $#LfdNr/Archive$.\"",
+          "modelSha256": "25560481124f810784781c6ea069d51504619cc383315061cc7a90b3f13830f8"
+        },
+        {
+          "id": "de-named-group-keyword_read-quoted-path",
+          "classes": [],
+          "modelMiddle": "\"Check $#'LfdNr'/Archive$.\"",
+          "modelSha256": "ab2072721803a477a49bdd24140d5cb5ebb4fff092c67044d9cfc91f8887f3b6"
+        },
+        {
+          "id": "de-named-group-keyword_read-absolute",
+          "classes": [],
+          "modelMiddle": "\"Check $#/Library/LfdNr/Archive$.\"",
+          "modelSha256": "a48a75f7a535b05a527c2cb46e4c7b3a76426eadbd9c0ad9bc8ba9161d01c82a"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FeldAngegeben(Branch)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-named-group-keyword_unread-bare",
+          "classes": [],
+          "modelMiddle": "\"Check $#LfdNr$.\"",
+          "modelSha256": "e3c977c60b875cec61f467393b1d029ff5ed3703752d36da31bf061b0c1698b5"
+        },
+        {
+          "id": "de-named-group-keyword_unread-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#'LfdNr'$.\"",
+          "modelSha256": "95faf17439fc478142d1a8058ff0f494b03b26cd39b2c2415021390715046612"
+        },
+        {
+          "id": "de-named-group-keyword_unread-path",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#LfdNr/Archive$.\"",
+          "modelSha256": "99ae0854b712102bcc55ad9f08d60745901c0644afd1206754384d08ccf5b0e2"
+        },
+        {
+          "id": "de-named-group-keyword_unread-quoted-path",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#'LfdNr'/Archive$.\"",
+          "modelSha256": "baf4afcf02e7af105cbd9c83d0137fffe453aae49e5364219a5d7209a956409d"
+        },
+        {
+          "id": "de-named-group-keyword_unread-absolute",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#/Library/LfdNr/Archive$.\"",
+          "modelSha256": "59eb1f559f394bc592e0b9ddf9c3bb23e91a13faa5c328d94cf8631adb5afbfb"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Rule\",\n                    \"id\" : \"/Library/LfdNr/Archive/CheckMessageArgument\",\n                    \"name\" : \"CheckMessageArgument\",\n                    \"Rule\" : {\n                      \"errorEntityRelPath\" : \"../Title\",\n                      \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                      \"errorCondition\" : \"FeldAngegeben(Title)\",\n                      \"severity\" : \"ERROR\",\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : ",
+      "suffix": "\n                      } ]\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-named-group-turning-point",
+          "classes": [],
+          "modelMiddle": "\"Check $#..LfdNr$.\"",
+          "modelSha256": "446b76238efccc21d62b20a3649358176f5fdcd4b2ab37e3054dbe872f60b5bb"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FeldAngegeben(Branch) Und FeldAngegeben(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-word-RegelKontext-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans/RegelKontext$.\"",
+          "modelSha256": "1d85c429b13f9a8f30fe7bc049e2020fb80c61075fa12b698bcfd54bb7766bfc"
+        },
+        {
+          "id": "de-word-RegelKontext-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'RegelKontext'$.\"",
+          "modelSha256": "d041c9da5cd86320c718f174c184322566f08dbcfe5644475a7704fc36281147"
+        },
+        {
+          "id": "de-word-Fuer-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans/Fuer$.\"",
+          "modelSha256": "8d3dd998584b8e7a99e5e961961b008ad1a5ec24f6c5d7ef1d04cd39480d414a"
+        },
+        {
+          "id": "de-word-Fuer-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'Fuer'$.\"",
+          "modelSha256": "8780fe664032c733a1d16e850ecc55a336d7b5b4fbf285667eb2ebf7898dfbf8"
+        },
+        {
+          "id": "de-word-Referenzjahr-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans/Referenzjahr$.\"",
+          "modelSha256": "d3595cb5e97be9ba50b9aab55d9ec73aba4175fba09abc472aac0d4651b8050d"
+        },
+        {
+          "id": "de-word-Referenzjahr-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'Referenzjahr'$.\"",
+          "modelSha256": "0ac92ab285b4a2c3c77ef4af19374d07dc154286492ac4a54bea5724a5b916ec"
+        },
+        {
+          "id": "de-word-LfdNr-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/LfdNr$.\"",
+          "modelSha256": "8cd8c10aabda245179b31a1cadfb50b56f4bdb74947a52f3bccde4c76e706b21"
+        },
+        {
+          "id": "de-word-LfdNr-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'LfdNr'$.\"",
+          "modelSha256": "b73affe6fbee45d05c94c4559feb110b670e622366e0cde85285f0a9a6b28172"
+        },
+        {
+          "id": "de-word-Zeile-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/Zeile$.\"",
+          "modelSha256": "2a76fdbd99637a818ff9c732fdc9fdf3bb10df738d8d1f35f0e0adfd4b3b49ff"
+        },
+        {
+          "id": "de-word-Zeile-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'Zeile'$.\"",
+          "modelSha256": "27930dfe57439f7fc6b98f7005891f7773081dbeb80a5700f297f4a2be9b69b4"
+        },
+        {
+          "id": "de-word-Usb-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/Usb$.\"",
+          "modelSha256": "b77dfeea97b29bd43e18b200d341af2f361f319cb1e9fdecb313941d69fa3d73"
+        },
+        {
+          "id": "de-word-Usb-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'Usb'$.\"",
+          "modelSha256": "2e53ec0b44e0734aea6d7311f2c12b353a7f05563bc456cac63099acbbd19b50"
+        },
+        {
+          "id": "de-word-index-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/index$.\"",
+          "modelSha256": "5f72860267df50a5cf8ced3e237ceb766702a1365d243e19fa5b71fb101a6fc2"
+        },
+        {
+          "id": "de-word-index-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'index'$.\"",
+          "modelSha256": "9f62f10d41a94154192f68ad817702177b861f17a15d50e886a66ca5efad2c11"
+        },
+        {
+          "id": "de-word-Vordruckname-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/Vordruckname$.\"",
+          "modelSha256": "dfa92bf39dde9ea5fbe48d6dd4aab9cba35fdda3c9e4db85df0851f84607db98"
+        },
+        {
+          "id": "de-word-Vordruckname-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'Vordruckname'$.\"",
+          "modelSha256": "1b31eec3a52d1198b1c0c19766cea430648b04a4fea02867856322b9e9c279fc"
+        },
+        {
+          "id": "de-word-Vordruckzeile-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/Vordruckzeile$.\"",
+          "modelSha256": "b5824cc2a82a17cc5ba9d7da91e5c6eaaba3c99bd8ad3c468c6b192f5be73f15"
+        },
+        {
+          "id": "de-word-Vordruckzeile-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'Vordruckzeile'$.\"",
+          "modelSha256": "f8090b9feb6b2aa40752a14e6874b99ed093c3d3126b17373df8ba1ca8013431"
+        },
+        {
+          "id": "de-word-Wert-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/Wert$.\"",
+          "modelSha256": "db96692e90232a8225745b46e165bb6f24a935be8410c04a02211028e57e6bf1"
+        },
+        {
+          "id": "de-word-Wert-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/'Wert'$.\"",
+          "modelSha256": "535b4fd5243936b3164f1e7586b160b676c92014594e4f15efacd54eca65608f"
+        },
+        {
+          "id": "de-word-Fuer-standalone",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Fuer$.\"",
+          "modelSha256": "6acb5cd9448ede7b973c36d7d9342eeec4e3a1a4d11b872ab45c567c74cfca19"
+        },
+        {
+          "id": "de-word-Referenzjahr-standalone",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Referenzjahr$.\"",
+          "modelSha256": "91dee9761da72c9284662a84ef85166513551c71f914eacbecf15b542765e413"
+        },
+        {
+          "id": "de-word-rule-absolute",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#/Library/RegelKontext$.\"",
+          "modelSha256": "dabb5c325cea650fb5dbf5ca53646337f7118b1e9cf33f7ae086156298ba8126"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckMessageArgument\",\n                \"name\" : \"CheckMessageArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                  \"errorCondition\" : \"FeldAngegeben(Book)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : ",
+      "suffix": "\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-word-rule-turning-point",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#..RegelKontext$.\"",
+          "modelSha256": "5b2f34219b4b46dbe3cc31c7688e917d5e6ac57fed52578b92d1c10206e76a86"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FeldAngegeben(Branch) Und FeldAngegeben(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-fault-Loans-plain-control",
+          "classes": [],
+          "modelMiddle": "\"Check $#Loans$.\"",
+          "modelSha256": "b9f5f7f629c2a56c558eacfa92b7f2795d89ec8a024b0965697d8f29e992a611"
+        },
+        {
+          "id": "de-fault-Loans-minus-control",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans-x$.\"",
+          "modelSha256": "da3d1082cfd15014d176bb9a3b606772259a89d3869eaa694ea786715352302f"
+        },
+        {
+          "id": "de-fault-Loans-space-control",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans x$.\"",
+          "modelSha256": "f6882d350bd6502c16a8a0e10e6b051364502038335bd19edbcccd1ab8d21b81"
+        },
+        {
+          "id": "de-fault-Loans-immediate",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Loans%$.\"",
+          "modelSha256": "ef06a7959be5135b3646246d5afd9bf621515bca671eca9e0d368d4330e0c27f"
+        },
+        {
+          "id": "de-fault-Loans-separator",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Loans/%$.\"",
+          "modelSha256": "9bbf7efa5aacab6df028042b550fe6c8661dcf2691da2a257d56b5ce940be0ad"
+        },
+        {
+          "id": "de-fault-Loans-double-separator",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans//%$.\"",
+          "modelSha256": "920b96988696ee3b5cf4cdc5bed8154ee9508c2be45d17414449b76997e48ad5"
+        },
+        {
+          "id": "de-fault-Loans-trailing-percent",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans x%$.\"",
+          "modelSha256": "5a4ede1f66f6e5724925df13c907cd2715ad2f0aba8e41444c4a111a626ca025"
+        },
+        {
+          "id": "de-fault-Loans-trailing-bracket",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans x[$.\"",
+          "modelSha256": "6c6ac90e2029e2518d255869cc3013edeef88dd054c412bdeac4b0c96aa34832"
+        },
+        {
+          "id": "de-fault-Loans-trailing-quote",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans x'Bad$.\"",
+          "modelSha256": "b5b54221e45326c9ecc8b24d35b97ceccf82d769783a854d3aee26119086d8e2"
+        },
+        {
+          "id": "de-fault-Returns-plain-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns$.\"",
+          "modelSha256": "b4ac8142e9e85c1b8974ca008e3958a606a4fe6c501763ee35beb8dcafda5910"
+        },
+        {
+          "id": "de-fault-Returns-minus-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns-x$.\"",
+          "modelSha256": "62db9aa9904a9f6e8b801073c3aa7f63847b8fdde578f4a9ff219919a1180d06"
+        },
+        {
+          "id": "de-fault-Returns-space-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns x$.\"",
+          "modelSha256": "a6f68f418064c29d25373b9b7000e8b33001e081c90cdc99fae1cd688e048c4a"
+        },
+        {
+          "id": "de-fault-Returns-immediate",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Returns%$.\"",
+          "modelSha256": "085bbfc3086409a6baf8ed0aca506a42cf68d820fa83d3c010bbe2d41e12e673"
+        },
+        {
+          "id": "de-fault-Returns-separator",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Returns/%$.\"",
+          "modelSha256": "69adcb09cccaf4a49e6da477af10b9d5f61e72fe313bf242b3712796f4036164"
+        },
+        {
+          "id": "de-fault-Returns-double-separator",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Returns//%$.\"",
+          "modelSha256": "e7039bb45b4c16b84609aa1d1bf3785c9275f695c2f4fbc14340d52bd4d84de0"
+        },
+        {
+          "id": "de-fault-Returns-trailing-percent",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns x%$.\"",
+          "modelSha256": "a6c4ff79adecf48f204f7ca56b85b7a246097f5456c3f9bbab14e623a4bb5802"
+        },
+        {
+          "id": "de-fault-Returns-trailing-bracket",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns x[$.\"",
+          "modelSha256": "61c594e0714402c5a7f2712555cf02dea409bab79d2f45ab3c161df0c97ade60"
+        },
+        {
+          "id": "de-fault-Returns-trailing-quote",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Returns x'Bad$.\"",
+          "modelSha256": "81e7c4261ffd2a1790887ffb503da1281d758672561f56e0f4826f0f0843d0ca"
+        },
+        {
+          "id": "de-fault-Missing-plain-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing$.\"",
+          "modelSha256": "43b197705ba7e5fdf611669f893590d15496df3f5fd0d2329726096973ef81b7"
+        },
+        {
+          "id": "de-fault-Missing-minus-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing-x$.\"",
+          "modelSha256": "e5d8afcfcf20b4d2490448be385eab567196ead7473784ad491fa6e5140d43d5"
+        },
+        {
+          "id": "de-fault-Missing-space-control",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing x$.\"",
+          "modelSha256": "c76f86ddce89baa633648592dc71a77246471090e29354f8e01458f1ecff4b67"
+        },
+        {
+          "id": "de-fault-Missing-immediate",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Missing%$.\"",
+          "modelSha256": "1845ef0ec3e2e0269d874bcd640cdb3214eb4e5a786159ceb79549682f7ae726"
+        },
+        {
+          "id": "de-fault-Missing-separator",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#Missing/%$.\"",
+          "modelSha256": "28b889d38480c099066f49fd5eb10ce84dac263981c1a6dca7a623149e54ec8a"
+        },
+        {
+          "id": "de-fault-Missing-double-separator",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Missing//%$.\"",
+          "modelSha256": "650ecdb6f90bd10e64e8761f2b892f55932ccb440014e05542f7d0d677dcdbd8"
+        },
+        {
+          "id": "de-fault-Missing-trailing-percent",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing x%$.\"",
+          "modelSha256": "789c3c6a76e78371ce45e0c0f0591462f166375f3ddd0260588171e5f334e453"
+        },
+        {
+          "id": "de-fault-Missing-trailing-bracket",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing x[$.\"",
+          "modelSha256": "f621476a5a1e3412adc456b22ad5ad525d1e5787af06cc30e74628648e14fd1b"
+        },
+        {
+          "id": "de-fault-Missing-trailing-quote",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Missing x'Bad$.\"",
+          "modelSha256": "53df357dfabd2694cd0934f437fbb0e7c8ed9d665a0eaffae2cb760db5b38baa"
+        },
+        {
+          "id": "de-fault-double-separator-bracket",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans//[$.\"",
+          "modelSha256": "d9630f61bd3c058c1983cb6e35ba2aba8d78f37936b47156a61c35c10b86783f"
+        },
+        {
+          "id": "de-fault-double-separator-quote",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "\"Check $#Loans//'Bad$.\"",
+          "modelSha256": "aa32b1aea476b81efc4feebb4945777b18bea72c50d669fd7aafe690ea21e014"
+        },
+        {
+          "id": "de-numeric-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#123$.\"",
+          "modelSha256": "6025637af7b8293c4a02635e50a76def7e08b81db9827c08038293f0a752f6ae"
+        },
+        {
+          "id": "de-numeric-child",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans/123$.\"",
+          "modelSha256": "7b671d77de8a052280741b77a8ac984efebb577daa5267925c01a07106d24f8a"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckMessageArgument\",\n                \"name\" : \"CheckMessageArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"MESSAGE_ARGUMENT\",\n                  \"errorCondition\" : \"FeldAngegeben(Book)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : ",
+      "suffix": "\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-parent-label-incomplete",
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "modelMiddle": "\"Check $#..Wrong/$.\"",
+          "modelSha256": "0b90bb929e73dae34c2ffcc0ac8243ae7e29fbbc670257d27623347661ebaad6"
+        },
+        {
+          "id": "de-parent-label-separator",
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "modelMiddle": "\"Check $#..Wrong//%$.\"",
+          "modelSha256": "5a867212195383edaf41008d9c173d87c0ff39129a02327870e691a7d5fcff45"
+        },
+        {
+          "id": "de-parent-correct-label-lexer",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "\"Check $#..Library/%$.\"",
+          "modelSha256": "a970ca9d1045bd4e90c1ebe5c6e605046a313980f75a5ae686b61082276b9ab3"
+        },
+        {
+          "id": "de-parent-wrong-label-lexer",
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "modelMiddle": "\"Check $#..Wrong/%$.\"",
+          "modelSha256": "d5e0b3763280dbb9fb05e5e0fd5ebb9569b164f4f9306c820933cc3fa7348183"
+        },
+        {
+          "id": "de-parent-above-root-separator",
+          "classes": [
+            "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+          ],
+          "modelMiddle": "\"Check $#../../Loans//%$.\"",
+          "modelSha256": "e9cfc0c7ea68b9da7984c2bb8c71f924c7988cc7db0c18d2b976ea3b99440314"
+        }
+      ]
+    }
+  ]
+}

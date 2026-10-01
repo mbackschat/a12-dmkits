@@ -11,14 +11,14 @@ import kotlinx.serialization.json.jsonPrimitive
 /** Replays MessageGroupArgumentAgreementTest's exact typed, kernel-measured models on JVM and Node. */
 class MessageGroupArgumentTest {
     @Test
-    fun anUnreadGroupWithATrailingTokenRemainsUnjudged() {
+    fun anUnreadGroupIsRefusedBeforeATrailingToken() {
         val row = SyntaxFixtureData.messageGroupArguments.map { Json.parseToJsonElement(it).jsonObject }
             .single { it.getValue("id").jsonPrimitive.content == "unread-sibling-relative" }
         val original = row.getValue("model").jsonPrimitive.content
         val model = original.replace("\$#Returns\$", "\$#Returns-x\$")
         assertNotEquals(original, model)
-        // SPEC-2026-09-30-01 leaves this competing-fault order unmeasured; silence is the checker contract.
-        assertEquals(emptyList(), checkRead(ModelSource(model)).findings.filter { it.justifiesRejection })
+        assertEquals(listOf("INVALID_GROUP"), checkRead(ModelSource(model)).findings
+            .filter { it.justifiesRejection }.map { it.code })
     }
 
     @Test

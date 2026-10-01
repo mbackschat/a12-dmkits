@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageGroupArgument
+import io.github.mbackschat.a12.dm.consistency.syntax.MessageGroupKeyword
 import io.github.mbackschat.a12.dm.consistency.syntax.messageGroupArgument
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
 
@@ -24,10 +24,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
  * An unresolved group under a declared root draws `INVALID_GROUP`, like an unreferenced sibling. That
  * shared diagnostic does not make existence and reference membership the same gate (KF214).
  *
- * **The terminal match is on the RAW argument, before quotes are stripped.** `'RootGroup'` and `'RuleGroup'`
- * are looked up as ordinary group names and draw `INVALID_GROUP`, while `/'Policy'/'Cover'` reaches the same
- * group its bare spelling does — so quoting is transparent for a SEGMENT and not for a keyword. That is the
- * separator between the two tempting accounts of the escape, and both halves are measured.
+ * Quoting makes a keyword an ordinary name. Unquoted `RootGroup`, `Zeile` and `Usb` are also names
+ * before a path separator; the next token decides their grammar alternative. `RuleGroup` is reserved
+ * in name positions. MessageGroupEventAgreementTest distinguishes each reading on both languages,
+ * including a real group whose name collides with the root keyword (KF214).
  *
  * **Two gates sit behind the wildcard one and are NOT reported, with the reason beside them.** A group that
  * is a PARALLEL ITERATION, or a parameter carrying a semantic index, hands the decision to
@@ -49,10 +49,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
  * GERMAN terminal (`RULE_GROUP: 'RegelKontext'`) while a running `en_US` model takes `RuleGroup`, so a
  * grammar read alone gets the pair backwards — the one-layer trap [KF412] records.
  *
- * **The measured argument layers run in order:** lexer faults, incomplete/separator faults, lookup, then
- * tokens left after an available path (MessageGroupArgumentAgreementTest). Parent walks and ambiguous
- * field short-name fallback preserve the message vocabulary rather than collapsing into `INVALID_GROUP`.
- * Unmeasured semantic-index forms and keyword/trailing-token combinations stay silent.
+ * The message grammar reports faults in the order it reaches them: a parent-walk check can precede
+ * a child syntax fault, and the completed argument's lookup and availability precede a trailing token.
+ * A later lexer fault cannot override an earlier parser or semantic refusal (KF214). Keyed semantic
+ * indices and the broader dotted-name grammar are outside this evidence.
  *
  * **Rules only**, every measured row being a rule's message. The computation carrier was reported to us for
  * the `RuleGroup` locus by a12-kernel-lean and is not measured here.
@@ -82,43 +82,41 @@ internal fun TrackedFactBase.messageGroupParameterFindings(element: TrackedDecla
 
 private const val GROUP_MARKER = "#"
 
-/** The near shorthand, per language — the other language's word is an ordinary group name here. */
-private val RULE_GROUP_SPELLING = mapOf(ConditionLanguage.EN to "RuleGroup", ConditionLanguage.DE to "RegelKontext")
-
-private val ROOT_GROUP_SPELLING = mapOf(ConditionLanguage.EN to "RootGroup", ConditionLanguage.DE to "LfdNr")
-
-/** Recognised by the message lexer and refused on the modern route, rather than looked up as a name. */
-private val RETIRED_TERMINALS = setOf("Zeile", "Usb")
-
-/** The measured lexer, path, resolution and availability gates, followed by the wildcard gate (KF214). */
+/** Runs the message grammar actions against this rule’s model and condition footprint (KF214). */
 private fun TrackedFactBase.groupArgumentDefect(
     argument: String,
     ruleGroup: String,
     roots: Set<String>,
     element: TrackedDeclaration,
 ): String? {
-    val language = conditionLanguage
-    val parsed = when (val syntax = messageGroupArgument(argument) {
-        it in RETIRED_TERMINALS || it == RULE_GROUP_SPELLING[language] || it == ROOT_GROUP_SPELLING[language]
-    }) {
-        is MessageGroupArgument.Refused -> return syntax.code
-        MessageGroupArgument.Unmeasured -> return null
-        is MessageGroupArgument.Path -> syntax
-    }
-    val path = parsed.written
-    val named = when {
-        path in RETIRED_TERMINALS -> return RETIRED
-        path == RULE_GROUP_SPELLING[language] -> {
-            if (ruleGroup.isRootGroup()) return IMMEDIATELY_BELOW_ROOT
-            ruleGroup
+    val parsed = messageGroupArgument(argument, conditionLanguage) { parent ->
+        val unquoted = parent.replace("'", "")
+        when {
+            turningPointIsWrong(unquoted, ruleGroup) -> "INVALID_ENTITY"
+            resolveEntity(ruleGroup, unquoted, element.origin) is Reference.AboveRoot ->
+                "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+            else -> null
         }
-        path == ROOT_GROUP_SPELLING[language] -> roots.firstOrNull { ruleGroup == it || ruleGroup.startsWith("$it/") }
-            ?: return null
-        else -> {
-            val unquoted = path.split('/').joinToString("/") { it.trim('\'') }
-            // The generic resolver ignores turning-point labels (KF465); message checking validates
-            // the label before looking up the child, including a missing child (KF214).
-            if (turningPointIsWrong(unquoted, ruleGroup)) return "INVALID_ENTITY"
+    }
+    val trailing: Boolean
+    val named = when (parsed) {
+        is MessageGroupArgument.Refused -> return parsed.code
+        MessageGroupArgument.Unmeasured -> return null
+        is MessageGroupArgument.Keyword -> {
+            trailing = parsed.trailing
+            when (parsed.kind) {
+                MessageGroupKeyword.RETIRED -> return RETIRED
+                MessageGroupKeyword.RULE -> {
+                    if (ruleGroup.isRootGroup()) return IMMEDIATELY_BELOW_ROOT
+                    ruleGroup
+                }
+                MessageGroupKeyword.ROOT -> roots.firstOrNull { ruleGroup == it || ruleGroup.startsWith("$it/") }
+                    ?: return null
+            }
+        }
+        is MessageGroupArgument.Path -> {
+            trailing = parsed.trailing
+            val unquoted = parsed.written.split('/').joinToString("/") { it.trim('\'') }
             when (val resolved = resolveEntity(ruleGroup, unquoted, element.origin)) {
                 is Reference.Ambiguous -> return "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
                 is Reference.AboveRoot -> return "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
@@ -130,9 +128,8 @@ private fun TrackedFactBase.groupArgumentDefect(
     }
     if (declarationAt(named)?.declaredKind != DeclaredKind.GROUP) return GROUP
     val available = ruleGroup == named || ruleGroup.startsWith("$named/") || entitiesReadBy(element).reachesGroup(named)
-    // SPEC-2026-09-30-01 leaves availability versus a trailing token on an unread group unmeasured.
-    if (!available) return if (parsed.trailing) null else GROUP
-    if (parsed.trailing) return "MVK_UNEXPECTED_TOKEN"
+    if (!available) return GROUP
+    if (trailing) return "MVK_UNEXPECTED_TOKEN"
     return if (conditionRidesUnstarred(named, ruleGroup, element)) null else STARRED_ITERATION
 }
 
@@ -199,6 +196,7 @@ private fun finding(code: String, argument: String, element: TrackedDeclaration)
                 "name it by its absolute path, or use `RootGroup`"
         ROOT_GROUP -> "starts at a root group this model does not declare"
         "MVK_LEXER_STANDARD_ERROR" -> "contains a character or quoted name the message lexer cannot tokenize"
+        "MVK_EXPECTED_TOKEN_NOT_FOUND" -> "ends before the signed offset — supply digits after the sign"
         "MVK_INCOMPLETE_INPUT" -> "ends before a complete group path — supply the name after the separator"
         "MVK_UNEXPECTED_TOKEN" -> "contains an unexpected separator or a token after the resolved path"
         "ERROR_TEXT_FIELDNAME_NOT_UNIQUE" -> "falls back to a field short name shared by more than one field — qualify the path"

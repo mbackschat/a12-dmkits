@@ -763,7 +763,9 @@
           "classes": [
             "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
           ],
-          "portableClasses": [],
+          "portableClasses": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
           "modelMiddle": "#RuleGroup/Loans",
           "modelSha256": "6659fbb330ba0862360e6add8eb28ad685052d0645b2533de91ef4f580913436"
         }
@@ -778,7 +780,9 @@
           "classes": [
             "MVK_UNEXPECTED_TOKEN"
           ],
-          "portableClasses": [],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
           "modelMiddle": "#RuleGroup/Details",
           "modelSha256": "a28edeb6a7a9bf1e1341ff2d6920c18c5b7599371afeadda95066be5d31e2808"
         }
@@ -793,7 +797,9 @@
           "classes": [
             "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
           ],
-          "portableClasses": [],
+          "portableClasses": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
           "modelMiddle": "#RuleGroup-x",
           "modelSha256": "88243f952542b928fa1d7c713fab4f15d9c84526ae1d5bc17c1d26747217c157"
         }
@@ -808,7 +814,9 @@
           "classes": [
             "MVK_UNEXPECTED_TOKEN"
           ],
-          "portableClasses": [],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
           "modelMiddle": "#RuleGroup-x",
           "modelSha256": "45f4eac9268eac59102a9705b7c7caeaf375569a95bf4d73b817ef2fad6bc89b"
         }
@@ -823,7 +831,9 @@
           "classes": [
             "INVALID_GROUP"
           ],
-          "portableClasses": [],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
           "modelMiddle": "#RootGroup/Loans",
           "modelSha256": "fbddc887a25e02b299764e73f38a424f48c3b6e3c93806732e461262609a646d"
         },
@@ -832,7 +842,9 @@
           "classes": [
             "MVK_UNEXPECTED_TOKEN"
           ],
-          "portableClasses": [],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
           "modelMiddle": "#RootGroup-x",
           "modelSha256": "b04e11317219e0b4c25627af4b4db2a2c343426019bd95e5505eb260422d7556"
         }
