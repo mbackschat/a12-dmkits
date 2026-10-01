@@ -1,0 +1,903 @@
+{
+  "groups": [
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckGroupArgument\",\n            \"name\" : \"CheckGroupArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"GROUP_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "shallow-relative",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#Loans",
+          "modelSha256": "475b9e2877e4a83af7b0f24575fbb77f12cb34ab796fa8dafae05ad973a5d3ab"
+        },
+        {
+          "id": "shallow-absolute",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#/Library/Loans",
+          "modelSha256": "455038f1b48c0041977308909edd0c11fcd758588e87dc98556fcc0d636dccbc"
+        },
+        {
+          "id": "unread-sibling-relative",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#Returns",
+          "modelSha256": "dbe03d06aab3cc3423a7d73e66c7c86c3c29a3aa7b1baa4570a19b6af3d7236d"
+        },
+        {
+          "id": "unread-sibling-absolute",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#/Library/Returns",
+          "modelSha256": "9ad4597c326d9343db48ed3961099e4c0bc7d4398ead61befa6aa916d5117497"
+        },
+        {
+          "id": "unread-descendant-relative",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#Loans/Details",
+          "modelSha256": "2ae5d80469403d99942330eeea3d718c89568a5da1e40886ebc77e5c8bc3b9db"
+        },
+        {
+          "id": "unread-descendant-absolute",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#/Library/Loans/Details",
+          "modelSha256": "8d8dec6ace1fad4e37c65094e61f7059b822c909b79cf7b0cfd2de185ff95aef"
+        },
+        {
+          "id": "root-absolute",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#/Library",
+          "modelSha256": "34e2d36ea143a49c6c262c383ca2bf1deb099729c8620eb5520c3c0c2a9f0c0c"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckGroupArgument\",\n            \"name\" : \"CheckGroupArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"GROUP_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Details/Note)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "intermediate-group",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#Loans",
+          "modelSha256": "23345b748ad0b95882b7010d06dc5889df4be1f667fe2de71d6d660c6635b8ed"
+        },
+        {
+          "id": "deep-relative",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#Loans/Details",
+          "modelSha256": "7ab88d8f305b33dae388c3d4006c97f162e90b857725970089b8189d7b995a00"
+        },
+        {
+          "id": "deep-absolute",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#/Library/Loans/Details",
+          "modelSha256": "bd68ca71d73734ec36d1cf33657a7873be0c2b5848017ebe947275e3222b7b5f"
+        },
+        {
+          "id": "no-group-short-name",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#Details",
+          "modelSha256": "d75ab5fd6948dd4b2726d925de41df86e0ed1a3926eaabceb278062b352726b7"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckGroupArgument\",\n                \"name\" : \"CheckGroupArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"GROUP_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Check $",
+      "suffix": "$.\"\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "own-bare-is-child",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#Loans",
+          "modelSha256": "a803736dc3ac9592bf07e9034c2be83ca79c62ed1d88ffd7fa695f4949b3b459"
+        },
+        {
+          "id": "own-parent-and-child",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#../Loans",
+          "modelSha256": "bf3b16c46204afa73ce252b1caa165ab49d14280d9e027cc6c2e4f3e523bef47"
+        },
+        {
+          "id": "own-parent",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#..",
+          "modelSha256": "adb998ca3e61f6805cae521ed7981dbdfb7c2f540b07781204df7a2bcfaeea33"
+        },
+        {
+          "id": "unread-sibling-from-loans",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#../Returns",
+          "modelSha256": "b092c1eb8a10a8c7e666e31f4a9cfe1f382ce983de5c370065ff44d8ca0b3021"
+        },
+        {
+          "id": "unread-child",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#Details",
+          "modelSha256": "9b35130b2cb9be48885553f0d00be0f2af1245c020813d6d35ef091be2124096"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckGroupArgument\",\n                \"name\" : \"CheckGroupArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"GROUP_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book) And FieldFilled(Details/Note)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Check $",
+      "suffix": "$.\"\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "read-child",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#Details",
+          "modelSha256": "a4e14c0c372ce67b6526f3de4fc26d143c98432b7f2e9c7c198b143250d6fafe"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckGroupArgument\",\n                \"name\" : \"CheckGroupArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"GROUP_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book) And FieldFilled(../Returns/Borrower)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Check $",
+      "suffix": "$.\"\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "read-sibling-relative",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#../Returns",
+          "modelSha256": "ea851ab2233000b16b393482aebfba961387ff71e6cb19a2dd39ae8e2b87bf69"
+        },
+        {
+          "id": "read-sibling-absolute",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#/Library/Returns",
+          "modelSha256": "c17220a3e4aab963999ae5bd3213309f1e26a56a27ac6bc47d630c3118dc1ad5"
+        },
+        {
+          "id": "read-sibling-turning-point",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#..Library/Returns",
+          "modelSha256": "40e65ae72a4699ba948605b0f724bffe159715fa57e5a17aa4afc32d01f32c7b"
+        },
+        {
+          "id": "wrong-turning-point",
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "portableClasses": [
+            "INVALID_ENTITY"
+          ],
+          "modelMiddle": "#..Wrong/Returns",
+          "modelSha256": "ec3ea653d141e2bcfb43e3c6a6e9d8d3c9bfe0ffa955141f404dd5ecd7d7f658"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckGroupArgument\",\n            \"name\" : \"CheckGroupArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"GROUP_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "root-above-root",
+          "classes": [
+            "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+          ],
+          "portableClasses": [
+            "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+          ],
+          "modelMiddle": "#../Loans",
+          "modelSha256": "ccd0b595a8a352dad7e32ab482d122bd556dde1e4a45a88c4d611baf3d59c848"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckGroupArgument\",\n                \"name\" : \"CheckGroupArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"GROUP_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Check $",
+      "suffix": "$.\"\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "nested-above-root",
+          "classes": [
+            "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+          ],
+          "portableClasses": [
+            "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+          ],
+          "modelMiddle": "#../../Library",
+          "modelSha256": "0a1c2f0a59ee17be4ef68cf495ea4626664f3b1a25f5fc3e0d7be066aacd035f"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckGroupArgument\",\n            \"name\" : \"CheckGroupArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"GROUP_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "missing-child",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#Loans/Missing",
+          "modelSha256": "6ce96fa501809f58ba4caf854c181baf8b71d3d7e15c35a7d0c5ece69237ad6b"
+        },
+        {
+          "id": "missing-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#Missing",
+          "modelSha256": "5507c6de8b0df6510227144ab94c1e73b6dea70d861fcad725e63f6699bedb0c"
+        },
+        {
+          "id": "field-not-group",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#Loans/Book",
+          "modelSha256": "d1df322476df799c3b77392ae910e3fd544ec5921eccd0aae57176bb7c5fc840"
+        },
+        {
+          "id": "quoted-group",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#'Loans'",
+          "modelSha256": "e7e9e0eeb6ba80001a3d24526d5502c1b6c6059a8fdb7bbd500eb5c81bcab872"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Rule\",\n                    \"id\" : \"/Library/Loans/Details/CheckGroupArgument\",\n                    \"name\" : \"CheckGroupArgument\",\n                    \"Rule\" : {\n                      \"errorEntityRelPath\" : \"../Note\",\n                      \"errorCode\" : \"GROUP_ARGUMENT\",\n                      \"errorCondition\" : \"FieldFilled(Note)\",\n                      \"severity\" : \"ERROR\",\n                      \"errorMessage\" : [ {\n                        \"locale\" : \"en_US\",\n                        \"text\" : \"Check $",
+      "suffix": "$.\"\n                      } ]\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "exact-root-walk",
+          "classes": [],
+          "portableClasses": [],
+          "modelMiddle": "#../..",
+          "modelSha256": "cbbd58b16ad8a42f038e415a837ea2de89acb6666ec2d671f1076d4ec8e2a3f8"
+        },
+        {
+          "id": "past-root-walk",
+          "classes": [
+            "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+          ],
+          "portableClasses": [
+            "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+          ],
+          "modelMiddle": "#../../..",
+          "modelSha256": "06cdcadf9a29bb41836a213409c2d29c22b21a10f8ccc5299091cbde11e78ac4"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckGroupArgument\",\n            \"name\" : \"CheckGroupArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"GROUP_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "incomplete-known",
+          "classes": [
+            "MVK_INCOMPLETE_INPUT"
+          ],
+          "portableClasses": [
+            "MVK_INCOMPLETE_INPUT"
+          ],
+          "modelMiddle": "#Loans/",
+          "modelSha256": "0189b60aeb29e0cfdf29161e0d8a8174e2cfb9b8e8f0a2dea9499e6e0ba23eb7"
+        },
+        {
+          "id": "incomplete-missing",
+          "classes": [
+            "MVK_INCOMPLETE_INPUT"
+          ],
+          "portableClasses": [
+            "MVK_INCOMPLETE_INPUT"
+          ],
+          "modelMiddle": "#Missing/",
+          "modelSha256": "7559fe43c23cd86a211a1953ef4b75fd714e95f0bc9a1b3ced0e280058d6c4f3"
+        },
+        {
+          "id": "incomplete-missing-root",
+          "classes": [
+            "MVK_INCOMPLETE_INPUT"
+          ],
+          "portableClasses": [
+            "MVK_INCOMPLETE_INPUT"
+          ],
+          "modelMiddle": "#/Missing/",
+          "modelSha256": "f58def013180f55b70ced3d16b5667478f8009fe30602566b2870e39f51490a1"
+        },
+        {
+          "id": "incomplete-unavailable",
+          "classes": [
+            "MVK_INCOMPLETE_INPUT"
+          ],
+          "portableClasses": [
+            "MVK_INCOMPLETE_INPUT"
+          ],
+          "modelMiddle": "#Returns/",
+          "modelSha256": "d80c2397361702288dea0db852fd61803210624d5db99660b6e2619c1a182c5d"
+        },
+        {
+          "id": "incomplete-empty",
+          "classes": [
+            "MVK_INCOMPLETE_INPUT"
+          ],
+          "portableClasses": [
+            "MVK_INCOMPLETE_INPUT"
+          ],
+          "modelMiddle": "#",
+          "modelSha256": "44d50999a212ebad30184d73012a56931347dc27670f0130da7916298231029d"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckGroupArgument\",\n            \"name\" : \"CheckGroupArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"GROUP_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Details/Note)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "separator-known",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "#Loans//Details",
+          "modelSha256": "8354ff068e86439f948b3038b6f03d5c0e91b3f63555a5696c15388b9105b4f9"
+        },
+        {
+          "id": "separator-missing",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "#Missing//Details",
+          "modelSha256": "dc56d53fd017e5f314ee5ec16e4709fbb3d5d7d81a69ec48558a614639e74349"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckGroupArgument\",\n            \"name\" : \"CheckGroupArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"GROUP_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "lexer-index",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Loans[1]",
+          "modelSha256": "16dca79e5434e5aaf1a74ebbe845b18d5a1f73467027ef7faee235e43df6c40f"
+        },
+        {
+          "id": "lexer-star",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Loans*",
+          "modelSha256": "fa856908da7bfa33e7a597d310b328f2d70bee00ca5f92d74855c9cd20e9f472"
+        },
+        {
+          "id": "lexer-percent",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Loans%",
+          "modelSha256": "5580c5e9227a262d51c3105733ab01db9ba4a80ae1b341d11e1aff0eb414430a"
+        },
+        {
+          "id": "lexer-quoted-digit",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#'1Loans'",
+          "modelSha256": "3881e31a953a86476cd6acde6b745f2c46c829a2cb2a2d8c416fb1b037ef92e9"
+        },
+        {
+          "id": "lexer-missing-index",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Missing[1]",
+          "modelSha256": "cfb1322e1c3a909bd55c64d77d55f2794f55772f4e503c76c6ff22195df632da"
+        },
+        {
+          "id": "lexer-absolute-index",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#/Library/Loans[1]",
+          "modelSha256": "e22add4edb7cdf4e7f3ef725de35c6a1a1dff072994be6e050db6ed311c76af9"
+        },
+        {
+          "id": "lexer-open-quote",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#'Loans",
+          "modelSha256": "66637a2bdbc08e8157cfd47852cba7f162f6d2487243f3dffaabb1da483f64de"
+        },
+        {
+          "id": "lookup-before-minus-relative",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#Lo-ans",
+          "modelSha256": "3cda779257908b24e54c7d9eb051abbe329d45392851354066ce67315605bd47"
+        },
+        {
+          "id": "lookup-before-minus-absolute",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#/Library/Lo-ans",
+          "modelSha256": "90684d4087848990f9a2556538b563fd03dc8497e5ab6915dba6eacd18b2d472"
+        },
+        {
+          "id": "trailing-minus-relative",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "#Loans-x",
+          "modelSha256": "4f96bccce2802a808128ae04001a4d04900cffd05e6dd9cd386cf3dd2155c12c"
+        },
+        {
+          "id": "trailing-minus-absolute",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "#/Library/Loans-x",
+          "modelSha256": "eeae9c3e3f5e383e898dd1f2f9ac889ea1a9359d33ad78c9861b960d4e6d2b4c"
+        },
+        {
+          "id": "trailing-closing-parenthesis",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "#Loans)",
+          "modelSha256": "63935e222f38ab1904d5b2eed841011a8ca37a23f6ce483525e62d6ffabf189c"
+        },
+        {
+          "id": "trailing-name",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "#Loans x",
+          "modelSha256": "183aed5e2d1b94f35c91a85be11e3b8152fd0f959e6ca7bf034a19486360c54b"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckGroupArgument\",\n                \"name\" : \"CheckGroupArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"GROUP_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Check $",
+      "suffix": "$.\"\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "nonleading-up",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "#Loans/..",
+          "modelSha256": "e1a18f8edbaae0791bdc0c6addc6f0b0e40cf921288894058479c5ab1f5424f4"
+        },
+        {
+          "id": "third-dot",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "#...",
+          "modelSha256": "a6c7c23b827b5a40b08b0d5d75cbc9fba2968a02bb520d2a484fa9a7aa476341"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckGroupArgument\",\n            \"name\" : \"CheckGroupArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"GROUP_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "ambiguous-field-fallback",
+          "classes": [
+            "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
+          ],
+          "portableClasses": [
+            "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
+          ],
+          "modelMiddle": "#Book",
+          "modelSha256": "a1a5aaa7efd9fb91939e16e279a7707916a8dda7e76af53fabbd2c422f663008"
+        },
+        {
+          "id": "unique-field-fallback",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#Borrower",
+          "modelSha256": "d492ae390e668c8a5ff6828a253f27f93b438ce4528b3dc34e55dc9de71f5545"
+        },
+        {
+          "id": "name-position-fallback-control",
+          "classes": [
+            "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
+          ],
+          "portableClasses": [
+            "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
+          ],
+          "modelMiddle": "Book",
+          "modelSha256": "79d8375217e67126ea1791ba46cbace597ed7bd673fa0a2cd602777261b56535"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckGroupArgument\",\n            \"name\" : \"CheckGroupArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"GROUP_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "message-lexer-known-comma",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Loans,",
+          "modelSha256": "7cacaf3a0506a506b3e0c343de42f4181f54239c77513aadd5d88a55a72027f5"
+        },
+        {
+          "id": "message-lexer-missing-comma",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Missing,",
+          "modelSha256": "f2d614b16731d85cd38bdb3fe213b33bcb253f1b3988172c785c4663562ad909"
+        },
+        {
+          "id": "message-lexer-known-open-brace",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Loans{",
+          "modelSha256": "aaaed3efc23dd367c2cc6227e9cf0a7b04856ccec7f7a8dab4a57422fa3449e7"
+        },
+        {
+          "id": "message-lexer-missing-open-brace",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Missing{",
+          "modelSha256": "5c717ef166190fb3130b00180ab1044d14191f9c665371b52ced4bc70878e723"
+        },
+        {
+          "id": "message-lexer-known-close-brace",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Loans}",
+          "modelSha256": "0a2fa81a5d0aadc756604e7c5c8860b0145e853260ad4db6f94f47c7cb9cae85"
+        },
+        {
+          "id": "message-lexer-missing-close-brace",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Missing}",
+          "modelSha256": "3525b1f093a4532ffb02c76b21059c9043a5de6314d4c558d6cca6cb211e63bf"
+        },
+        {
+          "id": "message-lexer-known-at",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Loans@",
+          "modelSha256": "aef538a9834b2a77af803711da2f310491db93be7f4869eb7e2f35c7b2f03066"
+        },
+        {
+          "id": "message-lexer-missing-at",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Missing@",
+          "modelSha256": "4e29f6f10e4009a4aa04a65d18480c525435ebf58dde9ffc18966efc941b69c0"
+        },
+        {
+          "id": "message-lexer-known-equals",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Loans=",
+          "modelSha256": "40595c28b4a53ba9f1a3edee15aea9d473f428e660a755def4616d2d9512c494"
+        },
+        {
+          "id": "message-lexer-missing-equals",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Missing=",
+          "modelSha256": "02062845813160e0f75bba4ebd4a21bfabfa67df2b82c7006a3504297d161e2c"
+        },
+        {
+          "id": "message-lexer-known-power",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Loans^",
+          "modelSha256": "b365c233f261983786be7a39c2b4dd56d3bbbc7d6ef088807d7d70a57f07cff8"
+        },
+        {
+          "id": "message-lexer-missing-power",
+          "classes": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "portableClasses": [
+            "MVK_LEXER_STANDARD_ERROR"
+          ],
+          "modelMiddle": "#Missing^",
+          "modelSha256": "1b1049b723ca55e8c4a0fd34d1bb208d300c18ce82544da2712f7778301392cc"
+        },
+        {
+          "id": "declined-rulegroup-root-slash",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "#RuleGroup/Loans",
+          "modelSha256": "6659fbb330ba0862360e6add8eb28ad685052d0645b2533de91ef4f580913436"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckGroupArgument\",\n                \"name\" : \"CheckGroupArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"GROUP_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book) And FieldFilled(../Returns/Borrower)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Check $",
+      "suffix": "$.\"\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "declined-rulegroup-nested-slash",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "#RuleGroup/Details",
+          "modelSha256": "a28edeb6a7a9bf1e1341ff2d6920c18c5b7599371afeadda95066be5d31e2808"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckGroupArgument\",\n            \"name\" : \"CheckGroupArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"GROUP_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "declined-rulegroup-root-minus",
+          "classes": [
+            "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "#RuleGroup-x",
+          "modelSha256": "88243f952542b928fa1d7c713fab4f15d9c84526ae1d5bc17c1d26747217c157"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckGroupArgument\",\n                \"name\" : \"CheckGroupArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"GROUP_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book) And FieldFilled(../Returns/Borrower)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Check $",
+      "suffix": "$.\"\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "declined-rulegroup-nested-minus",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "#RuleGroup-x",
+          "modelSha256": "45f4eac9268eac59102a9705b7c7caeaf375569a95bf4d73b817ef2fad6bc89b"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckGroupArgument\",\n            \"name\" : \"CheckGroupArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"GROUP_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "declined-rootgroup-slash",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "#RootGroup/Loans",
+          "modelSha256": "fbddc887a25e02b299764e73f38a424f48c3b6e3c93806732e461262609a646d"
+        },
+        {
+          "id": "declined-rootgroup-minus",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "#RootGroup-x",
+          "modelSha256": "b04e11317219e0b4c25627af4b4db2a2c343426019bd95e5505eb260422d7556"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-group-arguments\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-group-arguments\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Details\",\n                \"name\" : \"Details\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Details/Note\",\n                    \"name\" : \"Note\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Library/Loans/CheckGroupArgument\",\n                \"name\" : \"CheckGroupArgument\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Book\",\n                  \"errorCode\" : \"GROUP_ARGUMENT\",\n                  \"errorCondition\" : \"FieldFilled(Book) And FieldFilled(../Returns/Borrower)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Check $",
+      "suffix": "$.\"\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "wrong-turning-point-missing-child",
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "portableClasses": [
+            "INVALID_ENTITY"
+          ],
+          "modelMiddle": "#..Wrong/Missing",
+          "modelSha256": "ecb7d2b5d298c47514e34d2482ec4aca9ba99892a1d9bdc95377076f7126ea34"
+        },
+        {
+          "id": "correct-turning-point-missing-child",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "#..Library/Missing",
+          "modelSha256": "9cdccaa7c4bc7f4befc589a51061e23cfcc5cde40510c7cb673348420b23c0e9"
+        },
+        {
+          "id": "turning-point-before-up",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "#..Library/..",
+          "modelSha256": "ab5ce3e64491e5527eeb25acbe2da2b41874d699a79d9efd998824febbded53a"
+        },
+        {
+          "id": "absolute-up",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "#/..",
+          "modelSha256": "29e4edd8bd817dad7bb632b4d2327d44dd29fd4a34b817d8a179d537d418e9bd"
+        },
+        {
+          "id": "absolute-up-child",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "modelMiddle": "#/../Loans",
+          "modelSha256": "0134199b1b2f87be1241975e987396e8c377b6db80b153cceacd3573ec3e404e"
+        }
+      ]
+    }
+  ]
+}

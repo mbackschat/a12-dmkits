@@ -1490,11 +1490,12 @@
       }
     },
     "kf214": {
-      "sha256": "50cf26ec7cf37c563d389811654c8b30cda4cfc15ff600ecd9e3cd53543a5181",
+      "sha256": "d9ca4196f5a37e370b9e6303d8d69c061eea76566f3f0eb5606a67c6337d28c7",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "message reference admission"
+          "message reference admission",
+          "fixed group argument layers"
         ],
         "dmkits": [
           "typed message authoring and documentation"
@@ -1503,7 +1504,8 @@
           "message rendering"
         ],
         "checker": [
-          "group reference footprint"
+          "group reference footprint",
+          "fixed group argument layers"
         ],
         "dmtool-cli": [
           "message schema and admission"
@@ -1527,6 +1529,10 @@
             "message reference admission": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageGroupFootprintAgreementTest.kt#messageReferencesFollowTheKernelGroupFootprint",
               "witness": "Thirty-two models separate group reads from direct field reads, relative and absolute group parameters, suffix gates and computation preconditions."
+            },
+            "fixed group argument layers": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageGroupArgumentAgreementTest.kt#groupArgumentsPreserveMeasuredClassesAndExplicitSilence",
+              "witness": "Seventy-seven ordered typed models separate read sibling and intermediate availability, field fallback, message-only punctuation, trailing tokens and parent walks; plain-message controls admit each carrier and six keyword-suffix rows record kernel refusal separately from portable silence."
             }
           }
         },
@@ -1547,6 +1553,10 @@
             "group reference footprint": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupFootprintTest.kt#groupReadsRetainTheirMessageFootprintOnBothHosts",
               "witness": "All thirty-two kernel-measured models retain ordered findings on both hosts, with admitted descendants, unread-field/group refusals, suffix gates and computation controls."
+            },
+            "fixed group argument layers": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupArgumentTest.kt#groupArgumentLayersAndResolutionKeepTheMeasuredClasses",
+              "witness": "Exact typed kernel witness bytes retain every observation in order on JVM and Node: 71 exact class matches and six explicit keyword-suffix declines. The adapter agreement compares stored bytes and both expected columns with typed authorship."
             }
           }
         },

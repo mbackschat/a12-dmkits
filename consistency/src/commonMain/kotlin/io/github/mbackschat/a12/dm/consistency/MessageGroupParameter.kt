@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
+import io.github.mbackschat.a12.dm.consistency.syntax.MessageGroupArgument
+import io.github.mbackschat.a12.dm.consistency.syntax.messageGroupArgument
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
 
 /**
@@ -47,9 +49,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
  * GERMAN terminal (`RULE_GROUP: 'RegelKontext'`) while a running `en_US` model takes `RuleGroup`, so a
  * grammar read alone gets the pair backwards — the one-layer trap [KF412] records.
  *
- * **Silent on a malformed spelling**, which A12 answers LEXICALLY before either resolution gate and on three
- * distinct classes (`MVK_LEXER_STANDARD_ERROR`, `MVK_INCOMPLETE_INPUT`, `MVK_UNEXPECTED_TOKEN`) — a
- * disclosed under-report, since naming a resolution class there would name one A12 never reached.
+ * **The measured argument layers run in order:** lexer faults, incomplete/separator faults, lookup, then
+ * tokens left after an available path (MessageGroupArgumentAgreementTest). Parent walks and ambiguous
+ * field short-name fallback preserve the message vocabulary rather than collapsing into `INVALID_GROUP`.
+ * Unmeasured semantic-index forms and keyword/trailing-token combinations stay silent.
  *
  * **Rules only**, every measured row being a rule's message. The computation carrier was reported to us for
  * the `RuleGroup` locus by a12-kernel-lean and is not measured here.
@@ -73,7 +76,6 @@ internal fun TrackedFactBase.messageGroupParameterFindings(element: TrackedDecla
             parameter.trim().startsWith(GROUP_MARKER)
         } ?: return@mapNotNull null
         val defect = groupArgumentDefect(argument, ruleGroup, roots, element)
-            ?: starredIterationDefect(argument, ruleGroup, roots, element)
         defect?.let { code -> finding(code, argument, element) }
     }
 }
@@ -88,12 +90,7 @@ private val ROOT_GROUP_SPELLING = mapOf(ConditionLanguage.EN to "RootGroup", Con
 /** Recognised by the message lexer and refused on the modern route, rather than looked up as a name. */
 private val RETIRED_TERMINALS = setOf("Zeile", "Usb")
 
-/**
- * The class this argument draws, or null where it is admitted or is a shape this family may not judge.
- *
- * The gates run in A12's order: the retired terminals and the two shorthands are matched on the RAW text
- * first, then an absolute path's root segment, then the group's availability.
- */
+/** The measured lexer, path, resolution and availability gates, followed by the wildcard gate (KF214). */
 private fun TrackedFactBase.groupArgumentDefect(
     argument: String,
     ruleGroup: String,
@@ -101,71 +98,53 @@ private fun TrackedFactBase.groupArgumentDefect(
     element: TrackedDeclaration,
 ): String? {
     val language = conditionLanguage
-    if (argument in RETIRED_TERMINALS) {
-        return RETIRED
+    val parsed = when (val syntax = messageGroupArgument(argument) {
+        it in RETIRED_TERMINALS || it == RULE_GROUP_SPELLING[language] || it == ROOT_GROUP_SPELLING[language]
+    }) {
+        is MessageGroupArgument.Refused -> return syntax.code
+        MessageGroupArgument.Unmeasured -> return null
+        is MessageGroupArgument.Path -> syntax
     }
-    if (argument == RULE_GROUP_SPELLING[language]) {
-        // The refusal is of the WORD at this locus, not of the group it names: the same group is admitted
-        // both as `RootGroup` and by its absolute path from the very same rule (measured).
-        return if (ruleGroup.isRootGroup()) IMMEDIATELY_BELOW_ROOT else null
+    val path = parsed.written
+    val named = when {
+        path in RETIRED_TERMINALS -> return RETIRED
+        path == RULE_GROUP_SPELLING[language] -> {
+            if (ruleGroup.isRootGroup()) return IMMEDIATELY_BELOW_ROOT
+            ruleGroup
+        }
+        path == ROOT_GROUP_SPELLING[language] -> roots.firstOrNull { ruleGroup == it || ruleGroup.startsWith("$it/") }
+            ?: return null
+        else -> {
+            val unquoted = path.split('/').joinToString("/") { it.trim('\'') }
+            // The generic resolver ignores turning-point labels (KF465); message checking validates
+            // the label before looking up the child, including a missing child (KF214).
+            if (turningPointIsWrong(unquoted, ruleGroup)) return "INVALID_ENTITY"
+            when (val resolved = resolveEntity(ruleGroup, unquoted, element.origin)) {
+                is Reference.Ambiguous -> return "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
+                is Reference.AboveRoot -> return "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+                is Reference.MisplacedUpStep -> return "MVK_UNEXPECTED_TOKEN"
+                is Reference.Undeclared -> return if (resolved.rootUnresolved) ROOT_GROUP else GROUP
+                is Reference.Resolved -> resolved.path
+            }
+        }
     }
-    if (argument == ROOT_GROUP_SPELLING[language]) {
-        return null
-    }
-    val segments = argument.removePrefix("/").split('/')
-    if (segments.any { it.isMalformed() }) {
-        return null
-    }
-    if (argument.startsWith('/') && "/${segments.first().trim('\'')}" !in roots) {
-        return ROOT_GROUP
-    }
-    val named = namedGroup(argument, ruleGroup, roots, element) ?: return GROUP
-    if (ruleGroup == named || ruleGroup.startsWith("$named/")) return null
-    // The condition's footprint, not just the declaring group's ancestors, admits a group parameter
-    // (MessageGroupFootprintAgreementTest's relative/absolute descendant and unread-sibling controls).
-    return if (entitiesReadBy(element).reachesGroup(named)) null else GROUP
-}
-
-/**
- * Once the group is available, the condition must ride it without a repetition wildcard.
- *
- * A12 asks `refEntities.isNotReferencedWithoutWildcard` of the group the parameter resolved to, so the law
- * belongs to the POSITION and not to the shorthand its comment names — measured on both spellings of one
- * group, which draw the same class, and against the root shorthand on the same condition, which is admitted
- * because every reference into the rule's own group rides the root unstarred
- * (`rulekit.validate.laws.MessageGroupParameterIterationLawsTest`).
- *
- * **Reached only where the gates before it ADMITTED the argument**, which is why the named group is resolved
- * a second time here rather than carried out of [groupArgumentDefect]: a malformed segment is declined
- * rather than admitted, and a declined argument must stay silent through this gate too.
- */
-private fun TrackedFactBase.starredIterationDefect(
-    argument: String,
-    ruleGroup: String,
-    roots: Set<String>,
-    element: TrackedDeclaration,
-): String? {
-    val named = namedGroup(argument, ruleGroup, roots, element) ?: return null
+    if (declarationAt(named)?.declaredKind != DeclaredKind.GROUP) return GROUP
+    val available = ruleGroup == named || ruleGroup.startsWith("$named/") || entitiesReadBy(element).reachesGroup(named)
+    // SPEC-2026-09-30-01 leaves availability versus a trailing token on an unread group unmeasured.
+    if (!available) return if (parsed.trailing) null else GROUP
+    if (parsed.trailing) return "MVK_UNEXPECTED_TOKEN"
     return if (conditionRidesUnstarred(named, ruleGroup, element)) null else STARRED_ITERATION
 }
 
-/** The group an ADMITTED argument names, or null for one this family declined to judge. */
-private fun TrackedFactBase.namedGroup(
-    argument: String,
-    ruleGroup: String,
-    roots: Set<String>,
-    element: TrackedDeclaration,
-): String? = when {
-    argument == RULE_GROUP_SPELLING[conditionLanguage] -> ruleGroup
-    argument == ROOT_GROUP_SPELLING[conditionLanguage] -> roots.firstOrNull { ruleGroup == it || ruleGroup.startsWith("$it/") }
-    else -> {
-        if (argument.removePrefix("/").split('/').any { it.isMalformed() }) null
-        else {
-            val path = argument.split('/').joinToString("/") { it.trim('\'') }
-            val resolved = (resolveEntity(ruleGroup, path, element.origin) as? Reference.Resolved)?.path
-            resolved?.takeIf { declarationAt(it)?.declaredKind == DeclaredKind.GROUP }
-        }
+private fun turningPointIsWrong(path: String, ruleGroup: String): Boolean {
+    val groups = ruleGroup.split('/').filter { it.isNotEmpty() }.toMutableList()
+    for (step in path.split('/').takeWhile { it.startsWith("..") }) {
+        if (groups.size <= 1) return false
+        groups.removeAt(groups.lastIndex)
+        val label = step.removePrefix("..").trim('\'')
+        if (label.isNotEmpty() && label != groups.last()) return true
     }
+    return false
 }
 
 /**
@@ -199,10 +178,6 @@ private fun TrackedFactBase.conditionRidesUnstarred(
     }
 }
 
-/** A segment A12 refuses while LEXING — an empty one, or one whose quoting does not balance. */
-private fun String.isMalformed(): Boolean =
-    isEmpty() || trim('\'').isEmpty() || (count { it == '\'' } % 2 != 0)
-
 private const val GROUP = "INVALID_GROUP"
 
 private const val ROOT_GROUP = "INVALID_ROOT_GROUP"
@@ -223,6 +198,12 @@ private fun finding(code: String, argument: String, element: TrackedDeclaration)
             "names the rule's own group with a shorthand A12 refuses where that group IS a root group — " +
                 "name it by its absolute path, or use `RootGroup`"
         ROOT_GROUP -> "starts at a root group this model does not declare"
+        "MVK_LEXER_STANDARD_ERROR" -> "contains a character or quoted name the message lexer cannot tokenize"
+        "MVK_INCOMPLETE_INPUT" -> "ends before a complete group path — supply the name after the separator"
+        "MVK_UNEXPECTED_TOKEN" -> "contains an unexpected separator or a token after the resolved path"
+        "ERROR_TEXT_FIELDNAME_NOT_UNIQUE" -> "falls back to a field short name shared by more than one field — qualify the path"
+        "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS" -> "walks above the rule's root group — remove an up-step"
+        "INVALID_ENTITY" -> "uses a turning-point label that does not name the ancestor reached by the up-step"
         STARRED_ITERATION ->
             "names a group this declaration's condition reads only through a repetition wildcard — the " +
                 "parameter pins the message to ONE row, so give the condition an unstarred read of that level"
