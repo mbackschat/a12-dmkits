@@ -1,0 +1,460 @@
+{
+  "groups": [
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/RootGroup\",\n            \"name\" : \"RootGroup\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/RootGroup/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/RootGroup/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "en-RootGroup-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.RootGroup$.\"",
+          "modelSha256": "f83fc864330c41d6c7c3e3354fbf2dafaa4a5bd349ab9c900a61deed1881a469"
+        },
+        {
+          "id": "en-RootGroup-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'RootGroup'$.\"",
+          "modelSha256": "e391a6e758f6e8d601977d3e627d477e61245d8a5a2ea0564fcf7b841abb5f9d"
+        },
+        {
+          "id": "en-Zeile-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.Zeile$.\"",
+          "modelSha256": "7ef3d9ad7c43d18f145a3cebb23fe6f928715fc20c87ff2f924dd3195c88fca9"
+        },
+        {
+          "id": "en-Zeile-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Zeile'$.\"",
+          "modelSha256": "56201c20ab17dc26253b22a607ce8369493b3a35fc2b7d20244d3ea949ff2807"
+        },
+        {
+          "id": "en-Usb-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.Usb$.\"",
+          "modelSha256": "b71e5266d1eca687d34ad634b6fb08b942fd60675411c0d79d354faa591e0747"
+        },
+        {
+          "id": "en-Usb-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Usb'$.\"",
+          "modelSha256": "2e744a1e8c5e50386290f5a3d1624c4c0f5a8fe12d9b2a9bf483eb03b898c19d"
+        },
+        {
+          "id": "en-index-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.index$.\"",
+          "modelSha256": "72d098f02ccb654d0d78f8294af315c135603640f48720f9e525738f2e7931fe"
+        },
+        {
+          "id": "en-index-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'index'$.\"",
+          "modelSha256": "1786aaf19b5d2ee3280f82b75d7f5e4f645a60bc8227ad10bf2c1633cc34e8d8"
+        },
+        {
+          "id": "en-Vordruckname-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.Vordruckname$.\"",
+          "modelSha256": "b94127561f78139dcf0468b31b018532e3f2846e66382c4fcd87f4a934e6e49e"
+        },
+        {
+          "id": "en-Vordruckname-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Vordruckname'$.\"",
+          "modelSha256": "c937d4815d49d494b5a346d98733782e2fcbdf71dd201eb52690d697b058a7e7"
+        },
+        {
+          "id": "en-Vordruckzeile-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.Vordruckzeile$.\"",
+          "modelSha256": "62c7a9478e4caf0511e8836a6d952caa5047a527d0dfde0c6ef4bcc0a0273d1f"
+        },
+        {
+          "id": "en-Vordruckzeile-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Vordruckzeile'$.\"",
+          "modelSha256": "8ea282bad8d39e8a85a768ae6f96ab635415f9d24958d5bdb90c1eecda8a6d0f"
+        },
+        {
+          "id": "en-RuleGroup-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.RuleGroup$.\"",
+          "modelSha256": "7473e12b751243528443a981a7360221f9cb7032c61afc2dbba113de4d5de881"
+        },
+        {
+          "id": "en-RuleGroup-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'RuleGroup'$.\"",
+          "modelSha256": "f8c12164328b672f88c650441532253b55578e2de9474be1f0e1731c51b2fea1"
+        },
+        {
+          "id": "en-For-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.For$.\"",
+          "modelSha256": "1b322445b4725fdf03e01c732e0221e3a14329d4a91ff64369a589d4ff27b6ad"
+        },
+        {
+          "id": "en-For-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'For'$.\"",
+          "modelSha256": "cba7d7828502387d741ab6ef5ae5136f24efd37be81707ecd6cbb927d65a42b8"
+        },
+        {
+          "id": "en-BaseYear-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.BaseYear$.\"",
+          "modelSha256": "6c3e832770ef3795f32cc62b9ce6752e7f1f50431f23d1befc66ba761ac3f7dd"
+        },
+        {
+          "id": "en-BaseYear-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'BaseYear'$.\"",
+          "modelSha256": "d21fff6fc78647b1d3a0ee6cbc41b79f8e4f0ca259185b8b4a7eb771d589e9a0"
+        },
+        {
+          "id": "en-value-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.value$.\"",
+          "modelSha256": "6061c8326821384876342c107731332a6c25402756a7befed90bc44817dabc7a"
+        },
+        {
+          "id": "en-value-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'value'$.\"",
+          "modelSha256": "a92b40215a646a82a6038074c772616514ad4571a0bc203dae9cacc390fb4845"
+        },
+        {
+          "id": "en-Archive-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.Archive$.\"",
+          "modelSha256": "5b89211a5b5e63807b4be4d37fb7b913fcfda759b0ba94f487d435489ba8529b"
+        },
+        {
+          "id": "en-Archive-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Archive'$.\"",
+          "modelSha256": "1f39a64dd41e8c2f9d649a709ace14268e9065ed01eb5ce067616fe0c68910db"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-events\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-events\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"de_DE\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/LfdNr\",\n            \"name\" : \"LfdNr\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/LfdNr/Archive\",\n                \"name\" : \"Archive\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/LfdNr/Archive/Title\",\n                    \"name\" : \"Title\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageArgument\",\n            \"name\" : \"CheckMessageArgument\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_ARGUMENT\",\n              \"errorCondition\" : \"FeldAngegeben(Branch) Und FeldAngegeben(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : ",
+      "suffix": "\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "de-LfdNr-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.LfdNr$.\"",
+          "modelSha256": "9fc260be101cf150b7d116a1d7333770cd9324475a3c02f4f6ce8171f9172357"
+        },
+        {
+          "id": "de-LfdNr-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'LfdNr'$.\"",
+          "modelSha256": "d8eb9aa202da89eb4661b6638c71c2c14c042bdd7e9f087bac71db2f3ad41842"
+        },
+        {
+          "id": "de-Zeile-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.Zeile$.\"",
+          "modelSha256": "60a52d7630809f422c860fffc893435e7907ddf1119cf2ea3198c256f2139d78"
+        },
+        {
+          "id": "de-Zeile-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Zeile'$.\"",
+          "modelSha256": "a342d85672ad8b32f0b387703aa09d7c94eb8a7d32554d308ad41d5866c7c2ca"
+        },
+        {
+          "id": "de-Usb-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.Usb$.\"",
+          "modelSha256": "ba7cdbf98e3b1f06041533ab9933c34d0052d72478f6ac1a0ece737a3707c8ad"
+        },
+        {
+          "id": "de-Usb-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Usb'$.\"",
+          "modelSha256": "de1b39b140fe283d02802c22e308b70bae00fb573794f1a5a9f59e62916e3461"
+        },
+        {
+          "id": "de-index-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.index$.\"",
+          "modelSha256": "09c42bd65cfc5791fce7a746ea5b98a325c368907a29fec63575662eb0933440"
+        },
+        {
+          "id": "de-index-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'index'$.\"",
+          "modelSha256": "0126649dd1db2b9c9a95ffc3c4aaf6819a274e7b51b9c7c5c9c485b7c352d1dc"
+        },
+        {
+          "id": "de-Vordruckname-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.Vordruckname$.\"",
+          "modelSha256": "ff8c2e64da740ee18e87f3e0c1e7f4f6b6291875fd3ad7d91eff2f027e12a287"
+        },
+        {
+          "id": "de-Vordruckname-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Vordruckname'$.\"",
+          "modelSha256": "171b1ce37aa72e294ba568b416cf27256b896c7393e97cf696677197412bbc3b"
+        },
+        {
+          "id": "de-Vordruckzeile-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.Vordruckzeile$.\"",
+          "modelSha256": "eeacd2b29d114cfdb2941644c0922aa62678decc9d922d7abebc98f3a34852b7"
+        },
+        {
+          "id": "de-Vordruckzeile-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Vordruckzeile'$.\"",
+          "modelSha256": "38a26c6ab9dab452550562d7c06a72436b137b0d70b89573bd4eb7114388c217"
+        },
+        {
+          "id": "de-RegelKontext-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.RegelKontext$.\"",
+          "modelSha256": "b899c3ec1aea35fa73e4cde7c0a1bbce44f43f37b7cd3e6a7848d7ceacbb1989"
+        },
+        {
+          "id": "de-RegelKontext-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'RegelKontext'$.\"",
+          "modelSha256": "8d2b4a58411441b77106449815cd6136728433d40b0179014153fc0ffbfc5c11"
+        },
+        {
+          "id": "de-Fuer-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.Fuer$.\"",
+          "modelSha256": "e0686138e01825631ca2c87ff2f48bbc2ab055c779c3faf420a1b3a0a756e718"
+        },
+        {
+          "id": "de-Fuer-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Fuer'$.\"",
+          "modelSha256": "70ec9b66c0488b214e076b9c73f7bf9552483f5d112c07d33fdb531bf6aef07d"
+        },
+        {
+          "id": "de-Referenzjahr-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.Referenzjahr$.\"",
+          "modelSha256": "d3e22ddf1e2cc0d02ddfc411bff4a097484e5aa6fcdeced94b0163ec9dad690e"
+        },
+        {
+          "id": "de-Referenzjahr-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Referenzjahr'$.\"",
+          "modelSha256": "85943fc8cee1a2d981b3a853a316ea79b2d63423a7bbad2109dca318ede83238"
+        },
+        {
+          "id": "de-Wert-bare",
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "portableClasses": [],
+          "modelMiddle": "\"Check $#Loans.Wert$.\"",
+          "modelSha256": "8f5b016ed059b86df4fda3926c63791596b35069f77a175524d996ab85602d9b"
+        },
+        {
+          "id": "de-Wert-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Wert'$.\"",
+          "modelSha256": "b481911436f8840780272af32a1c8d5be82836f31f6a5969ae92ce3c6deb7012"
+        },
+        {
+          "id": "de-Archive-bare",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.Archive$.\"",
+          "modelSha256": "002da2d9290fdaec66789a6708550108631a87158345bf640fa4b4f91fdf5818"
+        },
+        {
+          "id": "de-Archive-quoted",
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "portableClasses": [
+            "INVALID_GROUP"
+          ],
+          "modelMiddle": "\"Check $#Loans.'Archive'$.\"",
+          "modelSha256": "4f0565b699f2f18f8767de9f07039d5ca8468ded8fe21e98dc85d4960b9c7072"
+        }
+      ]
+    }
+  ]
+}

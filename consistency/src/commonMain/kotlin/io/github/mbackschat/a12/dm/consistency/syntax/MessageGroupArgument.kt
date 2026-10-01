@@ -24,7 +24,7 @@ internal fun messageGroupArgument(
     checkParent: (String) -> String?,
 ): MessageGroupArgument = MessageGroupReader(tokenize(argument), language, checkClimb, checkParent).read()
 
-private enum class MessageWord { NAME, RULE, ROOT, LINE, USB, FOR, BASE_YEAR }
+private enum class MessageWord { NAME, NAME_ONLY, RULE, ROOT, LINE, USB, FOR, BASE_YEAR }
 
 private class MessageGroupReader(
     private val tokens: List<Token>,
@@ -61,7 +61,7 @@ private class MessageGroupReader(
                 }
             }
             MessageWord.FOR, MessageWord.BASE_YEAR -> refused(UNEXPECTED)
-            MessageWord.NAME -> path()
+            MessageWord.NAME, MessageWord.NAME_ONLY -> path()
         }
     }
 
@@ -117,7 +117,8 @@ private class MessageGroupReader(
             advance()
             val suffix = peek()
             // Dotted-name suffix alternatives have a separate quoting-exempt boundary in idName;
-            // KF214 does not establish the broader dotted-name grammar.
+            // MessageGroupDottedBoundaryAgreementTest locks the complete localized vocabulary
+            // as unjudged here; quoting remains ordinary name lookup.
             if (suffix == null || suffix.kind !in listOf(TokenKind.NAME, TokenKind.QUOTED_NAME) ||
                 word(suffix) != MessageWord.NAME) return MessageGroupArgument.Unmeasured
             advance()
@@ -135,7 +136,7 @@ private class MessageGroupReader(
 
     private fun isName(token: Token?): Boolean = token != null && when (token.kind) {
         TokenKind.QUOTED_NAME, TokenKind.NUMBER -> true
-        TokenKind.NAME -> word(token) in listOf(MessageWord.NAME, MessageWord.ROOT, MessageWord.LINE, MessageWord.USB)
+        TokenKind.NAME -> word(token) in listOf(MessageWord.NAME, MessageWord.NAME_ONLY, MessageWord.ROOT, MessageWord.LINE, MessageWord.USB)
         else -> false
     }
 
@@ -148,6 +149,8 @@ private class MessageGroupReader(
             if (language == ConditionLanguage.EN) "BaseYear" else "Referenzjahr" -> MessageWord.BASE_YEAR
             "Zeile" -> MessageWord.LINE
             "Usb" -> MessageWord.USB
+            "index", "Vordruckname", "Vordruckzeile",
+            if (language == ConditionLanguage.EN) "value" else "Wert" -> MessageWord.NAME_ONLY
             else -> MessageWord.NAME
         }
     }

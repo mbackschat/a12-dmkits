@@ -1490,14 +1490,15 @@
       }
     },
     "kf214": {
-      "sha256": "e8f9c731d171f5a6004394db6719d87a105f4aeaa4e45eb8a15367ccad6dc33b",
+      "sha256": "39aa851b4a0d930eb06ab3a59e0c464134a6882d51364153028eeb8fe98d3636",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "message reference admission",
           "fixed group argument layers",
           "group argument event order",
-          "parent argument action boundaries"
+          "parent argument action boundaries",
+          "reserved dotted argument boundary"
         ],
         "dmkits": [
           "typed message authoring and documentation"
@@ -1509,7 +1510,8 @@
           "group reference footprint",
           "fixed group argument layers",
           "group argument event order",
-          "parent argument action boundaries"
+          "parent argument action boundaries",
+          "reserved dotted argument boundary"
         ],
         "dmtool-cli": [
           "message schema and admission"
@@ -1545,6 +1547,10 @@
             "parent argument action boundaries": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageGroupParentBoundaryAgreementTest.kt#parentActionsPrecedeOnlyTheTokensTheyActuallyPrecede",
               "witness": "108 ordered typed EN/DE witnesses distinguish multi-up depth checks from turning-point checks across declaration depth, up-count and following tokens; common hosts replay the exact model bytes."
+            },
+            "reserved dotted argument boundary": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageGroupDottedBoundaryAgreementTest.kt#reservedDottedSuffixesRetainMeasuredSilence",
+              "witness": "44 ordered typed EN/DE witnesses retain separate kernel and portable columns for all ten reserved dotted suffixes, quoting and ordinary-name controls; the bounded reader explicitly declines unquoted reserved suffixes."
             }
           }
         },
@@ -1577,6 +1583,10 @@
             "parent argument action boundaries": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupParentBoundaryTest.kt#parentActionsKeepTheirMeasuredOrder",
               "witness": "108 ordered typed EN/DE witnesses distinguish multi-up depth checks from turning-point checks across declaration depth, up-count and following tokens; common hosts replay the exact model bytes."
+            },
+            "reserved dotted argument boundary": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupDottedBoundaryTest.kt#reservedSuffixesStayUnjudgedWhileQuotedNamesReachLookup",
+              "witness": "44 ordered typed EN/DE witnesses retain separate kernel and portable columns for all ten reserved dotted suffixes, quoting and ordinary-name controls; the bounded reader explicitly declines unquoted reserved suffixes."
             }
           }
         },

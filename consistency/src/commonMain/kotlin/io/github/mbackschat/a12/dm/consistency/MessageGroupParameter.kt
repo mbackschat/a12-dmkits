@@ -52,7 +52,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
  * The message grammar reports faults in the order it reaches them: a parent-walk check can precede
  * a child syntax fault, and the completed argument's lookup and availability precede a trailing token.
  * A later lexer fault cannot override an earlier parser or semantic refusal (KF214). Keyed semantic
- * indices and the broader dotted-name grammar are outside this evidence.
+ * indices and the broader dotted-name grammar are outside this evidence. The dotted-name reader
+ * declines unquoted reserved suffixes; MessageGroupDottedBoundaryAgreementTest locks that boundary.
  *
  * **Rules only**, every measured row being a rule's message. The computation carrier was reported to us for
  * the `RuleGroup` locus by a12-kernel-lean and is not measured here.
