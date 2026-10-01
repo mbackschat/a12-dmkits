@@ -20,14 +20,16 @@ internal sealed interface MessageGroupArgument {
 internal fun messageGroupArgument(
     argument: String,
     language: ConditionLanguage,
+    checkClimb: (Int) -> String?,
     checkParent: (String) -> String?,
-): MessageGroupArgument = MessageGroupReader(tokenize(argument), language, checkParent).read()
+): MessageGroupArgument = MessageGroupReader(tokenize(argument), language, checkClimb, checkParent).read()
 
 private enum class MessageWord { NAME, RULE, ROOT, LINE, USB, FOR, BASE_YEAR }
 
 private class MessageGroupReader(
     private val tokens: List<Token>,
     private val language: ConditionLanguage,
+    private val checkClimb: (Int) -> String?,
     private val checkParent: (String) -> String?,
 ) {
     private var at = 0
@@ -74,18 +76,23 @@ private class MessageGroupReader(
 
     private fun path(): MessageGroupArgument {
         if (peek()?.text == "..") {
+            var ups = 0
             do {
                 advance()
+                ups++
                 if (peek()?.text != "/" || peek(1)?.text != "..") break
                 advance()
             } while (true)
-            if (isName(peek())) name()?.let { return it }
-            // relativeUp's optional label cannot consume a reserved word. The grammar decides that
-            // before CheckRelativeUpImpl runs; the word/turning-point rows distinguish it from lookup.
-            val next = peek()
-            if (next?.text == "." || next?.let(::word) in listOf(MessageWord.RULE, MessageWord.BASE_YEAR)) {
-                return refused(UNEXPECTED)
+            if (ups > 1) {
+                // relUp's loop can consume the final separator before a reserved child, reserving
+                // another UP for relativeUp. KF214's parent-boundary grid distinguishes this from
+                // counting only the written UP tokens, and from checking after the optional label.
+                val reservedChild = peek()?.text == "/" && peek(1)?.let(::word) in
+                    listOf(MessageWord.RULE, MessageWord.BASE_YEAR)
+                checkClimb(ups + if (reservedChild) 1 else 0)?.let { return refused(it) }
             }
+            if (isName(peek())) name()?.let { return it }
+            if (peek()?.text == ".") return refused(UNEXPECTED)
             if (reachedLexerFault) return refused(LEXER)
             checkParent(written())?.let { return refused(it) }
         } else {

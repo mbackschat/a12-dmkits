@@ -89,7 +89,9 @@ private fun TrackedFactBase.groupArgumentDefect(
     roots: Set<String>,
     element: TrackedDeclaration,
 ): String? {
-    val parsed = messageGroupArgument(argument, conditionLanguage) { parent ->
+    val parsed = messageGroupArgument(argument, conditionLanguage, checkClimb = { ups ->
+        if (ups >= ruleGroup.count { it == '/' }) "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS" else null
+    }) { parent ->
         val unquoted = parent.replace("'", "")
         when {
             turningPointIsWrong(unquoted, ruleGroup) -> "INVALID_ENTITY"

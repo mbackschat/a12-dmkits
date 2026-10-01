@@ -149,6 +149,14 @@ class MessageGroupEventAgreementTest {
         }
     }
 
+    internal fun boundaryModel(language: ConditionLanguage, depth: Int, argument: String): String =
+        model(Input("boundary", language, when (depth) {
+            1 -> Reads.ROOT
+            2 -> Reads.OWN
+            3 -> Reads.KEYWORD_NESTED
+            else -> error("Unmeasured declaration depth: $depth")
+        }, argument, null))
+
     fun rows(): List<Row> = inputs().map { Row(it.id, model(it), listOfNotNull(it.code)) }
 
     @Test

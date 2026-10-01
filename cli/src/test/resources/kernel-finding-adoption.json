@@ -1490,13 +1490,14 @@
       }
     },
     "kf214": {
-      "sha256": "9d8ced1c0ec37d54f39dfbe9073339f1a49b4c1b972358354da049b30e0be403",
+      "sha256": "e8f9c731d171f5a6004394db6719d87a105f4aeaa4e45eb8a15367ccad6dc33b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "message reference admission",
           "fixed group argument layers",
-          "group argument event order"
+          "group argument event order",
+          "parent argument action boundaries"
         ],
         "dmkits": [
           "typed message authoring and documentation"
@@ -1507,7 +1508,8 @@
         "checker": [
           "group reference footprint",
           "fixed group argument layers",
-          "group argument event order"
+          "group argument event order",
+          "parent argument action boundaries"
         ],
         "dmtool-cli": [
           "message schema and admission"
@@ -1539,6 +1541,10 @@
             "group argument event order": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageGroupEventAgreementTest.kt#groupArgumentsFollowGrammarDecisionsAndReachedFaults",
               "witness": "284 ordered typed English/German models cover keyword versus name decisions, the localized message terminal vocabulary, signed offsets, parent-action boundaries, and reached faults across available, unavailable and missing names; each carrier has a plain-message control."
+            },
+            "parent argument action boundaries": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageGroupParentBoundaryAgreementTest.kt#parentActionsPrecedeOnlyTheTokensTheyActuallyPrecede",
+              "witness": "108 ordered typed EN/DE witnesses distinguish multi-up depth checks from turning-point checks across declaration depth, up-count and following tokens; common hosts replay the exact model bytes."
             }
           }
         },
@@ -1567,6 +1573,10 @@
             "group argument event order": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupEventTest.kt#keywordDecisionsAndReachedFaultsRetainKernelClasses",
               "witness": "Both common hosts replay every exact typed model and kernel verdict; identity and cardinality assertions preserve all 284 observations."
+            },
+            "parent argument action boundaries": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupParentBoundaryTest.kt#parentActionsKeepTheirMeasuredOrder",
+              "witness": "108 ordered typed EN/DE witnesses distinguish multi-up depth checks from turning-point checks across declaration depth, up-count and following tokens; common hosts replay the exact model bytes."
             }
           }
         },
