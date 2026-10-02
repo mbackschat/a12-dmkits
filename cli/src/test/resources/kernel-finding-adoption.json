@@ -1490,7 +1490,7 @@
       }
     },
     "kf214": {
-      "sha256": "39aa851b4a0d930eb06ab3a59e0c464134a6882d51364153028eeb8fe98d3636",
+      "sha256": "0246a9845550914b30fdf3f6e8edb616b81e9ffaf781fe0e3cdcd5225732fbdd",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -1498,7 +1498,8 @@
           "fixed group argument layers",
           "group argument event order",
           "parent argument action boundaries",
-          "reserved dotted argument boundary"
+          "reserved dotted argument boundary",
+          "group walk and dotted names"
         ],
         "dmkits": [
           "typed message authoring and documentation"
@@ -1511,7 +1512,8 @@
           "fixed group argument layers",
           "group argument event order",
           "parent argument action boundaries",
-          "reserved dotted argument boundary"
+          "reserved dotted argument boundary",
+          "group walk and dotted names"
         ],
         "dmtool-cli": [
           "message schema and admission"
@@ -1551,6 +1553,10 @@
             "reserved dotted argument boundary": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageGroupDottedBoundaryAgreementTest.kt#reservedDottedSuffixesRetainMeasuredSilence",
               "witness": "44 ordered typed EN/DE witnesses retain separate kernel and portable columns for all ten reserved dotted suffixes, quoting and ordinary-name controls; the bounded reader explicitly declines unquoted reserved suffixes."
+            },
+            "group walk and dotted names": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageGroupWalkAgreementTest.kt#parentWalksTurningPointsAndDottedNamesFollowTheEntry",
+              "witness": "38 typed rows over declaration depths zero to three separate the walk's extra step before a non-name token, the first-word turning point and ordinary dotted names, with three admitted controls."
             }
           }
         },
@@ -1565,8 +1571,8 @@
           "evidence": {}
         },
         "checker": {
-          "state": "APPLIED",
-          "basis": "The complete checker suite passes on JVM and Node, including the exact typed kernel witnesses and the existing quoted-path and refusal controls.",
+          "state": "OPEN",
+          "basis": "The earlier surfaces keep their replay evidence. DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
           "evidence": {
             "group reference footprint": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupFootprintTest.kt#groupReadsRetainTheirMessageFootprintOnBothHosts",
@@ -1613,11 +1619,12 @@
       }
     },
     "kf335": {
-      "sha256": "4c680045e2619339f7af229b14a7a9d591a932a88a0d5de4b626ee1468b8eedc",
+      "sha256": "9f399fb475d55ef6b0cd6fcd2ce4759185f23f75cbc326783c57ea1521f7f29b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "message reference admission"
+          "message reference admission",
+          "name-position group refusals"
         ],
         "dmkits": [
           "typed message authoring and documentation"
@@ -1626,7 +1633,8 @@
           "message rendering"
         ],
         "checker": [
-          "group reference footprint"
+          "group reference footprint",
+          "name-position group refusals"
         ],
         "dmtool-cli": [
           "message schema and admission"
@@ -1650,6 +1658,10 @@
             "message reference admission": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageGroupFootprintAgreementTest.kt#messageReferencesFollowTheKernelGroupFootprint",
               "witness": "Thirty-two models separate group reads from direct field reads, relative and absolute group parameters, suffix gates and computation preconditions."
+            },
+            "name-position group refusals": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageNamePositionAgreementTest.kt#namePositionRefusalsCarryTheirOwnClasses",
+              "witness": "45 typed rows, with a condition short-name control showing the model flag took effect, separate a read group, form pointers and keyed forms on a group."
             }
           }
         },
@@ -1664,8 +1676,8 @@
           "evidence": {}
         },
         "checker": {
-          "state": "APPLIED",
-          "basis": "The complete checker suite passes on JVM and Node, including the exact typed kernel witnesses and the existing quoted-path and refusal controls.",
+          "state": "OPEN",
+          "basis": "The footprint surface keeps its replay evidence. DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
           "evidence": {
             "group reference footprint": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupFootprintTest.kt#groupReadsRetainTheirMessageFootprintOnBothHosts",
@@ -1775,6 +1787,294 @@
           "state": "OPEN",
           "basis": "The relative-address extension requires this consumer’s own evidence; no transfer is inferred from another carrier.",
           "evidence": {}
+        }
+      }
+    },
+    "kf275": {
+      "sha256": "f9fb299ed58f6e8b7953cdbe7d6505c91867f31d57cd7cbca033b719b0f4f39d",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "index suffix language"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "index suffix language"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Typed models on our own carrier have measured kernel verdicts with admitted controls.",
+          "evidence": {
+            "index suffix language": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageIndexSuffixLanguageAgreementTest.kt#theConditionLanguageAlonePicksTheSuffix",
+              "witness": "15 typed rows cross two condition languages with two message locales, with parameter-free controls and an English-spelling control on the German model."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed message authoring passes message text through; it does not decide parameter admission.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static message admission is the kernel's and the checker's; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "rule check delegates admission to the kernel; the portable engine is the checker consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message text is preserved verbatim; admission classes are not part of the import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message text is preserved verbatim; admission classes are not part of the export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-02-02",
+              "witness": "The German-suffix entry's twelve rule check verdicts on three models."
+            }
+          }
+        }
+      }
+    },
+    "kf336": {
+      "sha256": "702859f298c9320397ab36d308db99a5d537a6aab264b57fb57d53916ecf2023",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "message address classes and short-name tier"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "message address classes and short-name tier"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Typed models on our own carrier have measured kernel verdicts with admitted controls.",
+          "evidence": {
+            "message address classes and short-name tier": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageNamePositionAgreementTest.kt#namePositionRefusalsCarryTheirOwnClasses",
+              "witness": "45 typed rows give the bare, relative and first-segment classes and the flag-off short-name rows beside a condition control."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed message authoring passes message text through; it does not decide parameter admission.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static message admission is the kernel's and the checker's; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "rule check delegates admission to the kernel; the portable engine is the checker consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message text is preserved verbatim; admission classes are not part of the import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message text is preserved verbatim; admission classes are not part of the export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-01-03",
+              "witness": "The name-position and carrier grids, 48 rule check rows."
+            }
+          }
+        }
+      }
+    },
+    "kf412": {
+      "sha256": "676ef7251b9cd1fc05f627670bc51e178f2d74e9d39f28d7d9daaac8af0cb1f5",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "nested key resolution order"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "nested key resolution order"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Typed models on our own carrier have measured kernel verdicts with admitted controls.",
+          "evidence": {
+            "nested key resolution order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageNamePositionAgreementTest.kt#namePositionRefusalsCarryTheirOwnClasses",
+              "witness": "Seven nested-key rows put every unresolvable name ahead of the nesting class."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed message authoring passes message text through; it does not decide parameter admission.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static message admission is the kernel's and the checker's; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "rule check delegates admission to the kernel; the portable engine is the checker consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message text is preserved verbatim; admission classes are not part of the import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message text is preserved verbatim; admission classes are not part of the export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-01-03",
+              "witness": "The carrier grid's eight nested-key rows."
+            }
+          }
+        }
+      }
+    },
+    "kf501": {
+      "sha256": "ee58fbc61b230ab38c7bb997fff40c91b29d7426a5f125087414f8f63eebf60a",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "parameter decoder event order"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "parameter decoder event order"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Typed models on our own carrier have measured kernel verdicts with admitted controls.",
+          "evidence": {
+            "parameter decoder event order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageParameterDecoderAgreementTest.kt#eachParameterIsRefusedAtItsParsersFirstEvent",
+              "witness": "All 99 rows of the peer's decoder grid, re-expressed on our own repeatable carrier with row ids kept."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed message authoring passes message text through; it does not decide parameter admission.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static message admission is the kernel's and the checker's; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "rule check delegates admission to the kernel; the portable engine is the checker consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message text is preserved verbatim; admission classes are not part of the import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message text is preserved verbatim; admission classes are not part of the export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-01-06",
+              "witness": "The decoder grid's 99 rule check rows on a repeatable model and its flat twin."
+            }
+          }
         }
       }
     }
