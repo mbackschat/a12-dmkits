@@ -1,8 +1,13 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.MessageGroupArgument
-import io.github.mbackschat.a12.dm.consistency.syntax.MessageGroupKeyword
-import io.github.mbackschat.a12.dm.consistency.syntax.messageGroupArgument
+import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameter
+import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
+import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameterActions
+import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameterRead
+import io.github.mbackschat.a12.dm.consistency.syntax.readMessageParameter
+import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
 
 /**
@@ -51,8 +56,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
  *
  * The message grammar reports faults in the order it reaches them: a parent-walk check can precede
  * a child syntax fault, and the completed argument's lookup and availability precede a trailing token.
- * A later lexer fault cannot override an earlier parser or semantic refusal (KF214). Keyed semantic
- * indices and the broader dotted-name grammar are outside this evidence. The dotted-name reader
+ * A later lexer fault cannot override an earlier parser or semantic refusal (KF214). Keyed group syntax
+ * is measured by MessageParameterDecoderAgreementTest; membership/iteration on a keyed condition and
+ * the broader dotted-name grammar remain outside this evidence. The dotted-name reader
  * declines unquoted reserved suffixes; MessageGroupDottedBoundaryAgreementTest locks that boundary.
  *
  * **Rules only**, every measured row being a rule's message. The computation carrier was reported to us for
@@ -90,50 +96,68 @@ private fun TrackedFactBase.groupArgumentDefect(
     roots: Set<String>,
     element: TrackedDeclaration,
 ): String? {
-    val parsed = messageGroupArgument(argument, conditionLanguage, checkClimb = { ups ->
-        if (ups >= ruleGroup.count { it == '/' }) "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS" else null
-    }) { parent ->
-        val unquoted = parent.replace("'", "")
-        when {
-            turningPointIsWrong(unquoted, ruleGroup) -> "INVALID_ENTITY"
-            resolveEntity(ruleGroup, unquoted, element.origin) is Reference.AboveRoot ->
+    val parsed = readMessageParameter("#$argument", conditionLanguage, object : MessageParameterActions {
+        override fun climb(steps: Int): String? =
+            if (steps >= ruleGroup.count { it == '/' }) "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS" else null
+
+        override fun parent(written: String): String? = when {
+            turningPointIsWrong(written.replace("'", ""), ruleGroup) -> "INVALID_ENTITY"
+            resolveEntity(ruleGroup, written.replace("'", ""), element.origin) is Reference.AboveRoot ->
                 "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
             else -> null
         }
+
+        override fun name(written: String, groupPosition: Boolean, indexPosition: Boolean): String? =
+            groupNameDefect(written, ruleGroup, element)
+
+        override fun completed(parameter: MessageParameter): MessageCompletion =
+            completedGroupDefect(parameter, ruleGroup, roots, element)
+    })
+    return (parsed as? MessageParameterRead.Refused)?.code
+}
+
+private fun TrackedFactBase.groupNameDefect(written: String, group: String, element: TrackedDeclaration): String? =
+    when (val resolved = resolveEntity(group, written.replace("'", ""), element.origin)) {
+        is Reference.Ambiguous -> "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
+        is Reference.AboveRoot -> "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+        is Reference.MisplacedUpStep -> "MVK_UNEXPECTED_TOKEN"
+        is Reference.Undeclared -> if (resolved.rootUnresolved) ROOT_GROUP else GROUP
+        is Reference.Resolved -> null
     }
-    val trailing: Boolean
-    val named = when (parsed) {
-        is MessageGroupArgument.Refused -> return parsed.code
-        MessageGroupArgument.Unmeasured -> return null
-        is MessageGroupArgument.Keyword -> {
-            trailing = parsed.trailing
-            when (parsed.kind) {
-                MessageGroupKeyword.RETIRED -> return RETIRED
-                MessageGroupKeyword.RULE -> {
-                    if (ruleGroup.isRootGroup()) return IMMEDIATELY_BELOW_ROOT
-                    ruleGroup
-                }
-                MessageGroupKeyword.ROOT -> roots.firstOrNull { ruleGroup == it || ruleGroup.startsWith("$it/") }
-                    ?: return null
-            }
+
+private fun TrackedFactBase.completedGroupDefect(
+    parameter: MessageParameter,
+    ruleGroup: String,
+    roots: Set<String>,
+    element: TrackedDeclaration,
+): MessageCompletion {
+    val named = when (parameter) {
+        MessageParameter.Line, MessageParameter.User -> return MessageCompletion.Refused(RETIRED)
+        MessageParameter.RootRow -> roots.firstOrNull { ruleGroup == it || ruleGroup.startsWith("$it/") } ?: return MessageCompletion.Declined
+        is MessageParameter.Group -> {
+            if (parameter.entity.ruleGroup) {
+                if (ruleGroup.isRootGroup()) return MessageCompletion.Refused(IMMEDIATELY_BELOW_ROOT)
+                ruleGroup
+            } else (resolveEntity(ruleGroup, parameter.entity.written.replace("'", ""), element.origin)
+                as? Reference.Resolved)?.path ?: return MessageCompletion.Declined
         }
-        is MessageGroupArgument.Path -> {
-            trailing = parsed.trailing
-            val unquoted = parsed.written.split('/').joinToString("/") { it.trim('\'') }
-            when (val resolved = resolveEntity(ruleGroup, unquoted, element.origin)) {
-                is Reference.Ambiguous -> return "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
-                is Reference.AboveRoot -> return "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
-                is Reference.MisplacedUpStep -> return "MVK_UNEXPECTED_TOKEN"
-                is Reference.Undeclared -> return if (resolved.rootUnresolved) ROOT_GROUP else GROUP
-                is Reference.Resolved -> resolved.path
-            }
-        }
+        else -> return MessageCompletion.Declined
     }
-    if (declarationAt(named)?.declaredKind != DeclaredKind.GROUP) return GROUP
+    if (declarationAt(named)?.declaredKind != DeclaredKind.GROUP) return MessageCompletion.Refused(GROUP)
+    val key = (parameter as? MessageParameter.Group)?.key
+    if (key != null) {
+        if (key.entity?.ruleGroup == true) return MessageCompletion.Refused("MVK_INTERNAL_ERROR")
+        // KF501's keyed-group witnesses carry no keyed condition reads. A keyed condition needs the
+        // separate iteration visitor, which this bounded group gate deliberately leaves unjudged.
+        val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return MessageCompletion.Declined
+        val keyedReads = element.body?.let { conditionTexts(element.kind, it) }.orEmpty()
+            .any { (_, text) -> semanticIndexUsesIn(text, conditionLanguage, keyword).isNotEmpty() }
+        return if (keyedReads) MessageCompletion.Declined else MessageCompletion.Refused(GROUP)
+    }
     val available = ruleGroup == named || ruleGroup.startsWith("$named/") || entitiesReadBy(element).reachesGroup(named)
-    if (!available) return GROUP
-    if (trailing) return "MVK_UNEXPECTED_TOKEN"
-    return if (conditionRidesUnstarred(named, ruleGroup, element)) null else STARRED_ITERATION
+    if (!available) return MessageCompletion.Refused(GROUP)
+    return if (conditionRidesUnstarred(named, ruleGroup, element)) MessageCompletion.Accepted
+        else MessageCompletion.Refused(STARRED_ITERATION)
 }
 
 private fun turningPointIsWrong(path: String, ruleGroup: String): Boolean {

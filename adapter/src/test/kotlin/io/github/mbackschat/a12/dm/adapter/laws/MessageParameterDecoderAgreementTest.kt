@@ -149,6 +149,36 @@ class MessageParameterDecoderAgreementTest {
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
     }
 
+    @Test
+    fun groupParametersShareTheKeyAndParentEventStream() {
+        val rows = rows().filter { "\$#" in it.model }
+        assertEquals(32, rows.size)
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel group events")
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) },
+            "portable group events")
+    }
+
+    @Test
+    fun aDeclinedKeyedMembershipStopsBeforeLaterTokens() {
+        val base = DocumentModelDraft.named("library-keyed-group-boundary").locale("en_US")
+            .rootGroup("Library") { library -> library.stringField("Branch") { }
+                .group("Reviews") { reviews -> reviews.repeatable(10).indexField("Code")
+                    .stringField("Code") { }.numberField("Stars") { } } }
+            .build().toJson()
+        val rows = listOf("chosen" to listOf("INVALID_USE_OF_SEMANTIC_INDEX"), "unmatched" to listOf("INVALID_GROUP")).flatMap { (key, codes) ->
+            listOf("", " x").map { tail ->
+                val model = rule(base, "/Library", "Branch", Dsl.en("Check \$#/Library/Reviews For \"$key\"$tail\$.")) { edit ->
+                    val library = edit.group("/Library")
+                    library.str("Branch").filled().and(library.num("Reviews/Stars").forIndex("chosen").gt(0))
+                }
+                Row("$key$tail", model, codes)
+            }
+        }
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel keyed completion boundary")
+        assertEquals(rows.map { it.id to emptyList<String>() }, rows.map { it.id to MessageParameterProbes.portable(it.model) },
+            "a declined membership cannot license a later token refusal")
+    }
+
     private companion object {
         const val REVIEWS = "/Library/Reviews"
     }

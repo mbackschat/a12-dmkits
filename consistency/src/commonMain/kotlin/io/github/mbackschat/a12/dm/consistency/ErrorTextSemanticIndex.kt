@@ -56,7 +56,7 @@ internal fun TrackedFactBase.errorTextSemanticIndexFindings(element: TrackedDecl
         // Only the bare indexed form is this family's. A parameter also carrying a category arrow
         // or the `index(…)` terminal is a different form with its own gate family, and reducing it
         // here would name this family's class for a defect A12 answers elsewhere.
-        if (parameter.contains("->") || parameter.trimStart().startsWith("index(")) {
+        if (parameter.contains("->") || parameter.trimStart().startsWith("index(") || parameter.trimStart().startsWith("#")) {
             return@mapNotNull null
         }
         val uses = semanticIndexUsesIn(parameter, conditionLanguage, keyword)
