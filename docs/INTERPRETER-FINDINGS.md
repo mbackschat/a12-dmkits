@@ -4334,9 +4334,9 @@ One exploratory fork improved allocation but failed its predeclared exact-anchor
 
 **The defect.** `wallDayLandingInstant` re-fits a day shift by the offset delta when the raw landing changes season, and kept the re-fit only when it stayed on the raw landing's own civil date. The kernel's calendar keeps it when it lands on the date asked for, the source's date plus `n`. The two agree except when the source sits within the offset delta of midnight: `AddDays(2024-10-27T00:30, 1)` raw-lands on `27T23:30` CET and the kernel answers `28T00:30`, and `AddDays(2024-03-30T23:30, 1)` raw-lands on `04-01T00:30` CEST and the kernel answers `03-31T23:30`. The interpreter answered the raw landing on both. The first row came from a12-kernel-lean's `SPEC-2026-10-02-01` documents. The second was predicted from the mechanism before it was run, which is what confirms the mechanism rather than the symptom.
 
-**The fix.** Step 3 compares the re-fit's civil day with the source's civil day plus `n`. The calendar-step `DifferenceInDays` loop shares this function, so it inherits the same landing ([KF6](KERNEL-FINDINGS.md#kf6), corrected in place).
+**The fix.** Step 3 compares the re-fit's civil day with the source's civil day plus `n` ([KF6](KERNEL-FINDINGS.md#kf6), corrected in place). The calendar-step `DifferenceInDays` loop and a Date source's day shift call the same function, and both land the same way on the kernel: `DifferenceInDays(2024-10-26T00:30, 2024-10-28T00:00)` is `1`, `(2024-03-29T23:30, 2024-03-31T23:45)` is `2`, `(Date 2024-10-26, 2024-10-27T23:30)` is `1`, and `(AddDays(Date 2024-10-26, 2), 2024-10-28T23:30)` is `0`, where the raw-landing reading gives `2`, `1`, `2` and `1`.
 
-*Locked by:* `adapter.laws.ComputedDateTimeJoinDiffTest` rows `d10` and `d12`, against both kernel strategies.
+*Locked by:* `adapter.laws.ComputedDateTimeJoinDiffTest` rows `d10` and `d12`, and `adapter.laws.DayStepLandingDiffTest`, against both kernel strategies.
 
 ### IF349: `FieldValuesNotUnique` compares a partially known Date by its stored text (differential, 2026-10-02) <a id="if349"></a>
 

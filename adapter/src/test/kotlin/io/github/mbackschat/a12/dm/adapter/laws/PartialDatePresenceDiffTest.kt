@@ -115,6 +115,11 @@ class PartialDatePresenceDiffTest {
                 .stringField("Name") { it.required() }
                 .group("Extra") { it.dateField("Noted") { f -> f.format(ISO).datePrecision(DatePrecision.DAY_OPTIONAL) } }
                 .group("Visits") { it.repeatable(3).dateField("On") { f -> f.format(ISO).datePrecision(DatePrecision.DAY_OPTIONAL) } }
+                .group("Trips") { trip ->
+                    trip.repeatable(2).group("Legs") {
+                        it.repeatable(2).dateField("Day") { f -> f.format(ISO).datePrecision(DatePrecision.DAY_OPTIONAL) }
+                    }
+                }
         }
         .rootGroup("Claimant") { claimant ->
             claimant.dateField("Since") { it.format(ISO).datePrecision(DatePrecision.DAY_OPTIONAL) }
@@ -133,6 +138,8 @@ class PartialDatePresenceDiffTest {
         rule(insured, "/Insured", "Origin", "ORIGIN_NOT_UNIQUE",
             Dsl.fieldValuesNotUnique(insured.field("/Insured/Origin"), insured.field("/Insured/Origin2"))),
         rule(insured, "/Insured", "Visits/On", "VISITS_NOT_UNIQUE", Dsl.fieldValuesNotUnique(insured.flatten("/Insured/Visits*/On"))),
+        rule(insured, "/Insured", "Trips/Legs/Day", "LEGS_NOT_UNIQUE",
+            Dsl.fieldValuesNotUnique(insured.flatten("/Insured/Trips*/Legs*/Day"))),
         rule(insured, "/Insured/Extra", "Noted", "EXTRA_FILLED", extra.filled()),
         insured.rule(insured.group("/Claimant")).name("ONCE_LOWRule").errorField(insured.num("/Claimant/Lines/Value"))
             .`when`(Dsl.minValue(insured.flatten("/Claimant/Lines*/Value")).lt(5L))
@@ -162,6 +169,30 @@ class PartialDatePresenceDiffTest {
             "Birth" to "2024-06-15", "Name" to "Ada"), emptyMap(), "2024-06-15", "2024-06-15"))
         assertEquals(listOf("NOT_UNIQUE", "VISITS_NOT_UNIQUE"), equalFull, "equal fully known texts are not unique")
     }
+
+    /**
+     * A partial value the text comparison must not reach: a malformed pair raises only its date errors, whether its
+ * shape is wrong or it lies below the Gregorian floor, and the
+     * fourth row of a three-row list is excluded with the capacity errors, although it repeats the first. A nested
+     * starred column compares across and within its outer rows.
+     */
+    @Test
+    fun onlyAWellFormedInCapacityPartialIsCompared() {
+        val known = mapOf("Birth" to "2024-06-15", "Name" to "Ada")
+        fun insuredWith(cells: Map<String, Any>, vararg visits: String) = insuredDocument(known + cells, emptyMap(), *visits)
+        val rows = linkedMapOf(
+            insuredWith(mapOf("First" to "2024-00-00", "Second" to "2024-00-00")) to listOf("datumFalsch", "datumFalsch"),
+            insuredWith(mapOf("First" to "1583-10-00", "Second" to "1583-10-00")) to listOf("datumFalsch", "datumFalsch"),
+            insuredWith(emptyMap(), "2024-06-00", "2024-07-00", "2024-08-00", "2024-06-00") to
+                listOf("zuGrosseKontextnummer", "zuGrosseZeile"),
+            insuredWith(mapOf("Trips" to listOf(legs("2024-06-00"), legs("2024-06-00")))) to listOf("LEGS_NOT_UNIQUE"),
+            insuredWith(mapOf("Trips" to listOf(legs("2024-06-00", "2024-06-00")))) to listOf("LEGS_NOT_UNIQUE"),
+            insuredWith(mapOf("Trips" to listOf(legs("2024-06-00"), legs("2024-07-00")))) to emptyList(),
+        )
+        assertEquals(rows.toList(), rows.keys.map { it to fired(readers, it) })
+    }
+
+    private fun legs(vararg days: String) = mapOf("Legs" to days.map { mapOf("Day" to it) })
 
     private companion object {
         const val ISO = "yyyy-MM-dd"

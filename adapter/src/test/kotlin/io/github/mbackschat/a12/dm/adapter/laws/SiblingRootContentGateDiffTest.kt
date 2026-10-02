@@ -31,6 +31,7 @@ class SiblingRootContentGateDiffTest {
         val base = draft.rootGroup("Claimant") { claimant ->
             claimant.stringField("Note") { }.numberField("Amount") { it.fractionDigits(0) }
                 .group("Lines") { it.repeatable(3).numberField("Value") { f -> f.fractionDigits(0) } }
+                .group("Sub") { sub -> sub.group("Items") { it.repeatable(3).numberField("Cost") { f -> f.fractionDigits(0) } } }
         }.build().toJson()
         val m = BoundModel.ofJson(base)
         val amount = m.num("/Claimant/Amount")
@@ -40,12 +41,15 @@ class SiblingRootContentGateDiffTest {
                 .code("LINES_LOW").severity(Severity.ERROR).message(Dsl.en("LINES_LOW")).build(),
             m.rule(m.group("/Claimant")).name("AmountLowRule").errorField(amount).`when`(amount.asNumber().lt(5L))
                 .code("AMOUNT_LOW").severity(Severity.ERROR).message(Dsl.en("AMOUNT_LOW")).build(),
+            m.rule(m.group("/Claimant/Sub")).name("ItemsLowRule").errorField(m.num("/Claimant/Sub/Items/Cost"))
+                .`when`(Dsl.minValue(m.flatten("/Claimant/Sub/Items*/Cost")).lt(5L))
+                .code("ITEMS_LOW").severity(Severity.ERROR).message(Dsl.en("ITEMS_LOW")).build(),
         ).fold(base) { json, rule -> TypedRules.inject(json, rule) })
     }
 
     private val withSibling = model(withSibling = true)
     private val alone = model(withSibling = false)
-    private val both = listOf("AMOUNT_LOW", "LINES_LOW")
+    private val both = listOf("AMOUNT_LOW", "ITEMS_LOW", "LINES_LOW")
 
     @Test
     fun aSiblingRootsContentDoesNotEvaluateAnEmptyRoot() {

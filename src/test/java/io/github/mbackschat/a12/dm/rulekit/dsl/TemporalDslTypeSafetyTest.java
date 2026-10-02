@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+import io.github.mbackschat.a12.dm.core.ValueKind;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -56,14 +58,14 @@ class TemporalDslTypeSafetyTest {
         DateTimeExpr dateTime = Dsl.dateTime(date, time);
         NumberExpr amount = Dsl.number(2L);
 
-        for (DateExpr result : java.util.List.of(Dsl.addDays(date, 1), Dsl.addDays(date, amount),
+        for (DateExpr result : List.of(Dsl.addDays(date, 1), Dsl.addDays(date, amount),
                 Dsl.addMonths(date, 1), Dsl.addMonths(date, amount), Dsl.addYears(date, 1), Dsl.addYears(date, amount))) {
-            assertEquals(io.github.mbackschat.a12.dm.core.ValueKind.DATE, result.expression().kind(), result::toString);
+            assertEquals(ValueKind.DATE, result.expression().kind(), result::toString);
         }
-        for (DateTimeExpr result : java.util.List.of(Dsl.addDays(dateTime, 1), Dsl.addDays(dateTime, amount),
+        for (DateTimeExpr result : List.of(Dsl.addDays(dateTime, 1), Dsl.addDays(dateTime, amount),
                 Dsl.addHours(dateTime, 1), Dsl.addHours(dateTime, amount), Dsl.addMinutes(dateTime, 1),
                 Dsl.addMinutes(dateTime, amount), Dsl.addSeconds(dateTime, 1), Dsl.addSeconds(dateTime, amount))) {
-            assertEquals(io.github.mbackschat.a12.dm.core.ValueKind.DATE_TIME, result.expression().kind(), result::toString);
+            assertEquals(ValueKind.DATE_TIME, result.expression().kind(), result::toString);
         }
     }
 

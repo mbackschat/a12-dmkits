@@ -1759,7 +1759,8 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
             val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
                 addLegacyCalendarDays(value.date, n) else addDays(value.date, n)
             // The civil label stays label arithmetic (it owns the legacy-hybrid rendering); the retained
-            // instant is the SOURCE-instant landing, so a day shift keeps the offset season it started in.
+            // instant lands from the SOURCE instant on the expected civil date, re-fitting the offset when the
+            // shift crosses a transition (IF348, `adapter.laws.DayStepLandingDiffTest`).
             date?.let {
                 TemporalValue(it, value.basis,
                     wallDayLandingInstant(value.instantSeconds(timeZone), n, timeZone) * 1_000L)

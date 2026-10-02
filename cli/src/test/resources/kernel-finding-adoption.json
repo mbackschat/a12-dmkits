@@ -2528,7 +2528,7 @@
       }
     },
     "kf505": {
-      "sha256": "7ad95b4fa4bf50d167ba4b9e84b6239235f3cc191a4836c6a9ce449958e32c60",
+      "sha256": "9733e57ca57ef4a0ea4be8becb298cc71a167977a9e81ae625558eb59d776d13",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -2605,7 +2605,7 @@
       }
     },
     "kf506": {
-      "sha256": "4bf642812281b1f7a8f416f6672f0595b438b01cd41c346f8d0d6b9773e7192a",
+      "sha256": "ca46aa4b35a4770bd1aa0beec4897117f559a3878244b615153521820ac15b7a",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
