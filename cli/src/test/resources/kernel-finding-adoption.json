@@ -2365,6 +2365,391 @@
           }
         }
       }
+    },
+    "kf6": {
+      "sha256": "2060d1f4c9ede69ae089b8a41a6394b35dc61d6eca755f77315284893654f275",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "day-shift landing"
+        ],
+        "dmkits": [
+          "typed day shift over a DateTime"
+        ],
+        "interpreter": [
+          "day-shift landing"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A three-engine differential on a carrier of our own measures both kernel strategies.",
+          "evidence": {
+            "day-shift landing": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedDateTimeJoinDiffTest.kt#aLaterComputationReadsAComputedDateTimeAtItsRendering",
+              "witness": "Rows d10 and d12 separate the expected-date re-fit from the raw-landing one at both DST transitions."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "AF178: a day shift keeps a DateTime source's kind, so a DateTime target accepts it.",
+          "evidence": {
+            "typed day shift over a DateTime": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalDslTypeSafetyTest.java#everyTemporalResultCarriesThePayloadKindOfItsWrapper",
+              "witness": "Every shift factory's payload kind agrees with its typed wrapper, the DateTime day shift included."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "IF348 judges the re-fit against the expected civil date in the one landing function.",
+          "evidence": {
+            "day-shift landing": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedDateTimeJoinDiffTest.kt#aLaterComputationReadsAComputedDateTimeAtItsRendering",
+              "witness": "The interpreter is the third engine of the same differential."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime value or firing; the portable checker decides admission only.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI evaluates through the interpreter, whose consumer row carries this fact.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Our own measurement; reported to the peer in the 2026-10-02 letter.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf504": {
+      "sha256": "8382b3e41ad29424a4d14c3e989ef43d06f267a8fcd30de76e3b0b4e32ed9ebc",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "computed DateTime join"
+        ],
+        "dmkits": [
+          "typed day shift over a DateTime"
+        ],
+        "interpreter": [
+          "computed DateTime join"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A three-engine differential on a carrier of our own measures both kernel strategies.",
+          "evidence": {
+            "computed DateTime join": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedDateTimeJoinDiffTest.kt#aLaterComputationReadsAComputedDateTimeAtItsRendering",
+              "witness": "The peer's eleven join and two landing documents with their ids, plus our spring twin."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "AF178: a day shift keeps a DateTime source's kind, so a DateTime target accepts it.",
+          "evidence": {
+            "typed day shift over a DateTime": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalDslTypeSafetyTest.java#everyTemporalResultCarriesThePayloadKindOfItsWrapper",
+              "witness": "Every shift factory's payload kind agrees with its typed wrapper, the DateTime day shift included."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The interpreter already read a computed DateTime at its rendering on every row.",
+          "evidence": {
+            "computed DateTime join": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedDateTimeJoinDiffTest.kt#aLaterComputationReadsAComputedDateTimeAtItsRendering",
+              "witness": "The interpreter is the third engine of the same differential."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime value or firing; the portable checker decides admission only.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI evaluates through the interpreter, whose consumer row carries this fact.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-02-01",
+              "witness": "The DateTime join checkpoint's eleven compute documents."
+            }
+          }
+        }
+      }
+    },
+    "kf505": {
+      "sha256": "67329785df055371012cfa6d510db4a49193be810eb2114de577c0f5fb66cc11",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "partial-Date presence and readers"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "partial-Date presence and readers"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A three-engine differential on a carrier of our own measures both kernel strategies.",
+          "evidence": {
+            "partial-Date presence and readers": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDatePresenceDiffTest.kt#aPartiallyKnownDateSatisfiesTheReadersAndIsComparedByItsStoredText",
+              "witness": "Presence on both arms at two precisions, requiredness, group and root content, and stored-text uniqueness at all three precisions and down a starred column."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed builders author these shapes unchanged; the fact is about evaluation.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "IF349 compares a well-formed partial value by its stored text; presence already agreed.",
+          "evidence": {
+            "partial-Date presence and readers": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDatePresenceDiffTest.kt#aPartiallyKnownDateSatisfiesTheReadersAndIsComparedByItsStoredText",
+              "witness": "The interpreter is the third engine of the same differential."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime value or firing; the portable checker decides admission only.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI evaluates through the interpreter, whose consumer row carries this fact.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-02-04",
+              "witness": "The presence and reader checkpoints' grids."
+            }
+          }
+        }
+      }
+    },
+    "kf506": {
+      "sha256": "ab9abfdf7654ef36c7a3aa71a0c8281f8512fbdb0a19c7732f8cca1cbd9f06fe",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "sibling-root content gate"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "sibling-root content gate"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A three-engine differential on a carrier of our own measures both kernel strategies.",
+          "evidence": {
+            "sibling-root content gate": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SiblingRootContentGateDiffTest.kt#aSiblingRootsContentDoesNotEvaluateAnEmptyRoot",
+              "witness": "Six two-root documents beside a one-root control on the same Claimant documents."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed builders author these shapes unchanged; the fact is about evaluation.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "IF350 drops content under another root from the attach-depth map.",
+          "evidence": {
+            "sibling-root content gate": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SiblingRootContentGateDiffTest.kt#aSiblingRootsContentDoesNotEvaluateAnEmptyRoot",
+              "witness": "The interpreter is the third engine of the same differential."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime value or firing; the portable checker decides admission only.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI evaluates through the interpreter, whose consumer row carries this fact.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Our own measurement; reported to the peer in the 2026-10-02 letter.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf230": {
+      "sha256": "30959462378b2b79a77ec179e3b12ad30b836c3e65e6226f4dd5453dc86dc1ff",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "filtered star on the compute arm"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "filtered star on the compute arm"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A three-engine differential on a carrier of our own measures both kernel strategies.",
+          "evidence": {
+            "filtered star on the compute arm": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilteredStarComputeArmDiffTest.kt#theComputationArmSumsTheInCapacityRowsUnderEveryFilter",
+              "witness": "Four sums over two over-limit documents and an in-capacity control, on both arms."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed builders author these shapes unchanged; the fact is about evaluation.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The interpreter already excluded the over-limit row on both arms.",
+          "evidence": {
+            "filtered star on the compute arm": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilteredStarComputeArmDiffTest.kt#theComputationArmSumsTheInCapacityRowsUnderEveryFilter",
+              "witness": "The interpreter is the third engine of the same differential."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime value or firing; the portable checker decides admission only.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI evaluates through the interpreter, whose consumer row carries this fact.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-01-04",
+              "witness": "The filtered-star compute checkpoint's documents."
+            }
+          }
+        }
+      }
     }
   }
 }

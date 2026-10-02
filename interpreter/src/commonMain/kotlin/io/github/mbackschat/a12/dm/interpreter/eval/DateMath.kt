@@ -957,7 +957,15 @@ fun isGapLocal(iso: String, tz: ModelTimeZone): Boolean =
  *     remainder ride along;
  *  2. if the offset at that instant differs from the source's, **re-fit** by the offset delta so the wall
  *     clock is preserved;
- *  3. keep the re-fit **only when it preserves the landing's civil date** — otherwise the raw instant stands.
+ *  3. keep the re-fit **only when it lands on the EXPECTED civil date** — the source's civil date plus [n] —
+ *     otherwise the raw instant stands.
+ *
+ * Step 3 is judged against the expected date, not against the raw landing's own date, and the two differ exactly
+ * when the source sits within the offset delta of midnight: `AddDays(2024-10-27T00:30, 1)` raw-lands on
+ * `27T23:30` CET, and its re-fit `28T00:30` is kept because the 28th is the date asked for, while
+ * `AddDays(2024-03-30T23:30, 1)` raw-lands on `04-01T00:30` CEST and its re-fit `03-31T23:30` is kept for the same
+ * reason. Comparing against the raw date rejected both re-fits (SPEC-2026-10-02-01's row and our spring twin,
+ * `adapter.laws.ComputedDateTimeJoinDiffTest`, both kernel strategies).
  *
  * Two adjacent additions can therefore select different sides of one overlap: `AddDays` reaching 1916-10-01
  * from a CEST September source lands on the daylight side, while a 214-day add from a CET March source lands
@@ -970,9 +978,9 @@ fun wallDayLandingInstant(sourceInstant: Long, n: Int, tz: ModelTimeZone): Long 
     val rawOffset = berlinOffsetSeconds(raw)
     if (rawOffset == sourceOffset) return raw
     val refit = raw + (sourceOffset - rawOffset)
-    val rawDay = instantToLocal(raw, tz).floorDiv(86_400L)
+    val expectedDay = instantToLocal(sourceInstant, tz).floorDiv(86_400L) + n
     val refitDay = instantToLocal(refit, tz).floorDiv(86_400L)
-    return if (refitDay == rawDay) refit else raw
+    return if (refitDay == expectedDay) refit else raw
 }
 
 /**

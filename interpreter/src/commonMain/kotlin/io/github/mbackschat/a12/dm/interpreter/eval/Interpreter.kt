@@ -11,6 +11,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.expansionBindDepth
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
+import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldValidationContext
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -1202,11 +1203,8 @@ class Interpreter(
      * [Val.Unknown]. Distinct from the quantifier-`Having` path ([starOperandVals], `$` bound). KERNEL-FINDINGS §6.
      */
     private fun filteredStarCells(star: Expr.Star): List<Val> {
-        val c = ctxOf(star)
-        if (star.having == null) return c.star(star.path, star.bindDepth)
-        return c.rowContexts(star.path.substringBeforeLast('/'), star.bindDepth)
-            .filter { rc -> overlapFilterInterp(rc).fires(star.having) }
-            .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
+        if (star.having == null) return ctxOf(star).star(star.path, star.bindDepth)
+        return keptRowContexts(star).mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
 
     /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; empty → not evaluated. */
@@ -1384,8 +1382,34 @@ class Interpreter(
         // `$`-marked pair under `FieldValuesNotUnique` inside a filter (a shape the kernel admits): the marked
         // cells duplicate in the rule's own row and are empty in the row the filter keeps, so reading the
         // filtered row dropped both operands, found no duplicate, and the enclosing sum never cleared its bar.
-        return if (a is Expr.Star) filteredStarCells(a)                   // kept row values, empties already dropped
-        else if (ctxOf(a).filled(pathOf(a))) listOf(evalExpr(a)) else emptyList()
+        if (a is Expr.Star) {
+            if (ctxOf(a).datePrecisionOf(a.path) !in PARTIAL_PRECISIONS) return filteredStarCells(a)
+            return keptRowContexts(a).mapNotNull { rc -> if (rc.filled(a.path)) comparedValue(rc, a.path, rc.field(a.path)) else null }
+        }
+        return if (ctxOf(a).filled(pathOf(a))) listOf(comparedValue(ctxOf(a), pathOf(a), evalExpr(a))) else emptyList()
+    }
+
+    /**
+     * The value `FieldValuesNotUnique` compares for one filled cell, given its [resolved] read. A partially known
+     * Date resolves to [Val.Unknown] for every comparing reader, yet this operator compares the exact STORED TEXT
+     * (KERNEL-FINDINGS KF260, which is why it alone of the comparing field-list operators admits one), so a
+     * well-formed partial value contributes its text and `2024-06-00` beside a fully known `2024-06-01` is unique.
+     * A malformed partial stays [Val.Unknown] and is skipped like any unconvertible cell. Measured at all three
+     * precisions on named fields and at `DAY_OPTIONAL` down a starred column, both kernel strategies
+     * (`adapter.laws.PartialDatePresenceDiffTest`).
+     */
+    private fun comparedValue(c: EvalContext, path: String, resolved: Val): Val {
+        if (resolved !is Val.Unknown) return resolved
+        val precision = c.datePrecisionOf(path)
+        if (precision !in PARTIAL_PRECISIONS || invalid(c, path)) return resolved
+        val raw = c.displayValue(path) ?: return resolved
+        return if (partialDateParts(raw, c.dateFormatOf(path) ?: "yyyy-MM-dd", precision) != null) Val.Txt(raw) else resolved
+    }
+
+    /** The rows a starred operand keeps — every row when it carries no `Having`, else the rows its filter keeps. */
+    private fun keptRowContexts(star: Expr.Star): List<EvalContext> {
+        val rows = ctxOf(star).rowContexts(star.path.substringBeforeLast('/'), star.bindDepth)
+        return if (star.having == null) rows else rows.filter { rc -> overlapFilterInterp(rc).fires(star.having) }
     }
 
     /** The path of a plain field-ref operand. Any other operand shape in a field-ref position is a construct
@@ -1394,3 +1418,6 @@ class Interpreter(
     internal fun pathOf(e: Expr): String = (e as? Expr.Field)?.path
         ?: throw UnsupportedConstructException("unsupported operand ${e::class.simpleName} in a field-reference position")
 }
+
+/** The `DateType` precisions whose well-formed value may be partially known (a zero component). */
+private val PARTIAL_PRECISIONS = setOf(DatePrecision.DAY_OPTIONAL, DatePrecision.MONTH_OPTIONAL, DatePrecision.YEAR_OPTIONAL)

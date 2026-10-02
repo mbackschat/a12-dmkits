@@ -42,6 +42,31 @@ class TemporalDslTypeSafetyTest {
         assertInstanceOf(DateTimeExpr.class, Dsl.addHours(dateTime, 1));
     }
 
+    /**
+     * The typed wrapper and the payload's own {@link Calculation#kind()} must name the same family, because the
+     * computation assignment gate and the explanation tree read the payload, not the wrapper. They disagreed for
+     * {@code AddDays} over a DateTime, whose kind followed the unit alone and so refused a kernel-admitted
+     * {@code DateTime = AddDays(DateTime, n)} computation (KERNEL-FINDINGS §6: AddDays accepts DATE_TIME and is
+     * time-preserving; the admission is measured in {@code adapter.laws.ComputedDateTimeJoinDiffTest}).
+     */
+    @Test
+    void everyTemporalResultCarriesThePayloadKindOfItsWrapper() {
+        DateExpr date = new DateExpr(new Today());
+        TimeExpr time = new TimeExpr(new TimeLiteral("12:34:56"));
+        DateTimeExpr dateTime = Dsl.dateTime(date, time);
+        NumberExpr amount = Dsl.number(2L);
+
+        for (DateExpr result : java.util.List.of(Dsl.addDays(date, 1), Dsl.addDays(date, amount),
+                Dsl.addMonths(date, 1), Dsl.addMonths(date, amount), Dsl.addYears(date, 1), Dsl.addYears(date, amount))) {
+            assertEquals(io.github.mbackschat.a12.dm.core.ValueKind.DATE, result.expression().kind(), result::toString);
+        }
+        for (DateTimeExpr result : java.util.List.of(Dsl.addDays(dateTime, 1), Dsl.addDays(dateTime, amount),
+                Dsl.addHours(dateTime, 1), Dsl.addHours(dateTime, amount), Dsl.addMinutes(dateTime, 1),
+                Dsl.addMinutes(dateTime, amount), Dsl.addSeconds(dateTime, 1), Dsl.addSeconds(dateTime, amount))) {
+            assertEquals(io.github.mbackschat.a12.dm.core.ValueKind.DATE_TIME, result.expression().kind(), result::toString);
+        }
+    }
+
     @Test
     void noTemporalFactoryAcceptsTheBroadUnion() {
         for (Method method : Dsl.class.getDeclaredMethods()) {

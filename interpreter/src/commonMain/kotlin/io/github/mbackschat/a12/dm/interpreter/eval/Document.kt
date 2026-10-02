@@ -782,6 +782,11 @@ class Document(internal val config: DocumentConfig) {
      * The O(content) scan that builds it is **memoized per group** (rebuilt with the [Index] on mutation), so many
      * rules sharing one iteration scope — and nested per-row [rowContextsScoped] lookups — pay it once, not per
      * rule/row. A row is `evaluated` iff some prefix matches.
+     *
+     * Content under ANOTHER root group shares no level with [groupPath] (common depth 0) and is never in its scope:
+     * the kernel leaves a once rule unevaluated on an empty root however much a sibling root holds, where counting
+     * it made every once-frame of an empty root evaluated and fired its comparisons
+     * (`adapter.laws.SiblingRootContentGateDiffTest`, both kernel strategies).
      */
     private fun attachByDepth(groupPath: String): Map<Int, Set<List<Int>>> =
         index().attachByGroup.getOrPut(groupPath) {
@@ -789,6 +794,7 @@ class Document(internal val config: DocumentConfig) {
             val m = HashMap<Int, HashSet<List<Int>>>()
             for (p in index().content) {
                 val common = commonPrefixLen(partsOf(p.path), gParts)
+                if (common == 0) continue
                 m.getOrPut(common) { HashSet() }.add(p.reps.take(common))
             }
             m

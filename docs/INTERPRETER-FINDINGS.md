@@ -4329,3 +4329,27 @@ Seven breaches also occur with the original numeric reader; their historical cau
 The IG159 message fix was semantically exact but its later clean Node capture had a new simple-validation/200 allocation breach. Causation by the message fix was not established: candidate and pre-fix-source worker distributions overlapped. The interpreter also allocated identical invalidity and index-column callbacks per evaluated row. `ValidationPass` now owns both callbacks for its validation call; `ComputationEngine` owns its poison gate for the compute call and its index-column resolver for each overlay step. The reading context remains a callback parameter, preserving IF319's row-relative `Having` behavior. No parser, public API, cache lifetime or field-message semantics changed.
 
 One exploratory fork improved allocation but failed its predeclared exact-anchor screen; the candidate was restored, the prediction miss retained, and the release decision was repartitioned against the owner's unchanged 5% tolerance. The final five-fork capture has zero JVM and four Node standing-anchor breaches, all four compute-overlay allocation rows already present in the owner-accepted IG160 capture and each lower than its accepted median. All simple-validation rows now pass the anchor. Fresh current-source and candidate B1/B2 **validation** timing arms have five workers per scenario; all ten elapsed/CPU median changes are improvements (−5.416% to −0.289%). The three existing compute-overlay performance controls pass, but they gate growth, not an absolute 5% compute-time comparison; no such compute-time claim is made. The selected JVM and Node semantic controls each pass 28 tests; adapter differentials pass 27, including IF319's compute-row discriminator; interpreter purity/dependency guards pass. [The raw qualification record](../perf-results/footprint/2026-09-28-ig159-callback/README.md) and [the acceptance matrix](CONFORMANCE-PLAN.md#completed-results-in-git) preserve the scope and limits. This closes IG159's later allocation breach without enlarging IG160's accepted exception set or rebasing an anchor.
+
+### IF348: a day shift keeps its offset re-fit when it lands on the EXPECTED date (differential, 2026-10-02) <a id="if348"></a>
+
+**The defect.** `wallDayLandingInstant` re-fits a day shift by the offset delta when the raw landing changes season, and kept the re-fit only when it stayed on the raw landing's own civil date. The kernel's calendar keeps it when it lands on the date asked for, the source's date plus `n`. The two agree except when the source sits within the offset delta of midnight: `AddDays(2024-10-27T00:30, 1)` raw-lands on `27T23:30` CET and the kernel answers `28T00:30`, and `AddDays(2024-03-30T23:30, 1)` raw-lands on `04-01T00:30` CEST and the kernel answers `03-31T23:30`. The interpreter answered the raw landing on both. The first row came from a12-kernel-lean's `SPEC-2026-10-02-01` documents. The second was predicted from the mechanism before it was run, which is what confirms the mechanism rather than the symptom.
+
+**The fix.** Step 3 compares the re-fit's civil day with the source's civil day plus `n`. The calendar-step `DifferenceInDays` loop shares this function, so it inherits the same landing ([KF6](KERNEL-FINDINGS.md#kf6), corrected in place).
+
+*Locked by:* `adapter.laws.ComputedDateTimeJoinDiffTest` rows `d10` and `d12`, against both kernel strategies.
+
+### IF349: `FieldValuesNotUnique` compares a partially known Date by its stored text (differential, 2026-10-02) <a id="if349"></a>
+
+**The defect.** A partially known Date resolves to `Val.Unknown` for every comparing reader, and the uniqueness scan skips unconvertible cells, so two equal `2024-06-00` values never duplicated. The kernel admits this operator over a partial precision because it compares the exact stored text ([KF260](KERNEL-FINDINGS.md#kf260)), and at runtime both strategies fire on the equal pair ([KF505](KERNEL-FINDINGS.md#kf505)).
+
+**The fix.** The compared-cell owner `Interpreter.comparedCells` substitutes the stored text for a well-formed partial value, on the named-field arm and on the starred arm, which reads per kept row for a partial-precision column. A malformed partial value stays unknown and is still skipped. `2024-06-00` beside a fully known `2024-06-01` therefore stays unique, since the texts differ.
+
+*Locked by:* `adapter.laws.PartialDatePresenceDiffTest`, at all three precisions on named fields and at `DAY_OPTIONAL` down a starred column.
+
+### IF350: content under a sibling root no longer evaluates an empty root (differential, 2026-10-02) <a id="if350"></a>
+
+**The defect.** `Document.attachByDepth` recorded every content item at its common-prefix depth with the iteration group, including depth 0, which is content under another root. A once-frame's `evaluated` flag matches the empty prefix at depth 0, so any content anywhere marked every root's once-frame evaluated, and its comparisons fired on an empty root. The kernel leaves it unevaluated ([KF506](KERNEL-FINDINGS.md#kf506)). Real rows were unaffected, because an instantiated row is content at its own depth.
+
+**The fix.** Content sharing no level with the group is not in its scope. That is the one site where the depth map is built, so every once-frame and synthetic row context inherits the fix.
+
+*Locked by:* `adapter.laws.SiblingRootContentGateDiffTest`, with a one-root control, against both kernel strategies. The second instance (`[Amount] < 5`) was predicted and run before the fix.
