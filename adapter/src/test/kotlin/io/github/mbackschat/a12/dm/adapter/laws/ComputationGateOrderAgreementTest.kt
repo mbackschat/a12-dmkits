@@ -21,8 +21,8 @@ import org.junit.jupiter.api.Test
  * computation-wide names stage.
  *
  * The portable checker is held to the same rows, and every row where it reports less is named below with its
- * reason. Most of these are the checker's deliberate silence on a number target whose scale gate is live
- * (`consistency.ComputationSelfRead`); the rest are open gaps (CONSISTENCY-GAPS DG124, DG125). On every
+ * reason: the checker's deliberate silence on a number target whose scale gate is live
+ * (`consistency.ComputationSelfRead`). On every
  * remaining row, the suppressed `S…` rows included, it must name exactly the kernel's classes.
  */
 class ComputationGateOrderAgreementTest {
@@ -189,14 +189,13 @@ class ComputationGateOrderAgreementTest {
         assertEquals(144, rows.size, "a12-kernel-lean's three verdict tables, every row into a computed target")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
-        assertEquals((LIVE_SCALE_GATE_SELF_READ + OPEN_GAPS.keys) - rows.map { it.id }.toSet(), emptySet<String>(),
+        assertEquals(LIVE_SCALE_GATE_SELF_READ - rows.map { it.id }.toSet(), emptySet<String>(),
             "every declined row is a row of the grid")
         assertEquals(rows.map { it.id to portableExpectation(it) }, rows.map { it.id to portable(it.model) }, "portable classes")
     }
 
     private fun portableExpectation(row: Row): List<String> = when (row.id) {
         in LIVE_SCALE_GATE_SELF_READ -> row.classes.filter { it != SELF_READ }
-        in OPEN_GAPS -> OPEN_GAPS.getValue(row.id)
         else -> row.classes
     }
 
@@ -212,7 +211,5 @@ class ComputationGateOrderAgreementTest {
             "T01", "T02", "T03", "T04", "T05", "T11", "T12", "E01",
         )
 
-        /** The checker's classes on rows it gets wrong: `W05` is DG124, `P03` and `P04` DG125. */
-        val OPEN_GAPS = mapOf("W05" to NONE, "P03" to NONE, "P04" to NONE)
     }
 }

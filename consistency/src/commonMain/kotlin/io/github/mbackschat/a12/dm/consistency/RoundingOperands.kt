@@ -5,17 +5,18 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 
 /**
- * What the six rounding operators demand of the thing they round and of the digit count they round to.
+ * What rounding and absolute-value operations demand of their immediate operands.
  *
- * They are TWO constructs sharing one digits gate, and which one an operator is decides what its operand may
+ * The rounding forms are two constructs sharing one digits gate; each construct decides what its operand may
  * be ([KERNEL-FINDINGS KF393], `rulekit.validate.laws.RoundingOperandLawsTest`):
  *
  * | the spelling | the operand | the gates it meets, in order |
  * |---|---|---|
  * | `RoundUpValue`, `RoundDownValue`, `RoundAccountingValue` | an entity SPEC | `MVK_NO_GROUPS_ALLOWED`, `MVK_NO_WILDCARDS_ALLOWED`, `MVK_CATEGORY_NOT_ALLOWED`, `MVK_NO_NUMBER` |
  * | `RoundUp`, `RoundDown`, `RoundAccounting` | an OPERATION | `MVK_NO_CONST`, `MVK_NO_NUMBER` |
+ * | `Abs` | an OPERATION, without a digit count | `MVK_NO_CONST`, `MVK_NO_NUMBER` |
  *
- * **Then both ask the same question of the digits**, `MVK_INVALID_DIGIT_FOR_ROUNDING`: a non-negative integer
+ * **Then the rounding forms ask the same question of the digits**, `MVK_INVALID_DIGIT_FOR_ROUNDING`: a non-negative integer
  * no greater than 14, the ceiling the kernel source dates to `A12K-3691`.
  *
  * **The digits gate is asked LAST on both constructs**, so an out-of-range count is invisible behind an
@@ -51,10 +52,11 @@ internal fun TrackedFactBase.roundingContributions(
     }
 }
 
-/** Which of the two constructs an operator belongs to — the grammar rule its name selects. */
-private enum class RoundedOperand { ENTITY_SPEC, OPERATION }
+/** Abs shares the operation gates (KF167), but has no rounding-digit parameter. */
+private enum class RoundedOperand { ENTITY_SPEC, OPERATION, ABSOLUTE }
 
 private val OPERAND_KIND_OF = mapOf(
+    "Abs" to RoundedOperand.ABSOLUTE,
     "RoundUpValue" to RoundedOperand.ENTITY_SPEC,
     "RoundDownValue" to RoundedOperand.ENTITY_SPEC,
     "RoundAccountingValue" to RoundedOperand.ENTITY_SPEC,
@@ -79,9 +81,12 @@ private fun TrackedFactBase.roundingDefect(
     val rounded = call.operands.firstOrNull() ?: return null
     val operandDefect = when (kind) {
         RoundedOperand.ENTITY_SPEC -> entitySpecDefect(rounded, call.inAFilterBody, declaringGroup, element)
-        RoundedOperand.OPERATION -> operationDefect(rounded, call.inAFilterBody, declaringGroup, element)
+        RoundedOperand.OPERATION, RoundedOperand.ABSOLUTE -> operationDefect(rounded, call.inAFilterBody, declaringGroup, element)
     }
-    return operandDefect ?: digitsDefect(call)
+    return operandDefect ?: when (kind) {
+        RoundedOperand.ABSOLUTE -> null
+        RoundedOperand.ENTITY_SPEC, RoundedOperand.OPERATION -> digitsDefect(call)
+    }
 }
 
 /** The field construct's three shape gates and its type gate, in the order `CheckRundenOpImpl` calls them. */
@@ -118,7 +123,7 @@ private fun TrackedFactBase.entitySpecDefect(
     }
 }
 
-/** The operation construct's two gates, in the order `CheckRundenOperOpImpl` calls them. */
+/** The operation gates shared by `CheckRundenOperOpImpl` and `CheckFeldOperOpImpl` (KF167). */
 private fun TrackedFactBase.operationDefect(
     rounded: CallOperand,
     inAFilterBody: Boolean,
@@ -128,8 +133,7 @@ private fun TrackedFactBase.operationDefect(
     if (rounded.constant) {
         return RoundingDefect(
             "MVK_NO_CONST",
-            "rounds the constant `${rounded.text.trim()}`, and this spelling rounds a computed value — " +
-                "round the value it stands for, or reach for the `…Value` spelling over a field",
+            "takes the constant `${rounded.text.trim()}`, but requires a nonconstant numeric operation",
         )
     }
     // A12 types the whole operation; this reader types only a bare field reference, so an expression is left
@@ -138,7 +142,7 @@ private fun TrackedFactBase.operationDefect(
     return if (field.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES) {
         RoundingDefect(
             "MVK_NO_NUMBER",
-            "rounds `${field.path}`, declared `${field.declaredFieldType()}` — only a number can be rounded",
+            "takes `${field.path}`, declared `${field.declaredFieldType()}` — a numeric operand is required",
         )
     } else {
         null

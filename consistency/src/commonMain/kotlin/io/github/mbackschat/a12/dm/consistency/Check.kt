@@ -508,9 +508,8 @@ enum class CheckFamily {
     DATE_ARITHMETIC_OPERANDS,
 
     /**
-     * What the six rounding operators demand of the value they round and of the digit count. One constant
-     * for the six classes because the two constructs share the digits gate and differ only in which grammar
-     * rule their operand is — a split by class would cut the shared gate in half.
+     * Rounding's entity/operation operand gates and digit count, plus Abs's shared immediate-operation gates
+     * (KF167). The historical identity stays stable; only rounding asks the digit-count question.
      */
     ROUNDING_OPERANDS,
 

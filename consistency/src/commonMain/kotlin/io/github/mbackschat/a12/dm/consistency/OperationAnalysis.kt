@@ -238,7 +238,10 @@ internal class OperationAnalysis(
             }
             "Sum", "SumOfProducts", "FirstFilledValue" -> {
                 val fields = fields() ?: return UNKNOWN
-                if (id == "FirstFilledValue") fields.firstOrNull()?.derived() ?: UNKNOWN
+                // KF181 / NumericOperationGateAgreementTest: numeric scale summarizes the expanded list;
+                // KF391's first-field kind rule still applies to nonnumeric results.
+                if (id == "FirstFilledValue" && fields.firstOrNull()?.numeric == null)
+                    fields.firstOrNull()?.derived() ?: UNKNOWN
                 else numericAggregate(fields, id == "SumOfProducts")
             }
             "NumberOfFilledFields", "NumberOfFilledGroups", "NumberOfValueInFields", "CurrentRepetition", "Length" ->

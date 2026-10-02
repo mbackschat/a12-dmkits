@@ -2897,6 +2897,8 @@ So the class of positions an `IEntityId` can carry `getCategoryName()` through i
 
 Canonical in §11 "Computations". The reconciliation requests are the lean project's `SPEC-2026-08-10-02`, plus `SPEC-2026-08-11-01` (the differing-scale field operand) and `SPEC-2026-08-11-02` (the denominator this entry originally over-claimed); every verdict below was reproduced here rather than accepted as reported.
 
+**Numeric list scale (measured 2026-10-02).** `FirstFilledValue` takes the maximum declared scale of its expanded numeric fields, independently of their order. `NumericOperationGateAgreementTest` contrasts scales 0 and 2 in both orders, as explicit fields and as one group, against targets at both scales in rules and computations; `NumericOperationGateTest` replays those exact models on JVM and Node. A matched scale-2 pair into a scale-2 target is admitted, separating maximum from summed scale as well as first/last-field selection. The measurement covers known nonnegative scales; nonnumeric result kinds retain [KF391](#kf391)'s separate kind gate. The checker enforces the numeric summary in `OperationAnalysis.numericAggregate`.
+
 Two rejections can apply to the same computation — the scale gate [KF174](#kf174) describes, and the ban on reading the computed field inside its own operation. The kernel reports exactly one of them, and it is the scale gate. Over a scale-0 target, changing only the operand that decides the derived scale flips the reported class:
 
 | operation into the scale-0 target | reported code list |
