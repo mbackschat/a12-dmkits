@@ -692,6 +692,8 @@ def reportInputs = rootProject.file('adapter/src/test/resources/checker-near-mis
 def numericKeyInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/harvested-numeric-keys.json')
 def keyPatternInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/java-pattern-replay.json')
 def numericOperationInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/numeric-operation-gates.json')
+def messageFormInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/message-form-alternative.json')
+def messageParameterInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/message-parameter-decoder.json')
 def messageGroupInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/message-group-footprint.json')
 def messageGroupDottedInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/message-group-dotted-boundaries.json')
 def messageGroupParentInputs = rootProject.file('adapter/src/test/resources/checker-near-miss/message-group-parent-boundaries.json')
@@ -701,7 +703,7 @@ def generatedSyntaxDir = layout.buildDirectory.dir('generated/syntaxFixtures/com
 def generatedSyntax = new File(generatedSyntaxDir,
         'io/github/mbackschat/a12/dm/consistency/SyntaxFixtureData.kt')
 def generateSyntaxFixtures = tasks.register('generateSyntaxFixtures') {
-    inputs.files(numericOperationInputs, syntaxInputs, syntaxVerdicts, computationInputs, fieldReadInputs, fieldReadOrigins, numericKeyInputs, operationCheckInputs, operationLawInputs, reportInputs, keyPatternInputs, messageGroupInputs, messageGroupArgumentInputs, messageGroupEventInputs, messageGroupParentInputs, messageGroupDottedInputs)
+    inputs.files(messageFormInputs, messageParameterInputs, numericOperationInputs, syntaxInputs, syntaxVerdicts, computationInputs, fieldReadInputs, fieldReadOrigins, numericKeyInputs, operationCheckInputs, operationLawInputs, reportInputs, keyPatternInputs, messageGroupInputs, messageGroupArgumentInputs, messageGroupEventInputs, messageGroupParentInputs, messageGroupDottedInputs)
     outputs.file(generatedSyntax)
     doLast {
         def parser = new groovy.json.JsonSlurper()
@@ -732,6 +734,8 @@ def generateSyntaxFixtures = tasks.register('generateSyntaxFixtures') {
         generatedSyntax.text = """package io.github.mbackschat.a12.dm.consistency
 
 internal object SyntaxFixtureData {
+    val messageForms = listOf(${rows(harvestRows(messageFormInputs))})
+    val messageParameters = listOf(${rows(harvestRows(messageParameterInputs))})
     val numericOperations = listOf(${rows(harvestRows(numericOperationInputs))})
     val messageGroups = listOf(${rows(harvestRows(messageGroupInputs))})
     val messageGroupDotted = listOf(${rows(harvestRows(messageGroupDottedInputs))})

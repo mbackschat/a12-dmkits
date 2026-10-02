@@ -1,0 +1,400 @@
+{
+  "groups": [
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"library-message-parameters\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"library-message-parameters\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Library\",\n        \"name\" : \"Library\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Library/Branch\",\n            \"name\" : \"Branch\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Loans\",\n            \"name\" : \"Loans\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Loans/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Library/Loans/Shelf\",\n                \"name\" : \"Shelf\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Library/Loans/Shelf/Slot\",\n                    \"name\" : \"Slot\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Group\",\n                    \"id\" : \"/Library/Loans/Shelf/Bin\",\n                    \"name\" : \"Bin\",\n                    \"Group\" : {\n                      \"repeatability\" : 1,\n                      \"elements\" : [ {\n                        \"type\" : \"Field\",\n                        \"id\" : \"/Library/Loans/Shelf/Bin/Tag\",\n                        \"name\" : \"Tag\",\n                        \"Field\" : {\n                          \"fieldType\" : {\n                            \"type\" : \"StringType\"\n                          }\n                        }\n                      } ]\n                    }\n                  } ]\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Library/Returns\",\n            \"name\" : \"Returns\",\n            \"Group\" : {\n              \"repeatability\" : 1,\n              \"elements\" : [ {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Book\",\n                \"name\" : \"Book\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Library/Returns/Borrower\",\n                \"name\" : \"Borrower\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              } ]\n            }\n          }, {\n            \"type\" : \"Rule\",\n            \"id\" : \"/Library/CheckMessageParameter\",\n            \"name\" : \"CheckMessageParameter\",\n            \"Rule\" : {\n              \"errorEntityRelPath\" : \"../Branch\",\n              \"errorCode\" : \"MESSAGE_PARAMETER\",\n              \"errorCondition\" : \"FieldFilled(Branch) And FieldFilled(Loans/Book)\",\n              \"severity\" : \"ERROR\",\n              \"errorMessage\" : [ {\n                \"locale\" : \"en_US\",\n                \"text\" : \"Check $",
+      "suffix": "$.\"\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "form-alternative:Vordruckzeile:Branch:none",
+          "grid": "form-alternative",
+          "ordinal": 0,
+          "classes": [],
+          "decline": null,
+          "modelMiddle": "Branch.Vordruckzeile",
+          "modelSha256": "64849616c069076238eeece981fb6fba6365f871bb90752656f694f7b3c4179b"
+        },
+        {
+          "id": "form-alternative:Vordruckzeile:Branch:literal",
+          "grid": "form-alternative",
+          "ordinal": 1,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Branch.Vordruckzeile For \\\"k\\\"",
+          "modelSha256": "5f74efa17ad5975e86cc619b05b0836e041f3abace789556cc839ab2a8dfb7e5"
+        },
+        {
+          "id": "form-alternative:Vordruckzeile:Branch:unknown",
+          "grid": "form-alternative",
+          "ordinal": 2,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Branch.Vordruckzeile For Nope",
+          "modelSha256": "436d1731f12e2ffa52354469a6b5f8e00c6363733c2c98391554a5f3e5382aad"
+        },
+        {
+          "id": "form-alternative:Vordruckzeile:Branch:word",
+          "grid": "form-alternative",
+          "ordinal": 3,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Branch.Vordruckzeile x",
+          "modelSha256": "5ac20ec626cab521e45c980523cca5a7c4cc34f7e4f6e7786c23d8c6f2362afe"
+        },
+        {
+          "id": "form-alternative:Vordruckzeile:Loans:none",
+          "grid": "form-alternative",
+          "ordinal": 4,
+          "classes": [
+            "INVALID_FIELD_IN_PARAMETER"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.Vordruckzeile",
+          "modelSha256": "d4f2106a22071a905f31be8e1c841a517f78a7312cfd2e90f6b1f99d81861e49"
+        },
+        {
+          "id": "form-alternative:Vordruckzeile:Loans:literal",
+          "grid": "form-alternative",
+          "ordinal": 5,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.Vordruckzeile For \\\"k\\\"",
+          "modelSha256": "b949ca3df6584b25e000e8fa1992f490628da9cfe7b2c2be37ed32d0107525a7"
+        },
+        {
+          "id": "form-alternative:Vordruckzeile:Loans:unknown",
+          "grid": "form-alternative",
+          "ordinal": 6,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.Vordruckzeile For Nope",
+          "modelSha256": "72843568d34832aa41a647cb493c8f028f563806f8013f328f956ab8d7bf6cd0"
+        },
+        {
+          "id": "form-alternative:Vordruckzeile:Loans:word",
+          "grid": "form-alternative",
+          "ordinal": 7,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.Vordruckzeile x",
+          "modelSha256": "f75909f98bf6c6ddf9bc1b466d15b0c8e60c8e5cba5cc306a180a39449ea7db4"
+        },
+        {
+          "id": "form-alternative:Vordruckzeile:Nope:none",
+          "grid": "form-alternative",
+          "ordinal": 8,
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.Vordruckzeile",
+          "modelSha256": "c5365edd2414ce030b0423d3b6d710281939a80195e48409725bb5043ea1b3e3"
+        },
+        {
+          "id": "form-alternative:Vordruckzeile:Nope:literal",
+          "grid": "form-alternative",
+          "ordinal": 9,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.Vordruckzeile For \\\"k\\\"",
+          "modelSha256": "8416c0364a24188ea17581b22efefa4e6233d63a9232bce6274f1b66ce6a28f7"
+        },
+        {
+          "id": "form-alternative:Vordruckzeile:Nope:unknown",
+          "grid": "form-alternative",
+          "ordinal": 10,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.Vordruckzeile For Nope",
+          "modelSha256": "59cb848f36fd0d890d9e3bd45836194b6b9a4985df1e0f6529b79d6af20a2e85"
+        },
+        {
+          "id": "form-alternative:Vordruckzeile:Nope:word",
+          "grid": "form-alternative",
+          "ordinal": 11,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.Vordruckzeile x",
+          "modelSha256": "b0206c392c1b8f29d2ce1ab13031107113bda047e2f1ce7fe567e6aecd648de2"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Branch:none",
+          "grid": "form-alternative",
+          "ordinal": 12,
+          "classes": [],
+          "decline": null,
+          "modelMiddle": "Branch.Vordruckname",
+          "modelSha256": "80c7fdaef04a0618460ef56c2521c1c1cb84619aeb93083179c38d02db918fd4"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Branch:literal",
+          "grid": "form-alternative",
+          "ordinal": 13,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Branch.Vordruckname For \\\"k\\\"",
+          "modelSha256": "a7c88503de0beb2bc80d0f37749c1e97713da07273bb38e258ce7ff088b5724a"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Branch:unknown",
+          "grid": "form-alternative",
+          "ordinal": 14,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Branch.Vordruckname For Nope",
+          "modelSha256": "0e49d307d3658300731368e681e0cd802a2b9e19cd4547ceb05c667897da1f0f"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Branch:word",
+          "grid": "form-alternative",
+          "ordinal": 15,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Branch.Vordruckname x",
+          "modelSha256": "098c81966740543163a878f40b5a219a986638b48cdad332bd5f2d6d674ea116"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Loans:none",
+          "grid": "form-alternative",
+          "ordinal": 16,
+          "classes": [
+            "INVALID_FIELD_IN_PARAMETER"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.Vordruckname",
+          "modelSha256": "98bad7fafc008dd3f32acc79e14bef9c95380e80bf6cdeb67bc7bf86507a106b"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Loans:literal",
+          "grid": "form-alternative",
+          "ordinal": 17,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.Vordruckname For \\\"k\\\"",
+          "modelSha256": "a52c2dc7abada9c4c6d55459ef2ef75f934c942e114c3fc06e0c58d5e9e0b62c"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Loans:unknown",
+          "grid": "form-alternative",
+          "ordinal": 18,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.Vordruckname For Nope",
+          "modelSha256": "912924c1c174e3b7cd195ee38ea4aa3004c5a891b975d83b1140bcb757522f3f"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Loans:word",
+          "grid": "form-alternative",
+          "ordinal": 19,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.Vordruckname x",
+          "modelSha256": "c2a5f7c47256f860f5c36fc7b50914227af14e194ee6c7690c950e6bc9906a3e"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Nope:none",
+          "grid": "form-alternative",
+          "ordinal": 20,
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.Vordruckname",
+          "modelSha256": "4178f9d87b835acf401e6a1f45b39cad9861a80641825e4287984bd55a464477"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Nope:literal",
+          "grid": "form-alternative",
+          "ordinal": 21,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.Vordruckname For \\\"k\\\"",
+          "modelSha256": "cbda47e7343953d29e6e028c23cc9f0d91bb2d62d04f925980a1da86d7be375c"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Nope:unknown",
+          "grid": "form-alternative",
+          "ordinal": 22,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.Vordruckname For Nope",
+          "modelSha256": "670a61496adb5869bccee489e09883d8444fb7fb6ab640a332e39d5058a6d606"
+        },
+        {
+          "id": "form-alternative:Vordruckname:Nope:word",
+          "grid": "form-alternative",
+          "ordinal": 23,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.Vordruckname x",
+          "modelSha256": "1a83a8b95d5aee1897baffcb4ad2a2a1f4ca2ced3ff9d8ac0bbbc6568686bbda"
+        },
+        {
+          "id": "form-alternative:value:Branch:none",
+          "grid": "form-alternative",
+          "ordinal": 24,
+          "classes": [],
+          "decline": null,
+          "modelMiddle": "Branch.value",
+          "modelSha256": "89b8e74cb0027bf85e6cdc079f4e0ff08d4b009869876c3184216a91b80de00b"
+        },
+        {
+          "id": "form-alternative:value:Branch:literal",
+          "grid": "form-alternative",
+          "ordinal": 25,
+          "classes": [
+            "MVK_INDEX_FOR_ERROR_TEXT_INVALID"
+          ],
+          "decline": null,
+          "modelMiddle": "Branch.value For \\\"k\\\"",
+          "modelSha256": "04b0464b8df411a6b2e0aa1f19fb1ea6676a707821f89ea89f4f6dd5108212d1"
+        },
+        {
+          "id": "form-alternative:value:Branch:unknown",
+          "grid": "form-alternative",
+          "ordinal": 26,
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "decline": null,
+          "modelMiddle": "Branch.value For Nope",
+          "modelSha256": "a02492e8d13c2a6107b9124e0315166536ec01099e4410e907e312a1c0f94f02"
+        },
+        {
+          "id": "form-alternative:value:Branch:word",
+          "grid": "form-alternative",
+          "ordinal": 27,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Branch.value x",
+          "modelSha256": "78acaa8776cf8687c6bfe32dd113558fe84d527a689ea0abebeb9ff48e8e0c6e"
+        },
+        {
+          "id": "form-alternative:value:Loans:none",
+          "grid": "form-alternative",
+          "ordinal": 28,
+          "classes": [
+            "INVALID_FIELD"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.value",
+          "modelSha256": "047a1388853cd96f31b3c465da2fb93a5a4a65046e26ad00eb9f55483a41934a"
+        },
+        {
+          "id": "form-alternative:value:Loans:literal",
+          "grid": "form-alternative",
+          "ordinal": 29,
+          "classes": [
+            "MVK_INDEX_FOR_ERROR_TEXT_INVALID"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.value For \\\"k\\\"",
+          "modelSha256": "788cb004a5729018741031300f346d01b559f9203f4f8b302cb29e7431d7c9a8"
+        },
+        {
+          "id": "form-alternative:value:Loans:unknown",
+          "grid": "form-alternative",
+          "ordinal": 30,
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.value For Nope",
+          "modelSha256": "d5e7d1dce13b4d68626fdb6931219db8592b50e107856247306d3c6db2718561"
+        },
+        {
+          "id": "form-alternative:value:Loans:word",
+          "grid": "form-alternative",
+          "ordinal": 31,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Loans.value x",
+          "modelSha256": "1710280b4287dcd9735179172ad39bce38dadc5c7a05e75bf12dd087b839b475"
+        },
+        {
+          "id": "form-alternative:value:Nope:none",
+          "grid": "form-alternative",
+          "ordinal": 32,
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.value",
+          "modelSha256": "eabdb1604f49282776c70e115f21e03e2336c1029a2b7760a577c0b84e9b3a06"
+        },
+        {
+          "id": "form-alternative:value:Nope:literal",
+          "grid": "form-alternative",
+          "ordinal": 33,
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.value For \\\"k\\\"",
+          "modelSha256": "367c395d473327618f0e3266d3046a7320df8c443c990d3bf9504fe52eeff056"
+        },
+        {
+          "id": "form-alternative:value:Nope:unknown",
+          "grid": "form-alternative",
+          "ordinal": 34,
+          "classes": [
+            "INVALID_ENTITY"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.value For Nope",
+          "modelSha256": "d94e6c54591ee9d9c9c4625d2a5ec43ba11745dffc9b8e40a508f97ecc6334cf"
+        },
+        {
+          "id": "form-alternative:value:Nope:word",
+          "grid": "form-alternative",
+          "ordinal": 35,
+          "classes": [
+            "MVK_UNEXPECTED_TOKEN"
+          ],
+          "decline": null,
+          "modelMiddle": "Nope.value x",
+          "modelSha256": "15c9b459639c8be3f2beae14c273723ca7116a83730267fa73ae6705afb59cc3"
+        }
+      ]
+    }
+  ]
+}

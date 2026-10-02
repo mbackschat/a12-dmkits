@@ -61,6 +61,7 @@ class MessageIndexSuffixLanguageAgreementTest {
     @Test
     fun theConditionLanguageAlonePicksTheSuffix() {
         val rows = rows()
+        MessageParameterProbes.replay("index-language", rows.map { Triple(it.id, it.model, it.classes) })
         assertEquals(15, rows.size, "frozen witness rows")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")

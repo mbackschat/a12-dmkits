@@ -162,8 +162,10 @@ private class MessageParameterReader(
         val saved = at
         predicting = true
         entity(indexPosition = false)
-        if (checkFollower && peek()?.text == ".") suffix()
+        val suffix = if (checkFollower && peek()?.text == ".") suffix().first else MessageSuffix.NONE
         val next = peek()
+        // KF501's form alternatives end at the suffix; selecting them cannot consume a field's key.
+        if (word(next) == Word.FOR && suffix in listOf(MessageSuffix.FORM_LINE, MessageSuffix.FORM_NAME)) fail(UNEXPECTED)
         if (checkFollower && next != null && next.text !in listOf("->", ".", ")") && word(next) != Word.FOR) fail(UNEXPECTED)
         at = saved
         predicting = false

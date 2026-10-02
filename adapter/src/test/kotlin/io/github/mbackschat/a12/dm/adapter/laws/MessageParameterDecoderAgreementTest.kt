@@ -144,6 +144,7 @@ class MessageParameterDecoderAgreementTest {
     @Test
     fun eachParameterIsRefusedAtItsParsersFirstEvent() {
         val rows = rows()
+        MessageParameterProbes.replay("decoder", rows.map { Triple(it.id, it.model, it.classes) })
         assertEquals(99, rows.size, "a12-kernel-lean's decoder grid, every row")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
@@ -175,6 +176,9 @@ class MessageParameterDecoderAgreementTest {
                 Row("$key$tail", model, codes)
             }
         }
+        MessageParameterProbes.replay("keyed-decline", rows.map { Triple(it.id, it.model, it.classes) }, rows.associate {
+            it.id to "Group membership on a condition with indexed reads requires the unimplemented iteration visitor."
+        })
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel keyed completion boundary")
         assertEquals(rows.map { it.id to emptyList<String>() }, rows.map { it.id to MessageParameterProbes.portable(it.model) },
             "a declined membership cannot license a later token refusal")
@@ -192,6 +196,7 @@ class MessageParameterDecoderAgreementTest {
                 }
             }
         }
+        MessageParameterProbes.replay("key-follower", rows.map { Triple(it.id, it.model, it.classes) })
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel key follower events")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) }, "portable key follower events")
     }
@@ -204,6 +209,7 @@ class MessageParameterDecoderAgreementTest {
             Row("base-twice", model("\$BaseYear\$ \$BaseYear\$"), listOf("NO_BASE_YEAR")),
             Row("base-offset", model("\$BaseYear\$ \$BaseYear+1\$"), listOf("NO_BASE_YEAR")),
         )
+        MessageParameterProbes.replay("family-order", rows.map { Triple(it.id, it.model, it.classes) })
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel cross-family order")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) }, "portable cross-family order")
     }

@@ -104,6 +104,7 @@ class MessageNamePositionAgreementTest {
     @Test
     fun namePositionRefusalsCarryTheirOwnClasses() {
         val rows = rows()
+        MessageParameterProbes.replay("name-position", rows.map { Triple(it.id, it.model, it.classes) })
         assertEquals(45, rows.size, "frozen witness rows")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
@@ -115,6 +116,7 @@ class MessageNamePositionAgreementTest {
         val rows = listOf("Vordruckzeile", "Vordruckname").map { suffix ->
             Row(suffix, model(library(), Reads.ROOT, "\$Nope.$suffix\$"), listOf(ENTITY))
         }
+        MessageParameterProbes.replay("form-position", rows.map { Triple(it.id, it.model, it.classes) })
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel form-position lookup")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) }, "portable form-position lookup")
     }

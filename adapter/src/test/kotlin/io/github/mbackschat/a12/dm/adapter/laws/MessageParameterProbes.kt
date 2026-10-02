@@ -51,6 +51,23 @@ internal object MessageParameterProbes {
 
     fun en(parameter: String?): LocalizedText = Dsl.en(parameter?.let { "Check $it." } ?: "Check.")
 
+    /** The common hosts replay these exact typed model bytes and separately recorded kernel classes. */
+    fun replay(grid: String, rows: List<Triple<String, String, List<String>>>, declines: Map<String, String> = emptyMap(),
+        resource: String = "message-parameter-decoder.json") {
+        val ids = rows.map { it.first }.toSet()
+        org.junit.jupiter.api.Assertions.assertEquals(rows.size, ids.size, "$grid: independent identities")
+        require(ids.containsAll(declines.keys) && declines.values.all { it.isNotBlank() })
+        val mapper = com.fasterxml.jackson.databind.ObjectMapper()
+        val expected = mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(rows.mapIndexed { ordinal, (id, model, classes) ->
+            mapOf("id" to "$grid:$id", "grid" to grid, "ordinal" to ordinal, "model" to model, "classes" to classes,
+                "decline" to declines[id])
+        }).toList()
+        val stored = HarvestedModels.expand(mapper.readTree(checkNotNull(javaClass.getResource(
+            "/checker-near-miss/$resource")).readText()))
+            .filter { it["grid"].asText() == grid }.sortedBy { it["ordinal"].asInt() }
+        org.junit.jupiter.api.Assertions.assertEquals(expected, stored, "$grid: exact portable replay")
+    }
+
     /** The kernel's ERROR classes, in report order; an empty list is admission. */
     fun kernel(model: String): List<String> = oracle.checkConsistency(model, ReferenceResolvers.selfContained())
         .filter { it.severity() == Severity.ERROR }.map {

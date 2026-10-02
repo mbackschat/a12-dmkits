@@ -85,6 +85,13 @@ class MessageGroupWalkAgreementTest {
         assertEquals(rows.map { it.id to it.classes }, observed, "kernel classes")
         val declined = setOf("dotted-value-inside", "dotted-form-name-inside", "dotted-usb-inside",
             "dotted-rootgroup-inside", "dotted-value-end", "dotted-digits", "dotted-empty")
+        MessageParameterProbes.replay("group-walk", rows.map { Triple(it.id, it.model, it.classes) }, declined.associateWith {
+            when (it) {
+                "dotted-digits" -> "Numeric dotted tails remain outside the measured name grammar."
+                "dotted-empty" -> "Missing dotted tails remain outside the measured name grammar."
+                else -> "Unquoted reserved dotted tails remain outside the measured name grammar."
+            }
+        })
         assertEquals(rows.map { it.id to if (it.id in declined) emptyList() else it.classes },
             rows.map { it.id to MessageParameterProbes.portable(it.model) },
             "group events; reserved, numeric and missing dotted tails retain the explicit decline")

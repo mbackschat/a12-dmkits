@@ -1490,7 +1490,7 @@
       }
     },
     "kf214": {
-      "sha256": "dd3ccff16e3fecfeb9d20445b34ecf84164b4613c409fecb86e8d16e2edc0472",
+      "sha256": "ae8b8aa34f80e99dbc3d74a2e825b33d43298311f9aec23c66e455911c674c90",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -1571,8 +1571,8 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "The earlier surfaces keep their replay evidence. The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
+          "state": "APPLIED",
+          "basis": "The shared parameter reader supplies ordered semantic callbacks; complete kernel class lists are asserted by the typed adapter grids and their exact-byte JVM/Node replay. Dotted-tail grammar, keyed group-condition membership and index-terminal cross-field/category judgments retain their measured exclusions.",
           "evidence": {
             "group reference footprint": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupFootprintTest.kt#groupReadsRetainTheirMessageFootprintOnBothHosts",
@@ -1593,6 +1593,10 @@
             "reserved dotted argument boundary": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupDottedBoundaryTest.kt#reservedSuffixesStayUnjudgedWhileQuotedNamesReachLookup",
               "witness": "44 ordered typed EN/DE witnesses retain separate kernel and portable columns for all ten reserved dotted suffixes, quoting and ordinary-name controls; the bounded reader explicitly declines unquoted reserved suffixes."
+            },
+            "group walk and dotted names": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageParameterDecoderTest.kt#messageParametersReplayTheirKernelClassesAndExplicitDeclines",
+              "witness": "The corresponding group-walk, decoder, name-position or index-language rows retain complete verdict lists; each unsupported row carries its explicit decline reason."
             }
           }
         },
@@ -1676,12 +1680,16 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "The footprint surface keeps its replay evidence. The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
+          "state": "APPLIED",
+          "basis": "The shared parameter reader supplies ordered semantic callbacks; complete kernel class lists are asserted by the typed adapter grids and their exact-byte JVM/Node replay. Dotted-tail grammar, keyed group-condition membership and index-terminal cross-field/category judgments retain their measured exclusions.",
           "evidence": {
             "group reference footprint": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupFootprintTest.kt#groupReadsRetainTheirMessageFootprintOnBothHosts",
               "witness": "All thirty-two kernel-measured models retain ordered findings on both hosts, with admitted descendants, unread-field/group refusals, suffix gates and computation controls."
+            },
+            "name-position group refusals": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageParameterDecoderTest.kt#messageParametersReplayTheirKernelClassesAndExplicitDeclines",
+              "witness": "The corresponding group-walk, decoder, name-position or index-language rows retain complete verdict lists; each unsupported row carries its explicit decline reason."
             }
           }
         },
@@ -1831,9 +1839,14 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The shared parameter reader supplies ordered semantic callbacks; complete kernel class lists are asserted by the typed adapter grids and their exact-byte JVM/Node replay. Dotted-tail grammar, keyed group-condition membership and index-terminal cross-field/category judgments retain their measured exclusions.",
+          "evidence": {
+            "index suffix language": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageParameterDecoderTest.kt#messageParametersReplayTheirKernelClassesAndExplicitDeclines",
+              "witness": "The corresponding group-walk, decoder, name-position or index-language rows retain complete verdict lists; each unsupported row carries its explicit decline reason."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
@@ -1863,7 +1876,7 @@
       }
     },
     "kf336": {
-      "sha256": "702859f298c9320397ab36d308db99a5d537a6aab264b57fb57d53916ecf2023",
+      "sha256": "91bec1323d6ea893d8ee8ba50ae3c1fca334628ff11ae4f1371262da07dc8b8c",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -1903,9 +1916,14 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The shared parameter reader supplies ordered semantic callbacks; complete kernel class lists are asserted by the typed adapter grids and their exact-byte JVM/Node replay. Dotted-tail grammar, keyed group-condition membership and index-terminal cross-field/category judgments retain their measured exclusions.",
+          "evidence": {
+            "message address classes and short-name tier": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageParameterDecoderTest.kt#messageParametersReplayTheirKernelClassesAndExplicitDeclines",
+              "witness": "The corresponding group-walk, decoder, name-position or index-language rows retain complete verdict lists; each unsupported row carries its explicit decline reason."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
@@ -1935,7 +1953,7 @@
       }
     },
     "kf412": {
-      "sha256": "676ef7251b9cd1fc05f627670bc51e178f2d74e9d39f28d7d9daaac8af0cb1f5",
+      "sha256": "3b5a46fb7fa5eec7fcc856b9b93ba7a4d1b9727dbfa294ac146ad2169698ce89",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -1975,9 +1993,14 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The shared parameter reader supplies ordered semantic callbacks; complete kernel class lists are asserted by the typed adapter grids and their exact-byte JVM/Node replay. Dotted-tail grammar, keyed group-condition membership and index-terminal cross-field/category judgments retain their measured exclusions.",
+          "evidence": {
+            "nested key resolution order": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageParameterDecoderTest.kt#messageParametersReplayTheirKernelClassesAndExplicitDeclines",
+              "witness": "The corresponding group-walk, decoder, name-position or index-language rows retain complete verdict lists; each unsupported row carries its explicit decline reason."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
@@ -2077,7 +2100,7 @@
       }
     },
     "kf501": {
-      "sha256": "f1da8717396db50e5e13a4aa8fa88c6b9d34d93ec5dbbfb1a511199725bc515f",
+      "sha256": "2cd3635d9a973c4aa8d24c4c2851b37d41d4c21672079f50e2131ad9f6517890",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -2117,9 +2140,14 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The shared parameter reader supplies ordered semantic callbacks; complete kernel class lists are asserted by the typed adapter grids and their exact-byte JVM/Node replay. Dotted-tail grammar, keyed group-condition membership and index-terminal cross-field/category judgments retain their measured exclusions.",
+          "evidence": {
+            "parameter decoder event order": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageParameterDecoderTest.kt#messageParametersReplayTheirKernelClassesAndExplicitDeclines",
+              "witness": "The corresponding group-walk, decoder, name-position or index-language rows retain complete verdict lists; each unsupported row carries its explicit decline reason."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",

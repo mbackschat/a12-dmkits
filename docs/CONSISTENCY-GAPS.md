@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **DG119 — the shared message decoder still needs its four-grid portable replay closure.** Every parameter family now runs through `MessageParameterReader` and its ordered callbacks. The adapter's group-walk, decoder, name-position and index-language grids enforce complete kernel/portable classes, with reserved dotted tails and keyed group-condition membership explicitly declined. The remaining partition adds exact-byte common JVM/Node replays, reconciles the adoption records and completes terminal review under [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md#dg119-decoder-plan).
+_None open._
 
 ## 2. Out of scope
 
