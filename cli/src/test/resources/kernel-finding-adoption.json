@@ -2079,7 +2079,7 @@
       }
     },
     "kf181": {
-      "sha256": "97a8925f13ec80db5894dcd77f51b9a00bb7e09531d23fc4add5d4d8e0dfbc6c",
+      "sha256": "1ed8088b6466d8b56dd08c5ae7a4903169fc3c2bad0c77f0bf1a32e069c0a312",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -2088,7 +2088,8 @@
         "dmkits": [],
         "interpreter": [],
         "checker": [
-          "target-read gate order"
+          "target-read gate order",
+          "unguarded alternatives"
         ],
         "dmtool-cli": [],
         "json-schema-import": [],
@@ -2119,9 +2120,18 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "DG122 records where the portable checker names a different class on these rows.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "From two alternatives on, the plain self-read walk skips every unguarded alternative's operation while the projected read stays computation-wide; a number target with a live scale gate stays unjudged, and the rows the checker still gets wrong are named open gaps.",
+          "evidence": {
+            "target-read gate order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationGateOrderAgreementTest.kt#theTargetReadIsAskedAfterTheAuthoringAndScaleGatesOneAlternativeAtATime",
+              "witness": "The portable classes are asserted beside the kernel classes on all 144 rows, each row the checker reports less on named with its reason."
+            },
+            "unguarded alternatives": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnguardedAlternativeSelfReadAgreementTest.kt#severalAlternativesLeaveAnUnguardedOnesPlainReadUnjudged",
+              "witness": "Two unguarded alternatives with no guarded one, on a suppressed number target, a String target and an enum category read: the portable classes equal the kernel classes on every row."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
@@ -2295,7 +2305,7 @@
       }
     },
     "kf502": {
-      "sha256": "723fa20dfc661df6434b0c3ce78a8f6a1781ab379d657320d586811d804dad3c",
+      "sha256": "b798dae43fe0b74082b6da3d7e324029dc92d2fd2856548e92d6c715925a02b8",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -2320,7 +2330,7 @@
           "evidence": {
             "base-year comparison classes": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BaseYearComparisonClassAgreementTest.kt#baseYearMeetsTheComparisonAsANumberAndItsEndpointsAsADate",
-              "witness": "64 rows cross eleven field kinds with BaseYear and both range endpoints in both positions, with Date controls and a no-base-year control."
+              "witness": "66 rows cross eleven field kinds with BaseYear and ten with both range endpoints, in both positions, with Date controls and four no-base-year controls."
             }
           }
         },
@@ -2335,9 +2345,14 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "DG121 records where the portable checker names a different class on these rows.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The range endpoint's source admits the base-year terminal, and the comparison walk resolves the year and its endpoints by their field partner, so all 66 rows agree with the kernel. Other base-year pairings stay unjudged.",
+          "evidence": {
+            "base-year comparison classes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BaseYearComparisonClassAgreementTest.kt#baseYearMeetsTheComparisonAsANumberAndItsEndpointsAsADate",
+              "witness": "The portable classes are asserted beside the kernel classes on every row, the two no-base-year text rows included."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.MessageParameterProbes.kernel
+import io.github.mbackschat.a12.dm.adapter.laws.MessageParameterProbes.portable
 import io.github.mbackschat.a12.dm.adapter.laws.PremiumProbes.Alt
 import io.github.mbackschat.a12.dm.adapter.laws.PremiumProbes.computation
 import io.github.mbackschat.a12.dm.adapter.laws.PremiumProbes.premium
@@ -18,6 +19,11 @@ import org.junit.jupiter.api.Test
  * The discriminating pairs are `Max([Total], [Ratio])` against `Max([Total], [Base])`, `[Total] / 2` against
  * `[Total] ^ 2`, and the two-alternative rows, which separate an order from a shape list and from a
  * computation-wide names stage.
+ *
+ * The portable checker is held to the same rows, and every row where it reports less is named below with its
+ * reason. Most of these are the checker's deliberate silence on a number target whose scale gate is live
+ * (`consistency.ComputationSelfRead`); the rest are open gaps (CONSISTENCY-GAPS DG124, DG125). On every
+ * remaining row, the suppressed `S…` rows included, it must name exactly the kernel's classes.
  */
 class ComputationGateOrderAgreementTest {
     data class Row(val id: String, val model: String, val classes: List<String>)
@@ -183,10 +189,30 @@ class ComputationGateOrderAgreementTest {
         assertEquals(144, rows.size, "a12-kernel-lean's three verdict tables, every row into a computed target")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
+        assertEquals((LIVE_SCALE_GATE_SELF_READ + OPEN_GAPS.keys) - rows.map { it.id }.toSet(), emptySet<String>(),
+            "every declined row is a row of the grid")
+        assertEquals(rows.map { it.id to portableExpectation(it) }, rows.map { it.id to portable(it.model) }, "portable classes")
+    }
+
+    private fun portableExpectation(row: Row): List<String> = when (row.id) {
+        in LIVE_SCALE_GATE_SELF_READ -> row.classes.filter { it != SELF_READ }
+        in OPEN_GAPS -> OPEN_GAPS.getValue(row.id)
+        else -> row.classes
     }
 
     private companion object {
         val NONE = emptyList<String>()
         val SUPPRESSED = listOf("MVK_INVALID_COMPARE_DEC_PLACES")
+        const val SELF_READ = "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD"
+
+        /** The self-reads of the number target the checker leaves unjudged while the scale gate can answer first. */
+        val LIVE_SCALE_GATE_SELF_READ = setOf(
+            "J03", "J04", "J05", "J06", "J07", "J08", "J09", "J10", "J11", "J12", "A05", "W01", "W04", "W07", "W08",
+            "B05", "B06", "B07", "B08", "U10", "U12", "U13", "D01", "D02", "D03", "D04", "D05", "D06",
+            "T01", "T02", "T03", "T04", "T05", "T11", "T12", "E01",
+        )
+
+        /** The checker's classes on rows it gets wrong: `W05` is DG124, `P03` and `P04` DG125. */
+        val OPEN_GAPS = mapOf("W05" to NONE, "P03" to NONE, "P04" to NONE)
     }
 }

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.MessageParameterProbes.kernel
+import io.github.mbackschat.a12.dm.adapter.laws.MessageParameterProbes.portable
 import io.github.mbackschat.a12.dm.adapter.laws.PremiumProbes.premium
 import io.github.mbackschat.a12.dm.adapter.laws.PremiumProbes.rule
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test
  * String draws the text class and a DateRange its own, while `StartOfDateRange(BaseYear)` and
  * `EndOfDateRange(BaseYear)` meet it as a date, so the same two kinds draw the date class. A Date and a scale-0
  * Number are the admitted controls, and a model without a base year is the control that the year was read at all.
+ * The portable checker is asserted on every row beside the kernel.
  */
 class BaseYearComparisonClassAgreementTest {
     data class Row(val id: String, val model: String, val classes: List<String>)
@@ -46,14 +48,17 @@ class BaseYearComparisonClassAgreementTest {
         val withoutYear = premium()
         row("no-base-year-right", withoutYear, "[Units] == BaseYear", "MVK_NO_BASE_YEAR")
         row("no-base-year-left", withoutYear, "BaseYear == [Units]", "MVK_NO_BASE_YEAR")
+        row("no-base-year-text", withoutYear, "[Note] == BaseYear", "MVK_NO_BASE_YEAR")
+        row("no-base-year-endpoint-text", withoutYear, "[Note] == StartOfDateRange(BaseYear)", "MVK_NO_BASE_YEAR")
     }
 
     @Test
     fun baseYearMeetsTheComparisonAsANumberAndItsEndpointsAsADate() {
         val rows = rows()
-        assertEquals(64, rows.size, "frozen witness rows")
+        assertEquals(66, rows.size, "frozen witness rows")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to portable(it.model) }, "portable classes")
     }
 
     private companion object {

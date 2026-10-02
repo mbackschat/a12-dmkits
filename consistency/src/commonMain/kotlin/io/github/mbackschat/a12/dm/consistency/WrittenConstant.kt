@@ -19,8 +19,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * opposite a date draws what a text draws (`adapter.laws.CheckerComparisonConstantAgreementTest`,
  * [KERNEL-FINDINGS KF484]).
  *
- * `BaseYear` is a constant too, but of a base type with arms of its own, so it reads as no constant here and
- * every comparison with it stays unjudged.
+ * `BaseYear` is a constant too, but of a base type with arms of its own, so it reads as no constant here; the
+ * comparison walk resolves it by its partner instead ([isBaseYearConstant], [BaseYearRole]).
  */
 internal sealed interface WrittenConstant {
 
@@ -38,6 +38,12 @@ internal sealed interface WrittenConstant {
 
     /** A quoted literal that is no date, carrying the text it spells. */
     data class Text(val value: String) : WrittenConstant
+}
+
+/** Whether [side] is the `BaseYear` terminal in the model's condition language. */
+internal fun TrackedFactBase.isBaseYearConstant(side: String): Boolean {
+    val single = tokenize(side).singleOrNull() ?: return false
+    return single.text == CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get("BaseYear")
 }
 
 /** What [side] is as a written-out constant, or null where it is none this reader types. */

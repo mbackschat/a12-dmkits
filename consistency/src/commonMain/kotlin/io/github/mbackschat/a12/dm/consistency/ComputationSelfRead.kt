@@ -7,6 +7,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
@@ -38,6 +40,13 @@ import kotlinx.serialization.json.JsonPrimitive
  * of the two classes rather than transferred from one to the other. Every other number target is
  * under-reported, deliberately.
  *
+ * **An unguarded alternative's own reads go unjudged once there are several alternatives.** From two
+ * alternatives on, A12 answers an alternative without a precondition with `MVK_ERROR_EMPTY_PRECONDITION` and
+ * never walks its operation for this class, whether or not another alternative is guarded; a lone one is
+ * walked ([KERNEL-FINDINGS KF181], `adapter.laws.ComputationGateOrderAgreementTest` `B04`, `S07`, `S09`, `S10`).
+ * Only the plain walk is narrowed: a projected self-read in such an alternative is still reported, and it
+ * pre-empts the precondition class too (measured 2026-10-02 on the routing model's category read).
+ *
  * **One finding per computation, not per offending reference.** A12 answers a computation with one class
  * however many of its reads are self-reads, measured across both operand orders of a two-entry list.
  */
@@ -49,20 +58,31 @@ internal fun TrackedFactBase.computationSelfReadContributions(element: TrackedDe
     val operators = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val target = computedTargetOf(element) ?: return emptyList()
     if (!scaleGateStandsAside(target, element)) return emptyList()
-    val texts = conditionTexts(element.kind, element.body ?: return emptyList())
+    val body = element.body ?: return emptyList()
+    val texts = conditionTexts(element.kind, body)
     val group = element.path.substringBeforeLast('/')
     val projected = texts.firstNotNullOfOrNull { (member, text) ->
         projectedSelfReadIn(text, target, group, element, operators[SEMANTIC_INDEX])
             ?.let { projectedFinding(element, member, it) }
     }
     if (projected != null) return listOf(DeclarationFinding(element.key, DeclarationStage.CALCULATION_STRUCTURE, projected))
-    val plain = texts.firstNotNullOfOrNull { (member, text) ->
+    val unwalked = unguardedAmongSeveralAlternatives(body)
+    val plain = texts.filter { (member, _) -> member !in unwalked }.firstNotNullOfOrNull { (member, text) ->
         val exempt = exemptOperandsIn(text, member, operators[GROUP_FILLED], operators[CURRENT_REPETITION])
         referencesIn(text, conditionLanguage).filter { it !in exempt }
             .firstOrNull { readsTheTarget(it, target, group, element) }
             ?.let { selfReadFinding(element, target, member, it) }
     }
     return listOfNotNull(plain?.let { DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES, it) })
+}
+
+/** The operation members of the unguarded alternatives, when the computation has more than one alternative. */
+private fun unguardedAmongSeveralAlternatives(body: JsonObject): Set<String> {
+    val alternatives = (body["computationAlternatives"] as? JsonArray).orEmpty()
+    if (alternatives.size < 2) return emptySet()
+    return alternatives.withIndex()
+        .filter { (_, alternative) -> (alternative as? JsonObject)?.get("precondition").let { it == null || it is JsonNull } }
+        .map { "computationAlternatives[${it.index}].operation" }.toSet()
 }
 
 private const val GROUP_FILLED = "GroupFilled"

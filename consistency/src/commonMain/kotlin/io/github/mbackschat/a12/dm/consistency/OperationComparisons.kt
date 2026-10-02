@@ -19,11 +19,40 @@ internal fun OperationAnalysis.comparisonFinding(shape: ComparisonShape): Findin
     }
     val leftShape = operand(true) ?: return null
     val rightShape = operand(false) ?: return null
-    val left = value(leftShape)
-    val right = value(rightShape)
+    val (left, right) = baseYearResolved(shape.operator.text, value(leftShape), value(rightShape)) ?: return null
     val comparison = ConditionComparison(written(leftShape), shape.operator.text, shape.operator.start,
         written(rightShape), leftShape.at, rightShape.end)
     return comparisonFinding(comparison, leftShape, left, right)
+}
+
+/**
+ * The two sides with a base-year operand replaced by the type A12 compares it as, or null to leave the
+ * comparison unjudged.
+ *
+ * `BaseYear` meets the walk as a whole number, except that opposite a date or time it is the base year's first
+ * day ([KERNEL-FINDINGS KF86]); `StartOfDateRange(BaseYear)` and `EndOfDateRange(BaseYear)` meet it as a date.
+ * Both are measured with `==` against one field of each of eleven kinds, on a model that declares a base year
+ * (`adapter.laws.BaseYearComparisonClassAgreementTest`, [KERNEL-FINDINGS KF502]). Every other pairing stays
+ * unjudged: another operator, a constant, computed or base-year partner, and an endpoint opposite a date-time,
+ * which the grid does not reach. A model without a base year reports `MVK_NO_BASE_YEAR` alone, as A12 does,
+ * whatever this resolves (the same test's `no-base-year-*` rows).
+ */
+private fun OperationAnalysis.baseYearResolved(
+    operator: String,
+    left: OperationValue,
+    right: OperationValue,
+): Pair<OperationValue, OperationValue>? {
+    val year = left.takeIf { it.baseYear != null } ?: right.takeIf { it.baseYear != null } ?: return left to right
+    val partner = if (year === left) right else left
+    if (operator != "==" || partner.baseYear != null || partner.field == null ||
+        partner.type == OperationType.Unknown) return null
+    val date = OperationValue(OperationType.Temporal(componentsOf(DATE_FORMAT)))
+    val resolved = when (year.baseYear) {
+        BaseYearRole.ENDPOINT -> if (partner.field.declaredFieldType() == FieldType.DATE_TIME) return null else date
+        BaseYearRole.YEAR -> if (partner.temporal != null) date else OperationValue(OperationType.Number(0))
+        null -> return left to right
+    }
+    return if (year === left) resolved to partner else partner to resolved
 }
 
 private fun OperationAnalysis.comparisonFinding(

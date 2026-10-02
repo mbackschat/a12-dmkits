@@ -335,6 +335,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                         take()
                     }
                     Slot.ENTITY -> entity()
+                    Slot.RANGE -> if (identity(peek()) == "BaseYear") constantToken() else entity()
                     Slot.DATE -> {
                         date()
                         peek()
@@ -484,7 +485,8 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private fun scopeFollows(): Boolean = isText("@") && peek(1)?.text == spellings["FromScope"]?.removePrefix("@")
 
     private class RecognitionStop(val failure: ShapeFailure) : RuntimeException()
-    private enum class Slot { ENTITY, OPERATION, DIGITS, DAY, DATE, COMPONENT }
+    /** [RANGE] is a range endpoint's source: an entity or the base-year terminal (`datumBereichAngabe`). */
+    private enum class Slot { ENTITY, RANGE, OPERATION, DIGITS, DAY, DATE, COMPONENT }
 
     private companion object {
         val CONNECTIVES = setOf("And", "AND", "and", "Or", "OR", "or", "Und", "UND", "und", "Oder", "ODER", "oder")
@@ -511,8 +513,9 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             "HoursFromTime", "MinutesFromTime", "SecondsFromTime")
         val SIGNATURES = buildMap<String, List<Slot>> {
             for (id in ENTITY_LISTS) put(id, listOf(Slot.ENTITY))
-            for (id in listOf("Length", "AbsValue", "FieldValueAsNumber", "FieldValueAsString", "CurrentRepetition",
-                    "StartOfDateRange", "EndOfDateRange")) put(id, listOf(Slot.ENTITY))
+            for (id in listOf("Length", "AbsValue", "FieldValueAsNumber", "FieldValueAsString", "CurrentRepetition"))
+                put(id, listOf(Slot.ENTITY))
+            for (id in listOf("StartOfDateRange", "EndOfDateRange")) put(id, listOf(Slot.RANGE))
             for (id in listOf("DifferenceInDays", "DifferenceInMonths", "DifferenceInYears", "DifferenceInHours",
                     "DifferenceInMinutes", "DifferenceInSeconds", "DateTime", "DateRange"))
                 put(id, listOf(Slot.DATE, Slot.DATE))

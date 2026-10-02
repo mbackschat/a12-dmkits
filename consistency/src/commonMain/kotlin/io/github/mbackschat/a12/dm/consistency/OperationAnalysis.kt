@@ -30,10 +30,22 @@ internal data class OperationValue(
     val type: OperationType,
     val field: TrackedDeclaration? = null,
     val constant: WrittenConstant? = null,
+    val baseYear: BaseYearRole? = null,
 ) {
     val numeric get() = type as? OperationType.Number
     val temporal get() = type as? OperationType.Temporal
+
+    /** The same type as a computed result, which carries no field, constant or base-year provenance. */
+    fun derived() = copy(field = null, constant = null, baseYear = null)
 }
+
+/**
+ * Which base-year operand a value is: the `BaseYear` terminal itself, or a range endpoint over it. Both keep
+ * the [OperationType.Unknown] type, so arithmetic, extrema and every other consumer leave them unjudged as
+ * before; only the comparison walk resolves them, and only against the partners A12 was measured with
+ * (`OperationComparisons.baseYearResolved`).
+ */
+internal enum class BaseYearRole { YEAR, ENDPOINT }
 
 /** One declaration owns recognition, derived results and the tracked model reads that justify them. */
 internal class OperationAnalysis(
@@ -70,7 +82,7 @@ internal class OperationAnalysis(
             else bareReferenceField(written(shape), group, element,
                 shape.read.inAFilterBody && !shape.read.outerMarker)?.let(::field) ?: UNKNOWN
         }
-        is OperationShape.Group -> value(shape.child).copy(field = null, constant = null)
+        is OperationShape.Group -> value(shape.child).derived()
         is OperationShape.Arithmetic -> arithmetic(shape)
         is OperationShape.Call -> call(shape)
     }
@@ -87,7 +99,10 @@ internal class OperationAnalysis(
         return UNKNOWN
     }
 
-    private fun literal(written: String): OperationValue = when (val literal = facts.writtenConstantOf(written)) {
+    private fun literal(written: String): OperationValue =
+        if (facts.isBaseYearConstant(written)) UNKNOWN.copy(baseYear = BaseYearRole.YEAR) else writtenLiteral(written)
+
+    private fun writtenLiteral(written: String): OperationValue = when (val literal = facts.writtenConstantOf(written)) {
         is WrittenConstant.Number -> {
             val digits = written.removePrefix("-")
             val scale = if ('.' in digits || digits.all { it == '0' }) literal.scale
@@ -195,19 +210,22 @@ internal class OperationAnalysis(
             }
             "Sum", "SumOfProducts", "FirstFilledValue" -> {
                 val fields = fields() ?: return UNKNOWN
-                if (id == "FirstFilledValue") fields.firstOrNull()?.copy(field = null, constant = null) ?: UNKNOWN
+                if (id == "FirstFilledValue") fields.firstOrNull()?.derived() ?: UNKNOWN
                 else numericAggregate(fields, id == "SumOfProducts")
             }
             "NumberOfFilledFields", "NumberOfFilledGroups", "NumberOfValueInFields", "CurrentRepetition", "Length" ->
                 OperationValue(OperationType.Number(0))
-            "Abs" -> operands.firstOrNull()?.copy(field = null, constant = null) ?: UNKNOWN
-            "AbsValue" -> fields()?.singleOrNull()?.copy(field = null, constant = null) ?: UNKNOWN
+            "Abs" -> operands.firstOrNull()?.derived() ?: UNKNOWN
+            "AbsValue" -> fields()?.singleOrNull()?.derived() ?: UNKNOWN
             "RoundUp", "RoundDown", "RoundAccounting", "RoundUpValue", "RoundDownValue", "RoundAccountingValue" -> {
                 if (shape.operands.firstOrNull() != null && operands.first().type == OperationType.Unknown) return UNKNOWN
                 val scale = shape.call.operands.getOrNull(1)?.let { shape.call.textOf(it).toIntOrNull() } ?: 0
                 OperationValue(OperationType.Number(scale))
             }
             "FieldValueAsString" -> OperationValue(OperationType.Text)
+            "StartOfDateRange", "EndOfDateRange" ->
+                if (shape.call.operands.singleOrNull()?.let { facts.isBaseYearConstant(shape.call.textOf(it)) } == true)
+                    UNKNOWN.copy(baseYear = BaseYearRole.ENDPOINT) else UNKNOWN
             else -> UNKNOWN
         }
     }
@@ -245,7 +263,7 @@ internal class OperationAnalysis(
             if (!compatible) return refuse("MVK_DATEFORMATS_NOT_COMPATIBLE", shape,
                 "`${shape.call.operator}` needs the same temporal components in every operand")
         }
-        return leader.copy(field = null, constant = null)
+        return leader.derived()
     }
 
     private companion object {
