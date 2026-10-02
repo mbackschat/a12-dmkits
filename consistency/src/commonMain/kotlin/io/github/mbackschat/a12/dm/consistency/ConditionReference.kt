@@ -155,6 +155,16 @@ private fun conditionText(body: JsonObject, member: String): String? {
     return alternativeOf(body, member)?.text(key)
 }
 
+/**
+ * Where [member] of [draftableMembers] stands in A12's walk over a computation: the common precondition first,
+ * then each alternative in authored order, its precondition and operation sharing its place.
+ */
+internal fun walkPositionOf(member: String): Int =
+    alternativeMemberOf(member)?.let { (index, _) -> alternativeWalkPosition(index) } ?: 0
+
+/** The [walkPositionOf] every member of the alternative at [index] shares. */
+internal fun alternativeWalkPosition(index: Int): Int = index + 1
+
 /** The computation alternative an alternative's member of [draftableMembers] belongs to, or null for any other. */
 internal fun alternativeOf(body: JsonObject, member: String): JsonObject? {
     val (index, _) = alternativeMemberOf(member) ?: return null

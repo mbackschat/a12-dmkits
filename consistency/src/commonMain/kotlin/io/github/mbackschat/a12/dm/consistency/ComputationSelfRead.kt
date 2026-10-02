@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORD
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
-import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
@@ -47,8 +47,9 @@ import kotlinx.serialization.json.JsonPrimitive
  * Only the plain walk is narrowed: a projected self-read in such an alternative is still reported, and it
  * pre-empts the precondition class too (measured 2026-10-02 on the routing model's category read).
  *
- * **One finding per computation, not per offending reference.** A12 answers a computation with one class
- * however many of its reads are self-reads, measured across both operand orders of a two-entry list.
+ * **One finding per judged read, in the order A12 walks them.** `[Total] + [Total]` is two, a self-reading
+ * precondition beside a self-reading operation two, the common precondition's first; the projected class
+ * alone answers once for the computation ([KERNEL-FINDINGS KF181], `adapter.laws.SelfReadMultiplicityAgreementTest`).
  */
 internal fun TrackedFactBase.computationSelfReadFindings(): List<Finding> =
     declarations().flatMap { computationSelfReadContributions(it).map { contribution -> contribution.finding } }
@@ -67,13 +68,13 @@ internal fun TrackedFactBase.computationSelfReadContributions(element: TrackedDe
     }
     if (projected != null) return listOf(DeclarationFinding(element.key, DeclarationStage.CALCULATION_STRUCTURE, projected))
     val unwalked = unguardedAmongSeveralAlternatives(body)
-    val plain = texts.filter { (member, _) -> member !in unwalked }.firstNotNullOfOrNull { (member, text) ->
+    return texts.filter { (member, _) -> member !in unwalked }.flatMap { (member, text) ->
         val exempt = exemptOperandsIn(text, member, operators[GROUP_FILLED], operators[CURRENT_REPETITION])
-        referencesIn(text, conditionLanguage).filter { it !in exempt }
-            .firstOrNull { readsTheTarget(it, target, group, element) }
-            ?.let { selfReadFinding(element, target, member, it) }
+        referenceSpansIn(text, conditionLanguage).map { it.written }
+            .filter { it !in exempt && readsTheTarget(it, target, group, element) }
+            .map { DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES,
+                selfReadFinding(element, target, member, it), walkPositionOf(member)) }
     }
-    return listOfNotNull(plain?.let { DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES, it) })
 }
 
 /** The operation members of the unguarded alternatives, when the computation has more than one alternative. */

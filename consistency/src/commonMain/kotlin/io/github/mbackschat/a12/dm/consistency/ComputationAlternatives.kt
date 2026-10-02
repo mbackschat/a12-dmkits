@@ -116,7 +116,9 @@ private fun TrackedFactBase.alternativeFindings(element: TrackedDeclaration, alt
     // notification naming the declaration and carrying no alternative index at all (measured —
     // `ComputationAlternativeSlotLawsTest.oneUnguardedNotificationCoversTheWholeComputation`). Emitting one
     // per alternative would tell a consumer A12 said twice what it said once; the numbers go in the text,
-    // where they help an author without being claimed as A12's own report.
+    // where they help an author without being claimed as A12's own report. It is raised where the walk meets
+    // the first unguarded alternative, between the target reads of the alternatives around it
+    // (`adapter.laws.UnguardedAlternativeSelfReadAgreementTest`).
     return missingWork + DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES, Finding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
@@ -127,7 +129,7 @@ private fun TrackedFactBase.alternativeFindings(element: TrackedDeclaration, alt
             " no precondition — every one of several owes its own, and a `commonPrecondition` does not " +
             "stand in for it",
         element.path,
-    ))
+    ), walkPosition = alternativeWalkPosition(unguarded.first() - 1))
 }
 
 private fun unreadable(element: TrackedDeclaration, explain: String): Finding = Finding(

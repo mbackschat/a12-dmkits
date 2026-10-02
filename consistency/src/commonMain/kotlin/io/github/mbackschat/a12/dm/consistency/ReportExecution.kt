@@ -20,10 +20,17 @@ internal enum class DeclarationStage {
     CALCULATION_ALTERNATIVES, CALCULATION_EXTRACTION, MESSAGE,
 }
 
+/**
+ * @param walkPosition where in A12's walk over a computation's alternatives this finding is raised
+ *     ([walkPositionOf]), for the classes that walk interleaves: A12 reports a target read and the missing
+ *     precondition in alternative order, not grouped by class ([KERNEL-FINDINGS KF181]). Null keeps the
+ *     finding where its producer put it.
+ */
 internal data class DeclarationFinding(
     override val owner: DeclarationKey,
     val stage: DeclarationStage,
     override val finding: Finding,
+    val walkPosition: Int? = null,
 ) : OwnedFinding
 
 /** KF339 and KF375 stop one declaration; KF338 gates its messages after condition checking. */
@@ -44,13 +51,19 @@ internal fun selectDeclaration(
         for (stage in listOf(DeclarationStage.CALCULATION_TARGET, DeclarationStage.CALCULATION_STRUCTURE,
             DeclarationStage.CALCULATION_NORMAL_FORM, DeclarationStage.CALCULATION_ALTERNATIVES,
             DeclarationStage.CALCULATION_EXTRACTION)) {
-            val local = byStage[stage].orEmpty()
+            val local = inWalkOrder(byStage[stage].orEmpty())
             addAll(local)
             if (local.any { it.finding.justifiesRejection }) break
         }
         addAll(byStage[DeclarationStage.MESSAGE].orEmpty())
         addAll(contributions.filterIsInstance<MessageFinding>().sortedBy { it.messageOrdinal })
     }
+}
+
+/** [findings] with the positioned ones in walk order among the places they hold; the others stay put. */
+private fun inWalkOrder(findings: List<DeclarationFinding>): List<DeclarationFinding> {
+    val positioned = findings.filter { it.walkPosition != null }.sortedBy { it.walkPosition }.iterator()
+    return findings.map { if (it.walkPosition != null) positioned.next() else it }
 }
 
 /** R5-E0/E1 order computations before authored rules, preserving local notification occurrences. */
