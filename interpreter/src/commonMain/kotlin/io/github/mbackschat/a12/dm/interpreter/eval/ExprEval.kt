@@ -367,13 +367,19 @@ private fun Interpreter.evalSemanticIndex(e: Expr.SemanticIndex): Val {
  * malformed (a maybe-match), EMPTY (auto-required), or duplicated — are unresolvable → [Val.Unknown], so
  * a direct comparison is suppressed and the concat gate ([concatOperandInvalid]) suppresses a
  * concatenation (the kernel's `np` flag riding `VkString.add` into `isStringNotRelevant`).
+ *
+ * A [selection] (presence, `FirstFilledValue`) reads a well-formed partial Date in the selected row as its
+ * earliest day rather than as unknown ([EvalContext.partialDateFirstDayAt]).
  */
-private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
+private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex, selection: Boolean = false): Val? {
     val c = ctxOf(e)
     if (computeMode) {
         if (indexColumnInvalid(e)) throw PoisonedReadException(e.path)
         val cell = semanticIndexCell(e)
-        if (cell is Val.Unknown) throw PoisonedReadException(e.path)
+        if (cell is Val.Unknown) {
+            return semanticIndexRepetitions(e)?.takeIf { selection }?.let { c.partialDateFirstDayAt(e.path, it) }
+                ?: throw PoisonedReadException(e.path)
+        }
         return cell
     }
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
@@ -389,7 +395,9 @@ private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
         if (matchedKey is Val.Unknown || matchedKey in indexColumnOf(c, idx).duplicated) return Val.Unknown
         val selected = c.indexedCellRepetitions(e.path, idx, key, indexIdentityAdmitted())
         if (selected != null && outsideCoverage(e.path, selected)) return Val.Unknown
-        return indexedCell(c, e.path, idx, key)
+        val cell = indexedCell(c, e.path, idx, key)
+        if (selection && cell is Val.Unknown && selected != null) return c.partialDateFirstDayAt(e.path, selected) ?: cell
+        return cell
     }
     return unmatchedKeyedCell(e)
 }
@@ -553,7 +561,7 @@ internal fun Interpreter.semanticIndexPresence(e: Expr.SemanticIndex): Tri {
     // Presence and value reads share the admitted-key lookup, the key field's own gate included ([resolveIndexKey]). In particular, a malformed stored key contributes
     // no identity, yet keeps the column invalid: no admitted equal key means UNKNOWN, while a later admitted equal
     // key remains selectable regardless of the malformed row elsewhere in the column (IF115/IF272).
-    val cell = computeGuardedIndexCell(e) ?: return Tri.FALSE
+    val cell = computeGuardedIndexCell(e, selection = true) ?: return Tri.FALSE
     return if (cell is Val.Unknown) Tri.UNKNOWN else Tri.TRUE
 }
 
@@ -1939,14 +1947,14 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
     is Expr.Field -> {
         val c = ctxOf(operand)
         if (c.declaredKind(operand.path) == null) {
-            firstFilledContainedCells(c.containedFieldCells(operand.path, declaredRange = false), walk)
+            firstFilledContainedCells(c, c.containedFieldCells(operand.path, declaredRange = false), walk)
         } else if (outsideCoverage(operand.path, c.repsOf(operand.path))) {
             FirstFilledStep.Stop(Val.Unknown)
         } else if (!c.filled(operand.path)) {
             walk.fillable = true
             FirstFilledStep.Continue
         } else {
-            FirstFilledStep.Stop(evalExpr(operand))
+            FirstFilledStep.Stop(firstFilledSelection(c, operand.path, c.repsOf(operand.path), evalExpr(operand)))
         }
     }
     is Expr.Star -> {
@@ -1975,6 +1983,7 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
         if (c.declaredKind(operand.path) == null) {
             when (val selection = keyedGroupSelection(operand)) {
                 is KeyedGroupSelection.Row -> firstFilledContainedCells(
+                    selection.ctx,
                     selection.ctx.containedFieldCells(operand.path, declaredRange = false),
                     walk,
                 )
@@ -1990,7 +1999,7 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
                 KeyedGroupSelection.Unavailable -> FirstFilledStep.Stop(Val.Unknown)
             }
         } else {
-            val cell = computeGuardedIndexCell(operand)
+            val cell = computeGuardedIndexCell(operand, selection = true)
             if (cell == null) {
                 walk.fillable = true
                 FirstFilledStep.Continue
@@ -2037,6 +2046,7 @@ private val Expr.EntitySource.path: String
  * implicit-wildcard mechanism used by every bare-group scan: repeatable levels below the authored group are
  * enumerated by the document context, rather than reconstructed as scalar AST paths. */
 private fun Interpreter.firstFilledContainedCells(
+    source: EvalContext,
     cells: Sequence<ScanCell>,
     walk: FirstFilledWalk,
 ): FirstFilledStep {
@@ -2059,7 +2069,7 @@ private fun Interpreter.firstFilledContainedCells(
                 CellState.FILLED -> Unit
             }
         }
-        return FirstFilledStep.Stop(cell.value ?: Val.Unknown)
+        return FirstFilledStep.Stop(firstFilledSelection(source, cell.path, cell.reps, cell.value ?: Val.Unknown))
     }
     if (!visited) walk.fillable = true
     return FirstFilledStep.Continue
@@ -2122,7 +2132,7 @@ private fun Interpreter.firstFilledStar(
             walk.fillable = true
             continue
         }
-        val selected = row.field(operand.path)
+        val selected = firstFilledSelection(row, operand.path, reps, row.field(operand.path))
         return FirstFilledStep.Stop(
             category?.let { row.enumCategoryValue(operand.path, it, selected) } ?: selected,
         )
@@ -2132,6 +2142,11 @@ private fun Interpreter.firstFilledStar(
 }
 
 private fun Interpreter.firstFilledValue(f: Expr.Func): Val = firstFilledScan(f).value
+
+/** The value `FirstFilledValue` takes from the filled cell it stops at: a partial Date a value read leaves
+ *  unknown is selected as its earliest day ([EvalContext.partialDateFirstDayAt]). */
+private fun firstFilledSelection(c: EvalContext, path: String, repetitions: List<Int>, resolved: Val): Val =
+    if (resolved is Val.Unknown) c.partialDateFirstDayAt(path, repetitions) ?: resolved else resolved
 
 /** The empty-selection identity of a `FirstFilledValue` by its operand kind (the kernel's per-kind
  *  `FirstValueCombiner`): NUMBER → the fillable `0`; every other kind → NOT-GIVEN ([Val.Unknown], the

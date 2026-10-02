@@ -48,6 +48,9 @@ class OverlayContextContentReadGuardTest {
             Map.entry("presenceUnknown", "a parallel iteration's invalid-index state, decided by the iteration"),
             Map.entry("starOmission", "validation's omission typing; a computation types no omission"),
             Map.entry("messageDisplayValue", "rule-message interpolation, which the compute path never renders"),
+            Map.entry("partialDateFirstDayAt", "a read of a partial-precision Date cell, which no computation can "
+                    + "write: A12 refuses one as a computation target "
+                    + "(adapter.laws.ComputedPartialDateTargetAdmissionDiffTest, finding KF81)"),
             Map.entry("customConditionData", "the compute path registers no custom condition, so one in a "
                     + "computation is refused before any read (Interpreter.evalCustom)"));
 

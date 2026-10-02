@@ -131,6 +131,11 @@ interface EvalContext {
      * selection so a computation overlay can project a value produced earlier in the cascade. */
     fun indexedValueAt(targetPath: String, repetitions: List<Int>): Val? = null
 
+    /** The earliest day of the well-formed partial Date stored at [path] / [repetitions] when its year is known,
+     *  else null. A value read leaves such a cell unknown; a SELECTION reads this (KERNEL-FINDINGS KF508). The
+     *  default answers null, which keeps the cell unknown. */
+    fun partialDateFirstDayAt(path: String, repetitions: List<Int>): Val? = null
+
     /** The [IndexColumn] state of a starred INDEX field's column. The general [Document]'s raw row context
      *  memoizes it per (column, star-scope prefix) at the DOCUMENT level (the kernel's `IndexFieldCache`
      *  analog, like [indexedCell]'s row map); this default rebuilds per read — a cascade OVERLAY's view

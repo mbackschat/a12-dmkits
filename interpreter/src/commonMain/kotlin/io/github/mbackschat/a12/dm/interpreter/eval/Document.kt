@@ -1113,6 +1113,9 @@ class Document(internal val config: DocumentConfig) {
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
         ): List<Int>? = indexedCellReps(targetPath, indexField, indexValue, indexIdentityAdmitted)
 
+        override fun partialDateFirstDayAt(path: String, repetitions: List<Int>): Val? =
+            partialDateFirstDay(path, repetitions)
+
         private fun indexedCellReps(
             targetPath: String,
             indexField: String,
@@ -1670,6 +1673,15 @@ class Document(internal val config: DocumentConfig) {
         val idx = (enumValues[path] ?: return Val.Unknown).indexOf(raw)
         if (idx < 0) return Val.Unknown
         return enumCategories[path]?.get(category)?.getOrNull(idx)?.let { Val.Txt(it) } ?: Val.Unknown
+    }
+
+    /** [EvalContext.partialDateFirstDayAt] for a stored cell: only a formally valid partial resolves. */
+    private fun partialDateFirstDay(path: String, reps: List<Int>): Val? {
+        val precision = datePrecisions[path]?.takeIf { it in PARTIAL_PRECISIONS } ?: return null
+        val raw = valueAt(path, reps)?.value?.takeIf { it.isNotEmpty() } ?: return null
+        if (formallyInvalid(path, raw)) return null
+        val format = declaredTemporalFormat(path, kindOf(path)) ?: "yyyy-MM-dd"
+        return resolvePartialDate(raw, format, precision, lastDay = false)?.let { Val.Txt(it) }
     }
 
     /** Whether a PRESENT raw value at [path] is **formally invalid** (not check-relevant) — the [resolveValue]

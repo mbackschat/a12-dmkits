@@ -1420,4 +1420,4 @@ class Interpreter(
 }
 
 /** The `DateType` precisions whose well-formed value may be partially known (a zero component). */
-private val PARTIAL_PRECISIONS = setOf(DatePrecision.DAY_OPTIONAL, DatePrecision.MONTH_OPTIONAL, DatePrecision.YEAR_OPTIONAL)
+internal val PARTIAL_PRECISIONS = setOf(DatePrecision.DAY_OPTIONAL, DatePrecision.MONTH_OPTIONAL, DatePrecision.YEAR_OPTIONAL)

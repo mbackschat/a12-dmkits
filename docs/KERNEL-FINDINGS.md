@@ -12157,9 +12157,9 @@ So a dependent computation reads a computed DateTime at the instant its renderin
 
 Answers a12-kernel-lean's `SPEC-2026-10-02-04` on our own cover/insured carriers. A well-formed partial value such as `2024-06-00` at `DAY_OPTIONAL` or `0000-00-00` at `YEAR_OPTIONAL` is filled on both arms: `FieldFilled` holds and `FieldNotFilled` does not, in a computation's precondition and in a rule alike, and `NumberOfFilledFields` counts it beside a filled component-omitting `yyyy-MM` Date and a `yyyy-MM` DateFragment (`4`). `2024-00-00` is the same text in both precise fields, the date error `datumFalsch` under `DAY_OPTIONAL` and an admitted value under `YEAR_OPTIONAL`, so presence follows the declared precision: the first field's tests and the count are left unknown (computations CLEARED, rules silent) while the second reads filled.
 
-The readers agree. The same value raises no `mandatoryField` on a required field, makes `GroupFilled` hold for a group holding only it, and makes its root content for a once rule (`MinValue(Lines*` / `Value) < 5` fires with the partial value the root's only content and stays silent on an empty root). `FieldValuesNotUnique` compares the **stored text**: two `2024-06-00` fire, `2024-06-00` beside `2024-07-00` does not, and `2024-06-00` beside a fully known `2024-06-01` does not although both complete to June 1st; equal fully known texts fire. That holds at all three precisions on named fields (`2024-00-00` pairs at `MONTH_OPTIONAL`, `0000-00-00` at `YEAR_OPTIONAL`) and down a starred `DAY_OPTIONAL` column.
+The readers agree. The same value raises no `mandatoryField` on a required field, makes `GroupFilled` hold for a group holding only it, and makes its root content for a once rule (`MinValue(Lines*` / `Value) < 5` fires with the partial value the root's only content and stays silent on an empty root). `FieldValuesNotUnique` compares the **stored text**: two `2024-06-00` fire, `2024-06-00` beside `2024-07-00` does not, and `2024-06-00` beside a fully known `2024-06-01` does not although both complete to June 1st; equal fully known texts fire. That holds at all three precisions on named fields (`2024-00-00` pairs at `MONTH_OPTIONAL`, `0000-00-00` at `YEAR_OPTIONAL`) and down a starred `DAY_OPTIONAL` column. *Extended 2026-10-02, the same day:* a keyed read agrees, `FieldFilled([Visits/On For "a"])` holding for a row whose `On` is `2024-06-00` (measured with [KF508](#kf508)).
 
-**Two interpreter defects surfaced and are fixed**: the uniqueness scan skipped a partial value as unconvertible ([IF349](INTERPRETER-FINDINGS.md#if349)), and the once-rule row showed that content under a sibling root evaluated an empty root ([KF506](#kf506), [IF350](INTERPRETER-FINDINGS.md#if350)).
+**Three interpreter defects surfaced and are fixed**: the uniqueness scan skipped a partial value as unconvertible ([IF349](INTERPRETER-FINDINGS.md#if349)), the once-rule row showed that content under a sibling root evaluated an empty root ([KF506](#kf506), [IF350](INTERPRETER-FINDINGS.md#if350)), and a keyed presence read left a partial value unknown ([IF353](INTERPRETER-FINDINGS.md#if353)).
 
 *(Locked: `adapter.laws.PartialDatePresenceDiffTest`.)*
 
@@ -12189,3 +12189,21 @@ On a model with roots `Insured` and `Claimant`, two once rules declared on `Clai
 This answers a12-kernel-lean's `SPEC-2026-10-02-05` on our own policy carrier: its three group-count rules fire on a root of `null` cells and on an empty root object, and the plain `[W] < 5` stays silent until `W` holds `1`. Unmeasured: a fixed root repetition other than 1 (which `referenziertMehrereVordrucke` also counts), a small-side count inside a `Having` filter, and a second root named only inside a `Having` filter. Separating the root-group count from the second-root reason needs a once rule on the repeatable root itself, and that is global by the repeatable-root reason, so no once rule separates the three.
 
 *(Locked: `adapter.laws.RuleBucketGateDiffTest`, with [KF506](#kf506)'s root-rule rows in `adapter.laws.SiblingRootContentGateDiffTest`. The interpreter evaluated none of the global rows before [IF351](INTERPRETER-FINDINGS.md#if351).)*
+
+## §9 supplement — `FirstFilledValue` stopping at a well-formed partial Date yields its EARLIEST day when the year is known, on every arm (differential, both strategies, 2026-10-02) <a id="kf508"></a>
+
+> Fold: pending — the runtime half of [KF260](#kf260)'s `FirstFilledValue` row; folds beside [KF88](#kf88)'s `ValueAsDate` boundary.
+
+A bracket read of a partial Date is refused (`MVK_INVALID_DATE_TYPE`, [KF473](#kf473)) and `FirstFilledValue` admits one ([KF260](#kf260)), so a selection is how a partial value reaches a comparison or a computation. Measured on a claim reported on `2024-06-15`, every rule `FirstFilledValue(<operand>, Reported)` against a full `Closed`:
+
+| the walk stops at | compared | fires | separates |
+|---|---|---|---|
+| `Day` `2024-06-00` at `DAY_OPTIONAL` | `== 2024-06-01` · before `2024-06-30` | yes · yes | the earliest day, not the latest |
+| `Month` `2024-00-00` · `2024-03-00` at `MONTH_OPTIONAL` | `== 2024-01-01` · `== 2024-03-01` | yes | month and day both complete to their first |
+| `Year` `0000-00-00` at `YEAR_OPTIONAL` | `== 2024-06-15` | no | an unknown year stops the walk unknown; it does not pass on to `Reported` |
+| `Day` `2024-00-00` (deeper than `DAY_OPTIONAL` admits) · `1583-10-00` (below the Gregorian floor) | `== 2024-06-15` · before `2024-06-15` | no, `datumFalsch` | a malformed partial stops the walk unknown |
+| `Visits*` / `On`, the bare group `Window`, `[Visits/On For "a"]`, each holding `2024-06-00` | `== 2024-06-01` | yes | the starred, group and keyed arms select alike |
+
+A computation copying `FirstFilledValue(Day, Reported)` into a full Date stores `2024-06-01`, and its starred and keyed twins store the same; a malformed `Day` or an unknown `Year` clears the target. Unmeasured: `FieldValueAsString` over a keyed partial, and a selection inside a parallel iteration.
+
+*(Locked: `adapter.laws.FirstFilledValuePartialDateDiffTest`. The interpreter read every one of these as unknown before [IF353](INTERPRETER-FINDINGS.md#if353).)*

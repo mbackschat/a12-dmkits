@@ -2528,7 +2528,7 @@
       }
     },
     "kf505": {
-      "sha256": "67329785df055371012cfa6d510db4a49193be810eb2114de577c0f5fb66cc11",
+      "sha256": "7ad95b4fa4bf50d167ba4b9e84b6239235f3cc191a4836c6a9ce449958e32c60",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -2777,7 +2777,7 @@
           "evidence": {
             "rule bucket gate": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RuleBucketGateDiffTest.kt#aSmallSideCountAndAnUniteratedRepeatableRootAreEvaluatedWithoutContent",
-              "witness": "Six small-side counts, a large-side count, a plain comparison and an uniterated repeatable-root sum over empty and filled documents; the cross-root rows are in the sibling test of the same class."
+              "witness": "Seven small-side counts, a root-group count, a large-side count, a plain comparison and an uniterated repeatable-root sum over empty and filled documents; the cross-root rows are in the sibling test of the same class."
             }
           }
         },
@@ -2825,6 +2825,76 @@
               "witness": "The group-count empty-gate checkpoint's five rules over three documents."
             }
           }
+        }
+      }
+    },
+    "kf508": {
+      "sha256": "f963b20ecba7bb012bacba0a54aa178ee99750f02c7dafa2f614cb305f328dfe",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "partial-Date selection"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "partial-Date selection"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A three-engine differential on a carrier of our own measures both kernel strategies.",
+          "evidence": {
+            "partial-Date selection": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledValuePartialDateDiffTest.kt#aComparisonSeesThePartialDateAsItsFirstDay",
+              "witness": "Each precision, a malformed and a below-floor partial, and the starred, group and keyed arms; the computation side is the sibling test of the same class."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed builders author these shapes unchanged; the fact is about evaluation.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "IF353 selects a formally valid partial's earliest day on every arm the walk stops on.",
+          "evidence": {
+            "partial-Date selection": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledValuePartialDateDiffTest.kt#aComparisonSeesThePartialDateAsItsFirstDay",
+              "witness": "The interpreter is the third engine of the same differential."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime value or firing; the portable checker decides admission only.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI evaluates through the interpreter, whose consumer row carries this fact.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Our own measurement; reported to the peer in the 2026-10-02 letter.",
+          "evidence": {}
         }
       }
     }

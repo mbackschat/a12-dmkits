@@ -4369,3 +4369,12 @@ One exploratory fork improved allocation but failed its predeclared exact-anchor
 **The fix.** Both walks iterate `Document.selfAndAncestors`, which ends at the root group.
 
 *Locked by:* `adapter.laws.RuleBucketGateDiffTest` (`ROOT_COUNT`, `VALUE_ERROR` on every row, as both kernel strategies report it).
+
+### IF353: a selection read a well-formed partial Date as unknown (differential, 2026-10-02) <a id="if353"></a>
+
+**The defect.** A cell's value resolution reads a partial Date as no single date, which is right for the readers A12 lets reach one, and the `FirstFilledValue` walk and the keyed presence read took that value as they found it. A12 selects the partial's earliest day when its year is known ([KF508](KERNEL-FINDINGS.md#kf508)) and counts a keyed partial as filled ([KF505](KERNEL-FINDINGS.md#kf505)), so the interpreter left every such rule silent and cleared every such computation.
+
+**The fix.** `EvalContext.partialDateFirstDayAt` answers the earliest day of a formally valid partial cell, from the stored text and the full formal check, so a value below the Gregorian floor stays unknown. Every arm the walk stops on (direct field, star, a group's contained cells, keyed field) asks it when the value read is unknown, and `computeGuardedIndexCell` asks it for a selection on both modes. `FieldValueAsString` keeps the plain keyed read, since no measurement says what it renders.
+
+*Locked by:* `adapter.laws.FirstFilledValuePartialDateDiffTest`, against both kernel strategies.
+
