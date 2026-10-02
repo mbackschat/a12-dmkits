@@ -1557,11 +1557,16 @@ def stageInterpreterNpmPackage = tasks.register('stageInterpreterNpmPackage', Sy
             def sanitizedSources = []
             def embeddedSources = []
             (sourceMap.sources ?: []).eachWithIndex { source, index ->
-                def ownSource = source =~ /.*\/src\/(commonMain|jsMain)\/(.*)/
+                // shared-regex is compiled into commonMain as a second srcDir (fd4ac4e02), so its sources are
+                // own sources too, but they live under that root rather than this module's src/.
+                def sharedSource = source =~ /.*\/shared-regex\/src\/(commonMain)\/(.*)/
+                def ownSource = sharedSource.matches() ? sharedSource : source =~ /.*\/src\/(commonMain|jsMain)\/(.*)/
                 if (ownSource.matches()) {
                     def sourceSet = ownSource.group(1)
                     def relative = ownSource.group(2)
-                    def sourceFile = file("src/${sourceSet}/${relative}")
+                    def sourceFile = sharedSource.matches()
+                        ? rootProject.file("shared-regex/src/${sourceSet}/${relative}")
+                        : file("src/${sourceSet}/${relative}")
                     if (!sourceFile.isFile()) {
                         throw new GradleException(
                             "source map ${sourceMapFile.name} names missing own source ${sourceFile}",
