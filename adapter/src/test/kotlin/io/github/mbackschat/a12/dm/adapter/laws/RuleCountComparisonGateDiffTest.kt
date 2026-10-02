@@ -48,6 +48,17 @@ class RuleCountComparisonGateDiffTest {
                     rule("${name}_R_$op", compare(Dsl.number(-threshold(op)), op, value)),
                 )
             }
+        } + counts.flatMap { (name, count) ->
+            val value = count.plus(withheld)
+            val small = value.lt(1L)
+            val large = value.ge(0L)
+            listOf(
+                rule("${name}_AND_SL", small.and(large)),
+                rule("${name}_AND_LS", large.and(small)),
+                rule("${name}_AND_SS", small.and(small)),
+                rule("${name}_AND_LL", large.and(large)),
+                rule("${name}_OR_SF", small.or(value.ge(5L))),
+            )
         } + rule("PLAIN", withheld.lt(1L))
         admitted(rules.fold(base) { json, rule -> TypedRules.inject(json, rule) })
     }
@@ -57,9 +68,11 @@ class RuleCountComparisonGateDiffTest {
         fun codes(vararg suffixes: String) = listOf("GROUPS", "FIELDS", "DISTINCT").flatMap { count ->
             suffixes.map { "${count}_$it" }
         }.sorted()
-        val emptyRoot = codes("L_EQ", "L_NE", "L_LT", "L_LE", "R_EQ", "R_NE", "R_GT", "R_GE")
+        val emptyRoot = codes("L_EQ", "L_NE", "L_LT", "L_LE", "R_EQ", "R_NE", "R_GT", "R_GE",
+            "AND_SL", "AND_LS", "AND_SS", "OR_SF")
         val withContent = (codes("L_EQ", "L_NE", "L_LT", "L_LE", "L_GT", "L_GE",
-            "R_EQ", "R_NE", "R_LT", "R_LE", "R_GT", "R_GE") + "PLAIN").sorted()
+            "R_EQ", "R_NE", "R_LT", "R_LE", "R_GT", "R_GE",
+            "AND_SL", "AND_LS", "AND_SS", "AND_LL", "OR_SF") + "PLAIN").sorted()
         return listOf(
             "{}" to emptyRoot,
             """{"Policy":{}}""" to emptyRoot,
