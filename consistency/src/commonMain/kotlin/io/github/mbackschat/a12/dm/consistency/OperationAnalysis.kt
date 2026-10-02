@@ -159,8 +159,8 @@ internal class OperationAnalysis(
             if ((shape.left as? OperationShape.Arithmetic)?.operator?.text == "^")
                 return refuse("MVK_TOO_MANY_POW_FOR_CALC", shape, "brace the inner power before raising it again")
         }
-        if (divisions(shape) > 1) return refuse("MVK_TOO_MANY_DIV_FOR_CALC", shape,
-            "brace the inner quotient; a multiplicative chain admits one division")
+        if (divisionWalk(shape, DivisionMark()) == DivisionWalk.REFUSED) return refuse("MVK_TOO_MANY_DIV_FOR_CALC", shape,
+            "brace one of the quotients; an operator admits one division through its operands and the functions it applies")
         val scale = when (operator) {
             "+", "-" -> if (a.scale == null || b.scale == null) null else maxOf(a.scale, b.scale)
             "*" -> if (a.scale == null || b.scale == null) null else a.scale + b.scale
@@ -180,9 +180,37 @@ internal class OperationAnalysis(
         (field?.enumerationBody()?.get("values") as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
             .any { (it["label"] as? JsonArray)?.isNotEmpty() == true }
 
-    private fun divisions(shape: OperationShape): Int = if (shape is OperationShape.Arithmetic &&
-        shape.operator.text in setOf("*", "/")) divisions(shape.left) + divisions(shape.right) +
-        (if (shape.operator.text == "/") 1 else 0) else 0
+    /**
+     * A12's division check from one operator node: a pre-order walk carrying one division mark, which a second
+     * division refuses ([KERNEL-FINDINGS KF503], read from the parser's `CheckOperationImpl.checkOnlyOneDiv`).
+     *
+     * The walk descends through `*`, `/` and value-function operands with the same mark. A brace, an addition
+     * or subtraction, or a power walks each of its operands with a fresh mark and then ends the WHOLE walk, the
+     * enclosing ones included, so a cut in a first operand leaves every later operand unwalked. That is why
+     * `[Amount] + [Amount] + Max(…)` passes and `{Max(…)} + [Amount]` does not, which no count of divisions
+     * per region separates.
+     */
+    private fun divisionWalk(shape: OperationShape?, mark: DivisionMark): DivisionWalk = when (shape) {
+        null, is OperationShape.Literal, is OperationShape.Read -> DivisionWalk.CONTINUE
+        is OperationShape.Group -> freshWalks(shape.child)
+        is OperationShape.Call -> shape.operands.asSequence().map { divisionWalk(it, mark) }
+            .firstOrNull { it != DivisionWalk.CONTINUE } ?: DivisionWalk.CONTINUE
+        is OperationShape.Arithmetic -> when (shape.operator.text) {
+            "*", "/" -> if (shape.operator.text == "/" && !mark.mark()) DivisionWalk.REFUSED
+                else listOf(shape.left, shape.right).asSequence().map { divisionWalk(it, mark) }
+                    .firstOrNull { it != DivisionWalk.CONTINUE } ?: DivisionWalk.CONTINUE
+            else -> freshWalks(shape.left, shape.right)
+        }
+    }
+
+    /** Each of [operands] walked with its own mark, in order, after which the enclosing walk ends. */
+    private fun freshWalks(vararg operands: OperationShape): DivisionWalk {
+        for (operand in operands) {
+            val outcome = divisionWalk(operand, DivisionMark())
+            if (outcome != DivisionWalk.CONTINUE) return outcome
+        }
+        return DivisionWalk.CUT
+    }
 
     private fun call(shape: OperationShape.Call): OperationValue {
         val id = identities[shape.call.operator] ?: return UNKNOWN
@@ -268,5 +296,19 @@ internal class OperationAnalysis(
 
     private companion object {
         val UNKNOWN = OperationValue(OperationType.Unknown)
+    }
+}
+
+/** How a division walk ended: still walking, ended by a cut, or refused at a second division. */
+private enum class DivisionWalk { CONTINUE, CUT, REFUSED }
+
+/** The one division mark a walk carries; [mark] reports whether the division it records is the first. */
+private class DivisionMark {
+    private var marked = false
+
+    fun mark(): Boolean {
+        val first = !marked
+        marked = true
+        return first
     }
 }

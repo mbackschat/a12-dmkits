@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.MessageParameterProbes.kernel
+import io.github.mbackschat.a12.dm.adapter.laws.MessageParameterProbes.portable
 import io.github.mbackschat.a12.dm.adapter.laws.PremiumProbes.Alt
 import io.github.mbackschat.a12.dm.adapter.laws.PremiumProbes.ROOT
 import io.github.mbackschat.a12.dm.adapter.laws.PremiumProbes.computation
@@ -18,7 +19,8 @@ import org.junit.jupiter.api.Test
  * draws `MVK_INVALID_COMPARE_DEC_PLACES` rather than being admitted — that class is the "passes" verdict here.
  * Ids are a12-kernel-lean's (`number-operation-division-walk-2026-10-02`); the `L…` leader rows re-express their
  * node-gate checkpoint's leader claim. The pairs no compositional count separates are `P01` against `P02` and
- * `P03` against `h03`.
+ * `P03` against `h03`; the `o…` rows are our own controls for the fresh mark an addition gives each operand.
+ * The portable checker is held to every row.
  */
 class DivisionWalkAgreementTest {
     data class Row(val id: String, val model: String, val classes: List<String>)
@@ -91,13 +93,20 @@ class DivisionWalkAgreementTest {
         root("L10", "Max([Amount])")
         root("L11", "Max([Note], [Nope])", "MVK_INVALID_ENTITY")
         condition("L12", "Max([Note]) > 0", "MVK_NOT_SORTABLE")
+        // our own controls: an addition or subtraction gives each operand its own mark, and a braced quotient
+        // is its own walk, so neither pair below meets a second division (KF45's plain-arithmetic region)
+        root("o01", "[Amount] / [Rate] + [Rate] / [Amount]", "MVK_INVALID_COMPARE_DEC_PLACES")
+        root("o02", "[Amount] / [Rate] - [Rate] / [Amount]", "MVK_INVALID_COMPARE_DEC_PLACES")
+        root("o03", "[Amount] / {[Rate] / [Amount]}", "MVK_INVALID_COMPARE_DEC_PLACES")
+        root("o04", "{[Amount] / [Rate] / [Amount]}", "MVK_TOO_MANY_DIV_FOR_CALC")
     }
 
     @Test
     fun theDivisionCheckWalksThroughCallsAndStopsAtTheFirstBraceAdditionOrPower() {
         val rows = rows()
-        assertEquals(59, rows.size, "frozen witness rows")
+        assertEquals(59, rows.count { !it.id.startsWith("o") }, "frozen witness rows")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to portable(it.model) }, "portable classes")
     }
 }

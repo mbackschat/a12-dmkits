@@ -2201,9 +2201,14 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "DG120 records where the portable checker names a different class on these rows.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Every arithmetic operator and power runs one walk with a single division mark through products, quotients and value-function operands; a brace, addition, subtraction or power walks each operand afresh and then ends the whole walk.",
+          "evidence": {
+            "division walk through calls": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DivisionWalkAgreementTest.kt#theDivisionCheckWalksThroughCallsAndStopsAtTheFirstBraceAdditionOrPower",
+              "witness": "The portable classes are asserted beside the kernel classes on all 59 witness rows and four own controls, computation, repeatable and rule carriers included."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
@@ -2233,7 +2238,7 @@
       }
     },
     "kf503": {
-      "sha256": "62a91e362f21ada2b7f16c5ca49ad94c64c0c0caec1f6e9b24b6ccd0fce9e614",
+      "sha256": "759d719b379b89fd08fa52e524d93f6d9312b034cb045624e5190da79c839e40",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -2273,9 +2278,14 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "DG120 records where the portable checker names a different class on these rows.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Every arithmetic operator and power runs one walk with a single division mark through products, quotients and value-function operands; a brace, addition, subtraction or power walks each operand afresh and then ends the whole walk.",
+          "evidence": {
+            "division walk through calls": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DivisionWalkAgreementTest.kt#theDivisionCheckWalksThroughCallsAndStopsAtTheFirstBraceAdditionOrPower",
+              "witness": "The portable classes are asserted beside the kernel classes on all 59 witness rows and four own controls, computation, repeatable and rule carriers included."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
