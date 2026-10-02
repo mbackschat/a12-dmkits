@@ -2782,32 +2782,39 @@
       }
     },
     "kf507": {
-      "sha256": "1e0335a4bfde278939f64de0193a1a499ed291f24bbdace30fa4dff7166e842c",
+      "sha256": "e0205d1992e1710e9e2cc4f0dad40b1233b65ba5229a2830ebaea6f6dd30a0d7",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "rule bucket gate"
+          "rule bucket gate",
+          "count comparison sides"
         ],
         "dmkits": [],
         "interpreter": [
-          "rule bucket gate"
+          "rule bucket gate",
+          "count comparison sides"
         ],
         "checker": [],
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "specification"
+          "specification",
+          "count comparison sides"
         ]
       },
       "consumers": {
         "adapter": {
           "state": "APPLIED",
-          "basis": "A three-engine differential on carriers of our own measures both kernel strategies' code, polarity and pointer.",
+          "basis": "The original bucketing differential measures code, polarity and pointer; the count-side extension measures complete fired-code lists under both kernel strategies.",
           "evidence": {
             "rule bucket gate": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RuleBucketGateDiffTest.kt#aSmallSideCountAndAnUniteratedRepeatableRootAreEvaluatedWithoutContent",
               "witness": "Seven small-side counts, a root-group count, a large-side count, a plain comparison and an uniterated repeatable-root sum over empty and filled documents; the cross-root rows are in the sibling test of the same class."
+            },
+            "count comparison sides": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RuleCountComparisonGateDiffTest.kt#countSideControlsTheGateWhileEveryComparisonIsTrue",
+              "witness": "Each of three counts on both sides of six ordinary comparisons, with complete fired-code lists on absent, empty, null and zero-content documents; both kernel strategies and the interpreter agree."
             }
           }
         },
@@ -2823,6 +2830,10 @@
             "rule bucket gate": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RuleBucketGateDiffTest.kt#aRuleNamingASecondRootIsEvaluatedWithoutContent",
               "witness": "The interpreter is the third engine of the same differential."
+            },
+            "count comparison sides": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RuleCountComparisonGateDiffTest.kt#countSideControlsTheGateWhileEveryComparisonIsTrue",
+              "witness": "Each of three counts on both sides of six ordinary comparisons, with complete fired-code lists on absent, empty, null and zero-content documents; both kernel strategies and the interpreter agree."
             }
           }
         },
@@ -2853,6 +2864,10 @@
             "specification": {
               "reference": "a12-kernel-lean@98c9306aa47ea6d78f4a010e7926c835c1579882:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-02-05",
               "witness": "The group-count empty-gate checkpoint's five rules over three documents."
+            },
+            "count comparison sides": {
+              "reference": "a12-kernel-lean@8b40cd7d44daa9ef144e9d3f93310549b8d60ebe:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-02-06",
+              "witness": "The peer reports both equality/inequality sides and the small-side ordering boundary for all three counts. Our independent runtime grid confirms the boundary; receipt of this disposition remains pending."
             }
           }
         }
