@@ -33,6 +33,8 @@ Message-parameter families share one reader and retain their `CheckFamily` ident
 
 Numeric `FirstFilledValue` summarizes the maximum known scale across all expanded fields, while nonnumeric results retain their first-field kind. `Abs` shares rounding's immediate-operation constant and numeric-field gates; it has no digit-count gate. Enforcement is in `OperationAnalysis` and `roundingContributions`; `NumericOperationGateAgreementTest` measures rules and computations against the kernel, and `NumericOperationGateTest` replays the same models on JVM and Node ([KF181](KERNEL-FINDINGS.md#kf181), [KF167](KERNEL-FINDINGS.md#kf167)).
 
+Common-precondition target reads follow the first judged computation alternative: once per common read, absent when every alternative is unguarded among several. The projected target-read class still answers once for the whole computation ahead of that walk. `computationSelfReadContributions` enforces placement; `CommonPreconditionWalkAgreementTest` and its `CommonPreconditionWalkTest` replay lock fixed-root, fixed-nested and repeatable Number carriers with the scale gate suppressed ([KF181](KERNEL-FINDINGS.md#kf181)).
+
 ## The entry point
 
 Strings in, strings out — and that is the durable decision, not the number of calls. The checker's Kotlin types are still moving, so exporting *them* would publish an ABI that changes under every consumer; a JSON string commits to the wire shape below and to nothing else.

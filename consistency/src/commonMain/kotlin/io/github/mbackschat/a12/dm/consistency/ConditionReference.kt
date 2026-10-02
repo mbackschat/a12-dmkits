@@ -156,8 +156,8 @@ private fun conditionText(body: JsonObject, member: String): String? {
 }
 
 /**
- * Where [member] of [draftableMembers] stands in A12's walk over a computation: the common precondition first,
- * then each alternative in authored order, its precondition and operation sharing its place.
+ * Authored alternative position, with zero for declaration-level members. A family's semantic walk can
+ * relocate a common-precondition finding (the self-read walk does so at its first judged alternative, KF181).
  */
 internal fun walkPositionOf(member: String): Int =
     alternativeMemberOf(member)?.let { (index, _) -> alternativeWalkPosition(index) } ?: 0

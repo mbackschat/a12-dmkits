@@ -48,7 +48,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * pre-empts the precondition class too (measured 2026-10-02 on the routing model's category read).
  *
  * **One finding per judged read, in the order A12 walks them.** `[Total] + [Total]` is two, a self-reading
- * precondition beside a self-reading operation two, the common precondition's first; the projected class
+ * precondition beside a self-reading operation two. The common precondition's reads are reported once at
+ * the first judged alternative, or not at all when none is judged (SPEC-2026-10-02-07); the projected class
  * alone answers once for the computation ([KERNEL-FINDINGS KF181], `adapter.laws.SelfReadMultiplicityAgreementTest`).
  */
 internal fun TrackedFactBase.computationSelfReadFindings(): List<Finding> =
@@ -68,12 +69,15 @@ internal fun TrackedFactBase.computationSelfReadContributions(element: TrackedDe
     }
     if (projected != null) return listOf(DeclarationFinding(element.key, DeclarationStage.CALCULATION_STRUCTURE, projected))
     val unwalked = unguardedAmongSeveralAlternatives(body)
-    return texts.filter { (member, _) -> member !in unwalked }.flatMap { (member, text) ->
+    val walked = texts.filter { (member, _) -> member !in unwalked }
+    val commonPosition = walked.firstNotNullOfOrNull { (member, _) -> walkPositionOf(member).takeIf { it > 0 } }
+    return walked.filter { (member, _) -> member != "commonPrecondition" || commonPosition != null }.flatMap { (member, text) ->
         val exempt = exemptOperandsIn(text, member, operators[GROUP_FILLED], operators[CURRENT_REPETITION])
         referenceSpansIn(text, conditionLanguage).map { it.written }
             .filter { it !in exempt && readsTheTarget(it, target, group, element) }
             .map { DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES,
-                selfReadFinding(element, target, member, it), walkPositionOf(member)) }
+                selfReadFinding(element, target, member, it),
+                if (member == "commonPrecondition") checkNotNull(commonPosition) else walkPositionOf(member)) }
     }
 }
 

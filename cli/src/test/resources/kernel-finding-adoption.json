@@ -2177,12 +2177,13 @@
       }
     },
     "kf181": {
-      "sha256": "14e4c221c8b9a42bce241fe15a50177d4f9917d7d78ec1189ed4930622df1df3",
+      "sha256": "06a63120787a50ee5ca0b07b8f3c7c5025da7176aedfad36b789bc3b4010fac0",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "target-read gate order",
-          "expanded numeric list scale"
+          "expanded numeric list scale",
+          "common-precondition placement"
         ],
         "dmkits": [],
         "interpreter": [],
@@ -2190,7 +2191,8 @@
           "target-read gate order",
           "unguarded alternatives",
           "self-read multiplicity",
-          "expanded numeric list scale"
+          "expanded numeric list scale",
+          "common-precondition placement"
         ],
         "dmtool-cli": [],
         "json-schema-import": [],
@@ -2211,6 +2213,10 @@
             "expanded numeric list scale": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericOperationGateAgreementTest.kt#firstFilledScaleSummarizesEveryExpandedField",
               "witness": "Both orders of scale-0 and scale-2 fields, directly and through group expansion, against both target scales on rules and computations; complete kernel and checker class lists."
+            },
+            "common-precondition placement": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CommonPreconditionWalkAgreementTest.kt#commonReadsFollowTheFirstJudgedAlternativeAndProjectionsAnswerAlone",
+              "witness": "Complete kernel and portable lists on 38 typed fixed-root, nested and repeatable Number models, including no-judged-alternative and projected-class controls; the same bytes replay on both common hosts."
             }
           }
         },
@@ -2243,6 +2249,10 @@
             "expanded numeric list scale": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericOperationGateAgreementTest.kt#firstFilledScaleSummarizesEveryExpandedField",
               "witness": "Both orders of scale-0 and scale-2 fields, directly and through group expansion, against both target scales on rules and computations; complete kernel and checker class lists."
+            },
+            "common-precondition placement": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CommonPreconditionWalkAgreementTest.kt#commonReadsFollowTheFirstJudgedAlternativeAndProjectionsAnswerAlone",
+              "witness": "Complete kernel and portable lists on 38 typed fixed-root, nested and repeatable Number models, including no-judged-alternative and projected-class controls; the same bytes replay on both common hosts."
             }
           }
         },
