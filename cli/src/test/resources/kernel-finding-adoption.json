@@ -2077,6 +2077,294 @@
           }
         }
       }
+    },
+    "kf181": {
+      "sha256": "97a8925f13ec80db5894dcd77f51b9a00bb7e09531d23fc4add5d4d8e0dfbc6c",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "target-read gate order"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "target-read gate order"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Typed carriers of our own have measured kernel verdicts with admitted controls.",
+          "evidence": {
+            "target-read gate order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationGateOrderAgreementTest.kt#theTargetReadIsAskedAfterTheAuthoringAndScaleGatesOneAlternativeAtATime",
+              "witness": "All 144 rows of the peer's three verdict tables on a scale-0 target with complete class lists, suppression rows included."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed builders do not decide these admission classes; refused shapes are authored as raw text.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission order decides which class a refused model reports; the interpreter runs admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "DG122 records where the portable checker names a different class on these rows.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is delegated to the kernel; the portable engine is the checker consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Conditions and operations are preserved verbatim; admission classes are not part of the import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Conditions and operations are preserved verbatim; admission classes are not part of the export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-01-07",
+              "witness": "The operator-join checkpoint's 35 static verdicts and its 29 and 80 settling verdicts."
+            }
+          }
+        }
+      }
+    },
+    "kf45": {
+      "sha256": "8ef3fabe54adbc9ee30c44ac566dda612609f3ed835f7415ed4bb7f53d77b6e3",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "division walk through calls"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "division walk through calls"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Typed carriers of our own have measured kernel verdicts with admitted controls.",
+          "evidence": {
+            "division walk through calls": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DivisionWalkAgreementTest.kt#theDivisionCheckWalksThroughCallsAndStopsAtTheFirstBraceAdditionOrPower",
+              "witness": "59 rows on scale-2 computation, rule and repeatable carriers separate the walk from every compositional count."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed builders do not decide these admission classes; refused shapes are authored as raw text.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The walk decides admission only; admitted operations evaluate unchanged.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "DG120 records where the portable checker names a different class on these rows.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is delegated to the kernel; the portable engine is the checker consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Conditions and operations are preserved verbatim; admission classes are not part of the import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Conditions and operations are preserved verbatim; admission classes are not part of the export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-02-03",
+              "witness": "The division-walk checkpoint's 34 computation, 8 rule and 5 repeatable rows."
+            }
+          }
+        }
+      }
+    },
+    "kf503": {
+      "sha256": "62a91e362f21ada2b7f16c5ca49ad94c64c0c0caec1f6e9b24b6ccd0fce9e614",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "division walk through calls"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "division walk through calls"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Typed carriers of our own have measured kernel verdicts with admitted controls.",
+          "evidence": {
+            "division walk through calls": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DivisionWalkAgreementTest.kt#theDivisionCheckWalksThroughCallsAndStopsAtTheFirstBraceAdditionOrPower",
+              "witness": "59 rows on scale-2 computation, rule and repeatable carriers separate the walk from every compositional count, with the lone-leader rows."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed builders do not decide these admission classes; refused shapes are authored as raw text.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The walk decides admission only; admitted operations evaluate unchanged.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "DG120 records where the portable checker names a different class on these rows.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is delegated to the kernel; the portable engine is the checker consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Conditions and operations are preserved verbatim; admission classes are not part of the import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Conditions and operations are preserved verbatim; admission classes are not part of the export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-02-03",
+              "witness": "The division-walk checkpoint's 34 computation, 8 rule and 5 repeatable rows and the node-gate leader rows."
+            }
+          }
+        }
+      }
+    },
+    "kf502": {
+      "sha256": "723fa20dfc661df6434b0c3ce78a8f6a1781ab379d657320d586811d804dad3c",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "base-year comparison classes"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "base-year comparison classes"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Typed carriers of our own have measured kernel verdicts with admitted controls.",
+          "evidence": {
+            "base-year comparison classes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BaseYearComparisonClassAgreementTest.kt#baseYearMeetsTheComparisonAsANumberAndItsEndpointsAsADate",
+              "witness": "64 rows cross eleven field kinds with BaseYear and both range endpoints in both positions, with Date controls and a no-base-year control."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed builders do not decide these admission classes; refused shapes are authored as raw text.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Refusal classes decide admission only; KF86's evaluated values are the interpreter's, locked separately.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "DG121 records where the portable checker names a different class on these rows.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is delegated to the kernel; the portable engine is the checker consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Conditions and operations are preserved verbatim; admission classes are not part of the import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Conditions and operations are preserved verbatim; admission classes are not part of the export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-01-05",
+              "witness": "The condition-class grid's base-year rows and its two settling batches."
+            }
+          }
+        }
+      }
     }
   }
 }
