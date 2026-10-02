@@ -2605,7 +2605,7 @@
       }
     },
     "kf506": {
-      "sha256": "ab9abfdf7654ef36c7a3aa71a0c8281f8512fbdb0a19c7732f8cca1cbd9f06fe",
+      "sha256": "4bf642812281b1f7a8f416f6672f0595b438b01cd41c346f8d0d6b9773e7192a",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -2639,7 +2639,7 @@
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "IF350 drops content under another root from the attach-depth map.",
+          "basis": "IF350 keeps another root's content out of a root rule's gate; IF351 adds the global bucket the confound hid.",
           "evidence": {
             "sibling-root content gate": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SiblingRootContentGateDiffTest.kt#aSiblingRootsContentDoesNotEvaluateAnEmptyRoot",
@@ -2746,6 +2746,83 @@
             "specification": {
               "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-01-04",
               "witness": "The filtered-star compute checkpoint's documents."
+            }
+          }
+        }
+      }
+    },
+    "kf507": {
+      "sha256": "1e0335a4bfde278939f64de0193a1a499ed291f24bbdace30fa4dff7166e842c",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "rule bucket gate"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "rule bucket gate"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "specification"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A three-engine differential on carriers of our own measures both kernel strategies' code, polarity and pointer.",
+          "evidence": {
+            "rule bucket gate": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RuleBucketGateDiffTest.kt#aSmallSideCountAndAnUniteratedRepeatableRootAreEvaluatedWithoutContent",
+              "witness": "Six small-side counts, a large-side count, a plain comparison and an uniterated repeatable-root sum over empty and filled documents; the cross-root rows are in the sibling test of the same class."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed builders author these shapes unchanged; the fact is about evaluation.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "IF351 decides the bucket once per rule and evaluates a global once rule in one all-ones context.",
+          "evidence": {
+            "rule bucket gate": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RuleBucketGateDiffTest.kt#aRuleNamingASecondRootIsEvaluatedWithoutContent",
+              "witness": "The interpreter is the third engine of the same differential."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime value or firing; the portable checker decides admission only.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI evaluates through the interpreter, whose consumer row carries this fact.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document runtime behaviour is not part of the JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer originated the small-side count measurement; this estate reproduced it on its own carrier and measured the other two reasons.",
+          "evidence": {
+            "specification": {
+              "reference": "a12-kernel-lean@98c9306aa47ea6d78f4a010e7926c835c1579882:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-02-05",
+              "witness": "The group-count empty-gate checkpoint's five rules over three documents."
             }
           }
         }

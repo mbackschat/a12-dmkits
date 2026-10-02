@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
@@ -271,4 +272,66 @@ internal fun namedEntityPaths(expr: Expr): List<String> = when (expr) {
         is Expr.EntityIndex.Field -> listOf(index.path)
     }
     is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit, is Expr.Const -> emptyList()
+}
+
+/**
+ * Every model path the condition names, in any role and at any depth: values, stars and their `Having` filters,
+ * group operands, semantic-index targets and keys, category projections, and `CurrentRepetition`'s group.
+ * This is the "which root groups does the rule touch" view, so unlike every view above nothing is excluded.
+ */
+internal fun entityPaths(cond: Cond): List<String> = when (cond) {
+    is Cond.Cmp -> entityPaths(cond.left) + entityPaths(cond.right)
+    is Cond.Tolerance -> entityPaths(cond.left) + entityPaths(cond.right)
+    is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap(::entityPaths)
+    is Cond.And -> entityPaths(cond.left) + entityPaths(cond.right)
+    is Cond.Or -> entityPaths(cond.left) + entityPaths(cond.right)
+    is Cond.Not -> entityPaths(cond.c)
+    is Cond.Pred -> cond.args.flatMap(::entityPaths)
+    is Cond.Pattern -> entityPaths(cond.value) + entityPaths(cond.pattern)
+    is Cond.Custom -> emptyList()
+}
+
+private fun entityPaths(expr: Expr): List<String> = when (expr) {
+    is Expr.Field -> listOf(expr.path)
+    is Expr.Star -> listOf(expr.path) + expr.having?.let(::entityPaths).orEmpty()
+    is Expr.Func -> expr.args.flatMap(::entityPaths)
+    is Expr.Arith -> entityPaths(expr.left) + entityPaths(expr.right)
+    is Expr.EnumCategory -> listOf(expr.path)
+    is Expr.SemanticIndex -> listOfNotNull(expr.path, expr.indexFieldPath)
+    is Expr.EntitySpec -> entityPaths(expr.source) + when (val index = expr.semanticIndex) {
+        null, is Expr.EntityIndex.Literal -> emptyList()
+        is Expr.EntityIndex.Field -> listOf(index.path)
+    }
+    is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit, is Expr.Const -> emptyList()
+}
+
+/**
+ * Whether some comparison holds a filled-field, filled-group or distinct-value count on the side where a smaller
+ * count makes it true (`count < x`, `x > count`, the `<=`/`>=` twins), or on either side of an (in)equality.
+ * A12 files such a rule as always evaluated, because an empty instance is exactly where the count is small
+ * (KERNEL-FINDINGS KF507). A tolerance band is read as an (in)equality, a choice no measured row separates
+ * (INTERPRETER-FINDINGS IF351). A `Having` filter's own comparisons are not asked, matching the walk that stops
+ * at a comparison's operands.
+ */
+internal fun comparesACountOnItsSmallSide(cond: Cond): Boolean = when (cond) {
+    is Cond.Cmp -> when (cond.op) {
+        CmpOp.LT, CmpOp.LE -> containsCount(cond.left)
+        CmpOp.GT, CmpOp.GE -> containsCount(cond.right)
+        CmpOp.EQ, CmpOp.NE -> containsCount(cond.left) || containsCount(cond.right)
+    }
+    is Cond.Tolerance -> containsCount(cond.left) || containsCount(cond.right)
+    is Cond.And -> comparesACountOnItsSmallSide(cond.left) || comparesACountOnItsSmallSide(cond.right)
+    is Cond.Or -> comparesACountOnItsSmallSide(cond.left) || comparesACountOnItsSmallSide(cond.right)
+    is Cond.Not -> comparesACountOnItsSmallSide(cond.c)
+    is Cond.ValueListQuant, is Cond.Pred, is Cond.Pattern, is Cond.Custom -> false
+}
+
+private val SMALL_SIDE_COUNTS = setOf(
+    FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.NUMBER_OF_FILLED_GROUPS, FunctionOp.NUMBER_OF_DIFFERENT_VALUES,
+)
+
+private fun containsCount(expr: Expr): Boolean = when (expr) {
+    is Expr.Func -> FunctionOp.byName(expr.name) in SMALL_SIDE_COUNTS || expr.args.any(::containsCount)
+    is Expr.Arith -> containsCount(expr.left) || containsCount(expr.right)
+    else -> false
 }

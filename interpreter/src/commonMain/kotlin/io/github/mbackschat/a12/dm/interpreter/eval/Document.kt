@@ -584,6 +584,11 @@ class Document(internal val config: DocumentConfig) {
         return listOf(RowContext(groupPath, reps, attach.any { (d, pfx) -> reps.take(d) in pfx }))
     }
 
+    /** The single context of a GLOBAL once rule: the all-ones row of [groupPath], evaluated whatever the
+     *  document holds, since A12 runs that bucket with no root-content gate ([IterationScopes] `isGlobal`). */
+    fun globalContextFor(groupPath: String): List<EvalContext> =
+        listOf(RowContext(groupPath, List(parts(groupPath).size) { 1 }, evaluated = true))
+
     private fun computeValidationContextsFor(groupPath: String): List<EvalContext> {
         return contextsForRows(groupPath, iterationRowsOf(groupPath))
     }
@@ -1174,12 +1179,10 @@ class Document(internal val config: DocumentConfig) {
             val environment = groupListEnvironment(groupPath, bindDepth)
             val bound = if (bindDepth >= 0) bindDepth else partsOf(environment).size - 1
             var extent: Long? = null
-            var level = environment
-            while (partsOf(level).size > bound) {
+            for (level in selfAndAncestors(environment).takeWhile { partsOf(it).size > bound }) {
                 if (level in repeatableGroups) {
                     extent = (extent ?: 1L) * (declaredReps[level] ?: return null)
                 }
-                level = parentGroup(level)
             }
             return extent?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt()
         }
@@ -1198,13 +1201,17 @@ class Document(internal val config: DocumentConfig) {
          * The group whose rows a group-list operand ranges over: [groupPath] itself when it repeats, else its
          * nearest repeatable ancestor within [bindDepth] — the environment of a non-repeatable terminal.
          */
-        private fun groupListEnvironment(groupPath: String, bindDepth: Int): String {
-            var environment = groupPath
-            while (environment !in repeatableGroups && partsOf(environment).size > bindDepth) {
-                environment = parentGroup(environment)
-            }
-            return environment
-        }
+        private fun groupListEnvironment(groupPath: String, bindDepth: Int): String =
+            selfAndAncestors(groupPath).firstOrNull { it in repeatableGroups || partsOf(it).size <= bindDepth }
+                ?: selfAndAncestors(groupPath).last()
+
+        /**
+         * [path] and each group above it, ending at its root group. A walk that stepped on with [parentGroup]
+         * instead never ended past a root, because `/` splits into one empty segment and is its own parent, so a
+         * root-group count (`/Root*`, bound 0) spun forever (INTERPRETER-FINDINGS IF352).
+         */
+        private fun selfAndAncestors(path: String): Sequence<String> =
+            generateSequence(path) { if (partsOf(it).size > 1) parentGroup(it) else null }
 
         // The declared fields under a group path, recursively and in model declaration order. Numeric `Sum`
         // observes this order because every addition rounds at precision 50; compute scans share this same plan.

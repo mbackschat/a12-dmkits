@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import org.junit.jupiter.api.Assertions.assertEquals
 
 /**
@@ -56,6 +57,24 @@ internal object ThreeEngineRuns {
         val outcome = DmInterpreter(def).validate(def.readDocumentJson(documentJson))
         assertEquals(emptyList<Any>(), outcome.unsupported, "declined, not evaluated — $documentJson")
         assertEquals(fromDynamic, outcome.messages.map { it.code }.sorted(), "INTERPRETER vs dynamic-Groovy — $documentJson")
+        return fromDynamic
+    }
+
+    /** Every validation message as `code|TYPE|pointer`, agreed by the three engines — the [fired] view plus where
+     *  each message attaches and its polarity. */
+    fun signatures(model: String, documentJson: String): List<String> {
+        val dynamic = RuntimeLaws.kernelEngine(model)
+        val static = RuntimeLaws.kernelJavaEngine(model)
+        val fromDynamic = dynamic.validationSignaturesSorted(dynamic.instance(documentJson))
+        assertEquals(fromDynamic, static.validationSignaturesSorted(static.instance(documentJson)),
+            "static-Java vs dynamic-Groovy — $documentJson")
+        val def = ModelLoader.load(model)
+        val outcome = DmInterpreter(def).validate(def.readDocumentJson(documentJson))
+        assertEquals(emptyList<Any>(), outcome.unsupported, "declined, not evaluated — $documentJson")
+        val interpreted = outcome.messages.map {
+            "${it.code}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}|${it.errorPath}"
+        }.sorted()
+        assertEquals(fromDynamic, interpreted, "INTERPRETER vs dynamic-Groovy — $documentJson")
         return fromDynamic
     }
 }

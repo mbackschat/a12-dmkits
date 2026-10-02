@@ -12,7 +12,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 /** A rule's value-independent iteration decision, prepared once and consumed by every document evaluation. */
 internal sealed interface IterationPlan {
     data class Rows(val group: String) : IterationPlan
-    data class Once(val rootGroup: String) : IterationPlan
+    /** One evaluation in [rootGroup]. A [global] rule runs with no root-content gate, a root rule only where that
+     *  root instance holds content ([IterationScopes.isGlobal]). */
+    data class Once(val rootGroup: String, val global: Boolean) : IterationPlan
     data class Parallel(
         val joined: List<String>,
         val indexName: String,
@@ -61,7 +63,7 @@ internal class IterationScopes(private val model: ModelDef) {
             .maxByOrNull { it.count { c -> c == '/' } } ?: run {
             val starAnchor = starBindingAnchor(ast)
             return if (starAnchor != null) IterationPlan.Rows(starAnchor)
-            else IterationPlan.Once(rootGroupOf(resolveErrorPath(rule)))
+            else rootGroupOf(resolveErrorPath(rule)).let { root -> IterationPlan.Once(root, isGlobal(root, ast)) }
         }
         val parallelGroups = (refs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } } + semanticAnchors)
             .distinct().filter { it != scope && !scope.startsWith("$it/") }
@@ -85,7 +87,7 @@ internal class IterationScopes(private val model: ModelDef) {
         indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
     ): List<EvalContext> = when (plan) {
         is IterationPlan.Rows -> doc.contextsFor(plan.group)
-        is IterationPlan.Once -> doc.onceContextFor(plan.rootGroup)
+        is IterationPlan.Once -> if (plan.global) doc.globalContextFor(plan.rootGroup) else doc.onceContextFor(plan.rootGroup)
         is IterationPlan.Parallel -> doc.parallelContexts(
             plan.joined,
             plan.indexName,
@@ -104,6 +106,24 @@ internal class IterationScopes(private val model: ModelDef) {
         is IterationPlan.Rows -> plan.group == group
         is IterationPlan.Parallel -> group in plan.joined
     }
+
+    /**
+     * Whether A12 files this once-evaluated rule in its GLOBAL bucket rather than under its error field's root.
+     *
+     * A root rule runs only inside a root instance holding content, while a global one runs once with no such
+     * gate, at the all-ones row (codegen `CollectedRulesPerRootGroupCreator` + `RulesInRootGroup_method`, measured
+     * in `adapter.laws.RuleBucketGateDiffTest`). Three of A12's reasons apply here:
+     *  - the error root is repeatable, which for a once plan means the rule does not iterate that root;
+     *  - the condition names a second root group, in any role;
+     *  - a comparison counts on its small side ([comparesACountOnItsSmallSide]).
+     *
+     * A12's fourth reason, a condition that can fire empty, needs no bucket here, because [Interpreter]'s row gate
+     * already admits it, and its legacy `Usb` and root-count reasons have no interpreter construct.
+     */
+    private fun isGlobal(errorRoot: String, ast: Cond): Boolean =
+        errorRoot in model.repeatable ||
+            (entityPaths(ast).map(::rootGroupOf) + errorRoot).toSet().size > 1 ||
+            comparesACountOnItsSmallSide(ast)
 
     /** The deepest repeatable BINDING level across the condition's starred refs (tier 2), or null. */
     private fun starBindingAnchor(ast: Cond): String? =

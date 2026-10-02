@@ -4348,8 +4348,24 @@ One exploratory fork improved allocation but failed its predeclared exact-anchor
 
 ### IF350: content under a sibling root no longer evaluates an empty root (differential, 2026-10-02) <a id="if350"></a>
 
-**The defect.** `Document.attachByDepth` recorded every content item at its common-prefix depth with the iteration group, including depth 0, which is content under another root. A once-frame's `evaluated` flag matches the empty prefix at depth 0, so any content anywhere marked every root's once-frame evaluated, and its comparisons fired on an empty root. The kernel leaves it unevaluated ([KF506](KERNEL-FINDINGS.md#kf506)). Real rows were unaffected, because an instantiated row is content at its own depth.
+**The defect.** `Document.attachByDepth` recorded every content item at its common-prefix depth with the iteration group, including depth 0, which is content under another root. A once-frame's `evaluated` flag matches the empty prefix at depth 0, so any content anywhere marked every root's once-frame evaluated, and its comparisons fired on an empty root. The kernel leaves it unevaluated ([KF506](KERNEL-FINDINGS.md#kf506)). Instantiated repeatable rows were unaffected, because such a row is content at its own depth; a non-repeatable instance such as `{"Claimant":{}}` is what changed.
 
-**The fix.** Content sharing no level with the group is not in its scope. That is the one site where the depth map is built, so every once-frame and synthetic row context inherits the fix.
+**The fix.** Content sharing no level with the group is not in its scope. Every once-frame and synthetic row context built from this map inherits that; `nonRepGroupFilledDepths` is a separate map, filtered to the group's own descendants, so a cross-root `GroupFilled` is unaffected. *Corrected 2026-10-02:* this alone was right only for rules reading their own root. A cold review named the confound, and a rule naming a second root turned out to be evaluated with no content at all, which this fix had made silent. The rule-level gate is [IF351](#if351).
 
 *Locked by:* `adapter.laws.SiblingRootContentGateDiffTest`, with a one-root control, against both kernel strategies. The second instance (`[Amount] < 5`) was predicted and run before the fix.
+
+### IF351: a GLOBAL once rule is evaluated with no content gate, once (differential, 2026-10-02) <a id="if351"></a>
+
+**The defect.** Every once rule was evaluated only where its error root held content, and on a repeatable root once per instantiated row. A12 files a rule in a GLOBAL bucket when it names a second root, compares a filled-field, filled-group or distinct-value count on its small side, or has an error field in a repeatable root it does not iterate, and runs that bucket once, at the all-ones row, whatever the document holds ([KF507](KERNEL-FINDINGS.md#kf507)). So the interpreter missed every such rule on an empty instance, and fired an uniterated repeatable-root rule once per row.
+
+**The fix.** `IterationScopes.prepare` decides the bucket once per rule (`isGlobal`), from `AstRefs.entityPaths` and `comparesACountOnItsSmallSide`, and a global `IterationPlan.Once` evaluates `Document.globalContextFor`: one all-ones context marked evaluated. A condition that can fire empty needs no bucket, since the row gate already admits it. The legacy `Usb` reason has no interpreter construct, and a root-group count names a repeatable root, so on a once plan it is global by the repeatable-root or second-root reason. Two choices rest on no separating row: a tolerance band counts as an (in)equality for the small-side test, and a root named only inside a `Having` filter counts as a second root.
+
+*Locked by:* `adapter.laws.RuleBucketGateDiffTest` (code, polarity and pointer), against both kernel strategies.
+
+### IF352: a root-group count in a firing rule never finished (differential, 2026-10-02) <a id="if352"></a>
+
+**The defect.** Reporting a firing rule walks its condition for the omission/value polarity, and a `NumberOfFilledGroups(/Root*)` operand there asks for the declared extent of every repeatable level above its environment. That walk stepped up with `parentGroup` until it reached the binding depth, which is 0 for a root star, and `/` splits into one empty segment and is its own parent, so it never got there. Any firing rule holding a root-group count hung the evaluation. The sibling walk that finds a group list's environment had the same step and would spin the same way on a chain with no repeatable level.
+
+**The fix.** Both walks iterate `Document.selfAndAncestors`, which ends at the root group.
+
+*Locked by:* `adapter.laws.RuleBucketGateDiffTest` (`ROOT_COUNT`, `VALUE_ERROR` on every row, as both kernel strategies report it).
