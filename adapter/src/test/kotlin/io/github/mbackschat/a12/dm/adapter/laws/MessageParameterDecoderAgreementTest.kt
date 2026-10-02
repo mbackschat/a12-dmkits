@@ -147,6 +147,7 @@ class MessageParameterDecoderAgreementTest {
         assertEquals(99, rows.size, "a12-kernel-lean's decoder grid, every row")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) }, "portable classes")
     }
 
     @Test
@@ -177,6 +178,34 @@ class MessageParameterDecoderAgreementTest {
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel keyed completion boundary")
         assertEquals(rows.map { it.id to emptyList<String>() }, rows.map { it.id to MessageParameterProbes.portable(it.model) },
             "a declined membership cannot license a later token refusal")
+    }
+
+    @Test
+    fun keyNamesCompleteBeforeTrailingTokens() {
+        val rows = listOf(false, true).flatMap { group ->
+            listOf("Stars", "Nope").flatMap { key ->
+                listOf("", " x").map { tail ->
+                    val addressed = if (group) "#/Library/Reviews" else "Stars"
+                    val code = if (group) "INVALID_GROUP" else if (key == "Nope") "INVALID_ENTITY"
+                        else "MVK_INDEX_FOR_ERROR_TEXT_INVALID"
+                    Row("$group-$key-$tail", model("\$$addressed For $key$tail\$"), listOf(code))
+                }
+            }
+        }
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel key follower events")
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) }, "portable key follower events")
+    }
+
+    @Test
+    fun familiesRetainParameterOrderAndMultiplicity() {
+        val rows = listOf(
+            Row("base-field", model("\$BaseYear\$ \$Nope\$"), listOf("NO_BASE_YEAR", "INVALID_ENTITY")),
+            Row("field-base", model("\$Nope\$ \$BaseYear\$"), listOf("INVALID_ENTITY", "NO_BASE_YEAR")),
+            Row("base-twice", model("\$BaseYear\$ \$BaseYear\$"), listOf("NO_BASE_YEAR")),
+            Row("base-offset", model("\$BaseYear\$ \$BaseYear+1\$"), listOf("NO_BASE_YEAR")),
+        )
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel cross-family order")
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) }, "portable cross-family order")
     }
 
     private companion object {

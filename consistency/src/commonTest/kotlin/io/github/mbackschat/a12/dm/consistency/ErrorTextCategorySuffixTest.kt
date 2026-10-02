@@ -34,9 +34,8 @@ class ErrorTextCategorySuffixTest {
         expected["a NUMBER field with a category suffix"] = listOf("FIELD_NO_ENUM")
         expected["a TEXT field with a category suffix"] = listOf("FIELD_NO_ENUM")
         expected["the arrow with no category name after it"] = listOf("NO_CATEGORY")
-        // A12 answers `INVALID_FIELD` here — membership runs first — and no family reads the category form
-        // for membership, so this is a disclosed under-report rather than a class this one may name.
-        expected["a field the condition never reads, with a valid suffix"] = emptyList()
+        // KF413 and KF501: the shared reader reaches membership before the category action.
+        expected["a field the condition never reads, with a valid suffix"] = listOf("INVALID_FIELD")
         // A12 answers `FIELD_NO_ENUM` here too — for a STRING index field — but `checkIndexFieldRef` owns
         // this form and has eleven classes of its own, several about an ENUM index field. Agreeing by luck on
         // one carrier is not a basis, so this family declines the form outright.
@@ -70,6 +69,6 @@ class ErrorTextCategorySuffixTest {
     """.trimIndent()
 
     private companion object {
-        val OWNED = setOf("NO_CATEGORY", "FIELD_NO_ENUM", "INVALID_CATEGORY")
+        val OWNED = setOf("NO_CATEGORY", "FIELD_NO_ENUM", "INVALID_CATEGORY", "INVALID_FIELD")
     }
 }

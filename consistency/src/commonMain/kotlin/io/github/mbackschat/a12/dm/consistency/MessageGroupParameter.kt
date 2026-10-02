@@ -2,13 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameter
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
-import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameterActions
-import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameterRead
-import io.github.mbackschat.a12.dm.consistency.syntax.readMessageParameter
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
-import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
 
 /**
  * What an error message's `$#…$` group position may name: an ancestor or a group reached by the condition.
@@ -64,68 +60,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
  * **Rules only**, every measured row being a rule's message. The computation carrier was reported to us for
  * the `RuleGroup` locus by a12-kernel-lean and is not measured here.
  */
-internal fun TrackedFactBase.messageGroupParameterFindings(): List<Finding> = declarations().flatMap { element ->
-    messageContributions(element) { messageGroupParameterFindings(element, it) }.map { it.finding }
-}
-
-internal fun TrackedFactBase.messageGroupParameterFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> {
-    if (element.declaredKind != DeclaredKind.RULE) return emptyList()
-
-    // The model's ROOT GROUPS, so [TrackedFactBase.allDeclarations]: the walk below narrows to one rule,
-    // and a scoped `declarations()` here would offer that rule's own path as the only root.
-    val roots = allDeclarations().filter { it.path.count { c -> c == '/' } == 1 }.map { it.path }.toSet()
-    val ruleGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    if (message.text.carriesAnOffendingCharacter()) {
-        return emptyList()
-    }
-    return messageParameterBodies(message.text).mapNotNull { parameter ->
-        val argument = parameter.trim().removePrefix(GROUP_MARKER).takeIf {
-            parameter.trim().startsWith(GROUP_MARKER)
-        } ?: return@mapNotNull null
-        val defect = groupArgumentDefect(argument, ruleGroup, roots, element)
-        defect?.let { code -> finding(code, argument, element) }
-    }
-}
-
-private const val GROUP_MARKER = "#"
-
-/** Runs the message grammar actions against this rule’s model and condition footprint (KF214). */
-private fun TrackedFactBase.groupArgumentDefect(
-    argument: String,
-    ruleGroup: String,
-    roots: Set<String>,
-    element: TrackedDeclaration,
-): String? {
-    val parsed = readMessageParameter("#$argument", conditionLanguage, object : MessageParameterActions {
-        override fun climb(steps: Int): String? =
-            if (steps >= ruleGroup.count { it == '/' }) "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS" else null
-
-        override fun parent(written: String): String? = when {
-            turningPointIsWrong(written.replace("'", ""), ruleGroup) -> "INVALID_ENTITY"
-            resolveEntity(ruleGroup, written.replace("'", ""), element.origin) is Reference.AboveRoot ->
-                "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
-            else -> null
-        }
-
-        override fun name(written: String, groupPosition: Boolean, indexPosition: Boolean): String? =
-            groupNameDefect(written, ruleGroup, element)
-
-        override fun completed(parameter: MessageParameter): MessageCompletion =
-            completedGroupDefect(parameter, ruleGroup, roots, element)
-    })
-    return (parsed as? MessageParameterRead.Refused)?.code
-}
-
-private fun TrackedFactBase.groupNameDefect(written: String, group: String, element: TrackedDeclaration): String? =
-    when (val resolved = resolveEntity(group, written.replace("'", ""), element.origin)) {
-        is Reference.Ambiguous -> "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
-        is Reference.AboveRoot -> "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
-        is Reference.MisplacedUpStep -> "MVK_UNEXPECTED_TOKEN"
-        is Reference.Undeclared -> if (resolved.rootUnresolved) ROOT_GROUP else GROUP
-        is Reference.Resolved -> null
-    }
-
-private fun TrackedFactBase.completedGroupDefect(
+internal fun TrackedFactBase.completedGroupDefect(
     parameter: MessageParameter,
     ruleGroup: String,
     roots: Set<String>,
@@ -138,7 +73,7 @@ private fun TrackedFactBase.completedGroupDefect(
             if (parameter.entity.ruleGroup) {
                 if (ruleGroup.isRootGroup()) return MessageCompletion.Refused(IMMEDIATELY_BELOW_ROOT)
                 ruleGroup
-            } else (resolveEntity(ruleGroup, parameter.entity.written.replace("'", ""), element.origin)
+            } else (resolveMessageEntity(ruleGroup, parameter.entity.written.replace("'", ""), element.origin)
                 as? Reference.Resolved)?.path ?: return MessageCompletion.Declined
         }
         else -> return MessageCompletion.Declined
@@ -160,7 +95,7 @@ private fun TrackedFactBase.completedGroupDefect(
         else MessageCompletion.Refused(STARRED_ITERATION)
 }
 
-private fun turningPointIsWrong(path: String, ruleGroup: String): Boolean {
+internal fun turningPointIsWrong(path: String, ruleGroup: String): Boolean {
     val groups = ruleGroup.split('/').filter { it.isNotEmpty() }.toMutableList()
     for (step in path.split('/').takeWhile { it.startsWith("..") }) {
         if (groups.size <= 1) return false
@@ -204,36 +139,8 @@ private fun TrackedFactBase.conditionRidesUnstarred(
 
 private const val GROUP = "INVALID_GROUP"
 
-private const val ROOT_GROUP = "INVALID_ROOT_GROUP"
-
 private const val RETIRED = "PARAM_INVALID_IN_NEW_WORLD"
 
 private const val IMMEDIATELY_BELOW_ROOT = "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
 
 private const val STARRED_ITERATION = "ITER_PARAM_WITH_STARREFERENCE"
-
-private fun finding(code: String, argument: String, element: TrackedDeclaration): Finding = Finding(
-    FindingCategory.A12_CONSTRAINT,
-    FindingSeverity.ERROR,
-    code,
-    "in `errorMessage`: the group parameter `${'$'}#$argument${'$'}` " + when (code) {
-        RETIRED -> "names a terminal A12 recognises and no longer admits on this route"
-        IMMEDIATELY_BELOW_ROOT ->
-            "names the rule's own group with a shorthand A12 refuses where that group IS a root group — " +
-                "name it by its absolute path, or use `RootGroup`"
-        ROOT_GROUP -> "starts at a root group this model does not declare"
-        "MVK_LEXER_STANDARD_ERROR" -> "contains a character or quoted name the message lexer cannot tokenize"
-        "MVK_EXPECTED_TOKEN_NOT_FOUND" -> "ends before the signed offset — supply digits after the sign"
-        "MVK_INCOMPLETE_INPUT" -> "ends before a complete group path — supply the name after the separator"
-        "MVK_UNEXPECTED_TOKEN" -> "contains an unexpected separator or a token after the resolved path"
-        "ERROR_TEXT_FIELDNAME_NOT_UNIQUE" -> "falls back to a field short name shared by more than one field — qualify the path"
-        "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS" -> "walks above the rule's root group — remove an up-step"
-        "INVALID_ENTITY" -> "uses a turning-point label that does not name the ancestor reached by the up-step"
-        STARRED_ITERATION ->
-            "names a group this declaration's condition reads only through a repetition wildcard — the " +
-                "parameter pins the message to ONE row, so give the condition an unstarred read of that level"
-        else -> "does not name an available group — use the rule's own group, one of its ancestors, " +
-            "or a group reached by its condition"
-    },
-    element.path,
-)

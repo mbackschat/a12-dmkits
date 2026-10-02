@@ -2,7 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
-import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
+import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameter
+import io.github.mbackschat.a12.dm.consistency.syntax.MessageSuffix
+import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 
@@ -43,47 +45,27 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * one of `INVALID_INDEX_FIELD_ENUM_XML_VALUES`, `_ENUM_XML_TO_CAT`, `_ENUM_XML_TO_DISPLAY` and
  * `_INCONSISTENT_TYPES` needs a list of at least two, which is the shape declined above (source-read
  * 30.8.1). Their two per-member siblings, `FIELD_NO_ENUM` and `INVALID_CATEGORY`, fire on a single member
- * and are already reported — by the category-suffix family, from the plain form.
+ * are measured on plain fields. That is not a scope-transfer oracle for this terminal; its category arm
+ * remains deliberately declined.
  */
-internal fun TrackedFactBase.errorTextIndexTerminalFindings(): List<Finding> = declarations().flatMap { element ->
-    messageContributions(element) { errorTextIndexTerminalFindings(element, it) }.map { it.finding }
-}
-
-internal fun TrackedFactBase.errorTextIndexTerminalFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> {
-    val errorTarget = (element.declaredReference()?.takeIf { it.role == ReferenceRole.ERROR_TARGET }?.target as? Reference.Resolved)?.path ?: return emptyList()
-    val reachable = indexFieldsOnThePathTo(errorTarget)
-    if (message.text.carriesAnOffendingCharacter()) {
-        return emptyList()
+internal fun TrackedFactBase.completedIndexDefect(terminal: MessageParameter.Index, element: TrackedDeclaration): MessageCompletion {
+    val errorTarget = (element.declaredReference()?.takeIf { it.role == ReferenceRole.ERROR_TARGET }?.target
+        as? Reference.Resolved)?.path ?: return MessageCompletion.Declined
+    val matched = indexFieldsOnThePathTo(errorTarget).filter { it.name == terminal.entity.written.replace("'", "") }
+    when (matched.size) {
+        0 -> return MessageCompletion.Refused("INVALID_INDEX_FIELD")
+        1 -> Unit
+        else -> return MessageCompletion.Refused("INVALID_INDEX_FIELD_AMBIGUOUS")
     }
-    return messageParameterBodies(message.text).mapNotNull { parameter ->
-        val terminal = indexTerminalIn(parameter) ?: return@mapNotNull null
-        val matched = reachable.filter { it.name == terminal.argument }
-        when (matched.size) {
-            0 -> finding(terminal.argument, reachable.map { it.name }.toSet(), element)
-            1 -> gatesBehindTheArgument(matched.single(), terminal, element)
-            // The SECOND gate, and the argument gate is the only one before it — so reporting this
-            // class needs no more of the terminal's machinery than the first one did.
-            else -> ambiguousFinding(terminal.argument, element)
-        }
+    val field = matched.single()
+    if (groupsDeclaringIndexFieldNamed(field.name) > 1) return MessageCompletion.Declined
+    repeatabilityDefect(field, element)?.let { return MessageCompletion.Refused(it) }
+    return when (terminal.suffix) {
+        MessageSuffix.NONE -> MessageCompletion.Refused(MISSING_SUFFIX)
+        MessageSuffix.VALUE -> MessageCompletion.Accepted
+        // The ordinary field category gate is not evidence for this terminal's cross-field visitor (KF275).
+        else -> MessageCompletion.Declined
     }
-}
-
-/**
- * The gates the argument's own match does not answer: repeatability, and then the missing suffix.
- *
- * The uniqueness question comes first because it decides whether A12 is walking a list of one — every other
- * member of that list can answer `INVALID_INDEX_FIELD_REP`, which neither arm below would name.
- */
-private fun TrackedFactBase.gatesBehindTheArgument(
-    matched: IndexFieldOnPath,
-    terminal: IndexTerminal,
-    element: TrackedDeclaration,
-): Finding? {
-    if (groupsDeclaringIndexFieldNamed(matched.name) > 1) {
-        return null
-    }
-    repeatabilityDefect(matched, element)?.let { return finding(it, matched.name, element) }
-    return if (terminal.suffix.isEmpty()) finding(MISSING_SUFFIX, matched.name, element) else null
 }
 
 /** The fourth gate, whose two arms read different things — the declaration, or the condition. */
@@ -137,33 +119,6 @@ private fun TrackedFactBase.conditionRidesItWithoutIterating(
 private fun TrackedFactBase.groupsDeclaringIndexFieldNamed(name: String): Int =
     allDeclarations().count { it.declaredKind == DeclaredKind.GROUP && indexFieldNameOf(it) == name }
 
-private const val INDEX_TERMINAL = "index("
-
-/** The terminal's two halves: what it addresses, and what it does with the value it finds. */
-private class IndexTerminal(val argument: String, val suffix: String)
-
-/**
- * The terminal this parameter spells, or null when it is not this terminal.
- *
- * The terminal is a LEXER token spelled exactly lowercase — `$Index(…)$` draws `MVK_UNEXPECTED_TOKEN` rather
- * than reaching any of these gates — so matching it literally is the whole recognition step. The SUFFIX is
- * kept unparsed on purpose: only its emptiness is a law here, and `.value`, `->Band` and every misspelling
- * belong to gates other families own.
- */
-private fun indexTerminalIn(parameter: String): IndexTerminal? {
-    val trimmed = parameter.trim()
-    if (!trimmed.startsWith(INDEX_TERMINAL)) {
-        return null
-    }
-    val close = trimmed.indexOf(')', INDEX_TERMINAL.length)
-    if (close < 0) {
-        return null
-    }
-    val argument = trimmed.substring(INDEX_TERMINAL.length, close).trim().takeIf { it.isNotEmpty() }
-        ?: return null
-    return IndexTerminal(argument, trimmed.substring(close + 1).trim())
-}
-
 /** One index field the error entity is reached through, with what the repeatability gate asks of its group. */
 private class IndexFieldOnPath(val name: String, val path: String, val repeatable: Boolean)
 
@@ -193,42 +148,10 @@ private const val NONREP_ENUM = "INVALID_INDEX_FIELD_NONREP_ENUM"
 
 private const val MISSING_SUFFIX = "INVALID_INDEX_FIELD_PARAMETER"
 
-private fun finding(code: String, argument: String, element: TrackedDeclaration): Finding = Finding(
-    FindingCategory.A12_CONSTRAINT,
-    FindingSeverity.ERROR,
-    code,
-    "in `errorMessage`: `index($argument)` " + when (code) {
-        REP_ITER -> "names an index field this declaration's condition reaches through a repetition " +
-            "wildcard or a semantic-index key — the terminal pins the message to the FIRING row, so the " +
-            "condition has to reach that field by iterating it"
-        NONREP_ENUM -> "names the index field of a group that does not repeat, and A12 admits one there " +
-            "only as an Enumeration declaring a single value and an `sValue` — this one declares neither"
-        else -> "carries no `.value` or `->Category` suffix, so the terminal names a row and then says " +
-            "nothing about it; A12's grammar admits the bare form only to refuse it here"
-    },
-    element.path,
-)
 
-private fun ambiguousFinding(argument: String, element: TrackedDeclaration): Finding = Finding(
-    FindingCategory.A12_CONSTRAINT,
-    FindingSeverity.ERROR,
-    "INVALID_INDEX_FIELD_AMBIGUOUS",
-    "in `errorMessage`: `index($argument)` matches the index field of more than one group on the error " +
-        "entity's path — the argument is matched by SHORT NAME, so A12 cannot say which repetition to pin " +
-        "the message to",
-    element.path,
-)
-
-private fun finding(argument: String, reachable: Set<String>, element: TrackedDeclaration): Finding = Finding(
-    FindingCategory.A12_CONSTRAINT,
-    FindingSeverity.ERROR,
-    "INVALID_INDEX_FIELD",
-    "in `errorMessage`: `index($argument)` names no index field on the error entity's own path — " +
-        if (reachable.isEmpty()) {
-            "no group on that path declares one, so the terminal has nothing to pin the message to"
-        } else {
-            "that path offers ${reachable.sorted().joinToString { "`$it`" }}, and the argument is matched " +
-                "by SHORT NAME rather than by path"
-        },
-    element.path,
-)
+/** The corrective uses the same error-target path as the argument gate (KF275). */
+internal fun TrackedFactBase.availableMessageIndexNames(element: TrackedDeclaration): List<String> {
+    val target = (element.declaredReference()?.takeIf { it.role == ReferenceRole.ERROR_TARGET }?.target
+        as? Reference.Resolved)?.path ?: return emptyList()
+    return indexFieldsOnThePathTo(target).map { it.name }.distinct().sorted()
+}

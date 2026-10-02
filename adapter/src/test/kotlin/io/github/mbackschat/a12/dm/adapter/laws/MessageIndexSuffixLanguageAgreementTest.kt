@@ -64,6 +64,7 @@ class MessageIndexSuffixLanguageAgreementTest {
         assertEquals(15, rows.size, "frozen witness rows")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) }, "portable classes")
     }
 
     private companion object {

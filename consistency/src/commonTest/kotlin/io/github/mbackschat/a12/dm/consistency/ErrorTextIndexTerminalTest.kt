@@ -42,7 +42,7 @@ class ErrorTextIndexTerminalTest {
         expected["the index field with the suffix OMITTED"] = listOf("INVALID_INDEX_FIELD_PARAMETER")
         // `$Index(…)$` is not this terminal at all: the lexer refuses it with `MVK_UNEXPECTED_TOKEN` before
         // any gate runs, and the condition-syntax family owns that.
-        expected["the terminal CAPITALISED"] = emptyList()
+        expected["the terminal CAPITALISED"] = listOf("MVK_UNEXPECTED_TOKEN")
         expected["no parameter at all — the control"] = emptyList()
         assertEquals(expected, actual, "which argument the index terminal takes")
     }

@@ -233,6 +233,12 @@ internal class TrackedFactBase private constructor(
         return model.resolveEntity(declaringGroup, written, origin)
     }
 
+    /** Message lookup has no dependency on the condition's short-name flag (KF501). */
+    internal fun resolveMessageEntity(declaringGroup: String, written: String, origin: DeclarationOrigin): Reference {
+        transcript.record(FactRead.DeclarationSetShape)
+        return model.resolveMessageEntity(declaringGroup, written, origin)
+    }
+
     /**
      * Every declared reference in the model, assembled from the per-declaration cursor.
      *

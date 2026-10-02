@@ -111,7 +111,8 @@ class MisplacedUpStepTest {
     }
 
     /**
-     * A message parameter is never walked, so a leading up-run ahead of a miss is a token error there where
+     * A plain field parameter predicts its complete entity before lookup, so a misplaced up-step after a miss
+     * is a token error where
      * a condition names the entity class. The controls are the surface's own vocabulary.
      */
     @Test

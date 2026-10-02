@@ -426,15 +426,13 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclarationWalk(CheckFamily.ENUM_COMPUTATION_SOURCE, DeclarationStage.CALCULATION_ALTERNATIVES) { it.enumComputationSourceFindings() },
     condition(CheckFamily.ERROR_TARGET_ITERATION) { base, at -> base.errorTargetIterationContributions(at) },
     condition(CheckFamily.ERROR_TARGET_CONTAINMENT) { base, at -> base.errorContainmentContributions(at) },
-    messages(CheckFamily.MESSAGE_PARAMETER_REFERENCE) { base, at, message -> base.messageParameterFindings(at, message) },
-    messages(CheckFamily.ERROR_TEXT_SEMANTIC_INDEX) { base, at, message -> base.errorTextSemanticIndexFindings(at, message) },
-    messages(CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX) { base, at, message -> base.errorTextCategorySuffixFindings(at, message) },
-    messages(CheckFamily.ERROR_TEXT_INDEX_TERMINAL) { base, at, message -> base.errorTextIndexTerminalFindings(at, message) },
+    CheckProducer.Messages(setOf(CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.ERROR_TEXT_SEMANTIC_INDEX,
+        CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX, CheckFamily.ERROR_TEXT_INDEX_TERMINAL,
+        CheckFamily.MESSAGE_GROUP_PARAMETER, CheckFamily.MESSAGE_VALUE_SUFFIX, CheckFamily.MESSAGE_BASE_YEAR)) {
+        base, at, message -> base.messageParameterFindings(at, message)
+    },
     messages(CheckFamily.MESSAGE_TEXT_CHARACTERS) { base, at, message -> base.messageTextCharacterFindings(at, message) },
     messages(CheckFamily.MESSAGE_PARAMETER_SYNTAX) { base, at, message -> base.messageParameterSyntaxFindings(at, message) },
-    messages(CheckFamily.MESSAGE_GROUP_PARAMETER) { base, at, message -> base.messageGroupParameterFindings(at, message) },
-    messages(CheckFamily.MESSAGE_VALUE_SUFFIX) { base, at, message -> base.messageValueSuffixFindings(at, message) },
-    messages(CheckFamily.MESSAGE_BASE_YEAR) { base, at, message -> base.messageBaseYearFindings(at, message) },
     perDeclaration(CheckFamily.STRING_PATTERN_MESSAGE, DeclarationStage.INDEPENDENT) { base, at ->
         base.stringTypeMessageFindings(at)
     },

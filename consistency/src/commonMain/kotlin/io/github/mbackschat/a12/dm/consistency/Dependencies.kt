@@ -73,7 +73,7 @@ data class DependencyEdge(
  * ([conditionReferences]), and a field's type-definition binding. An error message's `$Name$` parameter is
  * deliberately NOT a fourth: A12 admits a parameter only when the declaration already reads what it names,
  * so a resolvable parameter can add no referent its carrier's own condition has not already contributed
- * ([messageParameterFindings] carries that measurement).
+ * ([entitiesReadBy] carries that measurement).
  */
 fun PreparedModel.dependencyEdges(): List<DependencyEdge> = buildList {
     declaredReferences().forEach { reference ->

@@ -107,6 +107,16 @@ class MessageNamePositionAgreementTest {
         assertEquals(45, rows.size, "frozen witness rows")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) }, "portable classes")
+    }
+
+    @Test
+    fun unknownFormPositionNamesFailBeforeFieldCompletion() {
+        val rows = listOf("Vordruckzeile", "Vordruckname").map { suffix ->
+            Row(suffix, model(library(), Reads.ROOT, "\$Nope.$suffix\$"), listOf(ENTITY))
+        }
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel form-position lookup")
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) }, "portable form-position lookup")
     }
 
     private companion object {

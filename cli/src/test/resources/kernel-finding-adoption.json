@@ -1572,7 +1572,7 @@
         },
         "checker": {
           "state": "OPEN",
-          "basis": "The earlier surfaces keep their replay evidence. DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
+          "basis": "The earlier surfaces keep their replay evidence. The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
           "evidence": {
             "group reference footprint": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupFootprintTest.kt#groupReadsRetainTheirMessageFootprintOnBothHosts",
@@ -1677,7 +1677,7 @@
         },
         "checker": {
           "state": "OPEN",
-          "basis": "The footprint surface keeps its replay evidence. DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
+          "basis": "The footprint surface keeps its replay evidence. The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
           "evidence": {
             "group reference footprint": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageGroupFootprintTest.kt#groupReadsRetainTheirMessageFootprintOnBothHosts",
@@ -1832,7 +1832,7 @@
         },
         "checker": {
           "state": "OPEN",
-          "basis": "DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
+          "basis": "The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
           "evidence": {}
         },
         "dmtool-cli": {
@@ -1904,7 +1904,7 @@
         },
         "checker": {
           "state": "OPEN",
-          "basis": "DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
+          "basis": "The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
           "evidence": {}
         },
         "dmtool-cli": {
@@ -1976,7 +1976,7 @@
         },
         "checker": {
           "state": "OPEN",
-          "basis": "DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
+          "basis": "The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
           "evidence": {}
         },
         "dmtool-cli": {
@@ -2006,8 +2006,78 @@
         }
       }
     },
+    "kf465": {
+      "sha256": "8c03cee957ee361cd353dec87c3473e5f631dd42f5f4686e641f01454317850c",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "field-position prediction boundary"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "field-position prediction boundary"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The plain field-position controls retain their measured token refusals; KF501 separately measures group/key action order. This review qualifies the former message-wide prose without widening runtime claims.",
+          "evidence": {
+            "field-position prediction boundary": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/PathSegmentWalkLawsTest.java#aMessageParameterRefusesEveryMisplacedUpStepAsAToken",
+              "witness": "Root and nested field-position misplaced-up-step controls, including an unresolved prefix, retain complete class lists."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed message authoring passes message text through; it does not decide parameter admission.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This qualification concerns diagnostic ordering on rejected paths; it changes no runtime value or message rendering claim.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The plain field-position controls retain their measured token refusals; KF501 separately measures group/key action order. This review qualifies the former message-wide prose without widening runtime claims.",
+          "evidence": {
+            "field-position prediction boundary": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MisplacedUpStepTest.kt#aMessageParameterRefusesEveryMisplacedUpStepAsAToken",
+              "witness": "Root and nested field-position misplaced-up-step controls, including an unresolved prefix, retain complete class lists."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "rule check delegates admission to the kernel; the portable engine is the checker consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message text is preserved verbatim; admission classes are not part of the import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message text is preserved verbatim; admission classes are not part of the export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This edit narrows our older field-position account against KF501; it makes no new claim about the peer implementation or a historical ledger disposition.",
+          "evidence": {}
+        }
+      }
+    },
     "kf501": {
-      "sha256": "ee58fbc61b230ab38c7bb997fff40c91b29d7426a5f125087414f8f63eebf60a",
+      "sha256": "f1da8717396db50e5e13a4aa8fa88c6b9d34d93ec5dbbfb1a511199725bc515f",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -2048,7 +2118,7 @@
         },
         "checker": {
           "state": "OPEN",
-          "basis": "DG119 keeps the portable checker from agreeing on these rows; they are asserted against the kernel only until one decoder emits the parameter events in order.",
+          "basis": "The shared decoder agrees on the adapter grid; DG119 retains the exact-byte portable replay and terminal-review obligations before adoption closure.",
           "evidence": {}
         },
         "dmtool-cli": {

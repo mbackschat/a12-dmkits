@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **DG119 — rule-message parameters are not yet all routed through one event-ordered decoder.** The shared `MessageParameterReader` now carries group-position path, parent and key events; `MessageGroupWalkAgreementTest` and the group subset of `MessageParameterDecoderAgreementTest` enforce their kernel classes, with reserved dotted suffixes explicitly declined. The remaining name-position families still use separate splitters. The 2026-10-02 baseline and three-part acceptance matrix live in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md#dg119-decoder-plan). Remaining discriminators include non-ASCII names, category/key syntax order, per-name lookup before nested-key refusal, header-independent message short names, and localized index suffixes. Settles when the shared decoder supplies every parameter family and all four grids agree or explicitly decline each unsupported row.
+- **DG119 — the shared message decoder still needs its four-grid portable replay closure.** Every parameter family now runs through `MessageParameterReader` and its ordered callbacks. The adapter's group-walk, decoder, name-position and index-language grids enforce complete kernel/portable classes, with reserved dotted tails and keyed group-condition membership explicitly declined. The remaining partition adds exact-byte common JVM/Node replays, reconciles the adoption records and completes terminal review under [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md#dg119-decoder-plan).
 
 ## 2. Out of scope
 

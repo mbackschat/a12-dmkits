@@ -59,7 +59,8 @@ sealed interface Reference {
      * and null when it does not. A condition walks them when a named segment before the step is starred or
      * the path opens with an up-run, and then a prefix that fails answers with its own class: `Nope*` then
      * `..` is an entity miss while `Nope/..` is a token error. It is carried here rather than decided because
-     * the role decides it: a message parameter never walks, so the same `../Nope/..` is a token error there.
+     * the condition role decides it. Message parameters instead resolve each reached prefix through their
+     * own ordered reader (KF501), before a later misplaced step can be reached.
      */
     data class MisplacedUpStep(val written: String, val walkedPrefix: Reference?) : Reference
 }
@@ -115,6 +116,19 @@ fun PreparedModel.resolveEntity(
     declaringGroup: String,
     written: String,
     origin: DeclarationOrigin = DeclarationOrigin(""),
+): Reference = resolveEntity(declaringGroup, written, origin, LookupPosition.CONDITION)
+
+/** KF501's message lookup ignores the condition's short-name flag; the path and mount indexes stay shared. */
+internal fun PreparedModel.resolveMessageEntity(declaringGroup: String, written: String, origin: DeclarationOrigin): Reference =
+    resolveEntity(declaringGroup, written, origin, LookupPosition.MESSAGE)
+
+private enum class LookupPosition { CONDITION, MESSAGE }
+
+private fun PreparedModel.resolveEntity(
+    declaringGroup: String,
+    written: String,
+    origin: DeclarationOrigin,
+    position: LookupPosition,
 ): Reference {
     // A mounted declaration still spells its provider's own root, which the mount replaced. Rehosting the
     // written path is what the Kernel does before integration, so the reference names the element that
@@ -124,7 +138,7 @@ fun PreparedModel.resolveEntity(
     val absolute = hosted.startsWith("/")
     val misplaced = segments.indices.firstOrNull { at ->
         segments[at].startsWith(UP) && (absolute || segments.take(at).any { !it.startsWith(UP) })
-    } ?: return resolveSegments(declaringGroup, written, segments, absolute, origin)
+    } ?: return resolveSegments(declaringGroup, written, segments, absolute, origin, position)
     // Cancelling each `X/..` pair instead read `Claims/..` as the rule's own group, a model A12 refuses.
     val prefix = segments.take(misplaced)
     val walked = (!absolute && prefix.first().startsWith(UP)) ||
@@ -132,7 +146,7 @@ fun PreparedModel.resolveEntity(
     val prefixText = (if (absolute) "/" else "") + prefix.joinToString("/")
     return Reference.MisplacedUpStep(
         written,
-        if (walked) resolveSegments(declaringGroup, prefixText, prefix, absolute, origin) else null,
+        if (walked) resolveSegments(declaringGroup, prefixText, prefix, absolute, origin, position) else null,
     )
 }
 
@@ -143,6 +157,7 @@ private fun PreparedModel.resolveSegments(
     segments: List<String>,
     absolute: Boolean,
     origin: DeclarationOrigin,
+    position: LookupPosition,
 ): Reference {
     val steps = segments.map { it.withoutRepetitionSuffix() }
     // A12 looks each segment up with the fallback gated on the path being relative ALONE, so the first
@@ -152,7 +167,7 @@ private fun PreparedModel.resolveSegments(
     // nothing below them, so after a first segment it bound the rest cannot resolve and positional is exact.
     val first = steps.firstOrNull()
     if (!absolute && first != null && !first.startsWith(UP)) {
-        val tiered = resolve(declaringGroup, first, origin)
+        val tiered = resolve(declaringGroup, first, origin, position)
         if (steps.size == 1 || tiered is Reference.Ambiguous) {
             return tiered
         }
@@ -259,6 +274,13 @@ fun PreparedModel.resolve(
     declaringGroup: String,
     name: String,
     origin: DeclarationOrigin = DeclarationOrigin(""),
+): Reference = resolve(declaringGroup, name, origin, LookupPosition.CONDITION)
+
+private fun PreparedModel.resolve(
+    declaringGroup: String,
+    name: String,
+    origin: DeclarationOrigin,
+    position: LookupPosition,
 ): Reference {
     val candidate = "$declaringGroup/$name"
     if (candidate in resolvableByPath) {
@@ -271,7 +293,7 @@ fun PreparedModel.resolve(
     // bare — is bound over the whole EXPANDED tree under the entry model's flag, so a mounted field of the
     // same name does make it ambiguous. Both halves measured; see `DeclarationOrigin.shortNameFallbackAllowed`.
     val boundInProvider = origin.isMounted && origin.shortNameFallbackAllowed
-    if (!boundInProvider && !fieldRefByShortNameAllowed) {
+    if (position == LookupPosition.CONDITION && !boundInProvider && !fieldRefByShortNameAllowed) {
         return Reference.Undeclared(candidate)
     }
     // The denominator is this MOUNT INSTANCE's subtree, not the provider's own declarations. The provider is

@@ -5,9 +5,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.DATE_CONSTRUCTION
-import io.github.mbackschat.a12.dm.consistency.syntax.NameTerminal
-import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
-import io.github.mbackschat.a12.dm.consistency.syntax.nameTerminalOf
 
 /**
  * The places a model's declared BASE YEAR is not optional.
@@ -38,7 +35,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.nameTerminalOf
  * range-overlap operators ([dateRangeOperandListFindings]) while ENABLING these two shapes, so a family
  * treating it as one switch in one direction would get the other half backwards.
  *
- * **The error MESSAGE is a third place, and it is [messageBaseYearFindings]'s**, because A12 judges it only
+ * **The error MESSAGE is a third place, and it is [messageBaseYearDefect]'s**, because A12 judges it only
  * beside a sound DSL member and this family's classes are DSL classes.
  *
  * **Silent on everything when the model declares a base year**, which is the whole family's precondition,
@@ -85,18 +82,7 @@ internal fun TrackedFactBase.baseYearContributions(element: TrackedDeclaration):
  * is a DSL class, so the model is reported once, on the condition
  * (`rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`, [KF338]).
  */
-internal fun TrackedFactBase.messageBaseYearFindings(): List<Finding> = declarations().flatMap { element ->
-    messageContributions(element) { messageBaseYearFindings(element, it) }.map { it.finding }
-}
-
-internal fun TrackedFactBase.messageBaseYearFindings(element: TrackedDeclaration, message: AuthoredMessage): List<Finding> {
-    if (hasBaseYear || message.text.carriesAnOffendingCharacter()) return emptyList()
-    val parameter = messageParameterBodies(message.text)
-        .firstOrNull { nameTerminalOf(it, conditionLanguage) == NameTerminal.BASE_YEAR } ?: return emptyList()
-    return listOf(Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, "NO_BASE_YEAR",
-        "in `errorMessage`: `${'$'}$parameter${'$'}` interpolates the model's reference year, and " +
-            "this model declares none — set `modelInfo.baseYear`, or write the year the message means", element.path))
-}
+internal fun TrackedFactBase.messageBaseYearDefect(): String? = if (hasBaseYear) null else "NO_BASE_YEAR"
 
 private const val BASE_YEAR_CONSTANT = "BaseYear"
 

@@ -141,7 +141,7 @@ private class MessageParameterReader(
     private fun key(): MessageKey {
         if (peek()?.kind == TokenKind.STRING) return MessageKey(literal = consume().text
             .removeSurrounding("\"").replace("\"\"", "\"").replace("\r\n", "\n"))
-        predictEntity()
+        predictEntity(checkFollower = false)
         val entity = entity(indexPosition = false)
         if (word(peek()) == Word.FOR) {
             consume()
@@ -152,14 +152,17 @@ private class MessageParameterReader(
     }
 
     /**
-     * The field/key choice needs a complete ordinary path before semantic actions start. A parent walk is
-     * already a selected alternative, so its action may precede a later slash fault (KF501 F1a/F1f/F2a).
+     * An ordinary path must be syntactically complete before name actions start. Only the top-level
+     * field choice also predicts past a form/value suffix. Group/key positions select a parent walk
+     * immediately, so its action may precede a later slash fault (KF501 F1a/F1f/F2a). The field choice
+     * still predicts that path first (PathSegmentWalkLawsTest).
      */
     private fun predictEntity(checkFollower: Boolean = true) {
-        if (peek()?.text == "..") return
+        if (!checkFollower && peek()?.text == "..") return
         val saved = at
         predicting = true
         entity(indexPosition = false)
+        if (checkFollower && peek()?.text == ".") suffix()
         val next = peek()
         if (checkFollower && next != null && next.text !in listOf("->", ".", ")") && word(next) != Word.FOR) fail(UNEXPECTED)
         at = saved

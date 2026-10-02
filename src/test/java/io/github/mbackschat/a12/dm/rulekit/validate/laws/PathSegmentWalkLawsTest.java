@@ -299,7 +299,7 @@ class PathSegmentWalkLawsTest {
     }
 
     /**
-     * A message parameter is never walked: every misplaced up-step there is a token error, a leading up-run
+     * A plain field parameter predicts its complete entity: a misplaced up-step is a token error, a leading up-run
      * ahead of a miss included, where the same path in a condition draws the entity class. The controls are
      * the surface's own vocabulary for a plain miss and a climb above the root.
      */

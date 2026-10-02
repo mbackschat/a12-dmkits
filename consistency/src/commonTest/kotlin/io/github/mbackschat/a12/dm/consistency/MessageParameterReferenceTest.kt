@@ -195,23 +195,14 @@ class MessageParameterReferenceTest {
         expected["the Vordruckname suffix on that field"] = emptyList()
         expected["the Vordruckzeile suffix on a GROUP"] = refused
         expected["the Vordruckname suffix on a GROUP"] = refused
-        // A12 reaches this one through `getEntityRef`, which raises past every typed channel instead of
-        // composing a class, so there is no verdict to reproduce and silence is the whole answer.
-        expected["the same suffix on a name that resolves to nothing"] = emptyList()
+        // MessageNamePositionAgreementTest measures the lookup before form-position completion.
+        expected["the same suffix on a name that resolves to nothing"] = listOf("INVALID_ENTITY")
         assertEquals(expected, actual, "the form-line suffixes skip membership and still address a field")
     }
 
-    /**
-     * The parameter forms this family deliberately does not read, and what the checker as a whole says.
-     *
-     * Each has its own gate in A12 with its own class, and none of them is the membership one — so a
-     * membership class here would be an over-rejection on a model A12 may well admit. The grid reads EVERY
-     * finding at the declaration, not just this family's, which is what makes it the tier's cross-family
-     * silence check: when a sibling family lands a form, the row stops being empty and says whose class it
-     * now carries.
-     */
+    /** KF501's shared reader reaches membership before a category suffix and the nested-key gate before membership. */
     @Test
-    fun theFormsThisFamilyDoesNotRead() {
+    fun parameterAlternativesMeetTheirOwnOrderedChecks() {
         val actual = mutableMapOf<String, List<String>>()
         actual["a category suffix"] = ruleSaying("see \$Premium->Band\$")
         actual["a semantic-index key"] = ruleSaying("see \$Claims/Payout For Claims/ClaimNo For \\\"C-1\\\"\$")
@@ -220,6 +211,7 @@ class MessageParameterReferenceTest {
         actual["a row specifier"] = ruleSaying("see \$#Zeile\$")
 
         val expected = actual.keys.associateWith { emptyList<String>() }.toMutableMap()
+        expected["a category suffix"] = listOf(invalidField)
         // Landed 2026-09-15 by `BASE_YEAR_REQUIREMENT`, whose law is the MODEL's: this fixture declares no
         // base year, so the terminal has nothing to interpolate. The offset form draws the same class, which
         // is why both rows are kept — a reader recognising only the bare spelling would drop the second.
