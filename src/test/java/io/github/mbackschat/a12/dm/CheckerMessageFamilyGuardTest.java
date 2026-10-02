@@ -31,15 +31,17 @@ import org.junit.jupiter.api.Test;
  *
  * <p><b>What is read, and from where.</b> The error-text vocabulary is the kernel's own enum
  * ({@link KernelErrorVocabulary}); the files stating each code are {@link CheckerReportedCodes}'s; the family
- * each file hosts is read from {@code CheckProducers.kt}'s registrations; the message-stage families from
- * those same registrations. A file stating a code must host a withheld family. Where it also hosts a family that is
- * NOT withheld, the literal's function must reach only the withheld family's entry, through the calls made
- * inside that file, which is exactly the shape the two historical cases had. A family judging a carrier with no
+ * reaching each file is read from {@code CheckProducers.kt}'s registrations and named top-level helper
+ * calls across files; the message-stage families come from those same registrations. A file stating a code
+ * must be reached by a withheld family. Where a non-withheld family reaches it too, the literal's function
+ * must not reach that family's entry through the calls inside the file. A family judging a carrier with no
  * DSL at all is exempt by name, each with the measurement that says nothing withholds it.
  *
- * <p><b>What it does not see.</b> A call from a non-withheld family into a helper in ANOTHER file: the one
- * such helper, {@code ReferenceDiagnostic.kt}, picks its unprefixed codes by the reference's role and is named
- * below with that reason. The {@code MVK_}-keyed classes of the same checker ({@code MVK_INDEX_FOR_ERROR_TEXT_INVALID},
+ * <p><b>What it does not see.</b> Class-method dispatch, function values and role-dependent branches are
+ * not a Kotlin call-graph proof. Named top-level calls use a same-file-first name approximation, not Kotlin overload resolution.
+ * {@code ReferenceDiagnostic.kt} picks its unprefixed codes by the reference's role and is named below
+ * with that reason. Files reached only by message entries may contain private classes, as the parameter
+ * reader does; the guard does not prove each method inside those classes reachable. The {@code MVK_}-keyed classes of the same checker ({@code MVK_INDEX_FOR_ERROR_TEXT_INVALID},
  * the parameter parser's {@code MVK_UNEXPECTED_TOKEN}) are outside the enum and share a spelling with grammar
  * classes, so no vocabulary selects them.
  */
@@ -82,12 +84,13 @@ class CheckerMessageFamilyGuardTest {
         assertTrue(reported.size() >= 20, "the scan found only " + reported.size() + " error-text codes");
         Set<String> withheld = messageFamilies();
         Map<String, List<Registration>> byFile = registrationsByFile();
+        Map<String, String> sourceTexts = sourceTexts();
         Set<String> hosts = new TreeSet<>(withheld);
         hosts.addAll(NO_DSL_FAMILIES.keySet());
 
         Map<String, String> leaks = new TreeMap<>();
         reported.forEach((code, sources) -> sources.forEach(source -> {
-            String file = Path.of(source).getFileName().toString();
+            String file = SOURCES.relativize(Path.of(source)).toString();
             if (SHARED_HELPERS.containsKey(file)) {
                 return;
             }
@@ -99,7 +102,7 @@ class CheckerMessageFamilyGuardTest {
                 return;
             }
             if (!entriesNot.isEmpty()) {
-                Set<String> reach = reachOf(read(SOURCES.resolve(file)), code);
+                Set<String> reach = reachOf(sourceTexts.get(file), code);
                 reach.retainAll(entriesNot);
                 if (!reach.isEmpty()) {
                     leaks.put(code + " in " + file, "reached from the non-withheld entry " + reach);
@@ -154,6 +157,49 @@ class CheckerMessageFamilyGuardTest {
         assertEquals(Set.of("stating", "middle", "withheldEntry"), reachOf(source, "ERROR_TEXT_PROBE"));
     }
 
+    @Test
+    void registrationsFollowHelpersAcrossFilesWithoutHidingNonWithheldEntries() {
+        String registrations = """
+                internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
+                    CheckProducer.Messages(setOf(CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_VALUE_SUFFIX)) {
+                        base, at, text -> base.messageEntry(at, text)
+                    },
+                    condition(CheckFamily.BASE_YEAR_REQUIREMENT) { base, at -> base.conditionEntry(at) },
+                )
+                """;
+        Map<String, String> sources = Map.of(
+                "Entry.kt", """
+                    internal fun messageEntry() = bridge() + quiet()
+                    internal fun conditionEntry() = leakingHelper()
+                    private fun quiet() = 0
+                    """,
+                "Bridge.kt", """
+                    internal fun bridge() = (messageHelper() + nestedBridge()).also { "".isEmpty() }
+                    """,
+                "Helpers.kt", """
+                    internal fun messageHelper() = stating()
+                    internal fun leakingHelper() = stating()
+                    private fun stating() = "ERROR_TEXT_PROBE"
+                    """,
+                "nested/Entry.kt", """
+                    internal fun nestedBridge() = 0
+                    private fun quiet() = "ERROR_TEXT_PROBE"
+                    private fun isEmpty() = "ERROR_TEXT_PROBE"
+                    """);
+        Map<String, List<Registration>> actual = registrationsByFile(registrations, sources);
+        Set<String> withheld = Set.of("MESSAGE_PARAMETER_REFERENCE", "MESSAGE_VALUE_SUFFIX");
+        List<Registration> helpers = actual.getOrDefault("Helpers.kt", List.of());
+        assertTrue(entries(helpers, withheld, true).contains("messageHelper"), actual.toString());
+        Set<String> nonWithheld = entries(helpers, withheld, false);
+        nonWithheld.retainAll(reachOf(sources.get("Helpers.kt"), "ERROR_TEXT_PROBE"));
+        assertEquals(Set.of("leakingHelper", "stating"), nonWithheld,
+                "a cross-file condition call must still expose its message literal");
+        assertTrue(entries(actual.getOrDefault("Entry.kt", List.of()), withheld, true).contains("quiet"),
+                "a reached private name binds inside its declaring file");
+        assertEquals(Set.of("nestedBridge"), entries(actual.getOrDefault("nested/Entry.kt", List.of()), withheld, true),
+                "the reached nested file keeps its relative identity without binding its private name twins");
+    }
+
     /** One `CHECK_PRODUCERS` entry: the families it completes and the functions it calls. */
     private record Registration(Set<String> families, Set<String> entries) {
     }
@@ -163,7 +209,8 @@ class CheckerMessageFamilyGuardTest {
         Set<String> families = new TreeSet<>();
         for (String entry : entriesOf(block(read(SOURCES.resolve("CheckProducers.kt")),
                 "internal val CHECK_PRODUCERS: List<CheckProducer> = listOf("))) {
-            if (entry.stripLeading().startsWith("messages(") || entry.contains("DeclarationStage.MESSAGE)")) {
+            if (entry.stripLeading().startsWith("messages(") || entry.stripLeading().startsWith("CheckProducer.Messages(")
+                    || entry.contains("DeclarationStage.MESSAGE)")) {
                 families.addAll(familiesIn(entry));
             }
         }
@@ -171,28 +218,71 @@ class CheckerMessageFamilyGuardTest {
     }
 
     private static Map<String, List<Registration>> registrationsByFile() {
-        Map<String, String> fileOf = new TreeMap<>();
-        for (Path source : sources()) {
-            String text = withoutComments(read(source));
-            Matcher line = TOP_LEVEL.matcher(text);
-            while (line.find()) {
-                Matcher function = FUNCTION.matcher(line.group());
-                if (function.find()) {
-                    fileOf.putIfAbsent(function.group(1), source.getFileName().toString());
-                }
-            }
-        }
+        Map<String, String> textByFile = sourceTexts();
+        return registrationsByFile(read(SOURCES.resolve("CheckProducers.kt")), textByFile);
+    }
+
+    private record FunctionBody(String file, String name, String text, boolean local) {
+    }
+
+    /** Named top-level calls are followed across files; private names bind only within their declaring file. */
+    private static Map<String, List<Registration>> registrationsByFile(String registrations, Map<String, String> textByFile) {
+        List<FunctionBody> functions = new ArrayList<>();
+        textByFile.forEach((file, text) -> functions.addAll(functionsIn(file, text)));
         Map<String, List<Registration>> byFile = new TreeMap<>();
-        for (String entry : entriesOf(block(read(SOURCES.resolve("CheckProducers.kt")),
+        for (String entry : entriesOf(block(registrations,
                 "internal val CHECK_PRODUCERS: List<CheckProducer> = listOf("))) {
             Set<String> families = familiesIn(entry);
-            Set<String> calls = new TreeSet<>();
-            CALL.matcher(entry).results().map(m -> m.group(1)).filter(fileOf::containsKey).forEach(calls::add);
-            Registration registration = new Registration(families, calls);
-            calls.stream().map(fileOf::get).distinct().forEach(file ->
-                    byFile.computeIfAbsent(file, key -> new ArrayList<>()).add(registration));
+            Set<FunctionBody> reached = new LinkedHashSet<>();
+            List<FunctionBody> work = new ArrayList<>();
+            CALL.matcher(entry).results().map(m -> m.group(1)).forEach(name ->
+                    work.addAll(callees(functions, "CheckProducers.kt", name)));
+            for (int at = 0; at < work.size(); at++) {
+                FunctionBody function = work.get(at);
+                if (!reached.add(function)) continue;
+                NAMED_CALL.matcher(function.text()).results().map(m -> m.group(1)).forEach(name ->
+                        work.addAll(callees(functions, function.file(), name)));
+            }
+            reached.forEach(function -> byFile.computeIfAbsent(function.file(), key -> new ArrayList<>())
+                    .add(new Registration(families, Set.of(function.name()))));
         }
         return byFile;
+    }
+
+    private static final Pattern NAMED_CALL = Pattern.compile("\\b([a-z]\\w*)\\s*\\(");
+
+    private static List<FunctionBody> callees(List<FunctionBody> functions, String file, String name) {
+        List<FunctionBody> local = functions.stream().filter(f -> f.file().equals(file) && f.name().equals(name)).toList();
+        return local.isEmpty() ? functions.stream().filter(f -> !f.local() && f.name().equals(name)).toList() : local;
+    }
+
+    private static List<FunctionBody> functionsIn(String file, String source) {
+        String text = withoutComments(source);
+        List<int[]> extents = new ArrayList<>();
+        List<String> names = new ArrayList<>();
+        List<Boolean> privateNames = new ArrayList<>();
+        Matcher line = TOP_LEVEL.matcher(text);
+        while (line.find()) {
+            Matcher function = FUNCTION.matcher(line.group());
+            extents.add(new int[] {line.start(), text.length()});
+            names.add(function.find() ? function.group(1) : null);
+            privateNames.add(line.group().startsWith("private "));
+        }
+        List<FunctionBody> functions = new ArrayList<>();
+        for (int i = 0; i < extents.size(); i++) {
+            if (i + 1 < extents.size()) extents.get(i)[1] = extents.get(i + 1)[0];
+            if (names.get(i) != null) functions.add(new FunctionBody(file, names.get(i), body(text, extents.get(i)), privateNames.get(i)));
+        }
+        return functions;
+    }
+
+    private static Map<String, String> sourceTexts() {
+        Map<String, String> texts = new TreeMap<>();
+        for (Path path : sources()) {
+            String name = SOURCES.relativize(path).toString();
+            assertTrue(texts.putIfAbsent(name, read(path)) == null, "source filename collision: " + name);
+        }
+        return texts;
     }
 
     private static Set<String> entries(List<Registration> hosted, Set<String> withheld, boolean inWithheld) {
@@ -291,7 +381,7 @@ class CheckerMessageFamilyGuardTest {
     }
 
     private static List<Path> sources() {
-        try (var files = Files.list(SOURCES)) {
+        try (var files = Files.walk(SOURCES)) {
             return files.filter(p -> p.toString().endsWith(".kt")).sorted().toList();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
