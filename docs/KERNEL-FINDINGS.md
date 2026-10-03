@@ -299,11 +299,11 @@ A **computed NUMBER stores PADDED to the target's `minFractionalDigits` — and 
 
 ## §11 supplement — TIERED computations: alternatives are selected in order by precondition; `commonPrecondition` gates the whole (source + probe-verified 2026-06-25) <a id="kf20"></a>
 
-> Fold: folded → §11.
+> Fold: pending — the 2026-10-03 correction is recorded here; fold its measured boundary into the canonical section.
 
 A computation is a **list of `computationAlternatives`**, each an optional `precondition` + an `operation` (the value expression), optionally under a whole-computation `commonPrecondition`. The kernel codegen (`CodeGenCalculationAlternative.st`) emits, per alternative in order, `if (<precondition>) { handleValue(<operation>); continue; }` — so the runtime **evaluates alternatives top-to-bottom and the FIRST whose precondition holds supplies the value**; an alternative with no precondition always applies (an unconditional default); if **none** holds the field is **cleared** (computes nothing). A `commonPrecondition` guards the whole computation (false ⇒ cleared). This is the kernel's "tiered computation" feature.
 
-**Probe-verified (2026-06-25)** — a `UnitPrice` computation with `[{precondition: "[Quantity] < 100", operation: "9.99"}, {precondition: "[Quantity] >= 100", operation: "0"}]`: `Quantity = 50` → `UnitPrice = 9.99` (alt 1), `Quantity = 150` → `UnitPrice = 0` (alt 2). So the precondition genuinely *selects* the operation — the discriminating-precondition case is NOT the redundant-guard equivalence above (§66, which is the narrow degenerate case of a single fill-style guard that empty-as-skip already subsumes). A precondition over an empty operand does not select its branch (it is not three-valued TRUE); a gap where **no** alternative's precondition holds → the field is **cleared** (probe-verified 2026-06-26).
+**Probe-verified (2026-06-25)** — a `UnitPrice` computation with `[{precondition: "[Quantity] < 100", operation: "9.99"}, {precondition: "[Quantity] >= 100", operation: "0"}]`: `Quantity = 50` → `UnitPrice = 9.99` (alt 1), `Quantity = 150` → `UnitPrice = 0` (alt 2). So the precondition genuinely *selects* the operation — the discriminating-precondition case is NOT the redundant-guard equivalence above (§66, which is the narrow degenerate case of a single fill-style guard that empty-as-skip already subsumes). An empty Number in a comparison precondition substitutes zero: `[Quantity] < 100` therefore selects its branch. The earlier blanket empty-operand claim had no empty document in its linked test and is corrected by [KF509](#kf509). A gap where **no** alternative's precondition holds clears the field (probe-verified 2026-06-26).
 
 **Mutual EXCLUSIVITY of tiered preconditions is a documentation-level contract — NO consistency-tier diagnostic flags an overlap (probe-verified 2026-07-10, the IG56 Set-S probe).** `checkConsistency` over a two-tier computation with OVERLAPPING preconditions (`[BaseFee] > 0` / `[BaseFee] > -100`) and even byte-IDENTICAL preconditions (`> 0` twice) emits an EMPTY diagnostic set — indistinguishable from the exclusive control. The BA's "mutually exclusive" requirement is enforced by no tier; the runtime resolves an overlap by the first-declared-wins selection above. *(Locked: `validate.laws.ComputationTierExclusivityLawsTest`.)*
 
@@ -1721,7 +1721,7 @@ The kernel has **no datetime-specific format definition** — a DATE_TIME field 
 
 ## §8 supplement — the value-list membership family (2026-06-04 experiments) <a id="kf109"></a>
 
-> Fold: folded → §8 + §12.
+> Fold: pending — the 2026-10-03 correction is recorded here; fold its measured boundary into the canonical section.
 
 (The shape-B quantifier runtime semantics and the `Having` escalation family are canonical in §8 "The value-list quantifiers" and §12; the authoring slot rules and per-arm evidence stay here.) Five operators in two grammar shapes. **Shape A** `FieldValueIncludedInValueList(field, v1, …)` / `FieldValueNotIncludedInValueList(…)` (DE: `FeldWertInWerteListe`/`FeldWertNichtInWerteListe`); **shape B** `AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In v1, …)` (DE: `MindestensEin…`/`Kein…`/`NichtAlle…`; `In` is a language-independent grammar literal like the symbols). Slot rules:
 
@@ -1745,7 +1745,7 @@ The kernel has **no datetime-specific format definition** — a DATE_TIME field 
 - The decided-vs-suppressed distinction inside the fields scan (a match BEFORE a later UNKNOWN decides; UNKNOWN first suppresses) is **not kernel-message-observable** — `ValidierungsErgebnis` merges FALSE and UNKNOWN (`FALSE_OR_UNKNOWN`) and the DSL has no negation, so the fire set is order-insensitive; both kernel routes agree on no-fire in either order. The mechanism (the early `return` in `keinFeldWertInWerteListeIntern`) is source-anchored and pinned at the interpreter's evaluator seam (JVM+Node).
 - **A category projection `[field -> Cat]` is a per-cell operand, on either side (SPEC-2026-07-22-05, tri-checked both strategies):** its cell presence is the underlying enum field's — an **EMPTY** enum via a category hop is an EMPTY cell (so a fired `No` is **OMISSION**, not the VALUE a "present unknown" would give; it does NOT poison), an **out-of-domain/malformed** enum is UNKNOWN, and a **filled** enum contributes its (many-to-one) category value. This is the case that surfaces only once category projections are authorable in the quantifier.
 
-**The `Having` escalation holds for the FILL quantifiers as well — a fired quantifier over a `Having`-filtered field star is UNCONDITIONALLY `TRUE_AF` → OMISSION (differential, both strategies, 2026-07-10).** Pinned in BOTH directions: `NoFieldFilled(G* / F Having <cond>)` fired with NOTHING kept by the filter (and at zero rows) is OMISSION, and `AtLeastOneFieldFilled(G* / F Having <cond>)` fired over a fully-KEPT, FILLED row is OMISSION too — the escalation does not depend on what the filter dropped or whether filling could change the outcome. (The unfiltered starred quantifiers keep their two-range fillability polarity — the escalation is the *filtered* iterator's.) This was the dominant real-workspace validateFull divergence class (the `polarity-flip OMISSION→VALUE` histogram bucket — 73 one-sided sigs, mostly implicit computation-validations whose preconditions carry filtered "currently active" quantifiers). *(Interpreter: a fired single-star `Having` quantifier returns OMISSION before the kept-rows fillability; locked `adapter.laws.HavingQuantifierPolarityDiffTest` + multiplatform `interpreter … HavingQuantifierPolarityTest`; INTERPRETER-FINDINGS IF101.)*
+**The `Having` escalation holds for the FILL quantifiers as well — a fired quantifier whose sole operand is a `Having`-filtered field star is `TRUE_AF` → OMISSION (differential, both strategies, 2026-07-10).** Pinned in BOTH directions: `NoFieldFilled(G* / F Having <cond>)` fired with NOTHING kept by the filter (and at zero rows) is OMISSION, and `AtLeastOneFieldFilled(G* / F Having <cond>)` fired over a fully-KEPT, FILLED row is OMISSION too — the escalation does not depend on what the filter dropped or whether filling could change the outcome. (The unfiltered starred quantifiers keep their two-range fillability polarity — the escalation is the *filtered* iterator's.) This was the dominant real-workspace validateFull divergence class (the `polarity-flip OMISSION→VALUE` histogram bucket — 73 one-sided sigs, mostly implicit computation-validations whose preconditions carry filtered "currently active" quantifiers). *(Interpreter: a fired single-star `Having` quantifier returns OMISSION before the kept-rows fillability; locked `adapter.laws.HavingQuantifierPolarityDiffTest` + multiplatform `interpreter … HavingQuantifierPolarityTest`; INTERPRETER-FINDINGS IF101.)*
 
 **A `Having`-filtered quantifier tallies each KEPT row's OWN cell — a dropped row's invalid cell never counts, and per-row self-correlation judges the kept row, not the iterating one (differential, both strategies, 2026-07-10).** The real-workspace per-row self-correlated period-overlap idiom (`FieldFilled(Start) And AtLeastOneFieldFilled(../G* /Price Having (CurrentRepetition(RuleGroup) != CurrentRepetition($RuleGroup) And <overlap disjunction>))`): evaluating row 2 — whose OWN `Price` is formally invalid — the kernel's filter DROPS row 2 (the self-exclusion) before its cell is ever read, keeps the valid row 1, and fires (groovy-dynamic == java-static). The kept cell's 3-state (`isWertAngegeben`) is judged per KEPT row. *(Interpreter: the filtered tally + the `$`-join buckets judge invalidity at the KEPT row's reps — the old check resolved at the ENCLOSING rule row's reps, so a per-row rule with an invalid own cell fired nowhere; locked `adapter.laws.SelfCorrelatedOverlapQuantifierDiffTest` + multiplatform `interpreter … HavingTallyRowCorrectInvalidityTest`; INTERPRETER-FINDINGS IF105.)*
 
@@ -7010,6 +7010,8 @@ Reported by the portable checker as `CheckFamily.COMPUTATION_PRECONDITION_FEATUR
 | the back edge through a field no computation writes — the control | ADMITTED |
 | a circle whose two ends sit in different groups (an aggregate over a repeatable group's field, and an absolute read back out of it) | **`MVK_ERROR_CALC_CYCLE`** |
 
+**Containing-group qualification.** Positive containing-group reads use producer profiles rather than expanding every member into an edge; the complete operand inventory remains unchanged. [KF511](#kf511) measures protected producers, separate same-target computations and implicit repeatable guards.
+
 **A PRECONDITION read is an edge.** The row matters because the two members look nothing alike — one is a condition, the other an operation, and a field read is spelled `FieldFilled(Volume)` in the first and `[Volume]` in the second — so an implementation reading only `operation` is the natural one to write, and it would admit a model A12 refuses.
 
 **A one-node circle is NOT this code, which is the pre-emption an implementation cannot infer.** A computation reading its own target is a cycle of length one in any graph, and A12 answers it with `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` ([KF181](#kf181), [KF182](#kf182) for its projected variant). Reporting the cycle class there would name a verdict A12 never reached.
@@ -12217,3 +12219,54 @@ A bracket read of a partial Date is refused (`MVK_INVALID_DATE_TYPE`, [KF473](#k
 A computation copying `FirstFilledValue(Day, Reported)` into a full Date stores `2024-06-01`, and its starred and keyed twins store the same; a malformed `Day` or an unknown `Year` clears the target. Unmeasured: `FieldValueAsString` over a keyed partial, and a selection inside a parallel iteration.
 
 *(Locked: `adapter.laws.FirstFilledValuePartialDateDiffTest`. The interpreter read every one of these as unknown before [IF353](INTERPRETER-FINDINGS.md#if353).)*
+
+## §11 supplement — empty Number comparison guards read zero; domain failure is not poison (both strategies, 2026-10-03) <a id="kf509"></a>
+
+> Fold: pending — corrects KF20's unmeasured empty-operand generalization.
+
+`NumericComputationGuardDiffTest` reproduces SPEC-2026-10-03-01 through typed computations on Kernel 30.8.1: sixteen targets over eight documents, with dynamic Groovy, static Java and the interpreter agreeing on all 128 values/clears. Empty and explicit zero select identically for `== 0`, `!= 0`, `< 1`, `<= 0`, `> -1`, `>= 0`, `[N] + 1 > 0` and `0 < [N] + 1`; only the inequality-to-zero guard declines on those two documents.
+
+A reached division by zero inside a comparison yields no selection and a clean clear when the other operand is valid; the dependent reads zero and computes `1`. An invalid right operand is still reached after the left domain failure and poisons the dependent. False `And` and true `Or` skip an invalid suffix, yielding downstream `1` and `4`. This is a guard result, distinct from storing a division-domain failure as the computation's operation. Targets are seeded with `9`, so a clear is observable. The measurement covers fixed scale-zero Number fields and these guards; other field kinds and validation polarity are not inferred. The interpreter already matched; the defect was KF20's wording.
+
+## §9 supplement — Number comparisons inside a filter retain both directions and the equality-only scale gate (kernel/checker, 2026-10-03) <a id="kf510"></a>
+
+> Fold: pending — SPEC-2026-10-02-08.
+
+`FilterNumberComparisonAgreementTest` checks 59 independently identified conditions inside a typed `Sum` filter against Kernel 30.8.1 and the portable checker. All six ordinary comparison operators accept integer `6` on either side of a scale-zero field. For `1.5`, `1.0` and `1.50`, on either side, `==` and `!=` draw `MVK_INVALID_COMPARE_DEC_PLACES`; all four orderings are admitted. The same equality/ordering split holds between scale-zero and scale-two fields, and for a scale-two field against `1.505`. Constant-only `1 < 2` draws `MVK_INVALID_COMPARE_TO_CONST`; arithmetic and `CurrentRepetition` controls are admitted. Thus the gate consumes written scale, not merely numeric value, and neither operator direction nor filter placement removes it. The measurement fixes `en_US`, one finite repetition level and short nonnegative-scale literals; it does not establish the integer-trailing-zero boundary. No production change was required.
+
+## §11 supplement — containing-group guards separate complete operands from scheduling dependencies (kernel/checker and both runtime strategies, 2026-10-03) <a id="kf511"></a>
+
+> Fold: pending — SPEC-2026-10-03-02 extends KF334's field-read graph.
+
+`ContainingGroupDependencyAgreementTest` measures 21 admission cases on Kernel 30.8.1; `ContainingGroupDependencyTest` replays those exact typed-authored model bytes on JVM and Node. A positive containing-group operand retains every contained field for operand coverage, but omits its own target and group-protected producers from scheduling. Ordinary reads remain edges even in an unselectable later computation.
+
+| Discriminator | Kernel observation |
+|---|---|
+| Two targets with the same containing-group guard; guards conjoined with another predicate | Admitted |
+| The group guard bypassed by `Or`; explicit ordinary back edges | `MVK_ERROR_CALC_CYCLE` |
+| Unconditional constant producer beside a guarded consumer | Admitted; the consumer sees its produced content |
+| Both alternatives guarded, including a common group precondition | Admitted; a bypassing alternative closes the cycle |
+| Guarded and unconditional separate computations for one fixed target, in either order | Admitted; absence is omitted from the target's syntactic profile |
+| Fixed child below a repeatable row, with a narrower group guard and an unconditional separate producer | Cycle in both orders |
+| Change the queried group to the row, add the narrower common guard, or make the row fixed | Admitted in both orders |
+| Unselectable ordinary back edge after an unconditional producer | Cycle |
+
+Fourteen seeded/filled root-document outcomes additionally agree between both kernel strategies and the interpreter, including both split-target orders. The split-target seed control clears the other target while selecting the unconditional constant, distinguishing a syntactic profile from a runtime truth guarantee. The narrower repeatable rows are static measurements only. Kernel source owners `CalculationUtils`, `ConditionalCalculationGroupVisitor` and `CalculationDependencies` explain the measured ordering: expand common conditions, add each computation's implicit row guard, then assemble the target profile from present conditions. Independent implementations use protected-ancestor sets and retain every writer. The scope is Number targets, fixed ancestors and one unindexed repeatable level; nested/keyed and cross-kind scheduling are unmeasured.
+
+## §1 supplement — filtered field-fill lists retain selected declared slots and deciding-prefix polarity (both strategies, 2026-10-03) <a id="kf512"></a>
+
+> Fold: pending — SPEC-2026-10-03-03 narrows the sole-filter escalation account.
+
+`FilteredFillDecisionDiffTest` measures all seven field-fill quantifiers on seven operand lists and nine documents: 441 full and 441 whole-root partial outcomes on Kernel 30.8.1, comparing complete authored `code|pointer|type` signatures across dynamic Groovy, static Java and the interpreter. `SpecSyncRuntimeTest` replays the same retained models, canonical Documents and observations on JVM and Node.
+
+| Discriminator, with a maximum of two rows | Kernel observation |
+|---|---|
+| First row filled; filter `CurrentRepetition(Rows) == 1` versus `> 0` | `AllFieldsFilled` fires only for the first filter; the broader filter retains the missing second declared slot, so `NotAllFieldsFilled` fires there |
+| Zero rows; coordinate-one filter versus `[Rows/R] > 0` | Coordinate selection retains an empty declared slot; the value filter selects nothing and `AllFieldsFilled` fires vacuously |
+| Direct filled A before the filtered filled row versus the reverse order | `AtLeastOneFieldFilled` fires VALUE versus OMISSION |
+| A and B filled before the filtered operand versus only A filled | `MoreThanOneFieldFilled` and `NotExactlyOneFieldFilled` fire VALUE versus OMISSION |
+| Malformed first row selected by coordinate | It supplies neither a known-filled nor known-empty witness; `NoFieldFilled` and `NotAllFieldsFilled` stay silent |
+| Same malformed row under the value filter | The filter drops it; `NoFieldFilled` fires OMISSION |
+| Whole-root partial relevance | Every filtered rule is silent on all nine documents; the unfiltered list remains the control |
+
+Positive thresholds take polarity from the filled witnesses before their decision, not from filter presence anywhere in the list. Declared-range flags require evaluating the filter at missing declared coordinates; instantiated rows alone cannot determine them. The matrix is finite single-level Number field lists with one filtered operand, coordinate-one/positive-coordinate/positive-value filters, and direct operands before or after it. Multiple filters, nested/unbounded ranges, group operands, other kinds, computations and message-reference coordinates are outside this measurement.

@@ -3859,3 +3859,25 @@ if (!performanceForkCountProperty.isPresent()) {
         }
     }
 }
+
+// The adapter authors and kernel-checks these models; common tests replay their exact retained observations.
+def specSyncFixtures = [
+    fill: rootProject.file('adapter/src/test/resources/filtered-fill-decisions.json'),
+    groups: rootProject.file('adapter/src/test/resources/checker-near-miss/containing-group-profiles.json')
+]
+def specSyncDir = layout.buildDirectory.dir('generated/specSync/commonTest/kotlin').get().asFile
+def specSyncSource = new File(specSyncDir, 'io/github/mbackschat/a12/dm/interpreter/SpecSyncFixtureData.kt')
+def generateSpecSyncFixtures = tasks.register('generateSpecSyncFixtures') {
+    inputs.files(specSyncFixtures.values())
+    outputs.file(specSyncSource)
+    doLast {
+        def members = specSyncFixtures.collect { name, file ->
+            "    val $name: String = " + groovy.json.JsonOutput.toJson(file.getText('UTF-8')).replace('$', '\\$')
+        }.join('\n')
+        specSyncSource.parentFile.mkdirs()
+        specSyncSource.text = "package io.github.mbackschat.a12.dm.interpreter\n\ninternal object SpecSyncFixtureData {\n${members}\n}\n"
+    }
+}
+kotlin.sourceSets.commonTest.kotlin.srcDir(specSyncDir)
+tasks.named('compileTestKotlinJvm') { dependsOn generateSpecSyncFixtures }
+tasks.named('compileTestKotlinJs') { dependsOn generateSpecSyncFixtures }

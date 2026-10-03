@@ -668,19 +668,8 @@ private fun Interpreter.predType(p: Cond.Pred): MsgType {
     // the same ordered scan as the truth (SPEC-2026-08-05-01; `FieldValuesNotUniqueDiffTest`).
     if (op == PredicateOp.FIELD_VALUES_NOT_UNIQUE) return fieldValuesNotUnique(p.args).type
     op.polarity?.let { return it }
-    // A fired fill quantifier over a Having-FILTERED field star is UNCONDITIONALLY escalated to TRUE_AF →
-    // OMISSION (the fill-quantifier twin of the §8 value-list rule "a Having-filtered entry escalates a
-    // fired result to TRUE_AF"): kernel-pinned in BOTH directions — NoFieldFilled fired with nothing kept
-    // AND AtLeastOneFieldFilled fired over a fully-kept FILLED row are both OMISSION (IF101). The kept-rows
-    // fillability below would type the zero-kept case VALUE (nothing to fill) — the E3 flip class.
-    //
-    // ANY filtered operand escalates, and it is checked BEFORE the scope path — two corrections, both
-    // measured. `singleOrNull()` missed a MIXED list, where one plain star routes the whole list onto the
-    // scope path and a filtered SIBLING is then never consulted: `AllFieldsFilled(Charges*/Amount,
-    // Lines*/Amount Having …)` was typed VALUE where both kernel strategies answer OMISSION. That is exactly
-    // the mistake the `NoGroupFilled(G*, G*)` note below already records one operand-list position over —
-    // requiring a SOLE star types a firing VALUE where the kernel says OMISSION ([IF287]).
-    if (!op.countsGroups && p.args.any { it is Expr.Star && it.having != null }) return MsgType.OMISSION
+    // SPEC-2026-10-03-03: positive thresholds stop their polarity scan at the deciding witness.
+    if (!op.countsGroups && p.args.any { it is Expr.Star && it.having != null }) return filteredFillType(op, p.args)
     if (!op.countsGroups && hasFillScopeOperand(p.args)) return fillScopeType(op, fillScopeInfo(p.args))
     val (t, f, n) = quantCounts(op, p.args)
     // OMISSION iff filling more content could clear the firing. For a STARRED group operand the fix is ADDING

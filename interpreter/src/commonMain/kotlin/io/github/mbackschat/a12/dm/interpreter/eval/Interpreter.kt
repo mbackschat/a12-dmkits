@@ -506,7 +506,8 @@ class Interpreter(
             PredicateOp.NOT_ALL_GROUPS_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> when {
                 computeMode && !op.countsGroups -> computeFillQuantifier(op, p.args)
                 computeMode && op.countsGroups -> computeGroupFillQuantifier(op, p.args)
-                !op.countsGroups && hasFillScopeOperand(p.args) -> Tri.of(fillScopeFires(op, fillScopeInfo(p.args)))
+                !op.countsGroups && (hasFillScopeOperand(p.args) ||
+                    (op in DECLARED_FILL_OPERATORS && p.args.any { it is Expr.Star && it.having != null })) -> Tri.of(fillScopeFires(op, fillScopeInfo(p.args)))
                 else -> {
                     val (t, f, n) = quantCounts(op, p.args)
                     Tri.of(quantifierFires(op, t, f, n))
@@ -518,8 +519,9 @@ class Interpreter(
     /** A field-fill quantifier operand that needs the group/starred-scope treatment (IF49): a bare GROUP ref (a
      *  `Field` whose path is not a declared field), a keyed one (IF340), or a starred field/group WITHOUT a
      *  `Having` (a Star with a Having is the filtered-correlation path, handled by [starQuantTally]). A plain field
-     *  list is not a scope. */
-    internal fun hasFillScopeOperand(args: List<Expr>): Boolean = args.any {
+     *  list is not a scope. A mixed direct/filtered list uses the same operand expansion. */
+    internal fun hasFillScopeOperand(args: List<Expr>): Boolean =
+        (args.any { it !is Expr.Star } && args.any { it is Expr.Star && it.having != null }) || args.any {
         (it is Expr.Star && it.having == null) || (it is Expr.Field && ctxOf(it).declaredKind(it.path) == null) ||
             isKeyedGroup(it) || it.isIndexedStar()
     }
@@ -583,34 +585,7 @@ class Interpreter(
         Tri.UNKNOWN -> FillScope(0, 0, 1, true, allFilledDeclared = false, anyEmptyDeclared = false)
     }
 
-    /**
-     * The [FillScope] of a `Having`-FILTERED starred operand, tallied over the rows the filter KEEPS — the same
-     * kept-row scan as [naiveStarQuantTally], which is the measured path a filtered operand takes when it is alone
-     * in its list.
-     *
-     * **The classification is NOT identical to that sibling, and saying so was a correction.** A filled-but-
-     * malformed kept cell sets [FillScope.hasUnknownInst] here (so the quantifier can be suppressed) where
-     * [naiveStarQuantTally] silently drops it. This branch matches [EvalContext.fillScope]'s classification instead
-     * — the right neighbour for a value handed to `fillScopeInfo` — but that is an unmeasured semantic choice, not
-     * a parity: no row places a malformed cell in a KEPT row, so nothing in the estate separates the two readings.
-     *
-     * **Why this exists.** A fill quantifier is diverted onto the group/starred-scope path as soon as ANY operand
-     * qualifies ([hasFillScopeOperand]), and that path called [EvalContext.fillScope] for EVERY operand — a
-     * function with no `having` parameter, so the filter could not be honoured there even in principle. A mixed
-     * list holding one unfiltered star (which diverts) and one filtered star (which is then mis-tallied) therefore
-     * counted the filtered operand over ALL its rows. Measured against both kernel strategies on a document whose
-     * only filled cell sits in the row the filter DROPS: `NoFieldFilled` returned false where the kernel fires and
-     * `AtLeastOneFieldFilled` returned true where it does not — opposite directions, so the evidence is about the
-     * dropped filter and not about either quantifier's verdict ([IF287]'s class; `MixedFillScopeHavingDiffTest`).
-     *
-     * **The DECLARED-range flags are derived from the same kept-row scan, and that is a measured choice rather than
-     * a convenience.** A filter is a predicate over a row, so it cannot be evaluated on a repetition that does not
-     * exist — there is no kept/dropped answer for an un-instantiated declared rep. The kernel's answer for the
-     * instantiated case is measured (`AllFieldsFilled` fires over a filled kept row while an unfiltered reading
-     * sees the dropped row's empty cell), and every row of that measurement has its full declared range
-     * instantiated, so the interaction between a filter and an un-instantiated declared TAIL is deliberately left
-     * unmeasured rather than guessed at here.
-     */
+    /** Selected declared slots determine All/NotAll; thresholds count selected instantiated cells. */
     private fun filteredFillScope(c: EvalContext, star: Expr.Star, having: Cond): FillScope {
         var t = 0
         var f = 0
@@ -626,7 +601,36 @@ class Interpreter(
                 else -> t++
             }
         }
-        return FillScope(t, f, n, unknown, allFilledDeclared = f == 0 && !unknown, anyEmptyDeclared = f > 0)
+        var allFilled = true
+        var anyEmpty = false
+        for (rc in c.declaredStarRows(star.path, star.bindDepth)) {
+            if (!havingInterp(rc).fires(having)) continue
+            when {
+                rc.presenceUnknown(star.path) -> allFilled = false
+                !rc.filled(star.path) -> { allFilled = false; anyEmpty = true }
+                rc.field(star.path) is Val.Unknown -> allFilled = false
+            }
+        }
+        return FillScope(t, f, n, unknown, allFilledDeclared = allFilled, anyEmptyDeclared = anyEmpty)
+    }
+
+    /** A filtered operand changes a positive threshold's polarity only if it supplies a deciding witness. */
+    internal fun filteredFillType(op: PredicateOp, args: List<Expr>): MsgType {
+        if (args.size == 1) return MsgType.OMISSION
+        val threshold = when (op) {
+            PredicateOp.AT_LEAST_ONE_FIELD_FILLED -> 1
+            PredicateOp.MORE_THAN_ONE_FIELD_FILLED, PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED -> 2
+            else -> return MsgType.OMISSION
+        }
+        var filled = 0
+        var filteredWitness = false
+        for (arg in args) {
+            val count = if (arg is Expr.SemanticIndex) keyedFillScope(arg).tInst else operandFillScope(arg).tInst
+            if (count > 0 && arg is Expr.Star && arg.having != null) filteredWitness = true
+            filled += count
+            if (filled >= threshold) return if (filteredWitness) MsgType.OMISSION else MsgType.VALUE
+        }
+        return MsgType.OMISSION
     }
 
     /** Whether a field-fill quantifier fires over a group/starred scope — `AllFieldsFilled`/`NotAllFieldsFilled`
@@ -704,9 +708,7 @@ class Interpreter(
                 for (cell in c.starScanCells(a.path, a.bindDepth, declaredTail)) yield(filledOrPoison(cell))
             }
             a is Expr.Star -> {
-                // A filtered star: the filter runs per row inside the scan (its reads poison row-correctly); a
-                // kept candidate retains path+reps+raw through the complete call-local formal oracle. An
-                // un-instantiated declared rep cannot pass a filter, so there is no declared tail.
+                // Keep the compute scan's call-local formal oracle: a selected candidate can poison its reader.
                 val group = a.path.substringBeforeLast('/')
                 for (rc in ctxOf(a).rowContexts(group, a.bindDepth)) {
                     if (!havingInterp(rc).fires(a.having!!)) continue
@@ -1421,3 +1423,6 @@ class Interpreter(
 
 /** The `DateType` precisions whose well-formed value may be partially known (a zero component). */
 internal val PARTIAL_PRECISIONS = setOf(DatePrecision.DAY_OPTIONAL, DatePrecision.MONTH_OPTIONAL, DatePrecision.YEAR_OPTIONAL)
+
+private val DECLARED_FILL_OPERATORS = setOf(PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
+    PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED)

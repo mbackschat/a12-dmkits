@@ -425,3 +425,12 @@ data class FillScope(
     val allFilledDeclared: Boolean,
     val anyEmptyDeclared: Boolean,
 )
+
+/** Validation filters may select a missing declared slot by coordinate (SPEC-2026-10-03-03). */
+internal interface DeclaredStarRowProvider {
+    fun declaredStarRows(fieldPath: String, bindDepth: Int): Sequence<EvalContext>
+}
+
+internal fun EvalContext.declaredStarRows(fieldPath: String, bindDepth: Int): Sequence<EvalContext> =
+    (this as? DeclaredStarRowProvider)?.declaredStarRows(fieldPath, bindDepth)
+        ?: rowContexts(fieldPath.substringBeforeLast('/'), bindDepth).asSequence()

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test
  * corpus minimal's implicit computation-validation fired `OMISSION` in the kernel and `VALUE` in the
  * interpreter, the flip riding its `NoFieldFilled(star Having <active>)` precondition conjunct).
  *
- * The kernel ESCALATES a fired `Having`-filtered starred fill quantifier to `TRUE_AF` (OMISSION)
+ * The kernel ESCALATES a fired fill quantifier over a sole `Having`-filtered star to `TRUE_AF` (OMISSION)
  * UNCONDITIONALLY — differentially pinned in both directions: `NoFieldFilled(star Having …)` fired with
  * nothing kept is OMISSION, AND `AtLeastOneFieldFilled(star Having …)` fired over a fully-kept FILLED row is
  * OMISSION too (the fill-quantifier twin of the §8 value-list rule "a Having-filtered entry escalates a fired

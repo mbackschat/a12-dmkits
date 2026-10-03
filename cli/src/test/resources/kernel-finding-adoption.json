@@ -3060,6 +3060,531 @@
           "evidence": {}
         }
       }
+    },
+    "kf509": {
+      "sha256": "e211351517d1892b1e7e0841c4f2433dea2c2a9a668d65d3c0a078bc7a9d592d",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "empty Number computation guard boundary"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "empty Number computation guard boundary"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "empty Number computation guard boundary"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "empty Number computation guard boundary": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericComputationGuardDiffTest.kt#numericGuardsAndTheirDownstreamOutcomesAgree",
+              "witness": "Six comparisons, two arithmetic orders, domain/poison and short-circuit controls across eight seeded documents."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "empty Number computation guard boundary": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericComputationGuardDiffTest.kt#numericGuardsAndTheirDownstreamOutcomesAgree",
+              "witness": "Six comparisons, two arithmetic orders, domain/poison and short-circuit controls across eight seeded documents."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation and portable checking delegate to the interpreter and checker assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf510": {
+      "sha256": "968f1ad3a4c123f57df4cd95ee7c4525112407db66b7c76de9999b2925bb7825",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "filter Number comparison admission"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "filter Number comparison admission"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "filter Number comparison admission"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "filter Number comparison admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterNumberComparisonAgreementTest.kt#ordinaryComparisonOperatorsKeepTheirScaleGateInsideFilters",
+              "witness": "Both literal directions, all six ordinary operators, written fractional scale and field-pair controls."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "filter Number comparison admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterNumberComparisonAgreementTest.kt#ordinaryComparisonOperatorsKeepTheirScaleGateInsideFilters",
+              "witness": "Both literal directions, all six ordinary operators, written fractional scale and field-pair controls."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation and portable checking delegate to the interpreter and checker assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf511": {
+      "sha256": "980013ba54dcb3b7661096877b29a347ef3b88a4bd0ab1f5cc24574f75d78bb0",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "containing-group scheduling profiles"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "containing-group scheduling profiles"
+        ],
+        "checker": [
+          "containing-group scheduling profiles"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "containing-group scheduling profiles"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "containing-group scheduling profiles": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ContainingGroupDependencyAgreementTest.kt#profilesRetainOrdinaryEdgesAndNormalizeRepeatableGuardsBeforeMergingTargets",
+              "witness": "Twenty-one static rows, fourteen seeded runtime observations; both split-target orders and narrower repeatable refusals."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "containing-group scheduling profiles": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ContainingGroupDependencyAgreementTest.kt#profilesRetainOrdinaryEdgesAndNormalizeRepeatableGuardsBeforeMergingTargets",
+              "witness": "Twenty-one static rows, fourteen seeded runtime observations; both split-target orders and narrower repeatable refusals."
+            }
+          }
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "containing-group scheduling profiles": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ContainingGroupDependencyAgreementTest.kt#profilesRetainOrdinaryEdgesAndNormalizeRepeatableGuardsBeforeMergingTargets",
+              "witness": "Twenty-one static rows, fourteen seeded runtime observations; both split-target orders and narrower repeatable refusals."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation and portable checking delegate to the interpreter and checker assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf512": {
+      "sha256": "59b47333215e4ee18fa607e5e7a4d009925c829be96cd0607f8962e7e3cbc2e5",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "filtered field-fill slots and deciding prefixes"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "filtered field-fill slots and deciding prefixes"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "filtered field-fill slots and deciding prefixes"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "filtered field-fill slots and deciding prefixes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilteredFillDecisionDiffTest.kt#selectedMissingSlotsAndDecidingPrefixesAgreeOnBothValidationArms",
+              "witness": "Seven quantifiers by seven lists by nine documents, full and whole-root partial; exact signatures and retained replay."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "filtered field-fill slots and deciding prefixes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilteredFillDecisionDiffTest.kt#selectedMissingSlotsAndDecidingPrefixesAgreeOnBothValidationArms",
+              "witness": "Seven quantifiers by seven lists by nine documents, full and whole-root partial; exact signatures and retained replay."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation and portable checking delegate to the interpreter and checker assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf20": {
+      "sha256": "7f634c8a0955b5e5575737afffd9b72a623b50b77f48326921d3e9af0eefbcde",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "empty Number computation guard boundary",
+          "unchanged historical claims outside this amendment"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "empty Number computation guard boundary",
+          "unchanged historical claims outside this amendment"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "empty Number computation guard boundary"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "OPEN",
+          "basis": "This review discharges the 2026-10-03 amendment only; broader historical adoption remains unassessed under F-USE-BACKLOG.",
+          "evidence": {
+            "empty Number computation guard boundary": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericComputationGuardDiffTest.kt#numericGuardsAndTheirDownstreamOutcomesAgree",
+              "witness": "Six comparisons, two arithmetic orders, domain/poison and short-circuit controls across eight seeded documents."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "This review discharges the 2026-10-03 amendment only; broader historical adoption remains unassessed under F-USE-BACKLOG.",
+          "evidence": {
+            "empty Number computation guard boundary": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericComputationGuardDiffTest.kt#numericGuardsAndTheirDownstreamOutcomesAgree",
+              "witness": "Six comparisons, two arithmetic orders, domain/poison and short-circuit controls across eight seeded documents."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation and portable checking delegate to the interpreter and checker assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf109": {
+      "sha256": "fa423991defce83932a91743e1c47befd199e97175f1e9dc58ad328fec821e62",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "filtered field-fill slots and deciding prefixes",
+          "unchanged historical claims outside this amendment"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "filtered field-fill slots and deciding prefixes",
+          "unchanged historical claims outside this amendment"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "filtered field-fill slots and deciding prefixes"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "OPEN",
+          "basis": "This review discharges the 2026-10-03 amendment only; broader historical adoption remains unassessed under F-USE-BACKLOG.",
+          "evidence": {
+            "filtered field-fill slots and deciding prefixes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilteredFillDecisionDiffTest.kt#selectedMissingSlotsAndDecidingPrefixesAgreeOnBothValidationArms",
+              "witness": "Seven quantifiers by seven lists by nine documents, full and whole-root partial; exact signatures and retained replay."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "This review discharges the 2026-10-03 amendment only; broader historical adoption remains unassessed under F-USE-BACKLOG.",
+          "evidence": {
+            "filtered field-fill slots and deciding prefixes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilteredFillDecisionDiffTest.kt#selectedMissingSlotsAndDecidingPrefixesAgreeOnBothValidationArms",
+              "witness": "Seven quantifiers by seven lists by nine documents, full and whole-root partial; exact signatures and retained replay."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation and portable checking delegate to the interpreter and checker assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf334": {
+      "sha256": "afe91d8a432574e846cba9515dae04e4cb38f2d1bb8bed0ecfe4ce126d57f330",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "containing-group scheduling profiles",
+          "unchanged historical claims outside this amendment"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "containing-group scheduling profiles",
+          "unchanged historical claims outside this amendment"
+        ],
+        "checker": [
+          "containing-group scheduling profiles",
+          "unchanged historical claims outside this amendment"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "containing-group scheduling profiles"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "OPEN",
+          "basis": "This review discharges the 2026-10-03 amendment only; broader historical adoption remains unassessed under F-USE-BACKLOG.",
+          "evidence": {
+            "containing-group scheduling profiles": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ContainingGroupDependencyAgreementTest.kt#profilesRetainOrdinaryEdgesAndNormalizeRepeatableGuardsBeforeMergingTargets",
+              "witness": "Twenty-one static rows, fourteen seeded runtime observations; both split-target orders and narrower repeatable refusals."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "This review discharges the 2026-10-03 amendment only; broader historical adoption remains unassessed under F-USE-BACKLOG.",
+          "evidence": {
+            "containing-group scheduling profiles": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ContainingGroupDependencyAgreementTest.kt#profilesRetainOrdinaryEdgesAndNormalizeRepeatableGuardsBeforeMergingTargets",
+              "witness": "Twenty-one static rows, fourteen seeded runtime observations; both split-target orders and narrower repeatable refusals."
+            }
+          }
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "This review discharges the 2026-10-03 amendment only; broader historical adoption remains unassessed under F-USE-BACKLOG.",
+          "evidence": {
+            "containing-group scheduling profiles": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ContainingGroupDependencyAgreementTest.kt#profilesRetainOrdinaryEdgesAndNormalizeRepeatableGuardsBeforeMergingTargets",
+              "witness": "Twenty-one static rows, fourteen seeded runtime observations; both split-target orders and narrower repeatable refusals."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation and portable checking delegate to the interpreter and checker assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

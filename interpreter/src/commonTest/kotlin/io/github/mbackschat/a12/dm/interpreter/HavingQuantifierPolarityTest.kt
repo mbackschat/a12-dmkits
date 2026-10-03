@@ -10,7 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Multiplatform (JVM + JS) lock for IF101 — a fired fill quantifier over a `Having`-FILTERED field star is
+ * Multiplatform (JVM + JS) lock for IF101 — a fired fill quantifier over a sole `Having`-FILTERED field star is
  * UNCONDITIONALLY `TRUE_AF` → OMISSION (the fill-quantifier twin of the §8 value-list escalation rule),
  * in BOTH directions: `NoFieldFilled(star Having …)` fired with nothing kept, AND
  * `AtLeastOneFieldFilled(star Having …)` fired over a fully-kept FILLED row. Kernel-verified by the tri-check

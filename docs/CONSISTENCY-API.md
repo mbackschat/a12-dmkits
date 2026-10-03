@@ -35,6 +35,8 @@ Numeric `FirstFilledValue` summarizes the maximum known scale across all expande
 
 Common-precondition target reads follow the first judged computation alternative: once per common read, absent when every alternative is unguarded among several. The projected target-read class still answers once for the whole computation ahead of that walk. `computationSelfReadContributions` enforces placement; `CommonPreconditionWalkAgreementTest` and its `CommonPreconditionWalkTest` replay lock fixed-root, fixed-nested and repeatable Number carriers with the scale gate suppressed ([KF181](KERNEL-FINDINGS.md#kf181)).
 
+Computation cycles retain ordinary reads from every writer, including unselectable later computations. Positive containing-group reads omit protected producers from the scheduling graph according to common-expanded conditions and implicit repeatable guards; they do not narrow the operand inventory. Enforcement is in `ComputationDependencyProfiles`; `ContainingGroupDependencyAgreementTest` measures the 21 admission cases and `ContainingGroupDependencyTest` replays the same model bytes on JVM and Node ([KF511](KERNEL-FINDINGS.md#kf511)).
+
 ## The entry point
 
 Strings in, strings out — and that is the durable decision, not the number of calls. The checker's Kotlin types are still moving, so exporting *them* would publish an ABI that changes under every consumer; a JSON string commits to the wire shape below and to nothing else.

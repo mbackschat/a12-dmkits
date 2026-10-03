@@ -11,13 +11,12 @@ package io.github.mbackschat.a12.dm.consistency
  *
  * **A PRECONDITION read is an edge, measured rather than assumed.** A computation whose operation closes no
  * circle still closes one through its guard, so a family reading only `operation` would admit a model A12
- * refuses. All three DSL-bearing members are read, through the same [conditionReferences] every other family
- * uses.
+ * refuses. All three DSL-bearing members are read; [ComputationDependencyProfiles] separates ordinary
+ * dependencies from positive containing-group scheduling reads (KF511).
  *
  * **A one-node circle is NOT this code.** A computation reading its own target is a cycle of length one in
  * any graph an implementation would build, and A12 answers it with `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`
- * — a law this checker does not carry, because its two pre-emptions need derived-scale inference. So the
- * self-loop is dropped rather than reported: silence there under-reports, which is safe, while reporting the
+ * — owned separately by [computationSelfReadFindings]. The self-loop is dropped here because reporting the
  * cycle class would name a verdict A12 never reached.
  *
  * **The graph is over RESOLVED fields, not declaration sites.** A circle whose two ends sit in different
@@ -51,37 +50,19 @@ internal fun TrackedFactBase.computationCycleFindings(): List<Finding> {
     }
 }
 
-/** Each computed field's absolute path, mapped to the computation that writes it. */
+/** Diagnostic placement uses one declaration per target; dependency collection retains every writer. */
 private fun TrackedFactBase.computedTargets(): Map<String, String> {
     val suppressed = variantFilterSuppressed()
-    return declaredReferences()
-        .filter { it.role == ReferenceRole.COMPUTED_TARGET && it.declaredAt !in suppressed }
-        .mapNotNull { declared ->
-            (declared.target as? Reference.Resolved)?.path?.let { it to declared.declaredAt }
-        }
-        // A field written by two computations is a different law; the first writer is enough to place an edge,
-        // and this family may not turn that shape into a second opinion about it.
-        .toMap()
+    return declarations().filter { it.declaredKind == DeclaredKind.COMPUTATION && it.path !in suppressed }
+        .mapNotNull { element -> computedTargetOf(element)?.let { it to element.path } }.toMap()
 }
 
-/**
- * For each computed field, the computed fields its own computation reads.
- *
- * Self-loops are dropped here rather than at the report, so nothing downstream can reintroduce them: they
- * are A12's other law, and this is the only place that knows a read landed on its own writer.
- */
 private fun TrackedFactBase.dependencyEdges(writtenBy: Map<String, String>): Map<String, Set<String>> {
-    val targetOfComputation = writtenBy.entries.associate { (path, declaredAt) -> declaredAt to path }
-    val edges = mutableMapOf<String, MutableSet<String>>()
-    conditionReferences().forEach { reference ->
-        val target = targetOfComputation[reference.declaredAt] ?: return@forEach
-        val read = (reference.target as? Reference.Resolved)?.path ?: return@forEach
-        if (read == target || read !in writtenBy) {
-            return@forEach
-        }
-        edges.getOrPut(target) { mutableSetOf() }.add(read)
+    val suppressed = variantFilterSuppressed()
+    val computations = declarations().filter {
+        it.declaredKind == DeclaredKind.COMPUTATION && it.path !in suppressed && computedTargetOf(it) in writtenBy
     }
-    return edges
+    return ComputationDependencyProfiles(this, computations).edges()
 }
 
 /**

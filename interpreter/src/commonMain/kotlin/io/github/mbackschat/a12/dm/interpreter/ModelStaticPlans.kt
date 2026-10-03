@@ -119,10 +119,8 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
     fun computationClosure(target: String): List<ComputationDef> =
         computationClosures[target]?.value ?: emptyList()
 
-    /** All field/star refs of a whole tiered computation — its cascade DEPENDENCY input: each operation's full
-     *  refs (incl. starred and `Having`-filter refs, so a dependency through an aggregate over a computed field
-     *  is ordered) plus each precondition's + the common precondition's FULL refs ([condDepRefs] — a
-     *  precondition's quantifier over a computed field is a dependency too). */
+    /** Complete operand coverage, including every field contained by group reads. Scheduling uses
+     *  [ComputationDependencies] separately because protected producers remain operands (KF511). */
     fun computationDepRefs(parsed: ParsedComputation): List<String> = (
         (parsed.commonPrecondition?.let { condDepRefs(it) } ?: emptyList()) +
             parsed.alternatives.flatMap {
@@ -130,8 +128,8 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             }
         ).flatMap(::expandGroupDependency)
 
-    /** A bare-group fill predicate depends on every computed target contained by that group, not on the
-     *  non-field group path itself. Expansion here serves both whole-model ordering and computeField closure. */
+    /** The operand inventory retains every contained field, including producers omitted from scheduling
+     *  by a positive containing-group guard (SPEC-2026-10-03-02). */
     private fun expandGroupDependency(path: String): List<String> =
         if (path in model.kinds) listOf(path)
         else model.kinds.keys.filter { it.startsWith("$path/") }
@@ -232,6 +230,8 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
      * document order so a later computation cannot be dropped (IF171's shared root), and a cycle is a model
      * error rather than a configuration one.
      */
+    private val schedulingDependencies by lazy { ComputationDependencies(model, ::computation) }
+
     private fun orderedFrom(roots: List<String>): List<ComputationDef> {
         val byTarget: Map<String, List<ComputationDef>> = model.computations.groupBy { it.targetPath }
         val ordered = mutableListOf<ComputationDef>()
@@ -243,7 +243,7 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
                 throw UnsupportedConstructException("cyclic computation dependency involving $target")
             }
             for (comp in byTarget[target].orEmpty())
-                for (ref in computationDepRefs(computation(comp)))
+                for (ref in schedulingDependencies.reads(comp))
                     if (ref != target && ref in byTarget) visit(ref)
             onStack.remove(target)
             if (done.add(target)) ordered.addAll(byTarget[target].orEmpty())

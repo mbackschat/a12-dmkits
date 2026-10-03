@@ -921,7 +921,7 @@ class Document(internal val config: DocumentConfig) {
         private val group: String,
         private val rowReps: List<Int>,
         override val evaluated: Boolean,
-    ) : EvalContext, GroupListEnvironmentProvider {
+    ) : EvalContext, GroupListEnvironmentProvider, DeclaredStarRowProvider {
 
         /**
          * Resolve a referenced field to its placement (or null) ONCE per path, cached for this row context —
@@ -1013,6 +1013,11 @@ class Document(internal val config: DocumentConfig) {
                 else -> CellState.FILLED
             }
         }
+
+        override fun declaredStarRows(fieldPath: String, bindDepth: Int): Sequence<EvalContext> =
+            starScanCells(fieldPath, bindDepth, declaredRange = true).map { cell ->
+                RowContext(parentGroup(fieldPath), cell.reps.dropLast(1), evaluated = true)
+            }
 
         override fun starScanCells(path: String, bindDepth: Int, declaredRange: Boolean): Sequence<ScanCell> {
             val fieldParts = partsOf(path)
