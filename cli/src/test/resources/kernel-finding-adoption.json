@@ -558,6 +558,71 @@
         }
       }
     },
+    "kf51": {
+      "sha256": "0468acaa2e89c0d9556aecd2a3ea06ab4a873fe6c7ca4628001394a4eaf13409",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "unregistered predefined-type name in computation"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "unregistered predefined-type name in computation"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "unregistered predefined-type name in computation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnregisteredPredefinedTypeComputationTest.kt#theKernelFailsTheTargetOnlyWhenTheLookupIsReached",
+              "witness": "Four guarded computations on filled, empty and malformed sources, outcomes and operand channel pinned on both kernel strategies."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The interpreter refuses an unknown predefined-type name as unsupported in both phases, a declared divergence from the kernel's degenerate outcome; UnregisteredPredefinedTypeComputationTest#theInterpreterRefusesTheUnknownNameExplicitly keeps it explicit.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation delegates to the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-04-08 awaits lean review of the exact committed record; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
     "kf520": {
       "sha256": "383a34f6d5eb217640ec8419ea5ccf4cb25bbf1f4f08cae0775fe5cb8f563fba",
       "task": "F-USE-BACKLOG",

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.TestInstance
 
 /**
  * SPEC-2026-10-04-05: a computation precondition over a filtered field-fill list selects its candidates as validation
- * does ([KF512](../../../../../../../../../../docs/KERNEL-FINDINGS.md)). The declared-range quantifiers (`All`,
+ * does ([KF512](../../../../../../../../../../../docs/KERNEL-FINDINGS.md)). The declared-range quantifiers (`All`,
  * `NotAll`, the second scan of `FieldsNotCollectivelyFilled`) evaluate the filter at every declared coordinate, stored
  * or missing, while the thresholds search the stored rows. Both read one kept successor ahead of the cell they
  * consume, so a malformed filter behind the deciding row poisons, and a computation target in a row past the declared
