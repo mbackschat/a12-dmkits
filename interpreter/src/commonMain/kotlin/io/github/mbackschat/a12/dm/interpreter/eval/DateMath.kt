@@ -10,7 +10,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
  * the constructor-specific legacy-hybrid calendar and model-zone calendar-step operations are explicit
  * sibling seams below rather than implicit host date-library behavior.
  */
-private val ISO = Regex("""(\d{4})-(\d{2})-(\d{2})""")
+// Four or more year digits: calendar arithmetic keeps a five-digit intermediate for the target check to classify
+// (SPEC-2026-10-04-01, `adapter.laws.CalendarTargetCompletionDiffTest`); stored values are parsed by their format.
+private val ISO = Regex("""(\d{4,})-(\d{2})-(\d{2})""")
 
 /** The (year, month, day) of an ISO `yyyy-MM-dd` date, or null if malformed — for the *FromDate extractors. */
 fun dateParts(iso: String): Triple<Int, Int, Int>? {
@@ -539,9 +541,12 @@ private fun wrapsAcrossTheYear(startValues: List<String>, endValues: List<String
 private const val LEAP_PROBE_YEAR = 2000
 
 /**
- * The year an endpoint of a year-free DATE_RANGE gets for the kernel's DATE-POSITION checks (the always-on
- * Gregorian floor and the opt-in pre-1900 check) when its format names no year — `null` when the format
- * carries one, so the declared year applies.
+ * The year the kernel's FORMAL check completes a year-free date with — for a scalar DATE value, a computed
+ * target's rendered attempt, and a DATE_RANGE endpoint's position checks alike, since all three pass through
+ * `FormatDefinitionDatum.validiereFormat` (SPEC-2026-10-04-01, `adapter.laws.CalendarTargetCompletionDiffTest`).
+ * `null` when the format carries a year, so the declared year applies. Evaluation completes the year separately
+ * (`DateUtil.getValueAsDate`), with the Base Year, which is why a month-only value can be formally admitted and
+ * still evaluate below the floor.
  *
  * **The kernel supplements the base year in exactly one case, and it is narrower than "no year".**
  * `DateUtil.completeDateAndFormat` appends a year only when `formatContainsOnlyDayMonth(format)` — day AND
@@ -552,10 +557,10 @@ private const val LEAP_PROBE_YEAR = 2000
  * with the reversed value as the liveness control).
  *
  * The interpreter's own [parseRangeToIso] deliberately still completes every missing year with [baseYear],
- * because the interval and wrap rules it feeds are measured that way. This helper exists so the two
- * position checks read the year the KERNEL uses for them rather than the one the endpoint was built with.
+ * because the interval and wrap rules it feeds are measured that way. This helper exists so the formal checks
+ * read the year the KERNEL uses for them rather than the one evaluation builds the value with.
  */
-internal fun rangePositionCheckYear(format: String, baseYear: Int): Int? {
+internal fun formalCompletionYear(format: String, baseYear: Int): Int? {
     val comps = dateFragment(format)?.second ?: return null
     if ('y' in comps) return null
     return if ('d' in comps && 'M' in comps) baseYear else RANGE_PARSE_DEFAULT_YEAR

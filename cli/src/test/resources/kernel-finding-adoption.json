@@ -502,6 +502,206 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf514": {
+      "sha256": "5eede2d7f7c46dcb4d55460ae45b6c9ea17caf39cbfa7492ecc0158b2a9cee62",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "calendar target rendering, five-digit retention and formal completion"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "calendar target rendering, five-digit retention and formal completion"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "calendar target rendering, five-digit retention and formal completion"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "calendar target rendering, five-digit retention and formal completion": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CalendarTargetCompletionDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "Six documents across three models compared on validation signatures and every computation outcome; the separating-rows test pins thirteen rows against dynamic Groovy."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "calendar target rendering, five-digit retention and formal completion": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CalendarTargetCompletionDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "Six documents across three models compared on validation signatures and every computation outcome; the separating-rows test pins thirteen rows against dynamic Groovy."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation delegates to the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-04-01 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf196": {
+      "sha256": "296f688e50cdb5bafb18b1c1aba431a6747de16b0427c1238f2ab5f354b29382",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "component-omitting formal completion reaches the floor"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "component-omitting formal completion reaches the floor"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "component-omitting formal completion reaches the floor"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "component-omitting formal completion reaches the floor": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CalendarTargetCompletionDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "Six documents across three models compared on validation signatures and every computation outcome; the separating-rows test pins thirteen rows against dynamic Groovy."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "component-omitting formal completion reaches the floor": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CalendarTargetCompletionDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "Six documents across three models compared on validation signatures and every computation outcome; the separating-rows test pins thirteen rows against dynamic Groovy."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation delegates to the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-04-01 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf276": {
+      "sha256": "8d961f826f501915f3d4a937d7bb41897f11e9ccaadb04311e5a8bb95516e5d5",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose-only rename of the interpreter helper this entry names (formalCompletionYear); no kernel fact or behavior changed.",
+          "evidence": {}
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose-only rename of the interpreter helper this entry names (formalCompletionYear); no kernel fact or behavior changed.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose-only rename of the interpreter helper this entry names (formalCompletionYear); no kernel fact or behavior changed.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose-only rename of the interpreter helper this entry names (formalCompletionYear); no kernel fact or behavior changed.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose-only rename of the interpreter helper this entry names (formalCompletionYear); no kernel fact or behavior changed.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose-only rename of the interpreter helper this entry names (formalCompletionYear); no kernel fact or behavior changed.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose-only rename of the interpreter helper this entry names (formalCompletionYear); no kernel fact or behavior changed.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose-only rename of the interpreter helper this entry names (formalCompletionYear); no kernel fact or behavior changed.",
+          "evidence": {}
+        }
+      }
+    },
     "kf513": {
       "sha256": "3282053ba04a3a81df27e45ee0e259a87ae203202c44cd4722edbab54d2ae958",
       "task": "F-USE-BACKLOG",

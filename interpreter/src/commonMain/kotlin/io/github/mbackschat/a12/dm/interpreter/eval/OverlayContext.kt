@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 import io.github.mbackschat.a12.dm.interpreter.CacheObserver
 import io.github.mbackschat.a12.dm.interpreter.CacheOwnerKind
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
  * Decorates an [EvalContext] so reads of a field that a PRIOR computation produced return its computed
@@ -63,11 +64,14 @@ internal class OverlayContext(
         null -> d.displayValue(path)
         CascadeOverlay.Entry.Poisoned -> throw PoisonedReadException(path)
         CascadeOverlay.Entry.Cleared -> null
-        // The STORED form of a computed number (padded to the target's minFractionalDigits, IF82/IF90) —
-        // so a downstream poison gate sees the same value the kernel stored, not an unpadded `10`.
+        // The STORED form of a computed value, so a downstream read or poison gate sees what the kernel stored:
+        // a number padded to the target's minFractionalDigits (IF82/IF90), and a date rendered into its declared
+        // format — a `yyyy` target holds `2024`, which its year-component and formal reads expect, not the
+        // evaluation's `2024-01-01` (SPEC-2026-10-04-01, `adapter.laws.CalendarTargetCompletionDiffTest`).
         is CascadeOverlay.Entry.Overlaid -> when (val value = entry.value) {
             is Val.Num -> value.v.display(minFracOf(path))
-            is Val.Txt -> value.v
+            is Val.Txt -> if (d.declaredKind(path) == Kind.DATE)
+                d.dateFormatOf(path)?.let { renderDateToFormat(value.v, it) } ?: value.v else value.v
             is Val.Bool -> value.v.toString()
             else -> d.displayValue(path)
         }

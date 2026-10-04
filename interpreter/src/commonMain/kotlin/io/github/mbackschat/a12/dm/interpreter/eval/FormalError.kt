@@ -381,7 +381,10 @@ internal fun typeFormatErrorCached(
                 -> partialDateParts(raw, fmt, datePrecision)?.let { (y, m, d) ->
                     Triple(if (y == 0) 2000 else y, if (m == 0) 1 else m, if (d == 0) 1 else d)
                 }
-                DatePrecision.FRAGMENT -> completeFragmentToIso(raw, fmt, baseYear)?.let { dateParts(it) }
+                // Formal completion appends the Base Year only to a day-and-month format; any other omitted year
+                // takes the parser's default, so a month-only value escapes the floor (formalCompletionYear).
+                DatePrecision.FRAGMENT ->
+                    completeFragmentToIso(raw, fmt, formalCompletionYear(fmt, baseYear) ?: baseYear)?.let { dateParts(it) }
                 DatePrecision.FULL -> {
                     // A DateType's declared format may itself OMIT calendar components — `yyyy`, `yyyy-MM`,
                     // `yyyyMM` and `MM` are all kernel-legal (KF176) — and such a value is complete FOR ITS
@@ -391,7 +394,8 @@ internal fun typeFormatErrorCached(
                     // only the exact `yyyy` case (added for SPEC-2026-07-27-13's Date(...) year-component
                     // source, with a comment declining to infer the others) — so `yyyy-MM`, `yyyyMM` and `MM`
                     // drew a FALSE datumFormatFalsch on a legal model (IG110).
-                    val iso = parseDateToIso(raw, fmt) ?: completeFragmentToIso(raw, fmt, baseYear)
+                    val iso = parseDateToIso(raw, fmt)
+                        ?: completeFragmentToIso(raw, fmt, formalCompletionYear(fmt, baseYear) ?: baseYear)
                     iso?.let { dateParts(it) }
                 }
             }
@@ -479,10 +483,10 @@ internal fun typeFormatErrorCached(
                             ?: parseDateToIso(parts[1], format) ?: completeFragmentToIso(parts[1], format, baseYear)
                         // BOTH date-position checks read the year the KERNEL's completion gives the start,
                         // which on a year-free format is not always the one the endpoint was built with —
-                        // rangePositionCheckYear carries that rule and its measured basis.
+                        // formalCompletionYear carries that rule and its measured basis.
                         val startParts = a?.let { dateParts(it) }
                         val positionYear = startParts?.let {
-                            rangePositionCheckYear(format, baseYear) ?: it.first
+                            formalCompletionYear(format, baseYear) ?: it.first
                         }
                         when {
                             a == null || b == null || startParts == null || positionYear == null ->

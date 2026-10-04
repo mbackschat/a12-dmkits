@@ -1282,12 +1282,17 @@ class Interpreter(
         // retention; gating it on retention would compare a shifted Date against a field by LABEL and diverge.
         // The footprint is provably one date: wherever midnight is unambiguous the derived instant and the label
         // order agree, and Berlin's pinned history has exactly one ambiguous midnight (1916-10-01).
-        if (l is Val.Txt && r is Val.Txt && isIsoDate(l.v) && isIsoDate(r.v) && timeZone != ModelTimeZone.UTC) {
-            val li = dateInstant(c.left)
-            val ri = dateInstant(c.right)
-            if (li != null && ri != null) {
-                return compareInstants(c.op, li, ri)
+        if (l is Val.Txt && r is Val.Txt && isIsoDate(l.v) && isIsoDate(r.v)) {
+            if (timeZone != ModelTimeZone.UTC) {
+                val li = dateInstant(c.left)
+                val ri = dateInstant(c.right)
+                if (li != null && ri != null) return compareInstants(c.op, li, ri)
             }
+            // Labels order lexically only while every year has four digits; a calendar shift can reach five
+            // (SPEC-2026-10-04-01), so two dates compare by day number.
+            val ld = epochDay(l.v)
+            val rd = epochDay(r.v)
+            if (ld != null && rd != null) return compareInstants(c.op, ld, rd)
         }
         return when (c.op) {
             CmpOp.EQ -> Tri.of(ValCompare.equal(l, r))
