@@ -225,6 +225,11 @@ class Document(internal val config: DocumentConfig) {
         // the kernel computes the row structure once and reuses it across rules — this is the direct analog).
         val attachByGroup: MutableMap<String, Map<Int, Set<List<Int>>>> = HashMap()
         val validationContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
+        // Full validation's rule domain (SPEC-2026-10-04-03), distinct from the partial-validation and uniqueness
+        // domain above because it can visit declared slots that no stored row holds.
+        val fullValidationContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
+        // Depth → parent coordinate prefix → the child coordinates some instantiated row of ANY group sets there.
+        var occupiedChildren: Map<Int, Map<List<Int>, Set<Int>>>? = null
         // Computation iterates only stored V2 rows, unlike validation's implicit nested-child domain (IF277).
         val storedContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
         // The runtime iteration tree, distinct from stored V2 rows: below every existing repeatable parent, a
@@ -288,6 +293,8 @@ class Document(internal val config: DocumentConfig) {
                 idx.partsByPath.size +
                 idx.attachByGroup.size +
                 idx.validationContextsByGroup.size +
+                idx.fullValidationContextsByGroup.size +
+                (idx.occupiedChildren?.values?.sumOf { it.size } ?: 0) +
                 idx.storedContextsByGroup.size +
                 idx.iterationRowsByGroup.size +
                 idx.prefixRowsByGroup.size +
@@ -541,6 +548,62 @@ class Document(internal val config: DocumentConfig) {
      */
     fun contextsFor(groupPath: String): List<EvalContext> =
         index().validationContextsByGroup.getOrPut(groupPath) { computeValidationContextsFor(groupPath) }
+
+    /**
+     * One [EvalContext] per row a FULL-validation rule iterates in [groupPath] (SPEC-2026-10-04-03,
+     * `adapter.laws.ValidationIterationDomainDiffTest`). The root level is its physical instances, never past the
+     * declared capacity. Below it, when the product of every level's declared capacity, the root's included, is at
+     * most [DENSE_PRODUCT_LIMIT], every declared slot is visited whether or not a row holds it; above that, each
+     * level visits its first coordinate and every later one whose coordinate prefix some instantiated row of any
+     * group sets at that depth, again never past the capacity. The kernel's threshold is
+     * `IterationLimitCreatorBase`'s, its occupancy `GesetzteWiederholungen`'s (source-read; the differential
+     * settles the behavior). Partial validation and uniqueness keep [contextsFor], computation its stored rows.
+     *
+     * [capacityOf] comes from the MODEL, which owns declared capacities: a document built without the model's group
+     * configuration must still iterate the model's domain.
+     */
+    fun fullValidationContextsFor(groupPath: String, capacityOf: (String) -> Int): List<EvalContext> =
+        index().fullValidationContextsByGroup.getOrPut(groupPath) {
+            contextsForRows(groupPath, fullValidationRowsOf(groupPath, capacityOf))
+        }
+
+    private fun fullValidationRowsOf(groupPath: String, capacityOf: (String) -> Int): List<List<Int>> {
+        val segs = parts(groupPath)
+        val levels = (1..segs.size).map { d -> "/" + segs.take(d).joinToString("/") }
+        val capacities = levels.map(capacityOf)
+        var frontier = rootInstances(levels[0]).filter { it <= capacities[0] }.map { listOf(it) }
+        val dense = capacities.fold(1L) { product, capacity ->
+            if (product > DENSE_PRODUCT_LIMIT) product else product * capacity
+        } <= DENSE_PRODUCT_LIMIT
+        val occupied = if (dense) emptyMap() else occupiedChildren()
+        for (depth in 2..segs.size) {
+            val capacity = capacities[depth - 1]
+            frontier = frontier.flatMap { prefix ->
+                if (dense) (1..capacity).map { prefix + it }
+                else (sequenceOf(1) + (occupied[depth]?.get(prefix).orEmpty().asSequence().filter { it in 2..capacity }.sorted()))
+                    .map { prefix + it }.toList()
+            }
+        }
+        return frontier
+    }
+
+    /** The root's instances the document holds: any stored row or valued cell at or below [root], ascending. */
+    private fun rootInstances(root: String): List<Int> {
+        val instances = HashSet<Int>()
+        for ((group, rows) in index().rowsByGroup) {
+            if (group == root || group.startsWith("$root/")) rows.forEach { instances += it[0] }
+        }
+        for (cell in index().valued) if (cell.path.startsWith("$root/")) instances += cell.reps[0]
+        return instances.sorted()
+    }
+
+    private fun occupiedChildren(): Map<Int, Map<List<Int>, Set<Int>>> = index().occupiedChildren ?: run {
+        val byDepth = HashMap<Int, HashMap<List<Int>, HashSet<Int>>>()
+        for (rows in index().rowsByGroup.values) for (reps in rows) for (depth in 2..reps.size) {
+            byDepth.getOrPut(depth) { HashMap() }.getOrPut(reps.take(depth - 1)) { HashSet() }.add(reps[depth - 1])
+        }
+        byDepth.also { index().occupiedChildren = it }
+    }
 
     /** One already-selected concrete row context. Index resolution owns selection; this reconstructs the normal
      *  evaluation environment so the rule and its message pointer inherit the identical repetition. */
@@ -1797,6 +1860,9 @@ class Document(internal val config: DocumentConfig) {
     }
 
     private companion object {
+        /** The kernel's dense-iteration threshold on the product of declared capacities (`MAX_PRUEF_KONTEXT`). */
+        const val DENSE_PRODUCT_LIMIT = 5L
+
         fun parts(path: String): List<String> = path.trim('/').split('/')
 
         fun commonPrefixLen(a: List<String>, b: List<String>): Int {

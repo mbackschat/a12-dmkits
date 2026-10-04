@@ -2864,7 +2864,7 @@ Canonical Document JSON is not a competing sparse representation. An array of le
 
 > Fold: folded → §9.
 
-Validation owns a row domain that is not identical to the immutable document tree. Under every existing repeatable parent iteration row, a nested repeatable validation scope with no concrete child contributes one implicit child at coordinate 1. The rule composes recursively: placing only `/Root/Outer[3]/Middle[2]/Inner[4]` makes `Qty < 5` fire OMISSION at `Outer[1]/Middle[1]/Inner[1]`, `Outer[2]/Middle[1]/Inner[1]`, `Outer[3]/Middle[1]/Inner[1]`, and the concrete `Outer[3]/Middle[2]/Inner[1..4]`. An explicit `Middle[1]` with no `Inner` likewise yields `Inner[1]`. With no outer repetition at all, no nested row is invented.
+Validation owns a row domain that is not identical to the immutable document tree. Under every existing repeatable parent iteration row, a nested repeatable validation scope with no concrete child contributes one implicit child at coordinate 1. The rule composes recursively: placing only `/Root/Outer[3]/Middle[2]/Inner[4]` makes `Qty < 5` fire OMISSION at `Outer[1]/Middle[1]/Inner[1]`, `Outer[2]/Middle[1]/Inner[1]`, `Outer[3]/Middle[1]/Inner[1]`, and the concrete `Outer[3]/Middle[2]/Inner[1..4]`. An explicit `Middle[1]` with no `Inner` likewise yields `Inner[1]`. With no outer repetition at all, no nested row is invented. *Corrected 2026-10-04: these rows are the occupied-prefix case of the general full-validation domain in [KF517](#kf517), which also visits a root instance's first coordinate with no stored row below it and, when the product of declared capacities is at most 5, every declared slot. Read the last sentence as this entry's fixture, not as a general rule.*
 
 The implicit row is an evaluation context, not stored content. `GroupFilled(RuleGroup)` and starred group operands see only concrete groups; mandatory and `uniqueIndex` auto-checks see only stored fields; parallel index identity does not gain an empty compromising key; and computation creates outcomes only for concrete target rows. `RepetitionNotUnique` is the deliberate exception among identity-like consumers because it is itself a validation relation: its optional-empty key tuple includes implicit rows, so two missing child branches beneath equal filled ancestor keys produce two OMISSION duplicate messages.
 
@@ -12344,3 +12344,22 @@ The measured `DateTime` stop rule (a formally invalid Date field stops before th
 | `HoursFromTime(Time(…that expression…))`, same document | `VALUE` `0`, and the rule comparing it with `0` fires `OMISSION_ERROR`: as a construction component the shifted value is empty |
 
 `HoursFromTime` applied directly to a DateTime constant is refused with `MVK_NO_CONST`; the amount above goes through `TimeFromDateTime`, as the lean capture does.
+
+## §9 supplement — a full-validation rule iterates every declared slot up to a capacity product of 5 and occupied prefixes above it, never past a declared capacity (both strategies, 2026-10-04) <a id="kf517"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-04-03`.
+
+`ValidationIterationDomainDiffTest` compares the messages of a rule firing on an empty note across dynamic Groovy, static Java and the interpreter, on one order model at three layouts. Its pinned rows come from dynamic Groovy:
+
+| Layout and document | Coordinates the rule visits |
+|---|---|
+| `Lines` capacity 2 (product 2), root only | `Lines[1]`, `Lines[2]`: every declared slot |
+| capacity 2, three stored rows | none past the capacity; the two filled rows do not fire |
+| `Lines` capacity 6 (product 6), root only | `Lines[1]` only: the first coordinate |
+| capacity 6, two blank row objects | `Lines[1]`, `Lines[2]`: a blank row object sets its prefix |
+| capacity 6, seven stored rows | none past the capacity |
+| capacity 6, no `Order` lines but three `Archive/Lines` rows | `Lines[1..3]`: occupancy crosses group and root identities at the same depth |
+| `Lines` × `Parts` at 2 × 2, root only | all four slots |
+| 2 × 2, one stored part | the three other slots |
+
+Mechanism, from source cited in the lean checkpoint (`IterationLimitCreatorBase` threshold 5, `EbenenIterator`/`GesetzteWiederholungen`, source-read): the generated rule selects dense declared bounds at or below the threshold and the optimized iterator above it, which keeps each reset's first coordinate and otherwise requires a set coordinate prefix. The root level is dispatched over its instances, but its capacity counts in the product. `RepetitionNotUnique` builds its relation separately; the lean capture's uniqueness requests agree with the existing implicit-child projection ([IF277](INTERPRETER-FINDINGS.md#if277)).

@@ -85,8 +85,12 @@ internal class IterationScopes(private val model: ModelDef) {
         /** Complete formal-admission gate for a stored index cell. Null is reserved for callers without a
          * validation pass; [Document] then applies its model-derived built-in formal check. */
         indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
+        /** Full validation iterates the kernel's declared/occupied domain ([Document.fullValidationContextsFor]);
+         *  partial validation and computation keep their own. */
+        fullValidation: Boolean = false,
     ): List<EvalContext> = when (plan) {
-        is IterationPlan.Rows -> doc.contextsFor(plan.group)
+        is IterationPlan.Rows ->
+            if (fullValidation) doc.fullValidationContextsFor(plan.group, ::capacityOf) else doc.contextsFor(plan.group)
         is IterationPlan.Once -> if (plan.global) doc.globalContextFor(plan.rootGroup) else doc.onceContextFor(plan.rootGroup)
         is IterationPlan.Parallel -> doc.parallelContexts(
             plan.joined,
@@ -98,6 +102,10 @@ internal class IterationScopes(private val model: ModelDef) {
             indexIdentityAdmitted,
         )
     }
+
+    /** A group's declared capacity: its repeatability, unbounded when undeclared, and 1 when not repeatable. */
+    private fun capacityOf(group: String): Int =
+        model.declaredReps[group] ?: if (group in model.repeatable) Int.MAX_VALUE else 1
 
     /** Whether [plan] directly iterates [group]. A descendant iteration still needs semantic selection to replace
      * the indexed ancestor coordinate while retaining its own lower repetition coordinates. */

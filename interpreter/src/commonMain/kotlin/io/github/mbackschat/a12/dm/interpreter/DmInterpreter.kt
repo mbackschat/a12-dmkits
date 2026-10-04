@@ -1079,6 +1079,7 @@ class DmInterpreter private constructor(
             pass.doc,
             pass.config.cellRelevant,
             pass::admitsIndexIdentity,
+            fullValidation = !pass.partial,
         ).map { iterationContext ->
             prepared.semanticErrorIndex?.let { semanticIndex ->
                 val selector = pass.interpreterFor(iterationContext, errorPath, rnuSeam)
