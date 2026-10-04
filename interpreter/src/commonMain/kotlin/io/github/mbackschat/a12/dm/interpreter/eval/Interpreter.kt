@@ -485,8 +485,8 @@ class Interpreter(
                 if (it.relevance == GroupRelevance.NONE) Tri.UNKNOWN else Tri.of(it.filled)
             } ?: Tri.UNKNOWN
             PredicateOp.GROUP_NOT_FILLED -> groupOperandPresence(p.args.single())?.negativeLeaf ?: Tri.UNKNOWN
-            PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
-            PredicateOp.FIELD_VALUE_NOT_IN_LIST -> Kleene.not(valueInList(p.args))
+            PredicateOp.FIELD_VALUE_IN_LIST -> valueListMembership(p.args, included = true).truth
+            PredicateOp.FIELD_VALUE_NOT_IN_LIST -> valueListMembership(p.args, included = false).truth
             PredicateOp.DATE_RANGES_OVERLAP -> overlapAny(p.args).truth
             PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS -> atLeastOneOverlap(p.args).truth
             PredicateOp.FIELD_VALUES_NOT_UNIQUE -> fieldValuesNotUnique(p.args).truth
@@ -762,7 +762,7 @@ class Interpreter(
         }
     }
 
-    private fun scanCell(path: String, ctx: EvalContext): ScanCell {
+    internal fun scanCell(path: String, ctx: EvalContext): ScanCell {
         val state = ctx.cellState(path)
         return ScanCell(
             path,
@@ -1124,16 +1124,39 @@ class Interpreter(
     }
 
     /**
-     * `FieldValueIncludedInValueList(field, m1, m2, …)` — TRUE when [args]`[0]`'s value equals a member, via
-     * the same typed equality as `==` (string members compare as text, number members numerically; the
-     * kernel rejects mixed types at compile, `MVK_INVALID_TYPES_FOR_COMPARISON`). An UNKNOWN operand (an
-     * empty string/enum field) yields UNKNOWN, so NEITHER the included nor the `Not` form fires on it —
-     * matching the kernel (a value-list check is not evaluated on a value-less field).
+     * `FieldValueIncludedInValueList(subject, m1, …)` and its `Not` form — truth and polarity in one pass, in both
+     * phases (SPEC-2026-10-03-04). Equality is the typed `==` (string members compare as text, number members
+     * numerically; the kernel refuses mixed types, `MVK_INVALID_TYPES_FOR_COMPARISON`).
+     *
+     * Every member is read before the verdict, so in computation a malformed member poisons even after a match or
+     * beside an empty subject. A member field's empty cell is no member at all and its malformed cell is unknown
+     * ([valueListCell]). An empty subject — a Number's included — holds no value, so NEITHER form holds on it; read as
+     * zero it would match a zero member. A malformed subject leaves both forms unknown.
+     *
+     * Included holds when a present member equals the subject, and its firing is a value error. Not-included fails on
+     * a matching member; otherwise an unknown member makes it unknown and an empty member makes its firing an
+     * omission, since filling the member could clear it. The two kinds meet those members in a different order: a
+     * Number subject walks the members and any unknown one decides, while a text or enumeration subject (the kernel's
+     * string route) decides at the first empty or unknown member it meets, so an empty member before a malformed one
+     * fires as an omission there and not for a Number. Locked by `MembershipComputationGuardDiffTest`.
      */
-    private fun valueInList(args: List<Expr>): Tri {
-        val v = evalExpr(args[0])
-        if (v is Val.Unknown) return Tri.UNKNOWN
-        return Tri.of(args.drop(1).any { ValCompare.equal(v, evalExpr(it)) })
+    internal fun valueListMembership(args: List<Expr>, included: Boolean): Res {
+        val members = args.drop(1).map { valueListCell(it) }
+        val subject = valueListCell(args[0])
+        if (subject == null) return Res.of(Tri.FALSE, MsgType.VALUE)
+        if (subject is Val.Unknown) return Res.of(Tri.UNKNOWN, MsgType.VALUE)
+        val matched = members.any { it != null && it !is Val.Unknown && ValCompare.equal(subject, it) }
+        if (included || matched) return Res.of(Tri.of(included && matched), MsgType.VALUE)
+        if (subject is Val.Num) {
+            if (members.any { it is Val.Unknown }) return Res.of(Tri.UNKNOWN, MsgType.VALUE)
+            return Res.of(Tri.TRUE, if (members.any { it == null }) MsgType.OMISSION else MsgType.VALUE)
+        }
+        val decisive = members.indexOfFirst { it == null || it is Val.Unknown }
+        return when {
+            decisive < 0 -> Res.of(Tri.TRUE, MsgType.VALUE)
+            members[decisive] == null -> Res.of(Tri.TRUE, MsgType.OMISSION)
+            else -> Res.of(Tri.UNKNOWN, MsgType.VALUE)
+        }
     }
 
     /**
@@ -1196,7 +1219,7 @@ class Interpreter(
      * malformed real operand drops them. Distinct from the quantifier-`Having` path ([starOperandVals], `$` bound
      * to the enclosing row). (KERNEL-FINDINGS §6, IF72.)
      */
-    private fun overlapCells(arg: Expr): List<Val.Range> = when {
+    private fun overlapCells(arg: Expr): Sequence<Val.Range> = when {
         // A GROUP operand names no declared field, so BOTH arms below were blind to it and by different
         // mechanisms: the starred arm read `star` at the group path (zero cells, a silent non-overlap), while the
         // unstarred arm asked `evalExpr` for a range at a path holding no value and THREW `no kind declared` —
@@ -1209,10 +1232,10 @@ class Interpreter(
         // `pathOf` REJECTS a `Star`, so there was no accessor to ask for the path here. `EntitySource.path` is
         // that accessor, so the emptiness question is now asked of the model directly.
         namesAGroup(arg) ->
-            if (ctxOf(arg).containedFields((arg as Expr.EntitySource).path).isEmpty()) emptyList()
-            else expandOneGroupOperand(arg).flatMap { overlapCells(it) }
+            if (ctxOf(arg).containedFields((arg as Expr.EntitySource).path).isEmpty()) emptySequence()
+            else expandOneGroupOperand(arg).asSequence().flatMap { overlapCells(it) }
         arg is Expr.Star -> filteredStarCells(arg).filterIsInstance<Val.Range>()
-        else -> listOfNotNull(evalExpr(arg) as? Val.Range)
+        else -> sequence { (evalExpr(arg) as? Val.Range)?.let { yield(it) } }
     }
 
     /**
@@ -1224,10 +1247,16 @@ class Interpreter(
      * via [overlapFilterInterp]); a kept row's empty cell is dropped, a kept malformed cell surfaces as
      * [Val.Unknown]. Distinct from the quantifier-`Having` path ([starOperandVals], `$` bound). KERNEL-FINDINGS §6.
      */
-    private fun filteredStarCells(star: Expr.Star): List<Val> {
-        if (star.having == null) return ctxOf(star).star(star.path, star.bindDepth)
-        return keptRowContexts(star).mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
+    private fun filteredStarCells(star: Expr.Star): Sequence<Val> {
+        if (computeMode) return computeStarReads(star, overlapFilter(star)).mapNotNull { it?.value }
+        if (star.having == null) return ctxOf(star).star(star.path, star.bindDepth).asSequence()
+        return keptRowContexts(star).asSequence().mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
+
+    /** The overlap and uniqueness predicates' filter on [star]'s rows, evaluated without an enclosing iteration
+     *  ([overlapFilterInterp]); null when the operand is unfiltered. */
+    private fun overlapFilter(star: Expr.Star): ((EvalContext) -> Boolean)? =
+        star.having?.let { having -> { row: EvalContext -> overlapFilterInterp(row).fires(having) } }
 
     /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; empty → not evaluated. */
     internal fun evalPattern(p: Cond.Pattern): Tri {
@@ -1382,9 +1411,9 @@ class Interpreter(
      * overlap operator, whose behaviour over a group operand is unmeasured, and widening a shared path past its
      * measured basis is the defect class CLAUDE.md's "never broader than its measured basis" rule names.
      */
-    private fun comparedCells(a: Expr): List<Val> {
+    private fun comparedCells(a: Expr): Sequence<Val> {
         if (a.isIndexedStar()) return withIndexedStar(a as Expr.EntitySpec,
-            emptyList(), listOf(Val.Unknown)) { comparedCells(it) }
+            emptySequence(), sequenceOf(Val.Unknown)) { comparedCells(it) }
         // Routed through the SHARED owner rather than expanding here. This site used to carry a complete private
         // copy — `containedFields` + `Expr.Star` construction + recursion — with only the depth formula delegated,
         // so the "one owner" claim was false and, worse, the copy DIVERGED: its starred arm passed `bindDepth` raw
@@ -1401,7 +1430,7 @@ class Interpreter(
         // one operand must not disagree about its extent ([IF287]'s third and fourth instances).
         if (namesAGroup(a)) {
             val expanded = expandOneGroupOperand(a)
-            if (expanded.singleOrNull() !== a) return expanded.flatMap { comparedCells(it) }
+            if (expanded.singleOrNull() !== a) return expanded.asSequence().flatMap { comparedCells(it) }
         }
         // The fill test and the value read must ask the SAME context: `evalExpr` resolves through `ctxOf`, which
         // is the OUTER one for a `$`-marked node, so asking the ambient `ctx` here consulted a different row.
@@ -1410,10 +1439,15 @@ class Interpreter(
         // cells duplicate in the rule's own row and are empty in the row the filter keeps, so reading the
         // filtered row dropped both operands, found no duplicate, and the enclosing sum never cleared its bar.
         if (a is Expr.Star) {
-            if (ctxOf(a).datePrecisionOf(a.path) !in PARTIAL_PRECISIONS) return filteredStarCells(a)
-            return keptRowContexts(a).mapNotNull { rc -> if (rc.filled(a.path)) comparedValue(rc, a.path, rc.field(a.path)) else null }
+            val c = ctxOf(a)
+            if (c.datePrecisionOf(a.path) !in PARTIAL_PRECISIONS) return filteredStarCells(a)
+            if (computeMode) return computeStarReads(a, overlapFilter(a)).mapNotNull { cell ->
+                cell?.value?.let { resolved -> if (resolved is Val.Unknown) wellFormedPartialText(c, a.path, cell.raw) ?: resolved else resolved }
+            }
+            return keptRowContexts(a).asSequence()
+                .mapNotNull { rc -> if (rc.filled(a.path)) comparedValue(rc, a.path, rc.field(a.path)) else null }
         }
-        return if (ctxOf(a).filled(pathOf(a))) listOf(comparedValue(ctxOf(a), pathOf(a), evalExpr(a))) else emptyList()
+        return sequence { if (ctxOf(a).filled(pathOf(a))) yield(comparedValue(ctxOf(a), pathOf(a), evalExpr(a))) }
     }
 
     /**
@@ -1426,11 +1460,15 @@ class Interpreter(
      * (`adapter.laws.PartialDatePresenceDiffTest`).
      */
     private fun comparedValue(c: EvalContext, path: String, resolved: Val): Val {
-        if (resolved !is Val.Unknown) return resolved
-        val precision = c.datePrecisionOf(path)
-        if (precision !in PARTIAL_PRECISIONS || invalid(c, path)) return resolved
-        val raw = c.displayValue(path) ?: return resolved
-        return if (partialDateParts(raw, c.dateFormatOf(path) ?: "yyyy-MM-dd", precision) != null) Val.Txt(raw) else resolved
+        if (resolved !is Val.Unknown || c.datePrecisionOf(path) !in PARTIAL_PRECISIONS || invalid(c, path)) return resolved
+        return wellFormedPartialText(c, path, c.displayValue(path)) ?: resolved
+    }
+
+    /** The stored text of a well-formed partial Date at [path], or null when [raw] is absent or not one. */
+    private fun wellFormedPartialText(c: EvalContext, path: String, raw: String?): Val? {
+        if (raw == null) return null
+        val parts = partialDateParts(raw, c.dateFormatOf(path) ?: "yyyy-MM-dd", c.datePrecisionOf(path))
+        return if (parts != null) Val.Txt(raw) else null
     }
 
     /** The rows a starred operand keeps — every row when it carries no `Having`, else the rows its filter keeps. */

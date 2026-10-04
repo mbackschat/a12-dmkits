@@ -193,6 +193,33 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return new ValueListCondition(field, false, checkedValues(first, rest));
     }
 
+    /**
+     * {@code FieldValueIncludedInValueList(field, [f1], …)} — membership against other enumeration fields' stored
+     * values, the enum sibling of {@link StringRef#in(StringRef, StringRef...)}. An empty member field never
+     * matches. catalog:FieldValueIncludedInValueList
+     */
+    public Condition in(EnumRef first, EnumRef... rest) {
+        return new ValueListCondition(field, true, fieldValues(first, rest));
+    }
+
+    /**
+     * {@code FieldValueNotIncludedInValueList(field, [f1], …)} — field-reference entries (see
+     * {@link #in(EnumRef, EnumRef...)}). An empty member makes a firing an omission, since filling it could
+     * clear the error. catalog:FieldValueNotIncludedInValueList
+     */
+    public Condition notIn(EnumRef first, EnumRef... rest) {
+        return new ValueListCondition(field, false, fieldValues(first, rest));
+    }
+
+    private static List<Calculation> fieldValues(EnumRef first, EnumRef... rest) {
+        var values = new java.util.ArrayList<Calculation>();
+        values.add(first.value());
+        for (EnumRef r : rest) {
+            values.add(r.value());
+        }
+        return values;
+    }
+
     private List<Calculation> checkedValues(String first, String... rest) {
         var values = new java.util.ArrayList<Calculation>();
         values.add(checkedLiteral(first));

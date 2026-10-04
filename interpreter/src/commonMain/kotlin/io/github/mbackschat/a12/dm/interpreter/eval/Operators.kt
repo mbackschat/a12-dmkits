@@ -27,7 +27,9 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
     GROUP_FILLED("GroupFilled", MsgType.VALUE),
     GROUP_NOT_FILLED("GroupNotFilled", MsgType.OMISSION),
     FIELD_VALUE_IN_LIST("FieldValueIncludedInValueList", MsgType.VALUE),
-    FIELD_VALUE_NOT_IN_LIST("FieldValueNotIncludedInValueList", MsgType.VALUE),
+    // Not-included is an omission when a member field is empty, since filling it could clear the firing — DATA-
+    // dependent (null → `Interpreter.valueListMembership`, SPEC-2026-10-03-04).
+    FIELD_VALUE_NOT_IN_LIST("FieldValueNotIncludedInValueList", null),
     // Date-range overlap — polarity is DATA-dependent (null → computed in `Interpreter.predType`): OMISSION when
     // a FILTER-bearing operand (a rep-list arg with a `Having`) contributed the firing cell, VALUE otherwise
     // (KERNEL-FINDINGS §6). The two are NOT interchangeable: `DateRangesOverlap(op0, …)` is ANY-PAIR among ALL

@@ -12363,3 +12363,43 @@ The measured `DateTime` stop rule (a formally invalid Date field stops before th
 | 2 × 2, one stored part | the three other slots |
 
 Mechanism, from source cited in the lean checkpoint (`IterationLimitCreatorBase` threshold 5, `EbenenIterator`/`GesetzteWiederholungen`, source-read): the generated rule selects dense declared bounds at or below the threshold and the optimized iterator above it, which keeps each reset's first coordinate and otherwise requires a set coordinate prefix. The root level is dispatched over its instances, but its capacity counts in the product. `RepetitionNotUnique` builds its relation separately; the lean capture's uniqueness requests agree with the existing implicit-child projection ([IF277](INTERPRETER-FINDINGS.md#if277)).
+
+## §11 supplement — a computation precondition reads membership, overlap and uniqueness in the operator's own order, and a reached invalid cell poisons it (both strategies, 2026-10-05) <a id="kf518"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-03-04`, `SPEC-2026-10-04-04`, `SPEC-2026-10-04-07`.
+
+Validation passes over a malformed cell inside these operators because it is not check-relevant. A computation precondition runs the same scans, but reading an invalid cell aborts the computation instance, which clears its target and poisons every reader of it. So which cells a computation reads is observable, and it is each operator's own order: a cell before the deciding one is read, a cell after it is not. `MembershipComputationGuardDiffTest`, `OverlapComputationGuardDiffTest` and `UniquenessComputationGuardDiffTest` compare validation signatures and every computation outcome across dynamic Groovy, static Java and the interpreter. Each guarded target has a dependent that holds whenever the target is computed at all, which separates a poisoned target from a cleanly cleared one. Pinned rows (dynamic Groovy):
+
+| Operator and document | Computation outcome |
+|---|---|
+| `FieldValueIncludedInValueList(Qty, [First], [Last])` with a match on `First` and a malformed `Last`, for Number, String and Enumeration subjects | poisoned: every member is read, even after a match |
+| the same with an empty subject | poisoned: the members are read whatever the subject holds |
+| `AtLeastOne…`/`No…(Code, Last In First)` with `Code` matching and `Last` malformed | decided without poison: the subjects are scanned only to the deciding cell |
+| `NotAll…` with `Code` outside and `Last` malformed | fires without poison |
+| `AtLeastOne…(Qty In Lines*/LineQty Having [Keep] > 0)`, kept members matching, other, malformed | poisoned: the members are read completely |
+| filtered subjects outside, outside, malformed | poisoned at the reached malformed subject |
+| filtered subjects matching, kept, then a malformed third filter | `AtLeastOne` fires and `No` clears cleanly: the scan reads one kept successor ahead and no further ([KF105](#kf105)) |
+| `DateRangesOverlap(Slots*/Window)` and `AtLeastOneDateRangeOverlaps(Booking In Slots*/Window)` with a malformed first row, unfiltered and filtered | poisoned |
+| a malformed row the filter drops | the filtered forms decide; the unfiltered form is poisoned |
+| a decision at row 1 for the scalar form and at row 2 for the list form, then a malformed third filter | the scalar form fires; the list form is poisoned, because the successor search behind row 2 reaches the third filter |
+| `AtLeastOneDateRangeOverlaps(Booking In Periods*)` with `Periods[1]` holding (outside, match) and `Periods[2]/Primary` malformed | poisoned: a group operand is read field by field, every `Primary` before any `Backup`; a match in `Periods[1]/Primary` decides without poison |
+| an empty `Booking` beside a malformed list | clears cleanly: the list is never read |
+| `FieldValuesNotUnique(First, Second, Broken)` with a duplicate first; `(Broken, First, Second)` | fires; poisoned |
+| `FieldValuesNotUnique(Lines*/Sku)` with a malformed row before a duplicate; after it | poisoned; fires |
+| a filtered column with its duplicate at row 2 and a malformed filter at row 3; at row 4 | poisoned; fires |
+
+The poison is the computation read [IF85](INTERPRETER-FINDINGS.md#if85) established for operands generally, and the successor rule is [KF105](#kf105)'s. What this entry adds is where each of these operators stops reading. The unfiltered-column uniqueness rows were measured here, beyond the lean capture's filtered ones.
+
+## §8 supplement — scalar value-list membership: an empty member never matches and makes `NotIncluded` an omission; a text subject decides at its first empty or malformed member, a Number at any malformed one (both strategies, 2026-10-05) <a id="kf519"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-03-04`.
+
+`MembershipComputationGuardDiffTest` pins, against dynamic Groovy with static Java agreeing, a rule `FieldValueNotIncludedInValueList(subject, [First], [Last])` for each subject kind:
+
+| Members | Number subject | String or Enumeration subject |
+|---|---|---|
+| both empty | fires `OMISSION_ERROR` | fires `OMISSION_ERROR` |
+| `First` empty, `Last` malformed, no match | no firing | fires `OMISSION_ERROR` |
+| `Last` malformed, no match | no firing | no firing |
+
+An empty member is never matched, so filling it could clear the firing, which is why the firing is an omission. The kinds part on an empty member before a malformed one: the string route the kernel uses for text and enumerations returns at the first empty or malformed member it meets, while the Number route walks every member and lets a malformed one decide. That split was read from the runtime class first and confirmed by this row. In computation the same document shapes give: an empty subject makes both forms fail, since it holds no value rather than zero; empty members make the included form fail and the not-included form hold.

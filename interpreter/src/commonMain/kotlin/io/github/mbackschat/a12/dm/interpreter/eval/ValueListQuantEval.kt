@@ -35,9 +35,27 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
  * enumerating every current row does NOT (SPEC-2026-07-22-09); never set in full validation.
  */
 private class VlqOperand(val filtered: Boolean) {
-    val cells = mutableListOf<Val?>()
+    private val collected = mutableListOf<Val?>()
+    private var reads: Sequence<Val?>? = null
     var omittedTail = false
     var extentUnknown = false
+
+    /** The cells in encounter order: collected eagerly in validation, a lazy read stream in computation
+     *  ([readLazily]), where pulling a cell is the read that can poison. */
+    val cells: Sequence<Val?> get() = reads ?: collected.asSequence()
+
+    fun add(cell: Val?) {
+        collected += cell
+    }
+
+    fun readLazily(cells: Sequence<Val?>): VlqOperand = apply { reads = cells }
+
+    /** Reads every remaining cell now, for a side the operator consumes completely before deciding. */
+    fun drain(): VlqOperand = apply {
+        reads?.let { collected += it }
+        reads = null
+    }
+
     fun anyPresent(): Boolean = cells.any { it != null && it !is Val.Unknown }
 }
 
@@ -51,13 +69,22 @@ private class VlqOperand(val filtered: Boolean) {
 private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = expandGroupOperands(entries).map { e ->
     if (e.isIndexedStar()) return@map withIndexedStar(e as Expr.EntitySpec,
         VlqOperand(filtered = false).also { it.omittedTail = true },
-        VlqOperand(filtered = false).also { it.cells += Val.Unknown }) {
+        VlqOperand(filtered = false).also { it.add(Val.Unknown) }) {
             vlqOperands(listOf(it)).single()
         }
     when (e) {
         is Expr.Star -> {
             val op = VlqOperand(filtered = e.having != null)
             val c = ctxOf(e)
+            // Computation reads the operand as a stream its consuming pass pulls only to the deciding cell, so a
+            // malformed cell or filter beyond it is never read and cannot poison (SPEC-2026-10-03-04). The partial
+            // gates below are null there, and an index cell the formal pass refuses is an invalid read.
+            if (computeMode) {
+                if (e.having == null && c.starOmission(e.path, e.bindDepth)) op.omittedTail = true
+                val having = e.having
+                val keeps = having?.let { filter -> { row: EvalContext -> havingInterp(row).fires(filter) } }
+                return@map op.readLazily(computeStarReads(e, keeps).map { it?.value })
+            }
             // Partial validation: this starred entry's COMPLETE extent is established by WILDCARD coverage of
             // its repeatable level(s) (or a relevant ancestor); enumerating concrete rows, even all of them,
             // does NOT (SPEC-2026-07-22-09). It is its OWN seam, not the all-rows aggregates' [starRelevant]:
@@ -106,42 +133,48 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = exp
             }
             op
         }
-        is Expr.Field, is Expr.SemanticIndex -> VlqOperand(filtered = false).also { op ->
-            op.cells += when (presenceTri(e)) {
-                Tri.TRUE -> evalExpr(e)
-                Tri.FALSE -> null
-                Tri.UNKNOWN -> Val.Unknown
-            }
+        is Expr.Field, is Expr.SemanticIndex, is Expr.EnumCategory -> VlqOperand(filtered = false).also { op ->
+            if (computeMode) op.readLazily(sequence { yield(valueListCell(e)) }) else op.add(valueListCell(e))
         }
-        // An enum CATEGORY projection ([field -> Cat]) is a per-cell operand, NOT a literal: an empty enum
-        // is an EMPTY cell (drives OMISSION for `No`, not a present Unknown — both kernel strategies), an
-        // out-of-domain/malformed enum is UNKNOWN, and a filled enum contributes its (many-to-one) category
-        // value. Presence is the UNDERLYING enum field's three-way presence ([filledTri] on [Expr.EnumCategory.path]
-        // — [pathOf] rejects a category node). (SPEC-2026-07-22-05; the kernel's `keinFeldWertInWerteListe` empty-cell auslassung.)
-        is Expr.EnumCategory -> VlqOperand(filtered = false).also { op ->
-            op.cells += when {
-                outerUnknown(e) -> Val.Unknown
-                else -> when (filledTri(ctxOf(e), e.path)) {
-                    Tri.TRUE -> evalExpr(e)
-                    Tri.FALSE -> null
-                    Tri.UNKNOWN -> Val.Unknown
-                }
-            }
-        }
-        else -> VlqOperand(filtered = false).also { it.cells += evalExpr(e) }   // a literal member (never empty/unknown)
+        else -> VlqOperand(filtered = false).also { it.add(evalExpr(e)) }   // a literal member (never empty/unknown)
     }
+}
+
+/**
+ * One field-valued value-list operand's cell: null when empty, [Val.Unknown] when present but not check-relevant,
+ * otherwise its value; any other operand is a literal member and is its value. In computation the presence read of
+ * an invalid cell poisons instead of answering unknown.
+ *
+ * An enum CATEGORY projection (`[field -> Cat]`) is a per-cell operand, not a literal: an empty enum is an EMPTY cell
+ * (it drives OMISSION for `No`, not a present unknown — both kernel strategies), an out-of-domain or malformed enum is
+ * unknown, and a filled enum contributes its (many-to-one) category value. Its presence is the underlying enum field's
+ * three-way presence ([filledTri] on [Expr.EnumCategory.path], since [pathOf] rejects a category node)
+ * (SPEC-2026-07-22-05; the kernel's `keinFeldWertInWerteListe` empty-cell omission).
+ */
+internal fun Interpreter.valueListCell(e: Expr): Val? = when (e) {
+    is Expr.Field, is Expr.SemanticIndex -> when (presenceTri(e)) {
+        Tri.TRUE -> evalExpr(e)
+        Tri.FALSE -> null
+        Tri.UNKNOWN -> Val.Unknown
+    }
+    is Expr.EnumCategory -> if (outerUnknown(e)) Val.Unknown else when (filledTri(ctxOf(e), e.path)) {
+        Tri.TRUE -> evalExpr(e)
+        Tri.FALSE -> null
+        Tri.UNKNOWN -> Val.Unknown
+    }
+    else -> evalExpr(e)
 }
 
 /** Classify one star cell by its resolved value (null = empty, [Val.Unknown] = malformed, an index-field
  *  duplicated value = field-local UNKNOWN, an empty INDEX cell = mandatory-empty UNKNOWN) into the operand's
  *  encounter-ordered [VlqOperand.cells] — shared by the unfiltered + filtered paths. */
 private fun VlqOperand.classify(v: Val?, dupIndexValues: Set<Val>?) {
-    cells += when {
+    add(when {
         v == null -> if (dupIndexValues != null) Val.Unknown else null
         v is Val.Unknown -> Val.Unknown
         dupIndexValues != null && v in dupIndexValues -> Val.Unknown
         else -> v
-    }
+    })
 }
 
 /** The eagerly-materialized values side of `No`/`NotAll` (the kernel's `fuegeFeldWerteZuWerteListe`):
@@ -196,10 +229,12 @@ private fun vlqValuesOf(operands: List<VlqOperand>): VlqValues? {
  * side, at its position in the scan) and `NotAll` on the VALUES side to UNKNOWN, while `AtLeastOne` (either
  * side) and `NotAll` on the fields side ignore it.
  *
- * The EXPANSION stays eager per side (the read set — and so the compute-mode poison surface, IF219's
- * territory — is unchanged); only the VERDICT is the operator's ordered pass over the expanded cells. The
- * side-consumption laziness is the kernel's: `AtLeastOne`/`No` never touch fields when the values side
- * already decided, `NotAll` never touches values when its presence prepass decided.
+ * Validation expands each side eagerly, since its reads cannot poison; only the VERDICT is the operator's ordered
+ * pass. Computation instead reads each operand as a stream that pass pulls, so its read set is the pass's own
+ * (SPEC-2026-10-03-04): every operator consumes the values side completely, then scans the fields only to the
+ * deciding cell, and a filtered list reads one kept successor ahead. A malformed cell the pass reaches poisons; one
+ * beyond the decision is never read. The side-consumption laziness is the kernel's: `AtLeastOne`/`No` never touch
+ * fields when the values side already decided, `NotAll` never touches values when its presence prepass decided.
  */
 internal fun Interpreter.evalValueListQuant(c: Cond.ValueListQuant): Tri = vlqRes(c).truth
 
@@ -212,7 +247,7 @@ internal fun Interpreter.vlqRes(c: Cond.ValueListQuant): Res = when (c.op) {
 }
 
 private fun Interpreter.atLeastOneRes(c: Cond.ValueListQuant): Res {
-    val values = vlqOperands(c.values)
+    val values = vlqOperands(c.values).onEach { it.drain() }
     val members = values.flatMap { op -> op.cells.mapNotNull { cell -> cell.takeUnless { it is Val.Unknown } } }
     if (members.isEmpty()) return Res.of(Tri.FALSE, MsgType.VALUE)
     // A values-side filter keeps its polarity only when that operand SELECTED a present member

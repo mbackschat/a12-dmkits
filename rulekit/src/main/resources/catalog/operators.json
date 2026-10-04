@@ -2279,6 +2279,10 @@
         {
           "text": "an empty subject field is not evaluated — 'not included' does NOT fire on absence; test absence with FieldNotFilled",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "an empty FIELD ENTRY in the list is never matched, so a firing beside one is an OMISSION error (filling the entry could clear it); a malformed entry suppresses the rule, except that a text or enumeration subject meeting an empty entry before the malformed one still fires as an omission",
+          "kind": "SURPRISE"
         }
       ],
       "validExample": {

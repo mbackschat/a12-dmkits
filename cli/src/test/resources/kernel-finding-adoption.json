@@ -558,6 +558,150 @@
         }
       }
     },
+    "kf519": {
+      "sha256": "0175c74261496760f13eb6be4bc02a2a4818d552453404f24c9123a4f210ad58",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "scalar membership empty and malformed members"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "scalar membership empty and malformed members"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "scalar membership empty and malformed members"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "scalar membership empty and malformed members": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MembershipComputationGuardDiffTest.kt#theSeparatingRowsAreTheKernelsOwn",
+              "witness": "Three NotIncluded rules, one per subject kind, pinned against dynamic Groovy on empty, malformed and empty-before-malformed members; the agreement test compares all three engines."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "scalar membership empty and malformed members": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MembershipComputationGuardDiffTest.kt#theSeparatingRowsAreTheKernelsOwn",
+              "witness": "Three NotIncluded rules, one per subject kind, pinned against dynamic Groovy on empty, malformed and empty-before-malformed members; the agreement test compares all three engines."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation delegates to the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-03-04 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf518": {
+      "sha256": "7b331bb46e06cf5bfc0a501f08d6b62c568ee59c0f4e2650cc263429fac96818",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "computation-guard read order and reached poison"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "computation-guard read order and reached poison"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "computation-guard read order and reached poison"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "computation-guard read order and reached poison": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MembershipComputationGuardDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "Twelve membership documents compared on every message and computation outcome; OverlapComputationGuardDiffTest and UniquenessComputationGuardDiffTest carry the overlap and uniqueness rows, and each pins its separating rows against dynamic Groovy."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The live kernel differential compares this consumer on the declared grid; runtime comparisons use both kernel strategies.",
+          "evidence": {
+            "computation-guard read order and reached poison": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MembershipComputationGuardDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "Twelve membership documents compared on every message and computation outcome; OverlapComputationGuardDiffTest and UniquenessComputationGuardDiffTest carry the overlap and uniqueness rows, and each pins its separating rows against dynamic Groovy."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation delegates to the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-03-04, SPEC-2026-10-04-04 and SPEC-2026-10-04-07 await lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
     "kf517": {
       "sha256": "b6c17be6f54c72dda91197528a7879f848f977ed4556426f26634054efb2935d",
       "task": "F-USE-BACKLOG",

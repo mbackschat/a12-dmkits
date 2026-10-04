@@ -958,6 +958,8 @@ Condition standardOrFast = Dsl.atLeastOneFieldValueIncludedInValueList(
         m.enumOf("/Order/Priority").category("SpeedClass"));
 ```
 
+**Scalar membership against other fields, and a group in the overlap `In` slot.** `NumberRef`, `StringRef` and `EnumRef` each take fields of their own kind as value-list entries, as in `tier.in(m.enumOf("/Order/PreviousTier"), m.enumOf("/Order/OfferedTier"))`. An empty entry is never matched, so a `notIn` firing beside one is an omission ([KF519](KERNEL-FINDINGS.md#kf519)). `Dsl.atLeastOneDateRangeOverlaps(range, m.flattenGroup("/Fleet/Periods*"))` puts a group in the `In` slot, which the plural overlap form admits where `DateRangesOverlap` refuses one ([KF264](KERNEL-FINDINGS.md#kf264)). The kernel reads that group field by field ([KF518](KERNEL-FINDINGS.md#kf518)). Both are authored this way in `MembershipComputationGuardDiffTest` and `OverlapComputationGuardDiffTest`.
+
 ## 4. Authoring a rule end-to-end
 
 ### 4.1 The rule object — slots from typed handles

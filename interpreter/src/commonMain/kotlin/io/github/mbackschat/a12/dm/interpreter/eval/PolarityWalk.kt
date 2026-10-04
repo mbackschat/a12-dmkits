@@ -667,6 +667,7 @@ private fun Interpreter.predType(p: Cond.Pred): MsgType {
     // the duplicate the scan returned at — POSITIONAL, so it cannot be read off the operand list and is decided in
     // the same ordered scan as the truth (SPEC-2026-08-05-01; `FieldValuesNotUniqueDiffTest`).
     if (op == PredicateOp.FIELD_VALUES_NOT_UNIQUE) return fieldValuesNotUnique(p.args).type
+    if (op == PredicateOp.FIELD_VALUE_NOT_IN_LIST) return valueListMembership(p.args, included = false).type
     op.polarity?.let { return it }
     // SPEC-2026-10-03-03: positive thresholds stop their polarity scan at the deciding witness.
     if (!op.countsGroups && p.args.any { it is Expr.Star && it.having != null }) return filteredFillType(op, p.args)

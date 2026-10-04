@@ -2989,6 +2989,22 @@
       ]
     },
     {
+      "operator": "FieldValueNotIncludedInValueList",
+      "lane": "GOTCHA",
+      "ordinal": 2,
+      "digest": "sha256:68b9b8ccc8d284bb6e288c641e4d85d4be2e8149aa0720cf3d5eabafa6e3dfb3",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "MembershipComputationGuardDiffTest"
+        }
+      ]
+    },
+    {
       "operator": "AtLeastOneFieldValueIncludedInValueList",
       "lane": "MEANING",
       "ordinal": 0,

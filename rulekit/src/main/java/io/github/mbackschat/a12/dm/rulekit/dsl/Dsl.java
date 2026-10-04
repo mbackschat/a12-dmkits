@@ -1918,6 +1918,17 @@ public final class Dsl {
                 List.<ValueListOperand>of(range), values);
     }
 
+    /**
+     * {@code AtLeastOneDateRangeOverlaps(range IN G*)} — {@code range} overlaps a range among the group's contained
+     * fields, which the kernel reads field by field in declaration order. The plural form admits a group in its
+     * {@code In} slot where {@code DateRangesOverlap} refuses one (KERNEL-FINDINGS KF264); the expansion's kind is
+     * the kernel's verdict. catalog:AtLeastOneDateRangeOverlaps
+     */
+    public static Condition atLeastOneDateRangeOverlaps(FieldOperand range, GroupListRef group) {
+        return new FieldListEntityListCondition(ValueListQuantifier.AT_LEAST_ONE_DATE_RANGE_OVERLAPS,
+                List.<ValueListOperand>of(range), List.<ValueListOperand>of(group));
+    }
+
     private static Condition stringListQuantifier(
             ValueListQuantifier q, List<String> values, StringRef first, StringRef... rest) {
         var fields = new ArrayList<ValueListOperand>();

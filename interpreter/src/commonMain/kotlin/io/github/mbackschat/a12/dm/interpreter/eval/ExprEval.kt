@@ -1983,14 +1983,35 @@ private sealed interface FirstFilledStep {
 private fun Interpreter.keptRowsWithSuccessorLookahead(
     rows: List<EvalContext>,
     having: Cond,
+): Sequence<EvalContext> = keptRowsWithSuccessorLookahead(rows) { havingInterp(it).fires(having) }
+
+/** [keptRowsWithSuccessorLookahead] for a caller whose filter is evaluated by its own [keeps] — the overlap and
+ *  uniqueness predicates evaluate `Having` without an enclosing iteration. */
+internal fun keptRowsWithSuccessorLookahead(
+    rows: List<EvalContext>,
+    keeps: (EvalContext) -> Boolean,
 ): Sequence<EvalContext> = sequence {
     var pending: EvalContext? = null
     for (row in rows) {
-        if (!havingInterp(row).fires(having)) continue
+        if (!keeps(row)) continue
         pending?.let { yield(it) }
         pending = row
     }
     pending?.let { yield(it) }
+}
+
+/**
+ * A starred operand's cells as a COMPUTATION reads them, for a consumer that decides on the stream and stops at its
+ * deciding cell: rows in order, a filtered operand through the one-kept-successor lookahead with [keeps] as its filter,
+ * and every cell pulled is a read that poisons when invalid ([filledOrPoison]). Yields the read cell, or null for an
+ * empty one. Validation keeps each consumer's own expansion, whose malformed cells are unknown rather than poison.
+ */
+internal fun Interpreter.computeStarReads(star: Expr.Star, keeps: ((EvalContext) -> Boolean)?): Sequence<ScanCell?> {
+    val context = ctxOf(star)
+    val cells = if (keeps == null) context.starScanCells(star.path, star.bindDepth)
+    else keptRowsWithSuccessorLookahead(context.rowContexts(star.path.substringBeforeLast('/'), star.bindDepth), keeps)
+        .map { scanCell(star.path, it) }
+    return cells.map { cell -> cell.takeIf { filledOrPoison(it) } }
 }
 
 internal fun Interpreter.firstFilledScan(f: Expr.Func): FirstFilledScan {
