@@ -60,7 +60,7 @@
         "type": { "type": "string", "description": "VALUE_ERROR | OMISSION_ERROR" },
         "message": { "type": "string", "description": "the INTERPOLATED end-user text — the authored message with $Field$/$Field.value$ tokens resolved against this document (what the user actually reads, G1)" },
         "referenced": { "type": "array", "items": { "type": "string", "format": "a12-message-address" }, "description": "the fields the rule READ (its operands) — A12's referencedFields. Same address contract as `field`: canonical A12 pointer when the address names one cell, house form otherwise" },
-        "fillToFix": { "type": "array", "items": { "type": "string", "format": "a12-message-address" }, "description": "for an OMISSION error, the operand fields that — if filled/changed — would clear it (the kernel's refOmissionErrorResponsible); absent for a VALUE error. Same address contract as `field`" }
+        "fillToFix": { "type": "array", "items": { "type": "string", "format": "a12-message-address" }, "description": "for an OMISSION error, the operand fields that can cause the omission, filled ones included (the kernel's refOmissionErrorResponsible); an operand read only by a presence check such as `FieldFilled` is referenced but never listed here. Absent for a VALUE error. Same address contract as `field`" }
       }
     }
   }

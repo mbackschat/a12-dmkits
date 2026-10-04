@@ -29,6 +29,8 @@ internal data class PreparedRulePlan(
     /** Rich message operands in deterministic AST order; RNU keys are excluded because its duplicate-cluster projector owns
      *  their concrete peer pointers. */
     val messageReferences: List<MessageReference>,
+    /** The subset of [messageReferences] an omission names as fill-to-fix ([omissionReferences]). */
+    val omissionReferences: Set<MessageReference>,
     /** Kernel codegen skips every rule containing a `Having` filter during partial validation. */
     val hasFilterConditions: Boolean,
     /** The condition holds a leaf that can fail at runtime, so WHICH leaves are reached is observable and the rule

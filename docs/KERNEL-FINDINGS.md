@@ -2981,7 +2981,7 @@ Nothing here generalizes to `fillToFix`, to filtered stars, or to `RepetitionNot
 
 *(Locked: `adapter.laws.UnstarredGroupReferenceDiffTest` — the three operand positions and both controls, tri-checked dynamic Groovy == generated Java == interpreter on complete sorted sets, plus the starred-versus-unstarred coordinate pair. The interpreter already agreed on every row; no production change was needed.)*
 
-## §12 supplement — a fired OMISSION's `refOmissionErrorResponsible` set is ALL of the rule's operands, the already-filled ones included (kernel runtime, 2026-08-11) <a id="kf184"></a>
+## §12 supplement — a fired OMISSION's `refOmissionErrorResponsible` set includes the already-filled operands (kernel runtime, 2026-08-11) <a id="kf184"></a>
 
 > Fold: pending — newly measured message-channel fact; folds into §12 on the next canonical KERNEL-SEMANTICS pass.
 
@@ -2997,6 +2997,8 @@ Measured on `Quantity > 5 And BackorderQuantity >= 0`, error field `../Quantity`
 So the set names every field whose *change* could clear the message, not the subset that is currently unfilled: `Quantity` is filled and still appears. The rival reading — "only the empty operands" — is refuted by that single row, since dropping the filled `Quantity` is exactly what it predicts. The VALUE control on the same document (`Quantity < 100`, firing on the same filled cell) reports an **empty** `fillToFix` with a non-empty `referenced`, so the channel is coupled to polarity rather than being a copy of the operand set that happens to coincide here.
 
 Both kernel strategies agree (dynamic Groovy == generated Java). Nothing here settles the `Or` shape, a filtered star, or `RepetitionNotUnique`'s duplicate cluster; those were not read.
+
+*Corrected 2026-10-05: this finding first said the set is ALL of the rule's operands, which held for the two comparisons measured here and not in general. Operands read only by a presence check or by an upward count are never in it, and a root group is in neither list ([KF522](#kf522)).*
 
 *(Locked: `adapter.laws.KernelRuntimeProbeTest.anOmissionCarriesFillToFixWhereAValueErrorCarriesNone` — the OMISSION content, the VALUE control, and the two-strategy agreement, observed through the kernel-runtime probe. `adapter.laws.RichMessageDiffTest` separately locks that the interpreter reproduces this set; it compares the two engines and never pinned the content, which is why the fact was unrecorded until now.)*
 
@@ -12443,3 +12445,30 @@ The declared-range rule is [KF512](#kf512)'s, now confirmed for the computation 
 | `AtLeastOneGroupFilled(Yard)` — the control | ADMITTED |
 
 So [KF416](#kf416)'s containment walk has one exemption in the list family, the positive form over a sole root group. `RootGroupGuardDependencyDiffTest` shows the form also keeps the positive guard's dependency treatment. Two computations in one root, each guarded by `AtLeastOneGroupFilled` over that root, pass the model check together, so neither guard reads the other's target. An ordinary group read would make them a cycle. They then compute from the root's other content: both clear on a document holding only their stored values, and both compute once an input field is present.
+
+## §12 supplement — a message's fill-to-fix set holds only the operands that can cause an omission, and a root group contributes to neither list (both strategies, 2026-10-05) <a id="kf522"></a>
+
+> Fold: pending — corrects the scope of [KF184](#kf184); found while comparing whole messages in the shared document differential.
+
+Both lists are fixed when the model is generated and resolved against the firing row, never judged against the Document: the runtime copies the rule's static omission set into `refOmissionErrorResponsible` (`MainValidatorController.getRefOmissionFields`, source-read). That static set is narrower than the referenced one. `RegelReferenzenErmittler.getReferenzierteEntityIdentifierFuerAuslassungsfehler` leaves out two shapes, and `MessageReferenceScopeDiffTest` measures each one on an order model. Every rule there is `X And FieldNotFilled(Contact)` over an empty `Contact`, so it fires as an omission:
+
+| `X` | fill-to-fix besides `Contact` | referenced besides `Contact` |
+|---|---|---|
+| `FieldFilled(Express)`; `AtLeastOneFieldFilled(Express, Weight)`; `MoreThanOneFieldFilled(Express, MinItems)` | none | the operands |
+| `GroupFilled(Address)`; `AtLeastOneGroupFilled(Address, Billing)`; `AllGroupsFilled(Address, Billing)` | none | every field of the groups |
+| `NumberOfFilledFields(Express, Weight) > 0`; `0 < NumberOfFilledFields(…)`; `NumberOfDifferentValues(…) > 0` | none | the operands |
+| `NumberOfFilledFields(Express, Weight) > [MinItems]` | none, `MinItems` included | the operands and `MinItems` |
+| `NumberOfFilledFields(Insured, Weight) < 1`; `1 > NumberOfFilledFields(…)`; `… == 0`; `NoFieldFilled(Insured, Weight)` | the operands | the operands |
+| `[Express] > 0`, `Express` filled | `Express` | `Express` |
+| `AllFieldsFilled(Lines* / Qty Having [Picked] > 0)` | `Lines[0]/Picked` | `Lines[0]/Picked`, `Lines[0]/Qty` |
+| `GroupNotFilled(Address)` | every field of `Address` | every field of `Address` |
+| `GroupFilled(/Order)`; `AtLeastOneGroupFilled(/Order)` over the root | none | none |
+
+Three rules follow:
+
+- **A presence check drops out.** The operands of `FieldFilled`, `GroupFilled`, `AllFieldsFilled`, `AtLeastOneFieldFilled`, `MoreThanOneFieldFilled`, `AllGroupsFilled` and `AtLeastOneGroupFilled` are referenced but never fill-to-fix. Their negative forms keep their operands.
+- **An upward count drops the whole comparison.** When exactly one side counts filled fields, groups or distinct values and the comparison asks it to be larger, both sides drop out, including the plain field on the other side. A downward or equality comparison keeps both sides.
+- **A filter always stays.** The operands of a filter are fill-to-fix even when the filtered list sits under a presence check.
+
+A root group is never expanded into its fields, and the reference inventory keeps no group pointer, so a root-group operand names nothing in either list. The computation-check message follows the same rule. Two computations guarded by `AtLeastOneGroupFilled` over their root reference only their own target (`RootGroupGuardDependencyDiffTest`).
+

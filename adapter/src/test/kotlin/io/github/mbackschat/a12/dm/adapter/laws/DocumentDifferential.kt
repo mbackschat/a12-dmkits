@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer
 import com.mgmtp.a12.kernel.md.rt.api.IMessage
+import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
@@ -8,42 +10,49 @@ import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
-import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import org.junit.jupiter.api.Assertions.assertEquals
 import java.util.Locale
 
 /**
- * One engine's view of a Document: its validation signatures (`code|type|pointer`, sorted), its computation outcomes
- * (`VALUE|v`, `ERRORED|v` or `CLEARED`), and the computation's separate channel of formal errors in operands
- * (`code@pointer`, sorted).
+ * One message as an engine reports it: code, type (`VALUE_ERROR`/`OMISSION_ERROR`), the error field's pointer, and
+ * the referenced and fill-to-fix pointers, each sorted. [brief] is the first three alone, for a pin that names only
+ * where a message fired.
  */
-internal data class DocumentObservation(
-    val messages: List<String>,
-    val outcomes: Map<String, String>,
-    val operandErrors: List<String>,
-)
+internal data class MessageSignature(
+    val code: String,
+    val type: String,
+    val pointer: String,
+    val referenced: List<String>,
+    val fillToFix: List<String>,
+) : Comparable<MessageSignature> {
+    val brief: String get() = "$code|$type|$pointer"
+
+    override fun compareTo(other: MessageSignature): Int = toString().compareTo(other.toString())
+
+    override fun toString(): String = "$brief|ref=$referenced|fill=$fillToFix"
+}
 
 /**
- * The three-engine observation of a Document given as A12 Document JSON: dynamic Groovy (normative), static Java and
- * the interpreter, each validated and computed once.
- *
- * Two conventions make the observations comparable. The kernel reports only computation targets whose stored state
- * changes, while the interpreter reports every target, so the interpreter's outcomes pass through the shipped
- * [kernelComputeGranularity] projection; a caller seeds each target with a value no alternative produces, so every
- * computed value is a change. Outcomes are keyed by the target's path below the root group with every repetition
- * other than the first spelled out, so a root-level target is keyed by its name and a row target as `Items[4]/Stamp`.
+ * One engine's view of a Document: its validation messages, its computation outcomes (`VALUE|v`, `ERRORED|v` or
+ * `CLEARED`), and the computation's separate channel of formal errors in operands.
  */
+internal data class DocumentObservation(
+    val messages: List<MessageSignature>,
+    val outcomes: Map<String, String>,
+    val operandErrors: List<MessageSignature>,
+)
+
 internal object DocumentDifferential {
 
     fun kernel(model: String, json: String, dynamic: Boolean): DocumentObservation {
-        val (messages, computation, channels) = if (dynamic) {
+        val (messages, computation) = if (dynamic) {
             val engine = RuntimeLaws.kernelEngine(model)
-            Triple(engine.validationMessages(engine.instance(json), null, Locale.US),
-                engine.computation(engine.instance(json), null, Locale.US), engine.resultChannels(engine.instance(json)))
+            engine.validationMessages(engine.instance(json), null, Locale.US) to
+                engine.computation(engine.instance(json), null, Locale.US)
         } else {
             val engine = RuntimeLaws.kernelJavaEngine(model)
-            Triple(engine.validationMessages(engine.instance(json), null, Locale.US),
-                engine.computation(engine.instance(json), null, Locale.US), engine.resultChannels(engine.instance(json)))
+            engine.validationMessages(engine.instance(json), null, Locale.US) to
+                engine.computation(engine.instance(json), null, Locale.US)
         }
         return DocumentObservation(
             messages.map(::kernelSignature).sorted(),
@@ -54,18 +63,19 @@ internal object DocumentDifferential {
                     else -> "VALUE|" + it.value().orElse("")
                 }
             }.toSortedMap(),
-            channels.formalErrorsInOperands().map { "${it.code()}@${it.field()}" }.sorted(),
+            computation.formalErrorsInOperands().map(::kernelSignature).sorted(),
         )
     }
 
+    /** The interpreter's observation; the operand channel is read off the public report, the surface a consumer uses. */
     fun interpreter(model: String, json: String): DocumentObservation {
         val def = ModelLoader.load(model)
         val engine = DmInterpreter(def)
         val messages = engine.validate(def.readDocumentJson(json)).also {
             assertEquals(emptyList<Any>(), it.unsupported, "every construct must be evaluable")
         }.messages.map {
-            val type = if (it.type == MsgType.VALUE) "VALUE_ERROR" else "OMISSION_ERROR"
-            "${it.code}|$type|" + formatPointer(it.errorPointer.fullName, it.errorPointer.repetitionIndexes)
+            MessageSignature(it.code, typeName(it.type.name), pointer(it.errorPointer),
+                it.referencedPointers.map(::pointer).sorted(), it.fillToFixPointers.map(::pointer).sorted())
         }.sorted()
         val document = def.readDocumentJson(json)
         val signatures = engine.compute(document).map {
@@ -79,11 +89,12 @@ internal object DocumentDifferential {
         val outcomes = kernelComputeGranularity(signatures, document, def).associate {
             outcomeKey(it.substringBefore('|')) to it.substringAfter('|')
         }.toSortedMap()
-        // The operand channel is read off the public report, the surface a consumer of it uses.
         val prepared = PreparedModel.loadExpandedJson(model)
         val operandErrors = prepared.createInterpreter().compute(prepared.documents.readDocument(json))
-            .formalErrorsInOperands.map { "${it.code}@${formatPointer(it.errorPath.fullName, it.errorPath.repetitionIndexes)}" }
-            .sorted()
+            .formalErrorsInOperands.map {
+                MessageSignature(it.code, typeName(it.type.name), pointer(it.errorPath),
+                    it.referenced.map(::pointer).sorted(), it.fillToFix.map(::pointer).sorted())
+            }.sorted()
         return DocumentObservation(messages, outcomes, operandErrors)
     }
 
@@ -99,7 +110,13 @@ internal object DocumentDifferential {
     /** A computation target's key: its pointer below the root group, repetitions other than the first spelled out. */
     private fun outcomeKey(pointer: String): String = pointer.trim('/').substringAfter('/').replace("[1]", "")
 
-    private fun kernelSignature(m: IMessage): String =
-        "${m.errorCode}|${m.messageType.name}|" +
-            formatPointer(m.errorFieldPointer.fullName(), m.errorFieldPointer.repetitionIndexes())
+    private fun typeName(interpreterType: String) = if (interpreterType == "VALUE") "VALUE_ERROR" else "OMISSION_ERROR"
+
+    private fun pointer(p: PartiallyKnownDocumentMultiPointer): String = formatPointer(p.fullName(), p.repetitionIndexes())
+
+    private fun pointer(p: A12PartiallyKnownMultiPointer): String = formatPointer(p.fullName, p.repetitionIndexes)
+
+    private fun kernelSignature(m: IMessage): MessageSignature = MessageSignature(m.errorCode, m.messageType.name,
+        pointer(m.errorFieldPointer), m.referencedFieldsPointers.map(::pointer).sorted(),
+        m.refOmissionErrorResponsiblePointers.map(::pointer).sorted())
 }

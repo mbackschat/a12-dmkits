@@ -47,7 +47,7 @@
     "fillToFix": {
       "type": "array",
       "items": { "type": "string", "format": "a12-message-address" },
-      "description": "(fired with `type: OMISSION_ERROR`) the operand fields that — if filled/changed — would clear the error (the kernel's refOmissionErrorResponsible); absent for a value error. Same address contract as `field`"
+      "description": "(fired with `type: OMISSION_ERROR`) the operand fields that can cause the omission, filled ones included (the kernel's refOmissionErrorResponsible); an operand read only by a presence check such as `FieldFilled` is referenced but never listed here. Absent for a value error. Same address contract as `field`"
     },
     "suppressedBy": {
       "type": "array",

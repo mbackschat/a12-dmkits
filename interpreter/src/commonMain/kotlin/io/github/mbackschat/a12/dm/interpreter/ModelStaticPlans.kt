@@ -181,6 +181,8 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             repetitionNotUnique = rnu,
             semanticErrorIndex = semanticErrorIndex,
             messageReferences = directMessageRefs,
+            omissionReferences = omissionReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
+                .flatMap(::expandMessageReference).toSet(),
             hasFilterConditions = starRefs(ast).any { it.having != null },
             canFailAtRuntime = containsDateTimeLiteral(ast),
             classifies = classificationEnabled(ast) { path -> path in model.groupPaths && pathParts(path).size == 1 },
@@ -209,6 +211,9 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
      */
     private fun expandMessageReference(reference: MessageReference): List<MessageReference> {
         if (model.kinds[reference.path] != null) return listOf(reference)
+        // A12 never expands a ROOT group, and its reference inventory keeps no group pointer, so a root-group operand
+        // names nothing at all (`adapter.laws.MessageReferenceScopeDiffTest`).
+        if (pathParts(reference.path).size == 1) return emptyList()
         // `pathParts`, not `paths.groupsThrough`: they agree on every declared group, but `groupsThrough` is
         // TOTAL only for a path the prepared model knows — it resolves through `ModelPathIndex.info`, whose
         // `checkNotNull` throws. A rule may reference a path that is declared nowhere, and the per-rule degrade

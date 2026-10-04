@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
+import io.github.mbackschat.a12.dm.interpreter.eval.PredicateOp
 
 // Pure AST reference walks shared by the I2 seam collaborators (IF117) — which field/star paths a
 // condition or expression references, in the two views the engine needs: the star-free SCOPE view
@@ -120,6 +121,74 @@ private fun messageReferences(
         else cond.args.flatMap { messageReferences(it, wildcardBindDepth) }
     is Cond.Pattern -> messageReferences(cond.value, wildcardBindDepth) + messageReferences(cond.pattern, wildcardBindDepth)
     is Cond.Custom -> emptyList()
+}
+
+/**
+ * The part of [messageReferences] an OMISSION message names as fill-to-fix, A12's `refOmissionErrorResponsible`. Like
+ * the referenced set it is fixed per rule, never judged against the Document, so a filled operand is fill-to-fix too.
+ *
+ * Two shapes cannot cause an omission and contribute only their filters' operands, which are fill-to-fix wherever they
+ * stand: a presence predicate ([readsForOmission]) and a comparison that counts filled entities upward against an
+ * uncounted side ([countsUpward]), whose BOTH operands drop out. A12 decides this at generation time in
+ * `RegelReferenzenErmittler.getReferenzierteEntityIdentifierFuerAuslassungsfehler` (source-read); every branch is
+ * measured in `adapter.laws.MessageReferenceScopeDiffTest`.
+ */
+internal fun omissionReferences(cond: Cond, excludeRepetitionNotUniqueKeys: Boolean = false): List<MessageReference> =
+    when (cond) {
+        is Cond.And -> omissionReferences(cond.left, excludeRepetitionNotUniqueKeys) +
+            omissionReferences(cond.right, excludeRepetitionNotUniqueKeys)
+        is Cond.Or -> omissionReferences(cond.left, excludeRepetitionNotUniqueKeys) +
+            omissionReferences(cond.right, excludeRepetitionNotUniqueKeys)
+        is Cond.Not -> omissionReferences(cond.c, excludeRepetitionNotUniqueKeys)
+        is Cond.Pred -> if (PredicateOp.byName(cond.name)?.readsForOmission() == false) cond.args.flatMap(::filterReferences)
+            else messageReferences(cond, excludeRepetitionNotUniqueKeys)
+        is Cond.Cmp -> if (countsUpward(cond)) filterReferences(cond.left) + filterReferences(cond.right)
+            else messageReferences(cond, excludeRepetitionNotUniqueKeys)
+        is Cond.Tolerance, is Cond.ValueListQuant, is Cond.Pattern, is Cond.Custom ->
+            messageReferences(cond, excludeRepetitionNotUniqueKeys)
+    }
+
+/** Whether this predicate's operands can cause an omission: the presence-only forms cannot. */
+private fun PredicateOp.readsForOmission(): Boolean = when (this) {
+    PredicateOp.FIELD_FILLED, PredicateOp.GROUP_FILLED, PredicateOp.ALL_FIELDS_FILLED,
+    PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.MORE_THAN_ONE_FIELD_FILLED, PredicateOp.ALL_GROUPS_FILLED,
+    PredicateOp.AT_LEAST_ONE_GROUP_FILLED -> false
+    PredicateOp.FIELD_NOT_FILLED, PredicateOp.GROUP_NOT_FILLED, PredicateOp.FIELD_VALUE_IN_LIST,
+    PredicateOp.FIELD_VALUE_NOT_IN_LIST, PredicateOp.DATE_RANGES_OVERLAP, PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS,
+    PredicateOp.FIELD_VALUES_NOT_UNIQUE, PredicateOp.REPETITION_NOT_UNIQUE, PredicateOp.VALID, PredicateOp.INVALID,
+    PredicateOp.NO_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED,
+    PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED, PredicateOp.NO_GROUP_FILLED, PredicateOp.NOT_ALL_GROUPS_FILLED,
+    PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> true
+}
+
+/** `count > x`, `count >= x`, `x < count`, `x <= count`, where exactly one side counts filled entities or values. */
+private fun countsUpward(cmp: Cond.Cmp): Boolean {
+    val left = countsFilled(cmp.left)
+    val right = countsFilled(cmp.right)
+    return when (cmp.op) {
+        CmpOp.GT, CmpOp.GE -> left && !right
+        CmpOp.LT, CmpOp.LE -> right && !left
+        CmpOp.EQ, CmpOp.NE -> false
+    }
+}
+
+private val FILLED_COUNTS = setOf(FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.NUMBER_OF_FILLED_GROUPS,
+    FunctionOp.NUMBER_OF_DIFFERENT_VALUES)
+
+private fun countsFilled(expr: Expr): Boolean = when (expr) {
+    is Expr.Func -> FunctionOp.byName(expr.name) in FILLED_COUNTS || expr.args.any(::countsFilled)
+    is Expr.Arith -> countsFilled(expr.left) || countsFilled(expr.right)
+    else -> false
+}
+
+/** The message references of every filter inside [expr]. */
+private fun filterReferences(expr: Expr): List<MessageReference> = when (expr) {
+    is Expr.Star -> expr.having?.let { messageReferences(it, expr.bindDepth, excludeRepetitionNotUniqueKeys = false) }
+        .orEmpty()
+    is Expr.Func -> expr.args.flatMap(::filterReferences)
+    is Expr.Arith -> filterReferences(expr.left) + filterReferences(expr.right)
+    is Expr.EntitySpec -> if (expr.semanticIndex == null) filterReferences(expr.source) else emptyList()
+    else -> emptyList()
 }
 
 private fun messageReferences(expr: Expr, wildcardBindDepth: Int?): List<MessageReference> = when (expr) {

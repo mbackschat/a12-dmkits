@@ -153,7 +153,7 @@ class FilteredFillComputationGuardDiffTest {
                     .outcomes.let { listOf(it["Items/Stamp"], it["Items[4]/Stamp"]) },
             "a group reached only through a computed field still reports the over-capacity error" to
                 DocumentDifferential.kernel(model, documents.getValue("a filled row past the capacity"), dynamic = true)
-                    .operandErrors.filter { "Seal" in it },
+                    .operandErrors.filter { "Seal" in it.pointer }.map { "${it.code}@${it.pointer}" },
         )
         assertEquals(linkedMapOf(
             "a coordinate filter selects missing declared slots, a value filter nothing" to listOf("FTFFTTF", "TTFFFTF"),

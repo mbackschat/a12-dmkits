@@ -4460,3 +4460,10 @@ Enforcement: `FilteredFillComputationGuardDiffTest`, red before the change on th
 [KF521](KERNEL-FINDINGS.md#kf521). `ComputationDependencies.positiveContainingGroup` recognized only `GroupFilled`/`AllGroupsFilled` over one group, so two computations in one root guarded by `AtLeastOneGroupFilled` over that root read each other's targets. The interpreter then refused the admitted model as a cyclic dependency. The root list form is now the third positive containing guard, and the profile and exclusion logic built on it is unchanged. The portable checker's self-read family gained the matching exemption, since it refused the same admitted guard.
 
 Enforcement: `RootGroupGuardDependencyDiffTest` (the interpreter raised the cycle before the change) and `consistency.GroupListSelfReadTest` (the checker refused both root rows before the change), with the kernel basis in `validate.laws.GroupListSelfReadLawsTest`.
+
+### IF366: fill-to-fix names only the operands that can cause an omission, and a root-group operand names nothing (2026-10-05) <a id="if366"></a>
+
+[KF522](KERNEL-FINDINGS.md#kf522). The interpreter copied every referenced operand into fill-to-fix and expanded a root-group operand into all its fields. Three differentials showed both once the shared document differential compared referenced and fill-to-fix pointers: a `FieldFilled` operand in `ShiftAmountPhaseDiffTest`, a filtered `AllFieldsFilled` list in `FilteredFillComputationGuardDiffTest`, and the root guard in `RootGroupGuardDependencyDiffTest`. `omissionReferences` (AstRefs.kt) now derives the static fill-to-fix subset when the rule plan is built, and `ModelStaticPlans.expandMessageReference` drops a root-group reference.
+
+Enforcement: `MessageReferenceScopeDiffTest` pins each branch against dynamic Groovy and compares all three engines on two documents.
+

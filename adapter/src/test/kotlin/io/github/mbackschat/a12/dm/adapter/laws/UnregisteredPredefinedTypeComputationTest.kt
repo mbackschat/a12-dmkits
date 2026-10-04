@@ -88,7 +88,7 @@ class UnregisteredPredefinedTypeComputationTest {
             assertEquals(dynamic, DocumentDifferential.kernel(model, documents.getValue(doc), dynamic = false),
                 "$doc: static Java vs dynamic Groovy")
             fun of(name: String) = dynamic.outcomes[name] ?: "9"
-            return targets.map { of(it) + "/" + of("After$it") } + dynamic.operandErrors
+            return targets.map { of(it) + "/" + of("After$it") } + dynamic.operandErrors.map { "${it.code}@${it.pointer}" }
         }
         assertEquals(linkedMapOf(
             "filled" to listOf("CLEARED/CLEARED", "CLEARED/CLEARED", "VALUE|1/VALUE|1", "CLEARED/VALUE|1",

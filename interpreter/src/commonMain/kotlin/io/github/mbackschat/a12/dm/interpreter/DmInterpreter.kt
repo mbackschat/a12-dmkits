@@ -1171,10 +1171,12 @@ class DmInterpreter private constructor(
                 val directPointers = directRefs.map { messagePointer(it, pass.doc, ctx) }.distinct()
                 val rnuPointers = matchingRnuOutcome?.peerKeyPointers.orEmpty()
                 val referenced = joinedList(directPointers, rnuPointers)
-                // refOmissionErrorResponsible: for an OMISSION error the kernel attaches ALL the operands the
-                // omission depends on (verified — both the filled and the empty operand of an And), so filling/
-                // changing any could resolve it. Empty for a VALUE error (no fill fixes a value).
-                val fillToFix = if (type == MsgType.OMISSION) referenced else emptyList()
+                // refOmissionErrorResponsible: the referenced operands that can cause an omission, filled or not,
+                // fixed per rule ([omissionReferences]); the RNU cluster stays in. Empty for a VALUE error.
+                val fillToFix = if (type == MsgType.OMISSION) {
+                    joinedList(directRefs.filter { it in prepared.omissionReferences }
+                        .map { messagePointer(it, pass.doc, ctx) }.distinct(), rnuPointers)
+                } else emptyList()
                 return RowOutcome.Fired(Message(rule.errorCode, rule.path,
                     pass.doc.messagePointer(errorPath, ctx.repsOf(errorPath)), rule.severity, type, text, referenced,
                     fillToFix))

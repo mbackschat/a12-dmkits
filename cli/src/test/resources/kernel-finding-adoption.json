@@ -637,6 +637,150 @@
         }
       }
     },
+    "kf522": {
+      "sha256": "1d5faa89499fd47a390c3afcbe21d4292053c5b19784beb356177fb2184a5c0e",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "message reference and fill-to-fix scope"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "message reference and fill-to-fix scope"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "message reference and fill-to-fix scope"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel itself is measured on both strategies through the adapter's differential.",
+          "evidence": {
+            "message reference and fill-to-fix scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageReferenceScopeDiffTest.kt#theSeparatingRowsAreTheKernelsOwn",
+              "witness": "Eighteen omission rules over presence checks, counts, a filter and root groups, each pinned against dynamic Groovy."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Fill-to-fix is the static omission subset of the referenced operands, and a root-group operand names nothing.",
+          "evidence": {
+            "message reference and fill-to-fix scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageReferenceScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The same rules on two documents across all three engines."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker emits no runtime messages.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool publishes the interpreter's channels unchanged; only the fillToFix schema prose was narrowed to match.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Disclosed as a correction beside the 2026-10-04 letter; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf184": {
+      "sha256": "c0f3eb49c65a1be2bd920372a9e409816062e8ab19a04f58648378565e87eef3",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "message reference and fill-to-fix scope"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "message reference and fill-to-fix scope"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "message reference and fill-to-fix scope"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel itself is measured on both strategies through the adapter's differential.",
+          "evidence": {
+            "message reference and fill-to-fix scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageReferenceScopeDiffTest.kt#theSeparatingRowsAreTheKernelsOwn",
+              "witness": "The ValueRead row keeps a filled operand in fill-to-fix; the presence rows show the set is not all operands."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Fill-to-fix is the static omission subset of the referenced operands, and a root-group operand names nothing.",
+          "evidence": {
+            "message reference and fill-to-fix scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageReferenceScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The same rules on two documents across all three engines."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker emits no runtime messages.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool publishes the interpreter's channels unchanged; only the fillToFix schema prose was narrowed to match.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The scope correction travels with KF522; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
     "kf416": {
       "sha256": "799e5dc83f39fb8c784b267f862741e7c0455053e2369142b863d0b0ee6df869",
       "task": "F-USE-BACKLOG",

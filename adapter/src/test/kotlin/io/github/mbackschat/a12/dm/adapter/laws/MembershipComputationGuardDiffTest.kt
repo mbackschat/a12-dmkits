@@ -148,7 +148,7 @@ class MembershipComputationGuardDiffTest {
             return of(target) + "/" + of("After$target")
         }
         fun fired(doc: String) = DocumentDifferential.kernel(model, documents.getValue(doc), dynamic = true)
-            .messages.filter { it.contains("NotListed|") }
+            .messages.map { it.brief }.filter { it.contains("NotListed|") }
         val actual = linkedMapOf(
             "a scalar membership reads every member, even after a match" to
                 listOf("QtyIn", "CodeIn", "TierIn").map { outcome("late member malformed after a match", it) },
