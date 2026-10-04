@@ -12311,3 +12311,20 @@ Limits: one modern Berlin gap, finite single-level rows, the listed constructs. 
 | A `yyyy` target computed from `01.01.2024`, read by a `Date("01","01",PlanYear)` guard and by a presence guard, over a stale `2023` | Both guards select their alternative |
 
 Mechanism, from the source cited in the lean checkpoint (`FormatDefinitionDatum.validiereFormat` → `DateUtil.completeDateAndFormat`, runtime classes): the formal check appends the Base Year only to a format with a day and a month but no year and lets the parser default every other omitted field, while evaluation completes the year independently with the Base Year. Arithmetic applies no stored-Date bound, so the target check is the first place a five-digit year or a below-floor date is judged. The dependent guards read the target's stored text, so a `yyyy` target holds `2024`, not a completed date.
+
+## §6 supplement — a temporal constructor keeps fixed versus missing provenance through extrema, a constructed gap clears cleanly, and `DateTime` stops early only on a formally invalid Date read (both strategies, 2026-10-04) <a id="kf515"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-04-02`; the gap-literal control is [KF513](#kf513).
+
+`ConstructionProvenanceDiffTest` (JVM default UTC, model `Europe/Berlin`) compares validation signatures and every computation outcome on seven documents across dynamic Groovy, static Java and the interpreter. Its pinned rows come from dynamic Groovy:
+
+| Input | Kernel observation |
+|---|---|
+| `Min(Time(Hour), Clock) == Clock` with `Hour` = `24` | Fires `VALUE_ERROR`: an unreal clock is a fixed outcome |
+| `Min(DateTime(Incident, Time(Hour)), Logged) == Logged` with `2024-03-31` and `2` (inside the Berlin gap) | Fires `VALUE_ERROR` |
+| `DateTime(Incident, Time(Hour))` into a target, same document | The target clears and a `FieldNotFilled` guard on it selects its alternative: a clean clear, not poison |
+| `Min(DateTime(ValueAsDate(Reported, FirstDay), Clock), Logged) == Logged` with `Reported` empty | Fires `OMISSION_ERROR`: an empty partial date is a missing outcome |
+| `DateTime(ValueAsDate(Reported, FirstDay), Clock)` with `Reported` empty and `Clock` malformed | The target's guard clears: the Time argument still runs, and its malformed read poisons |
+| `DateTime(ValueAsDate(Reported, FirstDay), TimeFromDateTime("31.03.2024T02:30:00")) == Logged` with `Reported` malformed | Fires `VALUE_ERROR`: the gap literal is reached behind a valueless partial date |
+
+The measured `DateTime` stop rule (a formally invalid Date field stops before the Time argument) stands; these rows show that a partial date without a value is not such a read.

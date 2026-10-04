@@ -1501,7 +1501,12 @@ private fun evaluatedComponentInt(value: Val): Evaluated<Int> = when (value) {
  */
 private sealed interface Evaluated<out T> {
     data class Present<T>(val value: T) : Evaluated<T>
-    data class NoValue(val reason: NoValueReason) : Evaluated<Nothing>
+    /**
+     * [formal] separates a no-value caused by a formally invalid read from the cause-free non-relevance of a
+     * partial date with no resolvable value: only the former stops `DateTime(date, time)` before its Time argument
+     * (SPEC-2026-10-04-02, `adapter.laws.ConstructionProvenanceDiffTest`).
+     */
+    data class NoValue(val reason: NoValueReason, val formal: Boolean = true) : Evaluated<Nothing>
 }
 
 private enum class NoValueReason {
@@ -1577,6 +1582,11 @@ private fun Interpreter.evalTemporal(e: Expr): Evaluated<TemporalValue> {
     if (e is Expr.Func) {
         return when (FunctionOp.byName(e.name)) {
             FunctionOp.DATE -> evaluateDateConstruction(e.args)
+            FunctionOp.TIME -> when (val time = evaluateTimeConstruction(e.args)) {
+                is Evaluated.Present -> Evaluated.Present(TemporalValue(time.value, DateCalendarBasis.PROLEPTIC_GREGORIAN))
+                is Evaluated.NoValue -> time
+            }
+            FunctionOp.VALUE_AS_DATE -> partialDateValue(e.args)
             FunctionOp.DATE_TIME -> composeDateTime(e.args)
             FunctionOp.DATE_FROM_DATE_TIME -> mapTemporal(e.args.single()) { value ->
                 value.copy(text = value.date, exactInstantMillis = null)
@@ -1664,15 +1674,18 @@ private fun Interpreter.temporalText(
 private fun Interpreter.composeDateTime(args: List<Expr>): Evaluated<TemporalValue> {
     if (args.size != 2) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     val date = evalTemporal(args[0])
-    // The generated constructor evaluates Date first and a formally unavailable Date stops before the Time arm.
-    if (date is Evaluated.NoValue && date.reason == NoValueReason.NON_RELEVANT) return date
+    // The generated constructor evaluates Date first and a formally unavailable Date stops before the Time arm; a
+    // partial date with no value is not formally unavailable, so the Time arm still runs (SPEC-2026-10-04-02).
+    if (date is Evaluated.NoValue && date.reason == NoValueReason.NON_RELEVANT && date.formal) return date
     val time = evalTime(args[1])
     dominantNoValue(date, time)?.let { return it }
     val dateValue = (date as Evaluated.Present).value
     val timeValue = (time as Evaluated.Present).value
     val text = "${dateValue.date}T$timeValue"
+    // A constructed wall time inside a zone gap is a fixed outcome that clears cleanly, unlike a gap literal,
+    // which is a runtime failure (KF513).
     val instant = calendarOperandInstant(text, timeZone, dateValue.basis)
-        ?: return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+        ?: return Evaluated.NoValue(NoValueReason.PRESENT_NO_VALUE)
     return Evaluated.Present(TemporalValue(text, dateValue.basis, instant * 1_000L))
 }
 
@@ -1729,8 +1742,9 @@ private fun Interpreter.evaluateTimeConstruction(args: List<Expr>): Evaluated<St
     if (hasMalformed) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     if (hasEmpty) return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
     val (hour, minute, second) = Triple(components[0], components[1], components[2])
+    // An unreal clock is a fixed outcome, not a missing one: an extremum over it fires VALUE (SPEC-2026-10-04-02).
     if (hour !in 0..23 || minute !in 0..59 || second !in 0..59) {
-        return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        return Evaluated.NoValue(NoValueReason.PRESENT_NO_VALUE)
     }
     return Evaluated.Present("${pad2(hour)}:${pad2(minute)}:${pad2(second)}")
 }
@@ -1874,6 +1888,21 @@ internal fun Interpreter.dateInstant(e: Expr): Long? =
     (evalTemporal(e) as? Evaluated.Present)?.value
         ?.takeIf { !it.isDateTime && !it.isTimeOnly }
         ?.instantMillis(timeZone)
+
+/**
+ * `ValueAsDate` as a reason-bearing temporal value: an empty partial date is a missing outcome, and one with no
+ * resolvable value (malformed, or an unknown year) is cause-free non-relevance, which [composeDateTime] does not
+ * treat as a formally invalid read (SPEC-2026-10-04-02).
+ */
+private fun Interpreter.partialDateValue(args: List<Expr>): Evaluated<TemporalValue> {
+    val source = ctxOf(args[0])
+    val path = pathOf(args[0])
+    if (!invalid(source, path) && source.displayValue(path) == null) return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+    return when (val value = valueAsDate(args)) {
+        is Val.Txt -> temporalText(value.v, DateCalendarBasis.PROLEPTIC_GREGORIAN)
+        else -> Evaluated.NoValue(NoValueReason.NON_RELEVANT, formal = false)
+    }
+}
 
 /** `ValueAsDate(field, FirstDay|LastDay)` — select a partial DateType value's concrete boundary. Unknown
  *  when the field is empty/formally-invalid, its year is unknown, or the value doesn't parse. */
