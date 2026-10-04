@@ -36,7 +36,7 @@ private val CLOCK_DATE_TIME = Regex("""(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\
 private val OMITTED_YEAR = Regex("""\d{1,2}\.\d{1,2}\.""")
 
 /** Functions that yield a DATE value — so a counterpart string literal beside one is a date literal
- *  ([producesDate]). The date-time/range constructors return other kinds; the extractors return numbers. */
+ *  ([producesTemporal]). The date-time/range constructors return other kinds; the extractors return numbers. */
 private val DATE_PRODUCING_FUNCS = setOf(
     FunctionOp.DATE, FunctionOp.DATE_FROM_DATE_TIME,
     FunctionOp.START_OF_DATE_RANGE, FunctionOp.END_OF_DATE_RANGE,
@@ -44,7 +44,12 @@ private val DATE_PRODUCING_FUNCS = setOf(
     FunctionOp.VALUE_AS_DATE,
 )
 
-/** The min/max family — DATE-valued when its operands are dates ([dateAggregate]/[producesDate]). */
+/** Functions that yield a DATE_TIME value, the date-time twin of [DATE_PRODUCING_FUNCS] ([producesTemporal]). */
+private val DATE_TIME_PRODUCING_FUNCS = setOf(
+    FunctionOp.DATE_TIME, FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS,
+)
+
+/** The min/max family — temporal when its operands are ([dateAggregate]/[producesTemporal]). */
 private val MIN_MAX_FUNCS = setOf(FunctionOp.MIN, FunctionOp.MAX, FunctionOp.MIN_VALUE, FunctionOp.MAX_VALUE)
 
 /** Starred value aggregates whose result can be memoized by expression + aggregate-scope prefixes. */
@@ -626,10 +631,12 @@ internal fun Interpreter.evalCmpOperand(self: Expr, other: Expr): Val = when {
     self is Expr.Const && ConstantOp.byName(self.name) == ConstantOp.BASE_YEAR ->
         if (evalExpr(other) is Val.Num) baseYearNumber() else baseYearDate()
     // The counterpart's own declared format types the literal, exactly as an assignment target's does — see
-    // [coerceDate]. Without it a year-omitting literal compared against a year-FREE date field reached the
-    // comparison as raw German text, and the kernel admits that pair whenever neither side carries a year
-    // (IF321; `adapter.laws.YearlessConstantComparisonDiffTest`).
-    self is Expr.StrLit && producesDate(other) -> coerceDate(Val.Txt(self.v), declaredDateFormat(other))
+    // [coerceTemporalLiteral]. Without it a year-omitting literal compared against a year-FREE date field reached
+    // the comparison as raw German text, and the kernel admits that pair whenever neither side carries a year
+    // (IF321; `adapter.laws.YearlessConstantComparisonDiffTest`). A DateTime counterpart types a DateTime literal
+    // the same way; before SPEC-2026-10-03-06 it compared the German text lexically against the ISO value.
+    self is Expr.StrLit && producesTemporal(other) ->
+        coerceTemporalLiteral(Val.Txt(self.v), declaredDateFormat(other))
     else -> evalExpr(self)
 }
 
@@ -652,26 +659,27 @@ private fun Interpreter.declaredDateFormat(e: Expr): String? =
  * guessed at here.
  *
  * [targetDateFormat] is the DATE target's declared format, needed for the year-omitting literal alone; see
- * [coerceDate].
+ * [coerceTemporalLiteral].
  */
 internal fun Interpreter.evalAssignedExpr(expr: Expr, targetKind: Kind?, targetDateFormat: String? = null): Val {
     if (expr !is Expr.StrLit) return evalExpr(expr)
     return when (targetKind) {
-        Kind.DATE -> coerceDate(Val.Txt(expr.v), targetDateFormat)
+        Kind.DATE -> coerceTemporalLiteral(Val.Txt(expr.v), targetDateFormat)
         Kind.DATE_TIME -> dateTimeLiteral(expr.v)
         else -> evalExpr(expr)
     }
 }
 
 /**
- * A DATE_TIME literal canonicalized against its target — and [Val.DomainFailure] when the label it names has
+ * A DATE_TIME literal canonicalized to ISO — or a [TemporalLabelFailure] THROWN when the label it names has
  * **no instant** in the model's declared zone.
  *
  * A wall time inside a spring-forward gap is not a time, so there is nothing for the kernel's conversion to
- * produce: it yields no computed outcome and reports `berechnungsWertFehler` per in-capacity target row on the
- * operand channel (KF231), which is structurally the numeric domain failure and is why the same carrier serves
- * both. Before this the label was canonicalized, stored, and then flagged by the target's own format check —
- * agreeing that the cell has no valid value but saying so on the wrong channel (IF326, graduated from IG147).
+ * produce, and the conversion runs where the label is evaluated. It is thrown rather than returned because the
+ * kernel's failure is an exception, not an operand state: it was first modelled as [Val.DomainFailure] on the
+ * assignment carrier alone (IF326), which agreed there (no value, `berechnungsWertFehler` per in-capacity row,
+ * KF231) and was wrong everywhere else — a comparison, a shift source, an extractor and `Min`/`Max` all read the
+ * label as an absorbable unknown (SPEC-2026-10-03-06).
  *
  * **Deliberately narrow to the unresolvable-instant condition.** A temporal constant that fails its target's
  * *value policy* keeps store-and-flag: the same KF231 measurement has a pre-1900 Date constant ERRORED
@@ -680,30 +688,35 @@ internal fun Interpreter.evalAssignedExpr(expr: Expr, targetKind: Kind?, targetD
  */
 private fun Interpreter.dateTimeLiteral(text: String): Val {
     val iso = parseDateTimeToIso(text, DATE_TIME_LITERAL_FORMAT) ?: return Val.Txt(text)
-    return if (isGapLocal(iso, timeZone)) Val.DomainFailure else Val.Txt(iso)
+    if (isGapLocal(iso, timeZone)) throw TemporalLabelFailure(text)
+    return Val.Txt(iso)
 }
 
 /** The kernel's date-time constant spelling: the German date, a literal `T`, and the clock (`KF223`). */
 private const val DATE_TIME_LITERAL_FORMAT = "dd.MM.yyyy'T'HH:mm:ss"
 
-/** Whether [e] statically yields a DATE value — the signal that a counterpart string LITERAL is a date
- *  literal (German `dd.MM.yyyy`), not a plain string. A DATE field, the date constants (`Today`/`BaseYear`),
- *  a date-producing function, or a min/max whose operands are dates ([dateAggregate] — the kernel types
- *  `Min`/`MinValue` polymorphically by their operands, so a literal beside a date min is a date literal). */
-private fun Interpreter.producesDate(e: Expr): Boolean = when (e) {
-    is Expr.Field -> ctx.declaredKind(e.path) == Kind.DATE
-    is Expr.Const -> ConstantOp.byName(e.name).let { it == ConstantOp.TODAY || it == ConstantOp.BASE_YEAR }
-    is Expr.Func -> FunctionOp.byName(e.name).let { op ->
-        op in DATE_PRODUCING_FUNCS || (op in MIN_MAX_FUNCS && dateAggregate(e))
+/** Whether [e] statically yields a DATE or DATE_TIME value — the signal that a counterpart string LITERAL is a
+ *  temporal literal ([coerceTemporalLiteral]), not a plain string. A DATE or DATE_TIME field, the temporal
+ *  constants (`Today`/`BaseYear`/`Now`), a temporal-producing function, or a min/max whose operands are temporal
+ *  ([dateAggregate] — the kernel types `Min`/`MinValue` polymorphically by their operands, so a literal beside a
+ *  temporal min is a temporal literal). */
+private fun Interpreter.producesTemporal(e: Expr): Boolean = when (e) {
+    is Expr.Field -> ctx.declaredKind(e.path).let { it == Kind.DATE || it == Kind.DATE_TIME }
+    is Expr.Const -> ConstantOp.byName(e.name).let {
+        it == ConstantOp.TODAY || it == ConstantOp.BASE_YEAR || it == ConstantOp.NOW
     }
-    is Expr.SemanticIndex -> ctx.declaredKind(e.path) == Kind.DATE
+    is Expr.Func -> FunctionOp.byName(e.name).let { op ->
+        op in DATE_PRODUCING_FUNCS || op in DATE_TIME_PRODUCING_FUNCS || (op in MIN_MAX_FUNCS && dateAggregate(e))
+    }
+    is Expr.SemanticIndex -> ctx.declaredKind(e.path).let { it == Kind.DATE || it == Kind.DATE_TIME }
     else -> false
 }
 
 /**
- * Canonicalize a German date literal to ISO `yyyy-MM-dd`; any other value (already-ISO, a non-date string) is
- * unchanged — so it only ever rewrites a literal that genuinely parses as a date. Two literal shapes: the full
- * `dd.MM.yyyy`, and the **omitted-year** `dd.MM.`, which needs a year from somewhere.
+ * Canonicalize a German temporal literal to ISO — the date-time spelling `dd.MM.yyyy'T'HH:mm:ss` through
+ * [dateTimeLiteral] (which throws for a gap label), a date to `yyyy-MM-dd`; any other value (already-ISO, a
+ * non-date string) is unchanged — so it only ever rewrites a literal that genuinely parses as one. A date has
+ * two literal shapes: the full `dd.MM.yyyy`, and the **omitted-year** `dd.MM.`, which needs a year from somewhere.
  *
  * There are two sources, and the second was missing until 2026-09-03. The first is the model's `baseYear`, which
  * the kernel injects, so `"13.07."` means `13.07.<baseYear>` (IF52). The second is that the year is simply not
@@ -742,8 +755,9 @@ private fun Interpreter.producesDate(e: Expr): Boolean = when (e) {
  * month alone (IF320; `adapter.laws.YearlessConstantMonthStoreDiffTest`,
  * `rulekit.validate.laws.TemporalConstantAdmissionGateLawsTest`).
  */
-private fun Interpreter.coerceDate(v: Val, declaredFormat: String?): Val {
+private fun Interpreter.coerceTemporalLiteral(v: Val, declaredFormat: String?): Val {
     if (v !is Val.Txt) return v
+    if (parseDateTimeToIso(v.v, DATE_TIME_LITERAL_FORMAT) != null) return dateTimeLiteral(v.v)
     parseDateToIso(v.v, "dd.MM.yyyy")?.let { return Val.Txt(it) }
     if (!OMITTED_YEAR.matches(v.v)) return v
     val year = baseYear ?: YEARLESS_ANCHOR_YEAR.takeIf { declaredFormat?.contains('y') != true } ?: return v
@@ -751,10 +765,10 @@ private fun Interpreter.coerceDate(v: Val, declaredFormat: String?): Val {
 }
 
 /**
- * The year a yearless literal borrows when no base year is declared; see [coerceDate].
+ * The year a yearless literal borrows when no base year is declared; see [coerceTemporalLiteral].
  *
  * **It must be a leap year**, and it binds only this unconfigured case — a model that declares a Base Year
- * anchors to that instead, and [coerceDate] prefers it. On the temporal-operation carrier the choice is
+ * anchors to that instead, and [coerceTemporalLiteral] prefers it. On the temporal-operation carrier the choice is
  * kernel-observable: with no Base Year declared both kernel strategies count 2 days from `28.02.` to `01.03.`
  * (`adapter.laws.YearlessConstantOperationDiffTest`). A common year here would answer 1 and diverge. Which leap
  * year is not pinned — reading the borrowed year back is refused `MVK_NO_CONST`.
@@ -1607,7 +1621,7 @@ private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
         }
     }
     // No target or counterpart constrains a literal here, so nothing declares a year and the anchor applies.
-    val evaluated = coerceDate(evalExpr(e), declaredFormat = null)
+    val evaluated = coerceTemporalLiteral(evalExpr(e), declaredFormat = null)
     if (evaluated is Val.Txt) {
         val basis = DateCalendarBasis.PROLEPTIC_GREGORIAN
         // A pure time-of-day has no date and therefore no model-zone instant; it carries only its decoded
@@ -2189,7 +2203,7 @@ private fun Interpreter.dateAggregate(f: Expr.Func): Boolean = f.args.any { a ->
         // homogeneous by authoring, so one field decides). Without it a group of DATE fields answered `false`
         // here and took the NUMERIC branch, which cost two things at once — [minMaxEmpty] handed back `0` where
         // the date branch hands back "no value", and the comparison against a real date then THREW
-        // `incomparable values Num(0) vs Txt(…)` rather than answering wrongly; and [producesDate] routes
+        // `incomparable values Num(0) vs Txt(…)` rather than answering wrongly; and [producesTemporal] routes
         // through this same predicate, so a counterpart string literal stopped parsing as a German date
         // (`MinValue(<date group>) < "01.07.2026"` fired on both kernel strategies and returned false here).
         // Measured against both kernel strategies in `DateGroupExtremaDiffTest`; the kernel admits the shape
@@ -2197,7 +2211,7 @@ private fun Interpreter.dateAggregate(f: Expr.Func): Boolean = f.args.any { a ->
         is Expr.Field -> dateLike(firstFilledEntityKind(ctxOf(a), a.path))
         is Expr.Star -> dateLike(firstFilledEntityKind(ctxOf(a), a.path))
         is Expr.SemanticIndex -> dateLike(ctx.declaredKind(a.path))
-        else -> producesDate(a)
+        else -> producesTemporal(a)
     }
 }
 

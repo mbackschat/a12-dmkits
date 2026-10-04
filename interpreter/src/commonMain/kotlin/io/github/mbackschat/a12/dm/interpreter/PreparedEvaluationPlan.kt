@@ -31,6 +31,12 @@ internal data class PreparedRulePlan(
     val messageReferences: List<MessageReference>,
     /** Kernel codegen skips every rule containing a `Having` filter during partial validation. */
     val hasFilterConditions: Boolean,
+    /** The condition holds a leaf that can fail at runtime, so WHICH leaves are reached is observable and the rule
+     *  is evaluated in the kernel's two passes ([io.github.mbackschat.a12.dm.interpreter.eval.Interpreter.firedTypeInTwoPasses]). */
+    val canFailAtRuntime: Boolean,
+    /** The authored constructs enable the kernel's eager classification pass
+     *  ([io.github.mbackschat.a12.dm.interpreter.eval.classificationEnabled]). */
+    val classifies: Boolean,
 )
 
 /** Host/customization inputs the value-independent preparation walk must resolve. */

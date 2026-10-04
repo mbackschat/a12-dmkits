@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayContext
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayViews
 import io.github.mbackschat.a12.dm.interpreter.eval.PoisonedReadException
+import io.github.mbackschat.a12.dm.interpreter.eval.TemporalLabelFailure
 import io.github.mbackschat.a12.dm.interpreter.eval.CellState
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
 import io.github.mbackschat.a12.dm.interpreter.eval.renderDateToFormat
@@ -454,6 +455,10 @@ internal class ComputationEngine(
         companion object {
             /** No alternative was reached — the common precondition was false, or no guard matched. */
             val NONE = Selection(false, Val.Unknown)
+
+            /** The instance hit a [TemporalLabelFailure]: it ends here with the domain failure's outcome — no
+             *  value, `berechnungsWertFehler` on the target, a poisoned target for readers (SPEC-2026-10-03-06). */
+            val TEMPORAL_FAILURE = Selection(true, Val.DomainFailure)
         }
     }
 
@@ -465,7 +470,14 @@ internal class ComputationEngine(
      * holds, the field computes nothing ([Val.Unknown] → CLEARED). A precondition "holds" iff it evaluates to
      * three-valued TRUE — an UNKNOWN/FALSE precondition (e.g. over an empty operand) does not select its branch.
      */
-    private fun evalComputation(parsed: ParsedComputation, interp: Interpreter, targetPath: String): Selection {
+    private fun evalComputation(parsed: ParsedComputation, interp: Interpreter, targetPath: String): Selection =
+        try {
+            selectAlternative(parsed, interp, targetPath)
+        } catch (_: TemporalLabelFailure) {
+            Selection.TEMPORAL_FAILURE
+        }
+
+    private fun selectAlternative(parsed: ParsedComputation, interp: Interpreter, targetPath: String): Selection {
         if (parsed.commonPrecondition != null && interp.eval(parsed.commonPrecondition) != Tri.TRUE) return Selection.NONE
         for (alt in parsed.alternatives) {
             if (alt.precondition == null || interp.eval(alt.precondition) == Tri.TRUE) {
@@ -482,8 +494,8 @@ internal class ComputationEngine(
     /** One computed-field outcome for [comp] at target-cell [reps] from its evaluated [v]: VALUE (resolved,
      *  empty-as-0 applies) / CLEARED (an Unknown, or a final empty text — IF123; no value) / ERRORED (a
      *  formally-invalid or no-fit result — [Computed.value] retains the ATTEMPTED rendered value, matching
-     *  the kernel's store-and-flag, IF34/IF92). A domain failure — numeric, or a DATE_TIME literal with no
-     *  instant in the declared zone (IF326) — has no value and therefore retains the public CLEARED/no-value
+     *  the kernel's store-and-flag, IF34/IF92). A domain failure — numeric, or a DATE_TIME label with no
+     *  instant in the declared zone ([TemporalLabelFailure]) — has no value and therefore retains the public CLEARED/no-value
      *  delta while its target is internally poisoned for dependent reads.
      *  [reps] rides onto [Computed.indices] for the per-row identity (§7). */
     private data class ComputedAttempt(

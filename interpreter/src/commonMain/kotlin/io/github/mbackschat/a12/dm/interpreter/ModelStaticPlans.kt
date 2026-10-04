@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.eval.classificationEnabled
+import io.github.mbackschat.a12.dm.interpreter.eval.containsDateTimeLiteral
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
@@ -180,6 +182,8 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             semanticErrorIndex = semanticErrorIndex,
             messageReferences = directMessageRefs,
             hasFilterConditions = starRefs(ast).any { it.having != null },
+            canFailAtRuntime = containsDateTimeLiteral(ast),
+            classifies = classificationEnabled(ast) { path -> path in model.groupPaths && pathParts(path).size == 1 },
         )
     }
 

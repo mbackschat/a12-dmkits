@@ -7,6 +7,8 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.ComputationApplication
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.TemporalLabelFailure
+import io.github.mbackschat.a12.dm.interpreter.eval.evalTyped
 import io.github.mbackschat.a12.dm.interpreter.eval.WorkLedger
 import io.github.mbackschat.a12.dm.interpreter.eval.EffectiveRelevanceIndex
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
@@ -1108,11 +1110,11 @@ class DmInterpreter private constructor(
         // The iteration half of the work tally, counted after the early returns above so an eliminated or
         // partial-skipped rule contributes the zero rows it actually evaluates (WorkLedger).
         pass.config.work?.rowsEvaluated(iterationContexts.size)
-        return iterationContexts.map { ctx ->
+        fun rowOutcome(ctx: EvalContext): RowOutcome {
             // Partial validation: the kernel runs a rule only if its error field is relevant at this row —
             // else the rule is NOT executed for it (no message, not a suppression). "At this row" is the
             // BOUND levels only ([ValidationPass.runsForRow], IF268). Full validation: always.
-            if (!pass.runsForRow(errorPath, ctx)) return@map RowOutcome.Passed
+            if (!pass.runsForRow(errorPath, ctx)) return RowOutcome.Passed
             // A formally-invalid referenced field resolves to Val.Unknown (NOT a whole-rule skip): the 3VL
             // propagates it, so a bare comparison goes UNKNOWN but `… Or <true>` still FIRES — matching the
             // kernel's operand-level "not check-relevant" behavior (verified). A duplicate-index field is
@@ -1128,7 +1130,11 @@ class DmInterpreter private constructor(
             // both regimes. (A kernel-style evalCond-then-evalTyped two-phase guard was measured a net loss — the
             // second walk re-traverses + re-evals leaves; the lazy single walk gets the skip without it.
             // INTERPRETER-PERFORMANCE.md task #62; measurements in INTERPRETER-PERFORMANCE-RESULTS.md.)
-            val firedType = interp.firedType(ast)
+            //
+            // A condition that can fail at runtime makes the reached leaves observable, so it takes the kernel's two
+            // passes instead; elsewhere the single walk gives the same verdict and type at lower cost.
+            val firedType = if (prepared.canFailAtRuntime) interp.firedTypeInTwoPasses(ast, prepared.classifies)
+                else interp.firedType(ast)
             if (firedType != null) {
                 val type = firedType
                 val text = rule.messages[pass.locale]?.let {
@@ -1168,14 +1174,31 @@ class DmInterpreter private constructor(
                 // omission depends on (verified — both the filled and the empty operand of an And), so filling/
                 // changing any could resolve it. Empty for a VALUE error (no fill fixes a value).
                 val fillToFix = if (type == MsgType.OMISSION) referenced else emptyList()
-                RowOutcome.Fired(Message(rule.errorCode, rule.path, pass.doc.messagePointer(errorPath, ctx.repsOf(errorPath)),
-                    rule.severity, type, text, referenced, fillToFix))
-            } else {
-                // Not fired: a formally-invalid operand means the rule was NOT cleanly evaluated → SUPPRESSED
-                // (the `rule eval` third verdict), naming the offending field/code; else a clean PASSED.
-                pass.firstSuppressor(refs, ctx)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
+                return RowOutcome.Fired(Message(rule.errorCode, rule.path,
+                    pass.doc.messagePointer(errorPath, ctx.repsOf(errorPath)), rule.severity, type, text, referenced,
+                    fillToFix))
+            }
+            // Not fired: a formally-invalid operand means the rule was NOT cleanly evaluated → SUPPRESSED
+            // (the `rule eval` third verdict), naming the offending field/code; else a clean PASSED.
+            return pass.firstSuppressor(refs, ctx)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
+        }
+        // A runtime failure ends the rule's row loop, which the kernel's generated rule catches OUTSIDE its
+        // iteration: rows already fired keep their messages, and the failure adds one VALUE message under the rule's
+        // own code at the iterator's FIRST address — a fresh iterator's first state, whichever row failed — with no
+        // referenced fields (SPEC-2026-10-03-06). Other rules still visit their rows.
+        val outcomes = ArrayList<RowOutcome>(iterationContexts.size)
+        for (ctx in iterationContexts) {
+            try {
+                outcomes += rowOutcome(ctx)
+            } catch (failure: TemporalLabelFailure) {
+                val first = iterationContexts.first()
+                outcomes += RowOutcome.Fired(Message(rule.errorCode, rule.path,
+                    pass.doc.messagePointer(errorPath, first.repsOf(errorPath)), rule.severity, MsgType.VALUE,
+                    "An error occurred while evaluating the data check: ${failure.message}"))
+                break
             }
         }
+        return outcomes
     }
 
     /** Project one prepared message operand into A12's partially-known pointer domain. The wildcard coordinates

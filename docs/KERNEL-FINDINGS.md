@@ -12270,3 +12270,26 @@ Fourteen seeded/filled root-document outcomes additionally agree between both ke
 | Whole-root partial relevance | Every filtered rule is silent on all nine documents; the unfiltered list remains the control |
 
 Positive thresholds take polarity from the filled witnesses before their decision, not from filter presence anywhere in the list. Declared-range flags require evaluating the filter at missing declared coordinates; instantiated rows alone cannot determine them. The matrix is finite single-level Number field lists with one filtered operand, coordinate-one/positive-coordinate/positive-value filters, and direct operands before or after it. Multiple filters, nested/unbounded ranges, group operands, other kinds, computations and message-reference coordinates are outside this measurement.
+
+## §6/§12 supplement — a gap wall label is a runtime failure where it is evaluated: it poisons a computation, aborts a rule's row loop, and is reached by classification only when the authored constructs enable it (both strategies, 2026-10-04) <a id="kf513"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-03-06`; extends [KF231](#kf231) from the bare constant to every carrier.
+
+`TemporalValueFailureDiffTest` (JVM default UTC, model `Europe/Berlin`, gap label `31.03.2024T02:30:00`) compares complete validation signatures — code, type, error pointer and referenced fields — and every computation outcome plus the operand-error channel on five documents across dynamic Groovy, static Java and the interpreter. Its pinned rows come from dynamic Groovy alone:
+
+| Input | Kernel observation |
+|---|---|
+| The label as a shift source, nested shift, `DateFromDateTime`, `TimeFromDateTime`, and either operand of `Min`/`Max` | The target clears with `berechnungsWertFehler`; `AddSeconds` of the ordinary label stores `01:30:01` |
+| `Min([Pickup], gap)` with malformed `Pickup`, against `Min(gap, [Pickup])` | The first clears with no operand error (the malformed read poisons first); the second reports `berechnungsWertFehler` |
+| `FirstFilledValue(ShiftGap, Fallback)` and a `FieldNotFilled(ShiftGap)` guard | Both clear: the failed target is poisoned for readers, not cleanly empty |
+| `[Arrival] < gap` on three rows | One VALUE message at the first row, with no referenced fields |
+| `gap-comparison And false` against `false And gap-comparison` | The first reports, the second is silent |
+| `Signed filled Or [Arrival] < gap`, all rows signed | One abort message at the first row: the field read enables classification, which reaches the gap |
+| `Signed filled Or (Arrival filled And Now < gap)`, all rows signed | A normal message on every row: nothing enables classification, so the true prefix hides the gap |
+| The same rule on signed, unsigned, signed rows | Two messages at the first row: the first row's normal message survives the abort raised on the second |
+| `Arrival filled And (Signed notFilled Or Now < gap)` on two unsigned rows | One abort message: `FieldNotFilled` enables classification |
+| Each computation's implicit validation over a seeded target | The computation's own code fires as an abort wherever its operation reaches the label |
+
+**Mechanism (source-located, confirmed by the separating rows above).** The rule's generated body (`validation/groovy/rulesDir/CodeGenRuleDefinition.st`, codegen template) catches any exception outside its row loop and adds one message for the iterator's first state through `MainValidatorController.addValidatorMessage(…, Exception)` (runtime class), which types it VALUE and acquires no referenced fields. The template runs `conditionLineCode` — every leaf, eagerly — only when the backing bean's `isWithOmissionErrors` holds, which is `CodeGenHelper.canCreateOmissionErrors` over the parsed condition (backing bean). The parser lowers `FieldFilled` to `AllFieldsFilled`, which that visitor exempts when unfiltered, and `FieldNotFilled` to `NoFieldFilled`, which it does not (`FeldListenBedingungCreator`). Without classification the message is VALUE. The two rows that would contradict a rival account — the surviving earlier message and the `FieldNotFilled` enablement — behave as predicted.
+
+Limits: one modern Berlin gap, finite single-level rows, the listed constructs. The abort message's text is the runtime's localized prefix followed by a JVM exception message and is not compared. Other discontinuities, repeated computation targets and arbitrary nesting are outside this measurement.

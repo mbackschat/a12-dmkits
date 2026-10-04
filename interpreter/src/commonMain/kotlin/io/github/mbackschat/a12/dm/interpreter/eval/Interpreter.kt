@@ -310,6 +310,26 @@ class Interpreter(
         return if (r.truth == Tri.TRUE) r.type else null
     }
 
+    /**
+     * The kernel's two-pass rule evaluation, for a condition whose reached leaves are observable because one can
+     * fail at runtime ([TemporalLabelFailure]). The first pass asks only whether the condition is KNOWN TRUE, in
+     * authored order with both connectives short-circuited — `And` stops after a not-true left, `Or` after a true
+     * one — which fires on exactly the rows the three-valued walk fires on but reaches fewer leaves. A true rule
+     * whose constructs enable classification ([classifies], [classificationEnabled]) then re-evaluates every leaf
+     * eagerly to type the message; without classification the kernel emits a VALUE message (SPEC-2026-10-03-06).
+     */
+    fun firedTypeInTwoPasses(cond: Cond, classifies: Boolean): MsgType? {
+        if (!gated(cond)) return null
+        if (!knownTrue(cond)) return null
+        return if (classifies) evalTyped(cond).type else MsgType.VALUE
+    }
+
+    private fun knownTrue(c: Cond): Boolean = when (c) {
+        is Cond.And -> knownTrue(c.left) && knownTrue(c.right)
+        is Cond.Or -> knownTrue(c.left) || knownTrue(c.right)
+        else -> evalCond(c) == Tri.TRUE
+    }
+
     /** Partial-validation mode (the caller supplied a relevant set → [cellRelevant] is non-null). In partial the
      *  row-content gate is REPLACED by the upstream relevance gate: [DmInterpreter.rowOutcomes] only reaches an
      *  eval when the rule's error field is RELEVANT at the levels its iteration bound (IF268), and the kernel
