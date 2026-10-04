@@ -7453,7 +7453,7 @@
       "operator": "Date",
       "lane": "MEANING",
       "ordinal": 0,
-      "digest": "sha256:a0bb6c0c0784c150ef3859c6acf2c1ab8e36e488de12cfb1cd89aa0b262b9dea",
+      "digest": "sha256:6cd6cd22d49ee95409ca5fdb81b6875bdace3b5291cd2dab5b4273153ee9b8d7",
       "classifications": [
         "ADMISSION",
         "RUNTIME"
@@ -7468,6 +7468,11 @@
           "classification": "ADMISSION",
           "type": "KERNEL_LAW",
           "id": "validate.laws.TemporalExtractorComponentLawsTest#eachDatePositionAdmitsItsMatchingExtractor"
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "validate.laws.BaseYearRequirementLawsTest#whereAYearLessDateConstructionNeedsTheDeclaration"
         },
         {
           "classification": "RUNTIME",

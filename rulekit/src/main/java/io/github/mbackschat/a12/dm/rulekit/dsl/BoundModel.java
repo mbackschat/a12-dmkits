@@ -1038,10 +1038,18 @@ public final class BoundModel {
         return construction;
     }
 
+    /** The two-component form, whose year is the model's Base Year; {@code MVK_MISSING_YEAR} stays the kernel's. */
+    public DateConstruction dateOf(Calculation day, Calculation month) {
+        DateConstruction construction = new DateConstruction(day, month, new DateConstruction.BaseYearImplied());
+        requireSlotCompatibleNumberBounds(day, DAY_SLOT_MAX, "day");
+        requireSlotCompatibleNumberBounds(month, MONTH_SLOT_MAX, "month");
+        return construction;
+    }
+
     /** The four-component form. Its century and decade slots carry no measured bound rule, so they delegate. */
     public DateConstruction dateOf(Calculation day, Calculation month, Calculation century, Calculation decade) {
         DateConstruction construction =
-                new DateConstruction(day, month, century, Optional.of(decade));
+                new DateConstruction(day, month, new DateConstruction.SplitYear(century, decade));
         requireSlotCompatibleNumberBounds(day, DAY_SLOT_MAX, "day");
         requireSlotCompatibleNumberBounds(month, MONTH_SLOT_MAX, "month");
         return construction;

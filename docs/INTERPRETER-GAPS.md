@@ -8,7 +8,6 @@
 
 ## 1. Open
 
-- **IG163 — two-argument `Date(day, month)` construction (2026-10-04).** The kernel admits `Date("15","10")` and completes the year from the Base Year (a12-kernel-lean calendar captures `boundaries-*` and `early-year-*`). `analyzeDate` accepts only three or four components and treats the form as malformed, so the target clears, and the operator catalog lists three operands. Settled by a kernel admission check, the catalog and typed-surface arity, interpreter construction and a differential.
 - **IG161 — measure declared-range work in mixed filtered positive thresholds (2026-10-03).** `Interpreter.filteredFillScope` computes declared-range flags even when its caller needs only instantiated counts. A filled direct operand before a coordinate-filtered star can decide `AtLeastOneFieldFilled`, while the shared scope summary still visits the declared range. Source inspection during [IF354](INTERPRETER-FINDINGS.md#if354)'s review identified this extra traversal; no timing or kernel-performance comparison has been made. Measure row visits with fixed instantiated content and varying finite capacity, then separate count-only consumption if the control confirms unnecessary work. Preserve [KF512](KERNEL-FINDINGS.md#kf512)'s missing-slot and polarity outcomes; nested/unbounded semantics remain outside that measurement.
 
 ## 2. Deferred / ongoing-incremental

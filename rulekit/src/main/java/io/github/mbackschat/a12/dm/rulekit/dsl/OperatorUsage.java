@@ -162,10 +162,7 @@ public final class OperatorUsage {
             }
             case DateConstruction dc -> {
                 ops.add(dc.operatorId());
-                collect(dc.day(), ops);
-                collect(dc.month(), ops);
-                collect(dc.year1(), ops);
-                dc.year2().ifPresent(y -> collect(y, ops));
+                dc.components().forEach(component -> collect(component, ops));
             }
             case TimeConstruction tc -> {
                 ops.add(tc.operatorId());

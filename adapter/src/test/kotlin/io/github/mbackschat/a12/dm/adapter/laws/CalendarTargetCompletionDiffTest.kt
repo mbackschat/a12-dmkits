@@ -34,7 +34,8 @@ import java.util.Locale
 class CalendarTargetCompletionDiffTest {
     private val policySeeds = mapOf("Renewal" to "2000-01-01", "RenewalYearNo" to "1", "RenewalMonth" to "2000-01",
         "RenewalYear" to "2000")
-    private val billingSeeds = mapOf("NextBilling" to "06", "NextAnniversary" to "12-31")
+    private val billingSeeds = mapOf("NextBilling" to "06", "NextAnniversary" to "12-31",
+        "FoundingDay" to "2000-01-01", "FoundingNext" to "2000-01-01")
     private val planSeeds = mapOf("Cycle" to "02-28", "CycleMonth" to "9", "PlanYear" to "2023", "Fee" to "9",
         "Seats" to "9")
 
@@ -88,13 +89,19 @@ class CalendarTargetCompletionDiffTest {
                 b.dateField("Founded") { it.format("yyyy") }
                 b.dateField("NextBilling") { it.format("MM") }
                 b.dateField("NextAnniversary") { it.format("MM-dd") }
+                b.dateField("FoundingDay") { it.format("yyyy-MM-dd") }
+                b.dateField("FoundingNext") { it.format("yyyy-MM-dd") }
             }.build().toJson()
         val session = EditSession.read(draft)
         val b = session.group("/Billing")
+        val founding = Dsl.date(Dsl.temporalComponent("15"), Dsl.temporalComponent("10"))
         var json = session.toJson()
         for ((target, source, name) in listOf(
             Triple("NextBilling", Dsl.addMonths(b.date("BillingMonth"), 1), "NextBilling"),
             Triple("NextAnniversary", Dsl.addDays(b.date("Anniversary"), 1), "NextAnniversary"),
+            // Two components: the year is the Base Year (IG163), so the construction itself sits below the floor.
+            Triple("FoundingDay", founding, "FoundingDay"),
+            Triple("FoundingNext", Dsl.addDays(founding, 1), "FoundingNext"),
         )) {
             json = TypedRules.inject(json, b.computation(b.date(target).field()) {
                 it.name(name + "Comp").calc(source.expression()).message(Dsl.en("Check the billing date.")).build()
@@ -252,6 +259,9 @@ class CalendarTargetCompletionDiffTest {
             "under Base Year 1583 only month-day and year values meet the floor" to
                 fired("billing-floor-year", "datumFalsch|"),
             "a month-only shift stays a value" to run("billing-floor-year").outcomes["NextBilling"],
+            "a two-component Date takes the Base Year and meets the floor" to
+                run("billing-floor-year").outcomes["FoundingDay"],
+            "a shift returns it to the floor" to run("billing-floor-year").outcomes["FoundingNext"],
             "a leap attempt into month-day under a non-leap Base Year is errored" to
                 run("plan-base-2023").outcomes["Cycle"],
             "the leap attempt's dependent is poisoned" to run("plan-base-2023").outcomes["CycleMonth"],
@@ -269,6 +279,8 @@ class CalendarTargetCompletionDiffTest {
             "under Base Year 1583 only month-day and year values meet the floor" to
                 listOf("datumFalsch|VALUE_ERROR|/Billing[1]/Anniversary", "datumFalsch|VALUE_ERROR|/Billing[1]/Founded"),
             "a month-only shift stays a value" to "VALUE|11",
+            "a two-component Date takes the Base Year and meets the floor" to "ERRORED|1583-10-15",
+            "a shift returns it to the floor" to "VALUE|1583-10-16",
             "a leap attempt into month-day under a non-leap Base Year is errored" to "ERRORED|02-29",
             "the leap attempt's dependent is poisoned" to "CLEARED",
             "under a leap Base Year it stores" to "VALUE|02-29",

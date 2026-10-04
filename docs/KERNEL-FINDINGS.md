@@ -12309,6 +12309,7 @@ Limits: one modern Berlin gap, finite single-level rows, the listed constructs. 
 | `AddMonths` of that `MM` value into an `MM` target | `VALUE` `11` |
 | Literal `29.02.2024` into an `MM-dd` target, Base Year 2023 against 2024 | `ERRORED` `02-29` with its `MonthFromDate` dependent cleared, against `VALUE` `02-29` |
 | A `yyyy` target computed from `01.01.2024`, read by a `Date("01","01",PlanYear)` guard and by a presence guard, over a stale `2023` | Both guards select their alternative |
+| `Date("15","10")` and `AddDays(Date("15","10"), 1)` into `yyyy-MM-dd` targets under Base Year 1583 | `ERRORED` `1583-10-15` and `VALUE` `1583-10-16`: the two-component form takes the Base Year ([KF403](#kf403) owns its admission) |
 
 Mechanism, from the source cited in the lean checkpoint (`FormatDefinitionDatum.validiereFormat` → `DateUtil.completeDateAndFormat`, runtime classes): the formal check appends the Base Year only to a format with a day and a month but no year and lets the parser default every other omitted field, while evaluation completes the year independently with the Base Year. Arithmetic applies no stored-Date bound, so the target check is the first place a five-digit year or a below-floor date is judged. The dependent guards read the target's stored text, so a `yyyy` target holds `2024`, not a completed date.
 

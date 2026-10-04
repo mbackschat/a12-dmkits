@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -56,7 +55,7 @@ class TemporalConstructionExtractorGateTest {
     @Test
     void plainComponentsAreAdmitted() {
         assertDoesNotThrow(() -> new DateConstruction(NUMBER, NUMBER, NUMBER));
-        assertDoesNotThrow(() -> new DateConstruction(NUMBER, NUMBER, NUMBER, Optional.of(NUMBER)));
+        assertDoesNotThrow(() -> new DateConstruction(NUMBER, NUMBER, new DateConstruction.SplitYear(NUMBER, NUMBER)));
     }
 
     /** Right family, wrong position. */
@@ -88,11 +87,11 @@ class TemporalConstructionExtractorGateTest {
     @Test
     void theFourComponentFormRefusesAnExtractorInEitherYearPosition() {
         var century = assertThrows(IllegalArgumentException.class, () -> new DateConstruction(
-                NUMBER, NUMBER, extraction(DateExtraction.Unit.YEAR), Optional.of(NUMBER)));
+                NUMBER, NUMBER, new DateConstruction.SplitYear(extraction(DateExtraction.Unit.YEAR), NUMBER)));
         assertTrue(century.getMessage().contains("MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS"),
                 century::getMessage);
         var decade = assertThrows(IllegalArgumentException.class, () -> new DateConstruction(
-                NUMBER, NUMBER, NUMBER, Optional.of(extraction(DateExtraction.Unit.YEAR))));
+                NUMBER, NUMBER, new DateConstruction.SplitYear(NUMBER, extraction(DateExtraction.Unit.YEAR))));
         assertTrue(decade.getMessage().contains("MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS"),
                 decade::getMessage);
     }
@@ -105,14 +104,14 @@ class TemporalConstructionExtractorGateTest {
     @Test
     void theFourComponentFormKeepsTheOrdinaryRulesAtDayAndMonth() {
         assertDoesNotThrow(() -> new DateConstruction(
-                extraction(DateExtraction.Unit.DAY), NUMBER, NUMBER, Optional.of(NUMBER)));
+                extraction(DateExtraction.Unit.DAY), NUMBER, new DateConstruction.SplitYear(NUMBER, NUMBER)));
         assertDoesNotThrow(() -> new DateConstruction(
-                NUMBER, extraction(DateExtraction.Unit.MONTH), NUMBER, Optional.of(NUMBER)));
+                NUMBER, extraction(DateExtraction.Unit.MONTH), new DateConstruction.SplitYear(NUMBER, NUMBER)));
         var misplaced = assertThrows(IllegalArgumentException.class, () -> new DateConstruction(
-                extraction(DateExtraction.Unit.MONTH), NUMBER, NUMBER, Optional.of(NUMBER)));
+                extraction(DateExtraction.Unit.MONTH), NUMBER, new DateConstruction.SplitYear(NUMBER, NUMBER)));
         assertTrue(misplaced.getMessage().contains("MVK_INVALID_DATE_OR_TIME_EXTRACT_OP"), misplaced::getMessage);
         var crossFamily = assertThrows(IllegalArgumentException.class, () -> new DateConstruction(
-                extraction(DateExtraction.Unit.HOURS), NUMBER, NUMBER, Optional.of(NUMBER)));
+                extraction(DateExtraction.Unit.HOURS), NUMBER, new DateConstruction.SplitYear(NUMBER, NUMBER)));
         assertTrue(crossFamily.getMessage().contains("MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED"),
                 crossFamily::getMessage);
     }

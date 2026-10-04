@@ -6505,11 +6505,12 @@
           "type": "temporal-component"
         },
         {
-          "type": "temporal-component"
+          "type": "temporal-component",
+          "optional": true
         }
       ],
       "returns": "date",
-      "meaning": "Constructs a comparable date from day, month, and year (optionally century + 2-digit decade) temporal components. A component may be a bounded number field/expression or a quoted digit string; field-backed components render as bare entity refs and literal components remain quoted.",
+      "meaning": "Constructs a comparable date from day, month, and year (optionally century + 2-digit decade) temporal components. Without a year component the year is the model's Base Year, which the model must then declare. A component may be a bounded number field/expression or a quoted digit string; field-backed components render as bare entity refs and literal components remain quoted.",
       "constraints": [
         "each operand is a temporal component: a bounded-integer / digit-patterned number field or expression, or a quoted digit string; the kernel rejects a plain scale-0 number field (MVK_WRONG_DATE_FORMAT_FOR_OP)",
         "the complete-Year position additionally admits a bare temporal field DECLARED yyyy, and reads that declaration rather than the kind — a DATE, a TIME and a DATE_TIME field each declared yyyy are all admitted there. Both conjuncts are necessary: the same three kinds declared yyyy-MM-dd are refused at Year, and a yyyy field is refused at the Day and Month positions, all MVK_WRONG_DATE_FORMAT_FOR_OP (Locked: rulekit.validate.laws.TemporalConstructorDeclaredFormatGateLawsTest)"

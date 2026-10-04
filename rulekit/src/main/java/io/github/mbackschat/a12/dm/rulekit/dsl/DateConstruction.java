@@ -1,15 +1,18 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
-import java.util.Optional;
+import java.util.List;
+import java.util.stream.Stream;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.core.Refusals;
 
 /**
- * {@code Date(day, month, year)} / {@code Date(day, month, century, decade)} — the kernel's date
- * construction from temporal components (its {@code IDateConstructionOperation}: {@code day}, {@code month},
- * {@code year1} = full year or century, optional {@code year2} = 2-digit decade). A {@link Calculation}
+ * {@code Date(day, month)} / {@code Date(day, month, year)} / {@code Date(day, month, century, decade)} — the
+ * kernel's date construction from temporal components (its {@code IDateConstructionOperation}: {@code day},
+ * {@code month}, {@code year1} = full year or century, optional {@code year2} = 2-digit decade). The year part
+ * is a closed {@link DateYear}: absent, so the model's Base Year applies (legal only when the model declares
+ * one, else {@code MVK_MISSING_YEAR}, KF403), complete, or split. A {@link Calculation}
  * of {@link ValueKind#DATE}; wrap in a {@link DateExpr} to compare/shift it. Components render in
  * argument position — a field bare, a literal as its value, an extraction as its call.
  *
@@ -24,8 +27,37 @@ import io.github.mbackschat.a12.dm.core.Refusals;
  * (F4/N7) for want of a measurement: a String component's exact digit pattern, and the year slot's
  * {@code yyyy} Date exception.
  */
-public record DateConstruction(Calculation day, Calculation month, Calculation year1,
-        Optional<Calculation> year2) implements Calculation {
+public record DateConstruction(Calculation day, Calculation month, DateYear year) implements Calculation {
+
+    /** The year part of a construction; a split year without a century cannot be expressed. */
+    public sealed interface DateYear permits BaseYearImplied, FullYear, SplitYear {
+        /** The written year components, in argument order. */
+        List<Calculation> components();
+    }
+
+    /** No year argument: the model's Base Year supplies it. */
+    public record BaseYearImplied() implements DateYear {
+        @Override
+        public List<Calculation> components() {
+            return List.of();
+        }
+    }
+
+    /** The year given in full. */
+    public record FullYear(Calculation year) implements DateYear {
+        @Override
+        public List<Calculation> components() {
+            return List.of(year);
+        }
+    }
+
+    /** The four-component form: century, then 2-digit decade. */
+    public record SplitYear(Calculation century, Calculation decade) implements DateYear {
+        @Override
+        public List<Calculation> components() {
+            return List.of(century, decade);
+        }
+    }
 
     /**
      * An extractor component must be admissible in a Date construction AND sit at its own position. The two
@@ -43,8 +75,14 @@ public record DateConstruction(Calculation day, Calculation month, Calculation y
     public DateConstruction {
         checkComponent(day, DateExtraction.Unit.DAY, false);
         checkComponent(month, DateExtraction.Unit.MONTH, false);
-        checkComponent(year1, DateExtraction.Unit.YEAR, year2.isPresent());
-        year2.ifPresent(v -> checkComponent(v, null, true));
+        switch (year) {
+            case BaseYearImplied implied -> { }
+            case FullYear full -> checkComponent(full.year(), DateExtraction.Unit.YEAR, false);
+            case SplitYear split -> {
+                checkComponent(split.century(), DateExtraction.Unit.YEAR, true);
+                checkComponent(split.decade(), null, true);
+            }
+        }
     }
 
     private static void checkComponent(Calculation component, DateExtraction.Unit expected, boolean fourPart) {
@@ -78,8 +116,13 @@ public record DateConstruction(Calculation day, Calculation month, Calculation y
     }
 
     /** A three-component date (year given in full). */
-    public DateConstruction(Calculation day, Calculation month, Calculation year1) {
-        this(day, month, year1, Optional.empty());
+    public DateConstruction(Calculation day, Calculation month, Calculation year) {
+        this(day, month, new FullYear(year));
+    }
+
+    /** Every written component in argument order: day, month, then the year part's. */
+    public List<Calculation> components() {
+        return Stream.concat(Stream.of(day, month), year.components().stream()).toList();
     }
 
     @Override

@@ -2563,12 +2563,14 @@ final class ConditionConverter {
             DateRangeRef range = dateRangeSource(spec, rangeExt);
             return start ? Dsl.startOfDateRange(range) : Dsl.endOfDateRange(range);
         }
-        // Date(day, month, year[, decade]) → a constructed date operand
+        // Date(day, month[, year[, decade]]) → a constructed date operand; no year means the Base Year (KF403)
         if (op instanceof IDateConstructionOperation date) {
-            Optional<Calculation> year2 = date.getYear2() == null ? Optional.empty()
-                    : Optional.of(convertDateComponent(date.getYear2(), date));
+            DateConstruction.DateYear year = date.getYear1() == null ? new DateConstruction.BaseYearImplied()
+                    : date.getYear2() == null ? new DateConstruction.FullYear(convertDateComponent(date.getYear1(), date))
+                    : new DateConstruction.SplitYear(convertDateComponent(date.getYear1(), date),
+                            convertDateComponent(date.getYear2(), date));
             return new DateExpr(new DateConstruction(convertDateComponent(date.getDay(), date),
-                    convertDateComponent(date.getMonth(), date), convertDateComponent(date.getYear1(), date), year2));
+                    convertDateComponent(date.getMonth(), date), year));
         }
         throw unsupported("date operand " + op.getClass().getSimpleName(), origin);
     }

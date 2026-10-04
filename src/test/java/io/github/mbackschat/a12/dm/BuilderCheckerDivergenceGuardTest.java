@@ -122,6 +122,12 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_INVALID_COMPARE_TO_CONST", Disposition.PROSE_ONLY),
             Map.entry("MVK_INVALID_TYPE_FOR_COMPARISON", Disposition.PROSE_ONLY),
 
+            // The kits only NAME it: `DateConstruction`, `Dsl.date(day, month)` and `BoundModel.dateOf(day, month)`
+            // say the two-component form needs a declared Base Year and leave the refusal to the kernel, because
+            // the declaration is model data the record does not see (IG163). `BaseYearRequirement` owns the
+            // checker's enforcement (KF403).
+            Map.entry("MVK_MISSING_YEAR", Disposition.PROSE_ONLY),
+
             // Neither estate enforces it, and both say so where a reader would otherwise assume they do:
             // `Rule.Builder` names it at the check it REMOVED (the refusal had no measured basis — A12
             // accepts an absent `severity`, AF150), and `DeclarationSlots` names it to state that the

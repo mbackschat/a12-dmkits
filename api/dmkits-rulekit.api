@@ -614,6 +614,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef custom(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateRef date(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef dateFragment(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction dateOf(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction dateOf(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction dateOf(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef dateRange(java.lang.String)
@@ -946,7 +947,8 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.CustomTypeValidity impleme
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public DateConstruction(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
-  public DateConstruction(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation>)
+  public DateConstruction(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction.DateYear)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> components()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation day()
   public final boolean equals(java.lang.Object)
   public final int hashCode()
@@ -954,8 +956,34 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction implement
   public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation month()
   public java.lang.String operatorId()
   public final java.lang.String toString()
-  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation year1()
-  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> year2()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction.DateYear year()
+
+public static record io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction.BaseYearImplied implements io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction.DateYear
+  public BaseYearImplied()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> components()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public static sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction.DateYear
+  public abstract java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> components()
+
+public static record io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction.FullYear implements io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction.DateYear
+  public FullYear(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> components()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation year()
+
+public static record io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction.SplitYear implements io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction.DateYear
+  public SplitYear(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation century()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> components()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation decade()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public DateDifference(io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
@@ -1299,6 +1327,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition customCondition(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction dateExtraction(io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)

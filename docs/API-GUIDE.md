@@ -794,13 +794,14 @@ StringExpr firstBillingValue = Dsl.firstFilledString(
         m.firstFilledGroup("/Order/BillingAddress"));
 ```
 
-**Date/Time construction uses a model-checked component union.** A supplied component is a `TemporalComponent`: a typed `FieldRef`, a numeric expression such as the matching date/time extractor, or a quoted lexical component from `Dsl.temporalComponent`. The lexical factory is deliberate: `Dsl.temporalComponent("01")` preserves `"01"` where routing through a numeric literal would normalize it. The real kernel validates a field's declaration for its position, so the typed surface keeps model-dependent legality authorable without pretending every field kind works everywhere: bounded Number fields, exact-width digit-pattern String fields, and an exact-`yyyy` Date field in the complete-year position are admitted. `Dsl.date` accepts three or four components.
+**Date/Time construction uses a model-checked component union.** A supplied component is a `TemporalComponent`: a typed `FieldRef`, a numeric expression such as the matching date/time extractor, or a quoted lexical component from `Dsl.temporalComponent`. The lexical factory is deliberate: `Dsl.temporalComponent("01")` preserves `"01"` where routing through a numeric literal would normalize it. The real kernel validates a field's declaration for its position, so the typed surface keeps model-dependent legality authorable without pretending every field kind works everywhere: bounded Number fields, exact-width digit-pattern String fields, and an exact-`yyyy` Date field in the complete-year position are admitted. `Dsl.date` accepts two, three or four components. The two-component form takes the model's Base Year, which the kernel requires the model to declare (`MVK_MISSING_YEAR` otherwise, KF403), so the public `DateConstruction` node carries a closed `DateYear` (`BaseYearImplied`, `FullYear`, `SplitYear`) and a `components()` view rather than a mandatory year slot (IG163, `adapter.BaseYearDateConstructionReadTest`).
 
 <!-- teaser -->
 ```java
 TemporalComponent day = m.field("/Parts/DayText");       // STRING: maxLength 2 + digit-only pattern
 TemporalComponent year = m.field("/Parts/Year");         // DATE: exact format yyyy
 DateExpr firstOfJanuary = Dsl.date(day, Dsl.temporalComponent("01"), year);
+DateExpr renewalDay = Dsl.date(Dsl.temporalComponent("15"), Dsl.temporalComponent("10")); // year: the Base Year
 
 TimeExpr capturedClock = Dsl.time(
         m.field("/Parts/HourText"),

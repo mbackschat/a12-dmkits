@@ -1137,7 +1137,7 @@ public final class Dsl {
     /** {@code Date(day, month, century, decade)} — a date whose year is split into century + 2-digit decade. */
     public static DateExpr date(NumberExpr day, NumberExpr month, NumberExpr century, NumberExpr decade) {
         return new DateExpr(new DateConstruction(day.expression(), month.expression(),
-                century.expression(), Optional.of(decade.expression())));
+                new DateConstruction.SplitYear(century.expression(), decade.expression())));
     }
 
     /**
@@ -1163,7 +1163,17 @@ public final class Dsl {
     public static DateExpr date(TemporalComponent day, TemporalComponent month,
             TemporalComponent century, TemporalComponent shortYear) {
         return new DateExpr(new DateConstruction(day.expression(), month.expression(),
-                century.expression(), Optional.of(shortYear.expression())));
+                new DateConstruction.SplitYear(century.expression(), shortYear.expression())));
+    }
+
+    /**
+     * {@code Date(day, month)} — the year is the model's Base Year. The kernel admits it only when the model
+     * declares one and otherwise refuses with {@code MVK_MISSING_YEAR} (KF403); that check needs the model, so
+     * it stays the kernel's. catalog:Date
+     */
+    public static DateExpr date(TemporalComponent day, TemporalComponent month) {
+        return new DateExpr(new DateConstruction(day.expression(), month.expression(),
+                new DateConstruction.BaseYearImplied()));
     }
 
     /** {@code Time()} — midnight: every omitted trailing component defaults to zero. catalog:Time */

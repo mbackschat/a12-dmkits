@@ -254,12 +254,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collectOperand(s.left(), refs);
                 collectOperand(s.right(), refs);
             }
-            case DateConstruction dc -> {
-                collect(dc.day(), refs);
-                collect(dc.month(), refs);
-                collect(dc.year1(), refs);
-                dc.year2().ifPresent(y -> collect(y, refs));
-            }
+            case DateConstruction dc -> dc.components().forEach(component -> collect(component, refs));
             case TimeConstruction tc -> {
                 tc.components().forEach(component -> collect(component, refs));
             }

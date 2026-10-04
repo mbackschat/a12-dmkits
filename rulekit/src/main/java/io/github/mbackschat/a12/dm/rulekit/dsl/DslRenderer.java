@@ -520,9 +520,8 @@ public final class DslRenderer {
             case DateExtraction e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case DateTimePart e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case SumOfProducts s -> keyword(s.operatorId()) + "(" + operand(s.left()) + ", " + operand(s.right()) + ")";
-            case DateConstruction dc -> keyword(dc.operatorId()) + "(" + renderDateParam(dc.day()) + ", "
-                    + renderDateParam(dc.month()) + ", " + renderDateParam(dc.year1())
-                    + dc.year2().map(y -> ", " + renderDateParam(y)).orElse("") + ")";
+            case DateConstruction dc -> keyword(dc.operatorId()) + "(" + dc.components().stream()
+                    .map(this::renderDateParam).collect(Collectors.joining(", ")) + ")";
             case TimeConstruction tc -> keyword(tc.operatorId()) + "(" + tc.components().stream()
                     .map(this::renderDateParam).collect(Collectors.joining(", ")) + ")";
             case DateTimeConstruction dtc -> keyword(dtc.operatorId()) + "(" + renderArg(dtc.date()) + ", "

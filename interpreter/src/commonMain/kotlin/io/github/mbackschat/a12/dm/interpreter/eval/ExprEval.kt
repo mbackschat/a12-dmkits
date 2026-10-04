@@ -1407,7 +1407,7 @@ private data class DateAnalysis(val status: DateStatus, val iso: String?)
  *  IF31). Precedence: any malformed part → MALFORMED; else any empty field part → HAS_EMPTY; else
  *  REAL/UNREAL_PRESENT by the calendar check. */
 private fun Interpreter.analyzeDate(parts: List<Expr>): DateAnalysis {
-    if (parts.size != 3 && parts.size != 4) return DateAnalysis(DateStatus.MALFORMED, null)
+    if (parts.size !in 2..4) return DateAnalysis(DateStatus.MALFORMED, null)
     var hasEmpty = false
     val nums = IntArray(parts.size)
     for (i in parts.indices) {
@@ -1422,9 +1422,14 @@ private fun Interpreter.analyzeDate(parts: List<Expr>): DateAnalysis {
     }
     if (hasEmpty) return DateAnalysis(DateStatus.HAS_EMPTY, null)
     val d = nums[0]; val m = nums[1]
-    // 4-arg century form splits the year into century + 2-digit year: full year = century*100 + year.
-    val y = if (parts.size == 3) nums[2] else nums[2] * 100 + nums[3]
-    val componentGate = d != 0 && m != 0 && if (parts.size == 3) y != 0 else nums[2] != 0
+    // The 2-arg form takes the model's Base Year, which the kernel requires it to declare (MVK_MISSING_YEAR,
+    // KF403); the 4-arg century form splits the year into century + 2-digit year: century*100 + year.
+    val y = when (parts.size) {
+        2 -> baseYear ?: return DateAnalysis(DateStatus.MALFORMED, null)
+        3 -> nums[2]
+        else -> nums[2] * 100 + nums[3]
+    }
+    val componentGate = d != 0 && m != 0 && if (parts.size == 4) nums[2] != 0 else y != 0
     return if (componentGate && isConstructibleDate(y, m, d, timeZone)) DateAnalysis(DateStatus.REAL, isoDate(y, m, d))
     else DateAnalysis(DateStatus.UNREAL_PRESENT, null)
 }
