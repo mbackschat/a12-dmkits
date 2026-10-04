@@ -360,19 +360,23 @@ class GateTierWiringTest {
         // noAlwaysRunTaskRidesTheUnconditionalTier below.
         assertFastLeverSplit("build.gradle",
                 List.of("jsonConstructionGuardTest", "apiGuardTest", "catalogProseReviewGuardTest",
-                        "releaseGapGuardTest", "vocabularyGuardTest"),
+                        "releaseGapGuardTest", "vocabularyGuardTest", "keywordProjectionGuardTest",
+                        "correctiveGuardTest", "gateWiringGuardTest"),
                 List.of("docGuardTest", "interpreterReleaseGuardTest", "deliveryGuardTest",
                         "focusedSelectionGuardTest", "leakGuardTest"));
-        // :adapter — the four FIXTURE guards (6.6s) against the two broad ones (82.7s). A committed fixture
-        // that silently stops matching what the code produces is the same class as a stale golden.
+        // :adapter — the four FIXTURE guards (6.6s) against the broad ones (82.7s for the first two, 2026-08-15;
+        // checkerSilenceGuardTest 416.7s, 2026-10-04). A committed fixture that silently stops matching what the
+        // code produces is the same class as a stale golden.
         assertFastLeverSplit("adapter/build.gradle",
                 List.of("footprintFixtureGuardTest", "performanceFixtureGuardTest",
-                        "retainedComputationFixtureGuardTest", "workspacePreparationFixtureGuardTest"),
-                List.of("corpusReplayTest", "profileFixtureGuardTest"));
+                        "retainedComputationFixtureGuardTest", "workspacePreparationFixtureGuardTest",
+                        "perfScriptGuardTest", "verifySemanticsMapRegistration"),
+                List.of("corpusReplayTest", "profileFixtureGuardTest", "checkerSilenceGuardTest"));
         // :cli — the provenance resource, the gap ledgers' live ids, and the semantics-map registration of
         // every lock class (2.4s) against the three broad ones (12.7s).
         assertFastLeverSplit("cli/build.gradle",
-                List.of("semanticsMapGuardTest", "staleGapGuardTest", "sourceProvenanceGuardTest"),
+                List.of("semanticsMapGuardTest", "staleGapGuardTest", "sourceProvenanceGuardTest",
+                        "referentGuardTest"),
                 List.of("docGuardTest", "evalGuardTest", "mutationTailGuardTest"));
     }
 
@@ -458,8 +462,23 @@ class GateTierWiringTest {
         int fastAt = testTask.indexOf(fastMarker);
         assertTrue(fastAt > 0, buildFile + ": the test task no longer carries the -Pfast lever, so this guard is "
                 + "vacuous — re-derive the split rather than deleting the assertion");
-        String unconditional = testTask.substring(0, fastAt);
-        String conditional = testTask.substring(fastAt);
+        int leverEnd = closingBraceOf(testTask, testTask.indexOf('{', fastAt));
+        String conditional = testTask.substring(fastAt, leverEnd);
+        String unconditional = testTask.substring(0, fastAt) + testTask.substring(leverEnd);
+
+        List<String> unclassified = new ArrayList<>();
+        Matcher declared = Pattern.compile("dependsOn '([^']+)'").matcher(unconditional);
+        while (declared.find()) {
+            if (!alwaysOn.contains(declared.group(1))) {
+                unclassified.add(declared.group(1));
+            }
+        }
+        assertTrue(unclassified.isEmpty(),
+                buildFile + ": " + unclassified + " hang(s) off `test` unconditionally without being classified "
+                        + "here, so every focused `--tests` run pays for it in full and nothing measured whether "
+                        + "it may. Read its cost from a green run's result XMLs: a guard that binds a committed "
+                        + "artifact and costs a fraction of the loop joins the always-on list; anything heavier "
+                        + "moves behind -Pfast.");
 
         for (String guard : alwaysOn) {
             String dependency = "dependsOn '" + guard + "'";
@@ -777,6 +796,22 @@ class GateTierWiringTest {
 
     private static String gradleTask(String build, String name) {
         return taskBlock(build, "tasks.register('" + name + "', Test)");
+    }
+
+    /** The index just past the brace matching the one at {@code open}, so the lever's {@code else} arm stays inside. */
+    private static int closingBraceOf(String text, int open) {
+        int depth = 0;
+        for (int i = open; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}' && --depth == 0) {
+                int end = i + 1;
+                Matcher elseArm = Pattern.compile("\\G\\s*else\\s*\\{").matcher(text);
+                return elseArm.find(end) ? closingBraceOf(text, elseArm.end() - 1) : end;
+            }
+        }
+        throw new AssertionError("unbalanced braces in the -Pfast lever");
     }
 
     private static String namedGradleTask(String build, String name) {

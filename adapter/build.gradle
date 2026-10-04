@@ -364,14 +364,18 @@ tasks.named('test') {
     dependsOn 'performanceFixtureGuardTest'
     dependsOn 'retainedComputationFixtureGuardTest'
     dependsOn 'workspacePreparationFixtureGuardTest'
-    dependsOn 'checkerSilenceGuardTest'
+    // checkerSilenceGuardTest joined the always-on list on 2026-09-13 without this measurement and summed to
+    // 416.7s of suite time on 2026-10-04: every focused `--tests` run paid for it in full, since its inputs are
+    // the whole test classpath. It sweeps both engines over model populations rather than binding a committed
+    // fixture, so it belongs with the broad guards.
     if (!project.hasProperty('fast')) {
         dependsOn 'corpusReplayTest'
         dependsOn 'profileFixtureGuardTest'
+        dependsOn 'checkerSilenceGuardTest'
     } else {
         doFirst {
-            logger.lifecycle('-Pfast: SKIPPING corpusReplayTest, profileFixtureGuardTest — this run is NOT the '
-                    + 'estate. Re-run without -Pfast before treating green as a checkpoint.')
+            logger.lifecycle('-Pfast: SKIPPING corpusReplayTest, profileFixtureGuardTest, checkerSilenceGuardTest '
+                    + '— this run is NOT the estate. Re-run without -Pfast before treating green as a checkpoint.')
         }
     }
     dependsOn 'perfScriptGuardTest'
