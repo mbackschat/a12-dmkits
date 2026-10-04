@@ -12329,3 +12329,18 @@ Mechanism, from the source cited in the lean checkpoint (`FormatDefinitionDatum.
 | `DateTime(ValueAsDate(Reported, FirstDay), TimeFromDateTime("31.03.2024T02:30:00")) == Logged` with `Reported` malformed | Fires `VALUE_ERROR`: the gap literal is reached behind a valueless partial date |
 
 The measured `DateTime` stop rule (a formally invalid Date field stops before the Time argument) stands; these rows show that a partial date without a value is not such a read.
+
+## §6 supplement — validation reaches a shift amount behind a formally unavailable source; an amount extracted from an empty source keeps the shifted value but marks it missing (both strategies, 2026-10-04) <a id="kf516"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-04-06`; the gap-literal failure is [KF513](#kf513).
+
+`ShiftAmountPhaseDiffTest` (JVM default UTC, model `Europe/Berlin`) compares validation signatures and every computation outcome on three documents across dynamic Groovy, static Java and the interpreter. Its pinned rows come from dynamic Groovy:
+
+| Input | Kernel observation |
+|---|---|
+| `HoursFromTime(AddSeconds(Dispatched, HoursFromTime(TimeFromDateTime("31.03.2024T02:30:00"))))` with `Dispatched` malformed, as a computation | The target clears: computation stops at the poisoned source |
+| The same expression `== 0` in a rule | Fires `VALUE_ERROR`: validation still reaches the gap amount |
+| `HoursFromTime(AddSeconds(Dispatched, HoursFromTime(Handling)))` with `Handling` empty | `VALUE` `23`, and a rule comparing it with `0` does not fire: the shift keeps the source's hour |
+| `HoursFromTime(Time(…that expression…))`, same document | `VALUE` `0`, and the rule comparing it with `0` fires `OMISSION_ERROR`: as a construction component the shifted value is empty |
+
+`HoursFromTime` applied directly to a DateTime constant is refused with `MVK_NO_CONST`; the amount above goes through `TimeFromDateTime`, as the lean capture does.

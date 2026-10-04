@@ -1467,7 +1467,8 @@ private fun Interpreter.extractedDateComponent(
     extraction: Expr.Func,
     pick: (Int, Int, Int) -> Int,
 ): Evaluated<Int> = when (val source = evalTemporal(extraction.args.single())) {
-    is Evaluated.Present -> calendarDateParts(source.value.date, source.value.basis)
+    is Evaluated.Present -> if (source.value.missing) Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        else calendarDateParts(source.value.date, source.value.basis)
         ?.let { Evaluated.Present(pick(it.first, it.second, it.third)) }
         ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     is Evaluated.NoValue -> source.asConstructionComponent()
@@ -1476,7 +1477,7 @@ private fun Interpreter.extractedDateComponent(
 private fun Interpreter.extractedTimeComponent(
     extraction: Expr.Func,
     pick: (Int, Int, Int) -> Int,
-): Evaluated<Int> = when (val source = evalTime(extraction.args.single())) {
+): Evaluated<Int> = when (val source = evalTimeKeepingProvenance(extraction.args.single())) {
     is Evaluated.Present -> TIME.matchEntire(source.value)
         ?.let { match ->
             Evaluated.Present(
@@ -1529,6 +1530,12 @@ private data class TemporalValue(
     val text: String,
     val basis: DateCalendarBasis,
     val exactInstantMillis: Long? = null,
+    /**
+     * A payload that carries missing provenance: a shift whose extracted amount came from an empty source keeps
+     * its source's value, yet a construction component read from it is empty (SPEC-2026-10-04-06,
+     * `adapter.laws.ShiftAmountPhaseDiffTest`).
+     */
+    val missing: Boolean = false,
 ) {
     val date: String get() = dateOnly(text)
     val isDateTime: Boolean get() = 'T' in text
@@ -1779,6 +1786,9 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
     dominantNoValue(source, amountState)?.let { return it }
     val value = (source as Evaluated.Present).value
     val n = (amountState as Evaluated.Present).value
+    // An amount extracted from an empty source evaluates as zero, but the shift keeps that missing provenance.
+    val missingAmount = e.args[1] is Expr.Func && FunctionOp.byName((e.args[1] as Expr.Func).name) in TEMPORAL_EXTRACTORS &&
+        (temporalConstructionComponentInt(e.args[1]) as? Evaluated.NoValue)?.reason == NoValueReason.NOT_GIVEN
     val shifted = when (FunctionOp.byName(e.name)) {
         FunctionOp.ADD_DAYS -> if (value.isDateTime) {
             val landing = wallDayLandingInstant(value.instantSeconds(timeZone), n, timeZone)
@@ -1827,7 +1837,23 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
         }
         else -> error("not a temporal shift: ${e.name}")
     }
-    return shifted?.let { Evaluated.Present(it) } ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    return shifted?.let { Evaluated.Present(it.copy(missing = value.missing || missingAmount)) }
+        ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+}
+
+private val TEMPORAL_EXTRACTORS = setOf(
+    FunctionOp.YEAR_FROM_DATE, FunctionOp.MONTH_FROM_DATE, FunctionOp.DAY_FROM_DATE,
+    FunctionOp.HOURS_FROM_TIME, FunctionOp.MINUTES_FROM_TIME, FunctionOp.SECONDS_FROM_TIME,
+)
+
+/** [evalTime] for a construction component, where a payload carrying missing provenance reads as empty. */
+private fun Interpreter.evalTimeKeepingProvenance(e: Expr): Evaluated<String> {
+    val shifted = e is Expr.Func && FunctionOp.byName(e.name) in setOf(FunctionOp.DATE_TIME, FunctionOp.ADD_DAYS,
+        FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS)
+    if (!shifted) return evalTime(e)
+    val value = evalTemporal(e)
+    return if (value is Evaluated.Present && value.value.missing) Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        else timePart(value)
 }
 
 private fun Interpreter.aggregateTemporal(e: Expr.Func): Evaluated<TemporalValue> {
