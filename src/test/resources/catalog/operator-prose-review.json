@@ -2960,22 +2960,6 @@
       "operator": "FieldValueNotIncludedInValueList",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:9fc38e305decacd79909c0a6992546061beeea44e66f2c817ad009dac8976305",
-      "classifications": [
-        "RUNTIME"
-      ],
-      "evidence": [
-        {
-          "classification": "RUNTIME",
-          "type": "FACET",
-          "id": "FieldValueNotIncludedInValueList.semantics.emptyOperand[0].probes[0]"
-        }
-      ]
-    },
-    {
-      "operator": "FieldValueNotIncludedInValueList",
-      "lane": "GOTCHA",
-      "ordinal": 1,
       "digest": "sha256:59c61a2363c3d94c6925e5401072d4e3bd19039417650939c8647d266159a512",
       "classifications": [
         "RUNTIME"
@@ -2991,7 +2975,7 @@
     {
       "operator": "FieldValueNotIncludedInValueList",
       "lane": "GOTCHA",
-      "ordinal": 2,
+      "ordinal": 1,
       "digest": "sha256:68b9b8ccc8d284bb6e288c641e4d85d4be2e8149aa0720cf3d5eabafa6e3dfb3",
       "classifications": [
         "RUNTIME"

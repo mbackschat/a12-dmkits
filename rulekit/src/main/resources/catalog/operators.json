@@ -2273,10 +2273,6 @@
       ],
       "gotchas": [
         {
-          "text": "an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present values",
-          "kind": "SURPRISE"
-        },
-        {
           "text": "an empty subject field is not evaluated — 'not included' does NOT fire on absence; test absence with FieldNotFilled",
           "kind": "SURPRISE"
         },
