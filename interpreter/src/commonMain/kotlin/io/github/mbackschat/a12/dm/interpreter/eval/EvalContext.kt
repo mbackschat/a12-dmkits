@@ -417,14 +417,34 @@ class IndexColumn(
  * repetition range (an un-instantiated rep reads empty). Aggregated across a multi-scope operand list by summing
  * the counts and OR/AND-ing the declared flags.
  */
-data class FillScope(
+class FillScope internal constructor(
     val tInst: Int,
     val fInst: Int,
     val nInst: Int,
     val hasUnknownInst: Boolean,
-    val allFilledDeclared: Boolean,
-    val anyEmptyDeclared: Boolean,
-)
+    declared: () -> DeclaredFill,
+) {
+    constructor(
+        tInst: Int,
+        fInst: Int,
+        nInst: Int,
+        hasUnknownInst: Boolean,
+        allFilledDeclared: Boolean,
+        anyEmptyDeclared: Boolean,
+    ) : this(tInst, fInst, nInst, hasUnknownInst, { DeclaredFill(allFilledDeclared, anyEmptyDeclared) })
+
+    // Computed on first read: only `AllFieldsFilled`, `NotAllFieldsFilled` and `FieldsNotCollectivelyFilled` read the
+    // declared range, so a threshold over a filtered list never walks its uninstantiated rows (IG161,
+    // `FilteredThresholdDeclaredWorkTest`).
+    private val declaredFill by lazy(LazyThreadSafetyMode.NONE, declared)
+
+    val allFilledDeclared: Boolean get() = declaredFill.allFilled
+
+    val anyEmptyDeclared: Boolean get() = declaredFill.anyEmpty
+}
+
+/** The declared-range half of a [FillScope]. */
+internal data class DeclaredFill(val allFilled: Boolean, val anyEmpty: Boolean)
 
 /** Validation filters may select a missing declared slot by coordinate (SPEC-2026-10-03-03). */
 internal interface DeclaredStarRowProvider {

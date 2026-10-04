@@ -4467,3 +4467,9 @@ Enforcement: `RootGroupGuardDependencyDiffTest` (the interpreter raised the cycl
 
 Enforcement: `MessageReferenceScopeDiffTest` pins each branch against dynamic Groovy and compares all three engines on two documents.
 
+### IF367: a threshold over a filtered list no longer walks the declared range (2026-10-05) <a id="if367"></a>
+
+`Interpreter.filteredFillScope` evaluated the filter on every declared row even when its caller read only the instantiated tally, which every threshold quantifier does. With one filled direct field and one filled row held fixed, `AtLeastOneFieldFilled(Direct, Rows* / Qty Having CurrentRepetition(Rows) == 1)` cost 5 condition nodes at capacity 3 and 32 at capacity 30. `FillScope` now computes its declared-range flags on first read, so only `AllFieldsFilled`, `NotAllFieldsFilled` and `FieldsNotCollectivelyFilled` pay for the walk. [KF512](KERNEL-FINDINGS.md#kf512)'s outcomes are unchanged (`FilteredFillDecisionDiffTest`).
+
+Enforcement: `FilteredThresholdDeclaredWorkTest` holds the four threshold operators' work equal across capacities, and requires `AllFieldsFilled` to grow so the instrument provably sees the walk.
+

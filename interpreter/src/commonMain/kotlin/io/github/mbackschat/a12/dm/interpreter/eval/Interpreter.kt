@@ -549,15 +549,11 @@ class Interpreter(
     /** Aggregate the [FillScope] tally across a fill quantifier's operands (a group scope expands to its
      *  descendant fields; the counts sum, the declared flags OR/AND). */
     internal fun fillScopeInfo(args: List<Expr>): FillScope {
-        var t = 0; var f = 0; var n = 0; var unknown = false
-        var allFilled = true; var anyEmpty = false
-        for (a in args) {
-            val fs = if (a is Expr.SemanticIndex) keyedFillScope(a) else operandFillScope(a)
-            t += fs.tInst; f += fs.fInst; n += fs.nInst; unknown = unknown || fs.hasUnknownInst
-            allFilled = allFilled && fs.allFilledDeclared
-            anyEmpty = anyEmpty || fs.anyEmptyDeclared
+        val scopes = args.map { a -> if (a is Expr.SemanticIndex) keyedFillScope(a) else operandFillScope(a) }
+        return FillScope(scopes.sumOf { it.tInst }, scopes.sumOf { it.fInst }, scopes.sumOf { it.nInst },
+            scopes.any { it.hasUnknownInst }) {
+            DeclaredFill(scopes.all { it.allFilledDeclared }, scopes.any { it.anyEmptyDeclared })
         }
-        return FillScope(t, f, n, unknown, allFilled, anyEmpty)
     }
 
     /** The [FillScope] of one bare, starred or filtered operand of a fill quantifier's list. */
@@ -621,17 +617,19 @@ class Interpreter(
                 else -> t++
             }
         }
-        var allFilled = true
-        var anyEmpty = false
-        for (rc in c.declaredStarRows(star.path, star.bindDepth)) {
-            if (!havingInterp(rc).fires(having)) continue
-            when {
-                rc.presenceUnknown(star.path) -> allFilled = false
-                !rc.filled(star.path) -> { allFilled = false; anyEmpty = true }
-                rc.field(star.path) is Val.Unknown -> allFilled = false
+        return FillScope(t, f, n, unknown) {
+            var allFilled = true
+            var anyEmpty = false
+            for (rc in c.declaredStarRows(star.path, star.bindDepth)) {
+                if (!havingInterp(rc).fires(having)) continue
+                when {
+                    rc.presenceUnknown(star.path) -> allFilled = false
+                    !rc.filled(star.path) -> { allFilled = false; anyEmpty = true }
+                    rc.field(star.path) is Val.Unknown -> allFilled = false
+                }
             }
+            DeclaredFill(allFilled, anyEmpty)
         }
-        return FillScope(t, f, n, unknown, allFilledDeclared = allFilled, anyEmptyDeclared = anyEmpty)
     }
 
     /** A filtered operand changes a positive threshold's polarity only if it supplies a deciding witness. */
