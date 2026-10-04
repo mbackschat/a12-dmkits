@@ -164,12 +164,7 @@ class TemporalValueFailureDiffTest {
     private fun kernelSignature(m: IMessage): String =
         "${m.errorCode}|${m.messageType.name}|" +
             formatPointer(m.errorFieldPointer.fullName(), m.errorFieldPointer.repetitionIndexes()) + "|" +
-            referenced(m.errorCode, m.referencedFieldsPointers.map { formatPointer(it.fullName(), it.repetitionIndexes()) })
-
-    /** A formal code's referenced fields differ on a separate emitter (INTERPRETER-GAPS IG162); this file's claim is
-     *  about rule and computation messages, whose referenced fields it compares in full. */
-    private fun referenced(code: String, pointers: List<String>): List<String> =
-        if (code == "datumFormatFalsch") emptyList() else pointers.sorted()
+            m.referencedFieldsPointers.map { formatPointer(it.fullName(), it.repetitionIndexes()) }.sorted()
 
     private fun kernel(dynamic: Boolean, documentJson: String): Observation = underUtc {
         val (messages, computation) = if (dynamic) {
@@ -204,7 +199,7 @@ class TemporalValueFailureDiffTest {
         }.messages.map {
             val type = if (it.type == MsgType.VALUE) "VALUE_ERROR" else "OMISSION_ERROR"
             "${it.code}|$type|" + formatPointer(it.errorPointer.fullName, it.errorPointer.repetitionIndexes) + "|" +
-                referenced(it.code, it.referencedPointers.map { p -> formatPointer(p.fullName, p.repetitionIndexes) })
+                it.referencedPointers.map { p -> formatPointer(p.fullName, p.repetitionIndexes) }.sorted()
         }.sorted()
         val doc = def.readDocumentJson(documentJson)
         // Only cells whose stored state CHANGES are reported by the kernel; every target is seeded, so a no-value

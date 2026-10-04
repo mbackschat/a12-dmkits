@@ -86,20 +86,12 @@ internal class AutoChecks(
                             )
                             return@mapNotNull null
                         }
-                        Message(
-                            failure.code,
-                            FORMAL_RULE_PATH,
-                            pointer,
-                            Severity.ERROR,
-                            MsgType.VALUE,
-                            text,
-                        )
+                        formalMessage(failure.code, FORMAL_RULE_PATH, pointer, MsgType.VALUE, text)
                     }
-                    is FormalFailure.Custom -> Message(
+                    is FormalFailure.Custom -> formalMessage(
                         failure.code,
                         FORMAL_RULE_PATH,
                         doc.messagePointer(vf.path, vf.reps),
-                        Severity.ERROR,
                         MsgType.VALUE,
                         customMessage(failure.rejection, vf.path, locale),
                     )
@@ -248,7 +240,7 @@ internal class AutoChecks(
     fun uniquenessMessages(doc: Document, dup: Set<Pair<String, List<Int>>>, locale: String,
             isRelevant: Relevance): List<Message> =
         dup.filter { (path, reps) -> isRelevant(path, reps) }.map { (path, reps) ->
-            Message(UNIQUE_INDEX, uniqueRulePath(path), doc.messagePointer(path, reps), Severity.ERROR, MsgType.VALUE,
+            formalMessage(UNIQUE_INDEX, uniqueRulePath(path), doc.messagePointer(path, reps), MsgType.VALUE,
                 uniqueIndexText(locale))
         }
 
@@ -275,11 +267,10 @@ internal class AutoChecks(
         }
         if (error == null && !genericWhenValid) return null
         val pointer = doc.messagePointer(path, reps)
-        return Message(
+        return formalMessage(
             code = error?.id ?: COMPUTED_VALUE_ERROR,
             rulePath = FORMAL_RULE_PATH,
-            errorPointer = pointer,
-            severity = Severity.ERROR,
+            pointer = pointer,
             type = MsgType.VALUE,
             text = error?.let { formatMessage(it, path, reps, raw, locale) }
                 ?: computedValueErrorText(locale, messagePointerHouseForm(pointer)),
@@ -289,15 +280,29 @@ internal class AutoChecks(
     /** Domain-failure diagnostic: a no-value computed target belongs to the formal-operand channel. */
     fun computedDomainError(doc: Document, path: String, reps: List<Int>, locale: String): Message {
         val pointer = doc.messagePointer(path, reps)
-        return Message(
+        return formalMessage(
             code = COMPUTED_VALUE_ERROR,
             rulePath = FORMAL_RULE_PATH,
-            errorPointer = pointer,
-            severity = Severity.ERROR,
+            pointer = pointer,
             type = MsgType.VALUE,
             text = computedValueErrorText(locale, messagePointerHouseForm(pointer)),
         )
     }
+
+    /**
+     * Every formal message, built in one place because the kernel adds them all through one funnel
+     * (`FormalChecker.addFormalError`, and `CalculationController.addBerechnungsFehler` for a computed value;
+     * runtime classes): the offending field is its own referenced operand, and an omission names it as the
+     * field whose filling clears the error. Locked across all seven formal codes by `FormalMessageReferenceDiffTest`.
+     */
+    private fun formalMessage(
+        code: String,
+        rulePath: String,
+        pointer: A12PartiallyKnownMultiPointer,
+        type: MsgType,
+        text: String,
+    ): Message = Message(code, rulePath, pointer, Severity.ERROR, type, text, listOf(pointer),
+        if (type == MsgType.OMISSION) listOf(pointer) else emptyList())
 
     private fun mandatoryMessage(
         doc: Document,
@@ -331,8 +336,7 @@ internal class AutoChecks(
                 return null
             }
         }
-        return Message(MANDATORY_FIELD, mandatoryRulePath(path), ptr, Severity.ERROR, MsgType.OMISSION,
-            text, listOf(ptr), listOf(ptr))
+        return formalMessage(MANDATORY_FIELD, mandatoryRulePath(path), ptr, MsgType.OMISSION, text)
     }
 
     private fun formatMessage(
@@ -579,8 +583,8 @@ internal class AutoChecks(
             val exceeded = paths.exceededBound(vf.path, vf.reps) ?: continue
             if (!isRelevant(vf.path, vf.reps)) continue
             val type = overRepetitionType(exceeded)
-            out += Message(type.code, FORMAL_RULE_PATH, doc.messagePointer(vf.path, vf.reps),
-                Severity.ERROR, MsgType.VALUE, type.messageText(locale))
+            out += formalMessage(type.code, FORMAL_RULE_PATH, doc.messagePointer(vf.path, vf.reps), MsgType.VALUE,
+                type.messageText(locale))
         }
         for (group in model.effectiveGroupRepetitionMaximums.keys) {
             val ownLevel = paths.levelOf(group)
@@ -588,8 +592,8 @@ internal class AutoChecks(
                 val exceeded = paths.exceededBound(group, row) ?: continue
                 if (!isRelevant(group, row)) continue
                 val type = overRepetitionType(exceeded, ownLevel)
-                out += Message(type.code, FORMAL_RULE_PATH, doc.messagePointer(group, row),
-                    Severity.ERROR, MsgType.VALUE, type.messageText(locale))
+                out += formalMessage(type.code, FORMAL_RULE_PATH, doc.messagePointer(group, row), MsgType.VALUE,
+                    type.messageText(locale))
             }
         }
         return out
