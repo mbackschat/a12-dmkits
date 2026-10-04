@@ -7579,7 +7579,7 @@ The pattern's dotted group is OPTIONAL, so an undotted name matches with the gro
 
 *Locked by:* `rulekit.validate.laws.RootRepetitionIterationAgreementLawsTest`.
 
-## §11 supplement — reading the computed field is CONTAINMENT, not equality, and two shapes are exempt (source-verified + measured, 2026-09-15) <a id="kf416"></a>
+## §11 supplement — reading the computed field is CONTAINMENT, not equality, and three shapes are exempt (source-verified + measured, 2026-09-15) <a id="kf416"></a>
 
 > Fold: pending — belongs beside §11's computation account, next to [KF182](#kf182)'s projected-read split.
 
@@ -7597,7 +7597,7 @@ Measured over one computation writing `/Routing/Legs/Distance` from the constant
 | `GroupFilled(/Routing/Legs)` | ADMITTED |
 | `CurrentRepetition(/Routing/Legs) == 1` | ADMITTED |
 
-**The last two are carved exemptions, not a rule about group predicates** — which is what the `GroupNotFilled` row establishes, since it names the same group. `GroupFilled` is the kernel's single-entity `AllGroupsFilled`, exempted in the walk as "context specified"; a `CurrentRepetition` operand is not traversed at all. A checker taking either half alone is wrong in one direction: keyed on equality it admits the group rows, keyed on containment alone it refuses the two A12 admits.
+*Corrected 2026-10-05: a third carved form exists in the group-list family, `AtLeastOneGroupFilled` over a sole root group ([KF521](#kf521)); this table's single-group rows are unchanged.* **The last two are carved exemptions, not a rule about group predicates** — which is what the `GroupNotFilled` row establishes, since it names the same group. `GroupFilled` is the kernel's single-entity `AllGroupsFilled`, exempted in the walk as "context specified"; a `CurrentRepetition` operand is not traversed at all. A checker taking either half alone is wrong in one direction: keyed on equality it admits the group rows, keyed on containment alone it refuses the two A12 admits.
 
 **The root row also settles which class answers there**, and it is not the one the operand families draw: the identical `GroupNotFilled(/Routing)` in an ordinary RULE is ADMITTED, so no parse-time gate speaks about a group predicate over a root group and `MVK_ROOT_GROUP_REFERENCED` — an entity-LIST class — never competes.
 
@@ -12423,3 +12423,21 @@ An empty member is never matched, so filling it could clear the firing, which is
 | three empty rows and a filled fourth past the capacity | value filter; coordinate filter | `FTFFTTF` both — the over-capacity row contributes nothing |
 
 The declared-range rule is [KF512](#kf512)'s, now confirmed for the computation carrier: `All`, `NotAll` and the second scan of `FieldsNotCollectively` evaluate the filter at every declared coordinate, while the thresholds search the stored rows. The read-ahead is [KF105](#kf105)'s. Two further rows came out of the over-capacity document. A computation target in the fourth row (`Items[4]/Stamp`, an unconditional `1`) clears where rows 1–3 compute, so a target past the capacity is not computed. And the operand channel reports `zuGrosseKontextnummer` at `Items[4]/Seal`, a group whose only field is computed and is read by a `GroupFilled(Seal)` guard; the computed field's own cell is not reported.
+
+## §11 supplement — among the group-list guards only `AtLeastOneGroupFilled` over a sole root group is carved out of the self-read walk, and it keeps the positive guard's dependency treatment (both strategies, 2026-10-05) <a id="kf521"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-03-05`.
+
+`GroupListSelfReadLawsTest` puts group-list guards beside a computation writing the constant `1` into a field of a fixed group `Hub` (the root is `Fleet`, with a sibling fixed group `Yard` and a repeatable `Bays`):
+
+| the guard | verdict |
+|---|---|
+| `GroupFilled(Hub)` — the control | ADMITTED |
+| `AtLeastOneGroupFilled(Hub)`; `NoGroupFilled(Hub)` | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| `AllGroupsFilled`, `AtLeastOneGroupFilled`, `NotAllGroupsFilled`, `NoGroupFilled` over `(Hub, Yard)` | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| `AtLeastOneGroupFilled(Fleet)`, the target in the root or in `Hub` below it | ADMITTED |
+| `NoGroupFilled(Fleet)` | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| `AtLeastOneGroupFilled(Bays*)`; `NoGroupFilled(Bays*)`, the target in `Bays` | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| `AtLeastOneGroupFilled(Yard)` — the control | ADMITTED |
+
+So [KF416](#kf416)'s containment walk has one exemption in the list family, the positive form over a sole root group. `RootGroupGuardDependencyDiffTest` shows the form also keeps the positive guard's dependency treatment. Two computations in one root, each guarded by `AtLeastOneGroupFilled` over that root, pass the model check together, so neither guard reads the other's target. An ordinary group read would make them a cycle. They then compute from the root's other content: both clear on a document holding only their stored values, and both compute once an input field is present.

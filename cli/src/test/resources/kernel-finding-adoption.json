@@ -558,6 +558,157 @@
         }
       }
     },
+    "kf521": {
+      "sha256": "407def736e8d0e3bc94094c1e2c9e42396645306684a4bcdf50026f293b63996",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "group-list self-read and root-guard dependency"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "group-list self-read and root-guard dependency"
+        ],
+        "checker": [
+          "group-list self-read and root-guard dependency"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "group-list self-read and root-guard dependency"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel itself is measured on both strategies through the adapter's consistency check and differential.",
+          "evidence": {
+            "group-list self-read and root-guard dependency": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/GroupListSelfReadLawsTest.java#onlyThePositiveRootFormIsCarvedOutOfTheListQuantifiers",
+              "witness": "Thirteen group-list guards over a computed field's group, root and starred group, each a kernel verdict."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The scheduler treats the root list form as a positive containing guard; the differential compares all three engines.",
+          "evidence": {
+            "group-list self-read and root-guard dependency": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RootGroupGuardDependencyDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "Two root-guarded computations on stored-only and input-present documents."
+            }
+          }
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The self-read family exempts the sole-root AtLeastOneGroupFilled operand and nothing else in the list family.",
+          "evidence": {
+            "group-list self-read and root-guard dependency": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/GroupListSelfReadTest.kt#onlyThePositiveRootFormIsCarvedOutOfTheListQuantifiers",
+              "witness": "Eight mirrored rows on string targets."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation delegates to the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-03-05 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf416": {
+      "sha256": "0569f46b3b2ed8bf15a7b19e405c872a0c41f87fa9fb1331203bc62af07b0ec0",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "containment self-read exemptions"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "containment self-read exemptions"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "containment self-read exemptions"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel itself is measured on both strategies through the adapter's consistency check and differential.",
+          "evidence": {
+            "containment self-read exemptions": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/ComputationSelfReadScopeLawsTest.java#aGuardOverTheComputedFieldsOwnGroupIsAReadOfIt",
+              "witness": "The single-group rows are unchanged; the correction points at KF521 for the third exempt form."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission; the interpreter's consumer of the third form is assessed under KF521.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker carries all three exemptions.",
+          "evidence": {
+            "containment self-read exemptions": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ComputationSelfReadTest.kt#readingTheComputedFieldsGroupIsReadingTheField",
+              "witness": "The single-group mirror, unchanged and passing."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No distinct CLI contract changed; evaluation delegates to the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-03-05 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
     "kf51": {
       "sha256": "0468acaa2e89c0d9556aecd2a3ea06ab4a873fe6c7ca4628001394a4eaf13409",
       "task": "F-USE-BACKLOG",

@@ -21,10 +21,11 @@ import kotlinx.serialization.json.JsonPrimitive
  * `rulekit.validate.laws.ComputationSelfReadScopeLawsTest`). A family keyed on path equality would admit
  * every one of those.
  *
- * **Two shapes are carved out of that walk and neither is a rule about group predicates**, which is what
+ * **Three shapes are carved out of that walk and none is a rule about group predicates**, which is what
  * the measured `GroupNotFilled` row over the same group establishes: `GroupFilled` — A12's single-entity
- * `AllGroupsFilled`, its "context specified" escape — and a `CurrentRepetition` operand, which the walk does
- * not traverse at all. Missing either would refuse a model A12 admits.
+ * `AllGroupsFilled`, its "context specified" escape — a `CurrentRepetition` operand, which the walk does
+ * not traverse at all, and `AtLeastOneGroupFilled` over a sole root group ([KERNEL-FINDINGS KF521]). Missing
+ * any would refuse a model A12 admits.
  *
  * **A PROJECTED self-read is A12's other class and is reported as such.** An enum category or a semantic
  * index over the computed field draws `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD`, and it
@@ -72,7 +73,8 @@ internal fun TrackedFactBase.computationSelfReadContributions(element: TrackedDe
     val walked = texts.filter { (member, _) -> member !in unwalked }
     val commonPosition = walked.firstNotNullOfOrNull { (member, _) -> walkPositionOf(member).takeIf { it > 0 } }
     return walked.filter { (member, _) -> member != "commonPrecondition" || commonPosition != null }.flatMap { (member, text) ->
-        val exempt = exemptOperandsIn(text, member, operators[GROUP_FILLED], operators[CURRENT_REPETITION])
+        val exempt = exemptOperandsIn(text, member, operators[GROUP_FILLED], operators[CURRENT_REPETITION],
+            operators[AT_LEAST_ONE_GROUP_FILLED])
         referenceSpansIn(text, conditionLanguage).map { it.written }
             .filter { it !in exempt && readsTheTarget(it, target, group, element) }
             .map { DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES,
@@ -93,6 +95,8 @@ private fun unguardedAmongSeveralAlternatives(body: JsonObject): Set<String> {
 private const val GROUP_FILLED = "GroupFilled"
 
 private const val CURRENT_REPETITION = "CurrentRepetition"
+
+private const val AT_LEAST_ONE_GROUP_FILLED = "AtLeastOneGroupFilled"
 
 /**
  * Whether the implicit target-scale comparison cannot answer ahead of this class on [target].
@@ -150,19 +154,24 @@ private fun TrackedFactBase.projectedSelfReadIn(
 }
 
 /**
- * The operand spellings A12's walk steps over — its two carved exemptions, read as authored.
+ * The operand spellings A12's walk steps over — its carved exemptions, read as authored.
  *
  * The kernel exempts its `AllGroupsFilled` only at arity ONE, and no arity branch is needed to honour that:
  * this catalog spells the single-entity form as its own operator, and a second operand draws
  * `MVK_PARAMSIZE_INVALID1` from a gate that answers ahead of the calculation walk — measured 2026-09-15 in
  * the laws twin, after a mutant dropping the branch survived and the row written to kill it showed the
  * branch could not be reached.
+ *
+ * `AtLeastOneGroupFilled` over a sole unstarred ROOT group is the list family's one exemption, whatever lies
+ * below the root; over a sole non-root group, beside a second group or starred, it reads the field like any
+ * other group operand (a12-kernel-lean SPEC-2026-10-03-05, `rulekit.validate.laws.GroupListSelfReadLawsTest`).
  */
 private fun TrackedFactBase.exemptOperandsIn(
     text: String,
     member: String,
     contextEscape: String?,
     repetitionOf: String?,
+    anyGroupFilled: String?,
 ): Set<String> {
     val exempt = mutableSetOf<String>()
     callsIn(text, conditionLanguage, syntaxEntryOf(member)).forEach { call ->
@@ -170,11 +179,16 @@ private fun TrackedFactBase.exemptOperandsIn(
         when (call.operator) {
             contextEscape -> exempt += operands
             repetitionOf -> exempt += operands
+            anyGroupFilled -> operands.singleOrNull()?.takeIf(::namesARootGroup)?.let { exempt += it }
             else -> Unit
         }
     }
     return exempt
 }
+
+/** Whether an operand spelling names a root group itself: absolute, one segment, no repetition marker. */
+private fun namesARootGroup(written: String): Boolean =
+    written.startsWith("/") && '*' !in written && written.trim('/').split('/').size == 1
 
 /**
  * @param projection the authored projection, which is what the repair has to remove — dropping only the

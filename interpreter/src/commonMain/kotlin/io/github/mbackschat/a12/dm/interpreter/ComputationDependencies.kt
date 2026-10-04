@@ -52,11 +52,20 @@ internal class ComputationDependencies(
         else -> ancestors(positiveContainingGroup(condition, target))
     }
 
+    /**
+     * The group a positive presence guard names when it contains [target]: `GroupFilled`/`AllGroupsFilled` over one
+     * group, or `AtLeastOneGroupFilled` over one ROOT group, the only list form A12 admits over a group containing the
+     * computed field (SPEC-2026-10-03-05, `adapter.laws.RootGroupGuardDependencyDiffTest`).
+     */
     private fun positiveContainingGroup(condition: Cond, target: String): String? {
-        if (condition !is Cond.Pred || PredicateOp.byName(condition.name) !in
-            setOf(PredicateOp.GROUP_FILLED, PredicateOp.ALL_GROUPS_FILLED)) return null
+        if (condition !is Cond.Pred) return null
         val group = (condition.args.singleOrNull() as? Expr.Field)?.path ?: return null
-        return group.takeIf { it in model.groupPaths && target.startsWith("$it/") }
+        val admitted = when (PredicateOp.byName(condition.name)) {
+            PredicateOp.GROUP_FILLED, PredicateOp.ALL_GROUPS_FILLED -> true
+            PredicateOp.AT_LEAST_ONE_GROUP_FILLED -> group.trim('/').split('/').size == 1
+            else -> false
+        }
+        return group.takeIf { admitted && it in model.groupPaths && target.startsWith("$it/") }
     }
 
     private fun ancestors(group: String?): Set<String> = if (group == null) emptySet()
