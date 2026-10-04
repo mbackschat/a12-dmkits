@@ -97,7 +97,7 @@ class OverlapComputationGuardDiffTest {
 
     @Test
     fun allThreeEnginesAgreeOnEveryDocument() {
-        DocumentDifferential.assertAgree(model, documents, seeds)
+        DocumentDifferential.assertAgree(model, documents)
     }
 
     /**

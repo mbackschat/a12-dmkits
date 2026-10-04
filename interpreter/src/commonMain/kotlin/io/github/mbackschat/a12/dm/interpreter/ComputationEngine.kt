@@ -189,9 +189,8 @@ internal class ComputationEngine(
         // (A12DocumentJson, DocumentEncodeError), while `seedDocument` instantiates one row per repeatable group.
         // So the extra breadth is deliberate and unobservable here; narrowing it to `model.repeatable` would be
         // the same never-fires predicate this comment exists to record, one kind smaller.
-        val operandAncestorGroups = operands.fields.flatMapTo(HashSet(), ::ancestorGroups)
         val operandOverRepetitionRelevant: Relevance =
-            { path, _ -> path in operands.fields || path in operandAncestorGroups }
+            { path, _ -> path in operands.fields || path in operands.ancestorGroups }
         val unsupported = checks.customTypeUnsupported(doc, operandRelevant).toMutableList()
         val formalErrorsInOperands = LinkedHashMap<Pair<String, String>, Message>()
         (
@@ -254,6 +253,14 @@ internal class ComputationEngine(
                 fun computeAt(ctx: EvalContext) {
                     val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
                     if (targetKey in decided) return   // an earlier computation's non-empty outcome already won (IF87)
+                    // A target in a row past a declared capacity is never computed: A12 clears it, whatever its
+                    // alternatives would give (SPEC-2026-10-04-05). The cell is out of range, so a reader of it
+                    // reads an invalid cell, which the poison carries.
+                    if (plans.paths.exceededBound(comp.targetPath, targetKey.second) != null) {
+                        cascade.poison(targetKey.first, targetKey.second); decided += targetKey
+                        outcomeByCell[targetKey] = Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
+                        return
+                    }
                     val ectx = if (cascade.isEmpty) ctx
                         else OverlayContext(ctx, cascade, emptyOf, minFracOf, views, comp.targetPath)
                     val interp = Interpreter(ectx, computeConfig,
@@ -601,6 +608,9 @@ internal class ComputationEngine(
     private data class OperandSelection(
         val fields: Set<String>,
         val indexFields: Set<String>,
+        /** Every group above an operand reference, computed fields included: an over-limit row of such a group is
+         *  reported even when its only reference is a computed field, whose own cell is not (SPEC-2026-10-04-05). */
+        val ancestorGroups: Set<String>,
     )
 
     /** Each computed target's stored cell, mapped to the clear that stages it out of the cascade's document. */
@@ -622,6 +632,7 @@ internal class ComputationEngine(
     private fun operandSelection(comps: List<ComputationDef>): OperandSelection {
         val fields = LinkedHashSet<String>()
         val indexes = LinkedHashSet<String>()
+        val ancestors = HashSet<String>()
 
         fun selectIndexesBelow(groups: Collection<String>) {
             model.indexFields.filterTo(indexes) { parentGroup(it) in groups }
@@ -630,6 +641,7 @@ internal class ComputationEngine(
         for (comp in comps) {
             val parsed = preparedModel.computation(comp)
             val dependencies = plans.computationDepRefs(parsed)
+            dependencies.flatMapTo(ancestors, ::ancestorGroups)
             dependencies.filterTo(fields) { it in model.kinds && it !in computedTargets }
             dependencies.filterTo(indexes) { it in model.indexFields }
 
@@ -656,7 +668,8 @@ internal class ComputationEngine(
             selectIndexesBelow(parallelGroups)
         }
         fields += indexes
-        return OperandSelection(fields, indexes)
+        fields.flatMapTo(ancestors, ::ancestorGroups)
+        return OperandSelection(fields, indexes, ancestors)
     }
 
     /** Non-starred refs of a whole tiered computation — its iteration SCOPE input: each operation's non-starred

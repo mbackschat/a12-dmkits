@@ -28,7 +28,7 @@ internal class OverlayContext(
     // NEVER cached — the overlay for that column changes as the cascade lands, so it is rebuilt fresh every read.
     private val views: OverlayViews,
     private val selfTarget: String,
-) : EvalContext by d, GroupListEnvironmentProvider {
+) : EvalContext by d, GroupListEnvironmentProvider, DeclaredStarRowProvider {
     /**
      * What the cascade says about ONE cell, resolved with a single lookup and no allocation.
      *
@@ -230,6 +230,11 @@ internal class OverlayContext(
                 OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget)
             }
         }
+
+    // A filtered declared-range fill scan selects among missing declared rows too (SPEC-2026-10-04-05); they are
+    // wrapped like stored ones so a filter reads the cascade there as well.
+    override fun declaredStarRows(fieldPath: String, bindDepth: Int): Sequence<EvalContext> =
+        d.declaredStarRows(fieldPath, bindDepth).map { OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget) }
 
     override fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> =
         d.groupListEnvironments(groupPath, bindDepth)

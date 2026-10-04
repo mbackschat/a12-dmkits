@@ -728,12 +728,14 @@ class Interpreter(
                 for (cell in c.starScanCells(a.path, a.bindDepth, declaredTail)) yield(filledOrPoison(cell))
             }
             a is Expr.Star -> {
-                // Keep the compute scan's call-local formal oracle: a selected candidate can poison its reader.
-                val group = a.path.substringBeforeLast('/')
-                for (rc in ctxOf(a).rowContexts(group, a.bindDepth)) {
-                    if (!havingInterp(rc).fires(a.having!!)) continue
-                    yield(filledOrPoison(scanCell(a.path, rc)))
-                }
+                // The declared-range scans select among EVERY declared coordinate, a missing one reading empty
+                // without a value read, exactly as validation does ([KF512]); the thresholds search the stored rows.
+                // Both read one kept successor ahead of the candidate they consume ([KF105], SPEC-2026-10-04-05),
+                // and each consumed candidate is a read under the call-local formal oracle that can poison.
+                val c = ctxOf(a)
+                val candidates = if (declaredTail) c.declaredStarRows(a.path, a.bindDepth).toList()
+                    else c.rowContexts(a.path.substringBeforeLast('/'), a.bindDepth)
+                for (rc in keptRowsWithSuccessorLookahead(candidates, a.having!!)) yield(filledOrPoison(scanCell(a.path, rc)))
             }
             // A keyed GROUP scans the selected row as the bare group arm below scans its instance (IF340). The
             // selection itself poisons on a compromised key column; a key no row carries has only empty cells,

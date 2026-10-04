@@ -12403,3 +12403,21 @@ The poison is the computation read [IF85](INTERPRETER-FINDINGS.md#if85) establis
 | `Last` malformed, no match | no firing | no firing |
 
 An empty member is never matched, so filling it could clear the firing, which is why the firing is an omission. The kinds part on an empty member before a malformed one: the string route the kernel uses for text and enumerations returns at the first empty or malformed member it meets, while the Number route walks every member and lets a malformed one decide. That split was read from the runtime class first and confirmed by this row. In computation the same document shapes give: an empty subject makes both forms fail, since it holds no value rather than zero; empty members make the included form fail and the not-included form hold.
+
+## §9/§11 supplement — a computation's filtered field-fill list selects declared slots like validation, reads one kept successor ahead, and a target in a row past the capacity clears (both strategies, 2026-10-05) <a id="kf520"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-04-05`.
+
+`FilteredFillComputationGuardDiffTest` guards a target with each of the seven field-fill quantifiers over three lists: `Items*/Amount` filtered by `CurrentRepetition(Items) > 0`, by `[Items/Gate] > 0`, and that gated list behind a direct field. The capacity is three. It compares validation signatures, every computation outcome and the operand-error channel across dynamic Groovy, static Java and the interpreter. Signatures list `All`, `No`, `AtLeastOne`, `MoreThanOne`, `NotAll`, `NotExactlyOne` and `FieldsNotCollectively` in that order: `T` computed, `F` a clean clear, `P` poisoned (dynamic Groovy):
+
+| Document | List | Signature |
+|---|---|---|
+| no rows | coordinate filter; value filter | `FTFFTTF`; `TTFFFTF` — the coordinate filter selects missing declared slots, the value filter nothing |
+| one filled row | coordinate filter | `FFTFTFT` — the declared quantifiers see the two missing slots |
+| two filled rows, a malformed third filter | value filter | `PFTPPPP` — a scan that consumes the second row has already searched past it |
+| a malformed second filter | value filter | `PPPPPPP` |
+| a malformed third amount, healthy filter | value filter | `PFTTPTP` — the successor search reads the filter, not the payload |
+| a filled direct field before a malformed first filter | direct then value filter | `PFTPPPP` |
+| three empty rows and a filled fourth past the capacity | value filter; coordinate filter | `FTFFTTF` both — the over-capacity row contributes nothing |
+
+The declared-range rule is [KF512](#kf512)'s, now confirmed for the computation carrier: `All`, `NotAll` and the second scan of `FieldsNotCollectively` evaluate the filter at every declared coordinate, while the thresholds search the stored rows. The read-ahead is [KF105](#kf105)'s. Two further rows came out of the over-capacity document. A computation target in the fourth row (`Items[4]/Stamp`, an unconditional `1`) clears where rows 1–3 compute, so a target past the capacity is not computed. And the operand channel reports `zuGrosseKontextnummer` at `Items[4]/Seal`, a group whose only field is computed and is read by a `GroupFilled(Seal)` guard; the computed field's own cell is not reported.

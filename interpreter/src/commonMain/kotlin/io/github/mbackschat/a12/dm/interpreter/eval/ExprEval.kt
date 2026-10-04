@@ -1980,7 +1980,7 @@ private sealed interface FirstFilledStep {
  * kept row. In validation mode filter reads cannot poison (3VL row-drop), so the kept-row stream is
  * indistinguishable from the eager order — one traversal serves both modes.
  */
-private fun Interpreter.keptRowsWithSuccessorLookahead(
+internal fun Interpreter.keptRowsWithSuccessorLookahead(
     rows: List<EvalContext>,
     having: Cond,
 ): Sequence<EvalContext> = keptRowsWithSuccessorLookahead(rows) { havingInterp(it).fires(having) }
