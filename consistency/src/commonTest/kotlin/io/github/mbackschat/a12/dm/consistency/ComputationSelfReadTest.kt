@@ -61,6 +61,31 @@ class ComputationSelfReadTest {
     }
 
     /**
+     * An exemption belongs to the OPERAND, not to the group it spells — mirrors
+     * `rulekit.validate.laws.ComputationSelfReadScopeLawsTest.anExemptOperandExemptsOnlyItself`.
+     */
+    @Test
+    fun anExemptOperandExemptsOnlyItself() {
+        fun guarded(precondition: String) = codes(inLegs("../Note", "[LegRef]", precondition))
+        val actual = linkedMapOf(
+            "GroupFilled beside GroupNotFilled over the same group" to
+                guarded("GroupFilled(/Routing/Legs) And GroupNotFilled(/Routing/Legs)"),
+            "CurrentRepetition beside GroupNotFilled over the same group" to
+                guarded("CurrentRepetition(/Routing/Legs) == 1 And GroupNotFilled(/Routing/Legs)"),
+            "AtLeastOneGroupFilled over the root beside GroupNotFilled over the root" to
+                guarded("AtLeastOneGroupFilled(/Routing) And GroupNotFilled(/Routing)"),
+            "GroupFilled beside a sibling field — the control" to
+                guarded("GroupFilled(/Routing/Legs) And FieldFilled(LegRef)"),
+        )
+        assertEquals(linkedMapOf(
+            "GroupFilled beside GroupNotFilled over the same group" to listOf(selfRead),
+            "CurrentRepetition beside GroupNotFilled over the same group" to listOf(selfRead),
+            "AtLeastOneGroupFilled over the root beside GroupNotFilled over the root" to listOf(selfRead),
+            "GroupFilled beside a sibling field — the control" to emptyList(),
+        ), actual, "an exempt operand against the same group read beside it")
+    }
+
+    /**
      * The scale gate's bound, and the PROJECTED half that shares it.
      *
      * The gate is measured ahead of both classes, so a NUMBER target is left alone; the suppression rows are

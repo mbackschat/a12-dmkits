@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
@@ -75,8 +76,10 @@ internal fun TrackedFactBase.computationSelfReadContributions(element: TrackedDe
     return walked.filter { (member, _) -> member != "commonPrecondition" || commonPosition != null }.flatMap { (member, text) ->
         val exempt = exemptOperandsIn(text, member, operators[GROUP_FILLED], operators[CURRENT_REPETITION],
             operators[AT_LEAST_ONE_GROUP_FILLED])
-        referenceSpansIn(text, conditionLanguage).map { it.written }
-            .filter { it !in exempt && readsTheTarget(it, target, group, element) }
+        referenceSpansIn(text, conditionLanguage)
+            .filter { span -> exempt.none { it.at <= span.start && span.end <= it.end } }
+            .map { it.written }
+            .filter { readsTheTarget(it, target, group, element) }
             .map { DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES,
                 selfReadFinding(element, target, member, it),
                 if (member == "commonPrecondition") checkNotNull(commonPosition) else walkPositionOf(member)) }
@@ -154,7 +157,11 @@ private fun TrackedFactBase.projectedSelfReadIn(
 }
 
 /**
- * The operand spellings A12's walk steps over — its carved exemptions, read as authored.
+ * The operands A12's walk steps over — its carved exemptions, read as authored.
+ *
+ * The exemption is the operand's own, so it is returned by position: the same group spelled by another
+ * operand of the same text is still a read (`rulekit.validate.laws.ComputationSelfReadScopeLawsTest
+ * .anExemptOperandExemptsOnlyItself`).
  *
  * The kernel exempts its `AllGroupsFilled` only at arity ONE, and no arity branch is needed to honour that:
  * this catalog spells the single-entity form as its own operator, and a second operand draws
@@ -172,23 +179,17 @@ private fun TrackedFactBase.exemptOperandsIn(
     contextEscape: String?,
     repetitionOf: String?,
     anyGroupFilled: String?,
-): Set<String> {
-    val exempt = mutableSetOf<String>()
-    callsIn(text, conditionLanguage, syntaxEntryOf(member)).forEach { call ->
-        val operands = call.operands.mapNotNull { it.path ?: it.base }
-        when (call.operator) {
-            contextEscape -> exempt += operands
-            repetitionOf -> exempt += operands
-            anyGroupFilled -> operands.singleOrNull()?.takeIf(::namesARootGroup)?.let { exempt += it }
-            else -> Unit
-        }
+): List<CallOperand> = callsIn(text, conditionLanguage, syntaxEntryOf(member)).flatMap { call ->
+    when (call.operator) {
+        contextEscape, repetitionOf -> call.operands
+        anyGroupFilled -> listOfNotNull(call.operands.singleOrNull()?.takeIf { namesARootGroup(it.path ?: it.base) })
+        else -> emptyList()
     }
-    return exempt
 }
 
 /** Whether an operand spelling names a root group itself: absolute, one segment, no repetition marker. */
-private fun namesARootGroup(written: String): Boolean =
-    written.startsWith("/") && '*' !in written && written.trim('/').split('/').size == 1
+private fun namesARootGroup(written: String?): Boolean =
+    written != null && written.startsWith("/") && '*' !in written && written.trim('/').split('/').size == 1
 
 /**
  * @param projection the authored projection, which is what the repair has to remove — dropping only the

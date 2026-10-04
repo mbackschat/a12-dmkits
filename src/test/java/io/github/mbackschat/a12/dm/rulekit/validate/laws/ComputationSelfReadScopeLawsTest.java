@@ -99,6 +99,31 @@ class ComputationSelfReadScopeLawsTest {
     }
 
     /**
+     * An exemption belongs to the OPERAND, not to the group it spells: the same group read elsewhere in the
+     * same guard is still a read of the computed field. A checker that exempts by spelling admits every row
+     * here but the control.
+     */
+    @Test
+    void anExemptOperandExemptsOnlyItself() {
+        Map<String, List<String>> actual = new LinkedHashMap<>();
+        actual.put("GroupFilled beside GroupNotFilled over the same group",
+                legs("GroupFilled(/Routing/Legs) And GroupNotFilled(/Routing/Legs)"));
+        actual.put("CurrentRepetition beside GroupNotFilled over the same group",
+                legs("CurrentRepetition(/Routing/Legs) == 1 And GroupNotFilled(/Routing/Legs)"));
+        actual.put("AtLeastOneGroupFilled over the root beside GroupNotFilled over the root",
+                legs("AtLeastOneGroupFilled(/Routing) And GroupNotFilled(/Routing)"));
+        actual.put("GroupFilled beside a sibling field — the control",
+                legs("GroupFilled(/Routing/Legs) And FieldFilled(LegRef)"));
+
+        Map<String, List<String>> expected = new LinkedHashMap<>();
+        expected.put("GroupFilled beside GroupNotFilled over the same group", List.of(PLAIN));
+        expected.put("CurrentRepetition beside GroupNotFilled over the same group", List.of(PLAIN));
+        expected.put("AtLeastOneGroupFilled over the root beside GroupNotFilled over the root", List.of(PLAIN));
+        expected.put("GroupFilled beside a sibling field — the control", List.of());
+        assertEquals(expected, actual, "an exempt operand against the same group read beside it");
+    }
+
+    /**
      * The ROOT group is an ancestor of every field, so the containment predicate reaches it too.
      *
      * <p>It draws this class, and the third row is what attributes that to the calculation walk rather than
