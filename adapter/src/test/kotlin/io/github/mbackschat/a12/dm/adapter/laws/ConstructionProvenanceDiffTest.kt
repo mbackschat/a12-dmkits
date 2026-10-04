@@ -1,12 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.md.rt.api.IMessage
+import io.github.mbackschat.a12.dm.adapter.laws.DocumentDifferential.underUtc
 import io.github.mbackschat.a12.dm.edit.EditSession
-import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
-import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
-import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
-import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation
@@ -16,8 +11,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.util.Locale
-import java.util.TimeZone
 
 /**
  * SPEC-2026-10-04-02: a temporal constructor keeps WHY it has no value. A fixed unreal component (`Time(24)`) and a
@@ -37,18 +30,11 @@ class ConstructionProvenanceDiffTest {
     private companion object {
         const val ISO_DT = "yyyy-MM-dd'T'HH:mm:ss"
         const val GAP = "31.03.2024T02:30:00"
-        val UTC: TimeZone = TimeZone.getTimeZone("UTC")
     }
 
     private val seeds = mapOf("OutConstructed" to "2001-12-25T12:30:00", "AfterConstructed" to "9",
         "OutPartial" to "2001-12-25T12:30:00", "AfterPartial" to "9", "OutGap" to "2001-12-25T12:30:00",
         "AfterGap" to "9")
-
-    private fun <T> underUtc(body: () -> T): T {
-        val previous = TimeZone.getDefault()
-        TimeZone.setDefault(UTC)
-        try { return body() } finally { TimeZone.setDefault(previous) }
-    }
 
     private val model: String = underUtc {
         val draft = DocumentModelDraft.named("claim-intake-construction").locale("en_US")
@@ -117,56 +103,6 @@ class ConstructionProvenanceDiffTest {
         "empty-partial-bad-clock" to document("2024-03-30", "", "bad", "5"),
     )
 
-    private data class Observation(val messages: List<String>, val outcomes: Map<String, String>)
-
-    private fun kernelSignature(m: IMessage): String =
-        "${m.errorCode}|${m.messageType.name}|" +
-            formatPointer(m.errorFieldPointer.fullName(), m.errorFieldPointer.repetitionIndexes())
-
-    private fun kernel(dynamic: Boolean, json: String): Observation = underUtc {
-        val (messages, computation) = if (dynamic) {
-            val engine = RuntimeLaws.kernelEngine(model)
-            engine.validationMessages(engine.instance(json), null, Locale.US) to
-                engine.computation(engine.instance(json), null, Locale.US)
-        } else {
-            val engine = RuntimeLaws.kernelJavaEngine(model)
-            engine.validationMessages(engine.instance(json), null, Locale.US) to
-                engine.computation(engine.instance(json), null, Locale.US)
-        }
-        Observation(
-            messages.map(::kernelSignature).sorted(),
-            computation.outcomes().associate {
-                it.path().substringAfterLast('/') to when {
-                    it.errored() -> "ERRORED|" + it.value().orElse("")
-                    it.cleared() -> "CLEARED"
-                    else -> "VALUE|" + it.value().orElse("")
-                }
-            }.toSortedMap(),
-        )
-    }
-
-    private fun interpreter(json: String): Observation {
-        val def = ModelLoader.load(model)
-        val engine = DmInterpreter(def)
-        val messages = engine.validate(def.readDocumentJson(json)).also {
-            assertEquals(emptyList<Any>(), it.unsupported, "every construct must be evaluable")
-        }.messages.map {
-            val type = if (it.type == MsgType.VALUE) "VALUE_ERROR" else "OMISSION_ERROR"
-            "${it.code}|$type|" + formatPointer(it.errorPointer.fullName, it.errorPointer.repetitionIndexes)
-        }.sorted()
-        // The kernel reports only cells whose stored state changes, and every target is seeded.
-        val outcomes = engine.compute(def.readDocumentJson(json)).filter { c ->
-            !(c.outcome.name == "VALUE" && seeds[c.path.substringAfterLast('/')] == c.value)
-        }.associate {
-            it.path.substringAfterLast('/') to when (it.outcome.name) {
-                "ERRORED" -> "ERRORED|" + (it.value ?: "")
-                "CLEARED" -> "CLEARED"
-                else -> "VALUE|" + (it.value ?: "")
-            }
-        }.toSortedMap()
-        return Observation(messages, outcomes)
-    }
-
     @Test
     fun theModelIsKernelConsistentUnderTheAdmittingDefault() {
         assertEquals(emptyList<String>(), underUtc { MessageParameterProbes.kernel(model) })
@@ -174,11 +110,7 @@ class ConstructionProvenanceDiffTest {
 
     @Test
     fun allThreeEnginesAgreeOnEveryDocument() {
-        for ((name, json) in documents) {
-            val dynamic = kernel(dynamic = true, json)
-            assertEquals(dynamic, kernel(dynamic = false, json), "$name: static Java vs dynamic Groovy")
-            assertEquals(dynamic, interpreter(json), "$name: interpreter vs dynamic Groovy")
-        }
+        underUtc { DocumentDifferential.assertAgree(model, documents) }
     }
 
     /**
@@ -189,8 +121,8 @@ class ConstructionProvenanceDiffTest {
      */
     @Test
     fun theSeparatingRowsAreTheKernelsOwn() {
-        fun run(doc: String) = kernel(dynamic = true, documents.getValue(doc))
-        fun fired(doc: String, code: String) = run(doc).messages.filter { it.startsWith("$code|") }
+        fun run(doc: String) = underUtc { DocumentDifferential.kernel(model, documents.getValue(doc), dynamic = true) }
+        fun fired(doc: String, code: String) = run(doc).messages.filter { it.code == code }.map { it.brief }
         val actual = linkedMapOf(
             "an unreal clock is a fixed outcome under Min" to fired("unreal-clock", "ClockMin"),
             "a constructed gap is a fixed outcome under Min" to fired("constructed-gap", "ConstructedMin"),

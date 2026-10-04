@@ -1,12 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.md.rt.api.IMessage
 import io.github.mbackschat.a12.dm.edit.EditSession
-import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
-import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
-import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
-import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -14,7 +8,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.util.Locale
 
 /**
  * SPEC-2026-10-04-01: calendar arithmetic keeps an intermediate the stored-Date checks would refuse, and a computed
@@ -170,57 +163,6 @@ class CalendarTargetCompletionDiffTest {
         "plan-base-2024" to (plan2024 to planDocument),
     )
 
-    private data class Observation(val messages: List<String>, val outcomes: Map<String, String>)
-
-    private fun kernelSignature(m: IMessage): String =
-        "${m.errorCode}|${m.messageType.name}|" +
-            formatPointer(m.errorFieldPointer.fullName(), m.errorFieldPointer.repetitionIndexes())
-
-    private fun kernel(dynamic: Boolean, model: String, json: String): Observation {
-        val (messages, computation) = if (dynamic) {
-            val engine = RuntimeLaws.kernelEngine(model)
-            engine.validationMessages(engine.instance(json), null, Locale.US) to
-                engine.computation(engine.instance(json), null, Locale.US)
-        } else {
-            val engine = RuntimeLaws.kernelJavaEngine(model)
-            engine.validationMessages(engine.instance(json), null, Locale.US) to
-                engine.computation(engine.instance(json), null, Locale.US)
-        }
-        return Observation(
-            messages.map(::kernelSignature).sorted(),
-            computation.outcomes().associate {
-                it.path().substringAfterLast('/') to when {
-                    it.errored() -> "ERRORED|" + it.value().orElse("")
-                    it.cleared() -> "CLEARED"
-                    else -> "VALUE|" + it.value().orElse("")
-                }
-            }.toSortedMap(),
-        )
-    }
-
-    private fun interpreter(model: String, json: String): Observation {
-        val def = ModelLoader.load(model)
-        val engine = DmInterpreter(def)
-        val messages = engine.validate(def.readDocumentJson(json)).also {
-            assertEquals(emptyList<Any>(), it.unsupported, "every construct must be evaluable")
-        }.messages.map {
-            val type = if (it.type == MsgType.VALUE) "VALUE_ERROR" else "OMISSION_ERROR"
-            "${it.code}|$type|" + formatPointer(it.errorPointer.fullName, it.errorPointer.repetitionIndexes)
-        }.sorted()
-        // The kernel reports only cells whose stored state changes, and every target is seeded.
-        val seeds = policySeeds + billingSeeds + planSeeds
-        val outcomes = engine.compute(def.readDocumentJson(json)).filter { c ->
-            !(c.outcome.name == "VALUE" && seeds[c.path.substringAfterLast('/')] == c.value)
-        }.associate {
-            it.path.substringAfterLast('/') to when (it.outcome.name) {
-                "ERRORED" -> "ERRORED|" + (it.value ?: "")
-                "CLEARED" -> "CLEARED"
-                else -> "VALUE|" + (it.value ?: "")
-            }
-        }.toSortedMap()
-        return Observation(messages, outcomes)
-    }
-
     @Test
     fun bothModelsAreKernelConsistent() {
         assertEquals(emptyList<String>(), MessageParameterProbes.kernel(policy))
@@ -231,12 +173,7 @@ class CalendarTargetCompletionDiffTest {
 
     @Test
     fun allThreeEnginesAgreeOnEveryDocument() {
-        for ((name, pair) in documents) {
-            val (model, json) = pair
-            val dynamic = kernel(dynamic = true, model, json)
-            assertEquals(dynamic, kernel(dynamic = false, model, json), "$name: static Java vs dynamic Groovy")
-            assertEquals(dynamic, interpreter(model, json), "$name: interpreter vs dynamic Groovy")
-        }
+        for ((name, pair) in documents) DocumentDifferential.assertAgree(pair.first, mapOf(name to pair.second))
     }
 
     /**
@@ -246,18 +183,19 @@ class CalendarTargetCompletionDiffTest {
      */
     @Test
     fun theSeparatingRowsAreTheKernelsOwn() {
-        fun run(doc: String) = documents.getValue(doc).let { (model, json) -> kernel(dynamic = true, model, json) }
-        fun fired(doc: String, prefix: String) = run(doc).messages.filter { it.startsWith(prefix) }
+        fun run(doc: String) =
+            documents.getValue(doc).let { (model, json) -> DocumentDifferential.kernel(model, json, dynamic = true) }
+        fun fired(doc: String, code: String) = run(doc).messages.filter { it.code == code }.map { it.brief }
         val overflow = run("policy-overflow").outcomes
         val actual = linkedMapOf(
             "a five-digit year reaches the target as an errored attempt" to overflow["Renewal"],
             "its dependent is poisoned" to overflow["RenewalYearNo"],
             "a year-month target renders its attempt in its own components" to overflow["RenewalMonth"],
             "a year target renders its attempt in its own components" to overflow["RenewalYear"],
-            "a five-digit result orders after its source" to fired("policy-overflow", "RenewalAfterStart|"),
-            "and not before it" to fired("policy-overflow", "RenewalBeforeStart|"),
+            "a five-digit result orders after its source" to fired("policy-overflow", "RenewalAfterStart"),
+            "and not before it" to fired("policy-overflow", "RenewalBeforeStart"),
             "under Base Year 1583 only month-day and year values meet the floor" to
-                fired("billing-floor-year", "datumFalsch|"),
+                fired("billing-floor-year", "datumFalsch"),
             "a month-only shift stays a value" to run("billing-floor-year").outcomes["NextBilling"],
             "a two-component Date takes the Base Year and meets the floor" to
                 run("billing-floor-year").outcomes["FoundingDay"],

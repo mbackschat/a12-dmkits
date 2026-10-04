@@ -10,8 +10,11 @@ import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
+import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import org.junit.jupiter.api.Assertions.assertEquals
+import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 /**
  * One message as an engine reports it: code, type (`VALUE_ERROR`/`OMISSION_ERROR`), the error field's pointer, and
@@ -42,17 +45,20 @@ internal data class DocumentObservation(
     val operandErrors: List<MessageSignature>,
 )
 
+/** The evaluation instant handed to each engine, for a model whose rules read `Today` or `Now`. */
+internal data class DifferentialClock(val kernel: Date, val interpreter: EvalClock)
+
 internal object DocumentDifferential {
 
-    fun kernel(model: String, json: String, dynamic: Boolean): DocumentObservation {
+    fun kernel(model: String, json: String, dynamic: Boolean, clock: DifferentialClock? = null): DocumentObservation {
         val (messages, computation) = if (dynamic) {
             val engine = RuntimeLaws.kernelEngine(model)
-            engine.validationMessages(engine.instance(json), null, Locale.US) to
-                engine.computation(engine.instance(json), null, Locale.US)
+            engine.validationMessages(engine.instance(json), clock?.kernel, Locale.US) to
+                engine.computation(engine.instance(json), clock?.kernel, Locale.US)
         } else {
             val engine = RuntimeLaws.kernelJavaEngine(model)
-            engine.validationMessages(engine.instance(json), null, Locale.US) to
-                engine.computation(engine.instance(json), null, Locale.US)
+            engine.validationMessages(engine.instance(json), clock?.kernel, Locale.US) to
+                engine.computation(engine.instance(json), clock?.kernel, Locale.US)
         }
         return DocumentObservation(
             messages.map(::kernelSignature).sorted(),
@@ -67,10 +73,13 @@ internal object DocumentDifferential {
         )
     }
 
-    /** The interpreter's observation; the operand channel is read off the public report, the surface a consumer uses. */
-    fun interpreter(model: String, json: String): DocumentObservation {
+    /**
+     * The interpreter's observation. The [clock] reaches validation and computation; the operand channel is read off
+     * the public report, the surface a consumer of it uses, and that surface takes no clock.
+     */
+    fun interpreter(model: String, json: String, clock: DifferentialClock? = null): DocumentObservation {
         val def = ModelLoader.load(model)
-        val engine = DmInterpreter(def)
+        val engine = DmInterpreter(def, clock?.interpreter)
         val messages = engine.validate(def.readDocumentJson(json)).also {
             assertEquals(emptyList<Any>(), it.unsupported, "every construct must be evaluable")
         }.messages.map {
@@ -99,11 +108,25 @@ internal object DocumentDifferential {
     }
 
     /** Asserts that static Java and the interpreter each observe every Document as dynamic Groovy does. */
-    fun assertAgree(model: String, documents: Map<String, String>) {
+    fun assertAgree(model: String, documents: Map<String, String>, clock: DifferentialClock? = null) {
         for ((name, json) in documents) {
-            val dynamic = kernel(model, json, dynamic = true)
-            assertEquals(dynamic, kernel(model, json, dynamic = false), "$name: static Java vs dynamic Groovy")
-            assertEquals(dynamic, interpreter(model, json), "$name: interpreter vs dynamic Groovy")
+            val dynamic = kernel(model, json, dynamic = true, clock)
+            assertEquals(dynamic, kernel(model, json, dynamic = false, clock), "$name: static Java vs dynamic Groovy")
+            assertEquals(dynamic, interpreter(model, json, clock), "$name: interpreter vs dynamic Groovy")
+        }
+    }
+
+    /**
+     * Runs [body] with the JVM default zone pinned to UTC. A model declaring its own zone needs this wherever the
+     * kernel's static check would judge a constant against the default instead (`DateTimeConstantZoneSplitDiffTest`).
+     */
+    fun <T> underUtc(body: () -> T): T {
+        val previous = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+        try {
+            return body()
+        } finally {
+            TimeZone.setDefault(previous)
         }
     }
 

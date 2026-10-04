@@ -1,14 +1,8 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.md.rt.api.IMessage
+import io.github.mbackschat.a12.dm.adapter.laws.DocumentDifferential.underUtc
 import io.github.mbackschat.a12.dm.edit.EditSession
-import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.PreparedModel
-import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
-import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
-import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
-import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -17,8 +11,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.time.Instant
 import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 
 /**
  * SPEC-2026-10-03-06: a DateTime wall label with no instant in the model zone is a RUNTIME failure raised where
@@ -47,7 +39,6 @@ class TemporalValueFailureDiffTest {
         const val ORDINARY = "31.03.2024T01:30:00"
         const val FALLBACK = "05.03.2024T12:30:00"
         const val SEED = "2020-01-01T00:00:00"
-        val UTC: TimeZone = TimeZone.getTimeZone("UTC")
         val KERNEL_CLOCK: Date = Date.from(Instant.parse("2026-10-04T10:00:00Z"))
         val CLOCK = EvalClock(today = "2026-10-04", now = "2026-10-04T12:00:00")
     }
@@ -159,66 +150,10 @@ class TemporalValueFailureDiffTest {
             listOf(stop("2024-03-31T01:00:00", false), stop("2024-03-31T01:00:00", false)).joinToString(",")),
     )
 
-    private data class Observation(val messages: List<String>, val outcomes: Map<String, String>)
+    private val clock = DifferentialClock(KERNEL_CLOCK, CLOCK)
 
-    private fun kernelSignature(m: IMessage): String =
-        "${m.errorCode}|${m.messageType.name}|" +
-            formatPointer(m.errorFieldPointer.fullName(), m.errorFieldPointer.repetitionIndexes()) + "|" +
-            m.referencedFieldsPointers.map { formatPointer(it.fullName(), it.repetitionIndexes()) }.sorted()
-
-    private fun kernel(dynamic: Boolean, documentJson: String): Observation = underUtc {
-        val (messages, computation) = if (dynamic) {
-            val engine = RuntimeLaws.kernelEngine(model)
-            val instance = engine.instance(documentJson)
-            engine.validationMessages(instance, KERNEL_CLOCK, Locale.US) to
-                engine.computation(engine.instance(documentJson), KERNEL_CLOCK, Locale.US)
-        } else {
-            val engine = RuntimeLaws.kernelJavaEngine(model)
-            val instance = engine.instance(documentJson)
-            engine.validationMessages(instance, KERNEL_CLOCK, Locale.US) to
-                engine.computation(engine.instance(documentJson), KERNEL_CLOCK, Locale.US)
-        }
-        Observation(
-            messages.map(::kernelSignature).sorted(),
-            computation.outcomes().associate {
-                it.path().substringAfterLast('/') to when {
-                    it.errored() -> "ERRORED|" + it.value().orElse("")
-                    it.cleared() -> "CLEARED"
-                    else -> "VALUE|" + it.value().orElse("")
-                }
-            }.toSortedMap() + computation.formalErrorsInOperands()
-                .associate { "operand@" + it.errorFieldPointer.fullName().substringAfterLast('/') to it.errorCode },
-        )
-    }
-
-    private fun interpreter(documentJson: String): Observation {
-        val def = ModelLoader.load(model)
-        val engine = DmInterpreter(def, CLOCK)
-        val messages = engine.validate(def.readDocumentJson(documentJson)).also {
-            assertEquals(emptyList<Any>(), it.unsupported, "every construct must be evaluable")
-        }.messages.map {
-            val type = if (it.type == MsgType.VALUE) "VALUE_ERROR" else "OMISSION_ERROR"
-            "${it.code}|$type|" + formatPointer(it.errorPointer.fullName, it.errorPointer.repetitionIndexes) + "|" +
-                it.referencedPointers.map { p -> formatPointer(p.fullName, p.repetitionIndexes) }.sorted()
-        }.sorted()
-        val doc = def.readDocumentJson(documentJson)
-        // Only cells whose stored state CHANGES are reported by the kernel; every target is seeded, so a no-value
-        // result is a reported clear and an unchanged value is absent from both sides.
-        val seeds = dateTimeTargets.associateWith { SEED } + mapOf("GapDay" to "2020-01-01", "GapClock" to "00:00:00")
-        val outcomes = engine.compute(doc).filter { c ->
-            !(c.outcome.name == "VALUE" && seeds[c.path.substringAfterLast('/')] == c.value)
-        }.associate {
-            it.path.substringAfterLast('/') to when (it.outcome.name) {
-                "ERRORED" -> "ERRORED|" + (it.value ?: "")
-                "CLEARED" -> "CLEARED"
-                else -> "VALUE|" + (it.value ?: "")
-            }
-        }.toSortedMap()
-        val prepared = PreparedModel.loadExpandedJson(model)
-        val operand = prepared.createInterpreter().compute(prepared.documents.readDocument(documentJson))
-            .formalErrorsInOperands.associate { "operand@" + it.errorPath.fullName.substringAfterLast('/') to it.code }
-        return Observation(messages, outcomes + operand)
-    }
+    private fun observe(doc: String) =
+        underUtc { DocumentDifferential.kernel(model, documents.getValue(doc), dynamic = true, clock) }
 
     @Test
     fun theModelIsKernelConsistentUnderTheAdmittingDefault() {
@@ -227,11 +162,7 @@ class TemporalValueFailureDiffTest {
 
     @Test
     fun allThreeEnginesAgreeOnEveryDocument() {
-        for ((name, json) in documents) {
-            val dynamic = kernel(dynamic = true, json)
-            assertEquals(dynamic, kernel(dynamic = false, json), "$name: static Java vs dynamic Groovy")
-            assertEquals(dynamic, interpreter(json), "$name: interpreter vs dynamic Groovy")
-        }
+        underUtc { DocumentDifferential.assertAgree(model, documents, clock) }
     }
 
     /**
@@ -242,9 +173,10 @@ class TemporalValueFailureDiffTest {
      */
     @Test
     fun theDiscriminatingRowsAreTheKernelsOwn() {
-        fun rows(doc: String, code: String) = kernel(dynamic = true, documents.getValue(doc)).messages
-            .filter { it.startsWith("$code|") }.map { it.substringAfter("/Stops").substringBefore('/') }
-        fun outcome(doc: String, key: String) = kernel(dynamic = true, documents.getValue(doc)).outcomes[key]
+        fun rows(doc: String, code: String) = observe(doc).messages
+            .filter { it.code == code }.map { it.pointer.substringAfter("/Stops").substringBefore('/') }
+        fun operandError(doc: String, target: String) =
+            observe(doc).operandErrors.firstOrNull { it.pointer.endsWith("/$target") }?.code
         val actual = linkedMapOf(
             "a reached gap reports once, at the first address" to rows("all-signed", "Direct"),
             "a false And prefix skips the gap" to rows("all-signed", "FalseThenGap"),
@@ -254,8 +186,8 @@ class TemporalValueFailureDiffTest {
             "rows fired before the failure keep their messages" to rows("signed-unsigned-signed", "PurePrefix"),
             "FieldNotFilled enables classification" to rows("two-unsigned", "NotFilledPrefix"),
             "a malformed first Min operand poisons before the literal" to
-                outcome("malformed", "operand@MinPickupFirst"),
-            "the literal first fails before the malformed operand" to outcome("malformed", "operand@MinGapFirst"),
+                operandError("malformed", "MinPickupFirst"),
+            "the literal first fails before the malformed operand" to operandError("malformed", "MinGapFirst"),
         )
         assertEquals(linkedMapOf(
             "a reached gap reports once, at the first address" to listOf("[1]"),
@@ -268,15 +200,5 @@ class TemporalValueFailureDiffTest {
             "a malformed first Min operand poisons before the literal" to null,
             "the literal first fails before the malformed operand" to "berechnungsWertFehler",
         ), actual)
-    }
-
-    private fun <T> underUtc(body: () -> T): T {
-        val previous = TimeZone.getDefault()
-        TimeZone.setDefault(UTC)
-        try {
-            return body()
-        } finally {
-            TimeZone.setDefault(previous)
-        }
     }
 }

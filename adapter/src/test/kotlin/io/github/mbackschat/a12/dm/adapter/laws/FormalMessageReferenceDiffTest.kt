@@ -1,19 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.md.rt.api.IMessage
 import io.github.mbackschat.a12.dm.edit.EditSession
-import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.PreparedModel
-import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
-import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
-import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
-import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.util.Locale
 
 /**
  * Every formal message names its own field as referenced, and an omission-typed one also names it as responsible
@@ -58,44 +50,6 @@ class FormalMessageReferenceDiffTest {
             """"Lines":[{"LineNo":"1","Qty":1}]}}""",
     )
 
-    private fun pointers(list: List<String>) = list.sorted().joinToString(",", "[", "]")
-
-    private fun kernelMessages(m: IMessage): String =
-        "${m.errorCode}|${m.messageType.name}|" +
-            formatPointer(m.errorFieldPointer.fullName(), m.errorFieldPointer.repetitionIndexes()) +
-            "|ref=" + pointers(m.referencedFieldsPointers.map { formatPointer(it.fullName(), it.repetitionIndexes()) }) +
-            "|fill=" + pointers(m.refOmissionErrorResponsiblePointers.map {
-                formatPointer(it.fullName(), it.repetitionIndexes())
-            })
-
-    private fun kernel(dynamic: Boolean, json: String): List<String> {
-        val messages = if (dynamic) RuntimeLaws.kernelEngine(model).let { it.validationMessages(it.instance(json), null, Locale.US) }
-            else RuntimeLaws.kernelJavaEngine(model).let { it.validationMessages(it.instance(json), null, Locale.US) }
-        val operand = if (dynamic) RuntimeLaws.kernelEngine(model).let { it.computation(it.instance(json), null, Locale.US) }
-            else RuntimeLaws.kernelJavaEngine(model).let { it.computation(it.instance(json), null, Locale.US) }
-        return (messages.map(::kernelMessages) + operand.formalErrorsInOperands().map { "operand:" + kernelMessages(it) })
-            .sorted()
-    }
-
-    private fun interpreter(json: String): List<String> {
-        val def = ModelLoader.load(model)
-        val messages = DmInterpreter(def).validate(def.readDocumentJson(json)).messages.map {
-            val type = if (it.type == MsgType.VALUE) "VALUE_ERROR" else "OMISSION_ERROR"
-            "${it.code}|$type|" + formatPointer(it.errorPointer.fullName, it.errorPointer.repetitionIndexes) +
-                "|ref=" + pointers(it.referencedPointers.map { p -> formatPointer(p.fullName, p.repetitionIndexes) }) +
-                "|fill=" + pointers(it.fillToFixPointers.map { p -> formatPointer(p.fullName, p.repetitionIndexes) })
-        }
-        val prepared = PreparedModel.loadExpandedJson(model)
-        val operand = prepared.createInterpreter().compute(prepared.documents.readDocument(json)).formalErrorsInOperands
-            .map {
-                val type = if (it.type.name == "VALUE") "VALUE_ERROR" else "OMISSION_ERROR"
-                "operand:${it.code}|$type|" + formatPointer(it.errorPath.fullName, it.errorPath.repetitionIndexes) +
-                    "|ref=" + pointers(it.referenced.map { p -> formatPointer(p.fullName, p.repetitionIndexes) }) +
-                    "|fill=" + pointers(it.fillToFix.map { p -> formatPointer(p.fullName, p.repetitionIndexes) })
-            }
-        return (messages + operand).sorted()
-    }
-
     @Test
     fun theModelIsKernelConsistent() {
         assertEquals(emptyList<String>(), MessageParameterProbes.kernel(model))
@@ -103,14 +57,11 @@ class FormalMessageReferenceDiffTest {
 
     @Test
     fun everyFormalFamilyReferencesItsOwnFieldOnAllThreeEngines() {
-        val codesSeen = mutableSetOf<String>()
-        for ((name, json) in documents) {
-            val dynamic = kernel(dynamic = true, json)
-            assertEquals(dynamic, kernel(dynamic = false, json), "$name: static Java vs dynamic Groovy")
-            assertEquals(dynamic, interpreter(json), "$name: interpreter vs dynamic Groovy")
-            codesSeen += dynamic.map { it.removePrefix("operand:").substringBefore('|') }
-        }
+        DocumentDifferential.assertAgree(model, documents)
         // The positive control: each family this file claims was actually emitted, so an empty agreement cannot pass.
+        val codesSeen = documents.values.flatMap { json ->
+            DocumentDifferential.kernel(model, json, dynamic = true).let { it.messages + it.operandErrors }
+        }.map { it.code }
         assertEquals(setOf("datumFormatFalsch", "zahlHatUngueltigeZeichen", "mandatoryField", "uniqueIndex",
             "zuGrosseZeile", "zuGrosseKontextnummer", "berechnungsWertFehler"),
             codesSeen.filter { it.first().isLowerCase() }.toSet())
