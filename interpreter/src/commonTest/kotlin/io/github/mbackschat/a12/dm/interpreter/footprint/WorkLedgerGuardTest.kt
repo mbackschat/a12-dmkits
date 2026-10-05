@@ -117,7 +117,11 @@ class WorkLedgerGuardTest {
             // duplicate predicates, which resolve no operand values.
             FootprintScenario.EQUALITY_CORRELATION to PerRow(conditionNodes = 3, expressionNodes = 0, ruleRows = 1),
             // Compute instantiates no VALIDATION rule row, so its iteration shows up as expression work instead.
-            FootprintScenario.COMPUTE_OVERLAY to PerRow(conditionNodes = 3, expressionNodes = 9, ruleRows = 0),
+            // One filter evaluation more than before 2026-10-05 (four condition nodes, not three, and its two operand
+            // reads, eleven expression nodes, not nine): the `MoreThanOneFieldFilled` guard's filtered scan reads one
+            // kept successor past its deciding row, which A12 does and a malformed filter there observes
+            // ([KF520](../../../../../../../../../../../docs/KERNEL-FINDINGS.md), `FilteredFillComputationGuardDiffTest`).
+            FootprintScenario.COMPUTE_OVERLAY to PerRow(conditionNodes = 4, expressionNodes = 11, ruleRows = 0),
         )
     }
 }
