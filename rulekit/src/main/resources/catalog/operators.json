@@ -6738,7 +6738,7 @@
         }
       ],
       "returns": "boolean",
-      "meaning": "True iff the field's value is a valid instance of the named predefined custom field type (e.g. \"IBAN\", \"Steuernummer\"). The custom-field-type overload of Valid — distinct from the date-construct Valid (separate catalog id). Operand 1 is a STRING, ENUMERATION, or EXTENSIBLE-ENUMERATION field; operand 2 is the type name as a string literal.",
+      "meaning": "True iff the field's value is a valid instance of the named predefined custom field type (e.g. \"IBAN\", \"BIC\"). The custom-field-type overload of Valid — distinct from the date-construct Valid (separate catalog id). Operand 1 is a STRING, ENUMERATION, or EXTENSIBLE-ENUMERATION field; operand 2 is the type name as a string literal.",
       "constraints": [
         "operand 1 is a STRING or ENUMERATION field (kernel message MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM) — the extensible-enumeration the code names is a FLAG on a string declaration, not a kind of its own, so a CUSTOM-typed field is refused (measured 2026-09-14); operand 2 is a string-literal type name"
       ],

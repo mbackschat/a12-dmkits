@@ -1263,7 +1263,7 @@ public final class Dsl {
 
     /**
      * {@code Valid(field, "TypeName")} — true iff {@code field}'s value is a valid instance of the
-     * predefined custom field type {@code typeName} (e.g. {@code "IBAN"}, {@code "Steuernummer"}). The
+     * predefined custom field type {@code typeName} (e.g. {@code "IBAN"}, {@code "BIC"}). The
      * field must be STRING or ENUMERATION. <b>The type name is not validated at model-check time</b> — the
      * predefined types are a runtime client-SPI, so a wrong name only fails at evaluation (see
      * {@link CustomTypeValidity}). catalog:ValidType

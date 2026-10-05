@@ -4,7 +4,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * {@code Valid(field, "TypeName")} / {@code Invalid(field, "TypeName")} — the kernel's
  * <b>custom-field-type</b> validity condition (its {@code IPredefinedTypeValidityCondition}): true iff
  * the field's value is a valid instance of the predefined field type named by {@code typeName} (e.g.
- * {@code "IBAN"}, {@code "Steuernummer"}). The field operand is a STRING or ENUMERATION field.
+ * {@code "IBAN"}, {@code "BIC"}). The field operand is a STRING or ENUMERATION field.
  *
  * <p>Distinct from {@link DateValidity} (the {@code Valid(Date(...))} date-construct overload) — same
  * keyword, different operand shape — so this carries a distinct {@link #operatorId()} ({@code ValidType}
