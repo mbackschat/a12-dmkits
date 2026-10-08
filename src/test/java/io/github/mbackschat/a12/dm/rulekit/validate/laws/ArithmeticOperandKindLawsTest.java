@@ -23,8 +23,10 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * MIXED pair is {@code MVK_NO_STRING_OR_NUMBER_FOR_ADD} — not {@code MVK_NO_NUMBER_FOR_CALC}, which is the
  * class every other operator draws on the same operand.
  *
- * <p><b>…and it refuses an enumeration that carries display LABELS</b>, under that same class, even though a
- * labelless enumeration of the same tokens is admitted. The grid varies exactly that one property.
+ * <p><b>…and it refuses an enumeration whose display LABELS remap its values</b>, under that same class, even
+ * though a labelless enumeration of the same tokens is admitted. The grid varies exactly that one property; labels
+ * that only repeat their values, and a braced operand, are {@code adapter.laws.CheckerEnumerationAdditionAgreementTest}'s
+ * rows (KERNEL-FINDINGS KF396).
  *
  * <p><b>A custom-typed field is string-LIKE here</b>, which the operation-type map makes explicit — it sorts
  * {@code IStringType} and {@code IPredefinedType} into one STRING base type.

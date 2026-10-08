@@ -40,8 +40,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
  * ([valueListConditionGateFindings] owns those). Two agreeing non-ranges do reach it, which is the row that
  * keeps the pre-emption from reading as "this carrier cannot report the kind class".
  *
- * **Silent where the pre-gates answer**, therefore, and on a reference this reader cannot resolve, on a
- * `DateRangeType` declaring no format, and on a repeated entity, whose duplicate class A12 draws first.
+ * **Silent where a gate ahead of these answers**: a repeated entity, a root group or a category selector
+ * ([listGateAheadOfTheArmAnswers]; the value list's own positions are [valueListConditionGateFindings]'), and
+ * on a reference this reader cannot resolve or a `DateRangeType` declaring no format.
  */
 internal fun TrackedFactBase.dateRangeOperandListFindings(): List<Finding> = declarations().flatMap { element ->
     dateRangeOperandContributions(element).take(1).map { it.finding }
@@ -90,6 +91,7 @@ private fun TrackedFactBase.rangeListDefect(
 ): RangeDefect? {
     val listed = when (carrier) {
         RangeCarrier.PLAIN_LIST -> {
+            if (listGateAheadOfTheArmAnswers(call, declaringGroup, element)) return null
             groupOperandDefect(call, declaringGroup, element)?.let { return it }
             plainList(call, declaringGroup, element)
         }
@@ -205,6 +207,13 @@ private fun TrackedFactBase.valueList(
     element: TrackedDeclaration,
 ): List<ListedReference>? {
     val (written, opposite) = call.splitAtIn() ?: return null
+    // The two lists' repeats and root groups answer first, at positions [valueListConditionGateFindings] names.
+    val subjects = builtEntityList(written, declaringGroup, element, call.inAFilterBody)
+    val members = builtEntityList(opposite, declaringGroup, element, call.inAFilterBody)
+    if (subjects != null && members != null &&
+        listOf(subjects, members, subjects + members).any { (it.duplicateClass() ?: it.rootGroupClass()) != null }) {
+        return null
+    }
     val subject = bareReferenceField(written.singleOrNull() ?: return null, declaringGroup, element, call.inAFilterBody)
         ?: return null
     val values = opposite.map { operand -> expandedReference(operand, declaringGroup, element) ?: return null }

@@ -22,6 +22,8 @@ import kotlinx.serialization.json.contentOrNull
  *
  * | the gate, in order | class |
  * |---|---|
+ * | the FIELD list repeats an entity, or names one under another | `MVK_DUPLICATE_PARAM1`, `MVK_DUPLICATE_PARAM2` |
+ * | the FIELD list names a root group | `MVK_ROOT_GROUP_REFERENCED` |
  * | the FIELD list's entries do not all share a base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
  * | `AtLeastOneDateRangeOverlaps`: the field list is not exactly one plain field | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` |
  * | the other three: an entry is neither text, enumeration nor number | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
@@ -29,7 +31,10 @@ import kotlinx.serialization.json.contentOrNull
  * | `AtLeastOneDateRangeOverlaps` against a WRITTEN-OUT list | `MVK_NO_CONST` |
  * | a written-out list against a NUMBER field list | `MVK_INVALID_TYPES_FOR_COMPARISON` |
  * | a written-out value outside the enumeration's domain | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` |
+ * | an ENTITY value list repeats an entity, or names one under another | `MVK_DUPLICATE_PARAM1`, `MVK_DUPLICATE_PARAM2` |
+ * | an entity value list names a root group | `MVK_ROOT_GROUP_REFERENCED` |
  * | an ENTITY value list of another base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+ * | the two lists together repeat an entity | `MVK_DUPLICATE_PARAM1`, `MVK_DUPLICATE_PARAM2` |
  * | an entity value list entry waives value validation | `MVK_INVALID_RAW_TYPE` |
  *
  * **The FIELD list is judged before the value list's type is looked at**, which a reader merging the two
@@ -48,13 +53,15 @@ import kotlinx.serialization.json.contentOrNull
  * `-> Band` contributes its category's tokens and stops contributing its own values, so the enumeration's
  * own value is then refused. One enumeration, two accesses, two verdicts.
  *
- * **A repeat is asked at three positions, and silences only the gates behind it.** `getRefList` refuses a
- * repeat as it builds each list: the FIELD list ahead of every gate above, the value list only after the
- * field list's type and validation gates. A repeat ACROSS the two is asked later still, after the value
- * list's base type and ahead of its validation. So `Reference, Quantity In Reference` is the field list's
- * `MVK_VARYING_TYPES_NOT_ALLOWED` and `Reference In Reference, InternalMemo` is `MVK_DUPLICATE_PARAM1`
- * (KERNEL-FINDINGS KF380, measured on the rows that repeat and fail a gate at once). A12's duplicate classes
- * are not this family's to name, so a repeat makes it silent from its own position on.
+ * **A repeat and a root group are asked at their own positions, so this family names them.** `getRefList`
+ * refuses a repeat as it builds each list, and `checkNotRootGroupReferenced` follows: the FIELD list ahead of
+ * every gate above, the value list only after the field list's type and validation gates. A repeat ACROSS the
+ * two is asked later still, after the value list's base type and ahead of its validation. So
+ * `Reference, Quantity In Reference` is the field list's `MVK_VARYING_TYPES_NOT_ALLOWED`,
+ * `Reference In Reference, InternalMemo` is `MVK_DUPLICATE_PARAM1` (KERNEL-FINDINGS KF380), and
+ * `Window In Window, Premium` is the value list's `MVK_VARYING_TYPES_NOT_ALLOWED` ([KF401],
+ * `adapter.laws.CheckerListAdmissionOrderAgreementTest`). A list this reader cannot build — an operand with a
+ * clause or a category arrow — leaves it silent from that list's position on.
  *
  * **The category access is asked FIRST, and it belongs to another family.** An access demands a field that
  * is an enumeration declaring the named category, and the spec's own gate asks that as the operand is read
@@ -145,24 +152,21 @@ private fun TrackedFactBase.gateFinding(
         return null
     }
 
-    // A ROOT group on either side is answered by the root class, ahead of every gate below its content would
-    // fail (a root holding only a Date is the root class, its Date alone the kind class; KERNEL-FINDINGS
-    // KF388, `rulekit.validate.laws.EntityListRootGateCarrierLawsTest`). `entityListPreGateFindings` names it
-    // on the written-out spelling; expanding the root here would name a kind or same-type class instead.
-    if ((written + opposite).any { declaredTargetOf(it, declaringGroup, element)?.path?.isRootGroup() == true }) {
-        return null
-    }
-
     val literalList = opposite.isWrittenOutValueList()
+    // A list the shared builder cannot key — a keyed or starred operand it does not address — keeps the
+    // conservative reading this family had before it named these gates: silent on a root group or a repeat.
+    val subjects = builtEntityList(written, declaringGroup, element, call.inAFilterBody)
+    val members = if (literalList) null else builtEntityList(opposite, declaringGroup, element, call.inAFilterBody)
+    if (subjects == null || !literalList && members == null) {
+        if ((written + opposite).any { declaredTargetOf(it, declaringGroup, element)?.path?.isRootGroup() == true }) {
+            return null
+        }
+    }
+    (subjects?.duplicateClass() ?: subjects?.rootGroupClass())
+        ?.let { return listClass(it, call, member, element) }
     val listed = listedFields(written, declaringGroup, element) ?: return null
     val fields = listed.map { it.field }
-    val values = if (literalList) {
-        emptyList()
-    } else {
-        expandedFields(opposite, declaringGroup, element) ?: return null
-    }
-    // A12 refuses a repeat as it BUILDS each list, and builds the field list ahead of every gate below.
-    if (repeated(fields)) {
+    if (subjects == null && repeated(fields)) {
         return null
     }
     val fieldKinds = fields.map { it.baseTypeClass() ?: return null }
@@ -189,8 +193,11 @@ private fun TrackedFactBase.gateFinding(
 
     // …then the value list, which is a different question on each of its two spellings.
     if (!literalList) {
-        // The value list is built only now, so its own repeat answers here, behind the field list's gates.
-        if (repeated(values)) {
+        // The value list is built only now, so its own repeat and root answer here, behind the field list's gates.
+        (members?.duplicateClass() ?: members?.rootGroupClass())
+            ?.let { return listClass(it, call, member, element) }
+        val values = expandedFields(opposite, declaringGroup, element) ?: return null
+        if (members == null && repeated(values)) {
             return null
         }
         val valueKinds = values.map { it.baseTypeClass() ?: return null }
@@ -200,7 +207,9 @@ private fun TrackedFactBase.gateFinding(
             }
         }
         // A repeat ACROSS the two lists is asked after the value list's base type and ahead of its validation.
-        if (repeated(fields + values)) {
+        if (subjects != null && members != null) {
+            (subjects + members).duplicateClass()?.let { return listClass(it, call, member, element) }
+        } else if (repeated(fields + values)) {
             return null
         }
         values.firstOrNull { it.waivesValueValidation() }
@@ -335,9 +344,24 @@ private fun TrackedFactBase.expandedFields(
 internal fun List<String>.isWrittenOutValueList(): Boolean =
     all { tokenize(it).singleOrNull()?.kind == TokenKind.STRING }
 
-/** Whether any field is named twice among [fields], which A12 answers as a duplicate parameter. */
+/** Whether any field is named twice among [fields] — the conservative reading for a list no builder keys. */
 private fun repeated(fields: List<TrackedDeclaration>): Boolean =
     fields.map { it.path }.distinct().size != fields.size
+
+/** A duplicate or root-group class one of the two lists draws as A12 builds it. */
+private fun listClass(code: String, call: ConditionCall, member: String, element: TrackedDeclaration): Finding = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    code,
+    "in `$member`: `${call.operator}` " + when (code) {
+        "MVK_ROOT_GROUP_REFERENCED" -> "names a root group — name the fields or groups you mean instead"
+        "MVK_DUPLICATE_PARAM2" -> "names an entity and a group that already contains it, within one list or " +
+            "across the two — drop whichever of the two you did not mean"
+        else -> "names one entity twice, within one list or across the two — drop the repeat"
+    },
+    element.path,
+    call.spanIn(member),
+)
 
 private fun gate(
     code: String,

@@ -7976,9 +7976,18 @@ Reported by the portable checker (`CheckFamily.VALIDITY_CONDITION_OPERANDS`), wh
 
 **What comes BEFORE the two walks differs between the carriers, and neither may borrow the other's answer.** The plain list asks its own group gate first (`MVK_NO_GROUPS_ALLOWED`, ahead of the arity gate — measured on a lone group, which fails both and draws the group class), and takes a starred field without asking, that arm calling no wildcard gate at all. The value list instead demands exactly one plain field as its subject and a matching base type from its values, so a wrong KIND on either side is `MVK_VARYING_TYPES_NOT_ALLOWED` and never reaches the range walk. Two fields that AGREE do reach it, which is what keeps that pre-emption from reading as "this carrier cannot report the kind class".
 
+**Extended 2026-10-09 (a12-kernel-lean SPEC-2026-10-09-01): the full order on each carrier, measured on inputs that break two gates at once.**
+
+| carrier | order, first answers |
+|---|---|
+| `DateRangesOverlap` | reads; repeat (`MVK_DUPLICATE_PARAM1`), containment (`MVK_DUPLICATE_PARAM2`); root; category; group (`MVK_NO_GROUPS_ALLOWED`); a sole unstarred field (`MVK_PARAMSIZE_INVALIDFN`); the per-field walk; the year walk |
+| `AtLeastOneDateRangeOverlaps` | the subject list's repeat, containment and root; its common base type; one plain unstarred subject (`MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON`); a written-out value list (`MVK_NO_CONST`); the value list's own repeat, containment and root; its base type against the subject; a repeat ACROSS both lists; the walks over the union |
+
+The rows that separate them: a sole Number is the arity class, not the range kind; a sole starred range is admitted; a categorized field beside a group is the category class; `RollsForward, Premium` is `MVK_INVALID_DATE_RANGE_FORMAT` and `Premium, RollsForward` is `MVK_NO_DATE_RANGE`, because the per-field walk asks both of its questions of one field before the next; `Window In Window, Premium` is `MVK_VARYING_TYPES_NOT_ALLOWED`, the value list's base type answering ahead of the repeat across the lists; `Window In /Policy` is the root class although the root also contains the subject; and a categorized subject meets no category gate on this carrier, drawing the value list's base-type class. A semantic index is part of identity on both carriers, so one keyed range under two keys is admitted and under one key twice is the repeat. The other three value-list conditions build the same two lists and answer at the same positions, measured on the repeat in either list, the repeat and the containment across them, the root on either side, and a mixed field list against a root value list, which is the field list's base-type class.
+
 Reported by the portable checker (`CheckFamily.DATE_RANGE_OPERAND_LIST`, keyed on the RANGE LIST rather than on either carrier's method, since the two walks are one shared helper). Silent where a pre-gate of another family answers, on a `DateRangeType` declaring no format, and on a repeated entity, whose duplicate class A12 draws first.
 
-*Locked by:* `rulekit.validate.laws.DateRangeOperandListLawsTest`, mirrored by `consistency.DateRangeOperandListTest`.
+*Locked by:* `rulekit.validate.laws.DateRangeOperandListLawsTest`, mirrored by `consistency.DateRangeOperandListTest`; the carrier orders by `adapter.laws.CheckerListAdmissionOrderAgreementTest`, which runs each row against the kernel and the portable checker (the value-list positions are `CheckFamily.VALUE_LIST_CONDITION_GATES`', the plain list's pre-walk gates `ENTITY_LIST_PRE_GATES`' and `ENTITY_LIST_CATEGORY_GATE`'); the typed value-list record asks each list's repeat alone and leaves the union to the kernel beside a member it knows to be of another kind, by `rulekit.dsl.ValueListGateOrderTest`.
 
 ## §6 supplement — every date operator shares ONE argument slot, whose kind gate takes all four temporal declarations and whose constant gate takes four shapes (source-verified + measured, 2026-09-14) <a id="kf400"></a>
 
@@ -8114,7 +8123,7 @@ Reported by the portable checker (`CheckFamily.VALUE_LIST_CONDITION_GATES`, rena
 
 *Locked by:* `rulekit.validate.laws.ValueListConditionOperandLawsTest`, mirrored by `consistency.ValueListConditionGatesTest`.
 
-## §5 supplement — `+` is not an arithmetic operator: it asks its own question, and refuses an enumeration that carries LABELS (source-verified + measured, 2026-09-14) <a id="kf396"></a>
+## §5 supplement — `+` is not an arithmetic operator: it asks its own question, and refuses an IMMEDIATE enumeration read whose labels REMAP its values (source-verified + measured, 2026-09-14, corrected 2026-10-09) <a id="kf396"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one construct's operand types, not an evaluation behaviour.
 
@@ -8125,11 +8134,25 @@ Reported by the portable checker (`CheckFamily.VALUE_LIST_CONDITION_GATES`, rena
 | `*`, `/`, `-` or `^` over anything but a number | `MVK_NO_NUMBER_FOR_CALC` |
 | `+` over two numbers, or over two string-LIKE sides | admitted |
 | `+` over a mixed pair | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` |
-| `+` over an enumeration carrying display LABELS | the same class |
+| `+` over an immediate read of an enumeration whose labels remap its values | the same class |
 
 **A CUSTOM declaration is string-LIKE and a date is neither**, which `OperationResultTypeMap.getOpTypeForField` makes explicit: it sorts `IStringType` and `IPredefinedType` into one STRING base type and gives a date, a range, a boolean and a confirm their own, so all four fail both of `+`'s arms. Measured over all seven declared kinds on each of the four numeric operators.
 
-**The display-label refusal is the row a source read alone would miss the shape of.** Two enumerations declaring the same two tokens differ only in whether their values carry a `label`, and the labelled one is refused beside a plain text — under the KIND class, not a class of its own. A12 exempts a category access at that branch, which is the only way to concatenate such an enumeration.
+**The display-label refusal is the row a source read alone would miss the shape of.** Two enumerations declaring the same two tokens differ only in whether their values carry a `label`, and the labelled one is refused beside a plain text — under the KIND class, not a class of its own.
+
+**Corrected 2026-10-09 (a12-kernel-lean SPEC-2026-10-08-04): the refusal turns on effective REMAPPING and on the operand's SHAPE, not on labels being present.** `CheckOperationImpl.checkWithoutDisplayValues` asks `IEnumerationType.hasDisplayValues`, which is true only when some label in some locale differs from its stored value, and it asks it only of an immediate field-value operand (`SINGLE_OP` over `feldWertOp`); a category access returns early. Measured on one two-locale model, each row against the kernel and the portable checker:
+
+| `+` beside a text | A12 |
+|---|---|
+| labels that repeat their values in every locale, either side | admitted |
+| one label in one locale differing, every other repeating | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` |
+| a remapped enumeration braced, `{[E]} + [S]`, `[S] + {[E]}`, `{{[E]}} + [S]` | admitted |
+| a brace around the failing addition, `{[E] + [S]}` | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` |
+| a braced one beside a direct one, either order | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` |
+| a category access, `[E -> Cat] + [S]` | admitted |
+| a braced remapped enumeration beside a Number | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` |
+
+The last row is the one that shows a brace keeps the operand string-like: it lifts only the display question, so the kind arm still refuses a mixed pair. The portable checker had refused identity labels; it now asks the same `hasDisplayValues` predicate the enumeration-copy gate uses.
 
 **The kind walk PRE-EMPTS both arity gates inside one operation context.** A string in a two-division chain is `MVK_NO_NUMBER_FOR_CALC` alone and the same chain with a number there is `MVK_TOO_MANY_DIV_FOR_CALC`; the same pair holds for a nested power. That is what makes the five classes ONE portable family rather than two: a checker asking the questions independently would name a second class on a model A12 answers once ([KF378](#kf378) measured the arity half's own ordering).
 
@@ -8139,7 +8162,7 @@ Reported by the portable checker (`CheckFamily.VALUE_LIST_CONDITION_GATES`, rena
 
 Reported by the portable checker (`CheckFamily.ARITHMETIC_OPERATION_GATES`) from recognized child results; unsupported operation results, category accesses, typedefs and unspecified declarations remain unjudged.
 
-*Locked by:* `rulekit.validate.laws.ArithmeticOperandKindLawsTest`, portable assertions preserved by `consistency.OperationContractTest`.
+*Locked by:* `rulekit.validate.laws.ArithmeticOperandKindLawsTest`, portable assertions preserved by `consistency.OperationContractTest`; the remapping and shape rows by `adapter.laws.CheckerEnumerationAdditionAgreementTest`, which runs each against the kernel and the checker.
 
 ## §11 supplement — the four single-field value operators share ONE head and then demand four different things, two of them the opposite of their names (source-verified + measured, 2026-09-14) <a id="kf395"></a>
 
@@ -8292,9 +8315,28 @@ Reported by the portable checker (`CheckFamily.FIELD_LIST_OPERATION_OPERANDS`), 
 
 **Gate 2's date test is the declared format STRING, and it spans KINDS.** `yyyy-MM-dd` beside `dd.MM.yyyy` is refused although the two are one component set — the contrast that separates this gate from the aggregates' component-set gate ([KF193](#kf193)) — and a `DateType` spelled `yyyy-MM-dd` beside a `DateTimeType` spelled `yyyy-MM-dd'T'HH:mm:ss` draws this class rather than gate 3's, the kind gate running first.
 
-Reported by the portable checker (`CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND`), whose refusal set is an allow-list of what was measured rather than the complement of the admitted one.
+**Extended 2026-10-09 (a12-kernel-lean SPEC-2026-10-09-01): what runs ahead of the four, and the scan's memory.** Before the operator's arm, `CheckFeldListenBedingungImpl` reads every operand, builds the list with its duplicate tests, then asks the root and the category gates; each row below breaks two of these at once.
 
-*Locked by:* `rulekit.validate.laws.FieldValuesNotUniqueKindGateLawsTest`, mirrored by `consistency.FieldValuesNotUniqueOperandKindTest`.
+| the list | A12 |
+|---|---|
+| an unknown name ahead of, or behind, a repeated field | `MVK_INVALID_ENTITY` |
+| a repeated field beside a Boolean | `MVK_DUPLICATE_PARAM1` |
+| one categorized field twice | `MVK_DUPLICATE_PARAM1` |
+| a field beside the root containing it | `MVK_DUPLICATE_PARAM2` |
+| a categorized field beside the root | `MVK_ROOT_GROUP_REFERENCED` |
+| a sole categorized field | `MVK_CATEGORY_NOT_ALLOWED` |
+| a Number, then two Dates of different spellings, in either interleaving | `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` |
+| a Number between two Dates of one spelling | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+| a raw String beside a Number | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+| a raw String beside a String | `MVK_INVALID_RAW_TYPE` |
+| one keyed field under two keys; a key's field beside its group under another key | admitted |
+| one keyed field under one key twice; a keyed group beside its field under that key | `MVK_DUPLICATE_PARAM1`; `MVK_DUPLICATE_PARAM2` |
+
+The interleaved row is what fixes the scan's memory: a Number between two differently spelled Dates does not reset it, so gate 2 refuses where gate 3 would otherwise be the first to fail. The categorized field beside the root is the identity half of [kf439](#kf439): a field under its category is not inside its group's uncategorized reference, so the root class answers rather than the nested duplicate.
+
+Reported by the portable checker (`CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND`, gates 2–4), whose refusal set is an allow-list of what was measured rather than the complement of the admitted one; it stays silent on the two boolean kinds at gates 2 and 3, and yields to the gates ahead of the arm (`listGateAheadOfTheArmAnswers`).
+
+*Locked by:* `rulekit.validate.laws.FieldValuesNotUniqueKindGateLawsTest`, mirrored by `consistency.FieldValuesNotUniqueOperandKindTest`; the pre-arm rows by `adapter.laws.CheckerListAdmissionOrderAgreementTest`.
 
 ## §6 supplement — a date operand list's three gates are ONE walk, so two defects answer by POSITION (source-verified + measured, 2026-09-14) <a id="kf389"></a>
 

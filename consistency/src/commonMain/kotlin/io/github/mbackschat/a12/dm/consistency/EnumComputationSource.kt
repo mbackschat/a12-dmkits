@@ -165,13 +165,14 @@ private fun sourceValues(body: JsonObject, category: String?): Set<String>? {
 }
 
 /**
- * Whether this enumeration bears DISPLAY values — a text differing from its own token, A12's own test.
+ * Whether this enumeration bears DISPLAY values — a text differing from its own token, A12's own test
+ * (`IEnumerationType.hasDisplayValues`), so labels that only repeat their tokens bear none. An enumeration copy
+ * and `+` both ask it of a raw declaration ([KF396]).
  *
- * Read here rather than shared with the comparison family because the two ask it of different carriers: that
- * one holds a per-locale map it has already built, this one a raw declaration. The predicate is one line and
- * the shapes are not, so a shared reader would have to carry both.
+ * Not shared with the comparison family, which asks it of a per-locale map it has already built. The predicate is
+ * one line and the shapes are not, so a shared reader would have to carry both.
  */
-private fun bearsDisplayValues(field: TrackedDeclaration): Boolean {
+internal fun bearsDisplayValues(field: TrackedDeclaration): Boolean {
     val values = field.enumerationBody()?.get("values") as? JsonArray ?: return false
     return values.filterIsInstance<JsonObject>().any { entry ->
         val token = (entry["value"] as? JsonPrimitive)?.contentOrNull

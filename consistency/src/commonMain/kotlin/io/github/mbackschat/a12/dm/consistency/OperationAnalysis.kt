@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
 import io.github.mbackschat.a12.dm.consistency.syntax.textOf
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
@@ -142,10 +141,10 @@ internal class OperationAnalysis(
         val b = right.numeric
         if (operator == "+" && (a == null || b == null)) {
             val textual = setOf(OperationType.Text, OperationType.Enumeration)
-            if (left.type in textual && right.type in textual && !left.labelsArithmetic() && !right.labelsArithmetic())
+            if (left.type in textual && right.type in textual && !left.remapsDisplay() && !right.remapsDisplay())
                 return OperationValue(OperationType.Text)
             return refuse("MVK_NO_STRING_OR_NUMBER_FOR_ADD", shape,
-                "`+` adds two numbers or joins two texts; this pair is neither, or carries enumeration display labels")
+                "`+` adds two numbers or joins two texts; this pair is neither, or reads an enumeration whose display labels differ from its values")
         }
         if (a == null || b == null) return refuse("MVK_NO_NUMBER_FOR_CALC", shape,
             "`${written(shape)}` requires two numeric operands for `$operator`")
@@ -176,9 +175,11 @@ internal class OperationAnalysis(
         return OperationValue(OperationType.Number(scale, expandable))
     }
 
-    private fun OperationValue.labelsArithmetic(): Boolean =
-        (field?.enumerationBody()?.get("values") as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
-            .any { (it["label"] as? JsonArray)?.isNotEmpty() == true }
+    /**
+     * `+` refuses an operand only as an immediate field read, so a braced or computed value carries no field here
+     * and passes; a category access reduces to no declaration and passes too ([KF396]).
+     */
+    private fun OperationValue.remapsDisplay(): Boolean = field?.let(::bearsDisplayValues) == true
 
     /**
      * A12's division check from one operator node: a pre-order walk carrying one division mark, which a second

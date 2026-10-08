@@ -113,14 +113,14 @@ class ValueListConditionGatesTest {
     }
 
     /**
-     * The shapes it deliberately does not report, and the one that turned out not to be such a shape.
+     * A repeat in either list or across the two, and the date-range quantifier's same-type gate.
      *
-     * A repeated entity is `MVK_DUPLICATE_PARAM1` to A12, whichever list the repeat sits in. The date-range
-     * row used to sit here as a silence; the same-type gate is measured to run for ALL FOUR operators ahead
-     * of the branch on the operator token, so it is a locked HANDOVER rather than an exclusion.
+     * A repeated entity is `MVK_DUPLICATE_PARAM1` to A12, whichever list the repeat sits in, and this family
+     * names it at its own position (`adapter.laws.CheckerListAdmissionOrderAgreementTest`). The same-type gate
+     * is measured to run for ALL FOUR operators ahead of the branch on the operator token.
      */
     @Test
-    fun theShapesItDeliberatelyDoesNotReport() {
+    fun repeatsAndTheDateRangeQuantifiersSameTypeGate() {
         val actual = mutableMapOf<String, List<String>>()
         actual["the same declaration listed twice in the field list"] =
             quantifier("AtLeastOneFieldValueIncludedInValueList(GiftNote, GiftNote In \\\"A\\\")")
@@ -130,12 +130,11 @@ class ValueListConditionGatesTest {
             quantifier("AtLeastOneDateRangeOverlaps(GiftNote, Quantity In Reference)")
 
         val expected = mutableMapOf<String, List<String>>()
-        // A12's duplicate class, which the entity-list pre-gates name; this family's kind gates stay silent.
         expected["the same declaration listed twice in the field list"] = listOf("MVK_DUPLICATE_PARAM1")
-        expected["a declaration repeated across the field and value lists"] = emptyList()
+        expected["a declaration repeated across the field and value lists"] = listOf("MVK_DUPLICATE_PARAM1")
         expected["the date-range quantifier over the same mixed list"] =
             listOf("MVK_VARYING_TYPES_NOT_ALLOWED")
-        assertEquals(expected, actual, "the shapes it deliberately does not report")
+        assertEquals(expected, actual, "repeats and the date-range quantifier's same-type gate")
     }
 
     /**
@@ -143,24 +142,23 @@ class ValueListConditionGatesTest {
      *
      * A12 builds the field list first and refuses a repeat in it ahead of every gate; it builds the value list
      * only after the field list's type and validation gates, and asks a repeat ACROSS the two after the value
-     * list's own base type and ahead of its validation. So a repeat silences exactly the gates behind it, and
-     * the rows that repeat and fail a gate at once are the ones that separate the positions. The silent rows
-     * are A12's duplicate classes, which this family does not name — never a class A12 does not give.
+     * list's own base type and ahead of its validation. So a repeat answers exactly ahead of the gates behind
+     * it, and the rows that repeat and fail a gate at once are the ones that separate the positions.
      */
     @Test
     fun whereARepeatIsAskedAndWhereValueValidationIs() {
         val rows = linkedMapOf(
             "Reference, Reference, Quantity In \\\"x\\\"" to listOf("MVK_DUPLICATE_PARAM1"),
-            "Reference In Quantity, Quantity" to emptyList(),
+            "Reference In Quantity, Quantity" to listOf("MVK_DUPLICATE_PARAM1"),
             "Reference, Quantity In Reference" to listOf("MVK_VARYING_TYPES_NOT_ALLOWED"),
             "Reference In Reference, Quantity" to listOf("MVK_VARYING_TYPES_NOT_ALLOWED"),
             "PlacedOn In PlacedOn" to listOf("MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED"),
             "InternalMemo In InternalMemo" to listOf("MVK_INVALID_RAW_TYPE"),
-            "Reference In Reference, InternalMemo" to emptyList(),
+            "Reference In Reference, InternalMemo" to listOf("MVK_DUPLICATE_PARAM1"),
             "InternalMemo In Quantity" to listOf("MVK_INVALID_RAW_TYPE"),
             "Reference In InternalMemo" to listOf("MVK_INVALID_RAW_TYPE"),
             "InternalMemo In \\\"x\\\"" to listOf("MVK_INVALID_RAW_TYPE"),
-            "Recipient In Recipient/RecipientName" to emptyList(),
+            "Recipient In Recipient/RecipientName" to listOf("MVK_DUPLICATE_PARAM2"),
         )
         val actual = rows.keys.associateWith { quantifier("AtLeastOneFieldValueIncludedInValueList($it)") }
         assertEquals<Map<String, List<String>>>(rows, actual, "where a repeat is asked, and where value validation is")

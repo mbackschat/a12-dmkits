@@ -58,9 +58,9 @@ class FieldValuesNotUniqueOperandKindTest {
         val expected = mutableMapOf<String, List<String>>()
         expected["a date range"] = listOf("MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED")
         // `FieldUtils.isDate` accepts the clock and stamp kinds, so A12 refuses these beside a text field
-        // under the BASE-TYPE gate after this one. Reporting here would be the wrong class.
-        expected["a TIME, which clears this gate"] = emptyList()
-        expected["a DATE-TIME, which clears this gate"] = emptyList()
+        // under the BASE-TYPE gate after this one, never under this gate's class.
+        expected["a TIME, which clears this gate"] = listOf("MVK_VARYING_TYPES_NOT_ALLOWED")
+        expected["a DATE-TIME, which clears this gate"] = listOf("MVK_VARYING_TYPES_NOT_ALLOWED")
         expected["two text fields"] = emptyList()
         expected["two dates spelled alike"] = emptyList()
         assertEquals(expected, actual, "the kinds this gate refuses")

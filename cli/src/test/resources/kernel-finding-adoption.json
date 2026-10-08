@@ -4705,6 +4705,229 @@
           "evidence": {}
         }
       }
+    },
+    "kf390": {
+      "sha256": "937b38843b4f49577cf9a7b4a58692a6122afa8917950dc418d5879b7ff89a0f",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "uniqueness gates ahead of its arm"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "uniqueness gates ahead of its arm"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "uniqueness gates ahead of its arm"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel's own class is measured on every row through the adapter's validator.",
+          "evidence": {
+            "uniqueness gates ahead of its arm": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerListAdmissionOrderAgreementTest.kt#uniquenessAsksReadsDuplicatesRootAndCategoryAheadOfItsOwnGates",
+              "witness": "A Number between two differently spelled Dates is the kind class, between two alike the base-type class."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the measured models are authored through the existing builders.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker yields to the gates ahead of the arm and reports the arm's last three gates.",
+          "evidence": {
+            "uniqueness gates ahead of its arm": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerListAdmissionOrderAgreementTest.kt#uniquenessAsksReadsDuplicatesRootAndCategoryAheadOfItsOwnGates",
+              "witness": "The checker names the same class on every row, the base-type and raw gates included."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports the kernel's and the checker's classes unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission order does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission order does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-01 and SPEC-2026-10-08-04; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf396": {
+      "sha256": "c67950059adc0e8d691e97a11b00dd40856b7461d4eda6d9acefdebf9bfc1045",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "addition beside an enumeration"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "addition beside an enumeration"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "addition beside an enumeration"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel's own class is measured on every row through the adapter's validator.",
+          "evidence": {
+            "addition beside an enumeration": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumerationAdditionAgreementTest.kt#onlyAnImmediateEffectivelyRemappedEnumerationIsRefused",
+              "witness": "Identity labels and a braced remapped enumeration are admitted; one remapped label in one locale is refused."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the measured models are authored through the existing builders.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker asks the shared hasDisplayValues predicate of an immediate field read only.",
+          "evidence": {
+            "addition beside an enumeration": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumerationAdditionAgreementTest.kt#onlyAnImmediateEffectivelyRemappedEnumerationIsRefused",
+              "witness": "The checker admits identity labels, which it had refused."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports the kernel's and the checker's classes unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission order does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission order does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-01 and SPEC-2026-10-08-04; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf401": {
+      "sha256": "4fa971a90a1f4e94ce06aaf7a15f0057b8c498be17889fab3693e6920a4c35ad",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "range and value list gate order"
+        ],
+        "dmkits": [
+          "range and value list gate order"
+        ],
+        "interpreter": [],
+        "checker": [
+          "range and value list gate order"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "range and value list gate order"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel's own class is measured on every row through the adapter's validator.",
+          "evidence": {
+            "range and value list gate order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerListAdmissionOrderAgreementTest.kt#theValueListJudgesItsMembersBeforeTheDuplicateAcrossBothLists",
+              "witness": "A Number member outranks the repeat across the lists; a root member list outranks the containment of the subject."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "The typed value-list record no longer names a repeat across the lists beside a member of another kind.",
+          "evidence": {
+            "range and value list gate order": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/ValueListGateOrderTest.java#aCrossListRepeatBesideAMemberOfAnotherKindIsLeftToTheKernel",
+              "witness": "Window In Window, Quantity builds; the same repeat beside a member of the subject's kind is refused as the duplicate."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The value-list family names the repeat and root gates at each list's own position; the range family yields to them.",
+          "evidence": {
+            "range and value list gate order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerListAdmissionOrderAgreementTest.kt#theValueListQuantifiersAskTheSamePositions",
+              "witness": "The checker names each repeat and root at its list's position on all four value-list conditions."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports the kernel's and the checker's classes unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission order does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission order does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-01 and SPEC-2026-10-08-04; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

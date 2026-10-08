@@ -59,14 +59,13 @@ internal fun TrackedFactBase.entityListPreGateContributions(
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val gates = ROOT_GROUP_GATE_OF.mapNotNull { (id, gate) -> keywords[id]?.let { it to gate } }.toMap()
     val infixCarrier = keywords[NUMBER_OF_VALUE_IN_FIELDS]
-    val valueListCarriers = VALUE_LIST_QUANTIFIERS.mapNotNull { keywords[it] }.toSet()
     if (gates.isEmpty()) {
         return emptyList()
     }
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     return callContributions(element, execution) { member, call ->
         gates[call.operator]?.let {
-            preGateFinding(call, it, infixCarrier, valueListCarriers, group, element, member)
+            preGateFinding(call, it, infixCarrier, group, element, member)
         }
     }
 }
@@ -80,18 +79,13 @@ private enum class RootGroupGate {
     NONE,
 }
 
-/** The value-list quantifiers, which list their entities BEFORE an infix keyword, the values after it. */
-private val VALUE_LIST_QUANTIFIERS = listOf(
-    "AtLeastOneFieldValueIncludedInValueList",
-    "NoFieldValueIncludedInValueList",
-    "NotAllFieldValuesIncludedInValueList",
-)
-
 /**
  * Every operator that builds an entity list, and the root-group gate its construct class asks.
  *
  * The denominator is the operator set `EntityListArity` enumerates, plus the carriers it leaves out for want
- * of an arity law of their own, less the six [groupListOperandFindings] already owns.
+ * of an arity law of their own, less the six [groupListOperandFindings] already owns and the four value-list
+ * conditions [valueListConditionGateFindings] owns, which build TWO lists and ask these gates of each at its
+ * own place among their other gates ([BuiltEntityList]).
  */
 private val ROOT_GROUP_GATE_OF = mapOf(
     "FieldFilled" to RootGroupGate.PLAIN,
@@ -113,9 +107,6 @@ private val ROOT_GROUP_GATE_OF = mapOf(
     "NumberOfDifferentValues" to RootGroupGate.PLAIN,
     NUMBER_OF_VALUE_IN_FIELDS to RootGroupGate.PLAIN,
     "DateRangesOverlap" to RootGroupGate.PLAIN,
-    "AtLeastOneFieldValueIncludedInValueList" to RootGroupGate.PLAIN,
-    "NoFieldValueIncludedInValueList" to RootGroupGate.PLAIN,
-    "NotAllFieldValuesIncludedInValueList" to RootGroupGate.PLAIN,
     "GroupFilled" to RootGroupGate.NONE,
     "GroupNotFilled" to RootGroupGate.NONE,
     "RepetitionNotUnique" to RootGroupGate.NONE,
@@ -137,12 +128,11 @@ private fun TrackedFactBase.preGateFinding(
     call: ConditionCall,
     gate: RootGroupGate,
     infixCarrier: String?,
-    valueListCarriers: Set<String>,
     declaringGroup: String,
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
-    val written = entityListOperandsOf(call, infixCarrier, valueListCarriers, declaringGroup, element) ?: return null
+    val written = entityListOperandsOf(call, infixCarrier, declaringGroup, element) ?: return null
     // ALL or nothing, and that is a measured rule rather than caution. One operand A12 cannot address makes
     // the per-reference wildcard bar answer for the whole call — `MVK_NO_WILDCARD`, in BOTH operand orders
     // (KERNEL-FINDINGS KF443, `validate.laws.DuplicateOverlapCarrierSweepLawsTest`) — so a duplicate sitting
@@ -194,19 +184,13 @@ private fun TrackedFactBase.preGateFinding(
  * @param indexSelected whether a semantic-index key is among those clauses, which decides whether the
  *     operand's repetition is ADDRESSED — a separate question from identity, and the one DG57 closed.
  */
-private data class ListOperand(val spec: String, val key: String, val indexSelected: Boolean = false)
+internal data class ListOperand(val spec: String, val key: String, val indexSelected: Boolean = false)
 
 /**
  * The entity list's operands as written, or null wherever this reader may not read the list at all.
  *
  * The infix carrier keeps its entities after an `In` keyword rather than as its own operands, so its texts
  * are re-read here; every other carrier has already reduced each operand.
- *
- * **A value-list quantifier keeps them BEFORE the `In`, and is read only in its written-out spelling.**
- * There the field list alone is the entity list. Against a field-read value list A12 still answers the root
- * class on either side, but not the nested duplicate across the two halves (`/Parcel In /Parcel/Label` is
- * the root class, KERNEL-FINDINGS KF388), so reading one half would name the wrong class and reading both
- * as one list would too.
  *
  * **A CLAUSE-carrying operand yields itself rather than silencing the list.** Returning null for the whole
  * list meant one such operand answered for its siblings: the plain duplicate in
@@ -225,20 +209,12 @@ private data class ListOperand(val spec: String, val key: String, val indexSelec
 private fun TrackedFactBase.entityListOperandsOf(
     call: ConditionCall,
     infixCarrier: String?,
-    valueListCarriers: Set<String>,
     declaringGroup: String,
     element: TrackedDeclaration,
 ): List<ListOperand>? {
-    val infixEntities = when (call.operator) {
-        infixCarrier -> call.splitAtIn()?.second ?: return null
-        in valueListCarriers -> call.splitAtIn()?.takeIf { it.second.isWrittenOutValueList() }?.first ?: return null
-        else -> null
-    }
-    if (infixEntities != null) {
-        return infixEntities.map { text ->
-            if (!isBareEntitySpec(text)) return null
-            referencesIn(text, conditionLanguage).singleOrNull()?.let { ListOperand(it, "") } ?: return null
-        }
+    if (call.operator == infixCarrier) {
+        return bareListOperands(call.splitAtIn()?.second ?: return null,
+            keyCategories = categoryGateOf(call.operator) == CategoryGate.AFTER_THE_LIST)
     }
     // By CATALOG ID, never by the literal: `For` is `Fuer` in German and a bare literal would read a German
     // model's field of that name as a key — the same reasoning `repetitionScopeContributions` states for
@@ -331,4 +307,84 @@ internal fun entityListDuplicateAnswers(reads: List<OperandReference>, targets: 
             read.indexSelected)
     }
     return targets.firstDirectDuplicate(operands) != null || targets.firstNestedEntity(operands) != null
+}
+
+/**
+ * [texts] as list operands, or null where one carries a clause this reader does not key. A category arrow is
+ * keyed where [keyCategories] says no category gate answers first, being part of its operand's identity
+ * ([KERNEL-FINDINGS kf439]).
+ */
+private fun TrackedFactBase.bareListOperands(texts: List<String>, keyCategories: Boolean): List<ListOperand>? = texts.map { text ->
+    if (isBareEntitySpec(text)) {
+        return@map referencesIn(text, conditionLanguage).singleOrNull()?.let { ListOperand(it, "") } ?: return null
+    }
+    if (!keyCategories) return null
+    val access = categoryAccessesIn(text, conditionLanguage).singleOrNull() ?: return null
+    if (!isBareEntitySpec(text.substringBefore("->"))) return null
+    ListOperand(access.path, "$CATEGORY_KEY${access.category}")
+}
+
+/**
+ * One entity list as `getRefList` builds it, for a carrier that builds more than one and asks these gates of
+ * each at its own place: the value-list conditions ask them of the field list first, of the value list after
+ * the field list's own gates, and once more of the two together (KERNEL-FINDINGS KF380, KF401;
+ * `adapter.laws.CheckerListAdmissionOrderAgreementTest`). The identity compared is the one this file's own
+ * lists use, so the two kinds of caller cannot disagree about what repeats.
+ */
+internal class BuiltEntityList(
+    private val written: List<ListOperand>,
+    private val targets: List<String>,
+) {
+    /** The duplicate class building this list draws — a repeat, then an entity under another — or null. */
+    fun duplicateClass(): String? = when {
+        targets.firstDirectDuplicate(written) != null -> DIRECT_DUPLICATE
+        targets.firstNestedEntity(written) != null -> NESTED_DUPLICATE
+        else -> null
+    }
+
+    /** The class `checkNotRootGroupReferenced` draws on this list, or null. */
+    fun rootGroupClass(): String? = ROOT_GROUP.takeIf { targets.any { it.isRootGroup() } }
+
+    /** The two lists as the one list A12 checks for a repeat ACROSS them. */
+    operator fun plus(other: BuiltEntityList) = BuiltEntityList(written + other.written, targets + other.targets)
+}
+
+/** [texts] as A12 builds them, or null where one operand is no bare entity spec this reader can address. */
+internal fun TrackedFactBase.builtEntityList(
+    texts: List<String>,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+    inAFilterBody: Boolean,
+): BuiltEntityList? {
+    // These lists ask no category gate of their own, so a category arrow only keys its operand.
+    val written = bareListOperands(texts, keyCategories = true) ?: return null
+    val targets = written.map {
+        addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, inAFilterBody) ?: return null
+    }
+    return BuiltEntityList(written, targets)
+}
+
+/**
+ * Whether a gate A12 asks before [call]'s operator-specific arm answers: a category selector on a carrier that
+ * asks the category gate, a repeated entity, or a root group where the carrier asks that gate. A family judging
+ * the arm's own gates yields there, since A12 stops at the first ([KERNEL-FINDINGS KF390], [KF401];
+ * `adapter.laws.CheckerListAdmissionOrderAgreementTest`).
+ */
+internal fun TrackedFactBase.listGateAheadOfTheArmAnswers(
+    call: ConditionCall,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): Boolean {
+    if (categoryGateOf(call.operator) != null &&
+        call.operands.any { categoryAccessesIn(it.text, conditionLanguage).isNotEmpty() }) {
+        return true
+    }
+    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return false
+    val gate = ROOT_GROUP_GATE_OF.entries.firstOrNull { keywords[it.key] == call.operator }?.value ?: return false
+    val written = entityListOperandsOf(call, keywords[NUMBER_OF_VALUE_IN_FIELDS], declaringGroup, element) ?: return false
+    val targets = written.map {
+        addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, call.inAFilterBody) ?: return false
+    }
+    return targets.firstDirectDuplicate(written) != null || targets.firstNestedEntity(written) != null ||
+        gate == RootGroupGate.PLAIN && targets.any { it.isRootGroup() }
 }

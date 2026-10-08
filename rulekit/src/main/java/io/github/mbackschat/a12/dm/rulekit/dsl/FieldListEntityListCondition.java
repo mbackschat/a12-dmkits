@@ -5,6 +5,7 @@ import java.util.List;
 import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.Refusals;
+import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
  * {@code AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In g1, g2)} where the value list
@@ -39,8 +40,14 @@ public record FieldListEntityListCondition(
             // The kernel checks each list alone and then their UNION, so a reference repeated ACROSS the two
             // lists is a duplicate as much as one repeated within either. Gated here rather than in the Dsl
             // factory because the check is intrinsic — it needs no model — and one factory built this record
-            // directly, which left the AtLeastOneDateRangeOverlaps arm with no gate at all.
-            DuplicateGate.rejectDuplicates(quantifier.operatorId(), combined);
+            // directly, which left the AtLeastOneDateRangeOverlaps arm with no gate at all. The value list's
+            // base type is asked between the two, so a member known to be of another kind than the field list
+            // leaves the union to the kernel's base-type class, which answers first (KERNEL-FINDINGS KF401).
+            DuplicateGate.rejectDuplicates(quantifier.operatorId(), fields);
+            DuplicateGate.rejectDuplicates(quantifier.operatorId(), valueFields);
+            if (!aMemberIsKnownToDifferInKind(fields, valueFields)) {
+                DuplicateGate.rejectDuplicates(quantifier.operatorId(), combined);
+            }
         } catch (KernelCodeRefusal refusal) {
             // Both gates wait for every operand of both slots to read (validate.laws.EntityListQuantifierReadLawsTest).
             throw OperandRead.cited(refusal, combined);
@@ -69,6 +76,31 @@ public record FieldListEntityListCondition(
                                 + "' is a repetition list");
             }
         }
+    }
+
+    /**
+     * Whether a value-list member is a field certainly of another base-type class than the first field, the
+     * comparison A12's {@code matchBaseType} makes before it looks for a repeat across the lists. An operand whose
+     * kind this record cannot know — a group, a category projection — decides nothing, so the union is judged as
+     * before and a refusal there stays uncoded behind the group ({@link OperandRead}).
+     */
+    private static boolean aMemberIsKnownToDifferInKind(List<ValueListOperand> fields, List<ValueListOperand> members) {
+        if (!(fields.getFirst() instanceof FieldOperand first) || baseTypeClass(first.kind()) == null) {
+            return false;
+        }
+        var expected = baseTypeClass(first.kind());
+        return members.stream().anyMatch(member -> member instanceof FieldOperand field
+                && baseTypeClass(field.kind()) != null && !expected.equals(baseTypeClass(field.kind())));
+    }
+
+    /** The class {@code IFieldType.matchBaseType} sorts a kind into: text and custom share one, as do the four temporal kinds. */
+    private static String baseTypeClass(ValueKind kind) {
+        return switch (kind) {
+            case STRING, CUSTOM -> "TEXT";
+            case DATE, DATE_TIME, TIME, DATE_FRAGMENT -> "DATE";
+            case NUMBER, ENUMERATION, BOOLEAN, CONFIRM, DATE_RANGE -> kind.name();
+            case UNKNOWN -> null;
+        };
     }
 
     @Override

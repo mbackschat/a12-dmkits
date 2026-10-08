@@ -68,20 +68,19 @@ class ValueListEntityPreGatesTest {
 
     /**
      * A12 answers the root class on either side of a field-read list, and beside the root's own field across
-     * the `In` as well. The checker reads the pre-gates on the written-out spelling only, so it is silent
-     * here, and deliberately: the value list's own gates must not answer for a root they would expand.
+     * the `In` as well, each at its list's own position, so the value list's gates never expand a root.
      */
     @Test
-    fun aRootInAFieldReadListSilencesTheValueListsOwnGates() {
+    fun aRootInAFieldReadListIsTheRootClassOnEitherSide() {
         val actual = linkedMapOf<String, List<String>>()
         listOf("/Ledger In /Depot/Code", "/Depot/Code In /Ledger", "/Parcel In /Parcel/Label").forEach { list ->
             actual[list] = subject("AtLeastOneFieldValueIncludedInValueList($list)")
         }
         assertEquals(
             mapOf(
-                "/Ledger In /Depot/Code" to emptyList(),
-                "/Depot/Code In /Ledger" to emptyList(),
-                "/Parcel In /Parcel/Label" to emptyList<String>(),
+                "/Ledger In /Depot/Code" to listOf("MVK_ROOT_GROUP_REFERENCED"),
+                "/Depot/Code In /Ledger" to listOf("MVK_ROOT_GROUP_REFERENCED"),
+                "/Parcel In /Parcel/Label" to listOf("MVK_ROOT_GROUP_REFERENCED"),
             ),
             actual,
             "a root in a field-read list",
