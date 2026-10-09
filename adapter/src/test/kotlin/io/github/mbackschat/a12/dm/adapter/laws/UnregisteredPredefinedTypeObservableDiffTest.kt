@@ -152,9 +152,10 @@ class UnregisteredPredefinedTypeObservableDiffTest {
         /**
          * The measured table (kernel 30.8.1, dynamic Groovy and generated Java identical in all eight cells).
          *
-         * Reading it: on a FILLED value both polarities fire as ordinary rule messages, so `KF51`'s
-         * degenerate-no-op observation holds and the raising-lookup account is refuted at the observable — no
-         * cell is `throw:…` and no cell carries an engine-level item. On an EMPTY value neither fires and nothing
+         * Reading it: on a FILLED value both polarities emit the rule's message, and no cell is `throw:…` or
+         * carries an engine-level item, so nothing escapes the engine. The raise is real but caught around the
+         * rule, which emits its error once: `UnregisteredPredefinedTypeAbortDiffTest` separates that from a firing
+         * leaf (`KF51`). On an EMPTY value neither fires and nothing
          * raises, confirming the shared value-specified gate runs ahead of any registry contact. And the two
          * registration states are indistinguishable, which closes the "the source argument was about the other
          * state" escape rather than leaving it open.

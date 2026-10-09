@@ -865,11 +865,12 @@
       }
     },
     "kf51": {
-      "sha256": "0468acaa2e89c0d9556aecd2a3ea06ab4a873fe6c7ca4628001394a4eaf13409",
+      "sha256": "943b0f2f5f0cf972a57fef3945eb5bc75255a2bce94f45c33c7510bf0e448d2b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "unregistered predefined-type name in computation"
+          "unregistered predefined-type name in computation",
+          "a reached unanswered lookup fails the whole rule"
         ],
         "dmkits": [],
         "interpreter": [],
@@ -878,7 +879,8 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "unregistered predefined-type name in computation"
+          "unregistered predefined-type name in computation",
+          "a reached unanswered lookup fails the whole rule"
         ]
       },
       "consumers": {
@@ -889,6 +891,10 @@
             "unregistered predefined-type name in computation": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnregisteredPredefinedTypeComputationTest.kt#theKernelFailsTheTargetOnlyWhenTheLookupIsReached",
               "witness": "Four guarded computations on filled, empty and malformed sources, outcomes and operand channel pinned on both kernel strategies."
+            },
+            "a reached unanswered lookup fails the whole rule": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnregisteredPredefinedTypeAbortDiffTest.kt#aReachedUnansweredLookupFailsTheWholeRule",
+              "witness": "A false trailing conjunct, a filter count and a second iterated row each leave the rule firing once with no references, on both kernel strategies."
             }
           }
         },
@@ -899,7 +905,7 @@
         },
         "interpreter": {
           "state": "NOT_APPLICABLE",
-          "basis": "The interpreter refuses an unknown predefined-type name as unsupported in both phases, a declared divergence from the kernel's degenerate outcome; UnregisteredPredefinedTypeComputationTest#theInterpreterRefusesTheUnknownNameExplicitly keeps it explicit.",
+          "basis": "The interpreter refuses an unknown predefined-type name as unsupported in both phases, a declared divergence from the kernel's caught whole-rule failure; UnregisteredPredefinedTypeComputationTest#theInterpreterRefusesTheUnknownNameExplicitly keeps it explicit.",
           "evidence": {}
         },
         "checker": {
@@ -924,7 +930,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "SPEC-2026-10-04-08 awaits lean review of the exact committed record; no peer receipt is inferred.",
+          "basis": "SPEC-2026-10-04-08 awaits lean review of the exact committed record, and SPEC-2026-10-09-04 is answered in the 2026-10-09 handback; no peer receipt is inferred.",
           "evidence": {}
         }
       }

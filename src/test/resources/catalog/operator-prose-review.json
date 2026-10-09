@@ -7877,7 +7877,7 @@
       "operator": "ValidType",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:deb1ffa07092ceb347c2a72d37c58e79b2844d70762e15e451234793eebc6498",
+      "digest": "sha256:7e4412c769ca47f83b6a5f6ed87aae16daf851eadf600595f1a12687a383445d",
       "classifications": [
         "ADMISSION",
         "RUNTIME"
@@ -7887,6 +7887,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "PredefinedTypeValidityDiffTest#unregisteredTypeNameIsAcceptedByTheModelAndBothPolaritiesFireAtRuntime"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "UnregisteredPredefinedTypeAbortDiffTest#aReachedUnansweredLookupFailsTheWholeRule"
         },
         {
           "classification": "ADMISSION",

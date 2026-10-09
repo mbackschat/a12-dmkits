@@ -6748,7 +6748,7 @@
       ],
       "gotchas": [
         {
-      "text": "the type name is NOT validated when the model is checked — checkConsistency accepts any string (even a misspelled or unregistered type); when the runtime client-SPI (IPredefinedType) supplies no validator for that name, both Valid and Invalid fire, so the two polarities are not complements",
+      "text": "the type name is NOT validated when the model is checked — checkConsistency accepts any string (even a misspelled or unregistered type); when the runtime client-SPI (IPredefinedType) supplies no validator for that name, a REACHED Valid or Invalid fails the whole rule: the rule's error is emitted once, with no references, whatever a later conjunct, a Having filter's count or the remaining rows would decide, so the two polarities both fire and are not complements; an unreached one has no effect",
           "kind": "SURPRISE"
         }
       ],
