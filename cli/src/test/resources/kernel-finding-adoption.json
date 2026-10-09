@@ -631,9 +631,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-03-05 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-03-05, accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them.",
+          "evidence": {
+            "group-list self-read and root-guard dependency": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-03-05",
+              "witness": "Root-positive-group exemption, operand-local self-read checks and independent root guards (GroupListSelfReadLawsTest, ComputationSelfReadScopeLawsTest, RootGroupGuardDependencyDiffTest; KF521)."
+            }
+          }
         }
       }
     },
@@ -715,8 +720,13 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Disclosed as a correction beside the 2026-10-04 letter; no peer receipt is inferred. The selected references are reported in the 2026-10-09 handback for SPEC-2026-10-07-02.",
-          "evidence": {}
+          "basis": "The selected references are accepted under SPEC-2026-10-07-02 at 5472a915; the 2026-10-04 fill-to-fix scope correction has no peer receipt.",
+          "evidence": {
+            "selected operand references": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-07-02",
+              "witness": "Payload/index/key membership and unknown/lower-star coordinates corroborated; duplicate-key cache order stays unspecified (KF522; IF376)."
+            }
+          }
         }
       }
     },
@@ -787,7 +797,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The scope correction travels with KF522; no peer receipt is inferred.",
+          "basis": "The 2026-10-04 fill-to-fix scope correction has no peer receipt; SPEC-2026-10-07-02's acceptance at 5472a915 covers KF522's selected references only.",
           "evidence": {}
         }
       }
@@ -858,9 +868,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-03-05 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-03-05, accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them. The receipt names KF521's locks, which carry this surface.",
+          "evidence": {
+            "containment self-read exemptions": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-03-05",
+              "witness": "Root-positive-group exemption, operand-local self-read checks and independent root guards (GroupListSelfReadLawsTest, ComputationSelfReadScopeLawsTest)."
+            }
+          }
         }
       }
     },
@@ -929,9 +944,18 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-04-08 awaits lean review of the exact committed record, and SPEC-2026-10-09-04 is answered in the 2026-10-09 handback; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "SPEC-2026-10-04-08 is answered after the peer corrected its semantic record against 6f29ffcb8, and SPEC-2026-10-09-04 is accepted at 5472a915 after inspecting d81792669; the peer did not rerun either.",
+          "evidence": {
+            "unregistered predefined-type name in computation": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-04-08",
+              "witness": "Semantic record corrected and both Kernel strategies locked; the interpreter deliberately refuses the unknown name as unsupported, so this is not implementation parity (KF51)."
+            },
+            "a reached unanswered lookup fails the whole rule": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-04",
+              "witness": "Reached lookup aborts the whole rule and iteration; bypass remains silent (KF51)."
+            }
+          }
         }
       }
     },
@@ -1001,9 +1025,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-04-05 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-04-05, accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them.",
+          "evidence": {
+            "filtered field-fill computation ranges and over-capacity targets": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-04-05",
+              "witness": "Selected declared slots, composite scans and poison lookahead (FilteredFillComputationGuardDiffTest; KF520)."
+            }
+          }
         }
       }
     },
@@ -1073,9 +1102,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-03-04 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-03-04, accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them.",
+          "evidence": {
+            "scalar membership empty and malformed members": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-03-04",
+              "witness": "Scalar member reads, plural deciding prefixes and filtered lookahead (MembershipComputationGuardDiffTest; KF518/KF519)."
+            }
+          }
         }
       }
     },
@@ -1145,9 +1179,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-03-04, SPEC-2026-10-04-04 and SPEC-2026-10-04-07 await lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-03-04, SPEC-2026-10-04-04 and SPEC-2026-10-04-07, each accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them.",
+          "evidence": {
+            "computation-guard read order and reached poison": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-04-04",
+              "witness": "Reached poison, scalar-empty termination, group order and filter lookahead (OverlapComputationGuardDiffTest); the sibling entries record ordered duplicate decisions and plural deciding prefixes on KF518's other locks."
+            }
+          }
         }
       }
     },
@@ -1217,9 +1256,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-04-03 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-04-03, accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them.",
+          "evidence": {
+            "full-validation iteration domain": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-04-03",
+              "witness": "Declared versus occupied full-rule domains (ValidationIterationDomainDiffTest; KF517)."
+            }
+          }
         }
       }
     },
@@ -1289,9 +1333,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-04-06 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-04-06, accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them.",
+          "evidence": {
+            "shift amount phase and missing provenance": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-04-06",
+              "witness": "Existing equivalent phase handling, now locked, plus corrected extracted-amount provenance (ShiftAmountPhaseDiffTest; KF516)."
+            }
+          }
         }
       }
     },
@@ -1361,9 +1410,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-04-02 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-04-02, accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them.",
+          "evidence": {
+            "temporal construction provenance and DateTime argument order": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-04-02",
+              "witness": "Constructor absence/provenance and ordered argument evaluation (ConstructionProvenanceDiffTest; KF515)."
+            }
+          }
         }
       }
     },
@@ -1433,9 +1487,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-04-01 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-04-01, accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them.",
+          "evidence": {
+            "calendar target rendering, five-digit retention and formal completion": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-04-01",
+              "witness": "Stored-format completion, calendar floor, overflow and dependent readback (CalendarTargetCompletionDiffTest, BaseYearDateConstructionReadTest; KF514)."
+            }
+          }
         }
       }
     },
@@ -1505,9 +1564,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-04-01 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-04-01, accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them. The receipt names KF514's locks, which carry this surface.",
+          "evidence": {
+            "component-omitting formal completion reaches the floor": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-04-01",
+              "witness": "Stored-format completion and calendar floor (CalendarTargetCompletionDiffTest)."
+            }
+          }
         }
       }
     },
@@ -1633,9 +1697,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-03-06 awaits lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-03-06, accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them.",
+          "evidence": {
+            "temporal label runtime failure, row abort and classification reach": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-03-06",
+              "witness": "Gap-label failure, operand order and rule-loop classification (TemporalValueFailureDiffTest; KF513)."
+            }
+          }
         }
       }
     },
@@ -4264,9 +4333,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-03-01, receipted against our revision 35ad60446 in the peer's 2026-10-03 review; the peer did not rerun the suites.",
+          "evidence": {
+            "empty Number computation guard boundary": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
+              "witness": "KF509 / NumericComputationGuardDiffTest cover 128 producer/dependent results."
+            }
+          }
         }
       }
     },
@@ -4336,9 +4410,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-02-08, receipted against our revision 35ad60446 in the peer's 2026-10-03 review; the peer did not rerun the suites.",
+          "evidence": {
+            "filter Number comparison admission": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
+              "witness": "KF510 / FilterNumberComparisonAgreementTest cover the 59 scale/direction rows."
+            }
+          }
         }
       }
     },
@@ -4415,9 +4494,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-03-02 (singular GroupFilled), receipted against 35ad60446; its ordinary-list half was accepted under SPEC-2026-10-03-05 at 5472a915.",
+          "evidence": {
+            "containing-group scheduling profiles": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
+              "witness": "KF511's dependency implementations and tests pin 21 static cases and 14 root observations; SPEC-02 acceptance covers singular GroupFilled, not ordinary lists."
+            }
+          }
         }
       }
     },
@@ -4487,9 +4571,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-03-03, receipted against our revision 35ad60446 in the peer's 2026-10-03 review; the peer did not rerun the suites.",
+          "evidence": {
+            "filtered field-fill slots and deciding prefixes": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
+              "witness": "KF512's eighteen document/arm rows, 441 full plus 441 whole-root partial signatures."
+            }
+          }
         }
       }
     },
@@ -4572,9 +4661,18 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred. The parent-scoped column is reported in the 2026-10-09 handback for SPEC-2026-10-07-01.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "The empty-guard boundary was receipted against 35ad60446 (SPEC-2026-10-03-01); the parent-scoped column was accepted under SPEC-2026-10-07-01 at 5472a915 after inspecting dce1d1bc6. The peer did not rerun either.",
+          "evidence": {
+            "empty Number computation guard boundary": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
+              "witness": "KF509 / NumericComputationGuardDiffTest cover 128 producer/dependent results."
+            },
+            "parent-scoped index column": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-07-01",
+              "witness": "Parent-local duplicate poison corroborated on both strategies and the peer interpreter (ParentScopedIndexColumnDiffTest; KF20)."
+            }
+          }
         }
       }
     },
@@ -4646,9 +4744,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-03-03, receipted against 35ad60446; the receipt names KF512's locks, which carry this surface.",
+          "evidence": {
+            "filtered field-fill slots and deciding prefixes": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
+              "witness": "KF512's eighteen document/arm rows, 441 full plus 441 whole-root partial signatures."
+            }
+          }
         }
       }
     },
@@ -4728,9 +4831,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-03-02, receipted against 35ad60446; the receipt names KF511's locks, which carry this surface.",
+          "evidence": {
+            "containing-group scheduling profiles": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
+              "witness": "KF511's dependency implementations and tests pin 21 static cases and 14 root observations."
+            }
+          }
         }
       }
     },
@@ -4800,9 +4908,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-01 and SPEC-2026-10-08-04; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer accepted SPEC-2026-10-09-01 at 5472a915 after inspecting our committed locks at 62a2b930a, and reconciled its checker and typed-list gates; the peer did not rerun them.",
+          "evidence": {
+            "uniqueness gates ahead of its arm": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-01",
+              "witness": "Carrier-specific precedence corroborated with competing defects and admitted controls; peer checker and typed-list gates reconciled (KF390; KF401)."
+            }
+          }
         }
       }
     },
@@ -4889,9 +5002,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-01 and SPEC-2026-10-08-04; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer accepted SPEC-2026-10-08-04 at 5472a915 after inspecting our committed locks at 62a2b930a, and dropped spec/06's external-validation-pending qualifier; the peer did not rerun them.",
+          "evidence": {
+            "addition beside an enumeration": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-08-04",
+              "witness": "Identity labels, locale remapping, grouped/direct operand order and nested-group controls corroborated (KF396)."
+            }
+          }
         }
       }
     },
@@ -4968,9 +5086,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-01 and SPEC-2026-10-08-04; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer accepted SPEC-2026-10-09-01 at 5472a915 after inspecting our committed locks at 62a2b930a, and reconciled its checker and typed-list gates; the peer did not rerun them.",
+          "evidence": {
+            "range and value list gate order": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-01",
+              "witness": "Carrier-specific precedence corroborated with competing defects and admitted controls; peer checker and typed-list gates reconciled (KF390; KF401)."
+            }
+          }
         }
       }
     },
@@ -5047,9 +5170,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-07-05; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-07-05, accepted at 5472a915 after inspecting our committed locks at 323f53439; the peer did not rerun them.",
+          "evidence": {
+            "starred and captured group-list identity": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-07-05",
+              "witness": "Captured and starred exact identity versus strict containment corroborated; semantic indexes inside filters retain their independent refusal (KF325)."
+            }
+          }
         }
       }
     },
@@ -5126,9 +5254,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-08-03; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer accepted SPEC-2026-10-08-03 at 5472a915 after inspecting our committed locks at 323f53439, and corrected its mechanism wording; the peer did not rerun them.",
+          "evidence": {
+            "category identity in the nested duplicate": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-08-03",
+              "witness": "Category identity retained through strict containment and same-projection controls; upstream mechanism wording corrected (KF388)."
+            }
+          }
         }
       }
     },
@@ -5198,9 +5331,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-02; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer accepted SPEC-2026-10-09-02 at 5472a915 after inspecting our committed locks at 323f53439, and removed spec/07's external-calibration qualifier; the peer did not rerun them.",
+          "evidence": {
+            "braced comparison operands": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-02",
+              "witness": "Both operand orders, grouping, domain and effective-display controls corroborated (KF407)."
+            }
+          }
         }
       }
     },
@@ -5277,9 +5415,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-03; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-09-03, accepted at 5472a915 after inspecting our committed locks at b455738d8; the peer did not rerun them.",
+          "evidence": {
+            "whole-rule gate order": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-03",
+              "witness": "Parse-time versus whole-rule precedence corroborated; unmarked indexes fail locally, marked ones reach the later whole-rule gate (KF375)."
+            }
+          }
         }
       }
     },
@@ -5349,9 +5492,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-03; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer accepted SPEC-2026-10-09-03 at 5472a915 after inspecting our committed locks at b455738d8, and replaced spec/07's unmeasured captured-body clause with the measured reach; the peer did not rerun them.",
+          "evidence": {
+            "filter-body parallel reach": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-03",
+              "witness": "Parse-time versus whole-rule precedence corroborated, including captured parallel bodies (KF353)."
+            }
+          }
         }
       }
     },
@@ -5414,9 +5562,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-07-03; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-07-03, accepted at 5472a915 after inspecting our committed locks at dce1d1bc6; the peer did not rerun them.",
+          "evidence": {
+            "selected operand iteration guard": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-07-03",
+              "witness": "Parent/key level and Sum/MaxValue mixed-reference versus SumOfProducts controls corroborated; Count/first-filled mixed gates, Number keys and partial checks remain unmeasured (KF64)."
+            }
+          }
         }
       }
     },
@@ -5479,9 +5632,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-05; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer accepted SPEC-2026-10-06-05 at 5472a915 after inspecting our committed locks at a1b2f45cb, and corrected the all-constant illustration upstream; the peer did not rerun them.",
+          "evidence": {
+            "Gregorian floor illustration": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-06-05",
+              "witness": "The all-constant illustration is corrected upstream."
+            }
+          }
         }
       }
     },
@@ -5558,9 +5716,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-08-01, with the correction of our earlier runtime row; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer accepted SPEC-2026-10-08-01 at 5472a915 after inspecting our committed locks at a1b2f45cb, and extended spec/05's 1970 anchor to clock fields; the peer did not rerun them.",
+          "evidence": {
+            "a time's year is the epoch's": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-08-01",
+              "witness": "Constructed-Time anchor corroborated and extended to clock fields (KF261)."
+            }
+          }
         }
       }
     },
@@ -5630,9 +5793,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-05; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-06-05, accepted at 5472a915 after inspecting our committed locks at a1b2f45cb; the peer did not rerun them.",
+          "evidence": {
+            "selected Date slots": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-06-05",
+              "witness": "Immediate selected entities versus extractors/constants and the non-relevance outcomes corroborated (KF402)."
+            }
+          }
         }
       }
     },
@@ -5702,9 +5870,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-04 and SPEC-2026-10-06-05; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-06-04, accepted at 5472a915 after inspecting our committed locks at a1b2f45cb; the peer did not rerun them.",
+          "evidence": {
+            "Date component relevance": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-06-04",
+              "witness": "Cause-free non-relevance, later poison, selected emptiness and Min fallback corroborated; String keys and full validation only (KF523)."
+            }
+          }
         }
       }
     },
@@ -5774,9 +5947,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-08-02; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-08-02, accepted at 5472a915 after inspecting our committed locks at a1b2f45cb; the peer did not rerun them.",
+          "evidence": {
+            "difference operand failure order": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-08-02",
+              "witness": "First-formal computation stop and validation read-through corroborated across direct/shifted/rebuilt sources and ordinary/filter carriers (KF524)."
+            }
+          }
         }
       }
     },
@@ -5846,9 +6024,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-07-04; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-07-04, accepted at 5472a915 after inspecting our committed locks at a1b2f45cb; the peer did not rerun them.",
+          "evidence": {
+            "temporal literal failure in a filter": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-07-04",
+              "witness": "Reached/bypassed gap-label failure and phase order corroborated (KF525)."
+            }
+          }
         }
       }
     },
@@ -5918,9 +6101,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-01; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "SPEC-2026-10-06-01 is answered at 5472a915 after inspecting f641cc24f: the reached/bypassed surface is corroborated, and factory shadowing has no peer counterpart.",
+          "evidence": {
+            "custom condition registration reach": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-06-01",
+              "witness": "Reached versus bypassed lookup corroborated; factory shadowing and first-match fallback have no peer harness counterpart (KF52)."
+            }
+          }
         }
       }
     },
@@ -5990,9 +6178,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-02; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-06-02, accepted at 5472a915 after inspecting our committed locks at f641cc24f; the peer did not rerun them.",
+          "evidence": {
+            "boolean value count under partial relevance": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-06-02",
+              "witness": "Boolean and Confirm partial counts now measured; this does not calibrate String or Enumeration value counts (KF209)."
+            }
+          }
         }
       }
     },
@@ -6062,9 +6255,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-05-01; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "SPEC-2026-10-05-01 is answered at 5472a915 after inspecting f641cc24f: the reachable phase rows are corroborated; Extensible-String conversion and host bounds stay source-derived.",
+          "evidence": {
+            "temporal constructor argument phase": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-05-01",
+              "witness": "Reachable constructor phase and zero-Century rows corroborated; Extensible-String conversion and host bounds were not exercised (KF526)."
+            }
+          }
         }
       }
     },
@@ -6134,9 +6332,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-03; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer adopted the declared-slot observations at 5472a915 after inspecting f641cc24f; SG13 owns its executable reconciliation.",
+          "evidence": {
+            "partial list walks over declared slots": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
+              "witness": "Declared missing slots retain coverage obligations; first-filled, fill quantifiers, wildcard-only aggregates and products keep distinct gates (KF527)."
+            }
+          }
         }
       }
     },
@@ -6206,9 +6409,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-07-04; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer added the missing-coordinate extent clause to spec/07 at 5472a915 after inspecting 40a510808; H10-R6 owns its executable reconciliation, and the cache cause stays a hypothesis.",
+          "evidence": {
+            "filter walk extent": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
+              "witness": "Small finite-capacity filters can evaluate unstored coordinates; extent follows per-depth maxima across stored parents/groups, with a minimum of one (KF528)."
+            }
+          }
         }
       }
     },
@@ -6278,9 +6486,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-08-01; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer corrected spec/05's extractor gates at 5472a915 after inspecting 6ccb833b8, 82943e3e8 and a1b2f45cb; SG6 owns the remaining route matrix.",
+          "evidence": {
+            "an extractor's operand gates": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
+              "witness": "Partial precision precedes numeric component-format admission; projections have their separate format gate; FROM interpretation permits Year extraction without Base Year, TO not measured (KF529)."
+            }
+          }
         }
       }
     },
@@ -6377,9 +6590,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-08-04; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer replaced spec/06's pending concatenation clause at 5472a915 after inspecting 797f0855b, 8701f31d5, cd1de7570 and 29b665a47.",
+          "evidence": {
+            "an enumeration's value in a concatenation": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
+              "witness": "Stored values, not labels, contribute to admitted direct/keyed/first-filled concatenations; empty contributes no text, wholly empty clears (KF530)."
+            }
+          }
         }
       }
     },
@@ -6463,9 +6681,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback under SPEC-2026-10-06-04 and SPEC-2026-10-06-05; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer adopted the keyed temporal observations at 5472a915 after inspecting daf2b8d4c and a57343dc7; Number keys and partial validation were not measured.",
+          "evidence": {
+            "a key-selected cell in a temporal operand": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
+              "witness": "Selected partial-Date interpretation and text constructor components preserve selection, empty, poison and phase rules (KF531)."
+            }
+          }
         }
       }
     },
@@ -6557,9 +6780,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback under SPEC-2026-10-08-01; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer corroborated the constructor grammar at 5472a915 after inspecting 6979aa829 and 907c082b9.",
+          "evidence": {
+            "a temporal constructor's component grammar": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
+              "witness": "Entity/quoted-constant/extractor grammar, parse-before-slot precedence and both conflicting orders are corroborated (KF532)."
+            }
+          }
         }
       }
     },
@@ -6636,9 +6864,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback under SPEC-2026-10-09-06; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-09-06, accepted at 5472a915 after inspecting our committed locks at d132307f7; the peer did not rerun them.",
+          "evidence": {
+            "a starred error reference does not bind a rule's iteration": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-06",
+              "witness": "Membership versus per-level binding corroborated in both arms, with keyed and containing-group extensions; parallel/capacity-one limits remain (KF417)."
+            }
+          }
         }
       }
     },
@@ -6695,7 +6928,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Covered by the KF417 disclosure under SPEC-2026-10-09-06; no peer receipt is inferred.",
+          "basis": "SPEC-2026-10-09-06's acceptance at 5472a915 names KF417 and KF348, not these seven root-level spellings; no receipt is inferred.",
           "evidence": {}
         }
       }
@@ -6766,9 +6999,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback under SPEC-2026-10-09-06; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-09-06, accepted at 5472a915 after inspecting our committed locks at d132307f7; the peer did not rerun them.",
+          "evidence": {
+            "only a root-group reference leaves the error field unpinned": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-06",
+              "witness": "Membership versus per-level binding corroborated in both arms (KF348)."
+            }
+          }
         }
       }
     },
@@ -6831,9 +7069,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback under SPEC-2026-10-09-05; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-09-05, accepted at 5472a915 after inspecting our committed locks at d132307f7; the peer did not rerun them.",
+          "evidence": {
+            "fill quantifiers count independent slots once a rule iterates": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-05",
+              "witness": "All 56 conditions and computation twins corroborated; singleton direct AllFieldsFilled and capacity-one wildcard remain source-derived (KF533)."
+            }
+          }
         }
       }
     },
@@ -6937,9 +7180,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "A new measurement disclosed in the 2026-10-09 handback; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer adopted the captured-slot observations at 5472a915 after inspecting d00e02415, 3e8f5a366 and 24157369b.",
+          "evidence": {
+            "a marked operand of a plain-field operation": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
+              "witness": "Captures retain the rule row through coercions, range operations, presence, memberships, patterns, concatenation, arithmetic, groups and constructor components (KF534)."
+            }
+          }
         }
       }
     },
@@ -7009,9 +7257,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Disclosed in the 2026-10-09 handback; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer corroborated the split-year gates at 5472a915 after inspecting 6979aa829 and 907c082b9.",
+          "evidence": {
+            "the split year's own constant and field gates": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
+              "witness": "Split-year widths/bounds are corroborated (KF532/KF423)."
+            }
+          }
         }
       }
     },
@@ -7088,9 +7341,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-07; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-09-07, accepted at 5472a915 after inspecting our committed locks at 31d74336c; the peer did not rerun them.",
+          "evidence": {
+            "a no-match prefix's omission provenance": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-07",
+              "witness": "No-match/empty selected prefixes and filled-prefix controls corroborated on both strategies and the interpreter (KF535)."
+            }
+          }
         }
       }
     },
@@ -7167,9 +7425,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-08; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-09-08, accepted at 5472a915 after inspecting our committed locks at 31d74336c; the peer did not rerun them.",
+          "evidence": {
+            "a deeper error field's pinned child level": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-08",
+              "witness": "Absent-child/multiple-parent/defaulted suffix and exact-scope controls corroborated (KF536)."
+            }
+          }
         }
       }
     }
