@@ -1241,8 +1241,10 @@ final class ConditionConverter {
         if (left instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             return fieldValueComparison(field, op, right, comparison);
         }
-        // normalize "constant op [field]" → "[field] flip(op) constant" (rulekit handles are field-first)
-        if (left instanceof IConstantOperation && right instanceof IFieldIdOperation rf
+        // normalize "constant op [field]" → "[field] flip(op) constant" (rulekit handles are field-first); True and
+        // False are a constant node of their own, so `True == [Flag]` needs naming beside the text/number literals
+        if ((left instanceof IConstantOperation || left instanceof IBoolConstantOperation)
+                && right instanceof IFieldIdOperation rf
                 && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
             return fieldValueComparison(rf, flip(op), left, comparison);
         }
