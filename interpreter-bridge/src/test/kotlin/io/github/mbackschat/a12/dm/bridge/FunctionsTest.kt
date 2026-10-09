@@ -373,10 +373,32 @@ class FunctionsTest {
         assertInstanceOf(TimeConstruction::class.java, left("Time(\"10\", \"30\") == [PickupTime]"))
     }
 
-    /** A bare number names no entity, which A12 refuses in every component slot (KERNEL-FINDINGS KF532). */
+    /**
+     * A bare number in a component is a class only condition text carries, as A12 measures it (KERNEL-FINDINGS
+     * KF532): whole digits name no entity, a decimal point is a stray token, and a parse error answers before the
+     * next one in text order.
+     */
     @Test
-    fun aBareNumberComponentIsRejected() {
-        assertRejectedWith("MVK_INVALID_ENTITY") { translate("Time(10, 30) == [PickupTime]") }
+    fun aBareNumberComponentIsRejectedInEveryConstruction() {
+        val observed = linkedMapOf(
+            "Time(10, 30)" to "Time(10, 30) == [PickupTime]",
+            "a Date day" to "Date(1, \"01\", \"2024\") == [OrderDate]",
+            "a Date decade" to "Date(\"01\", \"01\", \"20\", 24) == [OrderDate]",
+            "a decimal" to "Time(\"10\", 1.5) == [PickupTime]",
+            "a number before an aggregate" to "Time(1, Sum(Items*/Count)) == [PickupTime]",
+            "an aggregate before a number" to "Time(Sum(Items*/Count), 1) == [PickupTime]",
+        ).mapValues { (_, text) ->
+            val refused = assertThrows(IllegalArgumentException::class.java) { translate(text) }
+            Regex("MVK_[A-Z0-9_]+").find(refused.message!!)?.value
+        }
+        assertEquals(linkedMapOf(
+            "Time(10, 30)" to "MVK_INVALID_ENTITY",
+            "a Date day" to "MVK_INVALID_ENTITY",
+            "a Date decade" to "MVK_INVALID_ENTITY",
+            "a decimal" to "MVK_UNEXPECTED_TOKEN",
+            "a number before an aggregate" to "MVK_INVALID_ENTITY",
+            "an aggregate before a number" to "MVK_UNEXPECTED_TOKEN",
+        ), observed)
     }
 
     /** The record's own compact constructor caps the component count at three — no MVK code, rulekit's own bound. */

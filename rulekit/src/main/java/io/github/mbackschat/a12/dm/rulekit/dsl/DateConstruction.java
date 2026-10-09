@@ -88,6 +88,14 @@ public record DateConstruction(Calculation day, Calculation month, DateYear year
     }
 
     private static void checkComponent(Calculation component, DateExtraction.Unit expected, boolean fourPart) {
+        if (component instanceof DateTimePart split) {
+            throw fourPart
+                    ? Refusals.of(KernelCode.MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS,
+                            "the four-component Date form admits no extractor in its century or decade component; got "
+                                    + split.unit().operatorId())
+                    : Refusals.of(KernelCode.MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED,
+                            "a Date construction admits no " + split.unit().operatorId() + " in any position");
+        }
         DateExtraction extraction = unwrapExtraction(component);
         if (extraction == null) {
             return;

@@ -376,7 +376,6 @@ class BuilderCheckerDivergenceGuardTest {
             // renderer javadoc, catalog gotchas — never to refuse anything itself.
             Map.entry("MVK_FIELDNAME_NOT_UNIQUE", Disposition.PROSE_ONLY),
             Map.entry("MVK_INVALID_ENTITY", Disposition.PROSE_ONLY),
-            Map.entry("MVK_UNEXPECTED_TOKEN", Disposition.PROSE_ONLY),
             Map.entry("MVK_ERROR_FIELD_MISSING", Disposition.PROSE_ONLY),
             Map.entry("MVK_MISSING_ERROR_FIELD", Disposition.PROSE_ONLY),
             // Both estates enforce it now, over carriers that cannot share: FieldListRef.having refuses all
@@ -667,6 +666,9 @@ class BuilderCheckerDivergenceGuardTest {
             // make. Re-read both sites before trusting this block: a later edit to either can change the
             // answer without touching this map.
             Map.entry("MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            // a Date/Time component outside A12's grammar: TemporalComponentGrammar refuses the typed node, the
+            // checker the stored text, both measured in `adapter.laws.CheckerConstructorComponentAgreementTest`
+            Map.entry("MVK_UNEXPECTED_TOKEN", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS",
                     Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_INVALID_DATE_OR_TIME_EXTRACT_OP", Disposition.SAME_LAW_SEPARATE_CARRIERS),

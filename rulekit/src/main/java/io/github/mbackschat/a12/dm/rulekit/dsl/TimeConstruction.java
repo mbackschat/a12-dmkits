@@ -32,8 +32,8 @@ public record TimeConstruction(List<Calculation> components) implements Calculat
         if (components.size() > 3) {
             throw new IllegalArgumentException("Time accepts at most hour, minute, and second components");
         }
+        components.forEach(component -> TemporalComponentGrammar.refuseOutsideGrammar("Time", component));
         for (int slot = 0; slot < components.size(); slot++) {
-            TemporalComponentGrammar.refuseOutsideGrammar("Time", components.get(slot));
             checkComponent(components.get(slot), TIME_POSITIONS.get(slot));
         }
     }
@@ -43,6 +43,10 @@ public record TimeConstruction(List<Calculation> components) implements Calculat
             DateExtraction.Unit.HOURS, DateExtraction.Unit.MINUTES, DateExtraction.Unit.SECONDS);
 
     private static void checkComponent(Calculation component, DateExtraction.Unit expected) {
+        if (component instanceof DateTimePart split) {
+            throw Refusals.of(KernelCode.MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED,
+                    "a Time construction admits no " + split.unit().operatorId() + " in any position");
+        }
         if (!(component instanceof DateExtraction extraction)) {
             return;
         }

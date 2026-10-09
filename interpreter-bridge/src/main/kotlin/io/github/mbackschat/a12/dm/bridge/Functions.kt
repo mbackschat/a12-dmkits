@@ -37,6 +37,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef
+import io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponentGrammar
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction
 
 /**
@@ -286,10 +287,13 @@ internal class Functions(private val mapping: Mapping) {
      * Only the component COUNT is a Java-level arity gate, since the record has no three-vs-four-argument
      * constructor of its own to delegate to.
      */
-    private fun date(args: List<Expr>): Calculation = when (args.size) {
-        3 -> mapping.model().dateOf(component(args[0]), component(args[1]), component(args[2]))
-        4 -> mapping.model().dateOf(component(args[0]), component(args[1]), component(args[2]), component(args[3]))
-        else -> throw UnmappedConstructException("Date with " + args.size + " operands")
+    private fun date(args: List<Expr>): Calculation {
+        val c = args.map { component("Date", it) }
+        return when (c.size) {
+            3 -> mapping.model().dateOf(c[0], c[1], c[2])
+            4 -> mapping.model().dateOf(c[0], c[1], c[2], c[3])
+            else -> throw UnmappedConstructException("Date with " + args.size + " operands")
+        }
     }
 
     /**
@@ -297,19 +301,24 @@ internal class Functions(private val mapping: Mapping) {
      * caps the count at three, so no arity gate is needed here.
      */
     private fun time(args: List<Expr>): Calculation =
-        TimeConstruction(args.map { component(it) })
+        TimeConstruction(args.map { component("Time", it) })
 
     /**
-     * One `Date`/`Time` component. A12's grammar has no bare-number arm there: the digits parse as an entity name
-     * and draw `MVK_INVALID_ENTITY` (KERNEL-FINDINGS KF532). The typed construction cannot refuse it, since a
-     * typed number literal renders quoted and is admitted, so this TEXT boundary is the one that can.
+     * One `Date`/`Time` component, asked of A12's grammar in text order: a parse error answers before any slot's
+     * gate, and between two the first written does (KERNEL-FINDINGS KF532). A bare number is the one class only
+     * TEXT can carry, since a typed number literal renders quoted: whole digits parse as an entity name and draw
+     * `MVK_INVALID_ENTITY`, while a sign or a decimal point is a stray token.
      */
-    private fun component(node: Expr): Calculation {
+    private fun component(operatorId: String, node: Expr): Calculation {
         if (node is Expr.NumLit) {
-            throw Refusals.of(KernelCode.MVK_INVALID_ENTITY, "a Date or Time component is a field, a keyed cell, " +
-                "a quoted constant or an extractor; quote " + node.v.v)
+            val digits = node.v.v.signum() >= 0 && node.v.v.scale() <= 0
+            throw Refusals.of(
+                if (digits) KernelCode.MVK_INVALID_ENTITY else KernelCode.MVK_UNEXPECTED_TOKEN,
+                "a $operatorId component is a field, a keyed cell, a quoted constant or an extractor; " +
+                    "quote ${node.v.v}",
+            )
         }
-        return mapping.calculation(node)
+        return mapping.calculation(node).also { TemporalComponentGrammar.refuseOutsideGrammar(operatorId, it) }
     }
 
     /** `DateTime(date, time)` — a fixed two-operand construction. */

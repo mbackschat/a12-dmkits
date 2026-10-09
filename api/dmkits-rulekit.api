@@ -2588,6 +2588,9 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts implements i
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
 
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponentGrammar
+  public static void refuseOutsideGrammar(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+
 public record io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponentLiteral implements io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent
   public TemporalComponentLiteral(java.lang.String)
   public final boolean equals(java.lang.Object)

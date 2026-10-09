@@ -6455,7 +6455,7 @@
       }
     },
     "kf532": {
-      "sha256": "4c2c14f13f7fc32eaf8cc89995edfc56c597b73b63eb915df4ee1357327b2972",
+      "sha256": "3b5a9b2700762438889e3bd99e639c3d4e425b7ba5a738bd11b2e2bca22eaf17",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -6463,10 +6463,12 @@
         ],
         "dmkits": [
           "a bare-number component in condition text",
+          "a parse error before a slot's extractor check",
           "a temporal constructor's component grammar"
         ],
         "interpreter": [],
         "checker": [
+          "a parse error before a slot's extractor check",
           "a temporal constructor's component grammar"
         ],
         "dmtool-cli": [],
@@ -6489,15 +6491,19 @@
         },
         "dmkits": {
           "state": "APPLIED",
-          "basis": "DateConstruction and TimeConstruction refuse an operation outside the grammar with the class A12 draws; a typed number literal renders quoted and stays admitted, so the interpreter bridge refuses a bare-number component in condition text.",
+          "basis": "DateConstruction and TimeConstruction refuse an operation outside the grammar with the class A12 draws, asking every component before any slot's extractor check, as A12 does; a typed number literal renders quoted and stays admitted, so the interpreter bridge refuses a bare number in condition text, in text order.",
           "evidence": {
             "a temporal constructor's component grammar": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalComponentGrammarTest.java#aComponentOutsideTheGrammarIsRefusedWithA12sClass",
               "witness": "An aggregate, arithmetic and a rounding component are refused with MVK_UNEXPECTED_TOKEN."
             },
             "a bare-number component in condition text": {
-              "reference": "interpreter-bridge/src/test/kotlin/io/github/mbackschat/a12/dm/bridge/FunctionsTest.kt#aBareNumberComponentIsRejected",
-              "witness": "Time(10, 30) is refused with MVK_INVALID_ENTITY."
+              "reference": "interpreter-bridge/src/test/kotlin/io/github/mbackschat/a12/dm/bridge/FunctionsTest.kt#aBareNumberComponentIsRejectedInEveryConstruction",
+              "witness": "Whole digits draw MVK_INVALID_ENTITY, a decimal MVK_UNEXPECTED_TOKEN, and the first written of two parse errors answers."
+            },
+            "a parse error before a slot's extractor check": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalComponentGrammarTest.java#aStampSplitIsTheSlotsRefusalAndAParseErrorAnswersFirst",
+              "witness": "A stamp-split is the slot's refusal, the four-component year slots answer with their own class, and an aggregate answers first in either order."
             }
           }
         },
@@ -6508,11 +6514,15 @@
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "The recognizer admits only the nine extract operations as a component call, and the slot family names a starred component and a stamp-splitting extract operation as A12 does.",
+          "basis": "The recognizer admits only the nine extract operations as a component call, and the slot family names a starred component and a stamp-splitting extract operation as A12 does. It also answers a parse error before any slot's extractor check, and the first written of two.",
           "evidence": {
             "a temporal constructor's component grammar": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/DateConstructionSlotsTest.kt#aComponentOutsideTheGrammarIsRefusedWithA12sClass",
               "witness": "An aggregate, a nested construction, a starred field and both stamp-splitting operations draw A12's class on both checker targets."
+            },
+            "a parse error before a slot's extractor check": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerConstructorComponentAgreementTest.kt#twoViolationsInOneConstruction",
+              "witness": "The checker names A12's class on every two-violation row, in both orders."
             }
           }
         },
@@ -6914,6 +6924,78 @@
         "a12-kernel-lean": {
           "state": "OPEN",
           "basis": "A new measurement disclosed in the 2026-10-09 handback; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf423": {
+      "sha256": "a87f651825fe2fc3e340b0f155f22332602d24a5fc3a9c0d9f8262c089f1e44d",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [],
+        "dmkits": [
+          "the split year's own constant and field gates"
+        ],
+        "interpreter": [],
+        "checker": [
+          "the split year's own constant and field gates"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "the split year's own constant and field gates"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The constant and field gates are kernel verdicts the adapter reads through its validator; the reader converts only admitted models.",
+          "evidence": {}
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "The four-component Date refuses an extract operation in either year slot with the split year's own class, the stamp-splitting ones included.",
+          "evidence": {
+            "the split year's own constant and field gates": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalComponentGrammarTest.java#aStampSplitIsTheSlotsRefusalAndAParseErrorAnswersFirst",
+              "witness": "A stamp-split in the century or decade slot draws MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Year-slot admission is a static gate; the interpreter evaluates only admitted constructions.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker walks the century and short year as two slots of their own: a century constant in 18..21 or a field bounded 10 to 99, a short year in 0..99 or a field bounded 99, both two digits, and no extract operation in either.",
+          "evidence": {
+            "the split year's own constant and field gates": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerConstructorComponentAgreementTest.kt#theCheckerNamesA12sClassOnEveryComponent",
+              "witness": "The checker names A12's class on every component in both year slots."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports the kernel's verdict and the checker's assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A condition's Date component does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A condition's Date component does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Disclosed in the 2026-10-09 handback; no peer receipt is inferred.",
           "evidence": {}
         }
       }

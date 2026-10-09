@@ -9819,16 +9819,19 @@ Reported by the portable checker (`CheckFamily.TABLE_ENUM_OPERAND`), which emits
 | `Date("01", "02", "20", YearFromDate(TravelDate))` | the same |
 | `Date("01", "02", YearFromDate(TravelDate))` — the same op in the THREE-parameter year slot | **ADMITTED** |
 | `Date("01", "02", "17", "24")` — a century outside 18..22 | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| a century field bounded 10, and one bounded 9 (*added 2026-10-09*) | ADMITTED, and `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| a short-year field bounded 99, and one bounded 23 | ADMITTED, and `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `Date("01", "01", "20", "1")` — a one-digit short year | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
 
 **The third and fourth rows are the pair that makes this a SPLIT-YEAR law rather than a year-slot one.** The identical operator in the identical position of the three-parameter form is admitted, so what forbids it is the presence of the fourth parameter, not the operator and not the year.
 
-**The last row was predicted as the constant class and is not.** An out-of-range century draws the comparison's format class instead, so the split-year pair's own constant bounds are not what answers — which is why the portable checker reports only the extract law of that pair and leaves its constant and entity arms alone.
+**The fifth row is the split year's own constant gate.** *Corrected 2026-10-09:* this paragraph read it as the comparison's format class answering instead of the pair's bounds, and the portable checker left the pair's constant and field arms alone on that basis. `checkConstant(century, 18, 22, 2)` raises `MVK_WRONG_DATE_FORMAT_FOR_OP` itself, and the rows added below it are bounds no comparison reads: a century field's declared maximum may be anywhere from 10 to 99 (`checkMaxValue`'s century floor), a short-year field's must be 99, and both constants take two digits. The checker now reports all of them.
 
 **The defect class is the third of its kind in one day, and they share a shape: an unmeasured "legacy-only" basis.** [KF282](#kf282) corrected one by moving the condition LANGUAGE; [KF422](#kf422) corrected one whose predicate ran the opposite way; this one needed only the grammar production read for a predicate that is not there. A disposition whose whole basis is the word "legacy" has not been measured, and the cheapest test is to look for the gate that is supposed to make it legacy.
 
 Reported by the portable checker (`CheckFamily.DATE_CONSTRUCTION_SLOTS`, whose KDoc had carried the same wrong claim).
 
-*Locked by:* `rulekit.validate.laws.DateConstructionSlotLawsTest`, mirrored by `consistency.DateConstructionSlotsTest`.
+*Locked by:* `rulekit.validate.laws.DateConstructionSlotLawsTest` and `adapter.laws.CheckerConstructorComponentAgreementTest`, mirrored by `consistency.DateConstructionSlotsTest`.
 
 ## §11 supplement — which class an unstarred aggregate operand draws is decided by whether the RULE iterates (measured, 2026-09-15) <a id="kf424"></a>
 
@@ -12824,11 +12827,14 @@ The grammar's `datumParam` is `entitySpec | datumExtractOp | StringLiteral`, and
 | a bounded field, a keyed field (`Claims/HourNo For "C1"`), `"01"`, the slot's own extractor | the slot gates of [KF373](#kf373) |
 | an aggregate (`MaxValue(Claims*/HourNo)`, `Sum(…)`), `RoundUp(…)`, a nested `Time(…)` or `Date(…)`, arithmetic, `[F]`, `{ F }` | `MVK_UNEXPECTED_TOKEN` |
 | a bare number (`1`) | `MVK_INVALID_ENTITY` |
+| a bare decimal or negative number (`1.5`, `-1`), a keyword (`True`, `Today`) (*added 2026-10-09*) | `MVK_UNEXPECTED_TOKEN` |
 | a starred field (`Claims*/HourNo`) | `MVK_NO_WILDCARDS_ALLOWED` |
 | `DateFromDateTime(…)`, `TimeFromDateTime(…)` | `MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED`: an extract operation no slot expects |
 | a group (`Claims`) | as the slot gates answer it |
 
 So a temporal extractor over a construction built from an aggregate, `YearFromDate(Time(MaxValue(Claims*/HourNo)))`, is the parse error, never the extractor's format class.
+
+*Added 2026-10-09:* the slots now include `Time`'s seconds and the four-parameter `Date`'s century and short year, where any extract operation, the stamp-splitting ones included, draws `MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS` ([KF423](#kf423)). **A parse error answers before any slot's extractor check, in both text orders:** `Date(DateFromDateTime(SignedAt), "01", Sum(Claims*/HourNo))` and its reverse, `Time(MinutesFromTime(RenewalClock), Sum(…))` and its reverse all draw `MVK_UNEXPECTED_TOKEN`. Between two parse errors the first written answers: `Time(1, Sum(…))` is `MVK_INVALID_ENTITY`, `Time(Sum(…), 1)` `MVK_UNEXPECTED_TOKEN`.
 
 *(Locked: `adapter.laws.CheckerConstructorComponentAgreementTest` — the checker against the kernel on every row, the separating rows pinned; `consistency.DateConstructionSlotsTest` mirrors them on both checker targets.)*
 

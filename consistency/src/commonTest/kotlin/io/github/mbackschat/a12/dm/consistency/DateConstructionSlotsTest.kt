@@ -93,8 +93,7 @@ class DateConstructionSlotsTest {
      * The rows that carry the correction are the two controls: the very same extract operator is ADMITTED in
      * the three-parameter year slot, so the refusal belongs to the split-year pair rather than to the
      * operator; and a well-formed split year draws nothing, so the family did not simply start refusing an
-     * arity it used to ignore. The century's own constant range is deliberately not reported — A12 answers a
-     * bad one through the comparison's format gate, which this family does not own.
+     * arity it used to ignore. The pair's constant and field gates are [theSplitYearsOwnGates].
      */
     @Test
     fun theSplitYearFormRefusesAnExtractOperatorInEitherYearSlot() {
@@ -122,6 +121,39 @@ class DateConstructionSlotsTest {
     }
 
     private val SPLIT_YEAR_EXTRACT = "MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS"
+
+    /**
+     * The split year's own gates, as `checkYearFormat(century, shortYear)` asks them: a century constant in
+     * 18..21 and a short year in 0..99, both two digits; a century field bounded anywhere from 10 to 99, a
+     * short-year field at 99 exactly. Mirrors `adapter.laws.CheckerConstructorComponentAgreementTest`, whose
+     * kernel rows separate the two field demands with a field bounded at 23.
+     */
+    @Test
+    fun theSplitYearsOwnGates() {
+        val wrong = listOf("MVK_WRONG_DATE_FORMAT_FOR_OP")
+        val actual = linkedMapOf(
+            "century \"01\"" to date("""Date("01", "02", "01", "24")"""),
+            "century \"21\"" to date("""Date("01", "02", "21", "24")"""),
+            "short year \"01\"" to date("""Date("01", "02", "20", "01")"""),
+            "short year \"1\"" to date("""Date("01", "02", "20", "1")"""),
+            "century field bounded 23" to atCentury(number(""""minValue":0,"maxValue":23""")),
+            "century field bounded 10" to atCentury(number(""""minValue":0,"maxValue":10""")),
+            "century field bounded 9" to atCentury(number(""""minValue":0,"maxValue":9""")),
+            "short-year field bounded 99" to atShortYear(number(""""minValue":0,"maxValue":99""")),
+            "short-year field bounded 23" to atShortYear(number(""""minValue":0,"maxValue":23""")),
+        )
+        assertEquals(linkedMapOf(
+            "century \"01\"" to wrong,
+            "century \"21\"" to emptyList(),
+            "short year \"01\"" to emptyList(),
+            "short year \"1\"" to wrong,
+            "century field bounded 23" to emptyList(),
+            "century field bounded 10" to emptyList(),
+            "century field bounded 9" to wrong,
+            "short-year field bounded 99" to emptyList(),
+            "short-year field bounded 23" to wrong,
+        ), actual)
+    }
 
     @Test
     fun whatEachConstantSlotAdmits() {
@@ -408,6 +440,10 @@ class DateConstructionSlotsTest {
     private fun atMonth(component: String) = codes("TravelDate", """Date("01", Part, "2024")""", component)
 
     private fun atYear(component: String) = codes("TravelDate", """Date("01", "02", Part)""", component)
+
+    private fun atCentury(component: String) = codes("TravelDate", """Date("01", "02", Part, "24")""", component)
+
+    private fun atShortYear(component: String) = codes("TravelDate", """Date("01", "02", "20", Part)""", component)
 
     private fun atHour(component: String) = codes("Departure", """Time(Part, "00", "00")""", component)
 
