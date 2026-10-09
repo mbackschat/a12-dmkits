@@ -12886,3 +12886,36 @@ At runtime, on two documents built so that reading the candidate instead would m
 The three engines agree on both documents.
 
 *(Locked: `adapter.laws.CorrelatedFieldOperandDiffTest`, `adapter.CorrelatedFieldOperandReadTest`, `validate.laws.CorrelatedTypedRefSlotLawsTest`, `adapter.laws.CorrelatedTypedRefSlotDiffTest`, `adapter.CorrelatedTypedRefReadTest`.)*
+
+## §12 supplement — a key-selected `FirstFilledValue` operand that selects nothing is a not-given prefix: a later filled fallback fires as OMISSION, the fallback read first as VALUE (both strategies, 2026-10-09) <a id="kf535"></a>
+
+> Fold: pending — beside §12's first-filled polarity account.
+
+A root rule compares `FirstFilledValue(Claims/Amount For Key, Backup) > 5` (`FirstRule`) and its reversed operand order (`PrefixRule`) on a repeatable `Claims` indexed on `Code`, with `Backup` = 9 and rows `C1` (amount 7) and `C2` (no amount):
+
+| `Key` | `FirstRule` | `PrefixRule` |
+|---|---|---|
+| `C9`, carried by no row | `OMISSION_ERROR` | `VALUE_ERROR` |
+| `C1`, a filled amount | `VALUE_ERROR` | `VALUE_ERROR` |
+| `C2`, an empty amount | `OMISSION_ERROR` | `VALUE_ERROR` |
+| none | `OMISSION_ERROR` | `VALUE_ERROR` |
+
+So a clean no-match counts like an empty selected cell: it falls through to the fallback and keeps its not-given provenance, which only a filled prefix bypasses. Dynamic Groovy, static Java and the a12-dmkits interpreter agree; the portable checker is silent on the model. (a12-kernel-lean SPEC-2026-10-09-07.)
+
+*(Locked: `adapter.laws.FirstFilledIndexNoMatchPolarityDiffTest`.)*
+
+## §9 supplement — an error field BELOW the condition's iteration keeps the parent's coordinates and reports at the child's first repetition, present or not (both strategies, 2026-10-09) <a id="kf536"></a>
+
+> Fold: pending — beside §9's account of where an iterating rule's error lands.
+
+Rules declared in a repeatable `Depots` (capacity 3) report on `Depots/Bins/Stock` (`Bins` capacity 4). Each must name the error field, so both name it through a child star: A12 refuses a parent-only condition with `MVK_ERROR_FIELD_NOT_REFERENCED` ([KF324](#kf324)). On three depots, the second without bins, and on one depot whose second bin is low:
+
+| rule | fires at (depot / bin) |
+|---|---|
+| `[Wanted] > 5 And NoFieldFilled(Bins*/Stock)` | 2 / 1, on the depot without bins |
+| `Sum(Bins*/Stock) < [Wanted]` | 1 / 1, and 2 / 1, where the empty `Sum` folds to 0 |
+| control: a rule in `Bins` itself, `[Stock] < 2` | the low bin's own coordinate, 1 / 1 and 1 / 2 |
+
+So the rule iterates the parent alone; the child level that only the error field adds is pinned to coordinate 1, and the child's capacity does not widen the iteration: each rule fires once per depot, never once per bin. Dynamic Groovy, static Java and the a12-dmkits interpreter agree; the portable checker is silent on the model. (a12-kernel-lean SPEC-2026-10-09-08.)
+
+*(Locked: `adapter.laws.DeeperErrorFieldIterationDiffTest`.)*
