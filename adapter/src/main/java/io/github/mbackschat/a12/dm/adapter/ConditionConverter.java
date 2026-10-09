@@ -1226,9 +1226,24 @@ final class ConditionConverter {
                 && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
             return fieldValueComparison(rf, flip(op), left, comparison);
         }
+        // a text concatenation on the left ([First] + " " + [Last] == [ShipTo]) — the string-typed composite, which
+        // the numeric branch below would take for arithmetic
+        if (left instanceof ICompositeOperation concat && concat.getType() == OperationType.STRING) {
+            return stringExprComparison(convertConcatenation(concat), op, right, comparison);
+        }
+        // "text" == / != a concatenation — flipped like "constant op [field]" below, which is sound because both
+        // operators are symmetric; the typed surface has no text-literal expression to keep on the left
+        if (left instanceof IConstantOperation && right instanceof ICompositeOperation concat
+                && concat.getType() == OperationType.STRING
+                && (op == ComparisonOperation.EQ || op == ComparisonOperation.NE)) {
+            return stringExprComparison(convertConcatenation(concat), op, left, comparison);
+        }
         // a numeric expression on the left not matched above (e.g. arithmetic on both sides, ([a]+1) == ([b]-2)
-        // or a rounding/root-group count) — compare it expression-vs-expression
-        NumberExpr leftExpr = numericExpr(left);
+        // or a rounding/root-group count) — compare it expression-vs-expression. A constant on the left is read in
+        // place rather than flipped, so `0 < NumberOfDifferentValues(…)` reads back in the order it was written.
+        NumberExpr leftExpr = left instanceof IConstantOperation constant && numericExpr(right) != null
+                ? Dsl.number(constant.getValue())
+                : numericExpr(left);
         if (leftExpr != null) {
             NumberExpr rightExpr = right instanceof IConstantOperation c ? Dsl.number(c.getValue())
                     : numericExpr(right);

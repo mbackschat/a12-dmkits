@@ -19,8 +19,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoolLiteral
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess
 import io.github.mbackschat.a12.dm.rulekit.dsl.Now
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral
 import io.github.mbackschat.a12.dm.rulekit.dsl.Today
 
@@ -159,6 +161,26 @@ class ExpressionsTest {
                 Expr.Arith(ArithOp.ADD, Expr.Field("/Order/CustomerName", false), Expr.StrLit(" ")),
             ),
         )
+    }
+
+    /**
+     * A left operand that is no field keeps its place: the comparison dispatches on the left side's KIND, so a
+     * number before a count and a concatenation or a quoted literal before a text side all map, in the order
+     * written. The adapter's kernel-model reader had to learn the same three (`adapter.ComparisonLeftOperandReadTest`).
+     */
+    @Test
+    fun aLeftOperandThatIsNoFieldKeepsItsPlace() {
+        val count = assertInstanceOf(ComparisonCondition::class.java,
+            translate("0 < NumberOfDifferentValues(Items*/Sku)"))
+        assertInstanceOf(NumberLiteral::class.java, count.left())
+        assertInstanceOf(CountAggregate::class.java, count.right())
+        val joined = assertInstanceOf(ComparisonCondition::class.java,
+            translate("[CustomerName] + \" \" + [ProductCode] == [ShippingAddress/City]"))
+        assertInstanceOf(Concatenation::class.java, joined.left())
+        val literal = assertInstanceOf(ComparisonCondition::class.java,
+            translate("\"Guest\" != [CustomerName] + [ProductCode]"))
+        assertInstanceOf(StringLiteral::class.java, literal.left())
+        assertInstanceOf(Concatenation::class.java, literal.right())
     }
 
     /**
