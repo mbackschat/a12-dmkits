@@ -1,11 +1,12 @@
 package io.github.mbackschat.a12.dm.consistency
 
 /**
- * A rule whose condition reaches its error field only from ABOVE, while also reading a repetition.
+ * A rule whose condition names its error field only through a ROOT group, while also reading a repetition.
  *
- * A12 has to decide WHICH repetition of the error field a violation attaches to. A condition that reaches the
- * field through the rule's own group has already said; one that reaches it only through a group ABOVE that
- * has not, and once such a condition also reads a repeating field the rule is refused
+ * A12 has to decide WHICH repetition of the error field a violation attaches to. A condition naming the field
+ * itself, or a group containing it below the root, is asked level by level whether it reads that repetition
+ * ([errorFieldIterationBindingFindings]); one naming it only through the root has not said, and once such a
+ * condition also reads a repeating field the rule is refused
  * ([KERNEL-FINDINGS KF348], `rulekit.validate.laws.RootOnlyErrorTargetIterationLawsTest`).
  *
  * **Two classes, and which one fires is the read's CARRIER rather than anything about the error field.** A
@@ -14,11 +15,12 @@ package io.github.mbackschat.a12.dm.consistency
  * parallel class wins — measured in BOTH text orders, because one order cannot tell that from "the later
  * read wins", which is how a mechanism shipped wrong two days earlier ([KF340]).
  *
- * **What PINS the repetition is a reference that reaches the target AND sits at or below the rule's group.**
- * That pairing is the whole law and neither half alone gives it: the root group reaches the target on every
- * measured row and pins nothing, while a sibling field sits below the rule's group and reaches nothing. Both
- * the rule's own group and the error field itself pin, and either one admits the rule however much else the
- * condition reads.
+ * **These classes need ROOT-group references alone to name the target.** `IterationChecker` takes this arm only
+ * when no direct reference and no non-root containing group names the error field; any such reference sends the
+ * rule to the per-level binding check instead, which [errorFieldIterationBindingFindings] owns. So the rule's own
+ * group "pins" only because, in the first grids, it was the repeatable group itself: named at the ROOT it pins
+ * nothing and these classes answer, while a non-root group above the repetition draws the binding class
+ * (`rulekit.validate.laws.RootOnlyErrorTargetIterationLawsTest.onlyARootGroupReferenceLeavesTheErrorFieldUnpinned`).
  *
  * **The root's own repeatability is NOT the variable**, which had to be measured because it was constant
  * across the whole first grid: with a non-repeatable root the two classes fire exactly as before, so "the
@@ -60,13 +62,13 @@ private fun TrackedFactBase.errorTargetIterationFindings(element: TrackedDeclara
     val ruleGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     // KF372: a target outside the declaring group is refused before the iteration pass.
     if (!(target == ruleGroup || target.startsWith("$ruleGroup/"))) return emptyList()
-    if (rulesOwn.none { it.reaches(target) } ||
-        rulesOwn.any { it.reaches(target) && it.sitsWithin(ruleGroup) }
-    ) return emptyList()
+    val reaching = rulesOwn.filter { it.reaches(target) }
+    if (reaching.isEmpty() || reaching.any { !(it.target as Reference.Resolved).path.isRootPath() }) return emptyList()
     val unkeyed = rulesOwnUnkeyedReferences(element)
     val read = rulesOwn.filter { it.written in unkeyed }.mapNotNull { reference ->
         (reference.target as? Reference.Resolved)?.path?.takeIf { path ->
-            unstarredRepeatableLevels(reference.written, path, ruleGroup, element)?.isNotEmpty() == true
+            // `IterationChecker` asks these classes from level 1 down; a repeatable ROOT is the binding check's.
+            unstarredRepeatableLevels(reference.written, path, ruleGroup, element)?.any { !it.isRootPath() } == true
         }
     }
     val errorFieldGroup = target.substringBeforeLast('/', missingDelimiterValue = "")
@@ -91,9 +93,9 @@ private fun TrackedFactBase.iterationFinding(
     if (parallel != null) {
         return finding(
             "MVK_ERROR_FIELDGROUP_ITERATION5_INVALID",
-            "this rule reports on `$target` but its condition reaches that field only from ABOVE the rule's " +
-                "own group, while reading `$parallel` — which repeats independently of the error field, so " +
-                "A12 cannot say which repetition the error belongs to",
+            "this rule reports on `$target` but its condition names that field only through its root group, " +
+                "while reading `$parallel` — which repeats independently of the error field, so A12 cannot " +
+                "say which repetition the error belongs to",
             at,
         )
     }
@@ -101,9 +103,9 @@ private fun TrackedFactBase.iterationFinding(
         ?: return null
     return finding(
         "MVK_ERROR_FIELDGROUP_ITERATION4_INVALID",
-        "this rule reports on `$target` but its condition reaches that field only from ABOVE the rule's own " +
-            "group, while reading `$own` from the repeating group the error field itself sits in — naming " +
-            "the rule's own group, or the error field, tells A12 which repetition is meant",
+        "this rule reports on `$target` but its condition names that field only through its root group, " +
+            "while reading `$own` from the repeating group the error field itself sits in — reading the " +
+            "error field, or its repeating group, unstarred tells A12 which repetition is meant",
         at,
     )
 }
@@ -120,12 +122,6 @@ private fun TrackedFactBase.parallelToTheErrorField(path: String, errorFieldGrou
         (path == candidate.path || path.startsWith("${candidate.path}/")) &&
             !(errorFieldGroup == candidate.path || errorFieldGroup.startsWith("${candidate.path}/"))
     }
-
-/** Whether this reference resolves at or below [group] — the half of pinning that [reaches] does not carry. */
-private fun ConditionReference.sitsWithin(group: String): Boolean {
-    val resolved = (target as? Reference.Resolved)?.path ?: return false
-    return resolved == group || resolved.startsWith("$group/")
-}
 
 private fun finding(code: String, explain: String, at: String) =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)

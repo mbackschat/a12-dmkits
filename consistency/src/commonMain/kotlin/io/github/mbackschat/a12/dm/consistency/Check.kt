@@ -698,12 +698,20 @@ enum class CheckFamily {
     ENUM_COMPUTATION_SOURCE,
 
     /**
-     * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
-     * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
+     * That a rule reading a repetition does not name its error field only through a ROOT group — A12 cannot
+     * then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
      * and because the carrier of the offending read picks between two classes.
      */
     ERROR_TARGET_ITERATION,
+
+    /**
+     * That every repetition a rule's condition iterates is also iterated by a reference naming its error
+     * field. Its own constant because the demand is on the error field's references BINDING the iteration —
+     * a starred reference names the field without binding it — where `ERROR_TARGET_ITERATION` owns a target
+     * reached only from above the rule's group, and the two arms of A12's check are mutually exclusive.
+     */
+    ERROR_FIELD_ITERATION_BINDING,
 
     /**
      * That a rule or computation which ITERATES writes into a field at or below its own declaring group.

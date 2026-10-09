@@ -144,6 +144,10 @@ class CheckFamilyWiringTest {
                 "errorEntityRelPath":"../../Price",
                 "errorCode":"C68","errorMessage":[{"locale":"en_US","text":"x"}]}}
             ]}},
+            {"type":"Rule","id":"r190","name":"StarredErrorFieldUnbound","Rule":{
+              "errorCondition":"FieldFilled(Pallets/PalletQty) And NumberOfFilledFields(Pallets*/PalletNote) > 0",
+              "errorEntityRelPath":"../Pallets/PalletNote",
+              "errorCode":"C190","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r25","name":"StarInsideAFilter","Rule":{
               "errorCondition":"FieldFilled(Price) And Sum(Pallets*/PalletQty Having [Pallets*/PalletNote] == \"x\") > 0",
               "errorEntityRelPath":"../Price",
@@ -772,6 +776,10 @@ class CheckFamilyWiringTest {
         // parse — ahead of the class the row above measures.
         CheckFamily.ERROR_TARGET_CONTAINMENT to
             ("MVK_ERROR_FIELD_NOT_IN_RULEGROUP" to "/Catalog/Pallets/WritesOutsideItsExtent"),
+        // The rule reads one pallet's quantity at a time and names its error field only through a star, so
+        // nothing naming that field says which pallet is meant.
+        CheckFamily.ERROR_FIELD_ITERATION_BINDING to
+            ("MVK_ERROR_FIELD_AND_ITERATION_INVALID" to "/Catalog/StarredErrorFieldUnbound"),
     )
 
     /**
@@ -870,6 +878,8 @@ class CheckFamilyWiringTest {
                 { facts.errorFieldReferenceContributions(it) }),
             Triple(CheckFamily.ERROR_TARGET_ITERATION, PostParseCheck.ERROR_TARGET_ITERATION,
                 { facts.errorTargetIterationContributions(it) }),
+            Triple(CheckFamily.ERROR_FIELD_ITERATION_BINDING, PostParseCheck.ERROR_TARGET_ITERATION,
+                { facts.errorFieldIterationBindingContributions(it) }),
         )
         for ((family, site, produce) in producers) {
             val (code, path) = evidence.getValue(family)

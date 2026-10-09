@@ -116,6 +116,10 @@ class CorrectiveTest {
               "errorCondition":"RepetitionNotUnique(Shelves/ShelfCode) And RepetitionNotUnique(Shelves/ShelfQty)",
               "errorEntityRelPath":"../Shelves/ShelfCode",
               "errorCode":"C11","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r191","name":"StarredErrorFieldUnbound","Rule":{
+              "errorCondition":"FieldFilled(Shelves/ShelfQty) And NumberOfFilledFields(Shelves*/ShelfCode) > 0",
+              "errorEntityRelPath":"../Shelves/ShelfCode",
+              "errorCode":"C191","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r13","name":"UnstarredRepetitionRead","Rule":{
               "errorCondition":"FieldFilled(Note) And FieldFilled(Shelves/ShelfQty)",
               "errorEntityRelPath":"../Note",

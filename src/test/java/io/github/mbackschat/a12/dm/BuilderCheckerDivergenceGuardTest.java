@@ -122,6 +122,11 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_INVALID_COMPARE_TO_CONST", Disposition.PROSE_ONLY),
             Map.entry("MVK_INVALID_TYPE_FOR_COMPARISON", Disposition.PROSE_ONLY),
 
+            // The kits only NAME it: `StructuralKernelFix` carries A12's corrective for the class and refuses
+            // nothing, leaving the rule to the kernel. `ErrorFieldIterationBinding` owns the checker's
+            // enforcement (KF417).
+            Map.entry("MVK_ERROR_FIELD_AND_ITERATION_INVALID", Disposition.PROSE_ONLY),
+
             // The kits only NAME it: `DateConstruction`, `Dsl.date(day, month)` and `BoundModel.dateOf(day, month)`
             // say the two-component form needs a declared Base Year and leave the refusal to the kernel, because
             // the declaration is model data the record does not see (IG163). `BaseYearRequirement` owns the

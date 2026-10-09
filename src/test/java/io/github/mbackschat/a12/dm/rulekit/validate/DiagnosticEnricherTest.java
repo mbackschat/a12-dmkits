@@ -76,6 +76,16 @@ class DiagnosticEnricherTest {
     }
 
     @Test
+    void anUnboundIterationGetsTheReadTheErrorFieldPerRowHint() {
+        // A12's message names the iterating reference and the error field, never what binds them: a STAR names
+        // the field without binding its row (KERNEL-FINDINGS KF417), which is the trap a sibling guard walks into.
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_ERROR_FIELD_AND_ITERATION_INVALID"));
+        assertTrue(enriched.fix().orElse("").contains("error field itself per row"), () -> "fix: " + enriched.fix());
+        assertTrue(enriched.explain().orElse("").contains("names the field without saying which row"),
+                () -> "explain: " + enriched.explain());
+    }
+
+    @Test
     void invalidEntityGetsTheAbsolutePathHint() {
         // probe 08: a same-group/relative reference that doesn't bind fails MVK_INVALID_ENTITY ("the group or
         // field 'X' is not valid") with no hint to use an absolute path — the enricher must supply one.

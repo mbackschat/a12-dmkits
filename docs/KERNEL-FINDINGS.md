@@ -7595,25 +7595,27 @@ The pattern's dotted group is OPTIONAL, so an undotted name matches with the gro
 
 *Locked by:* `rulekit.validate.laws.FieldNameReservedSuffixLawsTest`.
 
-## §9 supplement — the error-field/iteration disagreement cannot arise in an A12 model, and the reason is the index the parser records (source-verified + measured, 2026-09-15) <a id="kf417"></a>
+## §9 supplement — a STARRED reference names the error field without binding the rule's iteration, so a per-row sibling read is refused (source-verified + measured; corrected 2026-10-09) <a id="kf417"></a>
 
-> Fold: not-foldable — a reachability account of one diagnostic class, not an evaluation behaviour.
+> Fold: not-foldable — an admission account of one diagnostic class, not an evaluation behaviour.
 
-`IterationChecker.checkVRefs` raises `MVK_ERROR_FIELD_AND_ITERATION_INVALID` when the error entity's own references record no `ITERATION` at index level 0 while some other reference does. Eight attempts across this estate failed to author it, the first seven by varying NESTED repeatable groups — level 0 is the OUTERMOST repeatable level, so those were varying the wrong thing. Varying the ROOT repetition instead, on a multi-form model, does not reach it either, and the eighth attempt is the one that says why.
+`IterationChecker` raises `MVK_ERROR_FIELD_AND_ITERATION_INVALID` when some reference records `ITERATION` at a repetition level that none of the error field's own references records. Which references count as the error field's depends on what names it: only its root group goes through `checkVRefs` (level 0), while the field itself or a containing non-root group goes through `checkIteration4NotOnlyVRefs`, which asks the question at every level. `CheckIdNameRefImpl.setIndexOfCurrentLevel` records `WILDCARD` for a starred reference and `ITERATION` only for an UNSTARRED read of a repeatable level. So a star NAMES the error field (the referenced-ness gate is satisfied) without BINDING it, and the class compares "aggregate" with "per-row read", not "starred" with "unstarred".
 
-`CheckIdNameRefImpl.setIndexOfCurrentLevel` records the index: `WILDCARD` when the reference carries a star, `ITERATION` when the level is repeatable and it does NOT. So the two states the check compares are "aggregate" and "per-row read", not "starred" and "unstarred" as the class's name suggests. Measured on `/Persons` (repeatable root) against `/Header` (fixed root), with the error field referenced in every row so the post-parse referenced-ness gate cannot answer first:
+On a fixed root `/Policy` reporting on a field of the repeatable `Claims`, ten list callers (Sum, filled and distinct counts, first-filled, a Date extremum, field fill, uniqueness, singular range overlap, a group Sum and a plural group overlap), each measured as a rule and as a computation precondition:
 
-| the rule | verdict |
-|---|---|
-| fixed root reports, fixed root reads — the control | ADMITTED |
-| fixed root reports, `AtLeastOneFieldFilled(/Persons*/Name)` | ADMITTED |
-| fixed root reports, `FieldFilled(/Persons/Name)` — per-row | `MVK_NO_WILDCARD` |
-| repeatable root reports, its own field read — the control | ADMITTED |
-| repeatable root reports, the fixed root read | ADMITTED |
+| condition | rule | computation |
+|---|---|---|
+| the starred list alone, e.g. `Sum(Claims*/Amount) > 0` reporting on `Claims/Amount` | ADMITTED: nothing iterates | ADMITTED |
+| a SIBLING per-row guard first, `FieldFilled(Claims/Reserve) And …` | `MVK_ERROR_FIELD_AND_ITERATION_INVALID` on all ten | ADMITTED |
+| the error field's OWN per-row guard, `FieldFilled(Claims/Amount) And …` | ADMITTED | ADMITTED |
+| the plural overlap plain, `AtLeastOneDateRangeOverlaps(Claims/CoverSpan In Claims*/Windows)` reporting on `Claims/Windows/Window` | `MVK_ERROR_FIELD_AND_ITERATION_INVALID`: its scalar operand already reads per row | ADMITTED |
+| a `$`-marked read of the fixed root inside the list's filter, sibling vs own guard (four callers) | refused vs ADMITTED, as without the filter | — |
 
-**The middle row is the whole account.** A per-row read is the only spelling that records `ITERATION`, and a per-row read of an extent the error field's own path does not enter is refused by the wildcard gate before the iteration check runs. Where such a read IS admitted, the error field shares the level and therefore records `ITERATION` too — so the disagreement has no A12 carrier. The class's other arm is the parallel-iteration one, which belongs to `MVK_PARALLEL_ITERATION_*` and is dispositioned separately.
+The repeatable-root carrier reaches both arms: on `/Vehicles` (repeatable) reporting on `Plate`, `NumberOfFilledGroups(/Vehicles*) > 0 And FieldFilled(Mileage)` is `checkVRefs` and `AtLeastOneFieldFilled(/Vehicles*/Plate) And FieldFilled(Mileage)` the other arm; both are refused, and reading `Plate` per row instead admits. What survives of the original account is its wildcard-gate row: a per-row read of an extent the error field's path does not enter is `MVK_NO_WILDCARD` before this class can run.
 
-*Locked by:* `rulekit.validate.laws.RootRepetitionIterationAgreementLawsTest`.
+**Corrected 2026-10-09** (a12-kernel-lean `SPEC-2026-10-09-06`). This entry said the class "cannot arise in an A12 model", because "where such a read is admitted the error field shares the level and therefore records ITERATION too". Sharing the level is not the same as recording `ITERATION`: the error field can be named only through a star. Every row of the eighth attempt read the error field per row "so the post-parse referenced-ness gate cannot answer first". That held the variable under test constant, which is the instrument confound. Our own record already contradicted it twice: [KF205](#kf205) (a guarded keyed negative) and [KF431](#kf431) (an out-of-group error field under an iterating condition) both drew this class.
+
+*Locked by:* `rulekit.validate.laws.IterationBindingLawsTest` (the fixed-root grid, rule and computation), `rulekit.validate.laws.RootRepetitionIterationAgreementLawsTest` (both arms on the repeatable root, and the wildcard-gate row). Reported by the portable checker as `CheckFamily.ERROR_FIELD_ITERATION_BINDING`, which agrees with A12 on every row of both grids plus keyed, region and group-target rows (`adapter.laws.CheckerIterationBindingAgreementTest`); a keyed error reference beside a per-row sibling draws the class too, as [KF205](#kf205) predicted.
 
 ## §11 supplement — reading the computed field is CONTAINMENT, not equality, and three shapes are exempt (source-verified + measured, 2026-09-15) <a id="kf416"></a>
 
@@ -7780,7 +7782,7 @@ The two models differ in that one member and nothing else. `MVK_MULTIPLE_INDEX_F
 
 **The portable checker reported BOTH until this measurement**, which is naming a class A12 did not draw on a model it correctly refuses. The cause was in the phase list rather than in the family: `POST_PARSE_CONDITION_CODES` was assembled by enumerating `ParserService.checkNormalRule`'s own `throwError` sites, and that method reaches two further checkers by a CALL — so only `MVK_ERROR_FIELD_NOT_REFERENCED`, which the checker already reported, made the list. Sweeping both calls gives the complete post-parse set for this method: `IterationChecker.checkIteration` draws `MVK_ERROR_FIELDGROUP_ITERATION4_INVALID`, `MVK_ERROR_FIELDGROUP_ITERATION5_INVALID`, `MVK_ERROR_FIELD_AND_ITERATION_INVALID` and `MVK_ITERATION_RESTRICTION_IN_A12_MODEL` beside the referenced-ness class, and `checkSimpleIteration` draws `MVK_NEG_CONDITION_IN_ITERATION` (the H-model members of both are a separate enum). A phase list read off one syntactic form misses everything the method delegates.
 
-**`MVK_ERROR_FIELD_AND_ITERATION_INVALID` is the class `checkVRefs` guards at level 0, and seven spellings failed to reach it.** Starring the root leaves the repeating group beneath it bare (`MVK_NO_WILDCARD`); the scalar group predicates refuse a star outright (`MVK_NO_WILDCARDS_ALLOWED`); a group LIST predicate accepts the starred root and the level-1 sibling class answers anyway; and carrying the star all the way down is simply ADMITTED, on both models and into either group. That is an enumeration of attempts and NOT a proof of unreachability — the code stays kernel-delegated with its attempts recorded, rather than being claimed unauthorable.
+**`MVK_ERROR_FIELD_AND_ITERATION_INVALID` was not reached by the seven spellings tried here.** Starring the root leaves the repeating group beneath it bare (`MVK_NO_WILDCARD`); the scalar group predicates refuse a star outright (`MVK_NO_WILDCARDS_ALLOWED`); a group LIST predicate accepts the starred root and the level-1 sibling class answers anyway; and carrying the star all the way down is simply ADMITTED, on both models and into either group. *Corrected 2026-10-09:* the class IS reachable — every spelling here kept a per-row read of the error field, and a starred-only error reference beside a per-row sibling draws it ([KF417](#kf417)).
 
 *Locked by:* `rulekit.validate.laws.RootLevelIterationPinningLawsTest`, mirrored by `consistency.RootLevelIterationPinningTest`.
 
@@ -9686,7 +9688,17 @@ Locked: `validate.laws.RepetitionNotUniqueFromScopeLawsTest`. The portable check
 
 **A12 has to know WHICH repetition a violation attaches to, and it refuses when the condition has not said.** A rule whose condition reaches its error field only from ABOVE its own group, while also reading a repeating field, draws one of two classes — `MVK_ERROR_FIELDGROUP_ITERATION4_INVALID` when the read is in the error field's OWN group, `MVK_ERROR_FIELDGROUP_ITERATION5_INVALID` when it is under a repeatable group parallel to it. With both present the parallel class wins, measured in BOTH text orders because one order cannot tell that from "the later read wins" ([KF340](#kf340) shipped exactly that confusion two days earlier).
 
-**PINNING is a conjunction, and neither half alone gives it**: a reference pins when it reaches the error field AND sits at or below the rule's own group. The root group reaches the target on every row and pins nothing; a sibling field sits below the rule's group and reaches nothing. Naming the rule's own group, or the error field itself, admits the rule however much else the condition reads.
+**These classes need ROOT-group references alone to name the error field** (*corrected 2026-10-09*). `IterationChecker` takes this arm only when no direct reference and no non-root containing group names the error field. Any such reference sends the rule to the per-level binding check of [KF417](#kf417), which asks whether that reference ITERATES the error field's repetition. This entry first stated pinning as "reaches the error field AND sits at or below the rule's own group". That held on every row here only because the rule's own group was always the repeatable group itself. A fifth constant, measured on a fixed `/Region` › `Branch` › repeatable `Claims`:
+
+| rule group | group naming the error field | A12 |
+|---|---|---|
+| `/Region` (the root) | `/Region` | `MVK_ERROR_FIELDGROUP_ITERATION4_INVALID`: the rule's own group pins nothing when it is a root |
+| `Claims` | `/Region` | `MVK_ERROR_FIELDGROUP_ITERATION4_INVALID`, the shape below |
+| `Claims` | `/Region/Branch`, above the rule group | `MVK_ERROR_FIELD_AND_ITERATION_INVALID`: a non-root group is the binding check's |
+| `/Region/Branch` | `/Region/Branch`, the rule's own | `MVK_ERROR_FIELD_AND_ITERATION_INVALID`: it does not repeat, so it binds nothing |
+| `Claims` | `Claims` | ADMITTED: it iterates the repetition |
+
+The ITERATION4 loop also starts at level 1. On a repeatable root whose only per-row read is at the root itself, the binding class answers instead ([KF417](#kf417)'s fleet rows). When a deeper level is also read per row, this class answers first (`adapter.laws.CheckerIterationBindingAgreementTest`'s convoy row).
 
 **Three conditions carry the law and TWO of them were constant across the first grid**, which is the part worth carrying forward — each was found by the checker refusing a model A12 admits, not by reading the grid again:
 
@@ -9694,11 +9706,11 @@ Locked: `validate.laws.RepetitionNotUniqueFromScopeLawsTest`. The portable check
 |---|---|---|
 | a reference must REACH the error field | every row carried `GroupFilled(/Shipment)` | a condition naming a SIBLING field instead draws `MVK_ERROR_FIELD_NOT_REFERENCED` alone — that family's territory, not this one |
 | the error field's group must REPEAT | both grids put the error field in a repeatable group | a flat model — nothing repeating anywhere — is ADMITTED, so there is no repetition to be unable to choose between |
-| the reaching reference must sit ABOVE the rule's group | — (this one was varied deliberately) | the rule's OWN group is admitted, so "reached via the ROOT" is not what matters |
+| the reaching reference must sit ABOVE the rule's group | — (this one was varied deliberately) | the rule's OWN group is admitted — *corrected 2026-10-09:* because it was the repeatable group; "reached via the ROOT" IS what matters (table above) |
 
 **The root's own repeatability is NOT the variable.** It was repeatable throughout the first grid, so "the reaching reference is the root" and "the reaching reference is itself an unpinned repetition" were indistinguishable; re-measured on a non-repeatable root, both classes fire exactly as before.
 
-Locked: `validate.laws.RootOnlyErrorTargetIterationLawsTest`, across three carriers (repeatable root, fixed root, flat). Reported by the portable checker as `CheckFamily.ERROR_TARGET_ITERATION`; four mutants planted on its three conditions and its class selection, all killed. Every read in these grids was unstarred, unkeyed and outside any filter, a fourth constant: which reads count is [KF488](#kf488)'s.
+Locked: `validate.laws.RootOnlyErrorTargetIterationLawsTest`, across four carriers (repeatable root, fixed root, flat, and the region grid above). Reported by the portable checker as `CheckFamily.ERROR_TARGET_ITERATION`; four mutants planted on its three conditions and its class selection, all killed. Every read in these grids was unstarred, unkeyed and outside any filter, a fourth constant: which reads count is [KF488](#kf488)'s.
 
 ## §9 supplement — what pre-empts `MVK_REPEATABLE_GROUP_MISSING` is a key OUTSIDE the rule group, and its carrier picks the class (measured, 2026-09-14) <a id="kf347"></a>
 
@@ -12818,3 +12830,23 @@ The grammar's `datumParam` is `entitySpec | datumExtractOp | StringLiteral`, and
 So a temporal extractor over a construction built from an aggregate, `YearFromDate(Time(MaxValue(Claims*/HourNo)))`, is the parse error, never the extractor's format class.
 
 *(Locked: `adapter.laws.CheckerConstructorComponentAgreementTest` — the checker against the kernel on every row, the separating rows pinned; `consistency.DateConstructionSlotsTest` mirrors them on both checker targets.)*
+
+## §9 supplement — once a rule iterates, the fill quantifiers count INDEPENDENT slots against a per-operator threshold; a marked filter read binds without adding one (kernel `checkConsistency`, 2026-10-09) <a id="kf533"></a>
+
+> Fold: pending — beside §9's `MVK_NEG_CONDITION_IN_ITERATION` account.
+
+A fixed root `/Policy` reports on a field of the repeatable `Claims` (capacity 3). Seven fill quantifiers and `FieldValuesNotUnique` are measured over seven operand shapes, each as a rule and as a computation precondition. Every computation is admitted. The rule verdicts are below (refused = `MVK_NEG_CONDITION_IN_ITERATION`):
+
+| shape (error field) | All | No | NotAll | NotExactlyOne | AtLeastOne | FieldsNotCollectively | MoreThanOne | NotUnique |
+|---|---|---|---|---|---|---|---|---|
+| `Claims/Amount, Claims/Reserve` — two per-row reads (`Amount`) | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ |
+| `Claims/Amount, Premium` — per-row plus fixed root (`Amount`) | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| `Claims*/Amount, Claims/Reserve` — starred plus per-row (`Reserve`) | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| `Claims*/Amount Having (FieldFilled($Claims/Detail/Units) And …)` — marked (`Detail/Units`) | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| the marked shape behind `FieldFilled(Claims/Detail/Units) And` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| the same filter UNMARKED (`Amount`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `Claims*/Amount` alone (`Amount`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+Read as slots: a per-row read of the iterated row is bound, while a fixed-root field is one INDEPENDENT slot and a starred field counts as many independent slots as its declared capacity. `AtLeastOneFieldFilled` and `FieldsNotCollectivelyFilled` refuse at one independent slot, `MoreThanOneFieldFilled` and `FieldValuesNotUnique` at two, so the root pair separates the two thresholds and the capacity-3 star exceeds both. The three negatives refuse any operand list with a per-row read. The marked filter binds the rule to the claim, which is why it reaches the gate at all, but it does not make the starred list a per-row read, so the negatives admit it and the positives see three independent slots. An unmarked filter read binds nothing, so neither does a bare star, and neither rule iterates. A guard on the bound row admits every row, and `AllFieldsFilled` admits every shape. The slot reading follows a12-kernel-lean's `IterationNotValidVisitor` account (`SPEC-2026-10-09-05`); the rows above are what was measured here. That a capacity-1 star counts as one slot is not measured.
+
+*(Locked: `validate.laws.IterationBindingLawsTest.theIterationGuardCountsIndependentSlots`.)*

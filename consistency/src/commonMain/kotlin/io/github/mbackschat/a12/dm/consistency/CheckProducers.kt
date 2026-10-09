@@ -429,6 +429,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     condition(CheckFamily.VALUE_AS_DATE_OPERAND) { base, at -> base.valueAsDateContributions(at) },
     perDeclarationWalk(CheckFamily.ENUM_COMPUTATION_SOURCE, DeclarationStage.CALCULATION_ALTERNATIVES) { it.enumComputationSourceFindings() },
     condition(CheckFamily.ERROR_TARGET_ITERATION) { base, at -> base.errorTargetIterationContributions(at) },
+    condition(CheckFamily.ERROR_FIELD_ITERATION_BINDING) { base, at -> base.errorFieldIterationBindingContributions(at) },
     condition(CheckFamily.ERROR_TARGET_CONTAINMENT) { base, at -> base.errorContainmentContributions(at) },
     CheckProducer.Messages(setOf(CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.ERROR_TEXT_SEMANTIC_INDEX,
         CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX, CheckFamily.ERROR_TEXT_INDEX_TERMINAL,

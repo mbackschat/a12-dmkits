@@ -14,7 +14,8 @@ import io.github.mbackschat.a12.dm.core.KernelCode;
  * <ol>
  *   <li><b>ORPHAN codes</b> — <em>no</em> operator's {@code invalidExample} documents them, so the join has
  *       nothing to attach: the placement / iteration-scope family ({@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP},
- *       {@code MVK_ERROR_FIELD_NOT_REFERENCED}, {@code MVK_NEG_CONDITION_IN_ITERATION},
+ *       {@code MVK_ERROR_FIELD_NOT_REFERENCED}, {@code MVK_ERROR_FIELD_AND_ITERATION_INVALID},
+ *       {@code MVK_NEG_CONDITION_IN_ITERATION},
  *       {@code MVK_REPEATABLE_GROUP_MISSING}, {@code MVK_NOT_IN_SAME_PATH}), the bare <b>syntax</b> code the parser raises with no message
  *       of its own ({@code MVK_UNEXPECTED_TOKEN} — the likely cause, a lowercase boolean / unquoted string /
  *       unbracketed field operand, must be inferred from the DSL's literal conventions), the
@@ -220,6 +221,15 @@ public final class StructuralKernelFix {
                             + "attaches the fired error to that field and rejects a condition that never names it. An "
                             + "aggregate's starred path does not reference the (non-repeatable) error field, so "
                             + "model-level aggregate rules hit this unless the error field is referenced explicitly.")),
+            Map.entry(KernelCode.MVK_ERROR_FIELD_AND_ITERATION_INVALID, new Hint(
+                    "Read the error field itself per row, unstarred, somewhere in the condition — most often as "
+                            + "the guard: FieldFilled(<the error field>) And … instead of a guard on a sibling "
+                            + "field of the same row. Or drop the per-row read, so the rule no longer iterates.",
+                    "A per-row (unstarred) read makes the rule run once per repetition, and the kernel then needs "
+                            + "a reference NAMING the error field — the field or a group containing it — that "
+                            + "reads the same repetition per row. As KERNEL-FINDINGS KF417 measures, a starred list "
+                            + "such as Sum(Rows*/Field) names the field without saying which row, so it does not "
+                            + "count. A computation has no error field and is not affected.")),
             Map.entry(KernelCode.MVK_NEG_CONDITION_IN_ITERATION, new Hint(
                     "Guard the negative predicate with a positive existence check on the row: "
                             + "GroupFilled(<the repeatable group>) And <your negative condition> — so the rule fires "

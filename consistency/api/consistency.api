@@ -76,6 +76,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field ENUM_TEXT_FORBIDDEN_CHARACTERS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ENUM_VALUE_CHARACTERS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ENUM_VALUE_LABELS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field ERROR_FIELD_ITERATION_BINDING Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ERROR_FIELD_REFERENCE Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ERROR_TARGET_CONTAINMENT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ERROR_TARGET_ITERATION Lio/github/mbackschat/a12/dm/consistency/CheckFamily;

@@ -6503,6 +6503,280 @@
           "evidence": {}
         }
       }
+    },
+    "kf417": {
+      "sha256": "6b9014d81e878a265bd956f3b6d48adb12cdcf72c5a505f850403a382ca1d7d6",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "a starred error reference does not bind a rule's iteration"
+        ],
+        "dmkits": [
+          "a starred error reference does not bind a rule's iteration"
+        ],
+        "interpreter": [],
+        "checker": [
+          "a starred error reference does not bind a rule's iteration"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "a starred error reference does not bind a rule's iteration"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel's verdict on both lean grids, the repeatable-root arms, keyed and region rows is measured and the separating rows pinned.",
+          "evidence": {
+            "a starred error reference does not bind a rule's iteration": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationBindingAgreementTest.kt#theCheckerNamesA12sBindingClassOnEveryRow",
+              "witness": "Every row the checker answers matches A12; the negative-iteration rows stay silent by design."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "The diagnostic enricher carries the corrective for the class: read the error field itself per row, or drop the per-row read.",
+          "evidence": {
+            "a starred error reference does not bind a rule's iteration": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/DiagnosticEnricherTest.java#anUnboundIterationGetsTheReadTheErrorFieldPerRowHint",
+              "witness": "The enriched kernel diagnostic names the fix and why a star does not bind."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "ERROR_FIELD_ITERATION_BINDING reports the class when a per-row read iterates a repetition no reference naming the error field iterates.",
+          "evidence": {
+            "a starred error reference does not bind a rule's iteration": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ErrorFieldIterationBindingTest.kt#aSiblingPerRowReadBesideAStarredErrorReferenceIsRefused",
+              "witness": "Sibling guards refuse, own guards and plain lists admit, on both checker targets."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here, and carries the enricher's corrective.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback under SPEC-2026-10-09-06; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf410": {
+      "sha256": "0584f483b4fb0269bdc09f3fd4cdf05c099a7594e3cc37e465ad2e49d2370bfc",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "the seven root-level spellings that did not reach the binding class"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose correction pointing at KF417; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose correction pointing at KF417; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose correction pointing at KF417; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose correction pointing at KF417; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose correction pointing at KF417; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose correction pointing at KF417; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose correction pointing at KF417; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Covered by the KF417 disclosure under SPEC-2026-10-09-06; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf348": {
+      "sha256": "221c26de5d052319aaba4ea8f85c6f18168d72bfe794a5fdd5d32e8018eca40f",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "only a root-group reference leaves the error field unpinned"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "only a root-group reference leaves the error field unpinned"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "only a root-group reference leaves the error field unpinned"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The region rows are measured on the kernel and the checker agrees on every one.",
+          "evidence": {
+            "only a root-group reference leaves the error field unpinned": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationBindingAgreementTest.kt#theCheckerNamesA12sBindingClassOnEveryRow",
+              "witness": "A root rule group draws ITERATION4; a non-root group draws the binding class."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed surface leaves this refusal to the kernel; its corrective is unchanged.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "ERROR_TARGET_ITERATION asks only when root-group references alone reach the target, and from level 1 down.",
+          "evidence": {
+            "only a root-group reference leaves the error field unpinned": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ErrorFieldIterationBindingTest.kt#theContainingGroupThatNamesTheErrorFieldPicksTheClass",
+              "witness": "The root-named rule now reports ITERATION4, the branch-named ones the binding class, on both checker targets."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback under SPEC-2026-10-09-06; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf533": {
+      "sha256": "358e5208ca9d2104bc2332adc9be66fbc04c6f2b07ae6a915e224df1a420247a",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "fill quantifiers count independent slots once a rule iterates"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "fill quantifiers count independent slots once a rule iterates"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "All 56 iteration-guard rows and their computation twins are measured; the checker stays silent where A12 draws the negative-iteration class.",
+          "evidence": {
+            "fill quantifiers count independent slots once a rule iterates": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationBindingAgreementTest.kt#theCheckerNamesA12sBindingClassOnEveryRow",
+              "witness": "No row draws a checker class A12 does not."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The negative-iteration law is kernel-delegated by design (MVK-LEDGER); the enricher's existing corrective applies.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "MVK_NEG_CONDITION_IN_ITERATION is kernel-delegated by design (MVK-LEDGER, decided 2026-06-04); the agreement test asserts the checker's silence on these rows.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback under SPEC-2026-10-09-05; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

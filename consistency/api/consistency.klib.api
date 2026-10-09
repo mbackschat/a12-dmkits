@@ -131,6 +131,7 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
     enum entry ENUM_TEXT_FORBIDDEN_CHARACTERS // io.github.mbackschat.a12.dm.consistency/CheckFamily.ENUM_TEXT_FORBIDDEN_CHARACTERS|null[0]
     enum entry ENUM_VALUE_CHARACTERS // io.github.mbackschat.a12.dm.consistency/CheckFamily.ENUM_VALUE_CHARACTERS|null[0]
     enum entry ENUM_VALUE_LABELS // io.github.mbackschat.a12.dm.consistency/CheckFamily.ENUM_VALUE_LABELS|null[0]
+    enum entry ERROR_FIELD_ITERATION_BINDING // io.github.mbackschat.a12.dm.consistency/CheckFamily.ERROR_FIELD_ITERATION_BINDING|null[0]
     enum entry ERROR_FIELD_REFERENCE // io.github.mbackschat.a12.dm.consistency/CheckFamily.ERROR_FIELD_REFERENCE|null[0]
     enum entry ERROR_TARGET_CONTAINMENT // io.github.mbackschat.a12.dm.consistency/CheckFamily.ERROR_TARGET_CONTAINMENT|null[0]
     enum entry ERROR_TARGET_ITERATION // io.github.mbackschat.a12.dm.consistency/CheckFamily.ERROR_TARGET_ITERATION|null[0]

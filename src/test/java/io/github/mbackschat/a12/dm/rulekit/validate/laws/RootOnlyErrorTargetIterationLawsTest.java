@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.core.Verification;
@@ -247,5 +248,50 @@ class RootOnlyErrorTargetIterationLawsTest {
                 assertEquals(direct || i == 0, result.ok(), rule.render());
             }
         }
+    }
+
+    /** A fixed root, a fixed branch, and the branch's repeatable claims — three distinct reaching groups. */
+    private static final String REGION = DocumentModelDraft.named("region-claims").locale("en_US")
+            .rootGroup("Region", root -> root
+                    .group("Branch", branch -> branch
+                            .group("Claims", rows -> rows.repeatable(5)
+                                    .numberField("Amount", n -> n.fractionDigits(0))
+                                    .numberField("Reserve", n -> n.fractionDigits(0)))))
+            .build().toJson();
+
+    /**
+     * The fifth constant: in every row above, the group naming the error field from above was the ROOT, and the
+     * rule's own group, where it pinned, was the repeatable group itself. `IterationChecker` takes these classes
+     * only when ROOT-group references alone name the error field; any other containing group sends the rule to
+     * the per-level binding check, which asks whether it ITERATES the error field's repetition. So naming the
+     * rule's own group pins only because that group repeats — a root rule group pins nothing, and a non-root
+     * group above the repetition draws the binding class rather than these.
+     */
+    @Test
+    void onlyARootGroupReferenceLeavesTheErrorFieldUnpinned() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("rule at the root, naming the root",
+                KernelLaws.verdictModel(REGION, "/Region", "../Branch/Claims/Amount",
+                        "GroupFilled(/Region) And FieldFilled(Branch/Claims/Reserve)"));
+        actual.put("rule at the claims, naming the root — the earlier shape",
+                KernelLaws.verdictModel(REGION, "/Region/Branch/Claims", "../Amount",
+                        "GroupFilled(/Region) And [Reserve] > 0"));
+        actual.put("rule at the claims, naming the branch above it",
+                KernelLaws.verdictModel(REGION, "/Region/Branch/Claims", "../Amount",
+                        "GroupFilled(/Region/Branch) And [Reserve] > 0"));
+        actual.put("rule at the branch, naming the branch",
+                KernelLaws.verdictModel(REGION, "/Region/Branch", "../Claims/Amount",
+                        "GroupFilled(/Region/Branch) And FieldFilled(Claims/Reserve)"));
+        actual.put("rule at the claims, naming the claims — the control",
+                KernelLaws.verdictModel(REGION, "/Region/Branch/Claims", "../Amount",
+                        "GroupFilled(/Region/Branch/Claims) And [Reserve] > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("rule at the root, naming the root", "MVK_ERROR_FIELDGROUP_ITERATION4_INVALID");
+        expected.put("rule at the claims, naming the root — the earlier shape", "MVK_ERROR_FIELDGROUP_ITERATION4_INVALID");
+        expected.put("rule at the claims, naming the branch above it", "MVK_ERROR_FIELD_AND_ITERATION_INVALID");
+        expected.put("rule at the branch, naming the branch", "MVK_ERROR_FIELD_AND_ITERATION_INVALID");
+        expected.put("rule at the claims, naming the claims — the control", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "which containing group leaves the error field's repetition unpinned");
     }
 }
