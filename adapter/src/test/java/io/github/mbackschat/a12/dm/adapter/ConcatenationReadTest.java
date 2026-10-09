@@ -113,6 +113,23 @@ class ConcatenationReadTest {
                 RENDER.render(converted(KernelAdapter.of(BoundModel.ofJson(json)).read("/Person/FullNameRule"))));
     }
 
+    /**
+     * Two enumeration reads side by side, which A12 admits with and without a text after them (KF530), read back
+     * into the typed `EnumRef.plus(EnumRef)` form.
+     */
+    @Test
+    void roundTripsAdjacentEnumerations() {
+        BoundModel m = BoundModel.ofJson(titledPersonJson());
+        var title = m.enumOf("/Person/Title");
+        var plan = m.enumOf("/Person/Plan");
+        for (Condition cond : java.util.List.of(
+                m.str("/Person/FullName").ne(title.plus(plan).plus(m.str("/Person/LastName").asString())),
+                m.str("/Person/FullName").ne(title.plus(plan)))) {
+            KernelAdapter adapter = KernelAdapter.of(m.add(rule(m, "FullNameRule", cond)));
+            assertEquals(RENDER.render(cond), RENDER.render(converted(adapter.read("/Person/FullNameRule"))));
+        }
+    }
+
     private static Rule rule(BoundModel m, String name, Condition cond) {
         return m.rule(m.group("/Person")).name(name).errorField(m.field("/Person/FullName")).when(cond)
                 .code("C").severity(Severity.ERROR).message(en("x")).build();

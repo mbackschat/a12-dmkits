@@ -61,6 +61,8 @@ class CheckerEnumerationAdditionAgreementTest {
             "a direct one beside a braced one" to ("[Remapped] + {[Remapped]} == \"x\"" to MIXED_ADD),
             "a category access" to ("[Remapped -> Kind] + [Notes] == \"x\"" to ADMITTED),
             "a braced remapped Enumeration beside a Number" to ("{[Remapped]} + [Quantity] == \"x\"" to MIXED_ADD),
+            "two braced Enumerations alone" to ("{[Remapped]} + {[Identity]} == \"x\"" to ADMITTED),
+            "two braced Enumerations before a text" to ("{[Remapped]} + {[Identity]} + [Notes] == \"x\"" to ADMITTED),
         )
         val wrong = predicted.mapNotNull { (row, probe) ->
             val (condition, a12) = probe

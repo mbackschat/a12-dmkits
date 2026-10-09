@@ -1533,7 +1533,7 @@ order.addComputation(order.str("CustomerName"), c -> c.name("NameComp")
 
 *(Surfaced by dogfooding the conformance corpus: its string-concat guard case couldn't be authored through the editor while only the `NumberRef` overload existed. Test-backed by `RuleComputationEditorTest.authorsAStringComputationThroughTheEditor`.)*
 
-**An enumeration joins text through `EnumRef.plus` and `StringExpr.plus(EnumRef)`.** It contributes its stored value, never a label, and an empty one contributes nothing. The read renders braced, `{ [Priority] }`, because A12 refuses an immediate enumeration read in `+` when any label remaps its value and admits the braced one whatever the labels ([KF396](KERNEL-FINDINGS.md#kf396), [KF530](KERNEL-FINDINGS.md#kf530)), so the model-free builder never needs the labels. The enumeration only ever stands inside a concatenation, never alone as text. A text computation takes the result directly, through `calc(StringExpr)`:
+**An enumeration joins text through `EnumRef.plus` and `StringExpr.plus(EnumRef)`, and another enumeration through `EnumRef.plus(EnumRef)`.** It contributes its stored value, never a label, and an empty one contributes nothing. The read renders braced, `{ [Priority] }`, because A12 refuses an immediate enumeration read in `+` when any label remaps its value and admits the braced one whatever the labels ([KF396](KERNEL-FINDINGS.md#kf396), [KF530](KERNEL-FINDINGS.md#kf530)), so the model-free builder never needs the labels. The enumeration only ever stands inside a concatenation, never alone as text. A text computation takes the result directly, through `calc(StringExpr)`:
 
 <!-- snippet: enum-concatenation -->
 ```java

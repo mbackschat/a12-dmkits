@@ -12,7 +12,8 @@ import org.junit.jupiter.api.TestInstance
  * What an enumeration contributes to a text concatenation, authored through the typed `EnumRef.plus` (KF396 admits
  * a braced enumeration read beside a text whatever its labels). One enumeration's labels remap its values and the
  * other's repeat them, so the stored value and the label are told apart. Each concatenation is computed into a text
- * target and also compared in a rule; all three engines agree on every document and the computed texts are pinned.
+ * target and also compared in a rule, the immediate spelling `[Plan] + [Note]` beside its braced twin; all three
+ * engines agree on every document and the computed texts and fired rules are pinned.
  *
  * Own domain (an insurance policy summary line).
  */
@@ -38,6 +39,7 @@ class EnumConcatenationDiffTest {
             "TierFirst" to tier.plus(" / ").plus(note.asString()),
             "TierLast" to note.asString().plus(" / ").plus(tier),
             "PlanFirst" to p.enumOf("Plan").plus(note.asString()),
+            "TierPlan" to tier.plus(p.enumOf("Plan")),
         )
         val ref = p.str("Ref")
         var json = session.toJson()
@@ -50,6 +52,15 @@ class EnumConcatenationDiffTest {
             it.name("TierRefRule").code("TierRefRule").errorField(ref.field())
                 .`when`(ref.filled().and(ref.eq(tier.plus("-1")))).message(Dsl.en("Check the summary.")).build()
         })
+        json = TypedRules.inject(json, p.rule {
+            it.name("PlanBracedRule").code("PlanBracedRule").errorField(note.field())
+                .`when`(note.filled().and(note.ne(p.enumOf("Plan").plus(note.asString()))))
+                .message(Dsl.en("Check the summary.")).build()
+        })
+        // The immediate spelling has no typed form, since the typed surface always braces; Plan's labels repeat
+        // its values, so A12 admits it (KF396).
+        json = RuntimeLaws.withRule(json, "/Policy", "PlanImmediateRule", "../Note", "PlanImmediateRule",
+            "FieldFilled(Note) And [Note] != [Plan] + [Note]")
         json
     }
 
@@ -78,14 +89,15 @@ class EnumConcatenationDiffTest {
     fun anEnumerationJoinsATextAsItsStoredValue() {
         val observed = documents.mapValues { (_, doc) ->
             DocumentDifferential.kernel(model, doc, dynamic = true).let { o ->
-                TARGETS.associateWith { o.outcomes[it] } to o.messages.any { it.code == "TierRefRule" }
+                TARGETS.associateWith { o.outcomes[it] } to o.messages.map { it.code }.filter { it.endsWith("Rule") }.sorted()
             }
         }
         assertEquals(linkedMapOf(
-            "tier, plan and note" to (texts("GOLD / n", "n / GOLD", "BASICn") to true),
-            "tier without note" to (texts("GOLD / ", " / GOLD", null) to true),
-            "note without tier" to (texts(" / n", "n / ", "n") to false),
-            "nothing filled" to (texts(" / ", " / ", null) to false),
+            "tier, plan and note" to (texts("GOLD / n", "n / GOLD", "BASICn", "GOLDBASIC") to
+                listOf("PlanBracedRule", "PlanImmediateRule", "TierRefRule")),
+            "tier without note" to (texts("GOLD / ", " / GOLD", null, "GOLD") to listOf("TierRefRule")),
+            "note without tier" to (texts(" / n", "n / ", "n", null) to emptyList()),
+            "nothing filled" to (texts(" / ", " / ", null, null) to emptyList()),
         ), observed)
     }
 
@@ -98,6 +110,6 @@ class EnumConcatenationDiffTest {
     }
 
     private companion object {
-        val TARGETS = listOf("TierFirst", "TierLast", "PlanFirst")
+        val TARGETS = listOf("TierFirst", "TierLast", "PlanFirst", "TierPlan")
     }
 }

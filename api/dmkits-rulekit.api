@@ -1687,6 +1687,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef implements io.gith
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notIn(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notIn(java.lang.String, java.lang.String[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef outer()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr plus(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr plus(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr plus(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)

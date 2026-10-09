@@ -2004,7 +2004,8 @@ final class ConditionConverter {
         List<IOperation> ops = comp.getOperations();
         Optional<EnumRef> leading = enumerationOperand(ops.get(0));
         StringExpr acc = leading.isPresent()
-                ? leading.get().plus(stringOperand(ops.get(1), comp))
+                ? enumerationOperand(ops.get(1)).map(leading.get()::plus)
+                        .orElseGet(() -> leading.get().plus(stringOperand(ops.get(1), comp)))
                 : stringOperand(ops.get(0), comp);
         for (int i = leading.isPresent() ? 2 : 1; i < ops.size(); i++) {
             IOperation op = ops.get(i);

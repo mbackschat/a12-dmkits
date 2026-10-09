@@ -60,8 +60,8 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
     }
 
     /**
-     * {@code { [this] } + <text>} — this enumeration joined to text, the one way A12 lets an enumeration stand in a
-     * concatenation. It is read BRACED: A12 refuses an immediate read whose labels remap its values and admits the
+     * {@code { [this] } + <text>} — this enumeration joined to text; an enumeration stands in a concatenation only
+     * beside text or another enumeration. It is read BRACED: A12 refuses an immediate read whose labels remap its values and admits the
      * braced one whatever its labels (KERNEL-FINDINGS KF396), so the rendering needs no knowledge of the labels. The
      * enumeration contributes its stored value, not a label (KF530). catalog:Concatenation
      */
@@ -72,6 +72,14 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
     /** {@code { [this] } + "literal"} — as {@link #plus(StringExpr)}, followed by a string literal. */
     public StringExpr plus(String literal) {
         return plus(new StringExpr(new StringLiteral(literal)));
+    }
+
+    /**
+     * {@code { [this] } + { [other] }} — two enumerations joined, each read braced, which A12 admits with or without
+     * text around them (KERNEL-FINDINGS KF530); each contributes its stored value.
+     */
+    public StringExpr plus(EnumRef other) {
+        return StringExpr.joined(field.value(), other.field().value());
     }
 
     public Condition filled() {
