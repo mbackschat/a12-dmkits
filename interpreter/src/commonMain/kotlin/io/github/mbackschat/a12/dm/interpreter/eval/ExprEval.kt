@@ -213,7 +213,7 @@ private fun Interpreter.filledFieldsCount(args: List<Expr>): Int? {
                 // Kept rows come through the SHARED one-kept-successor traversal — the sole filtered
                 // field-list owner (SPEC-2026-07-23-12 follow-up); the kernel's count constructs the same
                 // EntityIterator (`anzahlAngegebenerFelder`, IF94).
-                for (rc in keptRowsWithSuccessorLookahead(ctx.rowContexts(group, arg.bindDepth), arg.having)) {
+                for (rc in keptRowsWithSuccessorLookahead(filterCandidates(ctx, group, arg.bindDepth), arg.having)) {
                     if (!rc.filled(arg.path)) continue
                     if (rc.field(arg.path) is Val.Unknown) {
                         if (computeMode) throw PoisonedReadException(arg.path)
@@ -1181,8 +1181,9 @@ private fun Interpreter.countValueInFields(target: Val, operands: List<Expr>): I
         when (arg) {
             is Expr.Star -> {                    // a `Group* / Field` list (kernel: a group/wildcard expansion)
                 val group = arg.path.substringBeforeLast('/')
-                val rows = ctxOf(arg).rowContexts(group, arg.bindDepth)
                 val having = arg.having
+                val rows = if (having == null) ctxOf(arg).rowContexts(group, arg.bindDepth)
+                    else filterCandidates(ctxOf(arg), group, arg.bindDepth)
                 // A filtered list rides the SHARED one-kept-successor traversal — the sole filtered
                 // field-list owner (SPEC-2026-07-23-12 follow-up); the filter still drops the row first.
                 val kept = if (having == null) rows.asSequence() else keptRowsWithSuccessorLookahead(rows, having)
@@ -2045,6 +2046,11 @@ internal fun Interpreter.keptRowsWithSuccessorLookahead(
     having: Cond,
 ): Sequence<EvalContext> = keptRowsWithSuccessorLookahead(rows) { havingInterp(it).keeps(having) }
 
+/** A filtered list's candidate rows as A12's filter walk visits them, missing coordinates included
+ *  ([FilterWalkRowProvider]); in a computation only the groups its computations read extend the walk. */
+internal fun Interpreter.filterCandidates(c: EvalContext, groupPath: String, bindDepth: Int): List<EvalContext> =
+    c.filterWalkRows(groupPath, bindDepth, filterWalkGroups)
+
 /** [keptRowsWithSuccessorLookahead] for a caller whose filter is evaluated by its own [keeps] — the overlap and
  *  uniqueness predicates evaluate `Having` without an enclosing iteration. */
 internal fun keptRowsWithSuccessorLookahead(
@@ -2069,7 +2075,7 @@ internal fun keptRowsWithSuccessorLookahead(
 internal fun Interpreter.computeStarReads(star: Expr.Star, keeps: ((EvalContext) -> Boolean)?): Sequence<ScanCell?> {
     val context = ctxOf(star)
     val cells = if (keeps == null) context.starScanCells(star.path, star.bindDepth)
-    else keptRowsWithSuccessorLookahead(context.rowContexts(star.path.substringBeforeLast('/'), star.bindDepth), keeps)
+    else keptRowsWithSuccessorLookahead(filterCandidates(context, star.path.substringBeforeLast('/'), star.bindDepth), keeps)
         .map { scanCell(star.path, it) }
     return cells.map { cell -> cell.takeIf { filledOrPoison(it) } }
 }
@@ -2267,7 +2273,7 @@ private fun Interpreter.firstFilledStar(
     // relevant set stops the walk even where no row is stored (SPEC-2026-10-06-03,
     // `adapter.laws.PartialFillWalkRelevanceDiffTest`). Whether a filtered walk reaches missing slots is IG165.
     val kept = when {
-        having != null -> keptRowsWithSuccessorLookahead(operandContext.rowContexts(group, operand.bindDepth), having)
+        having != null -> keptRowsWithSuccessorLookahead(filterCandidates(operandContext, group, operand.bindDepth), having)
         cellRelevant != null -> operandContext.declaredStarRows(operand.path, operand.bindDepth)
         else -> operandContext.rowContexts(group, operand.bindDepth).asSequence()
     }
@@ -2490,7 +2496,7 @@ private fun Interpreter.starOperandVals(star: Expr.Star): List<Val> {
     }
     val group = star.path.substringBeforeLast('/')
     val vals = mutableListOf<Val>()
-    for (rc in keptRowsWithSuccessorLookahead(ctx.rowContexts(group, star.bindDepth), having)) {
+    for (rc in keptRowsWithSuccessorLookahead(filterCandidates(ctx, group, star.bindDepth), having)) {
         if (computeMode && rc.cellState(star.path) == CellState.INVALID) throw PoisonedReadException(star.path)
         if (rc.filled(star.path)) vals += rc.field(star.path)
     }

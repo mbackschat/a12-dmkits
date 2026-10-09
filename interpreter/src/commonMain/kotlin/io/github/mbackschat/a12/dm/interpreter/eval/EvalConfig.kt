@@ -110,6 +110,10 @@ class EvalConfig(
      * False (the default) = validation semantics, unchanged.
      */
     val computeMode: Boolean = false,
+    /** The groups whose stored rows extend a `Having` filter's walk ([filterWalkRows]); every group when null.
+     *  Validation counts every row. A computation counts only the groups holding a field some computation reads,
+     *  measured on both kernel strategies by `adapter.laws.FilterMissingSlotDiffTest`. */
+    val filterWalkGroups: ((String) -> Boolean)? = null,
 ) {
 
     /**

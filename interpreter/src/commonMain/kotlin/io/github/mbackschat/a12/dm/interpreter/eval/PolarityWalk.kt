@@ -345,7 +345,7 @@ private fun Interpreter.countFill(
         val st = a as? Expr.Star ?: continue
         val having = st.having ?: continue
         val group = st.path.substringBeforeLast('/')
-        for (rc in ctxOf(st).rowContexts(group, st.bindDepth)) {
+        for (rc in filterCandidates(ctxOf(st), group, st.bindDepth)) {
             total++
             if (havingInterp(rc).keeps(having) && rc.filled(st.path) && qualifies(rc, st.path)) {
                 counted++; anyFilteredCounted = true

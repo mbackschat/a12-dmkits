@@ -77,10 +77,8 @@ class FilterTemporalLiteralFailureDiffTest {
         "an ordinary stamp" to parcel(leg("2024-03-31T01:30:00")),
         "an empty stamp" to parcel(leg("")),
         "a malformed stamp" to parcel(leg("bad")),
+        "no legs" to parcel(),
     )
-
-    /** Kept out of the agreement: the interpreter does not evaluate a filter on a missing declared slot (IG165). */
-    private val noLegs = parcel()
 
     @Test
     fun theModelIsKernelConsistentUnderTheAdmittingDefault() {
@@ -101,7 +99,7 @@ class FilterTemporalLiteralFailureDiffTest {
     @Test
     fun aReachedLabelFailsAndAKnownPrefixLeavesItUnread() {
         fun run(doc: String) = underUtc {
-            DocumentDifferential.kernel(model, if (doc == "no legs") noLegs else documents.getValue(doc), dynamic = true)
+            DocumentDifferential.kernel(model, documents.getValue(doc), dynamic = true)
         }
         fun row(doc: String, name: String): Triple<String?, Boolean, List<String>> {
             val observed = run(doc)
@@ -127,8 +125,8 @@ class FilterTemporalLiteralFailureDiffTest {
             "a false prefix" to Triple("VALUE|0", false, emptyList()),
             "a true prefix" to Triple("VALUE|7", false, listOf("OMISSION_ERROR")),
             "no legs" to Triple("VALUE|0", false, emptyList()),
-            // The filter runs on missing declared slots too: an empty weight leaves the Or unknown, so it reads on
-            // and reaches the label (INTERPRETER-GAPS IG165).
+            // The filter runs on the one coordinate an empty list still walks: an empty weight leaves the Or unknown,
+            // so it reads on and reaches the label (`FilterMissingSlotDiffTest`).
             "no legs, a true prefix" to Triple("CLEARED", true, listOf("VALUE_ERROR")),
         ), actual)
     }

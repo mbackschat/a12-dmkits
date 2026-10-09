@@ -30,6 +30,11 @@ import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
  */
 internal const val UNKNOWN_REP = -5
 
+/** Repetition coordinates in walk order: lexicographic, level by level. */
+private val COORDINATE_ORDER = Comparator<List<Int>> { a, b ->
+    a.indices.firstOrNull { it < b.size && a[it] != b[it] }?.let { a[it].compareTo(b[it]) } ?: a.size.compareTo(b.size)
+}
+
 /**
  * An empty [Document] configured from this [ModelDef] — every kind / reps / format / scale / enum / precision /
  * base-year / constraint / time-zone map the evaluator needs, gathered into ONE immutable [DocumentConfig] so a
@@ -191,6 +196,7 @@ class Document(internal val config: DocumentConfig) {
     private fun invalidateDerivedCaches() {
         cachedIndex = null                 // the lazily-built lookup index
         rowContextsCache.clear()           // a `Having` filter's per-row contexts
+        filterWalkCache.clear()            // the same, with the missing coordinates a filter's walk visits
         correlationBucketCache.clear()     // a `$` equality-correlation's hash buckets
         orderedCorrelationCache.clear()    // a comparator-only `$` correlation's ordered prefix tallies
     }
@@ -230,6 +236,8 @@ class Document(internal val config: DocumentConfig) {
         val fullValidationContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
         // Depth → parent coordinate prefix → the child coordinates some instantiated row of ANY group sets there.
         var occupiedChildren: Map<Int, Map<List<Int>, Set<Int>>>? = null
+        // Per counted-group predicate (null = every group): the highest repetition stored at each depth.
+        val highestRepetitionsByCount: MutableMap<Any?, IntArray> = HashMap()
         // Computation iterates only stored V2 rows, unlike validation's implicit nested-child domain (IF277).
         val storedContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
         // The runtime iteration tree, distinct from stored V2 rows: below every existing repeatable parent, a
@@ -596,6 +604,48 @@ class Document(internal val config: DocumentConfig) {
         for (cell in index().valued) if (cell.path.startsWith("$root/")) instances += cell.reps[0]
         return instances.sorted()
     }
+
+    /** The highest repetition any row of a group [counts] admits stores at each depth, index 0 the root's; a blank
+     *  row object counts as stored. Every group when [counts] is null. */
+    private fun highestRepetitions(counts: ((String) -> Boolean)?): IntArray =
+        index().highestRepetitionsByCount.getOrPut(counts) {
+            var highest = IntArray(0)
+            for ((group, rows) in index().rowsByGroup) {
+                if (counts != null && !counts(group)) continue
+                for (reps in rows) {
+                    if (reps.size > highest.size) highest = highest.copyOf(reps.size)
+                    for (depth in reps.indices) if (reps[depth] > highest[depth]) highest[depth] = reps[depth]
+                }
+            }
+            highest
+        }
+
+    /** The coordinates of [groupPath] below [scope] a `Having` filter's walk visits ([FilterWalkRowProvider]). */
+    private fun filterWalkCoordinates(groupPath: String, scope: List<Int>, counts: ((String) -> Boolean)?): List<List<Int>> {
+        val segs = parts(groupPath)
+        val highest = highestRepetitions(counts)
+        var frontier = listOf(scope)
+        for (depth in scope.size + 1..segs.size) {
+            val capacity = declaredReps["/" + segs.take(depth).joinToString("/")]
+            frontier = if (capacity == null) frontier.map { it + 1 } else {
+                val end = minOf(capacity, maxOf(1, highest.getOrElse(depth - 1) { 0 }))
+                frontier.flatMap { prefix -> (1..end).map { prefix + it } }
+            }
+        }
+        return frontier
+    }
+
+    private val filterWalkCache = HashMap<Triple<String, List<Int>, Any?>, List<EvalContext>>()
+
+    /** The stored rows of [groupPath] in [scope] merged in coordinate order with the missing ones the walk visits. */
+    private fun filterWalkRowsScoped(groupPath: String, scope: List<Int>, counts: ((String) -> Boolean)?): List<EvalContext> =
+        filterWalkCache.getOrPut(Triple(groupPath, scope, counts)) {
+            val stored = rowContextsScoped(groupPath, scope).associateBy { it.repsOf(groupPath) }
+            val missing = filterWalkCoordinates(groupPath, scope, counts).filter { it !in stored }
+            if (missing.isEmpty()) stored.values.toList()
+            else (stored.keys + missing).sortedWith(COORDINATE_ORDER)
+                .map { reps -> stored[reps] ?: RowContext(groupPath, reps, evaluated = true) }
+        }
 
     private fun occupiedChildren(): Map<Int, Map<List<Int>, Set<Int>>> = index().occupiedChildren ?: run {
         val byDepth = HashMap<Int, HashMap<List<Int>, HashSet<Int>>>()
@@ -984,7 +1034,7 @@ class Document(internal val config: DocumentConfig) {
         private val group: String,
         private val rowReps: List<Int>,
         override val evaluated: Boolean,
-    ) : EvalContext, GroupListEnvironmentProvider, DeclaredStarRowProvider {
+    ) : EvalContext, GroupListEnvironmentProvider, DeclaredStarRowProvider, FilterWalkRowProvider {
 
         /**
          * Resolve a referenced field to its placement (or null) ONCE per path, cached for this row context —
@@ -1256,6 +1306,9 @@ class Document(internal val config: DocumentConfig) {
 
         override fun absentGroupRow(groupPath: String, repetitions: List<Int>): EvalContext =
             RowContext(groupPath, repetitions, evaluated = true)
+
+        override fun filterWalkRows(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): List<EvalContext> =
+            filterWalkRowsScoped(groupPath, groupScopePrefix(groupPath, bindDepth), counts)
 
         /** The memoized [IndexColumn] — built ONCE per (column, star-scope prefix) at the DOCUMENT level and
          *  shared across every row context of the scope (the [Index.indexColumnByScope] twin of

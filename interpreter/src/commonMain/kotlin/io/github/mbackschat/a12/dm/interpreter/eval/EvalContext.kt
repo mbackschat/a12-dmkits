@@ -463,6 +463,19 @@ class FillScope internal constructor(
 /** The declared-range half of a [FillScope]. */
 internal data class DeclaredFill(val allFilled: Boolean, val anyEmpty: Boolean)
 
+/**
+ * The candidate rows a `Having` filter is asked of. A12's filtered walk visits, at each starred level, every
+ * coordinate from 1 up to the highest repetition stored at that depth by any counted group, never fewer than one
+ * and never past the declared capacity; a coordinate no row holds reads empty. [counts] admits the groups whose rows
+ * count, every group when null (INTERPRETER-GAPS IG165 closure, `adapter.laws.FilterMissingSlotDiffTest`).
+ */
+internal interface FilterWalkRowProvider {
+    fun filterWalkRows(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): List<EvalContext>
+}
+
+internal fun EvalContext.filterWalkRows(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): List<EvalContext> =
+    (this as? FilterWalkRowProvider)?.filterWalkRows(groupPath, bindDepth, counts) ?: rowContexts(groupPath, bindDepth)
+
 /** Validation filters may select a missing declared slot by coordinate (SPEC-2026-10-03-03). */
 internal interface DeclaredStarRowProvider {
     fun declaredStarRows(fieldPath: String, bindDepth: Int): Sequence<EvalContext>

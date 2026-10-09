@@ -119,6 +119,7 @@ class Interpreter(
     private val customRelevant = config.customRelevant
     private val computeScanState = config.computeScanState
     internal val computeMode = config.computeMode
+    internal val filterWalkGroups = config.filterWalkGroups
 
     /** Validation-call-local aggregate results, installed only by [ValidationPass]. A direct low-level
      * [Interpreter] and every compute interpreter deliberately keep this null, so reusing an [EvalConfig] across
@@ -641,7 +642,7 @@ class Interpreter(
         var f = 0
         var n = 0
         var unknown = false
-        for (rc in c.rowContexts(star.path.substringBeforeLast('/'), star.bindDepth)) {
+        for (rc in filterCandidates(c, star.path.substringBeforeLast('/'), star.bindDepth)) {
             if (!havingInterp(rc).keeps(having)) continue
             n++
             when {
@@ -767,7 +768,7 @@ class Interpreter(
                 // and each consumed candidate is a read under the call-local formal oracle that can poison.
                 val c = ctxOf(a)
                 val candidates = if (declaredTail) c.declaredStarRows(a.path, a.bindDepth).toList()
-                    else c.rowContexts(a.path.substringBeforeLast('/'), a.bindDepth)
+                    else filterCandidates(c, a.path.substringBeforeLast('/'), a.bindDepth)
                 for (rc in keptRowsWithSuccessorLookahead(candidates, a.having!!)) yield(filledOrPoison(scanCell(a.path, rc)))
             }
             // A keyed GROUP scans the selected row as the bare group arm below scans its instance (IF340). The
@@ -1004,6 +1005,10 @@ class Interpreter(
      */
     private fun starQuantTally(star: Expr.Star): Triple<Int, Int, Int> {
         val group = star.path.substringBeforeLast('/')
+        // The indexed plans read only stored rows, while the reference scan also walks missing coordinates. A kept
+        // missing coordinate is an empty cell, adding to `f` and `n` alike. A filtered list reaches this tally only
+        // for the operators that read `t` or `f == n`; the ones reading `t == n` or `f >= 1` take the declared fill
+        // scope ([DECLARED_FILL_OPERATORS]). So the verdicts agree.
         return when (val plan = correlationPlan(star, group)) {
             is KeyedCorrelationPlan -> hashJoinTally(star, group, plan)
             is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan)
@@ -1058,7 +1063,9 @@ class Interpreter(
         var t = 0
         var f = 0
         var n = 0
-        for (rc in ctx.rowContexts(group, star.bindDepth)) {
+        val rows = if (star.having == null) ctx.rowContexts(group, star.bindDepth)
+            else filterCandidates(ctx, group, star.bindDepth)
+        for (rc in rows) {
             if (star.having != null && !havingInterp(rc).keeps(star.having)) continue
             n++
             when {
@@ -1508,8 +1515,9 @@ class Interpreter(
 
     /** The rows a starred operand keeps — every row when it carries no `Having`, else the rows its filter keeps. */
     private fun keptRowContexts(star: Expr.Star): List<EvalContext> {
-        val rows = ctxOf(star).rowContexts(star.path.substringBeforeLast('/'), star.bindDepth)
-        return if (star.having == null) rows else rows.filter { rc -> overlapFilterInterp(rc).keeps(star.having) }
+        val group = star.path.substringBeforeLast('/')
+        return if (star.having == null) ctxOf(star).rowContexts(group, star.bindDepth)
+            else filterCandidates(ctxOf(star), group, star.bindDepth).filter { rc -> overlapFilterInterp(rc).keeps(star.having) }
     }
 
     /** The path of a plain field-ref operand. Any other operand shape in a field-ref position is a construct

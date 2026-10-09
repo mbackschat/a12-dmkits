@@ -5751,7 +5751,7 @@
       }
     },
     "kf525": {
-      "sha256": "9e96e46262c06a892b238796ac9eca0e4c7dd92fa8ecdb4686e505f0e4f924b2",
+      "sha256": "794c355dcd1a621e2cedb97afa685a8ce377e7198c864f3803df6d82c1f3437d",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -5791,7 +5791,7 @@
           "evidence": {
             "temporal literal failure in a filter": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterTemporalLiteralFailureDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
-              "witness": "All three engines agree on three documents; the missing-slot row is INTERPRETER-GAPS IG165."
+              "witness": "All three engines agree on four documents, the no-legs one included."
             }
           }
         },
@@ -6106,6 +6106,78 @@
         "a12-kernel-lean": {
           "state": "OPEN",
           "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-03; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf528": {
+      "sha256": "14d454fb21fbedb5f8b320b2d45de527c0bcdbb236a807c8740c289ee600c990",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "filter walk extent"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "filter walk extent"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "filter walk extent"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured on eleven documents and two models through the adapter's differential.",
+          "evidence": {
+            "filter walk extent": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterMissingSlotDiffTest.kt#theWalkReachesTheHighestStoredRepetitionAtEachDepth",
+              "witness": "The walk reaches the highest stored repetition at each depth; a computation counts only the groups it reads."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the lock authors every filter through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Every filtered consumer reads one candidate source that merges stored rows with the walk's missing coordinates.",
+          "evidence": {
+            "filter walk extent": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterMissingSlotDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on eleven documents for both models."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-07-04; no peer receipt is inferred.",
           "evidence": {}
         }
       }

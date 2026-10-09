@@ -116,7 +116,7 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = exp
                 // (no data to filter). The operand's polarity effect is the consuming pass's call ([filtered]).
                 val group = e.path.substringBeforeLast('/')
                 val indexValuesByRepetitions = indexColumn?.cells?.toMap()
-                for (rc in c.rowContexts(group, e.bindDepth)) {
+                for (rc in filterCandidates(c, group, e.bindDepth)) {
                     val repetitions = rc.repsOf(e.path)
                     if (cellRelevant?.invoke(e.path, repetitions) == false) continue   // [IF267]
                     if (!havingInterp(rc).keeps(e.having)) continue

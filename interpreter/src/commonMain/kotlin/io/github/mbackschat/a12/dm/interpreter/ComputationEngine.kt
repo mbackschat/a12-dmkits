@@ -224,6 +224,7 @@ internal class ComputationEngine(
                 }
             },
             computeMode = true,
+            filterWalkGroups = { it in operands.ancestorGroups },
         ).also { it.work = workLedger() }
         // A FILLED operand that is "not check-relevant" — formally invalid — makes a computation over it
         // non-evaluable (IF76, generalized IF78; poison semantics IF85). The gate is the SAME

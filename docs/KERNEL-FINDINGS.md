@@ -12647,7 +12647,7 @@ So the computation's first-formal stop is phase-specific, and cause-free emptine
 | no legs, a false left conjunct | `0`, nothing reached |
 | no legs, an `Or` whose left reads an empty weight | the label IS reached: the target clears with `berechnungsWertFehler` and the rule aborts |
 
-The false- and true-prefix rows measure what a12-kernel-lean held from source alone: the generated filter code short-circuits on known truth in validation as well as in computation. The last row shows the filter running on missing declared slots, where an empty weight leaves the `Or` unknown. The interpreter had evaluated filter bodies eagerly in validation and now short-circuits them ([IF370](INTERPRETER-FINDINGS.md#if370)); it does not yet visit missing declared slots (INTERPRETER-GAPS IG165), so the last row is pinned on the kernel alone. *(Locked: `adapter.laws.FilterTemporalLiteralFailureDiffTest`. One repeatable level, `Sum`, a DateTime field against the label; no `Now` comparison and no partial validation measured here.)*
+The false- and true-prefix rows measure what a12-kernel-lean held from source alone: the generated filter code short-circuits on known truth in validation as well as in computation. The last row shows the filter running on a coordinate no row holds, where an empty weight leaves the `Or` unknown. *Corrected 2026-10-09: this said the filter runs on the missing declared slots. It runs on one coordinate here because no leg is stored; the walk's extent is the highest stored repetition at each depth ([KF528](#kf528)).* The interpreter had evaluated filter bodies eagerly in validation and now short-circuits them ([IF370](INTERPRETER-FINDINGS.md#if370)). *(Locked: `adapter.laws.FilterTemporalLiteralFailureDiffTest`. One repeatable level, `Sum`, a DateTime field against the label; no `Now` comparison and no partial validation measured here.)*
 
 ## §6 supplement — a temporal constructor reads past a formally invalid argument in validation and stops at it in a computation; a split-year Date keeps its zero-century gate (both strategies, 2026-10-09) <a id="kf526"></a>
 
@@ -12685,3 +12685,21 @@ The fixture is a store whose repeatable `Depots` (capacity 3, index `Code`) each
 | `AllFieldsFilled`, the key's depot full | its three slots are covered | two are covered |
 
 So every slot the consumer reaches is asked of the relevant set, the missing ones included, and an uncovered slot is neither filled nor empty, like a malformed cell. A key no depot carries is read inside an empty depot at the unbound row, which only an identifier wildcarded at the depot level covers ([KF461](#kf461)). Over that empty row each consumer keeps its own gate: the wildcard-only aggregates, `SumOfProducts`' complete enumeration ([KF57](#kf57)), and the per-slot walk of the fill quantifiers and `FirstFilledValue`. The same rules hold for a starred group and a keyed group over the bins, read field by field. *(Locked: `adapter.laws.PartialProductCapacityDiffTest`, 5 documents × 16 coverages; `adapter.laws.PartialFillWalkRelevanceDiffTest`, 7 documents × 13 coverages. A `Having` filter's walk over missing slots is not measured here; it is INTERPRETER-GAPS IG165.)*
+
+## §11 supplement — a `Having` filter walks each starred level up to the highest repetition stored at that depth, at least one coordinate; validation counts every group's rows, a computation only the groups its computations read (both strategies, 2026-10-09) <a id="kf528"></a>
+
+> Fold: pending — extends [KF525](#kf525)'s reached-label row and sits beside [KF517](#kf517)'s rule-iteration domain; a12-kernel-lean `SPEC-2026-10-07-04`.
+
+`FilterMissingSlotDiffTest` (JVM default UTC, model zone Europe/Berlin) filters `Legs*/Weight` and `Shipments*/Items*/Weight` with `[Weight] > 0 Or [Stamp] == <gap label>`, so the label fails exactly when the walk reaches a coordinate whose weight is empty. Seven consumers read the filtered weights: `Sum`, `NumberOfFilledFields`, `MaxValue`, `FirstFilledValue`, `NumberOfValueInFields`, `AtLeastOneFieldFilled` and `NoFieldFilled`, plus `FieldValuesNotUnique`. They agree on every row, on both strategies and in the interpreter:
+
+| Document (`Legs` and `Items` capacity 3, `Shipments` capacity 2) | Validation reaches the label | A computation reaches it |
+|---|---|---|
+| no legs | yes: one coordinate is walked | yes |
+| one leg | no: the two missing legs are not walked | no |
+| one leg, three `Returns` rows (a sibling group at the same depth) | yes | only when some computation reads `Returns` |
+| one leg, three blank `Returns` row objects | yes | only when some computation reads `Returns` |
+| shipment 1 holding one item, shipment 2 three | yes: shipment 1's items 2–3 are walked | yes |
+| shipments holding one item each | no | no |
+| one shipment of one item, three legs | yes: shipment 2 is walked, capped at its capacity | yes |
+
+So at each starred level the walk visits coordinates 1 up to the highest repetition any counted row stores at that depth, across parents and across groups, never fewer than one and never past the declared capacity; a blank row object counts as stored. It is not [KF517](#kf517)'s dense arm: with capacity 3, a product under its threshold, the missing legs of a one-leg document are not walked. The kernel's filtered iterator caps each level's end at the cache's highest set repetition, keeping its start (`EntityIterator.setzeAlleEbenenMitZeileAufMaxGesetztIfPossible`, `GroupFillCache.getHighestRepetitionAtLevel`; source-read, the rows above settle the behavior). A computation's cache holds only what its computations read, which is why a sibling group extends its walk only once a computation reads that group. *(Locked: `adapter.laws.FilterMissingSlotDiffTest`, both models. A computation target inside a repeatable group, and partial validation, are not measured here.)*
