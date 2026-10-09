@@ -502,6 +502,78 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf1": {
+      "sha256": "836cb12f9caeb0160ed150b91769c722cee60b9e157444f3db44586d70dd35ab",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "native number node text"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "native number node text"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "native number node text"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both the kernel's rewrite and its formal outcome are measured for the new String and Number rows.",
+          "evidence": {
+            "native number node text": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws/A12JsonIngressKernelTest.java#a12RewritesEveryFieldValueFromTheStoredValueAndValidatesThatRenderingNotTheAuthoredText",
+              "witness": "Ten exponent, threshold and signed-zero rows on a String field and two on a Number field."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring writes no Document values.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The reader renders an unquoted number token as A12's node text before the per-kind conversion.",
+          "evidence": {
+            "native number node text": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/A12JsonIngressDiffTest.kt#theInterpretersJsonIngressReproducesA12sRewriteAndItsFormalOutcome",
+              "witness": "The interpreter reproduces every row of the kernel matrix, the new String rows included."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document ingestion is a runtime concern; the checker judges models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reads Documents through the interpreter reader assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "JSON Schema import maps models, not Document values.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "JSON Schema export maps models, not Document values.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the handback answering SPEC-2026-10-09-11; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
     "kf538": {
       "sha256": "a36842983eda824cd2dad18d9fc987dbffe37f373ad4a38f0f31fbee51060399",
       "task": "F-USE-BACKLOG",

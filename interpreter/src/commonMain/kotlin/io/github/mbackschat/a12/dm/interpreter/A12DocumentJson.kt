@@ -105,6 +105,37 @@ internal object A12DocumentJson {
         return plainForm(sign, integerPart, fractionPart, exponentPart)
     }
 
+    /**
+     * The text A12's reader hands its converter for an UNQUOTED number token, or null when [literal] is not a JSON
+     * number. Its mapper parses a token with a point or an exponent into a `BigDecimal` that keeps its signed scale,
+     * and `asText()` renders that as `BigDecimal.toString()`: `250.00` stays, `1e3` becomes `1E+3`, `0.0000001`
+     * becomes `1E-7`. An integer token renders as its integer, so `-0` becomes `0`. Every kind reads this text; a
+     * NUMBER field re-renders it from the value anyway, but a STRING field stores it (KERNEL-FINDINGS KF1,
+     * `A12JsonIngressKernelTest`). Purely lexical like [plainForm]; cross-checked against `BigDecimal.toString` by
+     * `A12NumberPlainFormTest`.
+     */
+    internal fun numberNodeTextOrNull(literal: String): String? {
+        val match = JSON_NUMBER.matchEntire(literal) ?: return null
+        val (sign, integerPart, fractionPart, exponentPart) = match.destructured
+        val digits = (integerPart + fractionPart).trimStart('0').ifEmpty { "0" }
+        val isZero = digits == "0"
+        val negative = sign == "-" && !isZero
+        if (fractionPart.isEmpty() && exponentPart.isEmpty() && !literal.contains('.')) {
+            return if (negative) sign + digits else digits
+        }
+        val exponent = if (exponentPart.isEmpty()) 0 else exponentPart.toIntOrNull() ?: return null
+        val scale = fractionPart.length.toLong() - exponent
+        if (scale > MAX_POINT_SHIFT || -scale > MAX_POINT_SHIFT) return null
+        val adjusted = digits.length - 1 - scale
+        val text = if (scale >= 0 && adjusted >= -6) {
+            plainForm("", integerPart, fractionPart, exponentPart) ?: return null
+        } else {
+            val mantissa = if (digits.length == 1) digits else digits[0] + "." + digits.substring(1)
+            mantissa + "E" + (if (adjusted >= 0) "+" else "") + adjusted
+        }
+        return if (negative) sign + text else text
+    }
+
     /** `BigDecimal.toPlainString()` reproduced lexically from an already-validated significand + exponent. */
     private fun plainForm(sign: String, integerPart: String, fractionPart: String, exponentPart: String): String? {
         val exponent = if (exponentPart.isEmpty()) 0 else exponentPart.toIntOrNull() ?: return null
@@ -378,7 +409,10 @@ internal object A12DocumentJson {
                         resource = DocumentInputResource.TOTAL_RAW_CODE_UNITS,
                         pointer = pointer,
                     )
-                    pending += Pending(path, coordinates, model.cellText(path, raw), isGroup = false)
+                    // A12 reads a value as its node's text, so an unquoted number arrives in its BigDecimal or
+                    // integer rendering rather than as typed; a quoted one is kept as typed.
+                    val text = if (node.isString) raw else numberNodeTextOrNull(raw) ?: raw
+                    pending += Pending(path, coordinates, model.cellText(path, text), isGroup = false)
                 }
                 else -> diagnostics += UnexpectedNodeTypeDiagnostic(
                     entityKind = ModelEntityKind.FIELD,

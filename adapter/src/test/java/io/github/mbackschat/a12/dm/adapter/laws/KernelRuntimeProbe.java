@@ -98,7 +98,8 @@ public final class KernelRuntimeProbe {
      * Configured exactly like A12's own document mapper ({@code ObjectMapperProvider
      * .createObjectMapperForDocSerializer()}) — {@code USE_BIG_DECIMAL_FOR_FLOATS} with
      * {@code STRIP_TRAILING_BIGDECIMAL_ZEROES} disabled, written back plain — and used for EVERY JSON this
-     * class reads or writes.
+     * class reads or writes; an inline document alone is written back in its nodes' own notation
+     * ({@link #document}).
      *
      * <p><b>A default mapper is a measurement defect here, not a style choice.</b> A row's
      * {@code documentInline} is re-serialized out of the parsed request before the kernel ever sees it, so on a
@@ -495,14 +496,15 @@ public final class KernelRuntimeProbe {
                     + "' must carry exactly one of 'document' (a path) or 'documentInline' (an embedded "
                     + "A12 Document JSON), not " + (hasPath ? "both" : "neither"));
         }
-        // Written back through the configured mapper for consistency with how it was read. The FIDELITY fix is
-        // one layer up, in DOCUMENT_MAPPER itself: a mutant reverting this line alone survives
-        // KernelProbeDocumentFidelityTest, because a DecimalNode the configured parse produced already prints
-        // its scale — measured 2026-09-22, so this line is tidiness rather than the guard's subject.
+        // Written back WITHOUT plain notation, so each decimal node keeps BigDecimal.toString(), the spelling A12's
+        // own parse yields at the same signed scale. Plain notation turned `1e3` into `1000`, which a String field
+        // stores differently (KernelProbeExponentFidelityTest); the trailing-zero half of the fidelity fix is the
+        // configured parse in DOCUMENT_MAPPER (KernelProbeDocumentFidelityTest).
         if (hasPath) {
             return read(base, rowNode.get("document").asText());
         }
-        return DOCUMENT_MAPPER.writeValueAsString(rowNode.get("documentInline"));
+        return DOCUMENT_MAPPER.writer().without(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN)
+                .writeValueAsString(rowNode.get("documentInline"));
     }
 
     private static JsonNode required(JsonNode node, String key) {

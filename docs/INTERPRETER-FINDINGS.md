@@ -4543,3 +4543,9 @@ Enforcement: `FilterCacheScopeDiffTest`. `allThreeEnginesAgreeOnEveryDocument` c
 [KF538](KERNEL-FINDINGS.md#kf538). `ComputationEngine.operandSelection` held the fields computations read and the index fields they select. A computation targeting a field below a repeatable group also brings that group's other uncomputed fields into A12's compute-time formal and over-limit checks. The interpreter reported neither an invalid value nor an over-limit cell of such a field. The selection now adds those fields for each such target, and the walk scope ([IF377](#if377)) is unchanged by it, since the group was already a target ancestor.
 
 Enforcement: `ComputeFormalScopeDiffTest.allThreeEnginesAgreeOnEveryDocument`.
+
+### IF379: an unquoted number is read as A12's node text, so a String field stores `1E+3` for `1e3` (2026-10-09) <a id="if379"></a>
+
+[KF1](KERNEL-FINDINGS.md#kf1)'s 2026-10-09 extension. `A12DocumentJson` handed every kind the authored literal, which a NUMBER field normalizes anyway but a STRING field stores. A12 reads the node, so `1e3`, `1.5e2`, `0.0000001`, `-0.0` and `-0` become `1E+3`, `1.5E+2`, `1E-7`, `0.0` and `0` in a String field. The reader now renders an unquoted number token as its node's text before the per-kind conversion, while the size ceilings still measure the authored text. A quoted token is unchanged.
+
+Enforcement: `A12JsonIngressDiffTest` over the kernel matrix's String rows. `A12NumberPlainFormTest.everyLegalJsonNumberReadsAsItsNodesText` checks the lexical rendering against `BigDecimal.toString` and `BigInteger.toString`.

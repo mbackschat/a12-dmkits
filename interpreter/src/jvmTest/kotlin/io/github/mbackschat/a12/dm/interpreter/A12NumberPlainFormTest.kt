@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import java.math.BigDecimal
+import java.math.BigInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -42,6 +43,21 @@ class A12NumberPlainFormTest {
             if (actual == expected) null else "$literal -> expected '$expected' but was '$actual'"
         }
         assertEquals(emptyList(), mismatches, "plain form diverged from BigDecimal.toPlainString")
+    }
+
+    /**
+     * A12's reader takes an unquoted number's text from its node: a `BigDecimal` for a token with a point or an
+     * exponent, an integer otherwise, so the comparand is that type's own `toString`.
+     */
+    @Test
+    fun everyLegalJsonNumberReadsAsItsNodesText() {
+        val mismatches = literals.mapNotNull { literal ->
+            val expected = if (literal.any { it == '.' || it == 'e' || it == 'E' }) BigDecimal(literal).toString()
+            else BigInteger(literal).toString()
+            val actual = A12DocumentJson.numberNodeTextOrNull(literal)
+            if (actual == expected) null else "$literal -> expected '$expected' but was '$actual'"
+        }
+        assertEquals(emptyList(), mismatches, "node text diverged from the BigDecimal / integer rendering")
     }
 
     @Test

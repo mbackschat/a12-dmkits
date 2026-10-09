@@ -62,6 +62,8 @@ class A12JsonIngressKernelTest {
             row("Quantity", "\"250.00\"", "250.00"),
             row("Quantity", "1e5", "100000"),
             row("Quantity", "\"1e5\"", "100000"),
+            row("Quantity", "1e3", "1000"),
+            row("Quantity", "\"1e3\"", "1000"),
             row("Quantity", "1.5e1", "15"),
             row("Quantity", "\"007\"", "7"),
             row("Quantity", "\"+5\"", "5"),
@@ -138,6 +140,17 @@ class A12JsonIngressKernelTest {
             row("CustomerName", "5", "\"5\""),
             row("CustomerName", "true", "\"true\""),
             row("CustomerName", "\"\"", "\"\""),
+            // a native decimal reaches a String as BigDecimal.toString(), the stringification asText() performs:
+            // its signed scale survives, so an exponent stays scientific and a tiny value turns scientific past the
+            // threshold, while a quoted token is kept as typed (a12-kernel-lean SPEC-2026-10-09-11)
+            row("CustomerName", "1e3", "\"1E+3\""),
+            row("CustomerName", "\"1e3\"", "\"1e3\""),
+            row("CustomerName", "1.5e2", "\"1.5E+2\""),
+            row("CustomerName", "0.0000001", "\"1E-7\""),
+            row("CustomerName", "0.000001", "\"0.000001\""),
+            row("CustomerName", "250.00", "\"250.00\""),
+            row("CustomerName", "-0.0", "\"0.0\""),
+            row("CustomerName", "-0", "\"0\""),
             row("Priority", "\"EXPRESS\"", "\"EXPRESS\""),
             row("Priority", "\"express\"", "\"express\"", "stringFalschesMuster"),
             row("RushLevel", "1", "\"1\"")
