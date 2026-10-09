@@ -40,6 +40,24 @@ class ConditionComplexityTest {
         }
     }
 
+    /** A keyed `ValueAsDate` source is a semantic index both walks see, as the keyed coercion's is (KF531). */
+    @Test
+    void aKeyedValueAsDateSourceIsCountedAsASemanticIndex() {
+        BoundModel model = BoundModel.ofJson(DocumentModelDraft.named("claims").locale("en_US")
+                .rootGroup("Register", register -> register.dateField("Limit", d -> d.format("yyyy-MM-dd"))
+                        .group("Claims", claims -> claims.repeatable(5).indexField("Code")
+                                .field("Code", FieldKind.STRING)
+                                .dateField("ReportedAbout", d -> d.format("yyyy-MM-dd")
+                                        .datePrecision(io.github.mbackschat.a12.dm.modelkit.DatePrecision.MONTH_OPTIONAL))))
+                .build().toJson());
+        Condition keyed = model.valueAsDateLastDay(model.date("/Register/Claims/ReportedAbout").semanticIndex("C1"))
+                .after(model.date("/Register/Limit"));
+        ConditionComplexity complexity = ConditionComplexity.of(keyed);
+        assertTrue(complexity.constructs().contains(Construct.SEMANTIC_INDEX));
+        assertEquals(1, complexity.operatorHistogram().get("SemanticIndex"));
+        assertTrue(OperatorUsage.of(keyed).contains("SemanticIndex"));
+    }
+
     private static final BoundModel m = BoundModel.ofJson(TestResources.text("models/subscription.dm.json"));
     private static final String FEE = "/Subscription/Addons/MonthlyFee";
     private static final String BASE = "/Subscription/Billing/BaseFee";

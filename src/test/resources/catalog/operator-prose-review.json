@@ -7399,11 +7399,18 @@
       "operator": "ValueAsDate",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:26cbf3a64062e41fb83b7f80f8fe1222fd01face9035ff75bb04f68528710c62",
+      "digest": "sha256:f671f935e679907647970a168e03e1f4e4be2f2d518c9d93e17a70d48be3bca8",
       "classifications": [
+        "ADMISSION",
         "REJECTION"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "KeyedTemporalOperandLawsTest#aKeySelectedCellStandsWhereATemporalOperationReadsOneField"
+        }
+      ]
     },
     {
       "operator": "ValueAsDate",
@@ -7528,11 +7535,18 @@
       "operator": "Date",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:b760741a29711bc01053d8daf01cac46601164aa785f065bb7be5e94de2b89be",
+      "digest": "sha256:d6f7eace93d91096dcec42b229a491937392514505a89cd10295d1b5e99c3eea",
       "classifications": [
+        "ADMISSION",
         "REJECTION"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "KeyedTemporalOperandLawsTest#aKeySelectedCellStandsWhereATemporalOperationReadsOneField"
+        }
+      ]
     },
     {
       "operator": "Date",

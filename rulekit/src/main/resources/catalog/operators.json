@@ -6426,7 +6426,7 @@
       "returns": "date",
       "meaning": "Resolves a partially known date field (a DateType with a date precision other than FULL) to a concrete date — the earliest (FirstDay) or latest (LastDay) real date matching the known parts.",
       "constraints": [
-        "the field must be a partially known date (date precision DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL), else MVK_INVALID_DATE_TYPE_FOR_OP",
+        "the field, or the cell a key selects in one (Rows/F For key), must be a partially known date (date precision DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL), else MVK_INVALID_DATE_TYPE_FOR_OP",
         "the second argument is the FirstDay or LastDay keyword",
         "admitted in four positions only: a direct comparison, a Add*(date, n) base, either DifferenceIn* operand, and the DATE argument of DateTime(date, time)"
       ],
@@ -6516,7 +6516,7 @@
       "returns": "date",
       "meaning": "Constructs a comparable date from day, month, and year (optionally century + 2-digit decade) temporal components. Without a year component the year is the model's Base Year, which the model must then declare. A component may be a bounded number field/expression or a quoted digit string; field-backed components render as bare entity refs and literal components remain quoted.",
       "constraints": [
-        "each operand is a temporal component: a bounded-integer / digit-patterned number field or expression, or a quoted digit string; the kernel rejects a plain scale-0 number field (MVK_WRONG_DATE_FORMAT_FOR_OP)",
+        "each operand is a temporal component: a bounded-integer / digit-patterned number field or expression, or a quoted digit string; the kernel rejects a plain scale-0 number field (MVK_WRONG_DATE_FORMAT_FOR_OP); a field may also be read through a key (Rows/F For key), judged by the field it selects in",
         "the complete-Year position additionally admits a bare temporal field DECLARED yyyy, and reads that declaration rather than the kind — a DATE, a TIME and a DATE_TIME field each declared yyyy are all admitted there. Both conjuncts are necessary: the same three kinds declared yyyy-MM-dd are refused at Year, and a yyyy field is refused at the Day and Month positions, all MVK_WRONG_DATE_FORMAT_FOR_OP (Locked: rulekit.validate.laws.TemporalConstructorDeclaredFormatGateLawsTest)"
       ],
       "gotchas": [

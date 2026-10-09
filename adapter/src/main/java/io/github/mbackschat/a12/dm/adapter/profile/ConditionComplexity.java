@@ -300,7 +300,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                     op(v.operatorId());
                     op(v.dayKeywordId());
                     constructs.add(Construct.DATE_MATH);
-                    yield 1;
+                    yield 1 + (v.source() instanceof IndexedFieldValue cell ? depth(cell) : 0);
                 }
                 case DateExtraction e -> {
                     op(e.operatorId());

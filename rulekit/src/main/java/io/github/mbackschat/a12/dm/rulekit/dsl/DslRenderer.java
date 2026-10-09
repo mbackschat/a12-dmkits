@@ -324,10 +324,7 @@ public final class DslRenderer {
         return render(child);
     }
 
-    /**
-     * A concatenation part, with an enumeration read braced: A12 refuses an immediate one whose labels remap its
-     * values and admits the braced one whatever its labels (KERNEL-FINDINGS KF396).
-     */
+    /** A `ValueAsDate` source: the bare field, or the keyed cell written as `Field For key` (KERNEL-FINDINGS KF531). */
     private String valueAsDateSource(ValueAsDate.Source source) {
         return switch (source) {
             case FieldRef field -> path(field);
@@ -335,6 +332,10 @@ public final class DslRenderer {
         };
     }
 
+    /**
+     * A concatenation part, with an enumeration read braced: A12 refuses an immediate one whose labels remap its
+     * values and admits the braced one whatever its labels (KERNEL-FINDINGS KF396).
+     */
     private String concatenationPart(Calculation part) {
         return part instanceof FieldValue && part.kind() == ValueKind.ENUMERATION
                 ? "{ " + render(part) + " }" : render(part);

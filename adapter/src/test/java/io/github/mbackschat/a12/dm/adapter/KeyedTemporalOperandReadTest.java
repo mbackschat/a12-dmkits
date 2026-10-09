@@ -22,7 +22,7 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 
 /**
  * A key-selected cell in a temporal slot reads back as the typed operand that authored it: the source of
- * {@code ValueAsDate} and a component of a {@code Date} construction (admission measured by
+ * {@code ValueAsDate} and a component of a {@code Date} or {@code Time} construction (admission measured by
  * {@code validate.laws.KeyedTemporalOperandLawsTest}). Each shape is authored, injected into the kernel model and
  * converted back, and the read must equal the authored object, not only its rendering.
  *
@@ -39,7 +39,10 @@ class KeyedTemporalOperandReadTest {
                             .stringField("Code", f -> { })
                             .dateField("ReportedAbout",
                                     f -> f.format("yyyy-MM-dd").datePrecision(DatePrecision.MONTH_OPTIONAL))
-                            .stringField("DayText", f -> f.maxLength(2).pattern("[0-9]+", "Digits only."))))
+                            .stringField("DayText", f -> f.maxLength(2).pattern("[0-9]+", "Digits only."))
+                            .stringField("MonthText", f -> f.maxLength(2).pattern("[0-9]+", "Digits only."))
+                            .stringField("YearText", f -> f.maxLength(4).pattern("[0-9]+", "Digits only."))
+                            .stringField("HourText", f -> f.maxLength(2).pattern("[0-9]+", "Digits only."))))
             .build().toJson();
 
     @Test
@@ -56,6 +59,12 @@ class KeyedTemporalOperandReadTest {
         authored.put("FieldKeyedDay", held.and(
                 Dsl.date(dayText.semanticIndex(key), Dsl.temporalComponent("01"), Dsl.temporalComponent("2024"))
                         .after(limit)));
+        authored.put("FieldKeyedMonth", held.and(Dsl.date(Dsl.temporalComponent("01"),
+                m.str("/Register/Claims/MonthText").semanticIndex(key), Dsl.temporalComponent("2024")).after(limit)));
+        authored.put("FieldKeyedYear", held.and(Dsl.date(Dsl.temporalComponent("01"), Dsl.temporalComponent("01"),
+                m.str("/Register/Claims/YearText").semanticIndex(key)).after(limit)));
+        authored.put("FieldKeyedHour", held.and(Dsl.time(m.str("/Register/Claims/HourText").semanticIndex(key))
+                .after(Dsl.timeValue("10:00:00"))));
         BoundModel withRules = m;
         for (Map.Entry<String, Condition> rule : authored.entrySet()) {
             withRules = withRules.add(m.rule(m.group("/Register")).name(rule.getKey())

@@ -146,6 +146,9 @@ public final class OperatorUsage {
             case ValueAsDate v -> {
                 ops.add(v.operatorId());
                 ops.add(v.dayKeywordId());
+                if (v.source() instanceof IndexedFieldValue cell) {
+                    collect(cell, ops);      // + the SemanticIndex operand
+                }
             }
             case DateExtraction e -> {
                 ops.add(e.operatorId());

@@ -685,6 +685,15 @@ class FunctionsTest {
         assertFalse(value.firstDay())
     }
 
+    /** A key-selected cell is a `Date` component of its own, kept as the selected cell rather than its field. */
+    @Test
+    fun aKeySelectedDateComponentConvertsToTheSelectedCell() {
+        val date = assertInstanceOf(DateConstruction::class.java,
+            left("Date(Items/ShipDay For \"S-1\", \"01\", \"2024\") > Today"))
+        assertEquals("/Order/Items/ShipDay For \"S-1\"",
+            assertInstanceOf(IndexedFieldValue::class.java, date.day()).renderedPath())
+    }
+
     /** A key-selected cell is a `ValueAsDate` source of its own, distinct from the field it selects in. */
     @Test
     fun aKeySelectedValueAsDateConvertsToTheSelectedCell() {

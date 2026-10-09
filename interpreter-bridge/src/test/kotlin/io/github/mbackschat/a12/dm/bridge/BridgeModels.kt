@@ -40,6 +40,7 @@ internal object BridgeModels {
                             .numberField("UnitWeight") { it.fractionDigits(2) }
                             .dateRangeField("ItemCoverage") { it.format("yyyy-MM-dd").separator("/") }
                             .dateField("PromiseDate") { it.format("yyyy-MM-dd") }
+                            .numberField("ShipDay") { it.min("1").max("31") }
                             .dateField("RestockAbout") {
                                 it.format("yyyy-MM-dd").datePrecision(DatePrecision.DAY_OPTIONAL)
                             }

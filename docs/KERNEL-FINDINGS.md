@@ -12777,6 +12777,10 @@ A rule at the root of a claims register reads a repeatable `Claims`, indexed on 
 | `Date(Claims/DayText For "C1", "01", "2024")` | admitted |
 | `Date(Claims/DayText, "01", "2024")` | `MVK_NO_WILDCARD` |
 | `Date(Claims/DayNumber For Key, "01", "2024")`, a bounded number | admitted |
+| `Date("01", Claims/MonthText For Key, "2024")`, and `Date("01", "01", Claims/YearText For Key)` | admitted |
+| `Time(Claims/HourText For Key) > "10:00:00"` | admitted |
+| `Time(Claims/HourText) > "10:00:00"` | `MVK_NO_WILDCARD` |
+| `ValueAsDate(Claims/SettledOn For Key, FirstDay)`, a full-precision date | `MVK_INVALID_DATE_TYPE_FOR_OP`, as unkeyed |
 
 At runtime the keyed `ValueAsDate` resolves the boundary of the selected row's value. Dynamic Groovy, static Java and our interpreter agree on every document; `Limit` is `2024-01-10`, and the computation writes `ValueAsDate(Claims/ReportedAbout For Key, LastDay)` into a date already holding a value:
 
@@ -12792,4 +12796,6 @@ At runtime the keyed `ValueAsDate` resolves the boundary of the selected row's v
 
 A key that selects nothing, an empty cell and a malformed selected cell all give no value, and the computation clears its target on each rather than erroring; a malformed cell in another row does not reach the read. The keyed `Date(…)` day reads the selected row's text the same way.
 
-*(Locked: `validate.laws.KeyedTemporalOperandLawsTest` — the admission grid and the typed authoring of every admitted shape; `adapter.laws.KeyedTemporalOperandDiffTest` — the runtime rows against both strategies; the checker's agreement by `adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerAdmitsAKeyedTemporalOperandA12Admits`; the read back into the typed form by `adapter.KeyedTemporalOperandReadTest`.)*
+The index column's own defects reach the keyed `ValueAsDate` as they reach any keyed read, and the resolution is an ordinary date to the operations above it. In a `YEAR_OPTIONAL` ledger with `Key` = `C2` selecting `2023-05-00`, an empty or malformed `Code` cell in another row leaves the rule reading the clean match: `DifferenceInDays(ValueAsDate(…, FirstDay), [Limit]) > 5` fires on its 254 days, while `ValueAsDate(…, LastDay) > [Limit]` and `AddDays(ValueAsDate(…, FirstDay), 30) > [Limit]` do not. The computation over that column clears. A duplicated key, and a key naming the malformed cell, resolve nothing. A selected value whose year is unknown (`0000-00-00`) clears the keyed computation, exactly as the same value clears the row-local unkeyed one.
+
+*(Locked: `validate.laws.KeyedTemporalOperandLawsTest` — the admission grid and the typed authoring of every admitted shape; `adapter.laws.KeyedTemporalOperandDiffTest` — the runtime rows against both strategies; the checker's agreement by `adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerAdmitsAKeyedTemporalOperandA12Admits`; the column defects, the unknown year and the nested operations by `adapter.laws.KeyedTemporalOperandEdgeDiffTest`; the interpreter on JVM and Node by `KeyedValueAsDateTest`; the read back into the typed form by `adapter.KeyedTemporalOperandReadTest`.)*

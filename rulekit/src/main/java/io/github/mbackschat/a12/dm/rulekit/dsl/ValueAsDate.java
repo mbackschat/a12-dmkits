@@ -8,7 +8,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * ({@code FirstDay}) or latest ({@code LastDay}) real date matching the known parts (the kernel
  * {@code FieldIdOperationName.ValueAsDate}, an {@code IFieldIdOperationWithParameters} whose
  * {@code isFirstDay()} carries the day specification). A {@link Calculation} of {@link ValueKind#DATE};
- * wrap in a {@link DateExpr} to compare it. The field renders bare; the day specification is a
+ * wrap in a {@link DateExpr} to compare it. The {@link Source} renders bare, a keyed cell as
+ * {@code Field For key}; the day specification is a
  * localized keyword ({@code FirstDay}/{@code LastDay}; DE {@code ErsterTag}/{@code LetzterTag}).
  */
 public record ValueAsDate(Source source, boolean firstDay) implements Calculation {
