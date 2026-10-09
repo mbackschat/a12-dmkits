@@ -48,16 +48,42 @@ internal fun TrackedFactBase.dateArithmeticContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val carriers = ADDED_COMPONENT_OF.mapNotNull { (id, unit) -> keywords[id]?.let { it to unit } }.toMap()
-    if (carriers.isEmpty()) {
-        return emptyList()
-    }
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     return callContributions(element, execution) { member, call ->
-        val unit = carriers[call.operator] ?: return@callContributions null
+        val unit = addedComponentOf(call.operator) ?: return@callContributions null
         shiftDefect(call, unit, group, element)?.let { finding(it, call, element, member) }
     }
+}
+
+/** The component a shift operator spelled [operator] in this model's language adds, or null for any other. */
+private fun TrackedFactBase.addedComponentOf(operator: String): Component? {
+    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
+    return ADDED_COMPONENT_OF.entries.firstOrNull { (id, _) -> keywords[id] == operator }?.value
+}
+
+/**
+ * The declared date a shift [call] moves, where A12 admits the shift and this reader judges every gate it
+ * asks, or null.
+ *
+ * A caller reading a nested shift's result needs both halves: A12 types the result as its date operand's
+ * format (`CheckDatumAddOpImpl` hands the operand's type on), and a shift A12 refuses answers before any
+ * operation around it is asked. So the date must be a bare declared field and the amount a numeric literal
+ * or a bare number field, the two shapes [shiftDefect] decides completely.
+ */
+internal fun TrackedFactBase.admittedShiftField(
+    call: ConditionCall,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): TrackedDeclaration? {
+    val unit = addedComponentOf(call.operator) ?: return null
+    if (shiftDefect(call, unit, declaringGroup, element) != null) return null
+    val date = call.operands.firstOrNull() ?: return null
+    val field = bareReferenceField(date.text, declaringGroup, element, call.inAFilterBody) ?: return null
+    if (declaredTemporalFormatOf(field) == null) return null
+    val amount = call.operands.getOrNull(1) ?: return null
+    val judged = amount.constant && amount.literal == null ||
+        bareReferenceField(amount.text, declaringGroup, element, call.inAFilterBody)?.declaredFieldType() == FieldType.NUMBER
+    return field.takeIf { judged }
 }
 
 /** Which datetime component each carrier adds — A12's `DateUtils.typeToComponent`, for these six tokens. */

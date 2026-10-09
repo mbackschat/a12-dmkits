@@ -4,11 +4,11 @@
 >
 > **Lifecycle.** A gap lives here only while open. When it ships, its row is DELETED in the same commit: the measured behaviour already lives in its [KERNEL-FINDINGS](KERNEL-FINDINGS.md) entry, and the sweep ledger turns the divergence into an agreement. No shipped list, ever.
 >
-> **Current state.** Since 2026-09-26 the checker's divergences are discovered by the near-miss sweep, and its committed ledger (`adapter/src/test/resources/checker-near-miss/clusters.tsv`) is their list. The rows below were found by hand before that, so their inputs are kept here until they become sweep seeds. Each row names the missing structure behind it and the stage rebuild in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md) that settles it; none is patched in the family it names.
+> **Current state.** Since 2026-09-26 the checker's divergences are discovered by the near-miss sweep, and its committed ledger (`adapter/src/test/resources/checker-near-miss/clusters.tsv`) is their list. A row found by hand names its input, the missing structure behind it and the stage rebuild in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md) that settles it, and is kept here until it becomes a sweep seed.
 
 ## 1. Open
 
-- **DG126 — the checker has no reading of the temporal EXTRACTOR format gate (`checkDatumExtractOp`).** `YearFromDate` over a clock field, over `Time(Hour)`, or over `TimeFromDateTime(DateTime(StartOn, Time(Hour)))` draws `MVK_WRONG_DATE_FORMAT_FOR_OP` from A12 on a model with no Base Year and is admitted with one ([KF261](KERNEL-FINDINGS.md#kf261)); the checker is silent on all three refusals. Its date-arithmetic family already asks the same question of a shift's operand (does its format carry the component), so the missing structure is that question asked of an extractor's operand, with a Base Year supplying the year. Locked as the checker's current answer in `adapter.laws.CheckerTimeYearExtractorAgreementTest`.
+_None open._
 
 ## 2. Out of scope
 

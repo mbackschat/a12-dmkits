@@ -144,6 +144,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field TEMPORAL_AGGREGATE_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field TEMPORAL_COMPARISON_AGREEMENT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field TEMPORAL_CONFIG Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field TEMPORAL_EXTRACTOR_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field VALIDITY_CONDITION_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field VALUE_AS_DATE_OPERAND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field VALUE_IN_FIELDS_CONSTANT_KIND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;

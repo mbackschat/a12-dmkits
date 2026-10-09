@@ -12704,3 +12704,33 @@ So every slot the consumer reaches is asked of the relevant set, the missing one
 | one shipment of one item, three legs | yes: shipment 2 is walked, capped at its capacity | yes |
 
 So at each starred level the walk visits coordinates 1 up to the highest repetition any counted row stores at that depth, across parents and across groups, never fewer than one and never past the declared capacity; a blank row object counts as stored. It is neither of [KF517](#kf517)'s arms for rule iteration: with capacity 3, a product under its threshold, the missing legs of a one-leg document are not walked, and where a rule's occupied-prefix arm leaves a line holding one part at that part, the filter walks every line to the level's highest part. The kernel's filtered iterator caps each level's end at the cache's highest set repetition, keeping its start (`EntityIterator.setzeAlleEbenenMitZeileAufMaxGesetztIfPossible`, `GroupFillCache.getHighestRepetitionAtLevel`; source-read, the rows above settle the behavior). A computation's cache holds only what its computations read, which is why a sibling group extends its walk only once a computation reads that group. *(Locked: `adapter.laws.FilterMissingSlotDiffTest`, both models. A computation target inside a repeatable group, and partial validation, are not measured here.)*
+
+## §6 supplement — a temporal extractor asks its operand's partial precision, then whether it is a constant, then whether its format carries the extracted component; the date-yielding extractors ask only for a full stamp, with no Base Year exemption (kernel `checkConsistency`, 2026-10-09) <a id="kf529"></a>
+
+> Fold: pending — widens [KF261](#kf261)'s Base Year row to every extractor and operand form, and is the second carrier of [KF167](#kf167)'s `MVK_NO_CONST`; a12-kernel-lean `SPEC-2026-10-08-01`.
+
+`CheckerTemporalExtractorAgreementTest` asks each of the nine extractors of 33 operand forms, on one draft built with and without a Base Year. A number extractor answers at the first gate its operand fails; `DateFromDateTime` and `TimeFromDateTime` ask the last question only:
+
+| # | the question | class |
+|---|---|---|
+| 1 | a partially known date FIELD: is the component known? Every clock component is unknown, and so is the day under `DAY_OPTIONAL`, the month and day under `MONTH_OPTIONAL`, everything under `YEAR_OPTIONAL` | `MVK_INVALID_DATE_TYPE` |
+| 2 | is the operand a quoted date, of any of the four accepted shapes? | `MVK_NO_CONST` |
+| 3 | does the operand's format carry the component? `QuarterFromDate` extracts the month; a Base Year answers it for the year | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| — | `DateFromDateTime`, `TimeFromDateTime`: does the format carry all six components? No Base Year exemption | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+
+The format is the one A12 registers for the operand, so the KIND of a declaration does not decide: a `TimeType` declared `yyyy-MM-dd` extracts a year and refuses an hour.
+
+| operand | format |
+|---|---|
+| a declared field | its declared format |
+| a quoted date | the format its length names (8 `HH:mm:ss`, 10 `dd.MM.yyyy`, 19 the stamp) |
+| `Today`, a declared `BaseYear`, `DateFromDateTime(…)`, a three-component `Date(…)` | `dd.MM.yyyy` |
+| `Now`, `DateTime(…)` | `dd.MM.yyyy'T'HH:mm:ss` |
+| `Time(…)`, `TimeFromDateTime(…)` | `HH:mm:ss` |
+| a two-component `Date(…)` | `dd.MM.` |
+| `AddDays(d, n)` and the other shifts | `d`'s format |
+| `StartOfDateRange(r)`, `EndOfDateRange(r)` | `r`'s declared format, or `dd.MM.yyyy` where `r` reads its year `FROM` or `TO` |
+
+The separating rows: `HoursFromTime` over a `DAY_OPTIONAL` date is `MVK_INVALID_DATE_TYPE`, not the format class, while `YearFromDate` over it is admitted; `QuarterFromDate` over a `MONTH_OPTIONAL` date is refused; `DateFromDateTime` over a full date is refused under a Base Year; `DateFromDateTime("01.01.2024T10:00:00")` is admitted where every number extractor refuses the same literal; `YearFromDate(StartOfDateRange(r))` is refused for an `MM-dd` range and admitted for the same range read `FROM`; `MonthFromDate` over a `yyyy` range's endpoint is refused. The gate answers as soon as the call is read: `DateFromDateTime(StartOn) == StartOn` is `MVK_WRONG_DATE_FORMAT_FOR_OP`, while `DateFromDateTime(SignedAt) == StartOn` reaches the bare comparand and is `MVK_UNEXPECTED_TOKEN`.
+
+The gates are `CheckDatumExtractOpImpl.check` with `DateUtils.checkOperationConsistentToPartialKnown` and `checkOperationConsistentToDateFormat`, and the operand formats are what `CheckDatumAngabeImpl`, `CheckDatumAddOpImpl`, `CheckDatumBereichOpImpl` and the three construction checkers register (source-read; the rows above settle the behavior). Locked by `adapter.laws.CheckerTemporalExtractorAgreementTest`, which pins the separating rows against the kernel and requires the portable checker's `TEMPORAL_EXTRACTOR_OPERANDS` family to name the kernel's class on all 594; `consistency.TemporalExtractorOperandsTest` mirrors the separating rows on both checker targets.

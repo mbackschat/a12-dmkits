@@ -53,17 +53,11 @@ class CheckerTimeYearExtractorAgreementTest {
                 } else {
                     emptySet()
                 }
-                val oursExpected = if (expected.isNotEmpty() && label in UNREAD_BY_THE_CHECKER) emptySet() else expected
-                if (kernel != expected || ours != oursExpected) {
-                    wrong += "$label, $axis: expected (A12, ours) ${expected to oursExpected}, observed ${kernel to ours}"
+                if (kernel != expected || ours != expected) {
+                    wrong += "$label, $axis: expected $expected from both, observed (A12, ours) ${kernel to ours}"
                 }
             }
         }
         assertTrue(wrong.isEmpty(), wrong.joinToString("\n", "rows that disagree:\n"))
-    }
-
-    private companion object {
-        /** The refusals the checker does not yet name, because it has no extractor format gate (CONSISTENCY-GAPS DG126). */
-        val UNREAD_BY_THE_CHECKER = setOf("a clock field", "a built time", "a time recovered from a date-time")
     }
 }

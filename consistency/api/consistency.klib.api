@@ -199,6 +199,7 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
     enum entry TEMPORAL_AGGREGATE_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.TEMPORAL_AGGREGATE_OPERANDS|null[0]
     enum entry TEMPORAL_COMPARISON_AGREEMENT // io.github.mbackschat.a12.dm.consistency/CheckFamily.TEMPORAL_COMPARISON_AGREEMENT|null[0]
     enum entry TEMPORAL_CONFIG // io.github.mbackschat.a12.dm.consistency/CheckFamily.TEMPORAL_CONFIG|null[0]
+    enum entry TEMPORAL_EXTRACTOR_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.TEMPORAL_EXTRACTOR_OPERANDS|null[0]
     enum entry VALIDITY_CONDITION_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.VALIDITY_CONDITION_OPERANDS|null[0]
     enum entry VALUE_AS_DATE_OPERAND // io.github.mbackschat.a12.dm.consistency/CheckFamily.VALUE_AS_DATE_OPERAND|null[0]
     enum entry VALUE_IN_FIELDS_CONSTANT_KIND // io.github.mbackschat.a12.dm.consistency/CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND|null[0]

@@ -248,8 +248,9 @@ class BuilderCheckerDivergenceGuardTest {
             // — and says nothing about enum-kind lists, so it does not inherit the deferral.
             Map.entry("MVK_INVALID_TYPES_FOR_COMPARISON", Disposition.STRICTER_IN_JAVA),
 
-            // Neither estate enforces it: the enricher names it as a rendering example and the checker names
-            // it in a KDoc listing the date-range quantifier's own arm, which it deliberately leaves alone.
+            // The kit only names it, as the enricher's rendering example. The checker reports it for one
+            // carrier, a number extractor handed a quoted date (`TemporalExtractorOperands`, KF529), and names
+            // it again in a KDoc listing the date-range quantifier's own arm, which it leaves alone.
             Map.entry("MVK_NO_CONST", Disposition.PROSE_ONLY),
 
             // Both enforce A12's arity law over carriers that cannot share a reader: the typed aggregates
@@ -290,9 +291,10 @@ class BuilderCheckerDivergenceGuardTest {
 
             // The kit names it only in the operator catalog — a gotcha on the date-fragment arithmetic
             // operators and a corrective on the extractors — and refuses on none of them. The checker
-            // reports it, and narrower than the code's name: a `Date`/`Time` construction slot, where the
-            // demand on a constant is digits, a range and a width, and on a field component its declared
-            // width or bound (`DateConstructionSlotLawsTest`, `TemporalComponentDeclarationLawsTest`).
+            // reports it on three carriers: a `Date`/`Time` construction slot, where the demand on a constant
+            // is digits, a range and a width, and on a field component its declared width or bound
+            // (`DateConstructionSlotLawsTest`, `TemporalComponentDeclarationLawsTest`); a shift's date
+            // (`DateArithmeticOperandLawsTest`); and an extractor's operand (KF529).
             Map.entry("MVK_WRONG_DATE_FORMAT_FOR_OP", Disposition.PROSE_ONLY),
 
             // `DateConstruction`'s javadoc names it while pointing the gate at the model, and the typed

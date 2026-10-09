@@ -103,13 +103,13 @@ private fun TrackedDeclaration.declaredFormat(members: Map<FieldType, String>): 
  * Only a `DateType` carries the member, so every other declaration answers false rather than unknown: the
  * precision is a `DateType` body key and its absence there is A12's own default.
  */
-internal fun declaresAPartialPrecision(field: TrackedDeclaration): Boolean =
-    declaresAPartialPrecisionIn(field.body)
+internal fun declaresAPartialPrecision(field: TrackedDeclaration): Boolean = declaredPartialPrecisionOf(field) != null
 
-private fun declaresAPartialPrecisionIn(body: JsonObject?): Boolean {
-    val declared = body?.get("fieldType") as? JsonObject ?: return false
-    val dateType = FieldType.DATE.bodyIn(declared) ?: return false
-    return (dateType["datePrecision"] as? JsonPrimitive)?.contentOrNull in PARTIAL_PRECISIONS
+/** Which of the [PARTIAL_PRECISIONS] this field declares, or null where it declares none. */
+internal fun declaredPartialPrecisionOf(field: TrackedDeclaration): String? {
+    val declared = field.body?.get("fieldType") as? JsonObject ?: return null
+    val dateType = FieldType.DATE.bodyIn(declared) ?: return null
+    return (dateType["datePrecision"] as? JsonPrimitive)?.contentOrNull?.takeIf { it in PARTIAL_PRECISIONS }
 }
 
 /**
@@ -144,10 +144,10 @@ internal fun acceptedDateConstantFormat(constant: String): String? = when (const
 }
 
 /** `DateUtils.DATUM_FORMAT_WITHOUT_YEAR`. */
-private const val YEARLESS_DATE_FORMAT = "dd.MM."
+internal const val YEARLESS_DATE_FORMAT = "dd.MM."
 
 /** `DateUtils.TIME_FORMAT`. */
-private const val TIME_FORMAT = "HH:mm:ss"
+internal const val TIME_FORMAT = "HH:mm:ss"
 
 /** `DateUtils.DATUM_FORMAT_WITH_YEAR`, which is also the format `Today` carries. */
 internal const val DATE_FORMAT = "dd.MM.yyyy"

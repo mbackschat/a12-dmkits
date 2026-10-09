@@ -826,6 +826,13 @@ enum class CheckFamily {
      * selects its distinct incomplete-input class from the same recognition result.
      */
     CONDITION_GRAMMAR,
+
+    /**
+     * What a temporal extractor demands of the date it reads once the date slot has admitted it. One constant
+     * for the three classes because `CheckDatumExtractOpImpl.check` asks them in a fixed order over one
+     * operand, and the two date-yielding extractors ask the format question alone (KF529).
+     */
+    TEMPORAL_EXTRACTOR_OPERANDS,
 }
 
 /**

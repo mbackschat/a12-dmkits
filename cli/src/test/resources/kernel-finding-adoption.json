@@ -5473,7 +5473,9 @@
         "interpreter": [
           "a time's year is the epoch's"
         ],
-        "checker": [],
+        "checker": [
+          "a Base Year admits a time's year"
+        ],
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
@@ -5508,9 +5510,14 @@
           }
         },
         "checker": {
-          "state": "NOT_APPLICABLE",
-          "basis": "The extractor format gate is not read by the checker; that silence is CONSISTENCY-GAPS DG126.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The checker's extractor family exempts the year under a declared Base Year and refuses it without one.",
+          "evidence": {
+            "a Base Year admits a time's year": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTimeYearExtractorAgreementTest.kt#aTimesYearIsAdmittedExactlyUnderABaseYear",
+              "witness": "A clock field, a built time and a recovered one draw the same class from A12 and the checker on both axes."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
@@ -6178,6 +6185,78 @@
         "a12-kernel-lean": {
           "state": "OPEN",
           "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-07-04; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf529": {
+      "sha256": "b133c916d0f061254d45608522dbc119dc6b6ab0bc0c77526f4e7af456a318c4",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "an extractor's operand gates"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "an extractor's operand gates"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "an extractor's operand gates"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel's answers on the separating rows are pinned through the adapter's RuleValidator.",
+          "evidence": {
+            "an extractor's operand gates": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTemporalExtractorAgreementTest.kt#aGateAnswersInA12sOrderOverTheFormatEachOperandCarries",
+              "witness": "Thirteen separating rows and the parse-order pair answer as the finding states."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed extractors take a date, stamp or time operand by kind and leave the format, precision and constant gates to the kernel check they render through.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission law; the interpreter evaluates models A12 has admitted.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker's TEMPORAL_EXTRACTOR_OPERANDS family asks the three gates in A12's order over the format each operand form registers.",
+          "evidence": {
+            "an extractor's operand gates": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTemporalExtractorAgreementTest.kt#theCheckerNamesA12sClassOnEveryExtractorOperand",
+              "witness": "The checker names the kernel's class on all 594 rows, with and without a Base Year."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's portable engine runs the checker assessed here, and its default engine is the kernel.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission law over conditions does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission law over conditions does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-08-01; no peer receipt is inferred.",
           "evidence": {}
         }
       }

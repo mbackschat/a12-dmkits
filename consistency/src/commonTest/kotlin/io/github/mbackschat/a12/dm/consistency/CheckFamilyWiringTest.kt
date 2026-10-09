@@ -90,6 +90,10 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../NoSuchField",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r102","name":"YearOfAPureClock","Rule":{
+              "errorCondition":"FieldFilled(Price) And YearFromDate(ShiftStart) == 1970",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C102","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r101","name":"CategoryInACount","Rule":{
               "errorCondition":"FieldFilled(Price) And NumberOfFilledFields(MiscategorisedTier -> Band, Price) > 0",
               "errorEntityRelPath":"../Price",
@@ -610,6 +614,10 @@ class CheckFamilyWiringTest {
         // answers every calendar operator first, so the row fails if the two gates are ever reordered.
         CheckFamily.DATE_ARITHMETIC_OPERANDS to
             ("MVK_INVALID_TIME" to "/Catalog/HoursAddedToAPureClock"),
+        // The year of a clock on a model with no Base Year — the format question the shift family asks of a
+        // shift, asked of an extractor, so the row fails if an extractor's operand ever goes unread again.
+        CheckFamily.TEMPORAL_EXTRACTOR_OPERANDS to
+            ("MVK_WRONG_DATE_FORMAT_FOR_OP" to "/Catalog/YearOfAPureClock"),
         // A digit count above the ceiling, behind an operand the construct accepts — the row fails if the
         // digits gate is ever moved ahead of the operand ones, which would change what a double defect says.
         CheckFamily.ROUNDING_OPERANDS to
