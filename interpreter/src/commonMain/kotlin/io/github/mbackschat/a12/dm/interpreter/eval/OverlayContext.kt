@@ -241,17 +241,27 @@ internal class OverlayContext(
             }
         }
 
+    // Shared across the step's outer rows for the reason [rowContexts] is: re-wrapping every candidate per outer row
+    // made a `$`-correlated filter O(rows²) and breached the perf gate's compute-overlay correlation anchor.
     override fun filterWalkRows(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): List<EvalContext> =
-        d.filterWalkRows(groupPath, bindDepth, counts).map { OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget) }
+        views.filterWalkRows(groupPath, d.scopePrefixOf(groupPath, bindDepth), counts) {
+            d.filterWalkRows(groupPath, bindDepth, counts).map {
+                OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget)
+            }
+        }
 
     // A filtered declared-range fill scan selects among missing declared rows too (SPEC-2026-10-04-05); they are
     // wrapped like stored ones so a filter reads the cascade there as well.
     override fun declaredStarRows(fieldPath: String, bindDepth: Int): Sequence<EvalContext> =
         d.declaredStarRows(fieldPath, bindDepth).map { OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget) }
 
+    // Shared like [filterWalkRows]. The environment group is an ancestor-or-self of [groupPath], so [groupPath]'s own
+    // scope prefix, with the depth, determines the environment's and keys no two different row sets alike.
     override fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> =
-        d.groupListEnvironments(groupPath, bindDepth)
-            .map { OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget) }
+        views.groupListEnvironments(groupPath, bindDepth, d.scopePrefixOf(groupPath, bindDepth)) {
+            d.groupListEnvironments(groupPath, bindDepth)
+                .map { OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget) }
+        }
 
     // Not covered by `by d`, which forwards EvalContext alone: without this the provider's null default answers.
     override fun declaredGroupListExtent(groupPath: String, bindDepth: Int): Int? =
@@ -304,6 +314,8 @@ internal class OverlayViews(private val observer: CacheObserver? = null) {
     private val correlations = HashMap<List<Any?>, Map<List<Val>, IntArray>>()
     private val orderedCorrelations = HashMap<List<Any?>, OrderedCorrelation>()
     private val rowContexts = HashMap<Pair<String, List<Int>>, List<EvalContext>>()
+    private val filterWalkRows = HashMap<Triple<String, List<Int>, Any?>, List<EvalContext>>()
+    private val groupListEnvironments = HashMap<Triple<String, Int, List<Int>>, List<EvalContext>>()
 
     /**
      * The overlay-WRAPPED row contexts of one group in one scope. Unlike the derived views below this caches no
@@ -312,6 +324,24 @@ internal class OverlayViews(private val observer: CacheObserver? = null) {
      */
     fun rowContexts(groupPath: String, scope: List<Int>, build: () -> List<EvalContext>): List<EvalContext> =
         rowContexts.getOrPut(groupPath to scope, build).also { observe() }
+
+    /** [rowContexts] for a `Having` filter's walk, missing coordinates included; [counts] is part of the key because
+     *  it decides which coordinates the walk visits. */
+    fun filterWalkRows(
+        groupPath: String,
+        scope: List<Int>,
+        counts: ((String) -> Boolean)?,
+        build: () -> List<EvalContext>,
+    ): List<EvalContext> = filterWalkRows.getOrPut(Triple(groupPath, scope, counts), build).also { observe() }
+
+    /** [rowContexts] for the rows a group-list operand ranges over. */
+    fun groupListEnvironments(
+        groupPath: String,
+        bindDepth: Int,
+        scope: List<Int>,
+        build: () -> List<EvalContext>,
+    ): List<EvalContext> =
+        groupListEnvironments.getOrPut(Triple(groupPath, bindDepth, scope), build).also { observe() }
 
     fun indexColumn(path: String, scope: List<Int>, build: () -> IndexColumn): IndexColumn =
         indexColumns.getOrPut(path to scope, build).also { observe() }
@@ -336,12 +366,15 @@ internal class OverlayViews(private val observer: CacheObserver? = null) {
         correlations.clear()
         orderedCorrelations.clear()
         rowContexts.clear()
+        filterWalkRows.clear()
+        groupListEnvironments.clear()
         observe()
     }
 
     private fun observe() {
         val active = observer ?: return
         active.cacheEntries(this, CacheOwnerKind.OVERLAY_VIEWS,
-            indexColumns.size + correlations.size + orderedCorrelations.size + rowContexts.size)
+            indexColumns.size + correlations.size + orderedCorrelations.size + rowContexts.size + filterWalkRows.size +
+                groupListEnvironments.size)
     }
 }
