@@ -1168,14 +1168,14 @@ class DmInterpreter private constructor(
                 // small prefix, and expose an O(1) immutable joined view over the shared cluster list. This keeps
                 // exact list semantics without copying the N-entry peer projection into every one of N messages.
                 val directRefs = if (matchingRnuOutcome != null) directRefsOutsideRnuKeys.orEmpty() else directMessageRefs
-                val directPointers = directRefs.map { messagePointer(it, pass.doc, ctx) }.distinct()
+                val directPointers = directRefs.map { messagePointer(it, pass, ctx) }.distinct()
                 val rnuPointers = matchingRnuOutcome?.peerKeyPointers.orEmpty()
                 val referenced = joinedList(directPointers, rnuPointers)
                 // refOmissionErrorResponsible: the referenced operands that can cause an omission, filled or not,
                 // fixed per rule ([omissionReferences]); the RNU cluster stays in. Empty for a VALUE error.
                 val fillToFix = if (type == MsgType.OMISSION) {
                     joinedList(directRefs.filter { it in prepared.omissionReferences }
-                        .map { messagePointer(it, pass.doc, ctx) }.distinct(), rnuPointers)
+                        .map { messagePointer(it, pass, ctx) }.distinct(), rnuPointers)
                 } else emptyList()
                 return RowOutcome.Fired(Message(rule.errorCode, rule.path,
                     pass.doc.messagePointer(errorPath, ctx.repsOf(errorPath)), rule.severity, type, text, referenced,
@@ -1207,8 +1207,9 @@ class DmInterpreter private constructor(
     /** Project one prepared message operand into A12's partially-known pointer domain. The wildcard coordinates
      *  belong only to the rich message channel; iteration/suppression deliberately continue to use the
      *  star-free reference view. */
-    private fun messagePointer(reference: MessageReference, doc: Document, ctx: EvalContext) = when (reference) {
-        is MessageReference.Ordinary -> doc.messagePointer(reference.path, ctx.repsOf(reference.path))
+    private fun messagePointer(reference: MessageReference, pass: ValidationPass, ctx: EvalContext) = when (reference) {
+        is MessageReference.Ordinary -> pass.doc.messagePointer(reference.path, ctx.repsOf(reference.path))
+        is MessageReference.Selected -> selectedPointer(reference, pass, ctx)
         is MessageReference.Wildcard -> {
             val prefixes = paths.groupsThrough(reference.path)
             val bindDepth = if (reference.bindDepth >= 0) minOf(reference.bindDepth, prefixes.size)
@@ -1217,8 +1218,35 @@ class DmInterpreter private constructor(
                 if (level >= bindDepth && prefixes[level] in model.repeatable) A12PartiallyKnownMultiPointer.WILDCARD
                 else repetition
             }
-            doc.messagePointer(reference.path, repetitions)
+            pass.doc.messagePointer(reference.path, repetitions)
         }
+    }
+
+    /**
+     * A selected operand's pointer: the firing row's coordinates above the indexed group, the row the key selects
+     * at that level — A12's unknown row when no admitted row carries the key, or the key is empty — and every row
+     * at a repeatable level below it (`adapter.laws.SelectedMessageReferenceDiffTest`).
+     */
+    private fun selectedPointer(reference: MessageReference.Selected, pass: ValidationPass, ctx: EvalContext) = run {
+        val indexField = checkNotNull(reference.indexField) { "a selected reference is expanded before it is resolved" }
+        val levels = paths.groupsThrough(reference.path)
+        val indexLevel = levels.indexOf(parentGroup(indexField))
+        val key = when (val written = reference.key) {
+            is SelectedKey.Literal -> written.value
+            is SelectedKey.Field -> ctx.displayValue(written.path)
+        }?.takeIf { it.isNotEmpty() }
+        val selected = key?.let {
+            ctx.indexPointerRepetitions(reference.path, indexField, it, pass.config.indexIdentityAdmitted)
+        }
+        val repetitions = ctx.repsOf(reference.path).mapIndexed { level, repetition ->
+            when {
+                level < indexLevel -> repetition
+                level == indexLevel -> selected?.get(level) ?: A12PartiallyKnownMultiPointer.UNKNOWN
+                levels[level] in model.repeatable -> A12PartiallyKnownMultiPointer.WILDCARD
+                else -> repetition
+            }
+        }
+        pass.doc.messagePointer(reference.path, repetitions)
     }
 
     /**

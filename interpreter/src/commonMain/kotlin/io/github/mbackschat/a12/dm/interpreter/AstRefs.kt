@@ -92,6 +92,21 @@ internal sealed interface MessageReference {
 
     data class Ordinary(override val path: String) : MessageReference
     data class Wildcard(override val path: String, val bindDepth: Int) : MessageReference
+
+    /**
+     * An operand a semantic index SELECTS, named at the row its key selects in the firing row's scope. A12 keeps the
+     * selected payload and the selected row's index field in the reference set whether or not the read is reached,
+     * and resolves the row through its index cache rather than through the value read, so a key no admitted row
+     * carries names the unknown row and a repeatable level below the key names every row (SPEC-2026-10-07-02,
+     * `adapter.laws.SelectedMessageReferenceDiffTest`). [indexField] is null until the model is known.
+     */
+    data class Selected(override val path: String, val key: SelectedKey, val indexField: String? = null) : MessageReference
+}
+
+/** The key of a [MessageReference.Selected]: a written literal, or the field whose current value is the key. */
+internal sealed interface SelectedKey {
+    data class Literal(val value: String) : SelectedKey
+    data class Field(val path: String) : SelectedKey
 }
 
 /** Message-reference walk in deterministic AST order. A starred operand contributes its `Having` field operands
@@ -200,17 +215,26 @@ private fun messageReferences(expr: Expr, wildcardBindDepth: Int?): List<Message
         else expr.args.flatMap { messageReferences(it, wildcardBindDepth) }
     is Expr.Arith -> messageReferences(expr.left, wildcardBindDepth) + messageReferences(expr.right, wildcardBindDepth)
     is Expr.EnumCategory -> listOf(messageReference(expr.path, expr.outer, wildcardBindDepth))
-    // Preserve the existing message contract: the field-valued key is the per-row operand; the semantic lookup
-    // target is an absolute lookup and does not itself appear in the message reference list.
-    is Expr.SemanticIndex -> expr.indexFieldPath?.let {
-        listOf(messageReference(it, expr.indexFieldOuter, wildcardBindDepth))
-    } ?: emptyList()
+    // The selected operand AND the field-valued key are both referenced; the selection resolves its own row.
+    is Expr.SemanticIndex -> listOfNotNull(
+        selectedReference(expr.path, expr.indexValue, expr.indexFieldPath),
+        expr.indexFieldPath?.let { messageReference(it, expr.indexFieldOuter, wildcardBindDepth) },
+    )
     is Expr.EntitySpec -> when (val index = expr.semanticIndex) {
         null -> messageReferences(expr.source, wildcardBindDepth)
-        is Expr.EntityIndex.Literal -> emptyList()
-        is Expr.EntityIndex.Field -> listOf(messageReference(index.path, index.outer, wildcardBindDepth))
+        is Expr.EntityIndex.Literal -> listOf(MessageReference.Selected(expr.source.path, SelectedKey.Literal(index.value)))
+        is Expr.EntityIndex.Field -> listOf(
+            MessageReference.Selected(expr.source.path, SelectedKey.Field(index.path)),
+            messageReference(index.path, index.outer, wildcardBindDepth),
+        )
     }
     else -> emptyList()
+}
+
+private fun selectedReference(path: String, literal: String?, keyField: String?): MessageReference? = when {
+    literal != null -> MessageReference.Selected(path, SelectedKey.Literal(literal))
+    keyField != null -> MessageReference.Selected(path, SelectedKey.Field(keyField))
+    else -> null
 }
 
 private fun messageReference(path: String, outer: Boolean, wildcardBindDepth: Int?): MessageReference =

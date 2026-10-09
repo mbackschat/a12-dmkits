@@ -1181,6 +1181,17 @@ class Document(internal val config: DocumentConfig) {
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
         ): List<Int>? = indexedCellReps(targetPath, indexField, indexValue, indexIdentityAdmitted)
 
+        override fun indexPointerRepetitions(
+            targetPath: String,
+            indexField: String,
+            indexValue: String,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+        ): List<Int>? {
+            val (_, candidates) = indexCandidates(indexField, indexValue, indexIdentityAdmitted)
+            val selected = candidates.firstOrNull { it.key != null }?.repetitions ?: return null
+            return withTargetTail(selected, targetPath, indexField)
+        }
+
         override fun partialDateFirstDayAt(path: String, repetitions: List<Int>): Val? =
             partialDateFirstDay(path, repetitions)
 
@@ -1190,9 +1201,25 @@ class Document(internal val config: DocumentConfig) {
             indexValue: String,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
         ): List<Int>? {
+            val (queryKey, candidates) = indexCandidates(indexField, indexValue, indexIdentityAdmitted)
+            val selected = resolveIndexIdentity(candidates).uniqueRowsByKey[queryKey] ?: return null
+            return withTargetTail(selected, targetPath, indexField)
+        }
+
+        /** The selected row's index-group levels, with [targetPath]'s current coordinates below them. */
+        private fun withTargetTail(selected: List<Int>, targetPath: String, indexField: String): List<Int> {
+            val indexDepth = partsOf(parentGroup(indexField)).size
+            return selected.take(indexDepth) + reps(targetPath).drop(indexDepth)
+        }
+
+        /** The query key and every in-scope row whose [indexField] carries it, in document order, each classified. */
+        private fun indexCandidates(
+            indexField: String,
+            indexValue: String,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+        ): Pair<String, List<IndexIdentityCandidate<String>>> {
             val kind = declaredKind(indexField)
             val indexGroup = parentGroup(indexField)
-            val indexDepth = partsOf(indexGroup).size
             val scope = groupScopePrefix(indexGroup, bindDepth = -1)
             val byValue = index().indexRowsByValue.getOrPut(indexField to scope) {
                 val m = HashMap<String, MutableList<List<Int>>>()
@@ -1216,9 +1243,7 @@ class Document(internal val config: DocumentConfig) {
                     compromises = !admitted,
                 )
             }
-            val selected = resolveIndexIdentity(candidates).uniqueRowsByKey[queryKey] ?: return null
-            val currentTarget = reps(targetPath)
-            return selected.take(indexDepth) + currentTarget.drop(indexDepth)
+            return queryKey to candidates
         }
 
         override fun indexedGroupRow(

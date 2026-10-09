@@ -181,6 +181,13 @@ internal class OverlayContext(
         indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
     ): List<Int>? = d.indexedCellRepetitions(targetPath, indexField, indexValue, indexIdentityAdmitted)
 
+    override fun indexPointerRepetitions(
+        targetPath: String,
+        indexField: String,
+        indexValue: String,
+        indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+    ): List<Int>? = d.indexPointerRepetitions(targetPath, indexField, indexValue, indexIdentityAdmitted)
+
     override fun indexedValueAt(targetPath: String, repetitions: List<Int>): Val? =
         when (val entry = cascade.rowsAt(targetPath)?.get(repetitions)) {
             null -> d.indexedValueAt(targetPath, repetitions)

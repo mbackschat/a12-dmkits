@@ -638,22 +638,25 @@
       }
     },
     "kf522": {
-      "sha256": "1d5faa89499fd47a390c3afcbe21d4292053c5b19784beb356177fb2184a5c0e",
+      "sha256": "a34ca31545e4fd40f7685eb3b7476a83f51f9789faad4af5cdb9442f85d20f28",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "message reference and fill-to-fix scope"
+          "message reference and fill-to-fix scope",
+          "selected operand references"
         ],
         "dmkits": [],
         "interpreter": [
-          "message reference and fill-to-fix scope"
+          "message reference and fill-to-fix scope",
+          "selected operand references"
         ],
         "checker": [],
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "message reference and fill-to-fix scope"
+          "message reference and fill-to-fix scope",
+          "selected operand references"
         ]
       },
       "consumers": {
@@ -664,6 +667,10 @@
             "message reference and fill-to-fix scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageReferenceScopeDiffTest.kt#theSeparatingRowsAreTheKernelsOwn",
               "witness": "Eighteen omission rules over presence checks, counts, a filter and root groups, each pinned against dynamic Groovy."
+            },
+            "selected operand references": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#aDuplicatedKeysPointerIsTheKernelsCacheRow",
+              "witness": "An unreached selection with a duplicated key names one row on both strategies, neither the first nor the last match in general."
             }
           }
         },
@@ -674,11 +681,15 @@
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "Fill-to-fix is the static omission subset of the referenced operands, and a root-group operand names nothing.",
+          "basis": "Fill-to-fix is the static omission subset of the referenced operands, and a root-group operand names nothing. A selection references its payload, the selected row's index field and a field-valued key, each at the selected row or the unknown row.",
           "evidence": {
             "message reference and fill-to-fix scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageReferenceScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
               "witness": "The same rules on two documents across all three engines."
+            },
+            "selected operand references": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "Six rules over a field, a literal key, a group payload and a starred list, on seven documents across all three engines."
             }
           }
         },
@@ -704,7 +715,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Disclosed as a correction beside the 2026-10-04 letter; no peer receipt is inferred.",
+          "basis": "Disclosed as a correction beside the 2026-10-04 letter; no peer receipt is inferred. The selected references are reported in the 2026-10-09 handback for SPEC-2026-10-07-02.",
           "evidence": {}
         }
       }
@@ -4477,24 +4488,27 @@
       }
     },
     "kf20": {
-      "sha256": "7f634c8a0955b5e5575737afffd9b72a623b50b77f48326921d3e9af0eefbcde",
+      "sha256": "ca03bc5ef414b74a07d490dd27ecd1d3f5113dfd0184803a22ea06c8bfc369c5",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "empty Number computation guard boundary",
-          "unchanged historical claims outside this amendment"
+          "unchanged historical claims outside this amendment",
+          "parent-scoped index column"
         ],
         "dmkits": [],
         "interpreter": [
           "empty Number computation guard boundary",
-          "unchanged historical claims outside this amendment"
+          "unchanged historical claims outside this amendment",
+          "parent-scoped index column"
         ],
         "checker": [],
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "empty Number computation guard boundary"
+          "empty Number computation guard boundary",
+          "parent-scoped index column"
         ]
       },
       "consumers": {
@@ -4505,6 +4519,10 @@
             "empty Number computation guard boundary": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericComputationGuardDiffTest.kt#numericGuardsAndTheirDownstreamOutcomesAgree",
               "witness": "Six comparisons, two arithmetic orders, domain/poison and short-circuit controls across eight seeded documents."
+            },
+            "parent-scoped index column": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParentScopedIndexColumnDiffTest.kt#aDuplicatePoisonsOnlyItsOwnDepot",
+              "witness": "A duplicate in either depot clears that depot's keyed computation while the other depot's computes, on dynamic Groovy."
             }
           }
         },
@@ -4520,6 +4538,10 @@
             "empty Number computation guard boundary": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericComputationGuardDiffTest.kt#numericGuardsAndTheirDownstreamOutcomesAgree",
               "witness": "Six comparisons, two arithmetic orders, domain/poison and short-circuit controls across eight seeded documents."
+            },
+            "parent-scoped index column": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParentScopedIndexColumnDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "Five documents across all three engines; the interpreter already keyed the column by the enclosing parent row, so no code changed."
             }
           }
         },
@@ -4545,7 +4567,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred.",
+          "basis": "The four transferred SPEC entries await lean review of the exact committed reconciliation; no peer receipt is inferred. The parent-scoped column is reported in the 2026-10-09 handback for SPEC-2026-10-07-01.",
           "evidence": {}
         }
       }
@@ -5306,6 +5328,71 @@
         "a12-kernel-lean": {
           "state": "OPEN",
           "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-03; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf64": {
+      "sha256": "1ab65e759d8c273c154b9431b587f18cdb388a6c66288da90655701de12a8e13",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [],
+        "dmkits": [
+          "selected operand iteration guard"
+        ],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "selected operand iteration guard"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The guard is static admission and the adapter adds no gate of its own.",
+          "evidence": {}
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "The validator delegates the guard to A12, and the lock measures every row through it.",
+          "evidence": {
+            "selected operand iteration guard": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/SelectedIterationGuardLawsTest.java#theMixedReferenceGateSkipsOnlySumOfProducts",
+              "witness": "A mixed Sum and MaxValue refuse at a positive threshold, the same SumOfProducts is admitted, and an all-iterating product refuses at zero."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The negative-condition guard is kernel-delegated by design (MVK-LEDGER), so the checker raises no class here.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports the kernel's class unchanged; its lint pre-warns only negative presence predicates, never an aggregate comparison.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The guard does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The guard does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-07-03; no peer receipt is inferred.",
           "evidence": {}
         }
       }

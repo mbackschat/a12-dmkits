@@ -210,6 +210,7 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
      * `bindDepth`, since a star binds where it was authored rather than where its group sits.
      */
     private fun expandMessageReference(reference: MessageReference): List<MessageReference> {
+        if (reference is MessageReference.Selected) return expandSelectedReference(reference)
         if (model.kinds[reference.path] != null) return listOf(reference)
         // A12 never expands a ROOT group, and its reference inventory keeps no group pointer, so a root-group operand
         // names nothing at all (`adapter.laws.MessageReferenceScopeDiffTest`).
@@ -225,8 +226,20 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             when (reference) {
                 is MessageReference.Ordinary -> MessageReference.Wildcard(path, groupDepth)
                 is MessageReference.Wildcard -> MessageReference.Wildcard(path, reference.bindDepth)
+                is MessageReference.Selected -> error("a selected reference expands through expandSelectedReference")
             }
         }
+    }
+
+    /**
+     * A selected operand names every field it covers, a group's fields included, and beside them the selected
+     * row's own index field: A12 references both whether or not the read is reached (SPEC-2026-10-07-02,
+     * `adapter.laws.SelectedMessageReferenceDiffTest`). A path under no indexed group selects nothing to name.
+     */
+    private fun expandSelectedReference(reference: MessageReference.Selected): List<MessageReference> {
+        val indexField = nearestIndexFieldOf(model.indexFields, reference.path) ?: return emptyList()
+        return (coveredFieldPaths(reference.path) + indexField).distinct()
+            .map { path -> MessageReference.Selected(path, reference.key, indexField) }
     }
 
     /** The field paths a reference covers: itself when it names a field, else every field the group contains. */

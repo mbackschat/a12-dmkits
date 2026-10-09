@@ -4473,3 +4473,8 @@ Enforcement: `MessageReferenceScopeDiffTest` pins each branch against dynamic Gr
 
 Enforcement: `FilteredThresholdDeclaredWorkTest` holds the four threshold operators' work equal across capacities, and requires `AllFieldsFilled` to grow so the instrument provably sees the walk.
 
+### IF368: a fired message references a selected operand at the row its key selects (2026-10-09) <a id="if368"></a>
+
+`AstRefs.messageReferences` named only a field-valued key for a semantic-index read, on the reading that the lookup target is not a referenced field. Both kernel strategies reference the selected payload and the selected row's index field as well, reached or not, and resolve the row through the index cache rather than the value read ([KF522](KERNEL-FINDINGS.md#kf522)'s 2026-10-09 extension). A third reference kind, `MessageReference.Selected`, carries the key. The model expands it into the fields it covers plus the index field, and `DmInterpreter` resolves it per firing row through `EvalContext.indexPointerRepetitions`. That lookup keeps a duplicated key's row, where the value lookup refuses it. A key no admitted row carries, or an empty key, yields `-5`, and a repeatable level below the key yields `0`.
+
+Enforcement: `SelectedMessageReferenceDiffTest` compares all three engines on seven documents. The duplicated key's row is IG164.

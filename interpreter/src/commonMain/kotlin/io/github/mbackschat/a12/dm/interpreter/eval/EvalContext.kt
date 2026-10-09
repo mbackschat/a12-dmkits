@@ -127,6 +127,17 @@ interface EvalContext {
         indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
     ): List<Int>? = null
 
+    /** The row a fired message's SELECTED pointer names: the admitted row carrying [indexValue], and one row even
+     *  where several do, which the value lookup above refuses (SPEC-2026-10-07-02). Null when no admitted row
+     *  carries the key. Which duplicate the kernel's index cache names is not the first row in general
+     *  (INTERPRETER-GAPS IG164); this names the first. */
+    fun indexPointerRepetitions(
+        targetPath: String,
+        indexField: String,
+        indexValue: String,
+        indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+    ): List<Int>? = null
+
     /** The semantic-index payload at an already selected [repetitions] identity. Kept separate from row
      * selection so a computation overlay can project a value produced earlier in the cascade. */
     fun indexedValueAt(targetPath: String, repetitions: List<Int>): Val? = null
