@@ -22,9 +22,10 @@ import kotlinx.serialization.json.Json
  * ingress means matching its **strictness** too — this instance is a parity decision, never a "be forgiving"
  * one, and a future leniency belongs here only with an A12 counterpart cited beside it.
  *
- * Number fidelity needs no flag: kotlinx's `JsonPrimitive.content` keeps the literal text verbatim, which is the
- * result A12 reaches by configuring `USE_BIG_DECIMAL_FOR_FLOATS` + `STRIP_TRAILING_BIGDECIMAL_ZEROES=false`
- * (KERNEL-FINDINGS "The canonical Document JSON …").
+ * Number fidelity needs no flag: kotlinx's `JsonPrimitive.content` keeps the literal text verbatim, which keeps
+ * every digit A12 keeps by configuring `USE_BIG_DECIMAL_FOR_FLOATS` + `STRIP_TRAILING_BIGDECIMAL_ZEROES=false`.
+ * The literal is not A12's TEXT, though: A12 reads a number node's `BigDecimal` or integer rendering, which the
+ * document reader derives lexically (`A12DocumentJson.numberNodeTextOrNull`; KERNEL-FINDINGS KF1).
  *
  * Our **own** formats are deliberately not routed here — the conformance case envelope is our shape, so A12's
  * leniency is not automatically its contract.

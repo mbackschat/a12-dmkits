@@ -151,6 +151,9 @@ class A12JsonIngressKernelTest {
             row("CustomerName", "250.00", "\"250.00\""),
             row("CustomerName", "-0.0", "\"0.0\""),
             row("CustomerName", "-0", "\"0\""),
+            row("CustomerName", "-1.5e2", "\"-1.5E+2\""),
+            row("CustomerName", "0.0000000", "\"0E-7\""),
+            row("CustomerName", "1e999999999", "\"1E+999999999\""),
             row("Priority", "\"EXPRESS\"", "\"EXPRESS\""),
             row("Priority", "\"express\"", "\"express\"", "stringFalschesMuster"),
             row("RushLevel", "1", "\"1\"")

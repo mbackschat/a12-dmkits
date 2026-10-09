@@ -152,7 +152,7 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             semanticIndex.indexFieldOuter,
         )
         val rawMessageRefs = messageReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
-        val directMessageRefs = rawMessageRefs.flatMap(::expandMessageReference).distinct()
+        val directMessageRefs = withJoinIndexes(iteration, rawMessageRefs.flatMap(::expandMessageReference)).distinct()
         // Two DIFFERENT questions, which is why this one is asked before the expansion rather than after it.
         // `ordinaryErrorReference` asks how the CONDITION names the error path — an authored star does not fix an
         // error context, anything else does. A group operand's expansion is not an authored star, so it must still
@@ -181,8 +181,8 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             repetitionNotUnique = rnu,
             semanticErrorIndex = semanticErrorIndex,
             messageReferences = directMessageRefs,
-            omissionReferences = omissionReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
-                .flatMap(::expandMessageReference).toSet(),
+            omissionReferences = withJoinIndexes(iteration, omissionReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
+                .flatMap(::expandMessageReference)).toSet(),
             hasFilterConditions = starRefs(ast).any { it.having != null },
             canFailAtRuntime = containsDateTimeLiteral(ast),
             classifies = classificationEnabled(ast) { path -> path in model.groupPaths && pathParts(path).size == 1 },
@@ -228,6 +228,20 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
                 is MessageReference.Wildcard -> MessageReference.Wildcard(path, reference.bindDepth)
                 is MessageReference.Selected -> error("a selected reference expands through expandSelectedReference")
             }
+        }
+    }
+
+    /**
+     * Under a parallel iteration, a field of a joined group is referenced beside that group's own index field, in
+     * the reference list and, for an omission, the fill-to-fix list alike: A12 reads the key to join the row. A
+     * rule over one index-keyed group alone references no index field (`adapter.laws.ParallelGuardConnectiveDiffTest`,
+     * measured on fields directly in the joined groups).
+     */
+    private fun withJoinIndexes(iteration: IterationPlan, references: List<MessageReference>): List<MessageReference> {
+        if (iteration !is IterationPlan.Parallel) return references
+        return references.flatMap { reference ->
+            val group = iteration.joined.firstOrNull { reference is MessageReference.Ordinary && reference.path.startsWith("$it/") }
+            listOfNotNull(group?.let { MessageReference.Ordinary("$it/${iteration.indexName}") }, reference)
         }
     }
 

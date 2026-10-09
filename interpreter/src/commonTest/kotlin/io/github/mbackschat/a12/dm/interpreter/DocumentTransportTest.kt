@@ -271,6 +271,11 @@ class DocumentTransportTest {
             documents.encodeDocument(documents.readDocument("""{"id":7,"Order":{}}""")),
             "a numeric id is accepted and written as text, matching the Kernel's `fieldValue.toString()`",
         )
+        assertEquals(
+            """{"id":"1E+3","Order":{}}""",
+            documents.encodeDocument(documents.readDocument("""{"id":1e3,"Order":{}}""")),
+            "a numeric id is its node's text, as a String field's value is",
+        )
         val error = assertFailsWith<DocumentInputError> { documents.readDocument("""{"id":true}""") }
         assertEquals(DocumentInputReasonCode.INVALID_DOCUMENT_ID, error.diagnostics.single().reasonCode)
     }

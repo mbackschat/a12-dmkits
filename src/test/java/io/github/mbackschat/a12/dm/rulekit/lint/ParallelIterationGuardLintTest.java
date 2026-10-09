@@ -35,6 +35,7 @@ class ParallelIterationGuardLintTest {
         actual.put("the mirror: a guard on the error field's group", warns(lineFilled.and(pickEmpty)));
         actual.put("a negative Or a guard", warns(pickFilled.or(lineEmpty)));
         actual.put("two guards under Or", warns(lineFilled.or(pickFilled)));
+        actual.put("an Or of two guards conjoined with a negative", warns(lineFilled.or(pickFilled).and(lineEmpty)));
         actual.put("two guarded conjunctions under Or",
                 warns(pickFilled.and(lineEmpty).or(lineFilled.and(pickEmpty))));
         actual.put("a guarded conjunction Or a bare negative", warns(pickFilled.and(lineEmpty).or(pickEmpty)));
@@ -48,6 +49,7 @@ class ParallelIterationGuardLintTest {
         expected.put("the mirror: a guard on the error field's group", false);
         expected.put("a negative Or a guard", true);
         expected.put("two guards under Or", false);
+        expected.put("an Or of two guards conjoined with a negative", false);
         expected.put("two guarded conjunctions under Or", false);
         expected.put("a guarded conjunction Or a bare negative", true);
         expected.put("an unguarded Or inside a guarded And", false);

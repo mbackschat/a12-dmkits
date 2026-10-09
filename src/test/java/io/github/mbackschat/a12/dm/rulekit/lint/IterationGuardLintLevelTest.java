@@ -24,8 +24,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
  * <p>Both were silent before: the flag was set by any positive presence anywhere in the condition.
  *
  * <p>The nested-{@code Or} composition is measured too since 2026-09-07, and it goes the same way: an
- * {@code Or} lends nothing at any depth, so only a positive reached through {@code And} alone suppresses. What
- * keeps that from becoming "warn whenever an Or appears" is the conjunctive-guard-beside-an-Or control.
+ * {@code Or} lends only the levels every arm guards, at any depth (corrected 2026-10-09 from "lends nothing";
+ * the all-guarding row is {@code NonIteratingGuardLintTest}'s). What keeps that from becoming "warn whenever an
+ * Or appears" is the conjunctive-guard-beside-an-Or control.
  *
  * <p><b>Every row lints against one error field</b>, and that is the only legal choice rather than an
  * unvaried axis: an error field outside the rule group is refused once the condition iterates, under a code
@@ -115,7 +116,7 @@ class IterationGuardLintLevelTest {
      * NEW: a positive inside a NESTED {@code Or} no longer suppresses either. The kernel refuses
      * {@code (same-level positive Or anything) And negative} exactly as it refuses the unguarded form
      * ({@code validate.laws.IterationGuardNestedCompositionLawsTest}), so suppressing here was a false
-     * negative — an {@code Or} lends nothing to a negative conjoined with the whole disjunction.
+     * negative — an {@code Or} with an arm that guards nothing lends nothing to a negative conjoined with it.
      */
     @Test
     void aGuardInsideANestedOrNoLongerSuppresses() {

@@ -615,9 +615,10 @@ internal class ComputationEngine(
     private data class OperandSelection(
         val fields: Set<String>,
         val indexFields: Set<String>,
-        /** Every group above an operand reference or a computed target, computed fields included: an over-limit row
-         *  of such a group is reported even when its only reference is a computed field, whose own cell is not
-         *  (SPEC-2026-10-04-05), and its stored rows bound a computation's filter walk (KERNEL-FINDINGS KF528). */
+        /** Every group above an operand reference, a computed target, or a field a computed target's repeatable
+         *  group puts in scope, computed fields included: an over-limit row of such a group is reported even when its
+         *  only reference is a computed field, whose own cell is not (SPEC-2026-10-04-05), and its stored rows bound a
+         *  computation's filter walk (KERNEL-FINDINGS KF528, its nested-group rows included). */
         val ancestorGroups: Set<String>,
     )
 

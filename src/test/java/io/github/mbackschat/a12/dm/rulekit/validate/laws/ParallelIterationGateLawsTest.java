@@ -96,6 +96,9 @@ class ParallelIterationGateLawsTest {
         actual.put("unguarded negatives beside that filter",
                 nested("FieldNotFilled(OrderedQty) And FieldNotFilled(/Depot/Picks/PickedQty) And "
                         + "Sum(/Depot/Picks/Checks*/CheckQty Having [/Depot/Picks/Checks/CheckNote] == \"x\") == 0"));
+        actual.put("the same negatives beside the unfiltered Sum comparison",
+                nested("FieldNotFilled(OrderedQty) And FieldNotFilled(/Depot/Picks/PickedQty) And "
+                        + "Sum(/Depot/Picks/Checks*/CheckQty) == 0"));
         actual.put("the same negatives without the filter",
                 nested("FieldNotFilled(OrderedQty) And FieldNotFilled(/Depot/Picks/PickedQty)"));
 
@@ -106,6 +109,8 @@ class ParallelIterationGateLawsTest {
         // (a12-kernel-lean SPEC-2026-10-09-09); the row below shows the guard alone on the same model.
         expected.put("unguarded negatives beside that filter",
                 "MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED");
+        // the comparison with 0 guards nothing, so the filter is the only variable between this row and the first
+        expected.put("the same negatives beside the unfiltered Sum comparison", "MVK_PARALLEL_ITERATION_INVALID");
         expected.put("the same negatives without the filter", "MVK_PARALLEL_ITERATION_INVALID");
         // NOT the parallel-iteration class: a filter body may not ITERATE at all, and that broader gate
         // answers first. So `MVK_PARALLEL_ITERATION_NOT_ALLOWED`'s second firing site — a filter condition

@@ -17,7 +17,8 @@ import org.junit.jupiter.api.TestInstance
  * computed `Total` fails exactly when the walk reaches a leg no row stores. Every model is the same base plus at most
  * one more computation, so each row varies one thing: a computation that reads the `Returns` rows, one whose only
  * contact is a target inside `Returns`, one that reads them behind a precondition that never holds, and one that reads
- * `Spares`, whose rows sit one fixed group deeper than the legs.
+ * `Spares`, whose rows sit one fixed group deeper than the legs. One more model widens the legs past a capacity of 100,
+ * where a12-kernel-lean reports A12 switching to a sparse iterator.
  *
  * Own domain (parcel delivery legs).
  */
@@ -33,14 +34,17 @@ class FilterCacheScopeDiffTest {
         const val LEG = """{"Weight":"7","Stamp":"2024-03-31T01:30:00"}"""
     }
 
-    private val models = Variant.entries.associateWith(::build)
+    private val models = Variant.entries.associateWith { build(it) }
 
-    private fun build(variant: Variant): String = underUtc {
+    /** The returns reader over legs of capacity 150, the only row that varies the legs' capacity. */
+    private val wideLegs = build(Variant.READS_RETURNS, legCapacity = 150)
+
+    private fun build(variant: Variant, legCapacity: Int = 3): String = underUtc {
         val draft = DocumentModelDraft.named("parcel-filter-cache").locale("en_US")
             .rootGroup("Parcel") { p ->
                 p.stringField("Ref") { }
                 p.numberField("Base") { n -> n.fractionDigits(0) }
-                p.group("Legs") { l -> l.repeatable(3)
+                p.group("Legs") { l -> l.repeatable(legCapacity)
                     .numberField("Weight") { n -> n.fractionDigits(0) }
                     .dateTimeField("Stamp") { it.format(ISO_DT) } }
                 p.group("Returns") { r -> r.repeatable(3).stringField("Note") { }
@@ -108,7 +112,7 @@ class FilterCacheScopeDiffTest {
 
     @Test
     fun allThreeEnginesAgreeOnEveryDocument() {
-        underUtc { models.values.forEach { DocumentDifferential.assertAgree(it, documents + overLimit) } }
+        underUtc { (models.values + wideLegs).forEach { DocumentDifferential.assertAgree(it, documents + overLimit) } }
     }
 
     /**
@@ -117,11 +121,12 @@ class FilterCacheScopeDiffTest {
      */
     @Test
     fun theComputationWalkCountsEveryGroupTheProgrammeNamesAtTheSameDepth() {
-        fun reached(variant: Variant, doc: String): Pair<Boolean, Boolean> {
-            val observed = underUtc { DocumentDifferential.kernel(models.getValue(variant), documents.getValue(doc), dynamic = true) }
+        fun reached(model: String, doc: String): Pair<Boolean, Boolean> {
+            val observed = underUtc { DocumentDifferential.kernel(model, documents.getValue(doc), dynamic = true) }
             return observed.operandErrors.any { it.code == "berechnungsWertFehler" && it.pointer.endsWith("/Total") } to
                 observed.messages.any { it.code == "TotalRule" && it.type == "VALUE_ERROR" }
         }
+        fun reached(variant: Variant, doc: String) = reached(models.getValue(variant), doc)
         val actual = linkedMapOf(
             "one leg, no reader" to reached(Variant.NONE, "one leg"),
             "three returns, no reader" to reached(Variant.NONE, "one leg, three returns"),
@@ -132,6 +137,7 @@ class FilterCacheScopeDiffTest {
             "three spares a fixed group deeper, a computation reads them" to
                 reached(Variant.READS_SPARES, "one leg, three spares"),
             "three spares a fixed group deeper, no reader" to reached(Variant.NONE, "one leg, three spares"),
+            "three returns read, legs of capacity 150" to reached(wideLegs, "one leg, three returns"),
         )
         assertEquals(linkedMapOf(
             "one leg, no reader" to (false to false),
@@ -141,6 +147,7 @@ class FilterCacheScopeDiffTest {
             "three returns, read only behind a precondition that fails" to (true to true),
             "three spares a fixed group deeper, a computation reads them" to (false to false),
             "three spares a fixed group deeper, no reader" to (false to false),
+            "three returns read, legs of capacity 150" to (true to true),
         ), actual)
     }
 
@@ -187,6 +194,6 @@ class FilterCacheScopeDiffTest {
 
     @Test
     fun everyModelIsKernelConsistentUnderTheAdmittingDefault() {
-        assertEquals(emptyList<String>(), underUtc { models.values.flatMap { MessageParameterProbes.kernel(it) } })
+        assertEquals(emptyList<String>(), underUtc { (models.values + wideLegs).flatMap { MessageParameterProbes.kernel(it) } })
     }
 }

@@ -503,7 +503,7 @@
   },
   "reviews": {
     "kf1": {
-      "sha256": "836cb12f9caeb0160ed150b91769c722cee60b9e157444f3db44586d70dd35ab",
+      "sha256": "f94877c27468b07290483963f6c5471173fed0a0e3d56c84dfd52119348efbca",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -511,7 +511,8 @@
         ],
         "dmkits": [],
         "interpreter": [
-          "native number node text"
+          "native number node text",
+          "numeric document id text"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -544,6 +545,10 @@
             "native number node text": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/A12JsonIngressDiffTest.kt#theInterpretersJsonIngressReproducesA12sRewriteAndItsFormalOutcome",
               "witness": "The interpreter reproduces every row of the kernel matrix, the new String rows included."
+            },
+            "numeric document id text": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/DocumentTransportTest.kt#theRootDocumentIdIsReadIgnoredForEvaluationAndWrittenBackAsText",
+              "witness": "A numeric id 1e3 is written back as 1E+3; the basis is source-read, since the kernel's id branch takes value.asText() as its field branch does and asserts against a numeric id under -ea, so no test JVM can measure it."
             }
           }
         },
@@ -575,22 +580,25 @@
       }
     },
     "kf538": {
-      "sha256": "a36842983eda824cd2dad18d9fc987dbffe37f373ad4a38f0f31fbee51060399",
+      "sha256": "45e843a60fee6a16987181d3e1a02b532e67cdafae137732257040265d042d78",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "compute formal scope"
+          "compute formal scope",
+          "nested repeatable target scope"
         ],
         "dmkits": [],
         "interpreter": [
-          "compute formal scope"
+          "compute formal scope",
+          "nested repeatable target scope"
         ],
         "checker": [],
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "compute formal scope"
+          "compute formal scope",
+          "nested repeatable target scope"
         ]
       },
       "consumers": {
@@ -601,6 +609,10 @@
             "compute formal scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeFormalScopeDiffTest.kt#theComputeReportChecksTheCellsTheProgrammeKeeps",
               "witness": "Sixteen model and document pairs: root, read, direct and nested target."
+            },
+            "nested repeatable target scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeTargetSubgroupScopeDiffTest.kt#aTargetsGroupScopeAgainstItsNestedRepeatableGroup",
+              "witness": "A Returns/Tag target checks the nested Marks; a Marks/Grade target checks Marks but not Returns/Qty, declared in Marks or in Returns."
             }
           }
         },
@@ -616,6 +628,10 @@
             "compute formal scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeFormalScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
               "witness": "All three engines agree on every document for all four models."
+            },
+            "nested repeatable target scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeTargetSubgroupScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on five models and three documents."
             }
           }
         },
@@ -647,7 +663,7 @@
       }
     },
     "kf537": {
-      "sha256": "ac0d3b95abf30acb906ed6e3db3faccd560708fa3ff3bc5ef306727c018dd580",
+      "sha256": "6575ce3fad03734404e68e88599f85896c8745a4a63d032926b49381d4aa570d",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -683,15 +699,15 @@
         },
         "dmkits": {
           "state": "APPLIED",
-          "basis": "RK_NEG_CONDITION_IN_ITERATION no longer counts a positive at no repeatable level as a guard, and its fix text names the parallel code too.",
+          "basis": "RK_NEG_CONDITION_IN_ITERATION counts no positive at a repeatable-less level as a guard, levels the rule group's presence by the rule's own group, and lends an Or only the levels every arm guards; its fix text names the parallel code too.",
           "evidence": {
             "the single-level iteration-guard lint": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/lint/NonIteratingGuardLintTest.java#aPositiveAtNoRepeatableLevelLeavesTheNegativeUnguarded",
-              "witness": "Root field presence and comparison, a non-repeating group and its field, and the root group each warn; a same-level guard does not."
+              "witness": "Root field presence and comparison, a non-repeating group and its field, the root group, a root-level field list, the rule group's presence in a non-repeating rule group and an Or with one off-level arm each warn; a same-level guard, an Or of two same-level guards and the rule group's presence in a repeatable group do not."
             },
             "the parallel iteration-guard lint": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/lint/ParallelIterationGuardLintTest.java#itWarnsWhereTheKernelRefusesTheParallelGuard",
-              "witness": "The nine connective rows warn exactly where the kernel refuses with MVK_PARALLEL_ITERATION_INVALID."
+              "witness": "The ten connective rows, including an Or of two guards conjoined with a negative, warn exactly where the kernel refuses with MVK_PARALLEL_ITERATION_INVALID."
             }
           }
         },
@@ -1159,14 +1175,9 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "ALREADY_CONFORMS",
-          "basis": "Peer-originated SPEC-2026-10-03-05, accepted at 5472a915 after inspecting our committed locks at 6f29ffcb8; the peer did not rerun them. The receipt names KF521's locks, which carry this surface.",
-          "evidence": {
-            "containment self-read exemptions": {
-              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-03-05",
-              "witness": "Root-positive-group exemption, operand-local self-read checks and independent root guards (GroupListSelfReadLawsTest, ComputationSelfReadScopeLawsTest)."
-            }
-          }
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-03-05 is accepted at 5472a915, but its review names KF521's locks, not this finding, and this surface is wider than KF521's; no receipt is inferred.",
+          "evidence": {}
         }
       }
     },
@@ -4790,7 +4801,7 @@
           "evidence": {
             "containing-group scheduling profiles": {
               "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
-              "witness": "KF511's dependency implementations and tests pin 21 static cases and 14 root observations; SPEC-02 acceptance covers singular GroupFilled, not ordinary lists."
+              "witness": "KF511's dependency implementations and tests pin 21 static cases and 14 root observations; SPEC-02 acceptance covers singular GroupFilled, not ordinary lists, which SPEC-2026-10-03-05's review at 6f29ffcb8 names KF511 for."
             }
           }
         }
@@ -5035,14 +5046,9 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "ALREADY_CONFORMS",
-          "basis": "Peer-originated SPEC-2026-10-03-03, receipted against 35ad60446; the receipt names KF512's locks, which carry this surface.",
-          "evidence": {
-            "filtered field-fill slots and deciding prefixes": {
-              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
-              "witness": "KF512's eighteen document/arm rows, 441 full plus 441 whole-root partial signatures."
-            }
-          }
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-03-03 is receipted against 35ad60446, but the receipt names KF512 only; no receipt is inferred for this finding.",
+          "evidence": {}
         }
       }
     },
@@ -6623,8 +6629,8 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "ALREADY_CONFORMS",
-          "basis": "The peer adopted the declared-slot observations at 5472a915 after inspecting f641cc24f; SG13 owns its executable reconciliation.",
+          "state": "OPEN",
+          "basis": "The peer adopted the declared-slot observations at 5472a915 after inspecting f641cc24f; SG13 owns its executable reconciliation. The peer adopted the observations in its specification, but its receipt leaves executable reconciliation to SG13, so the Lean implementation is open.",
           "evidence": {
             "partial list walks over declared slots": {
               "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
@@ -6635,17 +6641,19 @@
       }
     },
     "kf528": {
-      "sha256": "98399ce1ba3ae949e5c1c6ec5e57eb4513793ad60b938f1eba76af44abfe4a4a",
+      "sha256": "5248e11e1d4f0a2ddf203e4ea8a4ff3c524ae6bed66fc9048ed58bcd89e6ef86",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "filter walk extent",
-          "computation walk scope"
+          "computation walk scope",
+          "target-group nested walk"
         ],
         "dmkits": [],
         "interpreter": [
           "filter walk extent",
-          "computation walk scope"
+          "computation walk scope",
+          "target-group nested walk"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -6653,7 +6661,8 @@
         "json-schema-export": [],
         "a12-kernel-lean": [
           "filter walk extent",
-          "computation walk scope"
+          "computation walk scope",
+          "target-group nested walk"
         ]
       },
       "consumers": {
@@ -6663,11 +6672,15 @@
           "evidence": {
             "filter walk extent": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterMissingSlotDiffTest.kt#theWalkReachesTheHighestStoredRepetitionAtEachDepth",
-              "witness": "The walk reaches the highest stored repetition at each depth; a computation counts only the groups it reads."
+              "witness": "The walk reaches the highest stored repetition at each depth; a computation that reads Returns extends it, one that does not leaves it."
             },
             "computation walk scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterCacheScopeDiffTest.kt#theComputationWalkCountsEveryGroupTheProgrammeNamesAtTheSameDepth",
               "witness": "A read, a target-only and an unreached read of Returns widen the walk; Spares one fixed group deeper do not."
+            },
+            "target-group nested walk": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeTargetSubgroupScopeDiffTest.kt#aTargetsGroupScopeAgainstItsNestedRepeatableGroup",
+              "witness": "A Returns/Tag target makes the walk count the nested Marks rows at the legs' depth; no other computation does."
             }
           }
         },
@@ -6687,6 +6700,10 @@
             "computation walk scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterCacheScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
               "witness": "All three engines agree on three documents for each of five models; computeField matches the whole computation (computingOneFieldMatchesTheWholeComputation)."
+            },
+            "target-group nested walk": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeTargetSubgroupScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on five models and three documents."
             }
           }
         },
@@ -6712,7 +6729,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The peer added the missing-coordinate extent clause to spec/07 at 5472a915 after inspecting 40a510808; H10-R6 owns its executable reconciliation, and the cache cause stays a hypothesis. The programme-wide scope, target-only, unreached-read and fixed-depth rows are reported in the handback answering SPEC-2026-10-09-10; no peer receipt is inferred.",
+          "basis": "The peer added the missing-coordinate extent clause to spec/07 at 5472a915 after inspecting 40a510808; H10-R6 owns its executable reconciliation, and the cache cause stays a hypothesis. The programme-wide scope, target-only, unreached-read and fixed-depth rows are reported in the handback answering SPEC-2026-10-09-10; no peer receipt is inferred. The receipt's own clause that sibling influence depends on whether computations READ the group is superseded by the target-only and unreached-read rows.",
           "evidence": {
             "filter walk extent": {
               "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
@@ -6788,8 +6805,8 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "APPLIED",
-          "basis": "The peer corrected spec/05's extractor gates at 5472a915 after inspecting 6ccb833b8, 82943e3e8 and a1b2f45cb; SG6 owns the remaining route matrix.",
+          "state": "OPEN",
+          "basis": "The peer corrected spec/05's extractor gates at 5472a915 after inspecting 6ccb833b8, 82943e3e8 and a1b2f45cb; SG6 owns the remaining route matrix. The peer adopted the gates in spec/05, but its receipt leaves the route matrix to SG6, so the Lean implementation is open.",
           "evidence": {
             "an extractor's operand gates": {
               "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
@@ -7735,6 +7752,139 @@
               "witness": "Absent-child/multiple-parent/defaulted suffix and exact-scope controls corroborated (KF536)."
             }
           }
+        }
+      }
+    },
+    "kf539": {
+      "sha256": "6514ad3634b2d8942429640531213e35f87369d7ff8a25a88d031a32cd9ecf1f",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "parallel message references"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "parallel message references"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured through the adapter's differential, whose observation compares the sorted reference and fill-to-fix lists.",
+          "evidence": {
+            "parallel message references": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelGuardConnectiveDiffTest.kt#theAdmittedConnectiveShapesFireAlikeOnEveryEngine",
+              "witness": "Six rules over four key profiles, with a no-join control rule in the same model."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; message references are a runtime channel.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The static reference plan adds each joined group's index field beside its referenced fields, for references and omission references, under a parallel plan only.",
+          "evidence": {
+            "parallel message references": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelGuardConnectiveDiffTest.kt#theAdmittedConnectiveShapesFireAlikeOnEveryEngine",
+              "witness": "All three engines agree on every message's reference and fill-to-fix lists."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports messages through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime behaviour does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime behaviour does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Their spec states no message reference inventory for parallel iteration; disclosed in the handback for SPEC-2026-10-09-09.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf435": {
+      "sha256": "007d603149c03142c475c2b7e142f40de61784c41ee8aeb78567513c1f5a7270",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [],
+        "dmkits": [
+          "the nested-Or iteration-guard lint"
+        ],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission fact; the kernel law tier measures it directly.",
+          "evidence": {}
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "RK_NEG_CONDITION_IN_ITERATION lends an Or the levels common to its arms, so an Or of two same-level guards guards the conjoined negative and an Or with an off-level arm does not.",
+          "evidence": {
+            "the nested-Or iteration-guard lint": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/lint/NonIteratingGuardLintTest.java#aPositiveAtNoRepeatableLevelLeavesTheNegativeUnguarded",
+              "witness": "An Or of two same-level guards does not warn; an Or with one same-level arm does."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The interpreter evaluates models the kernel admits and has no admission gate.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker leaves iteration-guard admission to the kernel.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool relays the kernel's class and the rulekit lint unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Condition admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Condition admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Their spec states the every-branch Or rule for parallel guards (SPEC-2026-10-09-09); the single-level row is reported in that handback, and no peer surface carries the corrected single-level reading.",
+          "evidence": {}
         }
       }
     }

@@ -33,6 +33,10 @@ class A12NumberPlainFormTest {
         "-0.0", "-0.00", "-0e5", "0e5", "0E-5", "0.0e10", "-0e-5",
         // large exponents
         "1e-10", "1e10", "9.99e-7", "1e-7",
+        // negative non-zero values in each node rendering, and the plain/scientific threshold from both sides
+        "-1e3", "-1.5e2", "-250.00", "-1e-7", "1e-6", "0.000001", "0.0000001",
+        // a zero whose scale alone crosses the threshold
+        "0.0000000", "-0e3",
     )
 
     @Test
@@ -58,6 +62,8 @@ class A12NumberPlainFormTest {
             if (actual == expected) null else "$literal -> expected '$expected' but was '$actual'"
         }
         assertEquals(emptyList(), mismatches, "node text diverged from the BigDecimal / integer rendering")
+        // A shift no plain form may materialize still has a short scientific rendering.
+        assertEquals(BigDecimal("1e999999999").toString(), A12DocumentJson.numberNodeTextOrNull("1e999999999"))
     }
 
     @Test

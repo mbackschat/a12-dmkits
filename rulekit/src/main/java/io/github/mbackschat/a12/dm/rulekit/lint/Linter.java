@@ -239,10 +239,10 @@ public final class Linter {
 
     /**
      * An iterating rule (error field under a repeatable group) whose condition carries a negative
-     * presence predicate with <em>no</em> positive presence guard anywhere — the case the kernel
-     * rejects with {@code MVK_NEG_CONDITION_IN_ITERATION} (KERNEL-FINDINGS §9). Conservative by
-     * design: the kernel's full positive/negative classification is context-sensitive (~800 lines,
-     * kernel-delegated to F4), so this fires only on the clearly-unguarded shape.
+     * presence predicate that no positive guards at its level through the connective tree — the case the
+     * kernel rejects with {@code MVK_NEG_CONDITION_IN_ITERATION}, or {@code MVK_PARALLEL_ITERATION_INVALID}
+     * on a parallel iteration (KERNEL-FINDINGS §9, KF537). Advisory: where a shape is unmeasured the lint
+     * counts it as a guard, so it under-warns rather than refuse a model the kernel admits.
      */
     private void negativeUnderIteration(Condition condition, String errorFieldPath, String ruleGroupPath,
             BoundModel model, String rulePath, List<Diagnostic> out) {
@@ -274,12 +274,10 @@ public final class Linter {
      * ({@code validate.laws.IterationGuardLevelLawsTest}, {@code …IterationGuardCompositionLawsTest}).
      *
      * <p>Under {@code And}, either side's positives are available to both; under {@code Or}, neither side
-     * lends to the other — and that holds at every depth, not just between direct siblings. A positive reached
-     * through ANY {@code Or} is unavailable, so only one reached through {@code And} alone licenses
-     * ({@code validate.laws.IterationGuardNestedCompositionLawsTest}: the kernel refuses
-     * {@code (same-level positive Or anything) And negative}). This cannot introduce a false positive on a
-     * legal shape, because an admitted one still needs a same-level positive reached conjunctively, which is
-     * untouched.
+     * lends to the other, and the {@code Or} as a whole lends only the levels every arm guards — at every depth,
+     * not just between direct siblings ({@code validate.laws.IterationGuardNestedCompositionLawsTest}: the kernel
+     * refuses {@code (same-level positive Or off-level positive) And negative} and admits
+     * {@code (same-level positive Or same-level positive) And negative}).
      */
     private void reportUnguarded(Condition condition, Set<String> available, BoundModel model,
             String ruleGroupPath, List<String[]> out) {
@@ -287,8 +285,8 @@ public final class Linter {
             Set<String> inner = available;
             if (logic.op() == LogicCondition.Op.AND) {
                 inner = new HashSet<>(available);
-                inner.addAll(positiveLevels(logic.left(), model));
-                inner.addAll(positiveLevels(logic.right(), model));
+                inner.addAll(positiveLevels(logic.left(), model, ruleGroupPath));
+                inner.addAll(positiveLevels(logic.right(), model, ruleGroupPath));
             }
             reportUnguarded(logic.left(), inner, model, ruleGroupPath, out);
             reportUnguarded(logic.right(), inner, model, ruleGroupPath, out);
@@ -341,22 +339,44 @@ public final class Linter {
     }
 
     /** The repeatable levels this subtree offers a positive presence for; {@link #ANY_LEVEL} when unknown. */
-    private Set<String> positiveLevels(Condition condition, BoundModel model) {
+    private Set<String> positiveLevels(Condition condition, BoundModel model, String ruleGroupPath) {
         Set<String> levels = new HashSet<>();
-        collectPositiveLevels(condition, model, levels);
+        collectPositiveLevels(condition, model, ruleGroupPath, levels);
         return levels;
     }
 
-    private void collectPositiveLevels(Condition condition, BoundModel model, Set<String> out) {
+    /** The levels both arms lend, where {@link #ANY_LEVEL} on one arm lends whatever the other does. */
+    private static Set<String> commonLevels(Set<String> left, Set<String> right) {
+        if (left.contains(ANY_LEVEL)) {
+            return right;
+        }
+        if (right.contains(ANY_LEVEL)) {
+            return left;
+        }
+        Set<String> common = new HashSet<>(left);
+        common.retainAll(right);
+        return common;
+    }
+
+    private boolean allFieldsIterateAtNoLevel(EntityListPredicate predicate, BoundModel model) {
+        return predicate.operands().stream().allMatch(operand -> operand instanceof FieldRef f
+                && iteratingLevel(f.path().value(), model).isEmpty());
+    }
+
+    private void collectPositiveLevels(Condition condition, BoundModel model, String ruleGroupPath, Set<String> out) {
         switch (condition) {
-            // An OR lends nothing: neither arm holds on its own, so a positive inside one is not available to
-            // a negative conjoined with the whole disjunction. Measured — the kernel refuses
-            // `(same-level positive Or anything) And negative` exactly as it refuses the unguarded form
-            // (`validate.laws.IterationGuardNestedCompositionLawsTest`).
+            // An AND lends what either side lends; an OR lends only what EVERY arm lends, since neither arm holds
+            // on its own. Measured — the kernel refuses `(same-level positive Or off-level positive) And negative`
+            // and admits `(same-level positive Or same-level positive) And negative`, on a single level and on a
+            // parallel one (`validate.laws.IterationGuardNestedCompositionLawsTest`,
+            // `validate.laws.ParallelGuardConnectiveLawsTest`).
             case LogicCondition l -> {
                 if (l.op() == LogicCondition.Op.AND) {
-                    collectPositiveLevels(l.left(), model, out);
-                    collectPositiveLevels(l.right(), model, out);
+                    collectPositiveLevels(l.left(), model, ruleGroupPath, out);
+                    collectPositiveLevels(l.right(), model, ruleGroupPath, out);
+                } else {
+                    out.addAll(commonLevels(positiveLevels(l.left(), model, ruleGroupPath),
+                            positiveLevels(l.right(), model, ruleGroupPath)));
                 }
             }
             // An UNSTARRED field presence licenses ANY level, measured: a plain read into a sibling repeatable
@@ -382,9 +402,15 @@ public final class Linter {
                     }
                 }
             }
+            // The rule's own group, levelled exactly as a GroupFilled over its path: in a non-repeating rule group
+            // it guards nothing (validate.laws.IterationGuardNonIteratingPositiveLawsTest).
             case RuleGroupPresenceCondition r -> {
                 if (r.filled()) {
-                    out.add(ANY_LEVEL);
+                    if (licensesAnyLevel(ruleGroupPath, model)) {
+                        out.add(ANY_LEVEL);
+                    } else {
+                        iteratingLevel(ruleGroupPath, model).ifPresent(out::add);
+                    }
                 }
             }
             // A value COMPARISON licenses as well as a presence check: the rule asks for a child that
@@ -410,8 +436,10 @@ public final class Linter {
             // A list predicate's operands are paths, but its admission rule at a level is the group-list
             // topology of KERNEL-FINDINGS §9 rather than a plain reference — unmeasured for this lint, so it
             // keeps the old blanket suppression rather than risking a false positive on a legal model.
+            // Except where every operand is a plain field at no repeatable level, which is measured to guard
+            // nothing (validate.laws.IterationGuardNonIteratingPositiveLawsTest).
             case EntityListPredicate p -> {
-                if (POSITIVE_LIST_QUANTIFIERS.contains(p.operatorId())) {
+                if (POSITIVE_LIST_QUANTIFIERS.contains(p.operatorId()) && !allFieldsIterateAtNoLevel(p, model)) {
                     out.add(ANY_LEVEL);
                 }
             }

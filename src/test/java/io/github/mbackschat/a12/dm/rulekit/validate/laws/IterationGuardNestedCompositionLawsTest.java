@@ -26,9 +26,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * that is right is this file's question: under {@code Or} neither arm holds on its own, so the guard may not be
  * available to the negative at all.
  *
- * <p><b>Measured answer: an {@code Or} lends nothing.</b> All three nested shapes are refused, including the
- * two where a same-level positive sits on one arm — so a positive licenses the conjoined negative only when it
- * is reached through {@code And} alone. The advisory's permissive treatment of this shape was therefore a
+ * <p><b>Measured answer: an {@code Or} lends only what every arm lends.</b> The three nested shapes with an
+ * arm that guards nothing are refused, including the two where a same-level positive sits on the other arm, and
+ * the shape whose both arms are same-level positives is admitted (added 2026-10-09; before it, the refusals read
+ * as "an {@code Or} lends nothing", which they could not distinguish). The advisory's permissive treatment of this shape was therefore a
  * false NEGATIVE, and the control row is what shows the refusals are not merely the negative's own: it differs
  * from the other two in nothing but whether a same-level positive appears inside the {@code Or}.
  *
@@ -55,6 +56,10 @@ class IterationGuardNestedCompositionLawsTest {
 
     private static Condition sameLevelPositive() {
         return Dsl.fieldFilled(M.field("/Order/Items/Count"));
+    }
+
+    private static Condition otherSameLevelPositive() {
+        return Dsl.fieldFilled(M.field("/Order/Items/Sku"));
     }
 
     private static Condition offLevelPositive() {
@@ -106,12 +111,17 @@ class IterationGuardNestedCompositionLawsTest {
         actual.put("(off-level Or off-level) And negative",
                 verdict(offLevelPositive().or(offLevelPositive()).and(negative())));
 
+        // Every arm a same-level positive: the Or as a whole then holds only where one of them does.
+        actual.put("(same-level Or same-level) And negative",
+                verdict(sameLevelPositive().or(otherSameLevelPositive()).and(negative())));
+
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("same-level guard, conjoined", KernelLaws.ADMITTED);
         expected.put("unguarded", NEG);
         expected.put("(same-level Or off-level) And negative", NEG);
         expected.put("(off-level Or same-level) And negative", NEG);
         expected.put("(off-level Or off-level) And negative", NEG);
+        expected.put("(same-level Or same-level) And negative", KernelLaws.ADMITTED);
 
         assertEquals(expected, actual);
     }

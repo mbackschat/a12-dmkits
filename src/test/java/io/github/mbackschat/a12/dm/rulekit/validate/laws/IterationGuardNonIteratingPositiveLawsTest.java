@@ -43,6 +43,10 @@ class IterationGuardNonIteratingPositiveLawsTest {
         actual.put("non-repeating group presence", verdict("GroupFilled(/Order/Customer)"));
         actual.put("field of a non-repeating group", verdict("FieldFilled(/Order/Customer/Name)"));
         actual.put("root group presence", verdict("GroupFilled(/Order)"));
+        actual.put("a field list at no repeatable level",
+                verdict("AtLeastOneFieldFilled(/Order/Reference, /Order/Customer/Name)"));
+        actual.put("the rule group's presence, the rule in the non-repeating root",
+                KernelLaws.verdictModel(MODEL, "/Order", "../Items/Sku", "GroupFilled(RuleGroup)" + NEGATIVE));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("same-level guard — the admitted control", KernelLaws.ADMITTED);
@@ -54,6 +58,8 @@ class IterationGuardNonIteratingPositiveLawsTest {
         expected.put("non-repeating group presence", NEG);
         expected.put("field of a non-repeating group", NEG);
         expected.put("root group presence", NEG);
+        expected.put("a field list at no repeatable level", NEG);
+        expected.put("the rule group's presence, the rule in the non-repeating root", NEG);
         assertEquals(expected, actual, "which positives guard a single-level negative");
     }
 

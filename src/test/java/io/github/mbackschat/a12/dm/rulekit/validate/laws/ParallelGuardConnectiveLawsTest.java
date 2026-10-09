@@ -39,6 +39,8 @@ class ParallelGuardConnectiveLawsTest {
         actual.put("the mirror: a guard on the error field's group", verdict(LINE_FILLED + " And " + PICK_EMPTY));
         actual.put("a negative Or a guard", verdict(PICK_FILLED + " Or " + LINE_EMPTY));
         actual.put("two guards under Or — the Or control", verdict(LINE_FILLED + " Or " + PICK_FILLED));
+        actual.put("an Or of two guards conjoined with a negative",
+                verdict("(" + LINE_FILLED + " Or " + PICK_FILLED + ") And " + LINE_EMPTY));
         actual.put("two guarded conjunctions under Or",
                 verdict("(" + PICK_FILLED + " And " + LINE_EMPTY + ") Or (" + LINE_FILLED + " And " + PICK_EMPTY + ")"));
         actual.put("a guarded conjunction Or a bare negative",
@@ -54,6 +56,8 @@ class ParallelGuardConnectiveLawsTest {
         expected.put("the mirror: a guard on the error field's group", KernelLaws.ADMITTED);
         expected.put("a negative Or a guard", INVALID);
         expected.put("two guards under Or — the Or control", KernelLaws.ADMITTED);
+        // every Or child guards, so the Or is itself a guarding child of the And
+        expected.put("an Or of two guards conjoined with a negative", KernelLaws.ADMITTED);
         expected.put("two guarded conjunctions under Or", KernelLaws.ADMITTED);
         expected.put("a guarded conjunction Or a bare negative", INVALID);
         expected.put("an unguarded Or inside a guarded And", KernelLaws.ADMITTED);

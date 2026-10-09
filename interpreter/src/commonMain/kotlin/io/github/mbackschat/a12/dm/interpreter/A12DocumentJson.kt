@@ -125,8 +125,9 @@ internal object A12DocumentJson {
         }
         val exponent = if (exponentPart.isEmpty()) 0 else exponentPart.toIntOrNull() ?: return null
         val scale = fractionPart.length.toLong() - exponent
-        if (scale > MAX_POINT_SHIFT || -scale > MAX_POINT_SHIFT) return null
         val adjusted = digits.length - 1 - scale
+        // No point-shift ceiling here: the plain branch is reached only at a scale the literal's own length bounds,
+        // and the scientific one is as long as the significand, so `1e999999999` stays `1E+999999999`.
         val text = if (scale >= 0 && adjusted >= -6) {
             plainForm("", integerPart, fractionPart, exponentPart) ?: return null
         } else {
@@ -459,12 +460,19 @@ internal object A12DocumentJson {
             walk(node, path, coordinates)
         }
 
-        /** A12 accepts a textual id and tolerates a numeric one, writing both back as text; nothing else. */
+        /**
+         * A12 accepts a textual id and tolerates a numeric one, writing both back as text; nothing else. A numeric id
+         * is its node's text like any unquoted number, so `1e3` reads `1E+3` (`DocumentJsonAndXmlDeserializationInfoImpl`
+         * takes `value.asText()` on the id branch as on a field's).
+         */
         private fun readDocumentId(node: JsonElement) {
-            if (node is JsonPrimitive && node !== JsonNull &&
-                (node.isString || node.content.toDoubleOrNull() != null)
-            ) {
+            if (node is JsonPrimitive && node !== JsonNull && node.isString) {
                 documentId = node.content
+                return
+            }
+            val numberText = if (node is JsonPrimitive && node !== JsonNull) numberNodeTextOrNull(node.content) else null
+            if (numberText != null) {
+                documentId = numberText
                 return
             }
             diagnostics += InvalidDocumentIdDiagnostic(node.nodeType())
