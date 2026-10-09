@@ -1969,7 +1969,7 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 > Fold: folded → §9.
 
-In a **parallel iteration** (a rule referencing two repeatable groups that share an index field), a **pure negative** condition is rejected with **`MVK_PARALLEL_ITERATION_INVALID`** — `NoFieldFilled(/Shipment/Lines/OrderedQty, /Shipment/Picks/PickedQty)` over the two index-keyed groups fails (probed on the logistics fixture). BA L919: a negative is allowed in a parallel iteration only **combined with a positive** condition (else it would require a value for every joined iteration) — the positive-bearing `FieldsNotCollectivelyFilled` form *is* accepted (locked alongside). Note the code is the parallel-specific `MVK_PARALLEL_ITERATION_INVALID`, **not** the ordinary-iteration `MVK_NEG_CONDITION_IN_ITERATION`. (Source `ParserService` raises it when `IterationNotValidVisitor.testParallelIteration` returns false — the `IterationType.PARALLEL` traversal whose `erlaubt` flag encodes the positive-required rule; the check is short-circuited for non-parallel conditions.) *(Locked: `validate.laws.IterationLawsTest.aPureNegativeInParallelIterationIsRejected`.)*
+In a **parallel iteration** (a rule referencing two repeatable groups that share an index field), a **pure negative** condition is rejected with **`MVK_PARALLEL_ITERATION_INVALID`** — `NoFieldFilled(/Shipment/Lines/OrderedQty, /Shipment/Picks/PickedQty)` over the two index-keyed groups fails (probed on the logistics fixture). BA L919: a negative is allowed in a parallel iteration only **combined with a positive** condition (else it would require a value for every joined iteration) — the positive-bearing `FieldsNotCollectivelyFilled` form *is* accepted (locked alongside). *Corrected 2026-10-09: "combined" is judged through the connective tree, not by a positive anywhere — under `And` one child guarding the joined level suffices, under `Or` every child must guard it, and a positive at no repeatable level guards nothing ([KF537](#kf537)).* Note the code is the parallel-specific `MVK_PARALLEL_ITERATION_INVALID`, **not** the ordinary-iteration `MVK_NEG_CONDITION_IN_ITERATION`. (Source `ParserService` raises it when `IterationNotValidVisitor.testParallelIteration` returns false — the `IterationType.PARALLEL` traversal whose `erlaubt` flag encodes the positive-required rule; the check is short-circuited for non-parallel conditions.) *(Locked: `validate.laws.IterationLawsTest.aPureNegativeInParallelIterationIsRejected`.)*
 
 ## §9 supplement — the `Having` filter and `$` correlation (slice 7d, 2026-06-04 experiments) <a id="kf124"></a>
 
@@ -12919,3 +12919,29 @@ Rules declared in a repeatable `Depots` (capacity 3) report on `Depots/Bins/Stoc
 So the rule iterates the parent alone; the child level that only the error field adds is pinned to coordinate 1, and the child's capacity does not widen the iteration: each rule fires once per depot, never once per bin. Dynamic Groovy, static Java and the a12-dmkits interpreter agree; the portable checker is silent on the model. (a12-kernel-lean SPEC-2026-10-09-08.)
 
 *(Locked: `adapter.laws.DeeperErrorFieldIterationDiffTest`.)*
+
+## §9 supplement — an iteration guard is judged through the connective tree on a parallel iteration too, and a positive that iterates at no level guards nothing (kernel `checkConsistency` + both strategies, 2026-10-09) <a id="kf537"></a>
+
+> Fold: folded → §9.
+
+[KF123](#kf123) said a negative is allowed in a parallel iteration "only combined with a positive". The connective decides what "combined" means. The rule sits in `Shipment/Lines`, which shares the index field `LineRef` with `Picks`, and every condition names the error field `OrderedQty`:
+
+| condition | verdict |
+|---|---|
+| `FieldFilled(Picks/PickedQty) And FieldNotFilled(Lines/OrderedQty)` | admitted |
+| `FieldFilled(Lines/OrderedQty) And FieldNotFilled(Picks/PickedQty)` | admitted |
+| `FieldFilled(Picks/PickedQty) Or FieldNotFilled(Lines/OrderedQty)` | `MVK_PARALLEL_ITERATION_INVALID` |
+| `FieldFilled(Lines/OrderedQty) Or FieldFilled(Picks/PickedQty)` | admitted |
+| `(PickedQty filled And OrderedQty empty) Or (OrderedQty filled And PickedQty empty)` | admitted |
+| `(PickedQty filled And OrderedQty empty) Or FieldNotFilled(Picks/PickedQty)` | `MVK_PARALLEL_ITERATION_INVALID` |
+| `(FieldFilled(Picks/PickedQty) Or FieldNotFilled(Lines/OrderedQty)) And FieldFilled(Lines/OrderedQty)` | admitted |
+| `FieldFilled(ShipmentRef) And` both negatives | `MVK_PARALLEL_ITERATION_INVALID` |
+| both negatives | `MVK_PARALLEL_ITERATION_INVALID` |
+
+So an `And` is admitted once one child references and guards the joined level, a guard on either joined group counts, an `Or` needs every child to, and an unguarded `Or` nested under a guarded `And` is admitted. A positive leaf somewhere in the tree is not enough. This matches the rule stated in the kernel's `IterationNotValidVisitor` source; the rows above measure it. Where an earlier refusal also applies, it still answers first: unguarded negatives beside a filter on an operand whose outer level iterates in parallel draw `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED`, and the same negatives without the filter draw `MVK_PARALLEL_ITERATION_INVALID`. Uniqueness precedence is [KF428](#kf428)'s row.
+
+**The non-iterating positive holds on a single level as well.** With the rule in a repeatable `Order/Items` and `FieldNotFilled(Items/Sku)` conjoined, each of these leaves the negative refused with `MVK_NEG_CONDITION_IN_ITERATION`: `FieldFilled` of a root field, a comparison `[Reference] == "A-1"` of one, `GroupFilled` of a non-repeating group, `FieldFilled` of that group's field, and `GroupFilled` of the root group. A same-level guard is admitted. A guard must reference an iteration, and none of these does.
+
+The admitted shapes then fire alike on dynamic Groovy, static Java and the a12-dmkits interpreter, over keys both groups carry, keys only one carries (the other side reads "not specified", so `FieldNotFilled` holds there), and an empty line. Until this finding, rulekit's `RK_NEG_CONDITION_IN_ITERATION` lint treated every non-iterating positive as a guard, so it stayed silent on each refused row above. (a12-kernel-lean SPEC-2026-10-09-09.)
+
+*(Locked: `validate.laws.ParallelGuardConnectiveLawsTest`, `validate.laws.IterationGuardNonIteratingPositiveLawsTest`, the filter rows of `validate.laws.ParallelIterationGateLawsTest`, `adapter.laws.ParallelGuardConnectiveDiffTest`; the lint: `rulekit.lint.ParallelIterationGuardLintTest`, `rulekit.lint.NonIteratingGuardLintTest`.)*

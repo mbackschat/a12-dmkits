@@ -93,10 +93,20 @@ class ParallelIterationGateLawsTest {
         actual.put("a filter whose own BODY reads the parallel group",
                 nested("FieldFilled(OrderedQty) And Sum(/Depot/Lines/Details*/DetailQty "
                         + "Having [/Depot/Picks/PickedQty] > 0) > 0"));
+        actual.put("unguarded negatives beside that filter",
+                nested("FieldNotFilled(OrderedQty) And FieldNotFilled(/Depot/Picks/PickedQty) And "
+                        + "Sum(/Depot/Picks/Checks*/CheckQty Having [/Depot/Picks/Checks/CheckNote] == \"x\") == 0"));
+        actual.put("the same negatives without the filter",
+                nested("FieldNotFilled(OrderedQty) And FieldNotFilled(/Depot/Picks/PickedQty)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a filter on an operand whose OUTER level is parallel-iterated",
                 "MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED");
+        // The filtered-entity gate precedes the connective guard: both are violated and only it answers
+        // (a12-kernel-lean SPEC-2026-10-09-09); the row below shows the guard alone on the same model.
+        expected.put("unguarded negatives beside that filter",
+                "MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED");
+        expected.put("the same negatives without the filter", "MVK_PARALLEL_ITERATION_INVALID");
         // NOT the parallel-iteration class: a filter body may not ITERATE at all, and that broader gate
         // answers first. So `MVK_PARALLEL_ITERATION_NOT_ALLOWED`'s second firing site — a filter condition
         // that parallel-iterates — is not reached by this shape. Whether any shape reaches it is not

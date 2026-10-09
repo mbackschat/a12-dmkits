@@ -64,7 +64,6 @@ class KernelCodeLiteralRatchetTest {
     private static final Map<String, Integer> REMAINING = Map.ofEntries(
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/LocalizedText.java", 2),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/lint/ComputationLinter.java", 1),
-            Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/lint/Linter.java", 1),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/DiagnosticEnricher.java", 1),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RawLengthDiagnostic.java", 1),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RkCode.java", 2),

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.core.Severity;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior;
@@ -261,7 +262,9 @@ public final class Linter {
                 new Diagnostic.Where(rulePath, Optional.of(negative[0])),
                 Optional.of("guard it, e.g. GroupFilled(" + guardGroup + ") And <the existing condition>"),
                 Optional.of("a negative condition under iteration must be guarded by a positive presence check so"
-                        + " the kernel can bound the iteration (MVK_NEG_CONDITION_IN_ITERATION; KERNEL-FINDINGS §9)")));
+                        + " the kernel can bound the iteration (" + KernelCode.MVK_NEG_CONDITION_IN_ITERATION
+                        + ", or " + KernelCode.MVK_PARALLEL_ITERATION_INVALID
+                        + " when two keyed groups iterate jointly; KERNEL-FINDINGS §9)")));
     }
 
     /**
@@ -361,15 +364,22 @@ public final class Linter {
             // not (validate.laws.IterationGuardAdmissionRoutesLawsTest). A starred quantifier is a different
             // condition record and reaches no arm here, so it contributes nothing and stays level-scoped —
             // which is the whole distinction, and the reason the level rule reads as it does only for it.
+            // A field with no repeatable ancestor iterates at no level, so its presence guards nothing
+            // (validate.laws.IterationGuardNonIteratingPositiveLawsTest); the any-level licence is the unstarred
+            // read's, which needs a repetition to read.
             case FieldPresenceCondition f -> {
-                if (f.filled()) {
+                if (f.filled() && iteratingLevel(f.field().path().value(), model).isPresent()) {
                     out.add(ANY_LEVEL);
                 }
             }
             case GroupPresenceCondition g -> {
                 if (g.filled()) {
                     String path = g.group().path().value();
-                    out.add(licensesAnyLevel(path, model) ? ANY_LEVEL : groupLevelOf(path, model));
+                    if (licensesAnyLevel(path, model)) {
+                        out.add(ANY_LEVEL);
+                    } else {
+                        iteratingLevel(path, model).ifPresent(out::add);
+                    }
                 }
             }
             case RuleGroupPresenceCondition r -> {
@@ -445,11 +455,20 @@ public final class Linter {
         };
     }
 
-    /** The level a comparison operand references, when it is a plain field read. */
+    /** The level a comparison operand references, when it is a plain field read of a repeated field. */
     private void comparisonLevel(Calculation operand, BoundModel model, Set<String> out) {
         if (operand instanceof FieldValue value) {
-            out.add(levelOf(value.field().path().value(), model));
+            iteratingLevel(value.field().path().value(), model).ifPresent(out::add);
         }
+    }
+
+    /**
+     * The repeatable level a positive reference can guard, or empty when it iterates at no level. Kept apart
+     * from {@link #ANY_LEVEL}, which means a level this lint cannot resolve and so suppresses: folding "no
+     * level" into it made every non-repeating positive a guard the kernel does not accept.
+     */
+    private Optional<String> iteratingLevel(String path, BoundModel model) {
+        return model.nearestRepeatableAncestor(path);
     }
 
     /**

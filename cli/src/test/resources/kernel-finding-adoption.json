@@ -502,6 +502,153 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf537": {
+      "sha256": "ac0d3b95abf30acb906ed6e3db3faccd560708fa3ff3bc5ef306727c018dd580",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "the admitted parallel connective shapes"
+        ],
+        "dmkits": [
+          "the single-level iteration-guard lint",
+          "the parallel iteration-guard lint"
+        ],
+        "interpreter": [
+          "the admitted parallel connective shapes"
+        ],
+        "checker": [
+          "the admitted parallel connective shapes"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "parallel guard connective admission"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured on one document carrying every key profile through the adapter's differential.",
+          "evidence": {
+            "the admitted parallel connective shapes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelGuardConnectiveDiffTest.kt#theAdmittedConnectiveShapesFireAlikeOnEveryEngine",
+              "witness": "Five admitted rules over keys on both sides, one side only and an empty line."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "RK_NEG_CONDITION_IN_ITERATION no longer counts a positive at no repeatable level as a guard, and its fix text names the parallel code too.",
+          "evidence": {
+            "the single-level iteration-guard lint": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/lint/NonIteratingGuardLintTest.java#aPositiveAtNoRepeatableLevelLeavesTheNegativeUnguarded",
+              "witness": "Root field presence and comparison, a non-repeating group and its field, and the root group each warn; a same-level guard does not."
+            },
+            "the parallel iteration-guard lint": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/lint/ParallelIterationGuardLintTest.java#itWarnsWhereTheKernelRefusesTheParallelGuard",
+              "witness": "The nine connective rows warn exactly where the kernel refuses with MVK_PARALLEL_ITERATION_INVALID."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The interpreter has no connective gate and already evaluates the admitted shapes as both kernel strategies do.",
+          "evidence": {
+            "the admitted parallel connective shapes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelGuardConnectiveDiffTest.kt#theAdmittedConnectiveShapesFireAlikeOnEveryEngine",
+              "witness": "All three engines agree, including the unmatched side read as not specified."
+            }
+          }
+        },
+        "checker": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The checker leaves this guard to the kernel and reports nothing on the model A12 admits.",
+          "evidence": {
+            "the admitted parallel connective shapes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelGuardConnectiveDiffTest.kt#theCheckerIsSilentOnTheModelA12Admits",
+              "witness": "No rejecting finding."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool relays the kernel's class and the rulekit lint unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Condition admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Condition admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the handback answering SPEC-2026-10-09-09; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf123": {
+      "sha256": "0b109b4915214d21b71bb1d16cb33e364548d7d23d88e2adcb5e2f788e61067a",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose qualification pointing at KF537; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose qualification pointing at KF537; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose qualification pointing at KF537; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose qualification pointing at KF537; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose qualification pointing at KF537; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose qualification pointing at KF537; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose qualification pointing at KF537; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Prose qualification pointing at KF537; this entry's own rows and lock are unchanged and still pass.",
+          "evidence": {}
+        }
+      }
+    },
     "kf179": {
       "sha256": "4cc55df69240b54bb7e43f8852ff29ac4f1271ee254a453792fefb96ad2dd7a0",
       "task": "F-USE-BACKLOG",
