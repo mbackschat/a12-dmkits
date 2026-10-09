@@ -328,6 +328,13 @@ public final class DslRenderer {
      * A concatenation part, with an enumeration read braced: A12 refuses an immediate one whose labels remap its
      * values and admits the braced one whatever its labels (KERNEL-FINDINGS KF396).
      */
+    private String valueAsDateSource(ValueAsDate.Source source) {
+        return switch (source) {
+            case FieldRef field -> path(field);
+            case IndexedFieldValue indexed -> indexBody(indexed);
+        };
+    }
+
     private String concatenationPart(Calculation part) {
         return part instanceof FieldValue && part.kind() == ValueKind.ENUMERATION
                 ? "{ " + render(part) + " }" : render(part);
@@ -525,7 +532,7 @@ public final class DslRenderer {
             case NumberOfValueInFields n -> keyword(n.operatorId()) + "(" + render(n.value()) + " In "
                     + n.fields().stream().map(this::aggregateOperand)
                             .collect(Collectors.joining(", ")) + ")";
-            case ValueAsDate v -> keyword(v.operatorId()) + "(" + path(v.field()) + ", "
+            case ValueAsDate v -> keyword(v.operatorId()) + "(" + valueAsDateSource(v.source()) + ", "
                     + keyword(v.dayKeywordId()) + ")";
             case DateExtraction e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case DateTimePart e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";

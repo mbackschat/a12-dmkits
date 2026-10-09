@@ -12749,3 +12749,35 @@ The gates are `CheckDatumExtractOpImpl.check` with `DateUtils.checkOperationCons
 | nothing filled | ` / ` | cleared | does not fire |
 
 So the enumeration contributes its stored value, an empty enumeration and an empty text both contribute nothing, and a concatenation that is empty as a whole clears its target, as with text alone. A12 records no group around a simple operand (`ParseTreeCreator.exitBRACKET_OP`, source-read), so `{ [E] }` and `[E]` parse into the same field read and differ only in what the admission check sees. Locked by `adapter.laws.EnumConcatenationDiffTest`; the read of both spellings into the typed form by `adapter.ConcatenationReadTest`.
+
+## §6/§9 supplement — a key-selected cell stands where a temporal operation reads one field, and `ValueAsDate` resolves it as the row it selects (kernel + both strategies, 2026-10-09) <a id="kf531"></a>
+
+> Fold: pending — extends [KF208](#kf208)'s locus law to the keyed spelling, and the `Date(…)` component rows of §6.
+
+A rule at the root of a claims register reads a repeatable `Claims`, indexed on `Code`, through a key. A12 admits a keyed cell in both slots that read one field, and refuses the unkeyed read of the same field from the same rule `MVK_NO_WILDCARD`:
+
+| operand | verdict |
+|---|---|
+| `ValueAsDate(Claims/ReportedAbout For Key, FirstDay)`, a `MONTH_OPTIONAL` date | admitted |
+| `ValueAsDate(Claims/ReportedAbout For "C1", LastDay)` | admitted |
+| `ValueAsDate(Claims/ReportedAbout, FirstDay)` | `MVK_NO_WILDCARD` |
+| `Date(Claims/DayText For Key, "01", "2024")`, a digit-patterned text | admitted |
+| `Date(Claims/DayText For "C1", "01", "2024")` | admitted |
+| `Date(Claims/DayText, "01", "2024")` | `MVK_NO_WILDCARD` |
+| `Date(Claims/DayNumber For Key, "01", "2024")`, a bounded number | admitted |
+
+At runtime the keyed `ValueAsDate` resolves the boundary of the selected row's value. Dynamic Groovy, static Java and our interpreter agree on every document; `Limit` is `2024-01-10`, and the computation writes `ValueAsDate(Claims/ReportedAbout For Key, LastDay)` into a date already holding a value:
+
+| `Key`, and the selected row's `ReportedAbout` | `FirstDay > [Limit]` | `LastDay > [Limit]` | computed |
+|---|---|---|---|
+| `C1`, `2024-01-00` | does not fire | fires | `2024-01-31` |
+| `C2`, `2024-02-00` | fires | fires | `2024-02-29` |
+| `C1`, `2024-00-00` (month unknown) | does not fire | fires | `2024-12-31` |
+| `C9` (no row), or no key | does not fire | does not fire | cleared |
+| `C2`, empty | does not fire | does not fire | cleared |
+| `C1`, `2024-13-00` (malformed) | does not fire | does not fire | cleared |
+| `C2`, while `C1` is malformed | fires | fires | `2024-02-29` |
+
+A key that selects nothing, an empty cell and a malformed selected cell all give no value, and the computation clears its target on each rather than erroring; a malformed cell in another row does not reach the read. The keyed `Date(…)` day reads the selected row's text the same way.
+
+*(Locked: `validate.laws.KeyedTemporalOperandLawsTest` — the admission grid and the typed authoring of every admitted shape; `adapter.laws.KeyedTemporalOperandDiffTest` — the runtime rows against both strategies; the checker's agreement by `adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerAdmitsAKeyedTemporalOperandA12Admits`; the read back into the typed form by `adapter.KeyedTemporalOperandReadTest`.)*

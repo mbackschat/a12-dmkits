@@ -18,7 +18,7 @@ import java.util.Optional;
  * check is added for this: the two identity switches that already exist for {@link FieldRef} are where
  * that gate lives, widened to this type via {@link #duplicateIdentity()}.
  */
-public sealed interface IndexedFieldValue extends Calculation, FieldOperand.Cell
+public sealed interface IndexedFieldValue extends Calculation, FieldOperand.Cell, ValueAsDate.Source
         permits SemanticIndexValue, SemanticIndexFieldValue {
 
     /** Literal membership of this selected cell; the kernel settles the declared-kind domain (DG71). */

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
+import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
@@ -132,6 +133,48 @@ class CheckerKeyedOperandAgreementTest {
         )
         assertEquals(a12.mapValues { (_, codes) -> codes to codes }, actual, "a keyed group operand, as (ours, A12)")
     }
+
+    /**
+     * A key-selected cell where a temporal operation reads one field, which A12 ADMITS (`validate.laws.
+     * KeyedTemporalOperandLawsTest`): the source of `ValueAsDate` over a partially known date, and a text day of a
+     * `Date` construction. The grid above probes these families only on fields their gates refuse, so it cannot
+     * see a checker that refuses the admitted keyed form; the unkeyed reads are the refusing control.
+     */
+    @Test
+    fun theCheckerAdmitsAKeyedTemporalOperandA12Admits() {
+        val at = "/Register" to "Holder"
+        val rows = linkedMapOf(
+            "ValueAsDate over a field-keyed cell" to "ValueAsDate(Claims/ReportedAbout For Key, FirstDay) > [Limit]",
+            "ValueAsDate over a literal-keyed cell" to "ValueAsDate(Claims/ReportedAbout For \"C1\", LastDay) > [Limit]",
+            "ValueAsDate over the unkeyed list" to "ValueAsDate(Claims/ReportedAbout, FirstDay) > [Limit]",
+            "a field-keyed text day" to "Date(Claims/DayText For Key, \"01\", \"2024\") > [Limit]",
+            "a literal-keyed text day" to "Date(Claims/DayText For \"C1\", \"01\", \"2024\") > [Limit]",
+            "the unkeyed text day" to "Date(Claims/DayText, \"01\", \"2024\") > [Limit]",
+        )
+        val actual = rows.mapValues { (_, probe) -> compare(at, probe, register).let { it.ours to it.a12 } }
+        val unkeyed = setOf("MVK_NO_WILDCARD")
+        val a12 = linkedMapOf(
+            "ValueAsDate over a field-keyed cell" to emptySet(),
+            "ValueAsDate over a literal-keyed cell" to emptySet(),
+            "ValueAsDate over the unkeyed list" to unkeyed,
+            "a field-keyed text day" to emptySet(),
+            "a literal-keyed text day" to emptySet(),
+            "the unkeyed text day" to unkeyed,
+        )
+        assertEquals(a12.mapValues { (_, codes) -> codes to codes }, actual, "a keyed temporal operand, as (ours, A12)")
+    }
+
+    /** A claims register whose repeatable `Claims`, indexed on `Code`, carries a partially known date and a text day. */
+    private val register = DocumentModelDraft.named("claims-register").locale("en_US")
+        .rootGroup("Register") { r -> r
+            .stringField("Holder") { }
+            .stringField("Key") { }
+            .dateField("Limit") { it.format("yyyy-MM-dd") }
+            .group("Claims") { g -> g.repeatable(5).indexField("Code")
+                .stringField("Code") { }
+                .dateField("ReportedAbout") { it.format("yyyy-MM-dd").datePrecision(DatePrecision.MONTH_OPTIONAL) }
+                .stringField("DayText") { it.maxLength(2).pattern("[0-9]+", "Digits only.") } } }
+        .build().toJson()
 
     /** A desk whose repeatable `Claims` carries an enumeration projected through a covering and a wider category. */
     private val desk = DocumentModelDraft.named("policy-enum-source").locale("en_US")

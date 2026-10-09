@@ -247,7 +247,12 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(n.value(), refs);
                 n.fields().forEach(f -> collectAggregateOperand(f, refs));
             }
-            case ValueAsDate v -> refs.field(v.field().path().value());
+            case ValueAsDate v -> {
+                switch (v.source()) {
+                    case FieldRef field -> refs.field(field.path().value());
+                    case IndexedFieldValue indexed -> collect(indexed, refs);
+                }
+            }
             case DateExtraction e -> collect(e.source(), refs);
             case DateTimePart e -> collect(e.source(), refs);
             case SumOfProducts s -> {

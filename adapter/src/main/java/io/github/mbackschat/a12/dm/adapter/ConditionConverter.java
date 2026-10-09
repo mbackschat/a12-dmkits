@@ -2540,10 +2540,14 @@ final class ConditionConverter {
         if (op instanceof IConstantOperation constant) {
             return new DateExpr(new DateLiteral(constant.getValue()));
         }
-        // ValueAsDate(field, FirstDay|LastDay) — resolves a partially-known-date field to a concrete date
+        // ValueAsDate(field, FirstDay|LastDay) — resolves a partially-known-date field, or the cell a key selects in
+        // one, to a concrete date
         if (op instanceof IFieldIdOperationWithParameters vad
                 && vad.getOperatorName() == FieldIdOperationName.ValueAsDate) {
-            return new DateExpr(new ValueAsDate(model.field(vad.getField().getFullName()), vad.isFirstDay()));
+            ValueAsDate.Source source = hasSemanticIndex(vad.getField())
+                    ? semanticIndex(vad.getField(), op).index()
+                    : model.field(vad.getField().getFullName());
+            return new DateExpr(new ValueAsDate(source, vad.isFirstDay()));
         }
         if (op instanceof IPointInTimeOperation pit) {
             return switch (pit.getOperatorName()) {

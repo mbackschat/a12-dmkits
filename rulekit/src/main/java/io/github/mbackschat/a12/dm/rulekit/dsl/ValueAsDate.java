@@ -11,7 +11,14 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * wrap in a {@link DateExpr} to compare it. The field renders bare; the day specification is a
  * localized keyword ({@code FirstDay}/{@code LastDay}; DE {@code ErsterTag}/{@code LetzterTag}).
  */
-public record ValueAsDate(FieldRef field, boolean firstDay) implements Calculation {
+public record ValueAsDate(Source source, boolean firstDay) implements Calculation {
+
+    /**
+     * The one partially known date it resolves: a field, or the cell a semantic index selects, which A12 admits in
+     * the same position (`validate.laws.KeyedTemporalOperandLawsTest`).
+     */
+    public sealed interface Source permits FieldRef, IndexedFieldValue {
+    }
 
     @Override
     public ValueKind kind() {

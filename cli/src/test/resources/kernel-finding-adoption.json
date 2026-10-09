@@ -6339,6 +6339,92 @@
           "evidence": {}
         }
       }
+    },
+    "kf531": {
+      "sha256": "9ed265bd847df06a681a734cf59f34ec96d9b68efcd8fb21e6f0611e6d3be373",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "a key-selected cell in a temporal operand"
+        ],
+        "dmkits": [
+          "a key-selected cell in a temporal operand"
+        ],
+        "interpreter": [
+          "a key-selected cell in a temporal operand"
+        ],
+        "checker": [
+          "a key-selected cell in a temporal operand"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "a key-selected cell in a temporal operand"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured on eight documents through the adapter's differential, and every keyed shape reads back into the typed form with its key.",
+          "evidence": {
+            "a key-selected cell in a temporal operand": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedTemporalOperandDiffTest.kt#aKeyedCellResolvesAsTheRowItSelects",
+              "witness": "The selected row's boundary fires and computes on every row, and an unselected or malformed cell clears the target."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "ValueAsDate takes a key-selected cell as its source and SemanticIndex is a Date component, both authored through the typed surface.",
+          "evidence": {
+            "a key-selected cell in a temporal operand": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/KeyedTemporalOperandLawsTest.java#theTypedSurfaceAuthorsEveryAdmittedKeyedShape",
+              "witness": "Every admitted keyed shape renders as measured and is admitted by the kernel."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter resolves ValueAsDate over a key-selected cell through its guarded keyed read, as both kernel strategies do.",
+          "evidence": {
+            "a key-selected cell in a temporal operand": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedTemporalOperandDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on every document, the computation included."
+            }
+          }
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The portable checker admits each keyed shape A12 admits and refuses each unkeyed read with A12's class.",
+          "evidence": {
+            "a key-selected cell in a temporal operand": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedOperandAgreementTest.kt#theCheckerAdmitsAKeyedTemporalOperandA12Admits",
+              "witness": "The checker and A12 name the same class on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter, reads through the adapter and checks through the kernel or the checker, all assessed here; it authors conditions as text.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A condition operand does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A condition operand does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback under SPEC-2026-10-06-04 and SPEC-2026-10-06-05; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

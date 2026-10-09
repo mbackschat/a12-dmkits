@@ -1336,6 +1336,16 @@ public final class Dsl {
         return new DateExpr(new ValueAsDate(partiallyKnownDate, false));
     }
 
+    /** {@code ValueAsDate(Rows/Field For key, FirstDay)} — as {@link #valueAsDateFirstDay(FieldRef)}, over a keyed cell. catalog:ValueAsDate */
+    public static DateExpr valueAsDateFirstDay(SemanticIndex partiallyKnownDate) {
+        return new DateExpr(new ValueAsDate(partiallyKnownDate.index(), true));
+    }
+
+    /** {@code ValueAsDate(Rows/Field For key, LastDay)} — as {@link #valueAsDateLastDay(FieldRef)}, over a keyed cell. catalog:ValueAsDate */
+    public static DateExpr valueAsDateLastDay(SemanticIndex partiallyKnownDate) {
+        return new DateExpr(new ValueAsDate(partiallyKnownDate.index(), false));
+    }
+
     /** {@code DateFromDateTime(dt)} — the date part of a date-time, as a comparable date. Accepts any
      *  {@link DateTimeOperand}: a date-time field OR a {@code DateTime(date, time)} construction (DG9). catalog:DateFromDateTime */
     public static DateExpr dateFromDateTime(DateTimeOperand dateTime) {

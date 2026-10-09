@@ -489,7 +489,8 @@ internal class Functions(private val mapping: Mapping) {
     }
 
     /**
-     * `ValueAsDate(field, FirstDay|LastDay)` — resolves a partially known date field to a concrete date.
+     * `ValueAsDate(field, FirstDay|LastDay)` — resolves a partially known date field, or the cell a key selects in
+     * one, to a concrete date.
      * Routed through the model-bound facade rather than [Dsl], because the operand's admissibility is a fact
      * about its DECLARED PRECISION and this boundary holds the model: a field declaring no optional component
      * is refused where the kernel refuses it, the same reasoning as [dateExtraction] and [dateTimePart]. The
@@ -500,7 +501,8 @@ internal class Functions(private val mapping: Mapping) {
         if (args.size != 2) {
             throw UnmappedConstructException("ValueAsDate with " + args.size + " operands")
         }
-        val field = mapping.fieldRef(args[0])
+        val keyed = if (args[0] is Expr.SemanticIndex) mapping.semanticIndex(args[0]) else null
+        val field = keyed?.index()?.field() ?: mapping.fieldRef(args[0])
         if (field.kind() != ValueKind.DATE) {
             throw IllegalArgumentException(
                 "ValueAsDate: " + field.path().value() + " is not a date field (kind=" + field.kind() + ")"
@@ -512,9 +514,10 @@ internal class Functions(private val mapping: Mapping) {
                 "ValueAsDate day-keyword operand " + dayKeyword.javaClass.simpleName
             )
         }
+        val model = mapping.model()
         return when (dayKeyword.name) {
-            "FirstDay" -> mapping.model().valueAsDateFirstDay(field).expression()
-            "LastDay" -> mapping.model().valueAsDateLastDay(field).expression()
+            "FirstDay" -> (keyed?.let(model::valueAsDateFirstDay) ?: model.valueAsDateFirstDay(field)).expression()
+            "LastDay" -> (keyed?.let(model::valueAsDateLastDay) ?: model.valueAsDateLastDay(field)).expression()
             else -> throw UnmappedConstructException("ValueAsDate day-keyword " + dayKeyword.name)
         }
     }

@@ -13,7 +13,13 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * kernel-illegal {@code FieldFilled(Sum(...))}) is <em>unrepresentable at compile time</em> rather than a
  * runtime throw (API-FINDINGS finding 63, superseding finding 59's fail-fast guard).
  */
-public record SemanticIndex(IndexedFieldValue index) {
+public record SemanticIndex(IndexedFieldValue index) implements TemporalComponent {
+
+    /** The selected cell as a {@code Date}/{@code Time} component, which A12 judges by the field's declaration. */
+    @Override
+    public Calculation expression() {
+        return index;
+    }
 
     /** {@code FieldFilled([Field For key])} — the presence of this semantic index, rendered bare (no value brackets). */
     public Condition filled() {

@@ -44,6 +44,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsString
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding
 import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate
 
 /**
@@ -682,6 +683,21 @@ class FunctionsTest {
     fun aWellFormedValueAsDateLastDayConverts() {
         val value = assertInstanceOf(ValueAsDate::class.java, left("ValueAsDate(ApproxDate, LastDay) > Today"))
         assertFalse(value.firstDay())
+    }
+
+    /** A key-selected cell is a `ValueAsDate` source of its own, distinct from the field it selects in. */
+    @Test
+    fun aKeySelectedValueAsDateConvertsToTheSelectedCell() {
+        val literal = assertInstanceOf(ValueAsDate::class.java,
+            left("ValueAsDate(Items/RestockAbout For \"S-1\", LastDay) > Today"))
+        val keyed = assertInstanceOf(ValueAsDate::class.java,
+            left("ValueAsDate(Items/RestockAbout For CustomerName, FirstDay) > Today"))
+        assertEquals(listOf(
+            false to "/Order/Items/RestockAbout For \"S-1\"",
+            true to "/Order/Items/RestockAbout For /Order/CustomerName",
+        ), listOf(literal, keyed).map {
+            it.firstDay() to assertInstanceOf(IndexedFieldValue::class.java, it.source()).renderedPath()
+        })
     }
 
     /** No MVK code — the typed-date accessor's own kind gate, `numberRef`'s rationale applied to dates. */

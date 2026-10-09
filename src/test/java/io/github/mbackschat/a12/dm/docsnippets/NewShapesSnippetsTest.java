@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.modelkit.DatePrecision;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -21,6 +22,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeIndexedValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
@@ -53,9 +55,13 @@ class NewShapesSnippetsTest {
     private static final String PROMO_JSON = DocumentModelDraft.named("promo").locale("en_US")
             .rootGroup("Shop", root -> root
                     .dateField("CheckDate", d -> d.format("yyyy-MM-dd"))
+                    .field("Season", FieldKind.STRING)
                     .group("Runs", runs -> runs.repeatable(20).indexField("RunKey")
                             .field("RunKey", FieldKind.STRING)
-                            .dateRangeField("RunWindow", r -> r.format("yyyy-MM-dd").separator("/"))))
+                            .dateRangeField("RunWindow", r -> r.format("yyyy-MM-dd").separator("/"))
+                            .dateField("LaunchedAbout",
+                                    d -> d.format("yyyy-MM-dd").datePrecision(DatePrecision.MONTH_OPTIONAL))
+                            .stringField("StartDay", t -> t.maxLength(2).pattern("[0-9]+", "Digits only."))))
             .build().toJson();
     private static final BoundModel promo = BoundModel.ofJson(PROMO_JSON);
     private static final String FULFILMENT_JSON = DocumentModelDraft.named("fulfilment").locale("en_US")
@@ -452,6 +458,25 @@ class NewShapesSnippetsTest {
         assertEquals("[/Order/CustomerName] != { [/Order/Priority] } + \" / \" + [/Order/ProductCode]",
                 new DslRenderer().render(staleName));
         assertKernelAccepts(staleName, "../CustomerName");
+    }
+
+    @Test
+    void keyedTemporalOperandSnippet() {
+        // tag::keyed-temporal-operand[]
+        // A key-selected cell stands where a temporal operation reads ONE field: the source of ValueAsDate,
+        // and a component of a Date construction (KERNEL-FINDINGS KF531).
+        DateRef checkDate = promo.date("/Shop/CheckDate");
+        Condition launchedLate = promo.valueAsDateLastDay(
+                promo.date("/Shop/Runs/LaunchedAbout").semanticIndex("spring")).after(checkDate);
+        Condition startsLate = Dsl.date(promo.str("/Shop/Runs/StartDay").semanticIndex(promo.field("/Shop/Season")),
+                Dsl.temporalComponent("01"), Dsl.temporalComponent("2024")).after(checkDate);
+        // end::keyed-temporal-operand[]
+        assertEquals("ValueAsDate(/Shop/Runs/LaunchedAbout For \"spring\", LastDay) > [/Shop/CheckDate]",
+                new DslRenderer().render(launchedLate));
+        assertEquals("Date(/Shop/Runs/StartDay For /Shop/Season, \"01\", \"2024\") > [/Shop/CheckDate]",
+                new DslRenderer().render(startsLate));
+        assertKernelAccepts(PROMO_JSON, "/Shop", launchedLate, "../CheckDate");
+        assertKernelAccepts(PROMO_JSON, "/Shop", startsLate, "../CheckDate");
     }
 
     @Test

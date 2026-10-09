@@ -383,16 +383,19 @@ private fun Interpreter.evalSemanticIndex(e: Expr.SemanticIndex): Val {
  * a direct comparison is suppressed and the concat gate ([concatOperandInvalid]) suppresses a
  * concatenation (the kernel's `np` flag riding `VkString.add` into `isStringNotRelevant`).
  *
- * A [selection] (presence, `FirstFilledValue`) reads a well-formed partial Date in the selected row as its
- * earliest day rather than as unknown ([EvalContext.partialDateFirstDayAt]).
+ * A [selection] reads a well-formed partial Date in the selected row as a boundary rather than as unknown
+ * ([EvalContext.partialDateBoundaryAt]): presence and `FirstFilledValue` read its earliest day, `ValueAsDate` the
+ * day it names.
  */
-private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex, selection: Boolean = false): Val? {
+private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex, selection: DateBoundary? = null): Val? {
     val c = ctxOf(e)
     if (computeMode) {
         if (indexColumnInvalid(e)) throw PoisonedReadException(e.path)
         val cell = semanticIndexCell(e)
         if (cell is Val.Unknown) {
-            return semanticIndexRepetitions(e)?.takeIf { selection }?.let { c.partialDateFirstDayAt(e.path, it) }
+            return selection?.let { boundary ->
+                semanticIndexRepetitions(e)?.let { c.partialDateBoundaryAt(e.path, it, boundary == DateBoundary.LAST_DAY) }
+            }
                 ?: throw PoisonedReadException(e.path)
         }
         return cell
@@ -411,7 +414,9 @@ private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex, selection
         val selected = c.indexedCellRepetitions(e.path, idx, key, indexIdentityAdmitted())
         if (selected != null && outsideCoverage(e.path, selected)) return Val.Unknown
         val cell = indexedCell(c, e.path, idx, key)
-        if (selection && cell is Val.Unknown && selected != null) return c.partialDateFirstDayAt(e.path, selected) ?: cell
+        if (selection != null && cell is Val.Unknown && selected != null) {
+            return c.partialDateBoundaryAt(e.path, selected, selection == DateBoundary.LAST_DAY) ?: cell
+        }
         return cell
     }
     return unmatchedKeyedCell(e)
@@ -576,7 +581,7 @@ internal fun Interpreter.semanticIndexPresence(e: Expr.SemanticIndex): Tri {
     // Presence and value reads share the admitted-key lookup, the key field's own gate included ([resolveIndexKey]). In particular, a malformed stored key contributes
     // no identity, yet keeps the column invalid: no admitted equal key means UNKNOWN, while a later admitted equal
     // key remains selectable regardless of the malformed row elsewhere in the column (IF115/IF272).
-    val cell = computeGuardedIndexCell(e, selection = true) ?: return Tri.FALSE
+    val cell = computeGuardedIndexCell(e, selection = DateBoundary.FIRST_DAY) ?: return Tri.FALSE
     return if (cell is Val.Unknown) Tri.UNKNOWN else Tri.TRUE
 }
 
@@ -1986,28 +1991,39 @@ internal fun Interpreter.dateInstant(e: Expr): Long? =
  * resolvable value (malformed, or an unknown year) is cause-free non-relevance, which [composeDateTime] does not
  * treat as a formally invalid read (SPEC-2026-10-04-02).
  */
-private fun Interpreter.partialDateValue(args: List<Expr>): Evaluated<TemporalValue> {
-    val source = ctxOf(args[0])
-    val path = pathOf(args[0])
-    if (!invalid(source, path) && source.displayValue(path) == null) return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
-    return when (val value = valueAsDate(args)) {
+private fun Interpreter.partialDateValue(args: List<Expr>): Evaluated<TemporalValue> =
+    when (val value = partialDateSelection(args)) {
+        null -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
         is Val.Txt -> temporalText(value.v, DateCalendarBasis.PROLEPTIC_GREGORIAN)
         else -> Evaluated.NoValue(NoValueReason.NON_RELEVANT, formal = false)
     }
-}
 
 /** `ValueAsDate(field, FirstDay|LastDay)` — select a partial DateType value's concrete boundary. Unknown
  *  when the field is empty/formally-invalid, its year is unknown, or the value doesn't parse. */
-private fun Interpreter.valueAsDate(args: List<Expr>): Val {
-    val path = pathOf(args[0])
-    if (invalid(ctxOf(args[0]), path)) return Val.Unknown
-    val raw = ctxOf(args[0]).displayValue(path) ?: return Val.Unknown
-    val lastDay = (args[1] as? Expr.Const)?.name == "LastDay"
+private fun Interpreter.valueAsDate(args: List<Expr>): Val = partialDateSelection(args) ?: Val.Unknown
+
+/** Which concrete day a partially known Date is read as. */
+private enum class DateBoundary { FIRST_DAY, LAST_DAY }
+
+/**
+ * The boundary `ValueAsDate` selects, or null where nothing is given. A key-selected cell is read through the same
+ * guarded keyed read as a direct keyed operand, so its key, its column and the selected cell's own validity gate it
+ * as they gate any keyed read; A12 admits the keyed operand (`validate.laws.KeyedTemporalOperandLawsTest`) and
+ * resolves it as the row it selects (`adapter.laws.KeyedTemporalOperandDiffTest`).
+ */
+private fun Interpreter.partialDateSelection(args: List<Expr>): Val? {
+    val boundary = if ((args[1] as? Expr.Const)?.name == "LastDay") DateBoundary.LAST_DAY else DateBoundary.FIRST_DAY
+    val operand = args[0]
+    if (operand is Expr.SemanticIndex) return computeGuardedIndexCell(operand, selection = boundary)
+    val source = ctxOf(operand)
+    val path = pathOf(operand)
+    if (invalid(source, path)) return Val.Unknown
+    val raw = source.displayValue(path) ?: return null
     return resolvePartialDate(
         raw,
         ctx.dateFormatOf(path) ?: "yyyy-MM-dd",
         ctx.datePrecisionOf(path),
-        lastDay,
+        boundary == DateBoundary.LAST_DAY,
     )?.let { Val.Txt(it) } ?: Val.Unknown
 }
 
@@ -2161,7 +2177,7 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
                 KeyedGroupSelection.Unavailable -> FirstFilledStep.Stop(Val.Unknown)
             }
         } else {
-            val cell = computeGuardedIndexCell(operand, selection = true)
+            val cell = computeGuardedIndexCell(operand, selection = DateBoundary.FIRST_DAY)
             if (cell == null) {
                 walk.fillable = true
                 FirstFilledStep.Continue
@@ -2312,9 +2328,9 @@ private fun Interpreter.firstFilledStar(
 private fun Interpreter.firstFilledValue(f: Expr.Func): Val = firstFilledScan(f).value
 
 /** The value `FirstFilledValue` takes from the filled cell it stops at: a partial Date a value read leaves
- *  unknown is selected as its earliest day ([EvalContext.partialDateFirstDayAt]). */
+ *  unknown is selected as its earliest day ([EvalContext.partialDateBoundaryAt]). */
 private fun firstFilledSelection(c: EvalContext, path: String, repetitions: List<Int>, resolved: Val): Val =
-    if (resolved is Val.Unknown) c.partialDateFirstDayAt(path, repetitions) ?: resolved else resolved
+    if (resolved is Val.Unknown) c.partialDateBoundaryAt(path, repetitions) ?: resolved else resolved
 
 /** The empty-selection identity of a `FirstFilledValue` by its operand kind (the kernel's per-kind
  *  `FirstValueCombiner`): NUMBER → the fillable `0`; every other kind → NOT-GIVEN ([Val.Unknown], the

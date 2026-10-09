@@ -1206,6 +1206,18 @@ public final class BoundModel {
         return Dsl.valueAsDateLastDay(partiallyKnownDate);
     }
 
+    /** {@code ValueAsDate(Rows/Field For key, FirstDay)}, checked like {@link #valueAsDateFirstDay(FieldRef)}. */
+    public DateExpr valueAsDateFirstDay(SemanticIndex partiallyKnownDate) {
+        requirePartiallyKnownDate(partiallyKnownDate.index().field());
+        return Dsl.valueAsDateFirstDay(partiallyKnownDate);
+    }
+
+    /** {@code ValueAsDate(Rows/Field For key, LastDay)}, checked like {@link #valueAsDateLastDay(FieldRef)}. */
+    public DateExpr valueAsDateLastDay(SemanticIndex partiallyKnownDate) {
+        requirePartiallyKnownDate(partiallyKnownDate.index().field());
+        return Dsl.valueAsDateLastDay(partiallyKnownDate);
+    }
+
     /**
      * {@code ValueAsDate} admits only a partly-known date; a full-precision DateType and a DATE_FRAGMENT are
      * both {@code MVK_INVALID_DATE_TYPE_FOR_OP} (`validate.laws.ValueAsDateOperandPrecisionLawsTest`). Scoped

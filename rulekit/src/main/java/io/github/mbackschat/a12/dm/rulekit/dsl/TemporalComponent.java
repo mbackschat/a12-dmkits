@@ -13,7 +13,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * model-dependent gate at validation time lets mixed legal sources remain authorable without pretending every
  * declaration is valid everywhere.
  */
-public sealed interface TemporalComponent permits FieldRef, NumberExpr, TemporalComponentLiteral {
+public sealed interface TemporalComponent permits FieldRef, NumberExpr, TemporalComponentLiteral, SemanticIndex {
 
     /** The expression rendered in the constructor's bare component position. */
     Calculation expression();
