@@ -4199,7 +4199,7 @@ Closes [IG149](INTERPRETER-GAPS.md). [KF252](KERNEL-FINDINGS.md#kf252) widened t
 - `FirstFilledValue` asked the coverage only on its starred arm. The plain field and category arms skipped an empty cell before asking, and the contained-cell walk behind a bare group and a keyed row never asked at all.
 - A category read `[E -> Cat]` carried no gate at all.
 
-**The fix.** A key resolves to one coordinate, either the selected row's or `unmatchedCoordinate`, which sets the keyed level to `UNKNOWN_REP`. The group-presence seam `EvalConfig.groupPresence` now takes a coordinate rather than a context. So an absent keyed group is asked of the same `GroupPresenceIndex` at the unbound row, and `KeyedGroupSelection.Absent` carries that coordinate for `FirstFilledValue` too. Every visited cell goes through one partial-only test, `outsideCoverage`. Full validation and computation carry no coverage, so neither path changes. The field-valued key's own gate from [IF333](#if333) already matched the kernel here, and a key field outside the coverage leaves the lookup undecided. This slice is the first to measure that under partial validation.
+**The fix.** A key resolves to one coordinate, either the selected row's or `unmatchedCoordinate`, which sets the keyed level to `UNKNOWN_REP`. The group-presence seam `EvalConfig.groupPresence` now takes a coordinate rather than a context. So an absent keyed group is asked of the same `GroupPresenceIndex` at the unbound row, and `KeyedGroupSelection.Absent` carries that coordinate for `FirstFilledValue` too. *Corrected 2026-10-09: a keyed FIELD LIST no longer borrows that group question. It is read in the empty row at the same coordinate, under its consumer's own gate ([IF373](#if373)).* Every visited cell goes through one partial-only test, `outsideCoverage`. Full validation and computation carry no coverage, so neither path changes. The field-valued key's own gate from [IF333](#if333) already matched the kernel here, and a key field outside the coverage leaves the lookup undecided. This slice is the first to measure that under partial validation.
 
 *Locked by:* `adapter.laws.PartialKeyedSelectionRelevanceDiffTest`, a grid of coverages over one model, asserted on both kernel strategies and the interpreter. Ten planted mutants die in it (2026-09-24): the coverage test disabled outright, each of its eight sites skipped in turn, and the unbound row pinned to row 1 instead of `UNKNOWN_REP`. The keyed-group walk and String-index rows added 2026-09-25 matched the kernel with no interpreter change.
 
@@ -4497,3 +4497,21 @@ Enforcement: `FilterTemporalLiteralFailureDiffTest`, red before the change on th
 
 Enforcement: `BaseYearExtractorAdmissionDiffTest`, red before the change on the clock-field and constructed-time rows; the temporal differentials (119 classes) stayed green.
 
+### IF372: a temporal constructor stops at a formally invalid argument only in a computation (2026-10-09) <a id="if372"></a>
+
+[KF526](KERNEL-FINDINGS.md#kf526). The three constructors each read their arguments one way in both phases. `analyzeDate` and `composeDateTime` returned at the first formally invalid argument, so validation never reached a later one that fails at runtime, and `evaluateTimeConstruction` always read on, so a computation reached it. One rule, `stopsAtFormalArgument`, now decides for all three: a computation stops, validation reads on and still reports the construction as malformed.
+
+Enforcement: `ConstructionArgumentPhaseDiffTest`, red before the change on the malformed-day document; the construction and temporal differentials (168 classes) stayed green.
+
+
+### IF373: a keyed field list with a key no row carries is read in the empty row, and each consumer asks its own extent gate there (2026-10-09) <a id="if373"></a>
+
+[KF527](KERNEL-FINDINGS.md#kf527). `withIndexedStar` answered a key no row carries with a constant, behind the keyed GROUP's presence gate. That gate asks for every field of the depot row, so a list read under a coverage of its own field alone stayed undecided where both kernel strategies decide. Separately, `evalFunc`'s per-family extent gate asked only plain stars, so a keyed list over a present row was never gated and `Sum` decided under nine concrete coordinates. Now the empty row at the unbound coordinate is a context (`EvalContext.absentGroupRow`), the list is read inside it exactly as inside a selected row, and the family gate asks a keyed list in whichever row its key resolves to. A keyed GROUP operand keeps the presence gate, which is the question its bare arm asks ([IF334](#if334)).
+
+Enforcement: `PartialProductCapacityDiffTest`. Mutants that answer the absent key as undecided, or skip the gate for a keyed list, die in it. The keyed, indexed, partial and quantifier differentials (253 classes) stayed green.
+
+### IF374: under partial validation a field list's fill tally and `FirstFilledValue` ask the coverage of every declared slot (2026-10-09) <a id="if374"></a>
+
+[KF527](KERNEL-FINDINGS.md#kf527). The validation fill tally read stored cells only and never asked the coverage, so `AtLeastOneFieldFilled` fired over filled cells no identifier selected, and `NoFieldFilled` fired while missing slots of its extent stayed uncovered. `FirstFilledValue`'s starred walk asked each stored row but never reached a missing one. Now a starred field operand's tally maps an uncovered stored cell to undecided. It also adds one undecided slot when the extent is not completely enumerated, the question `SumOfProducts` already asks, because a missing slot needs no value read. A starred group is tallied field by field. The validation walk of `FirstFilledValue` runs over the declared rows. Full validation and computation carry no coverage and are unchanged.
+
+Enforcement: `PartialFillWalkRelevanceDiffTest`. Mutants that drop the uncovered-cell mapping, the missing-slot term, the group expansion or the declared walk each die in it.

@@ -798,6 +798,8 @@ So the **double firing is real and is an ordinary rule firing** — no throwable
 
 **Interpreter design (kernel-free multiplatform SPI; decided 2026-06-24 — JVM AND JS/TS, prefer modern APIs):** the core defines a **multiplatform pure SPI** in `commonMain` mirroring the **`IData`-based** `ICustomCondition` contract (`CustomCondition.check` over pure `IData`/`IIdentifier`-shaped interfaces: `getValue(path,indices)`, the relevant + formally-incorrect sets, the error entity), so it compiles to JVM **and** JS and existing **Java core** AND **TS** impls plug in (their shapes already match). A project's JVM **md `DocumentV2`** impl is adapted via a thin JVM-only `DocumentV2`→`IData`-view adapter if needed. **"Prefer modern APIs"** applies to the **oracle/runtime path** (`validateFull(DocumentV2, DocumentProcessingConfig.customConditionFactory(...))`, not the deprecated `Locale`/static-service path), NOT to the SPI *contract* (which must be the cross-platform `IData`-based one). `CustomCondition X` parses to `Cond.Custom(name)`; unregistered name → reported unsupported (fail-fast). Implementation: INTERPRETER-ARCHITECTURE.md §7 (custom conditions).
 
+**Extended 2026-10-09 — A12 looks a registration up only when the callback leaf is REACHED** (a12-kernel-lean `SPEC-2026-10-06-01`). With nothing registered, `FieldFilled(Note) And CustomCondition UnregisteredCheck` validates silently on both strategies while `Note` is empty: the guard decides the conjunction and the lookup never happens. With `Note` filled the missing registration does not fail the validation either — the rule reports its own code as VALUE, the channel through which a rule reports any failure raised inside it ([KF513](#kf513)). The interpreter's answer stays the declared policy above: it refuses an unregistered name as unsupported when it prepares the rule, reached or not, as it refuses an unregistered predefined type name. *(Locked: `adapter.laws.CustomConditionRegistrationReachLawsTest`, both strategies, with the interpreter's policy pinned beside them.)*
+
 ## Custom-extensibility surface — the kernel registers exactly TWO custom things (conditions + field types); there is NO custom computation/function (source-verified 2026-06-26) <a id="kf53"></a>
 
 > Fold: folded → §14.
@@ -3709,6 +3711,8 @@ Reconciliation of a12-kernel-lean `EXP-2026-08-24-01`, **answered by measurement
 The competing-account disposition is therefore exact. `NumberOfFilledFields` selects the reduced-universal pattern, rows 1, 3, 4, and 5. `NumberOfValueInFields` selects the existential value-list pattern, rows 1 through 6. `NumberOfFilledGroups` selects none of the four proposed accounts: it fires only on row 4, the concrete field plus wildcard-group shape. This fifth pattern also falsifies the source-derived prediction that the first two operators would share one observable result.
 
 The inert-fixture controls are exact on both strategies: wildcard relevance with two quantities of `11` fires only the filled-field and filled-group rules; two instantiated empty rows fire only the filled-group rule; and no `Items` rows fire none. These controls establish that all three operator routes are live and that the matrix's silence is relevance-driven.
+
+**Extended 2026-10-09 — Boolean and Confirm columns select the same value-list pattern** (a12-kernel-lean `SPEC-2026-10-06-02`, which held it from source). `NumberOfValueInFields(True In Items*/Wrapped)`, `NumberOfValueInFields(False In Items*/Returned)` over Booleans and `NumberOfValueInFields(True In Items*/Agreed)` over a Confirm all fire on rows 1 through 6 of the table above and stay silent on rows 7 to 9, exactly the Number column, on both strategies and in the interpreter; with every cell relevant all three fire. *(Locked: `adapter.laws.PartialBooleanValueCountDiffTest`.)*
 
 *(Locked: `adapter.laws.PartialExtentGateShapeDiffTest.theThreeCountLoopsSelectTheirMeasuredExtentGates` for the nine rows on both strategies and the interpreter, plus `theCountMatrixControlsReachEachOperator` for the three exact controls; interpreter correction [IF310](INTERPRETER-FINDINGS.md#if310).)*
 
@@ -12449,7 +12453,7 @@ Mechanism, from the source cited in the lean checkpoint (`FormatDefinitionDatum.
 | `DateTime(ValueAsDate(Reported, FirstDay), Clock)` with `Reported` empty and `Clock` malformed | The target's guard clears: the Time argument still runs, and its malformed read poisons |
 | `DateTime(ValueAsDate(Reported, FirstDay), TimeFromDateTime("31.03.2024T02:30:00")) == Logged` with `Reported` malformed | Fires `VALUE_ERROR`: the gap literal is reached behind a valueless partial date |
 
-The measured `DateTime` stop rule (a formally invalid Date field stops before the Time argument) stands; these rows show that a partial date without a value is not such a read.
+The measured `DateTime` stop rule (a formally invalid Date field stops before the Time argument) stands; these rows show that a partial date without a value is not such a read. *Qualified 2026-10-09: the stop rule is a COMPUTATION rule — validation reads on to the Time argument past a formally invalid Date field, as every temporal constructor reads its arguments ([KF526](#kf526)).*
 
 ## §6 supplement — validation reaches a shift amount behind a formally unavailable source; an amount extracted from an empty source keeps the shifted value but marks it missing (both strategies, 2026-10-04) <a id="kf516"></a>
 
@@ -12645,3 +12649,39 @@ So the computation's first-formal stop is phase-specific, and cause-free emptine
 
 The false- and true-prefix rows measure what a12-kernel-lean held from source alone: the generated filter code short-circuits on known truth in validation as well as in computation. The last row shows the filter running on missing declared slots, where an empty weight leaves the `Or` unknown. The interpreter had evaluated filter bodies eagerly in validation and now short-circuits them ([IF370](INTERPRETER-FINDINGS.md#if370)); it does not yet visit missing declared slots (INTERPRETER-GAPS IG165), so the last row is pinned on the kernel alone. *(Locked: `adapter.laws.FilterTemporalLiteralFailureDiffTest`. One repeatable level, `Sum`, a DateTime field against the label; no `Now` comparison and no partial validation measured here.)*
 
+## §6 supplement — a temporal constructor reads past a formally invalid argument in validation and stops at it in a computation; a split-year Date keeps its zero-century gate (both strategies, 2026-10-09) <a id="kf526"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-05-01`, its reachable half; qualifies [KF515](#kf515)'s `DateTime` stop rule.
+
+`ConstructionArgumentPhaseDiffTest` (JVM default UTC, model `Europe/Berlin`) builds a `Date`, a `DateTime` and a `Time` whose later argument is extracted from the Berlin gap label, so reading it fails at runtime, after a field that may be malformed. Each is computed into a target and compared by a rule. All three engines agree on five documents, and dynamic Groovy's rows are pinned:
+
+| Constructor, malformed first argument | Validation | Computation |
+|---|---|---|
+| `Date(Day, MonthFromDate(DateFromDateTime(label)), "2024")`, `Day` malformed | the rule aborts with VALUE: the month is still read | the target clears with no failure of its own |
+| `DateTime(Effective, TimeFromDateTime(label))`, `Effective` malformed | the rule aborts with VALUE | the target clears with no failure of its own |
+| `Time(Hour, MinutesFromTime(TimeFromDateTime(label)))`, `Hour` malformed | the rule aborts with VALUE | the target clears with no failure of its own; with a healthy hour it carries `berechnungsWertFehler` |
+| `Invalid(Date(Day, Month, Century, Short))`, `Century` 0 | fires VALUE: a zero century is no real date | — |
+
+So the phases differ only in how far the arguments are read, the same split as a temporal difference's ([KF524](#kf524)). The interpreter had read each constructor one way in both phases: `Date` and `DateTime` stopped at the first formal argument, and `Time` never did ([IF372](INTERPRETER-FINDINGS.md#if372)). *(Locked: `adapter.laws.ConstructionArgumentPhaseDiffTest`. The client-SPI extensible String component, whose conversion a12-kernel-lean's entry also covers, has no DM-JSON declaration and so no authoring surface here ([KF63](#kf63)).)*
+
+
+## §12 supplement — partial validation walks every DECLARED slot of a field list: a non-relevant slot is undecided even when missing, a key no row carries is read in the empty row only a parent wildcard covers, and each consumer keeps its own extent gate (differential, both strategies, 2026-10-09) <a id="kf527"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-06-03`; extends [KF57](#kf57)'s per-operator gates and [KF461](#kf461)'s unbound-row rule to keyed and unkeyed field lists; folds into §12 beside them.
+
+The fixture is a store whose repeatable `Depots` (capacity 3, index `Code`) each hold repeatable `Bins` (capacity 3) with `Qty` and `Weight`. Each list is read three ways: all depots' bins, the depot the `Key` field names, and a depot no key names. Two differentials vary what the key's depot stores and which `Qty` slots the relevant set covers. All three engines agree on every row, both kernel strategies included.
+
+| consumer over a field list | decides when | stays silent when |
+|---|---|---|
+| `SumOfProducts`, the key's depot | its three declared slots are listed, the third missing from the document | only the two stored slots are listed |
+| `SumOfProducts`, a key no depot carries | the depot level is wildcarded and all three slots are covered | all nine coordinates are listed concretely, or the depot wildcard covers two slots |
+| `Sum`, a key no depot carries | every level is wildcarded | the depot wildcard lists all three slots concretely |
+| `Sum` and `NumberOfFilledFields`, the key's depot | its slot level is wildcarded | all nine coordinates are listed concretely |
+| `NoFieldFilled`, `FirstFilledValue`, the key's depot stored empty | its three slots are covered | two of three slots are covered, even with the third not stored |
+| the same over all depots | every declared depot's slots are covered | the two stored depots are fully covered but the declared, unstored third is not |
+| `AtLeastOneFieldFilled` | a covered slot holds a value | no slot is covered, though every stored one is filled |
+| `FirstFilledValue` | a covered slot holds a value before any uncovered one | an uncovered slot comes first |
+| `NotAllFieldsFilled` | a covered slot is empty or missing | — |
+| `AllFieldsFilled`, the key's depot full | its three slots are covered | two are covered |
+
+So every slot the consumer reaches is asked of the relevant set, the missing ones included, and an uncovered slot is neither filled nor empty, like a malformed cell. A key no depot carries is read inside an empty depot at the unbound row, which only an identifier wildcarded at the depot level covers ([KF461](#kf461)). Over that empty row each consumer keeps its own gate: the wildcard-only aggregates, `SumOfProducts`' complete enumeration ([KF57](#kf57)), and the per-slot walk of the fill quantifiers and `FirstFilledValue`. The same rules hold for a starred group and a keyed group over the bins, read field by field. *(Locked: `adapter.laws.PartialProductCapacityDiffTest`, 5 documents × 16 coverages; `adapter.laws.PartialFillWalkRelevanceDiffTest`, 7 documents × 13 coverages. A `Having` filter's walk over missing slots is not measured here; it is INTERPRETER-GAPS IG165.)*

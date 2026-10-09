@@ -163,6 +163,9 @@ internal class OverlayContext(
     ): EvalContext? = d.indexedGroupRow(groupPath, indexField, indexValue, indexIdentityAdmitted)
         ?.let { OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget) }
 
+    override fun absentGroupRow(groupPath: String, repetitions: List<Int>): EvalContext =
+        OverlayContext(d.absentGroupRow(groupPath, repetitions), cascade, emptyOf, minFracOf, views, selfTarget)
+
     override fun indexedCell(
         targetPath: String,
         indexField: String,

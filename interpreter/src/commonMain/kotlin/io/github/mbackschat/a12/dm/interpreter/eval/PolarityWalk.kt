@@ -450,8 +450,7 @@ private data class AggregateFillState(
 
 /** Resolve one legal numeric aggregate operand to the presence/missingness of its declared contributors. */
 private fun Interpreter.aggregateFillState(arg: Expr): AggregateFillState? = when (arg) {
-    is Expr.EntitySpec -> withIndexedStar(arg,
-        AggregateFillState(false, true, false), AggregateFillState.EMPTY) { aggregateFillState(it) }
+    is Expr.EntitySpec -> withIndexedStar(arg, AggregateFillState.EMPTY) { aggregateFillState(it) }
     // A keyed GROUP's contributors are the selected row's, read as the bare group arm below reads an instance's
     // (IF340); an absent row's are all missing. An undecided key leaves the aggregate non-evaluable, so no
     // message carries this operand's polarity. A keyed FIELD is its one cell.
@@ -700,7 +699,7 @@ private fun Interpreter.leafOmission(e: Expr): Boolean = when (e) {
     // filtered-iterator escalation (IF101/IF104). FirstFilledValue delegates to its ordered scan so a filter
     // on an unvisited later slot is excluded (IF184). An ordinary unfiltered star keeps [EvalContext.starOmission].
     is Expr.Star -> e.having != null || ctx.starOmission(e.path, e.bindDepth)
-    is Expr.EntitySpec -> if (e.isIndexedStar()) withIndexedStar(e, true, false) { leafOmission(it) } else false
+    is Expr.EntitySpec -> if (e.isIndexedStar()) withIndexedStar(e, false) { leafOmission(it) } else false
     is Expr.Func -> if (FunctionOp.byName(e.name) == FunctionOp.FIRST_FILLED_VALUE)
         firstFilledScan(e).fill.let { it.canGrow || it.canShrink }
     else e.args.any { leafOmission(it) }

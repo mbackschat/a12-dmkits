@@ -315,6 +315,12 @@ interface EvalContext {
         indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
     ): EvalContext? =
         throw UnsupportedConstructException("indexed-group selection needs the general Document context, not $this")
+
+    /** The context rooted at the [groupPath] instance a key no row carries names, at [repetitions] with the keyed
+     *  level unbound ([UNKNOWN_REP]): every cell below it is missing, and a coverage gate asked there is met only
+     *  by a selection wildcarded at that level. */
+    fun absentGroupRow(groupPath: String, repetitions: List<Int>): EvalContext =
+        throw UnsupportedConstructException("indexed-group selection needs the general Document context, not $this")
 }
 
 /**

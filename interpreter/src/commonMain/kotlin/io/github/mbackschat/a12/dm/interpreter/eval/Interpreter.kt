@@ -557,17 +557,19 @@ class Interpreter(
     /** Aggregate the [FillScope] tally across a fill quantifier's operands (a group scope expands to its
      *  descendant fields; the counts sum, the declared flags OR/AND). */
     internal fun fillScopeInfo(args: List<Expr>): FillScope {
-        val scopes = args.map { a -> if (a is Expr.SemanticIndex) keyedFillScope(a) else operandFillScope(a) }
-        return FillScope(scopes.sumOf { it.tInst }, scopes.sumOf { it.fInst }, scopes.sumOf { it.nInst },
+        return combined(args.map { a -> if (a is Expr.SemanticIndex) keyedFillScope(a) else operandFillScope(a) })
+    }
+
+    /** One fill scope over several operands' cells: the tallies add, and the declared range is all of theirs. */
+    private fun combined(scopes: List<FillScope>): FillScope =
+        FillScope(scopes.sumOf { it.tInst }, scopes.sumOf { it.fInst }, scopes.sumOf { it.nInst },
             scopes.any { it.hasUnknownInst }) {
             DeclaredFill(scopes.all { it.allFilledDeclared }, scopes.any { it.anyEmptyDeclared })
         }
-    }
 
     /** The [FillScope] of one bare, starred or filtered operand of a fill quantifier's list. */
     private fun operandFillScope(a: Expr): FillScope {
-        if (a.isIndexedStar()) return withIndexedStar(a as Expr.EntitySpec,
-            cellFillScope(Tri.FALSE), cellFillScope(Tri.UNKNOWN)) { operandFillScope(it) }
+        if (a.isIndexedStar()) return withIndexedStar(a as Expr.EntitySpec, cellFillScope(Tri.UNKNOWN)) { operandFillScope(it) }
         val path = scopePathOf(a)
         val c = ctxOf(a)
         return when {
@@ -579,10 +581,34 @@ class Interpreter(
             // no `having` parameter at all, so before this branch the filter was silently dropped for every
             // operand of a list that any OTHER operand had diverted onto this path — see [filteredFillScope].
             a is Expr.Star && a.having != null -> filteredFillScope(c, a, a.having)
+            // Under partial validation a starred GROUP is tallied field by field, as every field-expanding consumer
+            // reads it, so each contained field's slots meet the relevant set.
+            a is Expr.Star && cellRelevant != null -> if (c.declaredKind(path) != null) relevantStarFillScope(c, a)
+                else combined(expandOneGroupOperand(a).map { operandFillScope(it) })
             // A STARRED operand carries its own binding level; an unstarred one has none, and `-1` then
             // means "cap at the operand's own path depth".
             else -> c.fillScope(path, isGroup = c.declaredKind(path) == null,
                 bindDepth = (a as? Expr.Star)?.bindDepth ?: -1)
+        }
+    }
+
+    /**
+     * A starred field list's fill tally under partial validation. A12 visits every DECLARED slot of the list, a
+     * missing one included, and a slot outside the relevant set is undecided — counted like a malformed cell, in
+     * neither the filled nor the empty bucket. So `NoFieldFilled` stays silent while any slot of its extent is
+     * outside the selection, and `NotAllFieldsFilled` still fires on a relevant empty one. A stored cell is mapped
+     * through [cellRelevant]; a missing slot needs no value read, so the extent's coverage stands for all of them
+     * at once ([starFullyEnumerated], the same complete-enumeration question `SumOfProducts` asks), adding one
+     * undecided slot when it fails (SPEC-2026-10-06-03, `adapter.laws.PartialFillWalkRelevanceDiffTest`).
+     */
+    private fun relevantStarFillScope(c: EvalContext, star: Expr.Star): FillScope {
+        val relevant = checkNotNull(cellRelevant)
+        val scope = c.fillScope(star.path, isGroup = false, bindDepth = star.bindDepth) { path, reps, stored ->
+            if (relevant(path, reps)) stored else Val.Unknown
+        }
+        if (starFullyEnumerated?.invoke(star.path, star.bindDepth, c.repsOf(star.path)) != false) return scope
+        return FillScope(scope.tInst, scope.fInst, scope.nInst + 1, hasUnknownInst = true) {
+            DeclaredFill(scope.allFilledDeclared, scope.anyEmptyDeclared)
         }
     }
 
@@ -727,8 +753,9 @@ class Interpreter(
         // FALSE — opposite directions, which is the signature of a quantifier over an EMPTY selection rather than
         // of a wrong verdict (IF287's class, seventh instance).
         for (a in expandGroupStars(args)) when {
-            a.isIndexedStar() -> yieldAll(withIndexedStar(a as Expr.EntitySpec,
-                sequenceOf(false), sequenceOf(false)) { scanFilled(listOf(it), declaredTail) })
+            a.isIndexedStar() -> yieldAll(withIndexedStar(a as Expr.EntitySpec, sequenceOf(false)) {
+                scanFilled(listOf(it), declaredTail)
+            })
             a is Expr.Star && a.having == null -> {
                 val c = ctxOf(a)
                 for (cell in c.starScanCells(a.path, a.bindDepth, declaredTail)) yield(filledOrPoison(cell))
@@ -881,8 +908,9 @@ class Interpreter(
      */
     internal fun groupFillStates(args: List<Expr>): Sequence<Tri> = sequence {
         for (arg in args) when {
-            arg.isIndexedStar() -> yieldAll(withIndexedStar(arg as Expr.EntitySpec,
-                sequenceOf(Tri.FALSE), sequenceOf(Tri.UNKNOWN)) { groupFillStates(listOf(it)) })
+            arg.isIndexedStar() -> yieldAll(withIndexedStar(arg as Expr.EntitySpec, sequenceOf(Tri.UNKNOWN)) {
+                groupFillStates(listOf(it))
+            })
             arg is Expr.Star -> {
                 for (rc in ctxOf(arg).groupListEnvironments(arg.path, arg.bindDepth)) {
                     if (arg.having != null && !havingInterp(rc).keeps(arg.having)) continue
@@ -1420,8 +1448,7 @@ class Interpreter(
      * measured basis is the defect class CLAUDE.md's "never broader than its measured basis" rule names.
      */
     private fun comparedCells(a: Expr): Sequence<Val> {
-        if (a.isIndexedStar()) return withIndexedStar(a as Expr.EntitySpec,
-            emptySequence(), sequenceOf(Val.Unknown)) { comparedCells(it) }
+        if (a.isIndexedStar()) return withIndexedStar(a as Expr.EntitySpec, sequenceOf(Val.Unknown)) { comparedCells(it) }
         // Routed through the SHARED owner rather than expanding here. This site used to carry a complete private
         // copy — `containedFields` + `Expr.Star` construction + recursion — with only the depth formula delegated,
         // so the "one owner" claim was false and, worse, the copy DIVERGED: its starred arm passed `bindDepth` raw

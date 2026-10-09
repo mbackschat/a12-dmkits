@@ -199,7 +199,7 @@ private fun Interpreter.filledFieldsValue(args: List<Expr>): Val = filledFieldsC
 private fun Interpreter.filledFieldsCount(args: List<Expr>): Int? {
     var count = 0
     for (arg in expandGroupStars(args)) when (arg) {
-        is Expr.EntitySpec -> count += withIndexedStar(arg, 0, null) {
+        is Expr.EntitySpec -> count += withIndexedStar(arg, null) {
             filledFieldsCount(listOf(it))
         } ?: return null
         is Expr.Star -> {
@@ -321,10 +321,19 @@ private fun Expr.Field.semanticIndex(index: Expr.EntityIndex): Expr.SemanticInde
     )
 }
 
-/** Select the indexed parent once, then let the existing star reader expand only that parent's children. */
+/**
+ * Select the indexed parent once, then let the existing star reader expand only that parent's children.
+ *
+ * A key no row carries is read the same way, inside the empty parent row at the unbound coordinate, so the
+ * consumer's own coverage gate decides there exactly as it decides over a present row: a wildcarded list suffices
+ * for an aggregate, and a complete enumeration of the declared lower repetitions under a parent wildcard suffices
+ * for `SumOfProducts`, the ordered first-filled scan and the fill quantifiers. Asking the keyed GROUP's presence
+ * instead, as [keyedGroupCells] does for a group operand, demanded every field of the parent row and left such a
+ * list undecided wherever only the listed field was selected (SPEC-2026-10-06-03,
+ * `adapter.laws.PartialProductCapacityDiffTest`).
+ */
 internal fun <T> Interpreter.withIndexedStar(
     operand: Expr.EntitySpec,
-    absent: T,
     unavailable: T,
     read: Interpreter.(Expr.Star) -> T,
 ): T {
@@ -333,11 +342,12 @@ internal fun <T> Interpreter.withIndexedStar(
     val indexField = indexFieldOf(source.path)
         ?: throw UnsupportedConstructException("SemanticIndex needs an index field on ${source.path}")
     val parent = Expr.Field(indexField.substringBeforeLast('/'), source.outer)
-    return when (val cells = keyedGroupCells(parent.semanticIndex(checkNotNull(operand.semanticIndex)))) {
-        is KeyedGroupCells.Selected -> cells.interpreter.read(source.copy(outer = false))
-        KeyedGroupCells.Empty -> absent
-        KeyedGroupCells.Undecided -> unavailable
+    val row = when (val selection = keyedGroupSelection(parent.semanticIndex(checkNotNull(operand.semanticIndex)))) {
+        is KeyedGroupSelection.Row -> selection.ctx
+        is KeyedGroupSelection.Absent -> ctxOf(parent).absentGroupRow(parent.path, selection.repetitions)
+        KeyedGroupSelection.Unavailable -> return unavailable
     }
+    return selectedRowInterp(row).read(source.copy(outer = false))
 }
 
 internal fun Expr.isIndexedStar(): Boolean =
@@ -868,6 +878,14 @@ internal fun Interpreter.producesString(e: Expr): Boolean = when (e) {
     else -> false
 }
 
+/** Whether the partial extent [gate] leaves [star]'s extent unestablished in this row. A starred GROUP is asked
+ *  field by field: a field-expanding aggregate expands it into its contained fields before any extent gate reads
+ *  it, so field coverage settles an extent no identifier names on the group path (KF464). */
+private fun Interpreter.extentUnknown(star: Expr.Star, gate: (String, Int, List<Int>) -> Boolean): Boolean {
+    val gated = if (namesAGroup(star)) expandOneGroupOperand(star) else listOf(star)
+    return gated.filterIsInstance<Expr.Star>().any { !gate.invoke(it.path, it.bindDepth, ctx.repsOf(it.path)) }
+}
+
 private fun Interpreter.evalFunc(f: Expr.Func): Val {
     val op = FunctionOp.byName(f.name)
     // Partial validation chooses the extent predicate by operator family. Most direct starred functions use
@@ -877,29 +895,27 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // because A12 iterates the counted group rather than its fields. These are five measured contracts, not
     // interchangeable completeness spellings.
     if (op != FunctionOp.FIRST_FILLED_VALUE && op != FunctionOp.NUMBER_OF_FILLED_GROUPS) {
-        f.args.forEach { arg ->
-            val star = arg as? Expr.Star
-            if (star != null) {
-                val sp = star.path
-                // Completeness is asked PER ROW: with two nested repeatable levels a relevant set can complete
-                // one outer row and not the next, and the kernel evaluates the complete one. A path-keyed
-                // question cannot express that (PartialNestedAggregateDiffTest). `bindDepth` rides along because
-                // it is what says WHICH levels the row binds — a multi-star operand spans every row of its
-                // outer levels (IF94), so a gate deriving that from the path alone binds a level the star
-                // iterates and reads a pinned outer row as wildcarded (PartialMultiStarScopeDiffTest).
-                val gate = when (op) {
-                    FunctionOp.SUM_OF_PRODUCTS -> starFullyEnumerated
-                    FunctionOp.NUMBER_OF_VALUE_IN_FIELDS -> starExtentKnown
-                    else -> starRelevant
-                }
-                // A starred GROUP is asked field by field: a field-expanding aggregate expands it into its
-                // contained fields before any extent gate reads it, so field coverage settles an extent no
-                // identifier names on the group path (KF464).
-                val gated = if (namesAGroup(star)) expandOneGroupOperand(star) else listOf(star)
-                if (gate != null && gated.filterIsInstance<Expr.Star>()
-                        .any { !gate.invoke(it.path, it.bindDepth, ctx.repsOf(it.path)) }) return Val.Unknown
-            }
+        // Completeness is asked PER ROW: with two nested repeatable levels a relevant set can complete
+        // one outer row and not the next, and the kernel evaluates the complete one. A path-keyed
+        // question cannot express that (PartialNestedAggregateDiffTest). `bindDepth` rides along because
+        // it is what says WHICH levels the row binds — a multi-star operand spans every row of its
+        // outer levels (IF94), so a gate deriving that from the path alone binds a level the star
+        // iterates and reads a pinned outer row as wildcarded (PartialMultiStarScopeDiffTest).
+        val gate = when (op) {
+            FunctionOp.SUM_OF_PRODUCTS -> starFullyEnumerated
+            FunctionOp.NUMBER_OF_VALUE_IN_FIELDS -> starExtentKnown
+            else -> starRelevant
         }
+        // A keyed list is asked in the row its key selects, or in the empty row a key no row carries names, so
+        // the same gate decides its extent; an undecidable key leaves the read itself unknown
+        // (SPEC-2026-10-06-03, `adapter.laws.PartialProductCapacityDiffTest`).
+        if (gate != null && f.args.any { arg ->
+                when {
+                    arg is Expr.Star -> extentUnknown(arg, gate)
+                    arg.isIndexedStar() -> withIndexedStar(arg as Expr.EntitySpec, false) { extentUnknown(it, gate) }
+                    else -> false
+                }
+            }) return Val.Unknown
     }
     val memo = aggregateMemo
     val memoKey = if (memo == null) null else invariantAggregateMemoKey(f, op)
@@ -1156,7 +1172,7 @@ private fun Interpreter.countValueInFields(target: Val, operands: List<Expr>): I
             continue
         }
         if (arg.isIndexedStar()) {
-            val value = withIndexedStar(arg as Expr.EntitySpec, 0, null) {
+            val value = withIndexedStar(arg as Expr.EntitySpec, null) {
                 countValueInFields(target, listOf(it))
             }
             count += value ?: return null
@@ -1207,10 +1223,8 @@ private fun Interpreter.sumOfProducts(args: List<Expr>): Val {
 }
 
 private fun Interpreter.productOperandValues(operand: Expr): List<Val> = when (operand) {
-    is Expr.EntitySpec -> withIndexedStar(operand, emptyList(), listOf(Val.Unknown)) {
-        if (starFullyEnumerated?.invoke(it.path, it.bindDepth, ctx.repsOf(it.path)) == false) listOf(Val.Unknown)
-        else productOperandValues(it)
-    }
+    // The extent gate was asked by [evalFunc], in the row the key selects.
+    is Expr.EntitySpec -> withIndexedStar(operand, listOf(Val.Unknown)) { productOperandValues(it) }
     is Expr.Star -> {
         val context = ctxOf(operand)
         if (computeMode && context.starScanStates(operand.path, operand.bindDepth).any { it == CellState.INVALID })
@@ -1408,6 +1422,13 @@ private fun Interpreter.timeComponent(e: Expr, pick: (Int, Int, Int) -> Int): Va
     return Val.Num(dec(pick(m.groupValues[1].toInt(), m.groupValues[2].toInt(), m.groupValues[3].toInt())))
 }
 
+/**
+ * Whether a temporal constructor stops reading its arguments at the first formally invalid one. A computation does:
+ * the invalid read poisons it and nothing after it runs. Validation reads every argument, so a later one that fails
+ * at runtime still fails the rule (SPEC-2026-10-05-01, `adapter.laws.ConstructionArgumentPhaseDiffTest`).
+ */
+private val Interpreter.stopsAtFormalArgument: Boolean get() = computeMode
+
 /** The status of a `Date(day, month, year)` construction — the basis for the constructor's value AND the
  *  `Valid`/`Invalid` verdicts (kernel-probed, KERNEL-FINDINGS §6). MALFORMED (a part is a formally invalid read)
  *  makes the whole non-evaluable; NON_RELEVANT (a part is cause-free non-relevance, such as an unknown year) does
@@ -1418,14 +1439,15 @@ private data class DateAnalysis(val status: DateStatus, val iso: String?)
 
 /** Classify a `Date(...)` construction's operands. Two arities: `Date(day, month, year)` and the 4-arg
  *  century form `Date(day, month, century, year)` whose full year is `century*100 + year` (kernel-probed,
- *  IF31). Precedence: a formally invalid part → MALFORMED, read at once; else a cause-free non-relevant part →
- *  NON_RELEVANT, which does NOT stop the walk, so a later formally invalid part is still reached and wins
- *  (SPEC-2026-10-06-04, `adapter.laws.DateComponentRelevanceDiffTest`); else any empty field part → HAS_EMPTY;
- *  else REAL/UNREAL_PRESENT by the calendar check. */
+ *  IF31). Precedence: a formally invalid part → MALFORMED; else a cause-free non-relevant part → NON_RELEVANT,
+ *  which never stops the walk, so a later formally invalid part is still reached and wins (SPEC-2026-10-06-04,
+ *  `adapter.laws.DateComponentRelevanceDiffTest`); else any empty field part → HAS_EMPTY; else REAL/UNREAL_PRESENT
+ *  by the calendar check. A formally invalid part stops the walk only where [stopsAtFormalArgument] says so. */
 private fun Interpreter.analyzeDate(parts: List<Expr>): DateAnalysis {
     if (parts.size !in 2..4) return DateAnalysis(DateStatus.MALFORMED, null)
     var hasEmpty = false
     var nonRelevant = false
+    var malformed = false
     val nums = IntArray(parts.size)
     for (i in parts.indices) {
         when (val component = temporalConstructionComponentInt(parts[i])) {
@@ -1433,11 +1455,15 @@ private fun Interpreter.analyzeDate(parts: List<Expr>): DateAnalysis {
             is Evaluated.NoValue -> when (component.reason) {
                 NoValueReason.NOT_GIVEN -> hasEmpty = true
                 NoValueReason.PRESENT_NO_VALUE -> nums[i] = 0
-                NoValueReason.NON_RELEVANT ->
-                    if (component.formal) return DateAnalysis(DateStatus.MALFORMED, null) else nonRelevant = true
+                NoValueReason.NON_RELEVANT -> when {
+                    !component.formal -> nonRelevant = true
+                    stopsAtFormalArgument -> return DateAnalysis(DateStatus.MALFORMED, null)
+                    else -> malformed = true
+                }
             }
         }
     }
+    if (malformed) return DateAnalysis(DateStatus.MALFORMED, null)
     if (nonRelevant) return DateAnalysis(DateStatus.NON_RELEVANT, null)
     if (hasEmpty) return DateAnalysis(DateStatus.HAS_EMPTY, null)
     val d = nums[0]; val m = nums[1]
@@ -1714,9 +1740,12 @@ private fun Interpreter.temporalText(
 private fun Interpreter.composeDateTime(args: List<Expr>): Evaluated<TemporalValue> {
     if (args.size != 2) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     val date = evalTemporal(args[0])
-    // The generated constructor evaluates Date first and a formally unavailable Date stops before the Time arm; a
-    // partial date with no value is not formally unavailable, so the Time arm still runs (SPEC-2026-10-04-02).
-    if (date is Evaluated.NoValue && date.reason == NoValueReason.NON_RELEVANT && date.formal) return date
+    // The generated constructor evaluates Date first. In a computation a formally unavailable Date stops before the
+    // Time arm, while validation reads on ([stopsAtFormalArgument]); a partial date with no value is not formally
+    // unavailable, so the Time arm runs in both phases (SPEC-2026-10-04-02).
+    if (date is Evaluated.NoValue && date.reason == NoValueReason.NON_RELEVANT && date.formal && stopsAtFormalArgument) {
+        return date
+    }
     val time = evalTime(args[1])
     dominantNoValue(date, time)?.let { return it }
     val dateValue = (date as Evaluated.Present).value
@@ -1775,7 +1804,10 @@ private fun Interpreter.evaluateTimeConstruction(args: List<Expr>): Evaluated<St
             is Evaluated.NoValue -> when (component.reason) {
                 NoValueReason.NOT_GIVEN -> hasEmpty = true
                 NoValueReason.PRESENT_NO_VALUE -> components[i] = 0
-                NoValueReason.NON_RELEVANT -> hasMalformed = true
+                NoValueReason.NON_RELEVANT -> {
+                    if (component.formal && stopsAtFormalArgument) return component
+                    hasMalformed = true
+                }
             }
         }
     }
@@ -2146,7 +2178,7 @@ private fun Interpreter.firstFilledEntitySpec(
             ?: firstFilledOperand(source, walk)
         is Expr.Star -> {
             if (operand.semanticIndex != null) {
-                val step = withIndexedStar(operand, FirstFilledStep.Continue, FirstFilledStep.Stop(Val.Unknown)) {
+                val step = withIndexedStar(operand, FirstFilledStep.Stop(Val.Unknown)) {
                     if (category == null) firstFilledOperand(it, walk) else firstFilledStar(it, walk, category)
                 }
                 if (step == FirstFilledStep.Continue) walk.fillable = true
@@ -2231,8 +2263,14 @@ private fun Interpreter.firstFilledStar(
     }
 
     val group = operand.path.substringBeforeLast('/')
-    val rows = operandContext.rowContexts(group, operand.bindDepth)
-    val kept = if (having == null) rows.asSequence() else keptRowsWithSuccessorLookahead(rows, having)
+    // Partial validation visits every DECLARED slot in order, a missing one reading empty, so a slot outside the
+    // relevant set stops the walk even where no row is stored (SPEC-2026-10-06-03,
+    // `adapter.laws.PartialFillWalkRelevanceDiffTest`). Whether a filtered walk reaches missing slots is IG165.
+    val kept = when {
+        having != null -> keptRowsWithSuccessorLookahead(operandContext.rowContexts(group, operand.bindDepth), having)
+        cellRelevant != null -> operandContext.declaredStarRows(operand.path, operand.bindDepth)
+        else -> operandContext.rowContexts(group, operand.bindDepth).asSequence()
+    }
     var visitedRow = false
     for (row in kept) {
         visitedRow = true
@@ -2391,7 +2429,7 @@ private fun Interpreter.refuseGroupOperandUnderMinMax(f: Expr.Func) {
 private fun Interpreter.starVals(f: Expr.Func): List<Val> = f.args.flatMap { aggOperandVals(it) }
 
 private fun Interpreter.aggOperandVals(arg: Expr): List<Val> = when (arg) {
-    is Expr.EntitySpec -> withIndexedStar(arg, emptyList(), listOf(Val.Unknown)) { starOperandVals(it) }
+    is Expr.EntitySpec -> withIndexedStar(arg, listOf(Val.Unknown)) { starOperandVals(it) }
     is Expr.Star -> starOperandVals(arg)
     // A keyed GROUP contributes the selected row's cells as the bare group arm below contributes its instance's
     // (IF340); a keyed FIELD its one cell, dropped when empty like a plain field's.

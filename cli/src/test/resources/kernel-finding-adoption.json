@@ -1290,7 +1290,7 @@
       }
     },
     "kf515": {
-      "sha256": "80e01403292f383793b0b6b3db46fd265f0a92807b08c87b8ffb92c3fce0491a",
+      "sha256": "f22578c22262aa2f949ef9d55b558fdef9033dfd1e8a9fa13fe17c6d98d240d1",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -5818,6 +5818,294 @@
         "a12-kernel-lean": {
           "state": "OPEN",
           "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-07-04; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf52": {
+      "sha256": "67db5f5544e7cc9805b2bb07c8815e75bf2013e257650a789e0e7b6131ebace7",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "custom condition registration reach"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "custom condition registration reach"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "custom condition registration reach"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured with the callback unreached and reached.",
+          "evidence": {
+            "custom condition registration reach": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomConditionRegistrationReachLawsTest.kt#aRegistrationIsLookedUpOnlyWhenTheCallbackIsReached",
+              "witness": "Unreached validates silently; reached reports the rule's own code as VALUE."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the lock authors the callback leaf through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter keeps its declared policy of refusing an unregistered callback when it prepares the rule.",
+          "evidence": {
+            "custom condition registration reach": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomConditionRegistrationReachLawsTest.kt#theInterpreterRefusesAnUnregisteredCallbackReachedOrNot",
+              "witness": "The rule is reported unsupported whether the leaf is reached or not."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-01; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf209": {
+      "sha256": "6bce0e2912d19627a141570559fb3373c1b292bc601ee8c95e6cf5baf1107bd8",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "boolean value count under partial relevance"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "boolean value count under partial relevance"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "boolean value count under partial relevance"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured over nine coverages for Boolean and Confirm columns.",
+          "evidence": {
+            "boolean value count under partial relevance": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialBooleanValueCountDiffTest.kt#theBooleanAndConfirmCountsSelectTheValueListExtentGate",
+              "witness": "Boolean and Confirm columns fire on the Number column's rows."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the lock authors every count through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter already applied the value-list extent gate to Boolean and Confirm columns.",
+          "evidence": {
+            "boolean value count under partial relevance": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialBooleanValueCountDiffTest.kt#theBooleanAndConfirmCountsSelectTheValueListExtentGate",
+              "witness": "All three engines agree on every coverage."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-02; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf526": {
+      "sha256": "b763685e4da8df9b9e33d53e95d0e0cf3e5f1b725f1e0a52f21925c95471245c",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "temporal constructor argument phase"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "temporal constructor argument phase"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "temporal constructor argument phase"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured on five documents through the adapter's differential.",
+          "evidence": {
+            "temporal constructor argument phase": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ConstructionArgumentPhaseDiffTest.kt#validationReadsPastAMalformedArgumentAndAComputationStops",
+              "witness": "Validation reaches the failing later argument; a computation stops at the malformed one."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the lock authors every constructor through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "One rule now decides how far Date, DateTime and Time read their arguments in each phase.",
+          "evidence": {
+            "temporal constructor argument phase": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ConstructionArgumentPhaseDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on five documents."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-05-01; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf527": {
+      "sha256": "d68b241738578921e611c3d030380e914a327a0fe27f8504e51113607801dc5c",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "partial list walks over declared slots"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "partial list walks over declared slots"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "partial list walks over declared slots"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured over 5 x 16 and 7 x 13 document and coverage pairs.",
+          "evidence": {
+            "partial list walks over declared slots": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialFillWalkRelevanceDiffTest.kt#everyDeclaredSlotMeetsTheSelection",
+              "witness": "An uncovered slot, stored or missing, leaves NoFieldFilled and FirstFilledValue undecided."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; both locks author keyed lists and group scopes through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Keyed lists are read in the selected or empty row under their consumer's gate, and the fill tally and FirstFilledValue ask every declared slot.",
+          "evidence": {
+            "partial list walks over declared slots": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialProductCapacityDiffTest.kt#aProductDecidesOnlyOverItsDeclaredLowerCapacity",
+              "witness": "All three engines agree on every document and coverage of both differentials."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour under partial validation; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-03; no peer receipt is inferred.",
           "evidence": {}
         }
       }

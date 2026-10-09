@@ -1254,6 +1254,9 @@ class Document(internal val config: DocumentConfig) {
         ): EvalContext? = indexedCellReps(groupPath, indexField, indexValue, indexIdentityAdmitted)
             ?.let { RowContext(groupPath, it, evaluated = true) }
 
+        override fun absentGroupRow(groupPath: String, repetitions: List<Int>): EvalContext =
+            RowContext(groupPath, repetitions, evaluated = true)
+
         /** The memoized [IndexColumn] — built ONCE per (column, star-scope prefix) at the DOCUMENT level and
          *  shared across every row context of the scope (the [Index.indexColumnByScope] twin of
          *  [indexedCell]'s row map). Raw stored cells only — an overlay context rebuilds per read instead. */
