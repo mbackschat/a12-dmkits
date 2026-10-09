@@ -443,7 +443,8 @@ enum class CheckFamily {
      * That no `Having` filter hangs off an operand A12 marked as parallel-iterated. Its own constant rather
      * than part of [PARALLEL_ITERATION_UNIQUENESS] because the two are separate gates of the same method
      * with separate preconditions — one needs a uniqueness call, this one a filter — and A12 runs the
-     * uniqueness gate first, which is what makes the boundary between them observable.
+     * uniqueness gate first, which is what makes the boundary between them observable. It also asks the
+     * method's third gate, a filter BODY that parallel-iterates, which reads the same two marking passes.
      */
     FILTERED_ENTITY_ITERATION,
 

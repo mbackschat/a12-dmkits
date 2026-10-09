@@ -5158,6 +5158,157 @@
           "evidence": {}
         }
       }
+    },
+    "kf375": {
+      "sha256": "bab440a3c9e31a94f6e258477983e71e7af8763ba4a1dcec03bae84b214d1d60",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "whole-rule gate order"
+        ],
+        "dmkits": [
+          "whole-rule gate order"
+        ],
+        "interpreter": [],
+        "checker": [
+          "whole-rule gate order"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "whole-rule gate order"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel's own class is measured on every row through the adapter's validator.",
+          "evidence": {
+            "whole-rule gate order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerPostParseOrderAgreementTest.kt#aParseTimeGateAnswersAheadOfEveryWholeRuleGate",
+              "witness": "A duplicate written after a captured filter index answers; one written after an unmarked index does not."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "The typed index selection on a captured scope keeps the marker in its identity, so the repeat A12 raises while parsing is the one the record raises.",
+          "evidence": {
+            "whole-rule gate order": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/CapturedGroupListDuplicateTest.java#anIndexOnACaptureKeepsTheMarker",
+              "witness": "A plain and a captured selection of one key build together."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The group-list family keys a captured index selection, and the filtered-entity family asks the filter-body parallel gate.",
+          "evidence": {
+            "whole-rule gate order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerPostParseOrderAgreementTest.kt#aCapturedParallelReadReachesTheFilterBodyGate",
+              "witness": "The checker names the filter-body parallel class on a captured joint read and stays silent on a candidate read."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports the kernel's and the checker's classes unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Gate order does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Gate order does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-03; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf353": {
+      "sha256": "8e82f55c99d84dcd7c311d64676cc26cdb04ef474c556d3912c9c9b2a7183812",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "filter-body parallel reach"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "filter-body parallel reach"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "filter-body parallel reach"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel's own class is measured on every row through the adapter's validator.",
+          "evidence": {
+            "filter-body parallel reach": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerPostParseOrderAgreementTest.kt#aCapturedParallelReadReachesTheFilterBodyGate",
+              "witness": "A captured read of the joint group in a filter body draws the parallel class."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed surface has no parallel-iteration gate; A12 arbitrates it.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The uniqueness family reads only the rule's own references, and the filter-body gate is asked.",
+          "evidence": {
+            "filter-body parallel reach": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/FilteredEntityIterationTest.kt#aCapturedReadAtAMarkedLevelIsAParallelFilterBody",
+              "witness": "Uniqueness beside a candidate read of the other group is not refused."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports the kernel's and the checker's classes unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Gate reach does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Gate reach does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-03; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

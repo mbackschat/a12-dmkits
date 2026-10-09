@@ -384,7 +384,10 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     condition(CheckFamily.SEMANTIC_INDEX_KEY) { base, at -> base.semanticIndexKeyContributions(at) },
     condition(CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION) { base, at -> base.repeatedUniquenessContributions(at) },
     condition(CheckFamily.PARALLEL_ITERATION_UNIQUENESS) { base, at -> base.parallelIterationContributions(at) },
-    condition(CheckFamily.FILTERED_ENTITY_ITERATION) { base, at -> base.filteredEntityContributions(at) },
+    condition(CheckFamily.FILTERED_ENTITY_ITERATION) { base, at ->
+        val execution = base.conditionExecution(at)
+        base.filteredEntityContributions(at, execution) + base.filterBodyParallelContributions(at, execution)
+    },
     CheckProducer.Condition(
         completes = setOf(
             CheckFamily.TEMPORAL_AGGREGATE_OPERANDS,

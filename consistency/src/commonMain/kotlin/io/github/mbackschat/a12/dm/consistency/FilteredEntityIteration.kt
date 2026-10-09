@@ -7,7 +7,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
+import io.github.mbackschat.a12.dm.consistency.syntax.markedReferenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
 
 /**
  * That no `Having` filter hangs off an operand A12 has marked as PARALLEL-iterated.
@@ -63,21 +65,85 @@ internal fun TrackedFactBase.filteredEntityContributions(
 }.orEmpty()
 
 internal fun TrackedFactBase.filteredEntityIterationFindings(element: TrackedDeclaration): List<Finding> {
-    if (element.kind != "Rule") return emptyList()
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val filterKeyword = keywords[HAVING] ?: return emptyList()
-    val body = element.body ?: return emptyList()
-    val target = (element.declaredReference()?.target as? Reference.Resolved)?.path ?: return emptyList()
-    val targetGroup = groupOfTargetField(target) ?: return emptyList()
-    val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    // KF372: an error field outside its declaring group is refused during the parse.
-    if (!(target == declaringGroup || target.startsWith("$declaringGroup/"))) return emptyList()
-    return listOfNotNull(conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-        markedFilteredOperand(text, member, declaringGroup, targetGroup, element, filterKeyword,
-            keywords[SEMANTIC_INDEX], keywords[REPETITION_NOT_UNIQUE])?.let { operand ->
-            filteredEntityFinding(operand, filterKeyword, target, element, member)
+    val rule = parallelRuleOf(element) ?: return emptyList()
+    return listOfNotNull(conditionTexts(element.kind, rule.body).firstNotNullOfOrNull { (member, text) ->
+        markedFilteredOperand(text, member, rule.declaringGroup, rule.targetGroup, element, rule.filterKeyword,
+            rule.indexKeyword, rule.uniqueness)?.let { operand ->
+            filteredEntityFinding(operand, rule.filterKeyword, rule.target, element, member)
         }
     })
+}
+
+/**
+ * The filter-BODY twin of the gate above, `checkNormalRule`'s third: a body that parallel-iterates draws
+ * `MVK_PARALLEL_ITERATION_NOT_ALLOWED`. An unmarked body read never reaches it, the filter walk refusing a body
+ * that iterates during the parse ([KERNEL-FINDINGS KF353]); a `$`-marked read skips that walk and reaches it
+ * whenever the rule parallel-iterates and the read sits at a level A12's two passes mark — an off-path joint
+ * level, or the rule's own keyed level once something else iterates jointly (KF375, measured by
+ * `adapter.laws.CheckerPostParseOrderAgreementTest`). Silent beside `RepetitionNotUnique`, whose gate runs
+ * first, and beside any index in a body, which the filter walk or the later index gate owns.
+ */
+internal fun TrackedFactBase.filterBodyParallelContributions(
+    element: TrackedDeclaration,
+    execution: ConditionExecution? = conditionExecution(element),
+): List<ConditionFinding> = execution?.postParse(PostParseCheck.FILTER_PARALLEL_ITERATION) {
+    val rule = parallelRuleOf(element) ?: return@postParse emptyList()
+    listOfNotNull(conditionTexts(element.kind, rule.body).firstNotNullOfOrNull { (member, text) ->
+        markedBodyRead(text, member, rule, element)?.let { read ->
+            Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, "MVK_PARALLEL_ITERATION_NOT_ALLOWED",
+                "in `$member`: a `${rule.filterKeyword}` body reads `$OUTER_MARKER$read`, which iterates in " +
+                    "parallel with `${rule.target}`'s own repetition — a filter body may not parallel-iterate; " +
+                    "read the filtered row without the marker, or move the read out of the filter",
+                element.path)
+        }
+    })
+}.orEmpty()
+
+/** What both parallel-iteration gates over a filter need to know about one rule. */
+private class ParallelRule(
+    val body: kotlinx.serialization.json.JsonObject,
+    val target: String,
+    val targetGroup: String,
+    val declaringGroup: String,
+    val filterKeyword: String,
+    val indexKeyword: String?,
+    val uniqueness: String?,
+)
+
+private fun TrackedFactBase.parallelRuleOf(element: TrackedDeclaration): ParallelRule? {
+    if (element.kind != "Rule") return null
+    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
+    val filterKeyword = keywords[HAVING] ?: return null
+    val body = element.body ?: return null
+    val target = (element.declaredReference()?.target as? Reference.Resolved)?.path ?: return null
+    val targetGroup = groupOfTargetField(target) ?: return null
+    val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    // KF372: an error field outside its declaring group is refused during the parse.
+    if (!(target == declaringGroup || target.startsWith("$declaringGroup/"))) return null
+    return ParallelRule(body, target, targetGroup, declaringGroup, filterKeyword, keywords[SEMANTIC_INDEX],
+        keywords[REPETITION_NOT_UNIQUE])
+}
+
+/** The first `$`-marked body read at a level A12 marks as parallel-iterated, or null. */
+private fun TrackedFactBase.markedBodyRead(
+    text: String,
+    member: String,
+    rule: ParallelRule,
+    element: TrackedDeclaration,
+): String? {
+    val calls = callsIn(text, conditionLanguage, syntaxEntryOf(member))
+    if (rule.uniqueness != null && calls.any { it.operator == rule.uniqueness }) return null
+    val bodies = calls.flatMap { it.operands }.flatMap { operand ->
+        operand.clauses.filter { it.keyword == rule.filterKeyword }
+    }
+    if (bodies.isEmpty() || rule.indexKeyword != null && bodies.any { rule.indexKeyword in it.text }) return null
+    val parallel = referencesIn(rulesOwnReadsIn(text, conditionLanguage), conditionLanguage)
+        .filterNot { isRuleContext(it, conditionLanguage) }
+        .any { markedLevelsOf(it, rule.declaringGroup, rule.targetGroup, element)?.joint?.isNotEmpty() == true }
+    if (!parallel) return null
+    return bodies.flatMap { markedReferenceSpansIn(it.text) }.map { it.written }.firstOrNull { read ->
+        markedLevelsOf(read, rule.declaringGroup, rule.targetGroup, element)?.marked?.isNotEmpty() == true
+    }
 }
 
 /** The first filtered operand A12 would find marked, or null when the condition draws no such class. */

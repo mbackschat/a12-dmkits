@@ -194,6 +194,34 @@ class FilteredEntityIterationTest {
         assertEquals(true, finding.explain.contains("/Fulfilment/Lines/OrderedQty"), finding.explain)
     }
 
+    /**
+     * The filter-BODY gate, reached through the `$` capture, and the candidate read that is no parallel read, as
+     * `adapter.laws.CheckerPostParseOrderAgreementTest` measures them against the kernel (KF375, 2026-10-09).
+     */
+    @Test
+    fun aCapturedReadAtAMarkedLevelIsAParallelFilterBody() {
+        fun filter(body: String) = "Sum(/Fulfilment/Picks*/PickedQty Having [/Fulfilment/Picks/PickedQty] > 0 And $body) > 0"
+        val actual = linkedMapOf(
+            "a captured read of the joint group" to
+                codes(LINES, "../OrderedQty", "FieldFilled(OrderedQty) And " + filter("[\$/Fulfilment/Picks/PickedQty] > 0")),
+            "a captured read of the rule's own row" to
+                codes(LINES, "../OrderedQty", "FieldFilled(OrderedQty) And " + filter("[\$/Fulfilment/Lines/OrderedQty] > 0")),
+            "the rule's own row, once an outer read is joint" to codes(LINES, "../OrderedQty",
+                "FieldFilled(OrderedQty) And FieldFilled(/Fulfilment/Picks/PickedQty) And " +
+                    filter("[\$/Fulfilment/Lines/OrderedQty] > 0")),
+            "uniqueness beside a candidate read of the other group" to codes(FULFILMENT, "../Lines/LineRef",
+                "RepetitionNotUnique(Lines/LineRef) And Sum(/Fulfilment/Picks*/PickedQty Having " +
+                    "[/Fulfilment/Picks/PickedQty] > 0) > 0"),
+        )
+        val expected = linkedMapOf(
+            "a captured read of the joint group" to listOf(notAllowed),
+            "a captured read of the rule's own row" to emptyList(),
+            "the rule's own row, once an outer read is joint" to listOf(notAllowed),
+            "uniqueness beside a candidate read of the other group" to emptyList(),
+        )
+        assertEquals(expected, actual, "which filter bodies parallel-iterate")
+    }
+
     private companion object {
         const val FULFILMENT = "/Fulfilment"
         const val LINES = "/Fulfilment/Lines"

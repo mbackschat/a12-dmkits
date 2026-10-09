@@ -251,17 +251,25 @@ private fun CallOperand.resolvedBy(
     origin: DeclarationOrigin,
 ): Reference? = path?.let { model.resolveEntity(declaringGroup, it, origin) }
 
-/** The group [operand] reads under a key the index chain admits, spelled with that key, or null. */
+/**
+ * The group [operand] reads under a key the index chain admits, spelled with that key and with its `$` capture
+ * marker, or null. The marker is part of A12's exact identity here too: a captured selection repeated in one list
+ * is the duplicate class, which A12 raises while parsing and so ahead of the whole-rule refusal of any index in a
+ * filter body (`adapter.laws.CheckerPostParseOrderAgreementTest`).
+ */
 private fun TrackedFactBase.keyedIdentityOf(
     operand: CallOperand,
     declaringGroup: String,
     element: TrackedDeclaration,
 ): String? {
-    val read = operandReferenceIn(operand.text, declaringGroup, element) { null }?.takeIf { it.indexSelected }
+    val written = operand.text.trimStart()
+    val captured = written.startsWith(OUTER_MARKER)
+    val text = if (captured) written.removePrefix(OUTER_MARKER).trimStart() else operand.text
+    val read = operandReferenceIn(text, declaringGroup, element) { null }?.takeIf { it.indexSelected }
         ?: return null
     val path = (resolveEntity(declaringGroup, read.reference, element.origin) as? Reference.Resolved)?.path
         ?: return null
-    return "$path For ${read.key}"
+    return (if (captured) OUTER_MARKER else "") + "$path For ${read.key}"
 }
 
 /** Every gate here is the operator's own, raised once its call is read, so each spans the call. */
