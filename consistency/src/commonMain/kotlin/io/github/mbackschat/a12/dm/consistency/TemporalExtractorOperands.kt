@@ -25,6 +25,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
  * calendar component the precision leaves open: the day under `DAY_OPTIONAL`, the month and the day under
  * `MONTH_OPTIONAL`, everything under `YEAR_OPTIONAL`. `QuarterFromDate` extracts the month.
  *
+ * **A key-selected operand is typed as the field it selects**, its precision and format included.
+ *
  * **The operand's format is whatever A12 registered for it**, and that is how a nested operation is read:
  * `Time(…)` and `TimeFromDateTime(…)` are a clock, `DateFromDateTime(…)`, `Today` and a declared Base Year are
  * `dd.MM.yyyy`, `Now` and `DateTime(…)` are a stamp, a two-component `Date(…)` is year-less, a shift carries
@@ -33,8 +35,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
  * A12 admits it, because a refused operation answers before the extractor is asked.
  *
  * **Silent where another family owns the answer** — a slot defect ([CheckFamily.DATE_ARGUMENT_SLOT]), a refused
- * shift, a missing Base Year — and on what it cannot type: a starred, keyed or unresolved operand, a
- * declaration with no temporal format, a four-component `Date(…)` or a construction over a `TypeDefType`
+ * shift, a missing Base Year, a starred operand A12 refuses as a wildcard first — and on what it cannot type: an
+ * unresolved operand, a declaration with no temporal format, a four-component `Date(…)` or a construction over a `TypeDefType`
  * component, whose slot gates [CheckFamily.DATE_CONSTRUCTION_SLOT] delegates, and a `DateTime(…)` over a
  * partially known date, whose own refusal is `MVK_INVALID_DATE_TYPE` rather than a format class.
  */

@@ -40,7 +40,14 @@ class CheckerTemporalExtractorAgreementTest {
             .dateRangeField("RenewalWindow") { r -> r.format("MM-dd").separator("/") }
             .dateRangeField("SeasonWindow") { r -> r.format("MM-dd").separator("/").interpretationOfYear(RangeYearInterpretation.FROM) }
             .dateRangeField("ContractYears") { r -> r.format("yyyy").separator("/") }
-            .numberField("RenewalHour") { n -> n.fractionDigits(0).min("0").max("23") } }
+            .numberField("RenewalHour") { n -> n.fractionDigits(0).min("0").max("23") }
+            .group("Claims") { g -> g.repeatable(5).indexField("Code")
+                .stringField("Code") { }
+                .dateField("FiledOn") { d -> d.format("yyyy-MM-dd") }
+                .dateField("FiledDay") { d -> d.format("MM-dd") }
+                .dateField("NotedOn") { d -> d.format("yyyy-MM-dd").datePrecision(DatePrecision.DAY_OPTIONAL) }
+                .dateTimeField("StampedAt") { s -> s.format("yyyy-MM-dd'T'HH:mm:ss") }
+                .numberField("HourNo") { n -> n.fractionDigits(0).min("0").max("23") } } }
         .build().toJson()
 
     private val operands = listOf(
@@ -51,6 +58,14 @@ class CheckerTemporalExtractorAgreementTest {
         "AddHours(RenewalClock, 1)", "DateTime(StartOn, RenewalClock)", "Date(\"01\", \"01\", \"2024\")",
         "Date(\"01\", \"01\")", "StartOfDateRange(CoverPeriod)", "EndOfDateRange(BaseYear)",
         "StartOfDateRange(RenewalWindow)", "EndOfDateRange(SeasonWindow)", "StartOfDateRange(ContractYears)",
+        // A refused inner extraction, a date field in a constructor's slot, and a stamp two operations deep.
+        "DateFromDateTime(StartOn)", "Time(StartOn)", "Date(StartOn, \"01\", \"2024\")",
+        "DateFromDateTime(DateTime(StartOn, RenewalClock))",
+        // A key-selected, a starred and an unaddressed read of a repeatable group's dates.
+        "Claims/FiledOn For \"C1\"", "Claims/FiledDay For \"C1\"", "Claims/NotedOn For \"C1\"", "Claims*/FiledOn",
+        "Claims/FiledOn",
+        // A stamp from an aggregate, which this checker does not type.
+        "DateFromDateTime(MaxValue(Claims*/StampedAt))",
     )
 
     /** Each extractor with a comparand of its result's kind. */
@@ -65,10 +80,17 @@ class CheckerTemporalExtractorAgreementTest {
     private fun draft(extractor: String, operand: String) = DraftRule("/Term", "ProbeRule", "../Holder",
         "FieldFilled(Holder) And $extractor($operand) ${extractors.getValue(extractor)}", "PROBE", "ERROR")
 
-    private fun kernel(model: String, extractor: String, operand: String): Set<String> =
-        validator.check(model, draft(extractor, operand)).let { r ->
-            if (r.ok()) emptySet() else r.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
+    /** A12's codes for one rule, in order and with their multiplicity, so a duplicate finding is a difference. */
+    private fun kernel(model: String, draft: DraftRule): List<String> =
+        validator.check(model, draft).let { r ->
+            if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.sorted()
         }
+
+    private fun kernel(model: String, extractor: String, operand: String): List<String> =
+        kernel(model, draft(extractor, operand))
+
+    private fun ours(model: String, draft: DraftRule): List<String> =
+        check(ModelSource(validator.inject(model, draft))).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
 
     @Test
     fun theCheckerNamesA12sClassOnEveryExtractorOperand() {
@@ -77,8 +99,7 @@ class CheckerTemporalExtractorAgreementTest {
             for (extractor in extractors.keys) {
                 for (operand in operands) {
                     val expected = kernel(model, extractor, operand)
-                    val ours = check(ModelSource(validator.inject(model, draft(extractor, operand)))).findings
-                        .filter { it.justifiesRejection }.map { it.code }.toSet()
+                    val ours = ours(model, draft(extractor, operand))
                     if (expected != ours) wrong += "$axis, $extractor($operand): A12 $expected, ours $ours"
                 }
             }
@@ -94,24 +115,52 @@ class CheckerTemporalExtractorAgreementTest {
      */
     @Test
     fun aGateAnswersInA12sOrderOverTheFormatEachOperandCarries() {
-        val wf = setOf("MVK_WRONG_DATE_FORMAT_FOR_OP")
+        val wf = listOf("MVK_WRONG_DATE_FORMAT_FOR_OP")
         val rows = linkedMapOf(
-            Triple(null, "HoursFromTime", "NotedDay") to setOf("MVK_INVALID_DATE_TYPE"),
-            Triple(null, "YearFromDate", "NotedDay") to emptySet(),
-            Triple(null, "QuarterFromDate", "NotedMonth") to setOf("MVK_INVALID_DATE_TYPE"),
-            Triple(null, "YearFromDate", "\"01.01.2024\"") to setOf("MVK_NO_CONST"),
-            Triple(null, "DateFromDateTime", "\"01.01.2024T10:00:00\"") to emptySet(),
-            Triple(null, "YearFromDate", "ClockAsDate") to emptySet(),
+            Triple(null, "HoursFromTime", "NotedDay") to listOf("MVK_INVALID_DATE_TYPE"),
+            Triple(null, "YearFromDate", "NotedDay") to emptyList(),
+            Triple(null, "QuarterFromDate", "NotedMonth") to listOf("MVK_INVALID_DATE_TYPE"),
+            Triple(null, "YearFromDate", "\"01.01.2024\"") to listOf("MVK_NO_CONST"),
+            Triple(null, "DateFromDateTime", "\"01.01.2024T10:00:00\"") to emptyList(),
+            Triple(null, "YearFromDate", "ClockAsDate") to emptyList(),
             Triple(null, "HoursFromTime", "ClockAsDate") to wf,
             Triple(2024, "DateFromDateTime", "StartOn") to wf,
             Triple(null, "YearFromDate", "AddDays(Anniversary, 1)") to wf,
             Triple(2024, "HoursFromTime", "Date(\"01\", \"01\")") to wf,
             Triple(null, "YearFromDate", "StartOfDateRange(RenewalWindow)") to wf,
-            Triple(null, "YearFromDate", "EndOfDateRange(SeasonWindow)") to emptySet(),
+            Triple(null, "YearFromDate", "EndOfDateRange(SeasonWindow)") to emptyList(),
             Triple(null, "MonthFromDate", "StartOfDateRange(ContractYears)") to wf,
+            Triple(null, "HoursFromTime", "DateFromDateTime(StartOn)") to wf,
+            Triple(null, "YearFromDate", "Time(StartOn)") to wf,
+            Triple(null, "HoursFromTime", "Date(StartOn, \"01\", \"2024\")") to wf,
+            Triple(null, "DayFromDate", "Claims/NotedOn For \"C1\"") to listOf("MVK_INVALID_DATE_TYPE"),
+            Triple(null, "YearFromDate", "Claims/FiledDay For \"C1\"") to wf,
+            Triple(null, "YearFromDate", "Claims*/FiledOn") to listOf("MVK_NO_WILDCARDS_ALLOWED"),
+            Triple(null, "YearFromDate", "Claims/FiledOn") to listOf("MVK_NO_WILDCARD"),
         )
         val observed = rows.keys.associateWith { (baseYear, extractor, operand) -> kernel(term(baseYear), extractor, operand) }
         assertEquals(rows, observed)
+    }
+
+    /**
+     * An extractor inside a `Having` body reads the filtered row, so its operand is typed there; both engines must
+     * name the same class on each row (KF529's gates, asked from the filter).
+     */
+    @Test
+    fun theCheckerNamesA12sClassInsideAFilterBody() {
+        val model = term(null)
+        val wrong = mutableListOf<String>()
+        for (extractor in extractors.keys.filter { it != "DateFromDateTime" && it != "TimeFromDateTime" }) {
+            for (operand in listOf("Claims/FiledOn", "Claims/FiledDay", "Claims/NotedOn")) {
+                val draft = DraftRule("/Term", "ProbeRule", "../Holder", "FieldFilled(Holder) And " +
+                    "NumberOfFilledFields(Claims*/Code Having $extractor($operand) ${extractors.getValue(extractor)}) > 0",
+                    "PROBE", "ERROR")
+                val expected = kernel(model, draft)
+                val ours = ours(model, draft)
+                if (expected != ours) wrong += "$extractor($operand): A12 $expected, ours $ours"
+            }
+        }
+        assertEquals(emptyList<String>(), wrong)
     }
 
     /**

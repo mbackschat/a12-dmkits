@@ -122,10 +122,13 @@ class TemporalExtractorOperandsTest {
         val actual = linkedMapOf(
             "the year of a number field" to codes("YearFromDate(Hour) == 2024"),
             "the year of a refused inner extraction" to codes("YearFromDate(DateFromDateTime(IssuedOn)) == 2024"),
+            "the hour of a refused inner extraction" to codes("HoursFromTime(DateFromDateTime(IssuedOn)) == 1"),
         )
         assertEquals(linkedMapOf(
             "the year of a number field" to listOf("MVK_NO_DATE"),
             "the year of a refused inner extraction" to wrongFormat,
+            // Once, at the inner call, though the outer hour is not in the inner result's format either.
+            "the hour of a refused inner extraction" to wrongFormat,
         ), actual)
     }
 }
