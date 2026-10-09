@@ -6439,7 +6439,10 @@
         "adapter": [
           "a temporal constructor's component grammar"
         ],
-        "dmkits": [],
+        "dmkits": [
+          "a bare-number component in condition text",
+          "a temporal constructor's component grammar"
+        ],
         "interpreter": [],
         "checker": [
           "a temporal constructor's component grammar"
@@ -6463,9 +6466,18 @@
           }
         },
         "dmkits": {
-          "state": "NOT_APPLICABLE",
-          "basis": "The typed surface leaves a non-extract component's refusal to the kernel; narrowing TemporalComponent is a separate change.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "DateConstruction and TimeConstruction refuse an operation outside the grammar with the class A12 draws; a typed number literal renders quoted and stays admitted, so the interpreter bridge refuses a bare-number component in condition text.",
+          "evidence": {
+            "a temporal constructor's component grammar": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalComponentGrammarTest.java#aComponentOutsideTheGrammarIsRefusedWithA12sClass",
+              "witness": "An aggregate, arithmetic and a rounding component are refused with MVK_UNEXPECTED_TOKEN."
+            },
+            "a bare-number component in condition text": {
+              "reference": "interpreter-bridge/src/test/kotlin/io/github/mbackschat/a12/dm/bridge/FunctionsTest.kt#aBareNumberComponentIsRejected",
+              "witness": "Time(10, 30) is refused with MVK_INVALID_ENTITY."
+            }
+          }
         },
         "interpreter": {
           "state": "NOT_APPLICABLE",

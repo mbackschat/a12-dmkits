@@ -73,6 +73,8 @@ public record DateConstruction(Calculation day, Calculation month, DateYear year
      * rather than on the model-bound facade (API-FINDINGS AF153).
      */
     public DateConstruction {
+        Stream.concat(Stream.of(day, month), year.components().stream())
+                .forEach(component -> TemporalComponentGrammar.refuseOutsideGrammar("Date", component));
         checkComponent(day, DateExtraction.Unit.DAY, false);
         checkComponent(month, DateExtraction.Unit.MONTH, false);
         switch (year) {

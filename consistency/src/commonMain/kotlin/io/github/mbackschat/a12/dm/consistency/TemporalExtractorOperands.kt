@@ -71,13 +71,6 @@ private enum class Extractor(val id: String, val component: Component?) {
     }
 }
 
-/** The calendar components each partial precision leaves open, beside every clock component. */
-private val OPEN_UNDER_PRECISION = mapOf(
-    "DAY_OPTIONAL" to setOf(Component.DAY),
-    "MONTH_OPTIONAL" to setOf(Component.MONTH, Component.DAY),
-    "YEAR_OPTIONAL" to setOf(Component.YEAR, Component.MONTH, Component.DAY),
-)
-
 private val CLOCK = setOf(Component.HOUR, Component.MINUTE, Component.SECOND)
 
 /** What A12 typed an extractor's operand as, with the provenance the first two gates ask about. */

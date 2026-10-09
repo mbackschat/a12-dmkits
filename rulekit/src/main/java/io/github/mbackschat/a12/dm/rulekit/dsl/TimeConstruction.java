@@ -33,6 +33,7 @@ public record TimeConstruction(List<Calculation> components) implements Calculat
             throw new IllegalArgumentException("Time accepts at most hour, minute, and second components");
         }
         for (int slot = 0; slot < components.size(); slot++) {
+            TemporalComponentGrammar.refuseOutsideGrammar("Time", components.get(slot));
             checkComponent(components.get(slot), TIME_POSITIONS.get(slot));
         }
     }

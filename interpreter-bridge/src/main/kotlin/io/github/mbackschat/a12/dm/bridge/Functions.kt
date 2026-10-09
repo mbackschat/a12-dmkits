@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.bridge
 
+import io.github.mbackschat.a12.dm.core.KernelCode
 import io.github.mbackschat.a12.dm.core.KernelCodeRefusal
+import io.github.mbackschat.a12.dm.core.Refusals
 import io.github.mbackschat.a12.dm.core.ValueKind
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand
@@ -285,13 +287,8 @@ internal class Functions(private val mapping: Mapping) {
      * constructor of its own to delegate to.
      */
     private fun date(args: List<Expr>): Calculation = when (args.size) {
-        3 -> mapping.model().dateOf(
-            mapping.calculation(args[0]), mapping.calculation(args[1]), mapping.calculation(args[2])
-        )
-        4 -> mapping.model().dateOf(
-            mapping.calculation(args[0]), mapping.calculation(args[1]), mapping.calculation(args[2]),
-            mapping.calculation(args[3]),
-        )
+        3 -> mapping.model().dateOf(component(args[0]), component(args[1]), component(args[2]))
+        4 -> mapping.model().dateOf(component(args[0]), component(args[1]), component(args[2]), component(args[3]))
         else -> throw UnmappedConstructException("Date with " + args.size + " operands")
     }
 
@@ -300,7 +297,20 @@ internal class Functions(private val mapping: Mapping) {
      * caps the count at three, so no arity gate is needed here.
      */
     private fun time(args: List<Expr>): Calculation =
-        TimeConstruction(args.map { mapping.calculation(it) })
+        TimeConstruction(args.map { component(it) })
+
+    /**
+     * One `Date`/`Time` component. A12's grammar has no bare-number arm there: the digits parse as an entity name
+     * and draw `MVK_INVALID_ENTITY` (KERNEL-FINDINGS KF532). The typed construction cannot refuse it, since a
+     * typed number literal renders quoted and is admitted, so this TEXT boundary is the one that can.
+     */
+    private fun component(node: Expr): Calculation {
+        if (node is Expr.NumLit) {
+            throw Refusals.of(KernelCode.MVK_INVALID_ENTITY, "a Date or Time component is a field, a keyed cell, " +
+                "a quoted constant or an extractor; quote " + node.v.v)
+        }
+        return mapping.calculation(node)
+    }
 
     /** `DateTime(date, time)` — a fixed two-operand construction. */
     private fun dateTime(args: List<Expr>): Calculation {

@@ -370,13 +370,21 @@ class FunctionsTest {
 
     @Test
     fun aWellFormedTimeConverts() {
-        assertInstanceOf(TimeConstruction::class.java, left("Time(10, 30) == [PickupTime]"))
+        assertInstanceOf(TimeConstruction::class.java, left("Time(\"10\", \"30\") == [PickupTime]"))
+    }
+
+    /** A bare number names no entity, which A12 refuses in every component slot (KERNEL-FINDINGS KF532). */
+    @Test
+    fun aBareNumberComponentIsRejected() {
+        assertRejectedWith("MVK_INVALID_ENTITY") { translate("Time(10, 30) == [PickupTime]") }
     }
 
     /** The record's own compact constructor caps the component count at three — no MVK code, rulekit's own bound. */
     @Test
     fun aFourComponentTimeIsRejected() {
-        assertRejectedWith("at most hour, minute, and second") { translate("Time(10, 30, 40, 50) == [PickupTime]") }
+        assertRejectedWith("at most hour, minute, and second") {
+            translate("Time(\"10\", \"30\", \"40\", \"50\") == [PickupTime]")
+        }
     }
 
     @Test

@@ -136,5 +136,15 @@ internal val ADMITTED_FORMATS = YEAR_BEARING_FORMATS + YEAR_FREE_FORMATS
  */
 private val COMPLETE_DATE_FORMATS = setOf("dd.MM.yyyy", "yyyy-MM-dd", "yyyyMMdd")
 
-/** `DatePrecision` minus its `FULL` default, which is the one value that carries no format requirement. */
-internal val PARTIAL_PRECISIONS = setOf("DAY_OPTIONAL", "MONTH_OPTIONAL", "YEAR_OPTIONAL")
+/**
+ * `DatePrecision` minus its `FULL` default, which is the one value that carries no format requirement, each with
+ * the calendar components it leaves open. One table, so the set of partial precisions and what each leaves open
+ * cannot name different precisions.
+ */
+internal val OPEN_UNDER_PRECISION: Map<String, Set<Component>> = mapOf(
+    "DAY_OPTIONAL" to setOf(Component.DAY),
+    "MONTH_OPTIONAL" to setOf(Component.MONTH, Component.DAY),
+    "YEAR_OPTIONAL" to setOf(Component.YEAR, Component.MONTH, Component.DAY),
+)
+
+internal val PARTIAL_PRECISIONS: Set<String> = OPEN_UNDER_PRECISION.keys
