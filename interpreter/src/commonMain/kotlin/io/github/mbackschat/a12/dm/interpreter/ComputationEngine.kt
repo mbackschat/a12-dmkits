@@ -64,6 +64,11 @@ internal class ComputationEngine(
 
     private val computedTargets: Set<String> = model.computations.mapTo(HashSet()) { it.targetPath }
 
+    /** The operand inventory of the WHOLE programme, which every compute call uses, [computeField]'s closure too:
+     *  A12 derives it once from every computation, so an unrelated computation still bounds a filter walk
+     *  (`adapter.laws.FilterCacheScopeDiffTest`). */
+    private val programmeOperands: OperandSelection by lazy { operandSelection(plans.allComputationOrder()) }
+
     /**
      * Every computed-field outcome for the WHOLE model WITH its target cell's repetition indices
      * ([Computed.indices]) — the runtime twin of the kernel's whole-document `compute()`, and the core behind
@@ -83,8 +88,9 @@ internal class ComputationEngine(
      * Compute ONE computed field — its transitive computed-dependency CLOSURE run in dependency order (so cascade
      * operands aren't read stale/empty), the target's own instances projected out (IF129, graduated from IG74).
      * The single-computation twin of `DmInterpreter.testRule`: "run this field like a function". Behaviour-IDENTICAL
-     * to [computeInstances] filtered to [fieldPath] — an unrelated computation cannot feed the target, so pruning to
-     * the upstream closure changes nothing but the cost (locked by `ComputeFieldInvariantTest`/`ComputeFieldDiffTest`).
+     * to [computeInstances] filtered to [fieldPath]: an unrelated computation cannot feed the target, and the operand
+     * inventory that bounds a filter walk stays the whole programme's, so pruning to the upstream closure changes
+     * nothing but the cost (locked by `ComputeFieldInvariantTest`/`ComputeFieldDiffTest`/`FilterCacheScopeDiffTest`).
      * Returns one [Computed] per target-cell instance (a repeated computed field → one per row). A non-computed
      * [fieldPath] has an empty closure → empty list; the public [DmInterpreter.computeField] guards that up front.
      */
@@ -170,7 +176,7 @@ internal class ComputationEngine(
             if (operandNotCheckRelevant(path, reading, formalResults, emptyIndexCells)) throw PoisonedReadException(path)
             else false
         }
-        val operands = operandSelection(comps)
+        val operands = programmeOperands
         val operandRelevant: Relevance = { path, _ -> path in operands.fields }
         val selectedIndexRelevant: Relevance = { path, _ -> path in operands.indexFields }
         // Over-repetition is the one formal check that speaks about GROUP paths as well as field paths: its
@@ -609,8 +615,9 @@ internal class ComputationEngine(
     private data class OperandSelection(
         val fields: Set<String>,
         val indexFields: Set<String>,
-        /** Every group above an operand reference, computed fields included: an over-limit row of such a group is
-         *  reported even when its only reference is a computed field, whose own cell is not (SPEC-2026-10-04-05). */
+        /** Every group above an operand reference or a computed target, computed fields included: an over-limit row
+         *  of such a group is reported even when its only reference is a computed field, whose own cell is not
+         *  (SPEC-2026-10-04-05), and its stored rows bound a computation's filter walk (KERNEL-FINDINGS KF528). */
         val ancestorGroups: Set<String>,
     )
 
@@ -643,6 +650,9 @@ internal class ComputationEngine(
             val parsed = preparedModel.computation(comp)
             val dependencies = plans.computationDepRefs(parsed)
             dependencies.flatMapTo(ancestors, ::ancestorGroups)
+            // A12 keeps a calculated field's ancestor groups in the computation's data (CalculationCommand,
+            // source-read; measured by FilterCacheScopeDiffTest's target-only row), so their rows count too.
+            ancestors += ancestorGroups(comp.targetPath)
             dependencies.filterTo(fields) { it in model.kinds && it !in computedTargets }
             dependencies.filterTo(indexes) { it in model.indexFields }
 

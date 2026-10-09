@@ -6491,32 +6491,39 @@
       }
     },
     "kf528": {
-      "sha256": "2adaad8021aac4f9540d0e0c514e280731b54b8acf7202a5f800e8623ef9a0ab",
+      "sha256": "98399ce1ba3ae949e5c1c6ec5e57eb4513793ad60b938f1eba76af44abfe4a4a",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "filter walk extent"
+          "filter walk extent",
+          "computation walk scope"
         ],
         "dmkits": [],
         "interpreter": [
-          "filter walk extent"
+          "filter walk extent",
+          "computation walk scope"
         ],
         "checker": [],
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "filter walk extent"
+          "filter walk extent",
+          "computation walk scope"
         ]
       },
       "consumers": {
         "adapter": {
           "state": "APPLIED",
-          "basis": "Both kernel strategies are measured on eleven documents and two models through the adapter's differential.",
+          "basis": "Both kernel strategies are measured through the adapter's differentials: eleven documents on two models, and one base model varied by a single computation.",
           "evidence": {
             "filter walk extent": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterMissingSlotDiffTest.kt#theWalkReachesTheHighestStoredRepetitionAtEachDepth",
               "witness": "The walk reaches the highest stored repetition at each depth; a computation counts only the groups it reads."
+            },
+            "computation walk scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterCacheScopeDiffTest.kt#theComputationWalkCountsEveryGroupTheProgrammeNamesAtTheSameDepth",
+              "witness": "A read, a target-only and an unreached read of Returns widen the walk; Spares one fixed group deeper do not."
             }
           }
         },
@@ -6527,11 +6534,15 @@
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "Every filtered consumer reads one candidate source that merges stored rows with the walk's missing coordinates.",
+          "basis": "Every filtered consumer reads one candidate source that merges stored rows with the walk's missing coordinates, bounded by the whole programme's operand and target groups since 2026-10-09, for computeField too.",
           "evidence": {
             "filter walk extent": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterMissingSlotDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
               "witness": "All three engines agree on eleven documents for both models."
+            },
+            "computation walk scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterCacheScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on three documents for each of five models; computeField matches the whole computation (computingOneFieldMatchesTheWholeComputation)."
             }
           }
         },
@@ -6556,8 +6567,8 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "APPLIED",
-          "basis": "The peer added the missing-coordinate extent clause to spec/07 at 5472a915 after inspecting 40a510808; H10-R6 owns its executable reconciliation, and the cache cause stays a hypothesis.",
+          "state": "OPEN",
+          "basis": "The peer added the missing-coordinate extent clause to spec/07 at 5472a915 after inspecting 40a510808; H10-R6 owns its executable reconciliation, and the cache cause stays a hypothesis. The programme-wide scope, target-only, unreached-read and fixed-depth rows are reported in the handback answering SPEC-2026-10-09-10; no peer receipt is inferred.",
           "evidence": {
             "filter walk extent": {
               "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",

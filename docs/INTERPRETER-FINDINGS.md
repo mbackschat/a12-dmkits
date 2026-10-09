@@ -4529,3 +4529,11 @@ Enforcement: `FilterMissingSlotDiffTest`. Mutants that drop the one-coordinate m
 The owner decided to keep this as a characterized divergence rather than reproduce the order. The row is an artifact of hash iteration on a key A12 itself resolves to no value, and matching it would mean deriving the interpreter's behaviour from the kernel's identifier hashing, which is implementation detail rather than a semantic the clean-room boundary lets us copy. Re-open if a consumer depends on the pointer of a duplicated key.
 
 Enforcement: `SelectedMessageReferenceDiffTest.aDuplicatedKeysPointerIsTheKernelsCacheRow` pins the kernel's row on both strategies, and those documents stay out of the three-engine agreement.
+
+### IF377: a computation's filter walk is bounded by the whole programme's operand and target groups, also when `computeField` runs one closure (2026-10-09) <a id="if377"></a>
+
+[KF528](KERNEL-FINDINGS.md#kf528)'s 2026-10-09 rows. [IF375](#if375)'s walk took its counted groups from the ancestors of the operands of the computations being run. That was wrong twice. A computation whose only contact with a group is a target inside it widens the walk on both kernel strategies, and the interpreter left that group out. `computeField` runs only the target's dependency closure, so an unrelated computation that reads a sibling group stopped widening the walk there, and `computeField` returned a value where the whole computation cleared it. Its contract says it behaves like `compute` filtered to one field.
+
+`ComputationEngine` now derives one operand inventory from every computation of the model, target ancestors included, and every compute call uses it. Pruning to a closure still saves the evaluation work, which was the point of `computeField`. It no longer narrows what the walk, formal relevance or over-limit reporting see.
+
+Enforcement: `FilterCacheScopeDiffTest`. `allThreeEnginesAgreeOnEveryDocument` covers the target-only model, and `computingOneFieldMatchesTheWholeComputation` checks `computeField` against `compute` on every model and document.

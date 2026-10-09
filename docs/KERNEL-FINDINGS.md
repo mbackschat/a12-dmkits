@@ -12715,7 +12715,7 @@ The fixture is a store whose repeatable `Depots` (capacity 3, index `Code`) each
 
 So every slot the consumer reaches is asked of the relevant set, the missing ones included, and an uncovered slot is neither filled nor empty, like a malformed cell. A key no depot carries is read inside an empty depot at the unbound row, which only an identifier wildcarded at the depot level covers ([KF461](#kf461)). Over that empty row each consumer keeps its own gate: the wildcard-only aggregates, `SumOfProducts`' complete enumeration ([KF57](#kf57)), and the per-slot walk of the fill quantifiers and `FirstFilledValue`. The same rules hold for a starred group and a keyed group over the bins, read field by field. *(Locked: `adapter.laws.PartialProductCapacityDiffTest`, 5 documents × 16 coverages; `adapter.laws.PartialFillWalkRelevanceDiffTest`, 7 documents × 13 coverages. A `Having` filter's walk over missing slots is not measured here; it is INTERPRETER-GAPS IG165.)*
 
-## §11 supplement — a `Having` filter walks each starred level up to the highest repetition stored at that depth, at least one coordinate; validation counts every group's rows, a computation only the groups its computations read (both strategies, 2026-10-09) <a id="kf528"></a>
+## §11 supplement — a `Having` filter walks each starred level up to the highest repetition stored at that depth, at least one coordinate; validation counts every group's rows at that depth, a computation the groups its whole programme names (both strategies, 2026-10-09) <a id="kf528"></a>
 
 > Fold: pending — extends [KF525](#kf525)'s reached-label row and sits beside [KF517](#kf517)'s rule-iteration domain; a12-kernel-lean `SPEC-2026-10-07-04`.
 
@@ -12731,7 +12731,17 @@ So every slot the consumer reaches is asked of the relevant set, the missing one
 | shipments holding one item each | no | no |
 | one shipment of one item, three legs | yes: shipment 2 is walked, capped at its capacity | yes |
 
-So at each starred level the walk visits coordinates 1 up to the highest repetition any counted row stores at that depth, across parents and across groups, never fewer than one and never past the declared capacity; a blank row object counts as stored. It is neither of [KF517](#kf517)'s arms for rule iteration: with capacity 3, a product under its threshold, the missing legs of a one-leg document are not walked, and where a rule's occupied-prefix arm leaves a line holding one part at that part, the filter walks every line to the level's highest part. The kernel's filtered iterator caps each level's end at the cache's highest set repetition, keeping its start (`EntityIterator.setzeAlleEbenenMitZeileAufMaxGesetztIfPossible`, `GroupFillCache.getHighestRepetitionAtLevel`; source-read, the rows above settle the behavior). A computation's cache holds only what its computations read, which is why a sibling group extends its walk only once a computation reads that group. *(Locked: `adapter.laws.FilterMissingSlotDiffTest`, both models. A computation target inside a repeatable group, and partial validation, are not measured here.)*
+So at each starred level the walk visits coordinates 1 up to the highest repetition any counted row stores at that depth, across parents and across groups, never fewer than one and never past the declared capacity; a blank row object counts as stored. It is neither of [KF517](#kf517)'s arms for rule iteration: with capacity 3, a product under its threshold, the missing legs of a one-leg document are not walked, and where a rule's occupied-prefix arm leaves a line holding one part at that part, the filter walks every line to the level's highest part. The kernel's filtered iterator caps each level's end at the cache's highest set repetition, keeping its start (`EntityIterator.setzeAlleEbenenMitZeileAufMaxGesetztIfPossible`, `GroupFillCache.getHighestRepetitionAtLevel`; source-read, the rows above settle the behavior). A computation's walk counts the groups the whole computation programme names. *Corrected 2026-10-09: this sentence said the groups its computations READ, which a target-only row refutes (a12-kernel-lean SPEC-2026-10-09-10).* One base model plus at most one computation, one leg stored and three rows in the varied group:
+
+| the added computation | computation reaches the label | validation reaches it |
+|---|---|---|
+| none, three `Returns` rows | no | yes |
+| reads `Returns*/Note` | yes | yes |
+| only its target lies in `Returns` (`Tag = [Base] + 1`) | yes | yes |
+| reads `Returns*/Note` behind a precondition that never holds | yes | yes |
+| reads `Box/Spares*/Note`, three spares one fixed group deeper than the legs | no | no |
+
+So the counted groups are the ancestors of every operand and every target in the programme, decided statically whether or not a computation runs, and "at that depth" is the full group-path depth with fixed groups included: rows one fixed group deeper leave the walk alone in validation too. That `CalculationCommand` keeps exactly those groups in its data is source-read; the rows above settle the behaviour. *(Locked: `adapter.laws.FilterMissingSlotDiffTest`, both models; `adapter.laws.FilterCacheScopeDiffTest`. Partial validation and capacities above 100 are not measured here.)*
 
 ## §6 supplement — a temporal extractor asks its operand's partial precision, then whether it is a constant, then whether its format carries the extracted component; the date-yielding extractors ask only for a full stamp, with no Base Year exemption (kernel `checkConsistency`, 2026-10-09) <a id="kf529"></a>
 

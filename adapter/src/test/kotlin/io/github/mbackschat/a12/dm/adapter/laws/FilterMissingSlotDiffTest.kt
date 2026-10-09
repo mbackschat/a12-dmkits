@@ -132,7 +132,8 @@ class FilterMissingSlotDiffTest {
      * The separating rows, pinned against the normative kernel: whether the walk reaches the label, read as the
      * computed `Total` clearing with a failure at its target and the rule over it reporting VALUE. The walk stops at
      * the highest stored repetition, so one stored leg leaves the missing two unread, while a sibling group's rows at
-     * the same depth extend it in validation always and in a computation only once a computation reads that group.
+     * the same depth extend it in validation always and in a computation only once a computation names that group
+     * (here by reading it; [FilterCacheScopeDiffTest] covers a target, an unreached read and a deeper fixed group).
      * The nested rows show the same bound across parents and up an outer level.
      */
     @Test

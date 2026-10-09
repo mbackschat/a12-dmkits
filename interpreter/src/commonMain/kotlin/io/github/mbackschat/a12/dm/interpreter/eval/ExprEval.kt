@@ -2063,7 +2063,7 @@ internal fun Interpreter.keptRowsWithSuccessorLookahead(
 ): Sequence<EvalContext> = keptRowsWithSuccessorLookahead(rows) { havingInterp(it).keeps(having) }
 
 /** A filtered list's candidate rows as A12's filter walk visits them, missing coordinates included
- *  ([FilterWalkRowProvider]); in a computation only the groups its computations read extend the walk. */
+ *  ([FilterWalkRowProvider]); in a computation only the groups the whole programme names extend the walk. */
 internal fun Interpreter.filterCandidates(c: EvalContext, groupPath: String, bindDepth: Int): List<EvalContext> =
     c.filterWalkRows(groupPath, bindDepth, filterWalkGroups)
 
