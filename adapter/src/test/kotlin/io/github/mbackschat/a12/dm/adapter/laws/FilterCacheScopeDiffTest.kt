@@ -108,7 +108,7 @@ class FilterCacheScopeDiffTest {
 
     @Test
     fun allThreeEnginesAgreeOnEveryDocument() {
-        underUtc { models.values.forEach { DocumentDifferential.assertAgree(it, documents) } }
+        underUtc { models.values.forEach { DocumentDifferential.assertAgree(it, documents + overLimit) } }
     }
 
     /**
@@ -175,7 +175,7 @@ class FilterCacheScopeDiffTest {
         val row = "zuGrosseZeile /Parcel[1]/Returns"
         val note = "zuGrosseKontextnummer /Parcel[1]/Returns[4]/Note"
         // The row is reported wherever the programme keeps its group, and a field in it where the field is read or is
-        // an uncomputed field of a computed target's group; the computed tag itself never is.
+        // an uncomputed field of a computed target's group; the computed tag itself never is (KERNEL-FINDINGS KF538).
         assertEquals(linkedMapOf(
             "no computation names Returns, a note" to emptyList(),
             "a computation reads the notes, a note" to listOf(note, row),

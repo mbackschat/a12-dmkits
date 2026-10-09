@@ -502,6 +502,78 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf538": {
+      "sha256": "a36842983eda824cd2dad18d9fc987dbffe37f373ad4a38f0f31fbee51060399",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "compute formal scope"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "compute formal scope"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "compute formal scope"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured on four models and four documents through the adapter's differential.",
+          "evidence": {
+            "compute formal scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeFormalScopeDiffTest.kt#theComputeReportChecksTheCellsTheProgrammeKeeps",
+              "witness": "Sixteen model and document pairs: root, read, direct and nested target."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the lock authors every computation through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The compute operand inventory now adds every uncomputed field of a computed target's repeatable group.",
+          "evidence": {
+            "compute formal scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeFormalScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on every document for all four models."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool computes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime behaviour does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime behaviour does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Disclosed in the handback answering SPEC-2026-10-09-10; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
     "kf537": {
       "sha256": "ac0d3b95abf30acb906ed6e3db3faccd560708fa3ff3bc5ef306727c018dd580",
       "task": "F-USE-BACKLOG",

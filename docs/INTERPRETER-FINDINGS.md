@@ -4537,3 +4537,9 @@ Enforcement: `SelectedMessageReferenceDiffTest.aDuplicatedKeysPointerIsTheKernel
 `ComputationEngine` now derives one operand inventory from every computation of the model, target ancestors included, and every compute call uses it. Pruning to a closure still saves the evaluation work, which was the point of `computeField`. It no longer narrows what the walk, formal relevance or over-limit reporting see.
 
 Enforcement: `FilterCacheScopeDiffTest`. `allThreeEnginesAgreeOnEveryDocument` covers the target-only model, and `computingOneFieldMatchesTheWholeComputation` checks `computeField` against `compute` on every model and document.
+
+### IF378: the compute report's formal scope includes every uncomputed field of a computed target's repeatable group (2026-10-09) <a id="if378"></a>
+
+[KF538](KERNEL-FINDINGS.md#kf538). `ComputationEngine.operandSelection` held the fields computations read and the index fields they select. A computation targeting a field below a repeatable group also brings that group's other uncomputed fields into A12's compute-time formal and over-limit checks. The interpreter reported neither an invalid value nor an over-limit cell of such a field. The selection now adds those fields for each such target, and the walk scope ([IF377](#if377)) is unchanged by it, since the group was already a target ancestor.
+
+Enforcement: `ComputeFormalScopeDiffTest.allThreeEnginesAgreeOnEveryDocument`.

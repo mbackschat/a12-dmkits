@@ -12955,3 +12955,20 @@ So an `And` is admitted once one child references and guards the joined level, a
 The admitted shapes then fire alike on dynamic Groovy, static Java and the a12-dmkits interpreter, over keys both groups carry, keys only one carries (the other side reads "not specified", so `FieldNotFilled` holds there), and an empty line. Until this finding, rulekit's `RK_NEG_CONDITION_IN_ITERATION` lint treated every non-iterating positive as a guard, so it stayed silent on each refused row above. (a12-kernel-lean SPEC-2026-10-09-09.)
 
 *(Locked: `validate.laws.ParallelGuardConnectiveLawsTest`, `validate.laws.IterationGuardNonIteratingPositiveLawsTest`, the filter rows of `validate.laws.ParallelIterationGateLawsTest`, `adapter.laws.ParallelGuardConnectiveDiffTest`; the lint: `rulekit.lint.ParallelIterationGuardLintTest`, `rulekit.lint.NonIteratingGuardLintTest`.)*
+
+## §11 supplement — the compute report formally checks every uncomputed field of a computed target's repeatable group, not only the fields computations read (both strategies, 2026-10-09) <a id="kf538"></a>
+
+> Fold: pending — beside §11's account of which cells a computation's formal check covers.
+
+All four models compute the root `Total = [Base] + 1`. At most one more computation reads `Returns*/Note`, targets `Returns/Tag`, or targets `Fit` in the non-repeating `Detail` inside `Returns` (capacity 3). The compute report's formal findings:
+
+| model | fourth row: a note | a quantity | only a tag | invalid `Qty`, `Detail/Size`, root `Spare` |
+|---|---|---|---|---|
+| root target only | nothing | nothing | nothing | nothing |
+| reads `Returns*/Note` | `Note`, row | row | row | nothing |
+| targets `Returns/Tag` | `Note`, row | `Qty`, row | row | `Qty`, `Size` |
+| targets `Returns/Detail/Fit` | `Note`, row | `Qty`, row | `Tag`, row | `Qty`, `Size` |
+
+"Row" is `zuGrosseZeile` on `Returns`; a field is `zuGrosseKontextnummer` on the fourth row, or `zahlHatDezimalTrenner` for the invalid value. So a target below a repeatable group puts every field that group contains, at any depth, under the compute report's checks, though no computation reads them. A computed field stays out, which is why `Tag` appears only when `Fit` is the target. A root target puts in nothing, so the invalid `Spare` is never reported. A read puts in only the field read. The kernel's calculation data keeps operand fields and the groups above targets (`CalculationCommand`, source-read), but that source does not show what puts a target group's other fields in; the rows above are the behaviour. Dynamic Groovy, static Java and the a12-dmkits interpreter agree. (Found while measuring a12-kernel-lean SPEC-2026-10-09-10.)
+
+*(Locked: `adapter.laws.ComputeFormalScopeDiffTest`; the over-limit rows on the walk's own model: `adapter.laws.FilterCacheScopeDiffTest`.)*
