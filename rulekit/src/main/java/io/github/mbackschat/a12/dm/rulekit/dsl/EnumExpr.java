@@ -9,6 +9,20 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  */
 public record EnumExpr(Calculation expression) {
 
+    /**
+     * {@code <this> + <text>} — this enumeration expression joined to text, contributing its stored value (KERNEL-FINDINGS
+     * KF530). A key-selected cell is read braced, which A12 admits whatever its labels, and a first-filled value is no
+     * field read, so its labels are never asked (KF396). catalog:Concatenation
+     */
+    public StringExpr plus(StringExpr text) {
+        return StringExpr.joined(expression, text.expression());
+    }
+
+    /** {@code <this> + "literal"} — as {@link #plus(StringExpr)}, followed by a string literal. */
+    public StringExpr plus(String literal) {
+        return plus(new StringExpr(new StringLiteral(literal)));
+    }
+
     /** {@code <this> == "value"} — compared by stored value (the enum domain is the kernel's check). */
     public Condition is(String value) {
         return new ComparisonCondition(expression, CompareOp.EQ, new EnumValueLiteral(value));

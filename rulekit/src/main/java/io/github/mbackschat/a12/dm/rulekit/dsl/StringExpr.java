@@ -25,6 +25,11 @@ public record StringExpr(Calculation expression) {
         return joined(expression, enumeration.field().value());
     }
 
+    /** {@code this + [enumeration -> category]} — append a category projection's value; see {@link CategoryRef#plus}. */
+    public StringExpr plus(CategoryRef category) {
+        return joined(expression, category.value());
+    }
+
     /** {@code left + right} as one flat chain, either side possibly a concatenation already. */
     static StringExpr joined(Calculation left, Calculation right) {
         List<Calculation> parts = new ArrayList<>();

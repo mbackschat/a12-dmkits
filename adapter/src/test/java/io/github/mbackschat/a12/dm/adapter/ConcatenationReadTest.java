@@ -62,15 +62,16 @@ class ConcatenationReadTest {
         assertTrue(r.ok(), () -> "expected kernel acceptance, got: " + r.diagnostics());
     }
 
-    /** A title whose labels remap its values, and a plan whose labels repeat them. */
+    /** A title whose labels remap its values, and a plan whose labels repeat them; each declares a category. */
     private static String titledPersonJson() {
         return DocumentModelDraft.named("person").locale("en_US")
                 .rootGroup("Person", p -> p
                         .stringField("LastName", s -> { })
                         .stringField("FullName", s -> { })
                         .enumField("Title", e -> e.value("DR", l -> l.label("en_US", "Doctor"))
-                                .value("PROF", l -> l.label("en_US", "Professor")))
-                        .enumField("Plan", e -> e.value("BASIC", l -> l.label("en_US", "BASIC"))))
+                                .value("PROF", l -> l.label("en_US", "Professor")).category("Grade", "MD", "PHD"))
+                        .enumField("Plan", e -> e.value("BASIC", l -> l.label("en_US", "BASIC"))
+                                .category("Tier", "STD")))
                 .build().toJson();
     }
 
@@ -127,6 +128,22 @@ class ConcatenationReadTest {
                 m.str("/Person/FullName").ne(title.plus(plan)))) {
             KernelAdapter adapter = KernelAdapter.of(m.add(rule(m, "FullNameRule", cond)));
             assertEquals(RENDER.render(cond), RENDER.render(converted(adapter.read("/Person/FullNameRule"))));
+        }
+    }
+
+    /**
+     * A category projection in a concatenation, beside another one or a text, reads back as the projection. The reader
+     * had no category arm there, so its projection-count guard kept such a rule as Opaque rather than read it wrong.
+     */
+    @Test
+    void roundTripsCategoryConcatenations() {
+        BoundModel m = BoundModel.ofJson(titledPersonJson());
+        var grade = m.enumOf("/Person/Title").category("Grade");
+        for (Condition cond : java.util.List.of(
+                m.str("/Person/FullName").ne(grade.plus(m.enumOf("/Person/Plan").category("Tier"))),
+                m.str("/Person/FullName").ne(grade.plus(" ").plus(m.str("/Person/LastName").asString())))) {
+            KernelAdapter adapter = KernelAdapter.checkAndOpen(m.add(rule(m, "FullNameRule", cond)));
+            assertEquals(cond, converted(adapter.read("/Person/FullNameRule")));
         }
     }
 

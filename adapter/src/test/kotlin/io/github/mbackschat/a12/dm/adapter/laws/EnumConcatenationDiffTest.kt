@@ -13,7 +13,9 @@ import org.junit.jupiter.api.TestInstance
  * a braced enumeration read beside a text whatever its labels). One enumeration's labels remap its values and the
  * other's repeat them, so the stored value and the label are told apart. Each concatenation is computed into a text
  * target and also compared in a rule, the immediate spelling `[Plan] + [Note]` beside its braced twin; all three
- * engines agree on every document and the computed texts and fired rules are pinned.
+ * engines agree on every document and the computed texts and fired rules are pinned. A key-selected cell and a
+ * first-filled value of a remapped enumeration join through the typed `EnumExpr.plus` the same way, and two category
+ * projections join by their category values through `CategoryRef.plus`.
  *
  * Own domain (an insurance policy summary line).
  */
@@ -25,10 +27,17 @@ class EnumConcatenationDiffTest {
             .rootGroup("Policy") { p ->
                 p.stringField("Ref") { }
                 p.stringField("Note") { }
+                p.stringField("Key") { }
                 p.enumField("Tier") { e ->
                     e.value("GOLD") { it.label("en_US", "Gold tier") }.value("SILVER") { it.label("en_US", "Silver tier") }
+                        .category("Band", "TOP", "MID")
                 }
-                p.enumField("Plan") { e -> e.value("BASIC") { it.label("en_US", "BASIC") } }
+                p.enumField("Plan") { e -> e.value("BASIC") { it.label("en_US", "BASIC") }.category("Band", "LOW") }
+                p.group("Claims") { g -> g.repeatable(3).indexField("Code")
+                    .stringField("Code") { }
+                    .enumField("Cover") { e ->
+                        e.value("FULL") { it.label("en_US", "Full cover") }.value("PART") { it.label("en_US", "Part cover") }
+                    } }
                 for (name in TARGETS) p.stringField(name) { }
             }.build().toJson()
         val session = EditSession.read(draft)
@@ -40,6 +49,9 @@ class EnumConcatenationDiffTest {
             "TierLast" to note.asString().plus(" / ").plus(tier),
             "PlanFirst" to p.enumOf("Plan").plus(note.asString()),
             "TierPlan" to tier.plus(p.enumOf("Plan")),
+            "KeyedCover" to p.enumOf("Claims/Cover").forIndex(p.field("Key")).plus(" / ").plus(note.asString()),
+            "FirstCover" to Dsl.firstFilledEnum(p.flatten("Claims*/Cover")).plus(note.asString()),
+            "BandPair" to tier.category("Band").plus(p.enumOf("Plan").category("Band")),
         )
         val ref = p.str("Ref")
         var json = session.toJson()
@@ -66,7 +78,8 @@ class EnumConcatenationDiffTest {
 
     private fun policy(vararg values: Pair<String, String>) =
         """{"Policy":{"Ref":"GOLD-1",""" + values.joinToString(",") { (k, v) -> "\"$k\":\"$v\"" } +
-            (if (values.isEmpty()) "" else ",") + TARGETS.joinToString(",") { "\"$it\":\"x\"" } + "}}"
+            (if (values.isEmpty()) "" else ",") + TARGETS.joinToString(",") { "\"$it\":\"x\"" } +
+            ""","Key":"C1","Claims":[{"Code":"C1","Cover":"FULL"},{"Code":"C2"}]}}"""
 
     private val documents = linkedMapOf(
         "tier, plan and note" to policy("Tier" to "GOLD", "Plan" to "BASIC", "Note" to "n"),
@@ -93,11 +106,12 @@ class EnumConcatenationDiffTest {
             }
         }
         assertEquals(linkedMapOf(
-            "tier, plan and note" to (texts("GOLD / n", "n / GOLD", "BASICn", "GOLDBASIC") to
-                listOf("PlanBracedRule", "PlanImmediateRule", "TierRefRule")),
-            "tier without note" to (texts("GOLD / ", " / GOLD", null, "GOLD") to listOf("TierRefRule")),
-            "note without tier" to (texts(" / n", "n / ", "n", null) to emptyList()),
-            "nothing filled" to (texts(" / ", " / ", null, null) to emptyList()),
+            "tier, plan and note" to (texts("GOLD / n", "n / GOLD", "BASICn", "GOLDBASIC", "FULL / n", "FULLn",
+                "TOPLOW") to listOf("PlanBracedRule", "PlanImmediateRule", "TierRefRule")),
+            "tier without note" to (texts("GOLD / ", " / GOLD", null, "GOLD", "FULL / ", "FULL", "TOP") to
+                listOf("TierRefRule")),
+            "note without tier" to (texts(" / n", "n / ", "n", null, "FULL / n", "FULLn", null) to emptyList()),
+            "nothing filled" to (texts(" / ", " / ", null, null, "FULL / ", "FULL", null) to emptyList()),
         ), observed)
     }
 
@@ -110,6 +124,6 @@ class EnumConcatenationDiffTest {
     }
 
     private companion object {
-        val TARGETS = listOf("TierFirst", "TierLast", "PlanFirst", "TierPlan")
+        val TARGETS = listOf("TierFirst", "TierLast", "PlanFirst", "TierPlan", "KeyedCover", "FirstCover", "BandPair")
     }
 }

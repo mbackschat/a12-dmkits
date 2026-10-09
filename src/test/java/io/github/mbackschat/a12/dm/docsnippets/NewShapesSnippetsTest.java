@@ -56,12 +56,15 @@ class NewShapesSnippetsTest {
             .rootGroup("Shop", root -> root
                     .dateField("CheckDate", d -> d.format("yyyy-MM-dd"))
                     .field("Season", FieldKind.STRING)
+                    .field("Banner", FieldKind.STRING)
                     .group("Runs", runs -> runs.repeatable(20).indexField("RunKey")
                             .field("RunKey", FieldKind.STRING)
                             .dateRangeField("RunWindow", r -> r.format("yyyy-MM-dd").separator("/"))
                             .dateField("LaunchedAbout",
                                     d -> d.format("yyyy-MM-dd").datePrecision(DatePrecision.MONTH_OPTIONAL))
-                            .stringField("StartDay", t -> t.maxLength(2).pattern("[0-9]+", "Digits only."))))
+                            .stringField("StartDay", t -> t.maxLength(2).pattern("[0-9]+", "Digits only."))
+                            .enumField("Channel", e -> e.value("WEB", l -> l.label("en_US", "Online"))
+                                    .value("STORE", l -> l.label("en_US", "In store")))))
             .build().toJson();
     private static final BoundModel promo = BoundModel.ofJson(PROMO_JSON);
     private static final String FULFILMENT_JSON = DocumentModelDraft.named("fulfilment").locale("en_US")
@@ -457,6 +460,26 @@ class NewShapesSnippetsTest {
         // end::enum-concatenation[]
         assertEquals("[/Order/CustomerName] != { [/Order/Priority] } + \" / \" + [/Order/ProductCode]",
                 new DslRenderer().render(staleName));
+        assertKernelAccepts(staleName, "../CustomerName");
+    }
+
+    @Test
+    void selectedConcatenationSnippet() {
+        // tag::selected-concatenation[]
+        // A key-selected enumeration cell joins text by its stored value, braced like a direct read; a category
+        // projection joins by its category value (KERNEL-FINDINGS KF396, KF530).
+        StringExpr channel = promo.enumOf("/Shop/Runs/Channel").forIndex(promo.field("/Shop/Season")).plus(" / ")
+                .plus(promo.str("/Shop/Banner").asString());
+        Condition staleBanner = promo.str("/Shop/Banner").ne(channel);
+        StringExpr speed = m.enumOf("/Order/Priority").category("SpeedClass").plus("-")
+                .plus(m.str("/Order/ProductCode").asString());
+        Condition staleName = m.str("/Order/CustomerName").ne(speed);
+        // end::selected-concatenation[]
+        assertEquals("[/Shop/Banner] != { [/Shop/Runs/Channel For /Shop/Season] } + \" / \" + [/Shop/Banner]",
+                new DslRenderer().render(staleBanner));
+        assertEquals("[/Order/CustomerName] != [/Order/Priority -> SpeedClass] + \"-\" + [/Order/ProductCode]",
+                new DslRenderer().render(staleName));
+        assertKernelAccepts(PROMO_JSON, "/Shop", staleBanner, "../Banner");
         assertKernelAccepts(staleName, "../CustomerName");
     }
 

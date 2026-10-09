@@ -50,6 +50,25 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
         return access();
     }
 
+    /**
+     * {@code [field -> name] + <text>} — this category projection joined to text. A12 asks no display-label question
+     * of a category access in {@code +} (KERNEL-FINDINGS KF396), and the projection contributes its category value
+     * (KF530). catalog:Concatenation
+     */
+    public StringExpr plus(StringExpr text) {
+        return StringExpr.joined(access(), text.expression());
+    }
+
+    /** {@code [field -> name] + "literal"} — as {@link #plus(StringExpr)}, followed by a string literal. */
+    public StringExpr plus(String literal) {
+        return plus(new StringExpr(new StringLiteral(literal)));
+    }
+
+    /** {@code [field -> name] + [other -> name]} — two category projections joined, each by its category value. */
+    public StringExpr plus(CategoryRef other) {
+        return StringExpr.joined(access(), other.access());
+    }
+
     /** This category projection as an A12 entity operand of {@code FirstFilledValue}. */
     public FirstFilledOperand firstFilledOperand() {
         return FirstFilledOperand.of(access());

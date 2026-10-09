@@ -19,7 +19,8 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 /**
  * Left operands the reader did not dispatch: a numeric literal before a count (a12-kernel-lean's
  * `src-mandatory-information-distinct-comparisons` capture read six such rules back {@code Opaque}), a text
- * concatenation before a field or a text, and a text before a concatenation. Each is authored, admitted by the kernel's consistency gate and converted back;
+ * concatenation before a field or a text, and a text before a concatenation, a string coercion or a text first-filled
+ * value. Each is authored, admitted by the kernel's consistency gate and converted back;
  * the read must equal the authored object, so the authored operand order survives.
  *
  * <p>Own domain (a web shop order).
@@ -50,6 +51,10 @@ class ComparisonLeftOperandReadTest {
                 .plus(m.str("/Order/LastName").asString()).ne("Guest Buyer")));
         authored.put("TextDiffersFromConcatenation", named.and(Dsl.text("Guest Buyer")
                 .ne(m.str("/Order/FirstName").asString().plus(" ").plus(m.str("/Order/LastName").asString()))));
+        authored.put("TextEqualsInitials", named.and(Dsl.text("Gu")
+                .eq(Dsl.rangeAsString(m.field("/Order/FirstName"), 1, 2))));
+        authored.put("TextDiffersFromFirstSku", named.and(Dsl.text("X1")
+                .ne(Dsl.firstFilledString(m.flatten("/Order/Lines*/Sku")))));
         BoundModel withRules = m;
         for (Map.Entry<String, Condition> rule : authored.entrySet()) {
             withRules = withRules.add(m.rule(m.group("/Order")).name(rule.getKey())

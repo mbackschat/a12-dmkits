@@ -4807,7 +4807,7 @@
       }
     },
     "kf396": {
-      "sha256": "d8cbc2c203230d2c73e6f20f346d03d34914ee066bad74f40dbc434236cb17c6",
+      "sha256": "13a19219756a218ff9e69045e912d411fcaa1c7f467f9c2894683dbb1eb36a85",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -4840,7 +4840,7 @@
             },
             "a key-selected enumeration cell in a concatenation": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/KeyedEnumerationConcatenationLawsTest.java#aKeyedEnumerationCellFollowsTheDirectReadsLabelLaw",
-              "witness": "Remapped immediate refused, braced and identity admitted."
+              "witness": "Remapped immediate refused under either key; braced, identity-labelled, unlabelled and first-filled admitted."
             }
           }
         },
@@ -6285,18 +6285,21 @@
       }
     },
     "kf530": {
-      "sha256": "85599a68fefd80d79733f90aed48d68e2c63387507fcba62a5298bf9d7be7760",
+      "sha256": "ea74ff0effd4525483b79d2e3f31bbf59a405b9f1817111ddd99ef1f684b81f6",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "an enumeration's value in a concatenation"
+          "an enumeration's value in a concatenation",
+          "selected and projected parts"
         ],
         "dmkits": [
           "an enumeration's value in a concatenation",
+          "selected and projected parts",
           "the enumeration pair in the bridge and the linter"
         ],
         "interpreter": [
-          "an enumeration's value in a concatenation"
+          "an enumeration's value in a concatenation",
+          "selected and projected parts"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -6309,17 +6312,21 @@
       "consumers": {
         "adapter": {
           "state": "APPLIED",
-          "basis": "Both kernel strategies are measured on four documents through the adapter's differential, and both spellings read back into the typed form.",
+          "basis": "Both kernel strategies are measured on four documents through the adapter's differential, and both spellings read back into the typed form. A key-selected cell, a first-filled enumeration and a category projection in a concatenation read back as their typed nodes.",
           "evidence": {
             "an enumeration's value in a concatenation": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EnumConcatenationDiffTest.kt#anEnumerationJoinsATextAsItsStoredValue",
               "witness": "The stored value joins on every row, and an empty concatenation clears its target."
+            },
+            "selected and projected parts": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/ConcatenationReadTest.java#roundTripsCategoryConcatenations",
+              "witness": "Two category projections, and one beside text, read back equal to the typed form."
             }
           }
         },
         "dmkits": {
           "state": "APPLIED",
-          "basis": "EnumRef.plus and StringExpr.plus(EnumRef) author the concatenation and render the enumeration braced. The bridge maps an enumeration pair to the same concatenation, and the unguarded-concatenation lint names an enumeration part.",
+          "basis": "EnumRef.plus and StringExpr.plus(EnumRef) author the concatenation and render the enumeration braced. The bridge maps an enumeration pair to the same concatenation, and the unguarded-concatenation lint names an enumeration part. EnumExpr.plus joins a key-selected cell or a first-filled enumeration, CategoryRef.plus and StringExpr.plus(CategoryRef) a category projection, and the lint names keyed and projected parts too.",
           "evidence": {
             "an enumeration's value in a concatenation": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/docsnippets/NewShapesSnippetsTest.java#enumerationConcatenationSnippet",
@@ -6328,16 +6335,24 @@
             "the enumeration pair in the bridge and the linter": {
               "reference": "interpreter-bridge/src/test/kotlin/io/github/mbackschat/a12/dm/bridge/ExpressionsTest.kt#plusOverTwoEnumerationsIsConcatenation",
               "witness": "Two enumerations map to the typed EnumRef.plus concatenation; the lint flags an unguarded enumeration part."
+            },
+            "selected and projected parts": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/docsnippets/NewShapesSnippetsTest.java#selectedConcatenationSnippet",
+              "witness": "The keyed cell renders braced and the projection immediate; the kernel admits both."
             }
           }
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "The interpreter joins the stored value as both kernel strategies do.",
+          "basis": "The interpreter joins the stored value as both kernel strategies do. It joins a keyed cell's and a first-filled value's stored value and a projection's category value as both strategies do.",
           "evidence": {
             "an enumeration's value in a concatenation": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EnumConcatenationDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
               "witness": "All three engines agree on every document."
+            },
+            "selected and projected parts": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EnumConcatenationDiffTest.kt#anEnumerationJoinsATextAsItsStoredValue",
+              "witness": "FULL / n, FULLn and TOPLOW pinned on the kernel; all three engines agree."
             }
           }
         },

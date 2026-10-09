@@ -1250,20 +1250,20 @@ final class ConditionConverter {
         if (left instanceof ICompositeOperation concat && concat.getType() == OperationType.STRING) {
             return stringExprComparison(convertConcatenation(concat), op, right, comparison);
         }
-        // "text" == / != a concatenation — read in place, as Dsl.text(…) authors it
-        if (left instanceof IConstantOperation constant && right instanceof ICompositeOperation concat
-                && concat.getType() == OperationType.STRING) {
+        // "text" == / != a text operand (a concatenation, a string coercion, a text first-filled value) — read in
+        // place, as Dsl.text(…) authors it; the numeric branch below would parse the text as a number
+        if (left instanceof IConstantOperation constant && isTextOperand(right)) {
             return stringExprComparison(Dsl.text(constant.getValue()), op, right, comparison);
         }
         // a numeric expression on the left not matched above (e.g. arithmetic on both sides, ([a]+1) == ([b]-2)
         // or a rounding/root-group count) — compare it expression-vs-expression. A constant on the left is read in
         // place rather than flipped, so `0 < NumberOfDifferentValues(…)` reads back in the order it was written.
-        NumberExpr leftExpr = left instanceof IConstantOperation constant && numericExpr(right) != null
+        NumberExpr rightNumber = numericExpr(right);
+        NumberExpr leftExpr = left instanceof IConstantOperation constant && rightNumber != null
                 ? Dsl.number(constant.getValue())
                 : numericExpr(left);
         if (leftExpr != null) {
-            NumberExpr rightExpr = right instanceof IConstantOperation c ? Dsl.number(c.getValue())
-                    : numericExpr(right);
+            NumberExpr rightExpr = right instanceof IConstantOperation c ? Dsl.number(c.getValue()) : rightNumber;
             if (rightExpr != null) {
                 return exprVsExpr(leftExpr, op, rightExpr, comparison);
             }
@@ -2043,18 +2043,26 @@ final class ConditionConverter {
         if (comp.getCalcOp() != CalcOp.ADD) {
             throw unsupported("string composite with operator " + comp.getCalcOp(), comp);
         }
-        List<IOperation> ops = comp.getOperations();
-        Optional<EnumRef> leading = enumerationOperand(ops.get(0));
-        StringExpr acc = leading.isPresent()
-                ? enumerationOperand(ops.get(1)).map(leading.get()::plus)
-                        .orElseGet(() -> leading.get().plus(stringOperand(ops.get(1), comp)))
-                : stringOperand(ops.get(0), comp);
-        for (int i = leading.isPresent() ? 2 : 1; i < ops.size(); i++) {
-            IOperation op = ops.get(i);
-            Optional<EnumRef> enumeration = enumerationOperand(op);
-            acc = enumeration.isPresent() ? acc.plus(enumeration.get()) : acc.plus(stringOperand(op, comp));
+        StringExpr acc = null;
+        for (IOperation op : comp.getOperations()) {
+            StringExpr part = concatenationPart(op, comp);
+            acc = acc == null ? part : acc.plus(part);
         }
         return acc;
+    }
+
+    /**
+     * One part of a concatenation as the node the typed {@code plus} builds for it, so the flat chain reads back equal:
+     * a category projection by its access, an unindexed enumeration by its value read, anything else as text.
+     */
+    private StringExpr concatenationPart(IOperation op, Object origin) {
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
+                && field.getField().getCategoryName() != null && !field.getField().getCategoryName().isEmpty()) {
+            var category = model.enumOf(field.getField().getFullName()).category(field.getField().getCategoryName());
+            return new StringExpr((field.getField().isOuter() ? category.outer() : category).value());
+        }
+        return enumerationOperand(op).map(enumeration -> new StringExpr(enumeration.field().value()))
+                .orElseGet(() -> stringOperand(op, origin));
     }
 
     /**
@@ -2088,7 +2096,12 @@ final class ConditionConverter {
             return stringCoercion((IFieldIdOperation) op);
         }
         if (op instanceof IEntityListOperation aggregate) {
-            return stringAggregate(aggregate, firstFilledValueKind(aggregate));
+            ValueKind kind = firstFilledValueKind(aggregate);
+            // a first-filled enumeration joins its stored value, the node EnumExpr.plus builds (KERNEL-FINDINGS KF530)
+            return kind == ValueKind.ENUMERATION
+                    && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue
+                    ? new StringExpr(convertFirstFilledValue(aggregate))
+                    : stringAggregate(aggregate, kind);
         }
         if (op instanceof ICompositeOperation nested && nested.getType() == OperationType.STRING) {
             return convertConcatenation(nested);
@@ -2208,6 +2221,13 @@ final class ConditionConverter {
             case NE -> left.ne(other);
             default -> throw unsupported("string-expression comparison operator " + op, origin);
         };
+    }
+
+    /** Whether a comparison's right side is a text expression other than a plain field read. */
+    private boolean isTextOperand(IOperation right) {
+        return isStringCoercion(right) || (right instanceof ICompositeOperation concat
+                && concat.getType() == OperationType.STRING)
+                || (right instanceof IEntityListOperation && right.getType() == OperationType.STRING);
     }
 
     /** The right side of a text comparison as a string expression; {@code left} decides a first-filled value's kind. */

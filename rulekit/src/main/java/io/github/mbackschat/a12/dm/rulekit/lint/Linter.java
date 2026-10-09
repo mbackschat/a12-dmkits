@@ -32,6 +32,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue;
@@ -133,12 +136,32 @@ public final class Linter {
     private static void concatUnguardedStringFields(Calculation op, Set<String> guarded, List<String> out) {
         if (op instanceof Concatenation concat) {
             for (Calculation part : concat.parts()) {
-                if (part instanceof FieldValue fv && CONCATENATED_AS_TEXT.contains(fv.field().kind())
-                        && !guarded.contains(fv.field().path().value()) && !out.contains(fv.field().path().value())) {
-                    out.add(fv.field().path().value());
-                }
+                textPart(part).filter(name -> !guarded.contains(name) && !out.contains(name)).ifPresent(out::add);
             }
         }
+    }
+
+    /**
+     * The name a concatenation part's presence guard carries, when the part reads a field that joins as text: a
+     * field read or a category projection by the field's path, a key-selected cell by its path and key.
+     */
+    private static Optional<String> textPart(Calculation part) {
+        return switch (part) {
+            case FieldValue fv when CONCATENATED_AS_TEXT.contains(fv.field().kind()) ->
+                    Optional.of(fv.field().path().value());
+            case EnumCategoryAccess category -> Optional.of(category.field().path().value());
+            case IndexedFieldValue cell when CONCATENATED_AS_TEXT.contains(cell.field().kind()) ->
+                    Optional.of(cellName(cell));
+            default -> Optional.empty();
+        };
+    }
+
+    /** A key-selected cell as {@code path For key}, the spelling its presence guard and the warning share. */
+    private static String cellName(IndexedFieldValue cell) {
+        return cell.field().path().value() + " For " + switch (cell) {
+            case SemanticIndexValue literal -> "\"" + literal.indexValue() + "\"";
+            case SemanticIndexFieldValue key -> key.indexField().path().value();
+        };
     }
 
     private void flagUnguardedConcat(List<String> fields, ComparisonCondition cmp, String rulePath,
@@ -491,11 +514,18 @@ public final class Linter {
                     guarded.add(f.field().path().value());
                 }
             }
+            case IndexedPresenceCondition p -> {
+                if (p.filled()) {
+                    guarded.add(cellName(p.index()));
+                }
+            }
             case EntityListPredicate p -> {
                 if ("AllFieldsFilled".equals(p.operatorId())) {
                     for (var operand : p.operands()) {
-                        if (operand instanceof FieldRef fr) {
-                            guarded.add(fr.path().value());
+                        switch (operand) {
+                            case FieldRef fr -> guarded.add(fr.path().value());
+                            case IndexedFieldValue cell -> guarded.add(cellName(cell));
+                            default -> { }
                         }
                     }
                 }

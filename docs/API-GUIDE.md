@@ -1543,6 +1543,20 @@ StringExpr label = m.enumOf("/Order/Priority").plus(" / ").plus(m.str("/Order/Pr
 Condition staleName = m.str("/Order/CustomerName").ne(label);
 ```
 
+**A key-selected enumeration cell and a first-filled enumeration join through `EnumExpr.plus`, a category projection through `CategoryRef.plus` and `StringExpr.plus(CategoryRef)`.** The cell renders braced like a direct read; a first-filled value and a category projection are no field read, so A12 asks them no label question ([KF396](KERNEL-FINDINGS.md#kf396)). Each contributes its stored value, the projection its category value, and an empty one contributes nothing ([KF530](KERNEL-FINDINGS.md#kf530)):
+
+<!-- snippet: selected-concatenation -->
+```java
+// A key-selected enumeration cell joins text by its stored value, braced like a direct read; a category
+// projection joins by its category value (KERNEL-FINDINGS KF396, KF530).
+StringExpr channel = promo.enumOf("/Shop/Runs/Channel").forIndex(promo.field("/Shop/Season")).plus(" / ")
+        .plus(promo.str("/Shop/Banner").asString());
+Condition staleBanner = promo.str("/Shop/Banner").ne(channel);
+StringExpr speed = m.enumOf("/Order/Priority").category("SpeedClass").plus("-")
+        .plus(m.str("/Order/ProductCode").asString());
+Condition staleName = m.str("/Order/CustomerName").ne(speed);
+```
+
 **Every held field, group, rule, and computation editor carries the same element-metadata contract.** Their shared `ElementMetadataEditor` base exposes annotation set/remove plus internal- and external-description set/remove, so a caller that has already selected `/Permit/CalculateFee` never drops back to the flat session or repeats that path just to describe it:
 
 <!-- teaser -->
