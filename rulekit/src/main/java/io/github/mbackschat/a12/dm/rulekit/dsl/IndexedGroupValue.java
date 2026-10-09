@@ -12,10 +12,12 @@ import java.util.Optional;
  * {@code AllGroupsFilled}'s (KF351, {@code validate.laws.SemanticIndexGroupOperandCarrierLawsTest}). It
  * participates in exact-duplicate detection keyed on group path AND index, never on path alone.
  *
- * <p>A group can never itself carry the {@code $} outer-iteration correlation ({@link GroupRef} has no
- * such flag, and the interpreter bridge's {@code Operands.groupRef} already refuses one) — only the field-keyed
- * form's KEY can,
- * so the identity's correlation component is the key's alone.
+ * <p>The scope may carry the {@code $} capture marker ({@link GroupListRef#outer()}), and the marker stays in the
+ * rendering and in the identity. A12 refuses a semantic index anywhere in a filter body, which is the only place
+ * a capture is read, so such an operand is never admitted; handing A12 the text as authored is what lets it say
+ * so, where dropping the marker would author a different operand ({@code adapter.laws.CheckerOverlapIdentityAgreementTest}).
+ * <i>Corrected 2026-10-09:</i> this said a group can never carry the marker, which stopped holding once a group
+ * scope could (DEV-API-GAPS {@code DG49}), and the marker was dropped.
  *
  * <p>No compact-constructor check at all, matching {@link IndexedFieldValue}'s own discipline — arity and
  * duplicates live in {@link #duplicateIdentity()} and the switches it feeds. A star in {@link #group()} is left
@@ -40,16 +42,15 @@ public sealed interface IndexedGroupValue extends GroupScope, GroupListOperand
 
     /**
      * A plain diagnostic path — {@code Group For "key"} / {@code Group For keyField} — via the same
-     * {@link SemanticIndexIdentity} helper {@link IndexedFieldValue} uses. The group itself never
-     * carries {@code $} (see class javadoc), so its correlation flag is always {@code false} here.
+     * {@link SemanticIndexIdentity} helper {@link IndexedFieldValue} uses, with the scope's capture marker.
      */
     @Override
     default String renderedPath() {
         return switch (this) {
-            case GroupSemanticIndexValue v -> SemanticIndexIdentity.of(false, group().renderedPath(),
+            case GroupSemanticIndexValue v -> SemanticIndexIdentity.of(group().correlated(), group().renderedPath(),
                     v.indexValue());
-            case GroupSemanticIndexFieldValue v -> SemanticIndexIdentity.of(false, group().renderedPath(),
-                    v.indexField());
+            case GroupSemanticIndexFieldValue v -> SemanticIndexIdentity.of(group().correlated(),
+                    group().renderedPath(), v.indexField());
         };
     }
 

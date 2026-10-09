@@ -24,18 +24,30 @@ internal sealed interface OperationType {
     data class Range(val components: Set<Component>) : OperationType
 }
 
-/** A direct field and a literal retain provenance that the comparison gates must not infer from type. */
+/**
+ * A direct field and a literal retain provenance that the comparison gates must not infer from type.
+ *
+ * [field] and [constant] are an IMMEDIATE read and an immediate literal. [typedBy] and [domainConstant] are the
+ * same facts as a brace leaves them: A12 types a braced operand by what it encloses and finds a constant inside
+ * any number of braces (`CheckOpUtils.isConstant`), while its display gate against a text asks for an immediate
+ * field read (`isFeldWertOp`) — measured on both positions by `adapter.laws.CheckerComparisonOperandShapeAgreementTest`.
+ */
 internal data class OperationValue(
     val type: OperationType,
     val field: TrackedDeclaration? = null,
     val constant: WrittenConstant? = null,
     val baseYear: BaseYearRole? = null,
+    val typedBy: TrackedDeclaration? = field,
+    val domainConstant: WrittenConstant? = constant,
 ) {
     val numeric get() = type as? OperationType.Number
     val temporal get() = type as? OperationType.Temporal
 
     /** The same type as a computed result, which carries no field, constant or base-year provenance. */
-    fun derived() = copy(field = null, constant = null, baseYear = null)
+    fun derived() = copy(field = null, constant = null, baseYear = null, typedBy = null, domainConstant = null)
+
+    /** The same value behind a brace: no longer an immediate read or literal, still typed and still constant. */
+    fun braced() = derived().copy(typedBy = typedBy, domainConstant = domainConstant)
 }
 
 /**
@@ -81,7 +93,7 @@ internal class OperationAnalysis(
             else bareReferenceField(written(shape), group, element,
                 shape.read.inAFilterBody && !shape.read.outerMarker)?.let(::field) ?: UNKNOWN
         }
-        is OperationShape.Group -> value(shape.child).derived()
+        is OperationShape.Group -> value(shape.child).braced()
         is OperationShape.Arithmetic -> arithmetic(shape)
         is OperationShape.Call -> call(shape)
     }

@@ -135,8 +135,8 @@ private fun OperationAnalysis.comparisonFinding(
         return problem("MVK_INVALID_COMPARE_TO_ENUM_OR_STRING",
             "one side of `${comparison.left}` / `${comparison.right}` is text or an enumeration and the other is a number — compare a number against a number")
     for ((enumeration, partner) in listOf(left to right, right to left)) {
-        val field = enumeration.field?.takeIf { enumeration.type == OperationType.Enumeration } ?: continue
-        val constant = (partner.constant as? WrittenConstant.Text)?.value ?: continue
+        val field = enumeration.typedBy?.takeIf { enumeration.type == OperationType.Enumeration } ?: continue
+        val constant = (partner.domainConstant as? WrittenConstant.Text)?.value ?: continue
         val values = field.enumerationBody()?.declaredEnumValues() ?: continue
         if (constant !in values) return problem("MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON",
             "`${field.path}` declares ${values.joinToString { "`$it`" }}, and `$constant` is none of them — compare against a stored value, not its display label")
@@ -158,12 +158,16 @@ private fun OperationAnalysis.comparisonFinding(
         "`${comparison.left}` carries ${x ?: "an undetermined number of"} fractional digits and `${comparison.right}` carries ${y ?: "an undetermined number of"}; round one side to the other's scale, or compare with `<` / `>`")
 }
 
-/** KF407's label comparison is confined to two direct declarations in declared locales. */
+/**
+ * KF407's label comparison between two declarations in declared locales. Two Enumerations are compared by type
+ * whatever is written around them; a text takes part only as an immediate field read, so a braced text partner
+ * is outside the gate while a braced Enumeration is not (SPEC-2026-10-09-02).
+ */
 private fun OperationAnalysis.displayDefect(left: OperationValue, right: OperationValue): Pair<String, String>? {
-    val a = left.field ?: return null
-    val b = right.field ?: return null
-    fun labels(field: TrackedDeclaration): Map<String, Map<String, String>>? {
-        if (field.declaredFieldType() == FieldType.STRING) return emptyMap()
+    val a = left.typedBy ?: return null
+    val b = right.typedBy ?: return null
+    fun labels(value: OperationValue, field: TrackedDeclaration): Map<String, Map<String, String>>? {
+        if (field.declaredFieldType() == FieldType.STRING) return if (value.field != null) emptyMap() else null
         val body = field.enumerationBody() ?: return null
         if (body["tableName"] != null) return null
         val values = body["values"] as? JsonArray ?: return null
@@ -175,8 +179,8 @@ private fun OperationAnalysis.displayDefect(left: OperationValue, right: Operati
             token to (label ?: token)
         } }
     }
-    val here = labels(a) ?: return null
-    val there = labels(b) ?: return null
+    val here = labels(left, a) ?: return null
+    val there = labels(right, b) ?: return null
     fun displayed(labels: Map<String, Map<String, String>>) = labels.values.any { it.any { (token, label) -> token != label } }
     if (displayed(here) != displayed(there)) return "MVK_INVALID_COMPARE_ENUM_TO_STRING" to
         "`${a.path}` and `${b.path}` disagree about display values; compare two declarations that both label their values or neither does"

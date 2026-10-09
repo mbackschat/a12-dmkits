@@ -4928,6 +4928,236 @@
           "evidence": {}
         }
       }
+    },
+    "kf325": {
+      "sha256": "feac7dcd181e0e8c5ef649b7371a9dc4758e0d38c106324aca2c280dbad157eb",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "starred and captured group-list identity"
+        ],
+        "dmkits": [
+          "starred and captured group-list identity"
+        ],
+        "interpreter": [],
+        "checker": [
+          "starred and captured group-list identity"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "starred and captured group-list identity"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel's own class is measured on every row through the adapter's validator.",
+          "evidence": {
+            "starred and captured group-list identity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOverlapIdentityAgreementTest.kt#aCaptureSeparatesTheExactDuplicateAndNotTheNestedOne",
+              "witness": "A group beside its own capture is admitted; beside a captured descendant it is the nested class."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "The typed group scope keeps its capture marker in its identity and in an index selection's text.",
+          "evidence": {
+            "starred and captured group-list identity": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/CapturedGroupListDuplicateTest.java#aGroupBesideItsOwnCaptureIsTwoOperands",
+              "witness": "NoGroupFilled(Shipping, $Shipping) builds; a capture twice and a captured subgroup are refused."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The group-list family keys the exact test on path and marker and keeps starred and captured operands in the nested test.",
+          "evidence": {
+            "starred and captured group-list identity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOverlapIdentityAgreementTest.kt#aStarExemptsTheExactDuplicateAndNotTheNestedOne",
+              "witness": "The checker names the nested class on a starred group beside its starred subgroup."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports the kernel's and the checker's classes unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Duplicate identity does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Duplicate identity does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-07-05; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf388": {
+      "sha256": "1151dc7686bdbce24945c1b45e386109dc3b45c402f4ec4ac59e9598d308823c",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "category identity in the nested duplicate"
+        ],
+        "dmkits": [
+          "category identity in the nested duplicate"
+        ],
+        "interpreter": [],
+        "checker": [
+          "category identity in the nested duplicate"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "category identity in the nested duplicate"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel's own class is measured on every row through the adapter's validator.",
+          "evidence": {
+            "category identity in the nested duplicate": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOverlapIdentityAgreementTest.kt#aCategoryTakesAFieldOutOfItsGroupsReference",
+              "witness": "RepetitionNotUnique(Lines, Lines/Tag -> Kind) reaches the category class; stored Lines/Tag is the nested class."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "Typed containment already compares the category projection beside the path.",
+          "evidence": {
+            "category identity in the nested duplicate": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/ValueListDuplicateGateTest.java#aRootGroupDoesNotContainACategoryProjectionOfAFieldInsideIt",
+              "witness": "A root beside a category projection of its own field is not refused as nested."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The entity-list families already key the category into the nested test.",
+          "evidence": {
+            "category identity in the nested duplicate": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOverlapIdentityAgreementTest.kt#aCategoryTakesAFieldOutOfItsGroupsReference",
+              "witness": "The checker agrees on all eight rows, FirstFilledValue and the value list included."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports the kernel's and the checker's classes unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Duplicate identity does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Duplicate identity does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-08-03; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf407": {
+      "sha256": "f441dbecc2256362e286f7770b054a8ca8156de7318e28e2a2e137f8536dcd98",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "braced comparison operands"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "braced comparison operands"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "braced comparison operands"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel's own class is measured on every row through the adapter's validator.",
+          "evidence": {
+            "braced comparison operands": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerComparisonOperandShapeAgreementTest.kt#theTextGateReadsTheWrittenTextSideAndTheEnumerationsType",
+              "witness": "A braced text partner is admitted; a braced labelled Enumeration beside a text is refused."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed surface delegates both display gates to A12, and has no braced-literal comparison form for the domain gate to meet.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The comparison walk types a braced operand by what it encloses and finds a braced constant, while the text display gate asks for an immediate read.",
+          "evidence": {
+            "braced comparison operands": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerComparisonOperandShapeAgreementTest.kt#theDomainGateFindsAConstantInsideABrace",
+              "witness": "The checker names the domain class on a once- and twice-braced unknown value."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports the kernel's and the checker's classes unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Comparison admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Comparison admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-09-02; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

@@ -613,15 +613,14 @@ public final class DslRenderer {
 
     /**
      * The group analog of {@link #indexBody} — {@code Group For key} — for the entity-list / group-list
-     * member form; a group is never itself {@code $}-correlated (see {@link IndexedGroupValue}'s own
-     * javadoc), so only the key side can carry one.
+     * member form. The scope and the key each carry their own {@code $} marker (see {@link IndexedGroupValue}).
      */
     private String groupIndexBody(IndexedGroupValue index) {
         return switch (index) {
             case GroupSemanticIndexValue v ->
-                    path(v.group().renderedPath()) + " " + keyword("SemanticIndex") + " " + quote(v.indexValue());
+                    groupScope(v.group()) + " " + keyword("SemanticIndex") + " " + quote(v.indexValue());
             case GroupSemanticIndexFieldValue v ->
-                    path(v.group().renderedPath()) + " " + keyword("SemanticIndex") + " "
+                    groupScope(v.group()) + " " + keyword("SemanticIndex") + " "
                             + (v.indexField().correlated() ? "$" : "") + path(v.indexField().path().value());
         };
     }

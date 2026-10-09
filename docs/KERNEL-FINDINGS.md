@@ -6746,7 +6746,19 @@ Reported by the portable checker (`CheckFamily.ERROR_FIELD_REFERENCE`), which ad
 
 **Identity is the RESOLVED element and containment is by path STEP.** The two bolded rows at the top run against each other on purpose: comparing authored text misses the relative-beside-absolute pair, and comparing text prefixes refuses the `Garage`/`GarageBay` pair A12 admits. Neither row alone licenses the right implementation.
 
-**A STARRED operand is outside the gate entirely** — `NumberOfFilledGroups(Claims*, Claims*)` names one repeatable group twice and is ADMITTED. This is the same skip the field-list carriers make ([MVK-LEDGER](MVK-LEDGER.md) `MVK_DUPLICATE_PARAM1`), now measured on the group list, and it is the row an implementation comparing every operand gets wrong.
+**A STARRED operand is outside the EXACT test only** — `NumberOfFilledGroups(Claims*, Claims*)` names one repeatable group twice and is ADMITTED. This is the same skip the field-list carriers make ([MVK-LEDGER](MVK-LEDGER.md) `MVK_DUPLICATE_PARAM1`), now measured on the group list, and it is the row an implementation comparing every operand gets wrong.
+
+**Corrected 2026-10-09 — that paragraph said a starred operand is outside the gate "entirely", and both the star and the `$` capture split the two tests** (reconciles a12-kernel-lean `SPEC-2026-10-07-05`). `EntityRef.equals`, which the exact test uses, counts the capture flag, and the nested test (`isEntityIndirectlyReferenced`) compares only path step, semantic index and category. Measured on an order with a repeatable `Lines` holding a `Wrap` subgroup and a plain `Shipping` holding `Address`; the capture rows sit in `Sum(Lines*/Qty Having [Lines/Qty] > 0 And …) > 0` at `/Order`:
+
+| the operand list holds… | verdict |
+|---|---|
+| `Lines*, Lines*/Wrap`, either order | `MVK_DUPLICATE_PARAM2` |
+| `Shipping, $/Order/Shipping` | ADMITTED |
+| `Shipping, $/Order/Shipping/Address`, and `$/Order/Shipping, Shipping/Address` | `MVK_DUPLICATE_PARAM2` |
+| `Shipping, $/Order/Shipping/Carrier` (a captured field) | `MVK_DUPLICATE_PARAM2` |
+| `Shipping, Shipping` / `$/Order/Shipping, $/Order/Shipping` | `MVK_DUPLICATE_PARAM1` both |
+
+The portable checker left starred and captured operands out of both tests and was silent on every nested row; the typed `GroupListRef` left the marker out of its identity and refused the admitted row. A captured index selection is no escape: a filter body takes no semantic index, captured or not (`MVK_SEMANTIC_INDEX_NOT_ALLOWED`), and the typed record now renders the marker it was dropping. *(Locked: `adapter.laws.CheckerOverlapIdentityAgreementTest`, kernel and checker per row; `rulekit.dsl.CapturedGroupListDuplicateTest` for the typed record.)*
 
 **The gate reads ONE CALL's operand list.** A group named once in each of two calls is admitted, so no reading of a condition's flat set of names can decide this law — the argument list has to be recovered per call. That is why the portable checker parses the condition rather than scanning it for names.
 
@@ -7818,7 +7830,20 @@ Reported by the portable checker (`CheckFamily.VALUE_AS_DATE_OPERAND`), which re
 
 The rest of the grid re-states the core on one carrier: identity labels are textless, a shared stored token carrying two texts and a shared display text standing for two tokens are both `MVK_INVALID_COMPARE_ENUM_TO_ENUM`, and both equality spellings behave alike.
 
-Reported by the portable checker (`CheckFamily.ENUM_DISPLAY_COMPARABILITY`), whose silences are A12's own exits: a category access, an operand that is not one bare field, and a table-backed enumeration.
+**Extended 2026-10-09: a BRACE is read three ways, one per gate** (reconciles a12-kernel-lean `SPEC-2026-10-09-02`). Only the text side's immediacy is asked (`isFeldWertOp`); the enumeration side is typed through the brace, and `CheckOpUtils.isConstant` finds a constant inside any number of braces. On a policy with a String `Holder` and the enumerations above:
+
+| comparison | verdict |
+|---|---|
+| `{[Holder]} == [Labelled]`, `[Labelled] == {[Holder]}` | ADMITTED |
+| `[Holder] == {[Labelled]}`, `{[Labelled]} == [Holder]` | `MVK_INVALID_COMPARE_ENUM_TO_STRING` |
+| `[TokenConflict] == {[Labelled]}`, either side braced | `MVK_INVALID_COMPARE_ENUM_TO_ENUM` |
+| `[Plain] == {[Labelled]}` | `MVK_INVALID_COMPARE_ENUM_TO_STRING` |
+| `{"missing"} == [Labelled]`, either side, and `{{"missing"}}` | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` |
+| `{"BASIC"} == [Labelled]` | ADMITTED |
+
+**`FirstFilledValue` over textual fields is a String, even over two enumerations** (`CheckEntityListenUtils.treatEnumAsString`): `FirstFilledValue(Plain, PlainTwin) == "missing"` is admitted, so it meets neither the domain gate nor, as no immediate read, the display gate. The portable checker had read a brace as an untyped computation and was silent on every refused brace row. *(Locked: `adapter.laws.CheckerComparisonOperandShapeAgreementTest`, kernel and checker per row.)*
+
+Reported by the portable checker (`CheckFamily.ENUM_DISPLAY_COMPARABILITY`), whose silences are A12's own exits: a category access, a text partner that is not an immediate field read, and a table-backed enumeration.
 
 *Locked by:* `rulekit.validate.laws.EnumDisplayComparabilityLawsTest` (with `EnumComparabilityLawsTest` for the core), portable assertions preserved by `consistency.OperationContractTest`.
 
@@ -8424,7 +8449,21 @@ The controls are admitted: `Sum(Grading)` and `Sum(NumNested, Weight)` over numb
 
 **Extended 2026-09-24: the three value-list quantifiers and a computation's `FirstFilledValue` ask the plain gate too, after the duplicates (measured; reconciles a12-kernel-lean `SPEC-2026-09-23-01`).** On a second-root model, `AtLeastOneFieldValueIncludedInValueList`, `NoFieldValueIncludedInValueList` and `NotAllFieldValuesIncludedInValueList` over `(/Parcel In "x")` or `(/Parcel, /Depot/Code In "x")` draw `MVK_ROOT_GROUP_REFERENCED`, and over `(/Parcel, /Parcel/Label In "x")` draw `MVK_DUPLICATE_PARAM2`. `FirstFilledValue(…)` as the operation of a computation into a String target draws the same three classes on the same three lists. A group inside the root, alone or beside the other root's field, is admitted on every carrier, so neither the carrier nor the cross-root reference is refused on its own.
 
-Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the carriers the group-list families do not own, the three value-list quantifiers in their written-out spelling only: against a field-read value list the nested duplicate does not span the two halves while the root class does, and the checker reads neither.
+**Extended 2026-10-09: a CATEGORY takes a field out of its group's reference** (reconciles a12-kernel-lean `SPEC-2026-10-08-03`). The nested test compares the category beside the path, so a group beside its own field under a category is no nested duplicate and the carrier's later gates answer. On an order with a repeatable `Lines` (`Tag` carries category `Kind`) and a plain `Shipping` (`Mode` carries `Speed`):
+
+| the list | verdict |
+|---|---|
+| `RepetitionNotUnique(Lines, Lines/Tag -> Kind)`, either order | `MVK_CATEGORY_NOT_ALLOWED` |
+| `RepetitionNotUnique(Lines, Lines/Tag)` | `MVK_DUPLICATE_PARAM2` |
+| `RepetitionNotUnique(Lines/Tag -> Kind, Lines/Tag -> Kind)` | `MVK_DUPLICATE_PARAM1` |
+| `FirstFilledValue(Shipping, Shipping/Mode -> Speed)`, a carrier without a category gate | ADMITTED |
+| `FirstFilledValue(Shipping, Shipping/Mode)` | `MVK_DUPLICATE_PARAM2` |
+| `AtLeastOneFieldValueIncludedInValueList(Shipping, Shipping/Mode -> Speed In Reference)` | `MVK_VARYING_TYPES_NOT_ALLOWED` — the base-type gate is reached |
+| the same with `Shipping/Mode` stored | `MVK_DUPLICATE_PARAM2` |
+
+The portable checker already agreed on every row. *(Locked: `adapter.laws.CheckerOverlapIdentityAgreementTest`.)*
+
+Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the carriers the group-list families do not own; the value-list quantifiers ask both tests at their own positions in each list and across the two, which the value-list family reports ([KF401](#kf401)). *Corrected 2026-10-09:* this said the nested duplicate "does not span the two halves" of a field-read value list. The rows it rested on (`/Parcel In /Parcel/Label` draws the root class) show the ORDER instead — each list's root gate answers before the duplicate across both — and `AtLeastOneFieldValueIncludedInValueList(Broker In Broker/BrokerName)` draws `MVK_DUPLICATE_PARAM2`, which the "does not span" account gets wrong.
 
 *Locked by:* `rulekit.validate.laws.EntityListPreGateLawsTest`, mirrored by `consistency.EntityListPreGatesTest`, and `rulekit.validate.laws.EntityListRootGateCarrierLawsTest` for the value-list and computation carriers.
 

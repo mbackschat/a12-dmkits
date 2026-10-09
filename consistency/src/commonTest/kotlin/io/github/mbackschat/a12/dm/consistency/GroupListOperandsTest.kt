@@ -48,7 +48,10 @@ class GroupListOperandsTest {
                 ]}},
                 {"type":"Group","id":"g6","name":"Claims","Group":{"repeatability":12,
                   "elements":[
-                  {"type":"Field","id":"f6","name":"ClaimAmount","Field":{"fieldType":{"type":"NumberType"}}}
+                  {"type":"Field","id":"f6","name":"ClaimAmount","Field":{"fieldType":{"type":"NumberType"}}},
+                  {"type":"Group","id":"g7","name":"Witness","Group":{"elements":[
+                    {"type":"Field","id":"f7","name":"WitnessName","Field":{"fieldType":{"type":"StringType"}}}
+                  ]}}
                 ]}},
                 {"type":"Rule","id":"r0","name":"Probe","Rule":{
                   "errorCondition":"FieldFilled(PolicyNumber) And ${'$'}CONDITION",
@@ -112,6 +115,30 @@ class GroupListOperandsTest {
         expected["an UNRESOLVABLE operand beside an exact duplicate"] = listOf("MVK_INVALID_ENTITY")
         expected["the same group once in EACH of two calls"] = emptyList()
         assertEquals(expected, actual, "the shapes the group-list operand gates deliberately do not report")
+    }
+
+    /**
+     * A star and a `$` capture each take an operand out of the exact test and leave it in the nested one, as
+     * `adapter.laws.CheckerOverlapIdentityAgreementTest` measures against the kernel (KF325, corrected 2026-10-09).
+     */
+    @Test
+    fun aStarAndACaptureLeaveTheExactTestAndStayInTheNestedOne() {
+        fun filtered(leaf: String) = codes("Sum(Claims*/ClaimAmount Having [Claims/ClaimAmount] > 0 And $leaf) > 0")
+        val actual = linkedMapOf(
+            "a starred group beside its starred subgroup" to codes("NoGroupFilled(Claims*, Claims*/Witness)"),
+            "a group beside its own capture" to filtered("AllGroupsFilled(Coverage, ${'$'}/Policy/Coverage)"),
+            "a group beside its captured subgroup" to filtered("AllGroupsFilled(Coverage, ${'$'}/Policy/Coverage/Vehicle)"),
+            "a captured group beside its subgroup" to filtered("AllGroupsFilled(${'$'}/Policy/Coverage, Coverage/Vehicle)"),
+            "a capture twice" to filtered("AllGroupsFilled(${'$'}/Policy/Coverage, ${'$'}/Policy/Coverage)"),
+        )
+        val expected = linkedMapOf(
+            "a starred group beside its starred subgroup" to listOf(overlap),
+            "a group beside its own capture" to emptyList(),
+            "a group beside its captured subgroup" to listOf(overlap),
+            "a captured group beside its subgroup" to listOf(overlap),
+            "a capture twice" to listOf(exact),
+        )
+        assertEquals(expected, actual, "the star and the capture split the two duplicate tests")
     }
 
     /**

@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 
 /**
  * A group-list quantifier that names the same group twice, or names a group and something under it.
@@ -21,11 +22,17 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
  * `Garage` does not contain `GarageBay`, so comparing text prefixes would refuse a model A12 admits. Both
  * rows are measured.
  *
- * **Three shapes leave it silent, each measured rather than assumed.** A STARRED operand is skipped by the
- * gate — one repeatable group named twice with its wildcard is ADMITTED, so comparing every operand would be
- * an over-rejection. An operand that does not RESOLVE pre-empts the gate, A12 reporting the entity and
- * nothing about the duplicate, so reporting here would name two fixes for one typo. And an operand this
- * reader cannot reduce to one path — a nested call, an expression, a filtered reference — is compared
+ * **The two arms key an operand differently, and both differences are measured.** The exact arm skips a
+ * STARRED operand — one repeatable group named twice with its wildcard is ADMITTED — and counts the `$`
+ * capture marker, so a group beside its own capture repeats nothing. The nested arm does neither: a starred
+ * group contains its starred subgroup, and a group contains its captured descendant in either direction
+ * (`adapter.laws.CheckerOverlapIdentityAgreementTest`; `EntityRef.equals` against
+ * `CheckEntityListenUtils.isEntityIndirectlyReferenced` in Kernel 30.8.1). *Corrected 2026-10-09:* this family
+ * left starred and captured operands out of both arms, and so was silent on both nested rows.
+ *
+ * **Two shapes leave it silent.** An operand that does not RESOLVE pre-empts the gate, A12 reporting the
+ * entity and nothing about the duplicate, so reporting here would name two fixes for one typo. And an operand
+ * this reader cannot reduce to one path — a nested call, an expression, a filtered reference — is compared
  * against nothing.
  *
  * **One more silence, and it is the price of parsing.** A12's duplicate gate runs before BOTH syntax phases:
@@ -115,8 +122,12 @@ private fun TrackedFactBase.operandFinding(
         return null
     }
     val bound = call.operands.map { it to it.resolvedBy(this, declaringGroup, element.origin) }
+    val captures = call.operands.map { it.capturedPath(conditionLanguage) }
+    val captured = call.operands.zip(captures) { operand, path ->
+        operand to path?.let { resolveEntity(declaringGroup, it, element.origin) }
+    }
     // A12 reports the entity and says nothing about the duplicate, so this family has nothing to add.
-    if (bound.any { (operand, reference) -> operand.path != null && reference !is Reference.Resolved }) {
+    if ((bound + captured).any { (operand, reference) -> reference != null && reference !is Reference.Resolved }) {
         return null
     }
     // Every gate below is the operator's own, and A12 asks none of them once reading an operand has failed.
@@ -127,11 +138,18 @@ private fun TrackedFactBase.operandFinding(
     if (call.operator !in spelled(GROUP_LIST_OPERATORS)) {
         return kindFinding(call, resolved, member, element.path)
     }
-    val comparable = bound.mapNotNull { (operand, reference) ->
-        val path = (reference as? Reference.Resolved)?.path
-        // A starred operand is outside the gate — the measured row is `NumberOfFilledGroups(G*, G*)`, which
-        // A12 ADMITS. Comparing it would refuse that model.
-        if (path == null || operand.path?.contains('*') == true) null else path
+    val nested = bound.indices.mapNotNull { i ->
+        ((bound[i].second ?: captured[i].second) as? Reference.Resolved)?.path?.let { path -> path to i }
+    }
+    // A starred operand is outside the exact arm — the measured row is `NumberOfFilledGroups(G*, G*)`, which
+    // A12 ADMITS — and a capture is a different operand from the same path uncaptured.
+    val comparable = nested.mapNotNull { (path, i) ->
+        val capture = captures[i]
+        when {
+            call.operands[i].path?.contains('*') == true || capture?.contains('*') == true -> null
+            capture != null -> "\$$path"
+            else -> path
+        }
     }
     // A keyed operand is its path AND its key (kf439), so the same group under the same key repeats: `Legs For
     // "X"` twice is `MVK_DUPLICATE_PARAM1` (`rulekit.validate.laws.SemanticIndexPinnedLevelLawsTest`). How keyed
@@ -147,7 +165,7 @@ private fun TrackedFactBase.operandFinding(
             call.spanIn(member),
         )
     }
-    overlap(comparable)?.let { (outer, inner) ->
+    overlap(nested.map { it.first })?.let { (outer, inner) ->
         return finding(
             "MVK_DUPLICATE_PARAM2",
             "this $member names `$outer` and `$inner` in one `${call.operator}`, and the second lies under " +

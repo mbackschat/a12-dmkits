@@ -75,8 +75,9 @@ class EntityListRootGateCarrierLawsTest {
      * Where the root sits in the value-list construct's own order. A root holding only a Date draws the root
      * class, while its Date alone draws the slot-kind class, so the root gate answers before the kind gate its
      * content would fail. In the field-read spelling a root on EITHER side draws the root class, and beside
-     * its own field across the {@code In} it still does: the nested-duplicate test, which answers first
-     * within one list, does not span the two.
+     * its own field across the {@code In} it still does: each list's root gate answers before the duplicate test
+     * across both lists, which does span the two ({@code Broker In Broker/BrokerName} is the nested class,
+     * {@code adapter.laws.CheckerListAdmissionOrderAgreementTest}).
      */
     @Test
     void theRootGateAnswersAheadOfTheKindGateAndOnEitherSideOfAFieldReadList() {

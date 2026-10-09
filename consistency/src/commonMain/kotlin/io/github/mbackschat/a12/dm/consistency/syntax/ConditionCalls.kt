@@ -94,6 +94,18 @@ data class CallOperand(
 )
 
 /**
+ * For a bare spec opened by the `$` capture marker, the path it names after the marker, by the same reduction
+ * as [CallOperand.path]; null otherwise. Kept apart from `path` because A12 keys the two duplicate tests
+ * differently on it — `EntityRef.equals` counts the marker, the nested test does not — so a family has to know
+ * it is looking at a capture rather than receive a path that hides one.
+ */
+internal fun CallOperand.capturedPath(language: ConditionLanguage): String? {
+    if (path != null || !clauses.isEmpty()) return null
+    val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
+    return tokens.takeIf { it.firstOrNull()?.text == "$" }?.drop(1)?.asPath(CONDITION_KEYWORDS.getValue(language))
+}
+
+/**
  * One clause hanging off an entity spec: a filter, a scope, or a semantic-index key.
  *
  * **Reading a clause is what lets a family see a shape it would otherwise have to stay silent on.** Until

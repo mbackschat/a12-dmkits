@@ -65,10 +65,16 @@ public record GroupListRef(GroupRef group, List<GroupRef> flattened, boolean cor
      * exempt: repeating a non-repeatable group is {@code MVK_DUPLICATE_PARAM1} on both the aggregate and the
      * group-list carrier (KERNEL-FINDINGS {@code kf439}). Either way the scope still participates in the
      * containment arm, which has no exemption at all.
+     *
+     * <p>The {@code $} marker is part of the identity, as on {@link FieldRef#exactIdentity()}: A12 admits a group
+     * beside its own capture ({@code AllGroupsFilled(Shipping, $/Order/Shipping)}, KERNEL-FINDINGS {@code kf325},
+     * {@code adapter.laws.CheckerOverlapIdentityAgreementTest}). The containment arm ignores the marker, so a
+     * captured descendant is still nested. <i>Corrected 2026-10-09:</i> the identity omitted the marker and
+     * refused that admitted model.
      */
     @Override
     public Optional<String> exactIdentity() {
-        return flattened.isEmpty() ? Optional.of(group.path().value()) : Optional.empty();
+        return flattened.isEmpty() ? Optional.of((correlated ? "$" : "") + group.path().value()) : Optional.empty();
     }
 
     /**
