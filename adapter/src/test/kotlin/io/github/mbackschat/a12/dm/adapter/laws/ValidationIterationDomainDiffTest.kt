@@ -21,8 +21,9 @@ import java.util.Locale
  * instantiated row of ANY group sets at that depth, so a sibling root's rows open coordinates here. Neither mode
  * visits a row past its declared capacity.
  *
- * Three layouts of one order model: `Lines` at capacity 2 (dense), at capacity 6 with a sibling `Archive` root
- * whose `Lines` share the depth (occupied prefixes), and `Lines` × `Parts` at 2 × 2 (dense nested). The rule fires
+ * Four layouts of one order model: `Lines` at capacity 2 (dense), at capacity 6 with a sibling `Archive` root
+ * whose `Lines` share the depth (occupied prefixes), and `Lines` × `Parts` at 2 × 2 (dense nested) and at 3 × 3
+ * (occupied prefixes, nested). The rule fires
  * on an empty note (`Note + "x" == "x"`), so every visited slot that holds no note is observable.
  *
  * Own domain (e-commerce order lines).
@@ -30,13 +31,13 @@ import java.util.Locale
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ValidationIterationDomainDiffTest {
 
-    private fun model(name: String, lineCapacity: Int, nestedParts: Boolean): String {
+    private fun model(name: String, lineCapacity: Int, nestedParts: Boolean, partCapacity: Int = 2): String {
         val draft = DocumentModelDraft.named(name).locale("en_US")
             .rootGroup("Order") { o ->
                 o.stringField("Ref") { }
                 o.group("Lines") { l ->
                     l.repeatable(lineCapacity)
-                    if (nestedParts) l.group("Parts") { p -> p.repeatable(2); p.stringField("Note") { } }
+                    if (nestedParts) l.group("Parts") { p -> p.repeatable(partCapacity); p.stringField("Note") { } }
                     else l.stringField("Note") { }
                 }
             }
@@ -56,6 +57,7 @@ class ValidationIterationDomainDiffTest {
     private val dense = model("order-lines-dense", 2, nestedParts = false)
     private val sparse = model("order-lines-sparse", 6, nestedParts = false)
     private val nested = model("order-lines-nested", 2, nestedParts = true)
+    private val nestedSparse = model("order-lines-nested-sparse", 3, nestedParts = true, partCapacity = 3)
 
     private val documents = linkedMapOf(
         "dense root-only" to (dense to """{"Order":{"Ref":"A1"}}"""),
@@ -67,6 +69,8 @@ class ValidationIterationDomainDiffTest {
         "sparse sibling rows" to (sparse to """{"Order":{"Ref":"A1"},"Archive":{"Ref":"B1","Lines":[{},{},{"Kept":"k"}]}}"""),
         "nested root-only" to (nested to """{"Order":{"Ref":"A1"}}"""),
         "nested one part" to (nested to """{"Order":{"Ref":"A1","Lines":[{"Parts":[{"Note":"n"}]}]}}"""),
+        "nested sparse, one part then three" to (nestedSparse to
+            """{"Order":{"Ref":"A1","Lines":[{"Parts":[{"Note":"n"}]},{"Parts":[{"Note":"n"},{"Note":"n"},{"Note":"n"}]}]}}"""),
     )
 
     private fun kernelSignature(m: IMessage): String =
@@ -89,7 +93,7 @@ class ValidationIterationDomainDiffTest {
 
     @Test
     fun theModelsAreKernelConsistent() {
-        for (model in listOf(dense, sparse, nested)) assertEquals(emptyList<String>(), MessageParameterProbes.kernel(model))
+        for (model in listOf(dense, sparse, nested, nestedSparse)) assertEquals(emptyList<String>(), MessageParameterProbes.kernel(model))
     }
 
     @Test
@@ -106,7 +110,8 @@ class ValidationIterationDomainDiffTest {
      * The visited coordinates, pinned against the normative kernel so the agreement above cannot pass vacuously.
      * Each row rules out a rival domain: physical rows only (root-only and sibling documents fire nowhere), dense
      * above the threshold (the sparse root-only document would fire six times), a per-group occupancy (sibling rows
-     * would open nothing), and a domain past the declared capacity (the over-capacity row would fire).
+     * would open nothing), a domain past the declared capacity (the over-capacity row would fire), and a level-wide
+     * bound, the one a `Having` filter's walk takes (the line holding one part would fire for parts 2 and 3).
      */
     @Test
     fun theVisitedCoordinatesAreTheKernelsOwn() {
@@ -122,6 +127,7 @@ class ValidationIterationDomainDiffTest {
             "nested root-only" to
                 listOf("Lines[1]/Parts[1]/Note", "Lines[1]/Parts[2]/Note", "Lines[2]/Parts[1]/Note", "Lines[2]/Parts[2]/Note"),
             "nested one part" to listOf("Lines[1]/Parts[2]/Note", "Lines[2]/Parts[1]/Note", "Lines[2]/Parts[2]/Note"),
+            "nested sparse, one part then three" to emptyList(),
         ), documents.keys.associateWith(::rows))
     }
 }

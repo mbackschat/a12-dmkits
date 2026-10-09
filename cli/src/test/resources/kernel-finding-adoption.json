@@ -1146,7 +1146,7 @@
       }
     },
     "kf517": {
-      "sha256": "b6c17be6f54c72dda91197528a7879f848f977ed4556426f26634054efb2935d",
+      "sha256": "2e7537e9af959b9574619e08a1ae8d01536ffdf9fc9886994646d8e6f61e841b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -1171,7 +1171,7 @@
           "evidence": {
             "full-validation iteration domain": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ValidationIterationDomainDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
-              "witness": "Eight documents over three layouts compared on the rule's messages; the visited-coordinates test pins every document against dynamic Groovy."
+              "witness": "Nine documents over four layouts compared on the rule's messages; the visited-coordinates test pins every document against dynamic Groovy."
             }
           }
         },
@@ -1186,7 +1186,7 @@
           "evidence": {
             "full-validation iteration domain": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ValidationIterationDomainDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
-              "witness": "Eight documents over three layouts compared on the rule's messages; the visited-coordinates test pins every document against dynamic Groovy."
+              "witness": "Nine documents over four layouts compared on the rule's messages; the visited-coordinates test pins every document against dynamic Groovy."
             }
           }
         },
@@ -6111,7 +6111,7 @@
       }
     },
     "kf528": {
-      "sha256": "14d454fb21fbedb5f8b320b2d45de527c0bcdbb236a807c8740c289ee600c990",
+      "sha256": "2adaad8021aac4f9540d0e0c514e280731b54b8acf7202a5f800e8623ef9a0ab",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
