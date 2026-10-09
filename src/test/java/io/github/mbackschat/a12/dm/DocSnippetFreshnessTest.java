@@ -139,6 +139,7 @@ class DocSnippetFreshnessTest {
             new Lock("enum-value-list-union", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("enum-concatenation", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("selected-concatenation", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("selected-flag", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("keyed-temporal-operand", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("group-count-quantifiers", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WildcardGroupFillQuantifierReadTest.java"),

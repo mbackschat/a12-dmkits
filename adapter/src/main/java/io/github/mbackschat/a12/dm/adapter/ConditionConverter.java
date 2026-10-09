@@ -67,6 +67,7 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BaseYear;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoolExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp;
@@ -1339,6 +1340,8 @@ final class ConditionConverter {
                 case DATE_RANGE -> dateRangeComparison(
                         new DateRangeIndexedValue(semanticIndex(field.getField(), origin).index()), op,
                         convertDateRangeOperand(other, origin), origin);
+                case BOOLEAN -> booleanExprComparison(new BoolExpr(semantic), op, other, origin);
+                case CONFIRM -> confirmComparison(new ConfirmExpr(semantic), op, other, origin);
                 default -> throw unsupported("semantic index ([field For …]) on a " + kind + " field", origin);
             };
         }
@@ -1359,7 +1362,8 @@ final class ConditionConverter {
             case DATE_TIME -> dateTimeComparison(leftOuter ? model.dateTime(path).outer() : model.dateTime(path), op, other, origin);
             case BOOLEAN -> booleanComparison(leftOuter ? model.bool(path).outer() : model.bool(path),
                     op, other, origin);
-            case CONFIRM -> confirmComparison(leftOuter ? model.confirm(path).outer() : model.confirm(path),
+            case CONFIRM -> confirmComparison(
+                    new ConfirmExpr((leftOuter ? model.confirm(path).outer() : model.confirm(path)).field().value()),
                     op, other, origin);
             // a custom-typed field's value is text — the kernel compares it as a string (m.custom → StringRef)
             case CUSTOM -> stringComparison(leftOuter ? model.custom(path).outer() : model.custom(path), op, other, origin);
@@ -2399,11 +2403,11 @@ final class ConditionConverter {
     }
 
     /**
-     * {@code [confirm] == True} / {@code != True} → {@link io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef}.
+     * {@code [confirm] == True} / {@code != True}, the confirm read plain or key-selected, as a {@link ConfirmExpr}.
      * A confirm compares only to {@code True} (kernel rejects {@code == False}); the literal is asserted.
      */
-    private Condition confirmComparison(io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef left,
-            ComparisonOperation op, IOperation right, ICondition origin) {
+    private Condition confirmComparison(ConfirmExpr left, ComparisonOperation op, IOperation right,
+            ICondition origin) {
         if (!booleanConstant(right, origin)) {
             throw unsupported("confirm comparison to False (kernel allows only True)", origin);
         }

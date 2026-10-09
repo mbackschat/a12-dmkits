@@ -1557,6 +1557,15 @@ StringExpr speed = m.enumOf("/Order/Priority").category("SpeedClass").plus("-")
 Condition staleName = m.str("/Order/CustomerName").ne(speed);
 ```
 
+**A key-selected Boolean or confirm cell compares through `BoolRef.forIndex` and `ConfirmRef.forIndex`.** The Boolean cell's `BoolExpr` takes `True` and `False` in both directions, as a Boolean field does; the confirm cell's `ConfirmExpr` has only `confirmed()` and `notConfirmed()`, since A12 refuses a confirm compared with `False`:
+
+<!-- snippet: selected-flag -->
+```java
+// A key-selected Boolean cell compares with True or False like a Boolean field; a confirm cell's
+// ConfirmExpr, like ConfirmRef, offers only the True comparisons.
+Condition featured = promo.bool("/Shop/Runs/Featured").forIndex(promo.field("/Shop/Season")).isTrue();
+```
+
 **Every held field, group, rule, and computation editor carries the same element-metadata contract.** Their shared `ElementMetadataEditor` base exposes annotation set/remove plus internal- and external-description set/remove, so a caller that has already selected `/Permit/CalculateFee` never drops back to the flat session or repeats that path just to describe it:
 
 <!-- teaser -->

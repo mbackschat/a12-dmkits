@@ -41,6 +41,8 @@ class SemanticIndexKindDiffTest {
                         .timeField("StartTime", Consumer { it.format("HH:mm:ss") })
                         .dateTimeField("StartedAt", Consumer { it.format("yyyy-MM-dd'T'HH:mm:ss") })
                         .dateRangeField("CoverageWindow", Consumer { it.format("yyyy-MM-dd").separator("/") })
+                        .booleanField("Renewable", Consumer { })
+                        .confirmField("Signed", Consumer { })
                 })
         }).build().toJson()
     private val m = BoundModel.ofJson(base)
@@ -82,6 +84,10 @@ class SemanticIndexKindDiffTest {
                 m.dateRange(COVERAGE_WINDOW).forIndex(KEY).eq(m.dateRange(EXPECTED_WINDOW))),
                 COVERAGE_WINDOW, "2024-06-01/2024-06-30", EXPECTED_WINDOW, "2024-06-01/2024-06-30",
                 COVERAGE_WINDOW, "2024-07-01/2024-07-31"),
+            Case("boolean", "bool", guard.and(m.bool(RENEWABLE).forIndex(KEY).isTrue()),
+                RENEWABLE, "true", null, null, RENEWABLE, "false"),
+            Case("confirm", "confirm", guard.and(m.confirm(SIGNED).forIndex(KEY).confirmed()),
+                SIGNED, "true", null, null, SIGNED, "false"),
         )
 
         val publishedEntryPoints = BoundModel::class.java.methods
@@ -172,6 +178,8 @@ class SemanticIndexKindDiffTest {
         const val EXPECTED_TIME = "/Policy/ExpectedTime"
         const val EXPECTED_DATE_TIME = "/Policy/ExpectedDateTime"
         const val EXPECTED_WINDOW = "/Policy/ExpectedWindow"
+        const val RENEWABLE = "/Policy/Coverages/Renewable"
+        const val SIGNED = "/Policy/Coverages/Signed"
         const val CODE = "/Policy/Coverages/Code"
         const val LIMIT = "/Policy/Coverages/Limit"
         const val TIER = "/Policy/Coverages/Tier"

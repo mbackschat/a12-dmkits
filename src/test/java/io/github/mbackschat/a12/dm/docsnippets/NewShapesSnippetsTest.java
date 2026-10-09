@@ -64,7 +64,8 @@ class NewShapesSnippetsTest {
                                     d -> d.format("yyyy-MM-dd").datePrecision(DatePrecision.MONTH_OPTIONAL))
                             .stringField("StartDay", t -> t.maxLength(2).pattern("[0-9]+", "Digits only."))
                             .enumField("Channel", e -> e.value("WEB", l -> l.label("en_US", "Online"))
-                                    .value("STORE", l -> l.label("en_US", "In store")))))
+                                    .value("STORE", l -> l.label("en_US", "In store")))
+                            .booleanField("Featured", b -> { })))
             .build().toJson();
     private static final BoundModel promo = BoundModel.ofJson(PROMO_JSON);
     private static final String FULFILMENT_JSON = DocumentModelDraft.named("fulfilment").locale("en_US")
@@ -481,6 +482,17 @@ class NewShapesSnippetsTest {
                 new DslRenderer().render(staleName));
         assertKernelAccepts(PROMO_JSON, "/Shop", staleBanner, "../Banner");
         assertKernelAccepts(staleName, "../CustomerName");
+    }
+
+    @Test
+    void selectedFlagSnippet() {
+        // tag::selected-flag[]
+        // A key-selected Boolean cell compares with True or False like a Boolean field; a confirm cell's
+        // ConfirmExpr, like ConfirmRef, offers only the True comparisons.
+        Condition featured = promo.bool("/Shop/Runs/Featured").forIndex(promo.field("/Shop/Season")).isTrue();
+        // end::selected-flag[]
+        assertEquals("[/Shop/Runs/Featured For /Shop/Season] == True", new DslRenderer().render(featured));
+        assertKernelAccepts(PROMO_JSON, "/Shop", featured, "../Season");
     }
 
     @Test

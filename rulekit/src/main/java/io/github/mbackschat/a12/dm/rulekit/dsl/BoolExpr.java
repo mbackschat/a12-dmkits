@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
-/** A computed yes/no value, currently produced by {@link Dsl#firstFilledBoolean}. */
+/** A computed yes/no value: a {@link Dsl#firstFilledBoolean first filled value} or a {@link BoolRef#forIndex key-selected cell}. */
 public record BoolExpr(Calculation expression) {
 
     public BoolExpr {

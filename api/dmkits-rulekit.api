@@ -580,6 +580,8 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef
   public final boolean equals(java.lang.Object)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoolExpr forIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoolExpr forIndex(java.lang.String)
   public final int hashCode()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isFalse()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNotFalse()
@@ -893,12 +895,23 @@ public static enum io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.R
   public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode[] values()
 
+public record io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmExpr
+  public ConfirmExpr(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition confirmed()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notConfirmed()
+  public final java.lang.String toString()
+
 public record io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef
   public ConfirmRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition confirmed()
   public final boolean equals(java.lang.Object)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmExpr forIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmExpr forIndex(java.lang.String)
   public final int hashCode()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notConfirmed()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()

@@ -27,6 +27,16 @@ public record BoolRef(FieldRef field) {
         return new BoolRef(field.outer());
     }
 
+    /** {@code [field For "indexValue"]} — this Boolean field's value in the repetition its index selects. catalog:SemanticIndex */
+    public BoolExpr forIndex(String indexValue) {
+        return new BoolExpr(new SemanticIndexValue(field, indexValue));
+    }
+
+    /** {@code [field For keyField]} — the field-keyed peer of {@link #forIndex(String)}. */
+    public BoolExpr forIndex(FieldRef keyField) {
+        return new BoolExpr(new SemanticIndexFieldValue(field, keyField));
+    }
+
     public Condition filled() {
         return field.filled();
     }

@@ -19,6 +19,16 @@ public record ConfirmRef(FieldRef field) {
         return new ConfirmRef(field.outer());
     }
 
+    /** {@code [field For "indexValue"]} — this confirm field's value in the repetition its index selects. catalog:SemanticIndex */
+    public ConfirmExpr forIndex(String indexValue) {
+        return new ConfirmExpr(new SemanticIndexValue(field, indexValue));
+    }
+
+    /** {@code [field For keyField]} — the field-keyed peer of {@link #forIndex(String)}. */
+    public ConfirmExpr forIndex(FieldRef keyField) {
+        return new ConfirmExpr(new SemanticIndexFieldValue(field, keyField));
+    }
+
     public Condition filled() {
         return field.filled();
     }
