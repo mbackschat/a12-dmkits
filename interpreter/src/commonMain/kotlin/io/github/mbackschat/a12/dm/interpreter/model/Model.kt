@@ -566,11 +566,31 @@ data class ModelDef(
      *  the transport's read normalization must skip exactly these ([FieldDef.leadingZerosAllowed]). */
     val leadingZeroNumbers: Set<String> = fields.filter { it.leadingZerosAllowed }.map { it.path }.toSet()
 
-    /** Each [Kind.DATE_RANGE] field's `(format, rangeSeparator)` — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s
-     *  format-aware range parsing input. */
-    val rangeConfig: Map<String, Pair<String, String>> = fields
+    /** Each [Kind.DATE_RANGE] field's DECLARED `(format, rangeSeparator)`, which only document ingestion reads: A12
+     *  converts an authored value under it before any runtime format applies (`FieldValueConverter.parseDateRange`). */
+    val declaredRangeConfig: Map<String, Pair<String, String>> = fields
         .filter { it.kind == Kind.DATE_RANGE && it.format != null && it.rangeSeparator != null }
         .associate { it.path to (it.format!! to it.rangeSeparator!!) }
+
+    /**
+     * Each [Kind.DATE_RANGE] field's RUNTIME `(format, rangeSeparator)` — what rendering, formal checks and endpoint
+     * completion use. A standard field keeps its own. An interpreted field takes the declaration of the FIRST field
+     * sharing its year interpretation and pre-1900 check, whatever that field's format: A12's generated runtime keys
+     * every interpreted declaration of one direction to one shared format and keeps the first definition per key
+     * (`IDateRangeType.getFormatOfDateRange`, `CodeGenDateRangeTypeImpl.equals`, `MetaGemeinsameFormate`, source-read;
+     * the behaviour is KERNEL-FINDINGS KF540).
+     */
+    val rangeConfig: Map<String, Pair<String, String>> = run {
+        val firstOfClass = HashMap<Pair<RangeYearInterpretation, Boolean>, Pair<String, String>>()
+        fields.filter { it.path in declaredRangeConfig }.associate { field ->
+            val declared = declaredRangeConfig.getValue(field.path)
+            field.path to when (field.rangeYearInterpretation) {
+                RangeYearInterpretation.STANDARD -> declared
+                RangeYearInterpretation.FROM, RangeYearInterpretation.TO ->
+                    firstOfClass.getOrPut(field.rangeYearInterpretation to field.rejectBefore1900) { declared }
+            }
+        }
+    }
 
     /** Each [Kind.DATE] field's rendering format (its [FieldDef.format] or the ISO default) — the
      *  [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s format-aware date-canonicalization input, and

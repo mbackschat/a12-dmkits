@@ -1665,11 +1665,23 @@ private fun Interpreter.evalTemporal(e: Expr): Evaluated<TemporalValue> {
             FunctionOp.ADD_DAYS, FunctionOp.ADD_MONTHS, FunctionOp.ADD_YEARS,
             FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> shiftTemporal(e)
             FunctionOp.MIN, FunctionOp.MAX -> aggregateTemporal(e)
+            FunctionOp.START_OF_DATE_RANGE, FunctionOp.END_OF_DATE_RANGE -> rangeBoundTemporal(e)
             else -> temporalLeaf(e)
         }
     }
     return temporalLeaf(e)
 }
+
+/**
+ * A range endpoint as a temporal operand. Without a value it carries its RANGE's reason, so an empty range gives an
+ * empty endpoint — which an extractor reads as the fillable 0, exactly as for an empty date — and a malformed one a
+ * non-relevant endpoint (KERNEL-FINDINGS KF540's empty rows, both strategies).
+ */
+private fun Interpreter.rangeBoundTemporal(e: Expr.Func): Evaluated<TemporalValue> =
+    when (val bound = temporalLeaf(e)) {
+        is Evaluated.Present -> bound
+        is Evaluated.NoValue -> temporalLeaf(e.args.single()) as? Evaluated.NoValue ?: bound
+    }
 
 private fun Interpreter.evaluateDateConstruction(args: List<Expr>): Evaluated<TemporalValue> {
     val analysis = analyzeDate(args)

@@ -3743,7 +3743,7 @@ The peer observation is real for its model, but its proposed field-local clauses
 
 The source mechanism predicts the separator. `IDateRangeType.getFormatOfDateRange` maps every nonstandard declaration of one direction to a canonical `dd.MM-dd.MM (…)` shared-format key, regardless of that field's declared date format and separator. `MetaGemeinsameFormate` uses a `LinkedHashMap.computeIfAbsent`, while `CodeGenDateRangeTypeImpl` retains the first equal definition's actual `dateFormat` and separator for the emitted runtime format. A dotted field first therefore lends `dd.MM` plus `-` to later equal definitions; an `MM` field first lends `MM` plus `/`. The order-only runtime control is the discriminating case that the field-local account predicts incorrectly.
 
-The independent interpreter stays declaration-local and therefore produces the month-first result under both declaration orders. Encoding the peer clause would replace one measured divergence with an incorrect universal rule. The unresolved conformance work is tracked as [IG141](INTERPRETER-GAPS.md); this reconciliation does not widen it without the full shared-format denominator.
+*Corrected 2026-10-09: the interpreter now shares the format and follows the order ([KF540](#kf540)).* The independent interpreter stays declaration-local and therefore produces the month-first result under both declaration orders. Encoding the peer clause would replace one measured divergence with an incorrect universal rule. The unresolved conformance work is tracked as [IG141](INTERPRETER-GAPS.md); this reconciliation does not widen it without the full shared-format denominator.
 
 *(Locked: `adapter.laws.DateRangeSharedFormatOrderDiffTest` on both kernel strategies and the independent interpreter, with the exact wrap validity and ordered computation outputs.)*
 
@@ -13001,3 +13001,29 @@ The [KF537](#kf537) carrier, with every rule in `Shipment/Lines` joined to `Pick
 | `FieldFilled(OrderedQty)`, no join (the control) | `Lines/OrderedQty` | — |
 
 So under a parallel iteration a referenced field in a joined group comes with that group's index field, in both lists, and on an unmatched key the index field carries the `-5` sentinel as its field does. The control is a rule over the same index-keyed group without the join, and it references no index field, so the join causes it, not the index declaration. Every row holds identically on dynamic Groovy and static Java. Measured only for fields that sit directly in the joined groups. *(Locked: `adapter.laws.ParallelGuardConnectiveDiffTest`.)*
+
+## §6 supplement — an interpreted DateRange is converted under its declared format and read under the format its class shares; a dependent reads a computed date or range as its target stores it (both strategies, 2026-10-09) <a id="kf540"></a>
+
+> Fold: pending — completes [KF210](#kf210)'s order control into §6's DateRange account; a12-kernel-lean `SPEC-2026-10-09-12`.
+
+`DateRangeSharedRuntimeDiffTest` declares all eight admitted format/separator pairs under FROM and under TO, a month FROM/TO pair with the pre-1900 check, and a standard month control, each feeding its start year, end year and end day. Three declaration orders (dotted pair first, month pair first, month TO before dotted FROM) each run without and with Base Year 2024, over ordered, wrapping, empty and malformed documents; two interpreted targets, each declared like its sources but in the other interpretation, copy across. Dynamic Groovy, static Java and the interpreter agree on every channel of all 24 model/document pairs. Selected rows (dynamic Groovy):
+
+| model | read | value |
+|---|---|---|
+| dotted first | end day of a month-only `03/10` | 1 |
+| dotted first | end day / end year of a full Date ending 31.10.2024 | 31 / 2000 |
+| dotted first, Base Year 2024 | that end year | 2024 |
+| dotted first, Base Year 2024 | a wrapping FROM pair's end year; a wrapping TO pair's start year | 2025; 2023 |
+| dotted first | end day of a year-only `2023/2024` | 1 |
+| dotted first | end day of the pre-1900-checked month pair | 31 |
+| month first | end day of a dotted `01.03-31.10`; of `2023/2024` | 31; 31 |
+| month first | a wrapping dotted source, FROM and TO | `datumBereichNichtGueltig` |
+| month TO first | a dotted FROM copy into a dotted TO target; a month TO copy into a month FROM target | `03/10`; `01.03-31.10` |
+| dotted first | `bad` in the compact-month field (declared separator empty) | `datumBereichTrennerFehlt` |
+| any | start year, end year, end day of an empty source | 0, with the self-validation `OMISSION_ERROR` |
+
+So every interpreted declaration of one direction and one pre-1900 flag shares the format and separator of the first such declaration; a standard declaration keeps its own. An authored value is first converted under its own declared format, a missing month or day defaulting to 1 at both ends, and is then rendered, checked and completed under the shared one: a shared yearless format drops a declared year to the anchor (2000, or the Base Year), and a shared month format completes the end to its month's last day. Text the declared format cannot convert meets the shared format's checks as authored. An empty range's endpoints read as an empty date, so an extractor gives the fillable 0. A copy's target is admitted only from a fitting component class (`MVK_INVALID_COMPARE_TO_DATE_RANGE` otherwise), and the copy renders under the target's shared format.
+
+**A dependent reads a computed target as the target stores it.** In the dotted-first model a wrapping FROM range copied into a TO target reads start year 1999 and end year 2000, the TO anchoring of the stored text, not the copied FROM years. The DATE sibling behaves the same (`ComputedDateStoredReadDiffTest`): with Base Year 2024, `31.12.` plus one day in a `dd.MM.` target stores `01.01.`, and a dependent `YearFromDate` reads 2024, not 2025. A full Date cannot be computed into a yearless DATE target at all (`MVK_INVALID_COMPARE_TO_DATE`), and without a Base Year `YearFromDate` over a yearless date is `MVK_WRONG_DATE_FORMAT_FOR_OP`.
+
+The source mechanism — `IDateRangeType.getFormatOfDateRange`'s per-direction key, `CodeGenDateRangeTypeImpl.equals` adding the pre-1900 flag, `MetaGemeinsameFormate` keeping the first definition, `FieldValueConverter.parseDateRange` converting under the declared format — is source-read; the rows settle the behaviour. Measured only with dotted and month first profiles, UTC, direct non-repeatable fields, and no pre-1900 values. *(Locked: `adapter.laws.DateRangeSharedRuntimeDiffTest`, `adapter.laws.DateRangeSharedFormatOrderDiffTest`, `adapter.laws.ComputedDateStoredReadDiffTest`.)*

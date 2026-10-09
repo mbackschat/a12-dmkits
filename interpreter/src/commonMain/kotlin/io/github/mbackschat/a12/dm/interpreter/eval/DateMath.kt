@@ -488,6 +488,9 @@ private fun iso(y: Int, m: Int, d: Int): String =
  * month's LAST day (the latest date); a missing year is [baseYear] on both. So `2024/2025` (format `yyyy`) →
  * `2024-01-01 .. 2025-12-31` — the widest interval the endpoints denote. A full-format range (`dd.MM.yyyy`,
  * every component present) completes to itself on both sides, so this is a no-op there.
+ *
+ * [completeEndToLastDay] `false` completes the END like the start instead — A12's document conversion, which builds
+ * both endpoints with a missing month or day of 1 before any runtime completion applies (KERNEL-FINDINGS KF540).
  */
 fun parseRangeToIso(
     raw: String,
@@ -495,6 +498,7 @@ fun parseRangeToIso(
     sep: String,
     baseYear: Int = 2000,
     yearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
+    completeEndToLastDay: Boolean = true,
 ): Pair<String, String>? {
     val (frag, comps) = dateFragment(format) ?: return null
     val m = Regex("^$frag${Regex.escape(sep)}$frag$").matchEntire(raw) ?: return null
@@ -515,7 +519,7 @@ fun parseRangeToIso(
         }
     }
     val start = buildRangeEndpoint(startValues, comps, startYear, end = false) ?: return null
-    val end = buildRangeEndpoint(endValues, comps, endYear, end = true) ?: return null
+    val end = buildRangeEndpoint(endValues, comps, endYear, end = completeEndToLastDay) ?: return null
     return start to end
 }
 

@@ -4,6 +4,8 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.DecimalObjectIdentity
 import io.github.mbackschat.a12.dm.interpreter.eval.DocumentPlacementRecord
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.eval.parseRangeToIso
+import io.github.mbackschat.a12.dm.interpreter.eval.renderDateToFormat
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -230,7 +232,8 @@ internal object A12DocumentJson {
      * - **BOOLEAN** — `"true".equalsIgnoreCase` / `"false".equalsIgnoreCase` → the canonical token; **CONFIRM**
      *   accepts only `true` (it has no false, so even a native JSON `false` is a pass-through).
      * - **the DATE family** — nothing to do: `SimpleDateFormat` is non-lenient, so every non-canonical spelling
-     *   *fails* conversion and is kept verbatim, and every spelling that parses already IS the model format.
+     *   *fails* conversion and is kept verbatim, and every spelling that parses already IS the model format —
+     *   except a DATE_RANGE read under a format shared from another declaration ([runtimeRangeText]).
      * - **STRING / Enumeration** — never normalized; A12's converter succeeds with the text itself.
      * - **`""` on any TYPED kind** is `ConversionResult.success(null)` — the empty cell, written back as `null`.
      *   A STRING keeps its `""`.
@@ -262,8 +265,28 @@ internal object A12DocumentJson {
             raw.equals(TRUE_LITERAL, ignoreCase = true) -> CellText(TRUE_LITERAL)
             else -> CellText(raw)
         }
-        Kind.DATE, Kind.DATE_TIME, Kind.TIME, Kind.DATE_RANGE -> CellText(raw.ifEmpty { null })
+        Kind.DATE, Kind.DATE_TIME, Kind.TIME -> CellText(raw.ifEmpty { null })
+        Kind.DATE_RANGE -> if (raw.isEmpty()) CellText.EMPTY else CellText(runtimeRangeText(path, raw), raw)
         Kind.STRING, null -> CellText(raw)
+    }
+
+    /**
+     * The text a DATE_RANGE value is evaluated as. A12 converts the authored text under the field's DECLARED format
+     * into two dates — a missing month or day defaulting to 1 at both ends — and every later reading renders those
+     * dates under the RUNTIME format the field may share with others ([ModelDef.rangeConfig]), so a shared yearless
+     * format drops a declared year and a shared month format a declared day. Text the declared format cannot convert
+     * stays as authored and meets the runtime format's own checks (KERNEL-FINDINGS KF540). The stored text is
+     * unchanged.
+     */
+    private fun ModelDef.runtimeRangeText(path: String, raw: String): String {
+        val declared = declaredRangeConfig[path] ?: return raw
+        val runtime = rangeConfig.getValue(path)
+        if (declared == runtime) return raw
+        val (start, end) = parseRangeToIso(raw, declared.first, declared.second, baseYear ?: 2000,
+            rangeYearInterpretationOf(path), completeEndToLastDay = false) ?: return raw
+        val renderedStart = renderDateToFormat(start, runtime.first) ?: return raw
+        val renderedEnd = renderDateToFormat(end, runtime.first) ?: return raw
+        return renderedStart + runtime.second + renderedEnd
     }
 
     /**

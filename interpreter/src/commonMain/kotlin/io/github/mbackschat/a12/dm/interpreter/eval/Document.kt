@@ -1864,6 +1864,10 @@ class Document(internal val config: DocumentConfig) {
     private fun yearInterpretationOf(path: String): RangeYearInterpretation =
         rangeYearInterpretations[path] ?: RangeYearInterpretation.STANDARD
 
+    /** [raw] read as this document would read it stored at [path] — the reader a computed target's dependents use
+     *  (KERNEL-FINDINGS KF540). */
+    internal fun storedValueOf(path: String, raw: String): Val = resolveValue(path, raw)
+
     /**
      * A present raw value → typed [Val], format-aware. A [Kind.DATE_RANGE] value is parsed to a [Val.Range] of
      * ISO dates via its field's `(format, separator)` ([rangeConfig]); a [Kind.DATE] value is canonicalized to

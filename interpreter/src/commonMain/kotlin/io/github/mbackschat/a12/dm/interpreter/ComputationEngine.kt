@@ -307,7 +307,10 @@ internal class ComputationEngine(
                             } else {
                                 when (c.outcome) {
                                     ComputeOutcome.ERRORED -> { cascade.poison(targetKey.first, targetKey.second); decided += targetKey }
-                                    ComputeOutcome.VALUE -> { cascade.overlay(targetKey.first, targetKey.second, v); decided += targetKey }
+                                    ComputeOutcome.VALUE -> {
+                                        cascade.overlay(targetKey.first, targetKey.second, storedReading(v, c, doc))
+                                        decided += targetKey
+                                    }
                                     ComputeOutcome.CLEARED -> {
                                         cascade.clear(targetKey.first, targetKey.second)
                                         if (selection.selected) decided += targetKey
@@ -593,6 +596,21 @@ internal class ComputationEngine(
      */
     private fun dependencyClosureOf(fieldPath: String): List<ComputationDef> =
         plans.computationClosure(fieldPath)
+
+    /**
+     * What a dependent reads from a computed target: a date or a range as the target reads its own stored rendering,
+     * so a yearless rendering is re-anchored and a range re-read under the target's runtime format and year
+     * interpretation — a FROM range copied into a TO target reads as TO, a yearless `31.12.` + 1 day reads `01.01.` of
+     * the anchor year (KERNEL-FINDINGS KF540). A number keeps its own stored-form path (IF90); every other kind
+     * renders as computed, so it reads as computed.
+     */
+    private fun storedReading(v: Val, computed: Computed, doc: Document): Val {
+        val rendered = computed.value ?: return v
+        return when (model.kinds[computed.path]) {
+            Kind.DATE, Kind.DATE_RANGE -> doc.storedValueOf(computed.path, rendered)
+            else -> v
+        }
+    }
 
     /** Render a computed [Val.Range] to the target field's `(format, separator)` (e.g. `01.06.2024-30.06.2024`);
      *  ISO `start/end` fallback when the target declares no range config or an endpoint is malformed. */

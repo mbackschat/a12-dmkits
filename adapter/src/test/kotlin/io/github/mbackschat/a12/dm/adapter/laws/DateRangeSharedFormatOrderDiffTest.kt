@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Test
  * The source discriminator is the shared-format key: `IDateRangeType.getFormatOfDateRange` canonicalizes every
  * nonstandard declaration of one direction to a `dd.MM-dd.MM (...)` key, while `CodeGenDateRangeTypeImpl`
  * retains the first declaration's actual date format and separator. `MetaGemeinsameFormate` keeps that first
- * equal definition. The interpreter deliberately keeps declaration-local formats until that separate kernel
- * defect has a sound, fully measured contract.
+ * equal definition. The interpreter shares the format the same way since the full matrix was measured
+ * ([DateRangeSharedRuntimeDiffTest], KERNEL-FINDINGS KF540), so it follows the declaration order too.
  *
  * The two models use distinct header ids only to isolate generated-engine caches. That id does not enter the
  * discriminator: `MetaGemeinsameFormate` constructs its map exclusively from the enumerated field definitions.
@@ -61,11 +61,11 @@ class DateRangeSharedFormatOrderDiffTest {
             "the MM-first control keeps the target's declared spelling",
         )
 
-        assertEquals(listOf("datumBereichNichtGueltig"),
-            interpreterObservation(dottedFirst, wrapping, WRAPPED_TARGET).validation)
+        assertEquals(Observation(emptyList(), "VALUE|01.11-01.02"),
+            interpreterObservation(dottedFirst, wrapping, WRAPPED_TARGET))
         assertEquals(listOf("datumBereichNichtGueltig"),
             interpreterObservation(monthFirst, wrapping, WRAPPED_TARGET).validation)
-        assertEquals("VALUE|03/10", interpreterObservation(dottedFirst, ordered, ORDERED_TARGET).computation)
+        assertEquals("VALUE|01.03-31.10", interpreterObservation(dottedFirst, ordered, ORDERED_TARGET).computation)
         assertEquals("VALUE|03/10", interpreterObservation(monthFirst, ordered, ORDERED_TARGET).computation)
     }
 

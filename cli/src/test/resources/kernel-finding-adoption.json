@@ -7887,6 +7887,158 @@
           "evidence": {}
         }
       }
+    },
+    "kf540": {
+      "sha256": "4dfb68e8ba9f329579321289033489aa08b8972f05b66936a9d17e7960374c40",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "shared DateRange runtime format",
+          "computed target stored read"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "shared DateRange runtime format",
+          "computed target stored read"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "shared DateRange runtime format"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured on six models over four documents, and on the yearless DATE sibling.",
+          "evidence": {
+            "shared DateRange runtime format": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateRangeSharedRuntimeDiffTest.kt#theSharedFormatDecidesTheReadsTheMatrixPredicts",
+              "witness": "Every admitted pair under FROM and TO, a pre-1900-checked pair, three declaration orders, without and with Base Year 2024."
+            },
+            "computed target stored read": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedDateStoredReadDiffTest.kt#theDependentReadsTheStoredReminder",
+              "witness": "A yearless 31.12. plus one day stores 01.01. and a dependent reads the Base Year."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the locks author every declaration and computation through it.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "rangeConfig holds the shared runtime format, ingestion converts under the declared one, an empty range's endpoint is empty, and a dependent reads a computed date or range through the stored reader.",
+          "evidence": {
+            "shared DateRange runtime format": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateRangeSharedRuntimeDiffTest.kt#allThreeEnginesAgreeOnEveryModelAndDocument",
+              "witness": "All three engines agree on every channel of the 24 model and document pairs."
+            },
+            "computed target stored read": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedDateStoredReadDiffTest.kt#allThreeEnginesAgree",
+              "witness": "All three engines agree on the dependent year."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime behaviour does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime behaviour does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the handback answering SPEC-2026-10-09-12; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf210": {
+      "sha256": "88fa872dc6646880c626a27b6206b70f0843bc4886e9d44d4f6af716fcae1733",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "declaration-order control"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "declaration-order control"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Both kernel strategies were already measured under both declaration orders.",
+          "evidence": {
+            "declaration-order control": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateRangeSharedFormatOrderDiffTest.kt#declarationOrderSeparatesTheLedgerObservationFromFieldLocalSemantics",
+              "witness": "The wrapping month source and the ordered standard copy under dotted-first and month-first orders."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter now shares the runtime format and follows the declaration order (KF540).",
+          "evidence": {
+            "declaration-order control": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateRangeSharedFormatOrderDiffTest.kt#declarationOrderSeparatesTheLedgerObservationFromFieldLocalSemantics",
+              "witness": "The interpreter matches both kernel strategies under both orders."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime behaviour does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime behaviour does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The peer superseded SPEC-2026-08-24-02 on this order control; the shared-format contract it led to is SPEC-2026-10-09-12, reviewed under KF540.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

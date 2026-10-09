@@ -3864,7 +3864,7 @@ The model behind a12-kernel-lean `SPEC-2026-08-24-02` really produces dotted, wr
 
 The cause is the kernel's shared codegen format key, not `FirstFilledValue` selection or target rendering. Nonstandard DateRange declarations of one direction collapse to a canonical `dd.MM-dd.MM (…)` key, and the first equal definition supplies the actual date format and separator used by the shared runtime format. The peer model's leading dotted declarations therefore lend their carrier to later month declarations. Moving the month declarations first changes both formal validity and computation presentation.
 
-This is a known divergence, not a completed fix. The entry as written is superseded because its field-local contract is false, and adopting it would make the month-first control wrong. The broader first-wins conformance problem has a changed acceptance denominator and is tracked as [IG141](INTERPRETER-GAPS.md); it needs the shared-format equivalence classes and every consumer measured before implementation.
+*Corrected 2026-10-09: the divergence is fixed — the interpreter now shares the runtime format as A12 does ([IF381](#if381)), and IG141 is closed.* This is a known divergence, not a completed fix. The entry as written is superseded because its field-local contract is false, and adopting it would make the month-first control wrong. The broader first-wins conformance problem has a changed acceptance denominator and is tracked as [IG141](INTERPRETER-GAPS.md); it needs the shared-format equivalence classes and every consumer measured before implementation.
 
 *Locked by:* `adapter.laws.DateRangeSharedFormatOrderDiffTest`, which changes only the two declaration blocks and pins both kernel strategies plus the interpreter on the wrapping and ordered separators. Kernel fact and source loci: [KF210](KERNEL-FINDINGS.md#kf210).
 
@@ -4555,3 +4555,21 @@ Enforcement: `A12JsonIngressDiffTest` over the kernel matrix's String rows. `A12
 [KF539](KERNEL-FINDINGS.md#kf539). The interpreter's reference and fill-to-fix lists named only the fields the condition reads, so every message of a parallel-iterating rule lacked both `LineRef` index fields that A12 lists; the verdicts and pointers were already right. Earlier parallel differentials compared verdicts and pointers but not these lists, which is why the gap went unseen. The static reference plan now adds a joined group's index field beside each of its referenced fields, for references and omission references alike, and only under a parallel plan.
 
 Enforcement: `adapter.laws.ParallelGuardConnectiveDiffTest.theAdmittedConnectiveShapesFireAlikeOnEveryEngine`, whose observation compares both sorted lists, with a no-join control rule in the same model.
+
+### IF381: an interpreted DateRange reads under the runtime format its class shares (2026-10-09; closes IG141) <a id="if381"></a>
+
+[KF540](KERNEL-FINDINGS.md#kf540). The interpreter read every DateRange under its own declaration. `ModelDef.rangeConfig` now holds the runtime format: the first declaration of the same year interpretation and pre-1900 flag for an interpreted field, the field's own otherwise. Ingestion converts the authored text under the declared format (`declaredRangeConfig`, both ends completed with a missing day of 1) and renders it under the runtime format as the evaluation text; the stored text is unchanged. Everything downstream already read `rangeConfig`, so rendering, formal checks, completion and computed targets follow without further change.
+
+Enforcement: `DateRangeSharedRuntimeDiffTest.allThreeEnginesAgreeOnEveryModelAndDocument`; `DateRangeSharedFormatOrderDiffTest` now pins the interpreter on the kernel's side of both orders.
+
+### IF382: an empty range's endpoint is an empty date, not unknown (2026-10-09) <a id="if382"></a>
+
+[KF540](KERNEL-FINDINGS.md#kf540)'s empty rows. `StartOfDateRange`/`EndOfDateRange` over an empty range evaluated to unknown, so an extractor over it cleared its computation where A12 computes the fillable 0 with an `OMISSION_ERROR` self-validation message. The temporal evaluator now gives an endpoint its range's no-value reason: empty when the range is empty, non-relevant when it is malformed. This holds for every DateRange, interpreted or not.
+
+Enforcement: `DateRangeSharedRuntimeDiffTest`'s empty document on all six models.
+
+### IF383: a dependent reads a computed date or range as its target stores it (2026-10-09) <a id="if383"></a>
+
+[KF540](KERNEL-FINDINGS.md#kf540). The cascade overlaid a computed date or range as computed, so a dependent read the source's years where A12 reads the target's stored text: a FROM range copied into a TO target, or a yearless date shifted across the year end. `ComputationEngine` now overlays a DATE or DATE_RANGE result through `Document.storedValueOf`, the reader a stored cell uses. A number keeps its own stored-form path (IF90); other kinds render as computed.
+
+Enforcement: `DateRangeSharedRuntimeDiffTest` (the copy targets' dependent years), `ComputedDateStoredReadDiffTest`.
