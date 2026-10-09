@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
 
@@ -60,6 +61,9 @@ class UnguardedSelectedConcatLintTest {
     void aGuardedPartIsNot() {
         var remark = M.str("/Policy/Claims/Remark");
         assertEquals(List.of(), flagged(remark.semanticIndex(KEY).filled()
+                .and(NOTE.eq(remark.forIndex(KEY).plus("-")))));
+        // the cell listed in an AllFieldsFilled guard counts as well as its own presence leaf
+        assertEquals(List.of(), flagged(Dsl.allFieldsFilled(remark.semanticIndex(KEY).index(), NOTE.field())
                 .and(NOTE.eq(remark.forIndex(KEY).plus("-")))));
         assertEquals(List.of(), flagged(M.field("/Policy/Tier").filled()
                 .and(NOTE.eq(M.enumOf("/Policy/Tier").category("Band").plus("-")))));
