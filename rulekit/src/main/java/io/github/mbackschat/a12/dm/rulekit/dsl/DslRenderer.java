@@ -334,10 +334,11 @@ public final class DslRenderer {
 
     /**
      * A concatenation part, with an enumeration read braced: A12 refuses an immediate one whose labels remap its
-     * values and admits the braced one whatever its labels (KERNEL-FINDINGS KF396).
+     * values and admits the braced one whatever its labels (KERNEL-FINDINGS KF396), a key-selected cell included
+     * ({@code validate.laws.KeyedEnumerationConcatenationLawsTest}).
      */
     private String concatenationPart(Calculation part) {
-        return part instanceof FieldValue && part.kind() == ValueKind.ENUMERATION
+        return (part instanceof FieldValue || part instanceof IndexedFieldValue) && part.kind() == ValueKind.ENUMERATION
                 ? "{ " + render(part) + " }" : render(part);
     }
 

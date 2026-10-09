@@ -8186,6 +8186,7 @@ Reported by the portable checker (`CheckFamily.VALUE_LIST_CONDITION_GATES`, rena
 | `+` over two numbers, or over two string-LIKE sides | admitted |
 | `+` over a mixed pair | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` |
 | `+` over an immediate read of an enumeration whose labels remap its values | the same class |
+| the same over a key-selected cell, `[Claims/Plan For Key] + [Note]` (*added 2026-10-09*) | the same class; braced, `{[Claims/Plan For Key]} + [Note]`, admitted, and an identity-labelled keyed cell admitted immediate (`validate.laws.KeyedEnumerationConcatenationLawsTest`) |
 
 **A CUSTOM declaration is string-LIKE and a date is neither**, which `OperationResultTypeMap.getOpTypeForField` makes explicit: it sorts `IStringType` and `IPredefinedType` into one STRING base type and gives a date, a range, a boolean and a confirm their own, so all four fail both of `+`'s arms. Measured over all seven declared kinds on each of the four numeric operators.
 

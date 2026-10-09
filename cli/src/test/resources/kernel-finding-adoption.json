@@ -4807,15 +4807,19 @@
       }
     },
     "kf396": {
-      "sha256": "c67950059adc0e8d691e97a11b00dd40856b7461d4eda6d9acefdebf9bfc1045",
+      "sha256": "d8cbc2c203230d2c73e6f20f346d03d34914ee066bad74f40dbc434236cb17c6",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
+          "a key-selected enumeration cell in a concatenation",
           "addition beside an enumeration"
         ],
-        "dmkits": [],
+        "dmkits": [
+          "a key-selected enumeration cell in a concatenation"
+        ],
         "interpreter": [],
         "checker": [
+          "a key-selected enumeration cell in a concatenation",
           "addition beside an enumeration"
         ],
         "dmtool-cli": [],
@@ -4828,18 +4832,27 @@
       "consumers": {
         "adapter": {
           "state": "APPLIED",
-          "basis": "The kernel's own class is measured on every row through the adapter's validator.",
+          "basis": "The kernel's own class is measured on every row through the adapter's validator, a key-selected cell included.",
           "evidence": {
             "addition beside an enumeration": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumerationAdditionAgreementTest.kt#onlyAnImmediateEffectivelyRemappedEnumerationIsRefused",
               "witness": "Identity labels and a braced remapped enumeration are admitted; one remapped label in one locale is refused."
+            },
+            "a key-selected enumeration cell in a concatenation": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/KeyedEnumerationConcatenationLawsTest.java#aKeyedEnumerationCellFollowsTheDirectReadsLabelLaw",
+              "witness": "Remapped immediate refused, braced and identity admitted."
             }
           }
         },
         "dmkits": {
-          "state": "NOT_APPLICABLE",
-          "basis": "Typed authoring is unchanged; the measured models are authored through the existing builders.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The renderer braces a key-selected enumeration cell as it does a direct read, so a stored braced one reads back admitted.",
+          "evidence": {
+            "a key-selected enumeration cell in a concatenation": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/KeyedEnumerationConcatenationReadTest.java#aBracedKeyedEnumerationCellReadsBackBraced",
+              "witness": "The braced keyed cell renders braced after the read."
+            }
+          }
         },
         "interpreter": {
           "state": "NOT_APPLICABLE",
@@ -4848,11 +4861,15 @@
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "The checker asks the shared hasDisplayValues predicate of an immediate field read only.",
+          "basis": "The checker asks the shared hasDisplayValues predicate of an immediate field read only, a key-selected cell included.",
           "evidence": {
             "addition beside an enumeration": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumerationAdditionAgreementTest.kt#onlyAnImmediateEffectivelyRemappedEnumerationIsRefused",
               "witness": "The checker admits identity labels, which it had refused."
+            },
+            "a key-selected enumeration cell in a concatenation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumerationAdditionAgreementTest.kt#onlyAnImmediateEffectivelyRemappedEnumerationIsRefused",
+              "witness": "The checker agrees on the immediate and braced keyed rows."
             }
           }
         },
@@ -6275,7 +6292,8 @@
           "an enumeration's value in a concatenation"
         ],
         "dmkits": [
-          "an enumeration's value in a concatenation"
+          "an enumeration's value in a concatenation",
+          "the enumeration pair in the bridge and the linter"
         ],
         "interpreter": [
           "an enumeration's value in a concatenation"
@@ -6301,11 +6319,15 @@
         },
         "dmkits": {
           "state": "APPLIED",
-          "basis": "EnumRef.plus and StringExpr.plus(EnumRef) author the concatenation and render the enumeration braced.",
+          "basis": "EnumRef.plus and StringExpr.plus(EnumRef) author the concatenation and render the enumeration braced. The bridge maps an enumeration pair to the same concatenation, and the unguarded-concatenation lint names an enumeration part.",
           "evidence": {
             "an enumeration's value in a concatenation": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/docsnippets/NewShapesSnippetsTest.java#enumerationConcatenationSnippet",
               "witness": "The braced rendering is admitted by the kernel."
+            },
+            "the enumeration pair in the bridge and the linter": {
+              "reference": "interpreter-bridge/src/test/kotlin/io/github/mbackschat/a12/dm/bridge/ExpressionsTest.kt#plusOverTwoEnumerationsIsConcatenation",
+              "witness": "Two enumerations map to the typed EnumRef.plus concatenation; the lint flags an unguarded enumeration part."
             }
           }
         },

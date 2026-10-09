@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.lint;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -122,11 +123,17 @@ public final class Linter {
         }
     }
 
-    /** If {@code op} is a concatenation, collect its string field parts that aren't presence-guarded. */
+    /**
+     * The kinds a concatenation joins as text and so reads as {@code ""} when empty: a string, and an enumeration,
+     * whose stored value it joins (KERNEL-FINDINGS KF530).
+     */
+    private static final Set<ValueKind> CONCATENATED_AS_TEXT = EnumSet.of(ValueKind.STRING, ValueKind.ENUMERATION);
+
+    /** If {@code op} is a concatenation, collect its text field parts that aren't presence-guarded. */
     private static void concatUnguardedStringFields(Calculation op, Set<String> guarded, List<String> out) {
         if (op instanceof Concatenation concat) {
             for (Calculation part : concat.parts()) {
-                if (part instanceof FieldValue fv && fv.field().kind() == ValueKind.STRING
+                if (part instanceof FieldValue fv && CONCATENATED_AS_TEXT.contains(fv.field().kind())
                         && !guarded.contains(fv.field().path().value()) && !out.contains(fv.field().path().value())) {
                     out.add(fv.field().path().value());
                 }
@@ -139,9 +146,9 @@ public final class Linter {
         String list = String.join(", ", fields);
         out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
                 Optional.of("RK_UNGUARDED_STRING_CONCAT"),
-                "the concatenation compares string field(s) " + list + " whose presence isn't guarded — an"
-                        + " empty string concatenates as \"\" (it is NOT 'not evaluated' like a plain string"
-                        + " comparison), so the rule also fires when " + list + " is empty",
+                "the concatenation compares text field(s) " + list + " whose presence isn't guarded — an"
+                        + " empty string or enumeration concatenates as \"\" (it is NOT 'not evaluated' like a"
+                        + " plain string comparison), so the rule also fires when " + list + " is empty",
                 new Diagnostic.Where(rulePath, Optional.of(cmp.operatorId())),
                 Optional.of("AllFieldsFilled(" + list + ") And <the comparison>"),
                 Optional.of("unlike a plain string comparison (an empty string is not evaluated), a string in a"

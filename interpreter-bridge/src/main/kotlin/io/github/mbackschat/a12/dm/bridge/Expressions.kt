@@ -51,7 +51,7 @@ internal class Expressions(private val mapping: Mapping) {
     private fun arithmetic(arith: Expr.Arith): Calculation {
         val left = mapping.calculation(arith.left)
         val right = mapping.calculation(arith.right)
-        if (arith.op == ArithOp.ADD && (isTextual(left) || isTextual(right))) {
+        if (arith.op == ArithOp.ADD && (isTextual(left) || isTextual(right) || bothEnumerations(left, right))) {
             return Concatenation(listOf(left, right))
         }
         return Arithmetic(arithOp(arith.op), left, right)
@@ -87,6 +87,13 @@ internal class Expressions(private val mapping: Mapping) {
             ValueKind.STRING, ValueKind.CUSTOM -> true
             else -> false
         }
+
+        /**
+         * Two enumerations join their stored values (KERNEL-FINDINGS KF530). Only the pair is measured; an
+         * enumeration beside a number is left to the numeric node until A12 is asked about it.
+         */
+        private fun bothEnumerations(left: Calculation, right: Calculation): Boolean =
+            left.kind() == ValueKind.ENUMERATION && right.kind() == ValueKind.ENUMERATION
 
         private fun arithOp(op: ArithOp): Arithmetic.Op = when (op) {
             ArithOp.ADD -> Arithmetic.Op.ADD

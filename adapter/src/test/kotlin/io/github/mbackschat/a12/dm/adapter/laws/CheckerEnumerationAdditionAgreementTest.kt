@@ -27,6 +27,12 @@ class CheckerEnumerationAdditionAgreementTest {
         .rootGroup("Order") { o -> o
             .stringField("Reference") { }
             .stringField("Notes") { }
+            .stringField("Key") { }
+            .group("Lines") { g -> g.repeatable(5).indexField("Sku")
+                .stringField("Sku") { }
+                .enumField("Channel") { e -> e
+                    .value("WEB") { l -> l.label("en_US", "Web shop").label("de_DE", "Webshop") }
+                    .value("STORE") { l -> l.label("en_US", "In store").label("de_DE", "Filiale") } } }
             .numberField("Quantity") { n -> n.fractionDigits(0) }
             .enumField("Plain") { e -> e.value("WEB").value("STORE") }
             .enumField("Identity") { e -> e
@@ -63,6 +69,8 @@ class CheckerEnumerationAdditionAgreementTest {
             "a braced remapped Enumeration beside a Number" to ("{[Remapped]} + [Quantity] == \"x\"" to MIXED_ADD),
             "two braced Enumerations alone" to ("{[Remapped]} + {[Identity]} == \"x\"" to ADMITTED),
             "two braced Enumerations before a text" to ("{[Remapped]} + {[Identity]} + [Notes] == \"x\"" to ADMITTED),
+            "a key-selected remapped cell" to ("[Lines/Channel For Key] + [Notes] == \"x\"" to MIXED_ADD),
+            "a braced key-selected remapped cell" to ("{[Lines/Channel For Key]} + [Notes] == \"x\"" to ADMITTED),
         )
         val wrong = predicted.mapNotNull { (row, probe) ->
             val (condition, a12) = probe

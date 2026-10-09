@@ -161,6 +161,21 @@ class ExpressionsTest {
         )
     }
 
+    /**
+     * Two enumerations join their stored values as text — A12 computes `{[Tier]}+{[Plan]}` to `GOLDBASIC`
+     * (KERNEL-FINDINGS KF530) — so the node is the one the typed `EnumRef.plus` builds, never arithmetic.
+     */
+    @Test
+    fun plusOverTwoEnumerationsIsConcatenation() {
+        val m = BoundModel.ofJson(BridgeModels.orderJson)
+        assertEquals(
+            m.enumOf("/Order/Priority").plus(m.enumOf("/Order/RushLevel")).expression(),
+            Expressions(bridge).map(
+                Expr.Arith(ArithOp.ADD, Expr.Field("/Order/Priority", false), Expr.Field("/Order/RushLevel", false)),
+            ),
+        )
+    }
+
     /** And the numeric case still builds the numeric node. */
     @Test
     fun plusOverNumbersIsArithmetic() {
