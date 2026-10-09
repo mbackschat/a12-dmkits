@@ -12,15 +12,25 @@ public record StringExpr(Calculation expression) {
 
     /** {@code this + other} — string concatenation, flattened so {@code a + b + c} renders as one chain. catalog:Concatenation */
     public StringExpr plus(StringExpr other) {
-        List<Calculation> parts = new ArrayList<>();
-        addParts(parts, this.expression);
-        addParts(parts, other.expression);
-        return new StringExpr(new Concatenation(parts));
+        return joined(expression, other.expression);
     }
 
     /** {@code this + "literal"} — append a string literal. */
     public StringExpr plus(String literal) {
         return plus(new StringExpr(new StringLiteral(literal)));
+    }
+
+    /** {@code this + { [enumeration] }} — append an enumeration's value; see {@link EnumRef#plus(StringExpr)}. */
+    public StringExpr plus(EnumRef enumeration) {
+        return joined(expression, enumeration.field().value());
+    }
+
+    /** {@code left + right} as one flat chain, either side possibly a concatenation already. */
+    static StringExpr joined(Calculation left, Calculation right) {
+        List<Calculation> parts = new ArrayList<>();
+        addParts(parts, left);
+        addParts(parts, right);
+        return new StringExpr(new Concatenation(parts));
     }
 
     private static void addParts(List<Calculation> acc, Calculation c) {

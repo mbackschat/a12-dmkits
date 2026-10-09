@@ -442,6 +442,19 @@ class NewShapesSnippetsTest {
     }
 
     @Test
+    void enumerationConcatenationSnippet() {
+        // tag::enum-concatenation[]
+        // An enumeration joins text through plus. It contributes its STORED value, never a label, and renders
+        // braced, which A12 admits whatever the labels (KERNEL-FINDINGS KF396, KF530).
+        StringExpr label = m.enumOf("/Order/Priority").plus(" / ").plus(m.str("/Order/ProductCode").asString());
+        Condition staleName = m.str("/Order/CustomerName").ne(label);
+        // end::enum-concatenation[]
+        assertEquals("[/Order/CustomerName] != { [/Order/Priority] } + \" / \" + [/Order/ProductCode]",
+                new DslRenderer().render(staleName));
+        assertKernelAccepts(staleName, "../CustomerName");
+    }
+
+    @Test
     void computationSuppressionSnippet() {
         // tag::computation-suppress[]
         // errorCodesToSuppress — the kernel's model-level escape hatch (domain-checked): it lets a

@@ -12734,3 +12734,18 @@ The format is the one A12 registers for the operand, so the KIND of a declaratio
 The separating rows: `HoursFromTime` over a `DAY_OPTIONAL` date is `MVK_INVALID_DATE_TYPE`, not the format class, while `YearFromDate` over it is admitted; `QuarterFromDate` over a `MONTH_OPTIONAL` date is refused; `DateFromDateTime` over a full date is refused under a Base Year; `DateFromDateTime("01.01.2024T10:00:00")` is admitted where every number extractor refuses the same literal; `YearFromDate(StartOfDateRange(r))` is refused for an `MM-dd` range and admitted for the same range read `FROM`; `MonthFromDate` over a `yyyy` range's endpoint is refused. The gate answers as soon as the call is read: `DateFromDateTime(StartOn) == StartOn` is `MVK_WRONG_DATE_FORMAT_FOR_OP`, while `DateFromDateTime(SignedAt) == StartOn` reaches the bare comparand and is `MVK_UNEXPECTED_TOKEN`.
 
 The gates are `CheckDatumExtractOpImpl.check` with `DateUtils.checkOperationConsistentToPartialKnown` and `checkOperationConsistentToDateFormat`, and the operand formats are what `CheckDatumAngabeImpl`, `CheckDatumAddOpImpl`, `CheckDatumBereichOpImpl` and the three construction checkers register (source-read; the rows above settle the behavior). Locked by `adapter.laws.CheckerTemporalExtractorAgreementTest`, which pins the separating rows against the kernel and requires the portable checker's `TEMPORAL_EXTRACTOR_OPERANDS` family to name the kernel's class on all 594; `consistency.TemporalExtractorOperandsTest` mirrors the separating rows on both checker targets.
+
+## §5 supplement — an enumeration in a text concatenation contributes its STORED value, never its label, and an empty one contributes nothing; the braced and immediate reads are one operand (both strategies, 2026-10-09) <a id="kf530"></a>
+
+> Fold: pending — the runtime half of [KF396](#kf396)'s admission rule; extends the empty-operand row of the `Concatenation` catalog entry to an enumeration operand.
+
+`EnumConcatenationDiffTest` computes `{ [Tier] } + " / " + [Note]`, `[Note] + " / " + { [Tier] }` and `{ [Plan] } + [Note]` into text fields and compares `[Ref] == { [Tier] } + "-1"` in a rule. `Tier`'s labels remap its values (`GOLD` is labelled `Gold tier`); `Plan`'s repeat them. Dynamic Groovy, static Java and our interpreter agree on every document:
+
+| Document | `{ [Tier] } + " / " + [Note]` | `{ [Plan] } + [Note]` | `[Ref] == { [Tier] } + "-1"`, `Ref` = `GOLD-1` |
+|---|---|---|---|
+| `GOLD`, `BASIC`, note `n` | `GOLD / n` | `BASICn` | fires |
+| `GOLD`, no plan, no note | `GOLD / ` | cleared | fires |
+| no enumerations, note `n` | ` / n` | `n` | does not fire |
+| nothing filled | ` / ` | cleared | does not fire |
+
+So the enumeration contributes its stored value, an empty enumeration and an empty text both contribute nothing, and a concatenation that is empty as a whole clears its target, as with text alone. A12 records no group around a simple operand (`ParseTreeCreator.exitBRACKET_OP`, source-read), so `{ [E] }` and `[E]` parse into the same field read and differ only in what the admission check sees. Locked by `adapter.laws.EnumConcatenationDiffTest`; the read of both spellings into the typed form by `adapter.ConcatenationReadTest`.

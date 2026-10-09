@@ -784,6 +784,7 @@ public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Al
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
 
 public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation build()
@@ -791,6 +792,7 @@ public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Bu
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder comment(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder comment(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder comment(java.lang.String)
@@ -1681,6 +1683,8 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef implements io.gith
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notIn(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notIn(java.lang.String, java.lang.String[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef outer()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr plus(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr plus(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(java.lang.String)
   public final java.lang.String toString()
@@ -2521,6 +2525,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr
   public final int hashCode()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr plus(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr plus(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr plus(java.lang.String)
   public final java.lang.String toString()

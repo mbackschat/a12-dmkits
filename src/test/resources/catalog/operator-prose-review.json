@@ -2584,11 +2584,22 @@
       "operator": "Concatenation",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:26f5701972f6f8049ae1806a388b953d4cea1f40464545d6237a518c698bde28",
+      "digest": "sha256:308cdd8add16735260f4f7acc0c4ce97e8acec79600a63d740967781f690c827",
       "classifications": [
-        "REJECTION"
+        "REJECTION",
+        "ADMISSION"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "Concatenation.braced-enumeration",
+          "side": "TRIGGER",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
     },
     {
       "operator": "Concatenation",
@@ -2636,6 +2647,33 @@
       "operator": "Concatenation",
       "lane": "GOTCHA",
       "ordinal": 2,
+      "digest": "sha256:9b934cf3ef564fb4d61d073716391ba8fc02a2baa18217dd7501509d985a20bc",
+      "classifications": [
+        "RUNTIME",
+        "REJECTION",
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.EnumConcatenationDiffTest.anEnumerationJoinsATextAsItsStoredValue"
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "Concatenation.braced-enumeration",
+          "side": "TRIGGER",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
+    },
+    {
+      "operator": "Concatenation",
+      "lane": "GOTCHA",
+      "ordinal": 3,
       "digest": "sha256:586771e977992577cd1caac48f9da3640f54a2dd5a5517ee09e0929c8218b9b6",
       "classifications": [
         "DESCRIPTIVE"
@@ -28083,6 +28121,52 @@
         {
           "type": "CLAIM_PROBE",
           "id": "AtLeastOneFieldValueIncludedInValueList.containment"
+        }
+      ]
+    },
+    {
+      "id": "review.Concatenation.braced-enumeration.trigger",
+      "operator": "Concatenation",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Concatenation.braced-enumeration"
+        }
+      ]
+    },
+    {
+      "id": "review.Concatenation.braced-enumeration.control",
+      "operator": "Concatenation",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_STRING_OR_NUMBER_FOR_ADD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Concatenation.braced-enumeration",
+          "side": "CONTROL"
         }
       ]
     }

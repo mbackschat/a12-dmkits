@@ -1950,7 +1950,7 @@
       "returns": "string",
       "meaning": "String concatenation of two or more string-valued parts — [FirstName] + \" \" + [LastName]. The result is a string expression usable wherever a string is, most often one side of a comparison or a computation operation.",
       "constraints": [
-        "parts must be string-valued: string fields, string literals, or string functions (FieldValueAsString, RangeAsString)"
+        "parts must be string-like: string fields, string literals, string functions (FieldValueAsString, RangeAsString), or an enumeration field read braced, { [Tier] }"
       ],
       "gotchas": [
         {
@@ -1960,6 +1960,10 @@
         {
           "text": "a FILLED but formally-invalid operand (e.g. over maxLength) makes the whole concatenation non-evaluable — a computation CLEARS the target instead of reading the operand as \"\" (invalid is not empty)",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "an enumeration joins as its STORED value, never its label; an immediate read [Tier] is refused (MVK_NO_STRING_OR_NUMBER_FOR_ADD) when any label remaps its value, while the braced read { [Tier] } is admitted whatever the labels, and is what the typed plus renders",
+          "kind": "AUTHORING"
         },
         {
           "text": "the + symbol is language-independent — the same intrinsic symbol as numeric addition; the operand types decide which it is",

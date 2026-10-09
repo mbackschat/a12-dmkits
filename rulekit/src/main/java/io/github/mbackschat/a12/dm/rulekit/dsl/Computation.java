@@ -206,6 +206,11 @@ public record Computation(
             return calc(operation.expression());
         }
 
+        /** The same alternative from a text expression, typically a concatenation into a text field. */
+        public Builder calc(StringExpr operation) {
+            return calc(operation.expression());
+        }
+
         /** The single unconditional alternative with a closed implicit-validation tolerance band. */
         public Builder calc(Calculation operation, ToleranceBand toleranceRangeOp) {
             alternatives.add(new Alternative(Optional.empty(), operation, Optional.ofNullable(toleranceRangeOp)));
@@ -554,6 +559,11 @@ public record Computation(
 
         /** As {@link Builder#calc(NumberExpr)}, for a preconditioned alternative. */
         public Builder calc(NumberExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** As {@link Builder#calc(StringExpr)}, for a preconditioned alternative. */
+        public Builder calc(StringExpr operation) {
             return calc(operation.expression());
         }
 

@@ -1514,11 +1514,21 @@ FieldListRef lines = order.flatten("Items*/Qty");  // star aggregate, relative â
 ```java
 var order = s.group("/Order");
 order.addComputation(order.str("CustomerName"), c -> c.name("NameComp")
-    .calc(order.str("ProductCode").asString().plus("-X").expression())
+    .calc(order.str("ProductCode").asString().plus("-X"))
     .message(Dsl.en("Customer display name.")));
 ```
 
 *(Surfaced by dogfooding the conformance corpus: its string-concat guard case couldn't be authored through the editor while only the `NumberRef` overload existed. Test-backed by `RuleComputationEditorTest.authorsAStringComputationThroughTheEditor`.)*
+
+**An enumeration joins text through `EnumRef.plus` and `StringExpr.plus(EnumRef)`.** It contributes its stored value, never a label, and an empty one contributes nothing. The read renders braced, `{ [Priority] }`, because A12 refuses an immediate enumeration read in `+` when any label remaps its value and admits the braced one whatever the labels ([KF396](KERNEL-FINDINGS.md#kf396), [KF530](KERNEL-FINDINGS.md#kf530)), so the model-free builder never needs the labels. The enumeration only ever stands inside a concatenation, never alone as text. A text computation takes the result directly, through `calc(StringExpr)`:
+
+<!-- snippet: enum-concatenation -->
+```java
+// An enumeration joins text through plus. It contributes its STORED value, never a label, and renders
+// braced, which A12 admits whatever the labels (KERNEL-FINDINGS KF396, KF530).
+StringExpr label = m.enumOf("/Order/Priority").plus(" / ").plus(m.str("/Order/ProductCode").asString());
+Condition staleName = m.str("/Order/CustomerName").ne(label);
+```
 
 **Every held field, group, rule, and computation editor carries the same element-metadata contract.** Their shared `ElementMetadataEditor` base exposes annotation set/remove plus internal- and external-description set/remove, so a caller that has already selected `/Permit/CalculateFee` never drops back to the flat session or repeats that path just to describe it:
 

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
 import io.github.mbackschat.a12.dm.rulekit.validate.Span;
@@ -323,6 +324,15 @@ public final class DslRenderer {
         return render(child);
     }
 
+    /**
+     * A concatenation part, with an enumeration read braced: A12 refuses an immediate one whose labels remap its
+     * values and admits the braced one whatever its labels (KERNEL-FINDINGS KF396).
+     */
+    private String concatenationPart(Calculation part) {
+        return part instanceof FieldValue && part.kind() == ValueKind.ENUMERATION
+                ? "{ " + render(part) + " }" : render(part);
+    }
+
     private boolean needsArithmeticGroup(Arithmetic child, Arithmetic.Op parent, boolean isLeft) {
         int childPrec = arithPrec(child.op());
         int parentPrec = arithPrec(parent);
@@ -493,7 +503,7 @@ public final class DslRenderer {
                     + " " + arithOperand(a.right(), a.op(), false);
             case Rounding r -> keyword(r.operatorId()) + "(" + render(r.operand())
                     + r.decimalPlaces().map(places -> ", " + places).orElse("") + ")";
-            case Concatenation c -> c.parts().stream().map(this::render)
+            case Concatenation c -> c.parts().stream().map(this::concatenationPart)
                     .collect(Collectors.joining(" + "));
             case DateListAggregate a -> keyword(a.operatorId()) + "("
                     + a.operands().stream().map(this::aggregateOperand)

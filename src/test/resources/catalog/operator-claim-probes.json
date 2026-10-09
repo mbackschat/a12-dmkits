@@ -5436,7 +5436,7 @@
       "control": {
         "group": "/Order",
         "field": "../CustomerName",
-        "dsl": "FieldFilled(CustomerName) And CustomCondition 1Special And CustomCondition _Special And CustomCondition \u00c4Special And CustomCondition A:B And CustomCondition 'Today'",
+        "dsl": "FieldFilled(CustomerName) And CustomCondition 1Special And CustomCondition _Special And CustomCondition ÄSpecial And CustomCondition A:B And CustomCondition 'Today'",
         "verdict": "ACCEPTED"
       }
     },
@@ -6678,6 +6678,25 @@
         "field": "../CustomerName",
         "dsl": "FieldFilled(CustomerName) And NoFieldValueIncludedInValueList(ShippingAddress/Street, ShippingAddress/City In \"x\")",
         "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "Concatenation.braced-enumeration",
+      "operator": "Concatenation",
+      "kind": "CONDITION",
+      "fixture": "ENUM_COMPARABILITY",
+      "trigger": {
+        "group": "/Doc",
+        "field": "../Str",
+        "dsl": "[Str] == { [WithText] } + [Str]",
+        "verdict": "ACCEPTED"
+      },
+      "control": {
+        "group": "/Doc",
+        "field": "../Str",
+        "dsl": "[Str] == [WithText] + [Str]",
+        "verdict": "REJECTED",
+        "code": "MVK_NO_STRING_OR_NUMBER_FOR_ADD"
       }
     }
   ]

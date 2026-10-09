@@ -2002,11 +2002,30 @@ final class ConditionConverter {
             throw unsupported("string composite with operator " + comp.getCalcOp(), comp);
         }
         List<IOperation> ops = comp.getOperations();
-        StringExpr acc = stringOperand(ops.get(0), comp);
-        for (int i = 1; i < ops.size(); i++) {
-            acc = acc.plus(stringOperand(ops.get(i), comp));
+        Optional<EnumRef> leading = enumerationOperand(ops.get(0));
+        StringExpr acc = leading.isPresent()
+                ? leading.get().plus(stringOperand(ops.get(1), comp))
+                : stringOperand(ops.get(0), comp);
+        for (int i = leading.isPresent() ? 2 : 1; i < ops.size(); i++) {
+            IOperation op = ops.get(i);
+            Optional<EnumRef> enumeration = enumerationOperand(op);
+            acc = enumeration.isPresent() ? acc.plus(enumeration.get()) : acc.plus(stringOperand(op, comp));
         }
         return acc;
+    }
+
+    /**
+     * An unindexed enumeration read standing in a concatenation, or empty. A12 parses the braced and the immediate
+     * spelling into the same field read, and the typed form renders braced, which it admits whatever the labels
+     * (KERNEL-FINDINGS KF396).
+     */
+    private Optional<EnumRef> enumerationOperand(IOperation op) {
+        if (!(op instanceof IFieldIdOperation field) || field.getOperatorName() != FieldIdOperationName.FieldValue
+                || hasSemanticIndex(field.getField())) {
+            return Optional.empty();
+        }
+        String path = field.getField().getFullName();
+        return model.fieldAt(path).filter(f -> f.kind() == ValueKind.ENUMERATION).map(f -> model.enumOf(path));
     }
 
     /** One operand of a concatenation: a string literal, a string field value, or a nested concatenation. */

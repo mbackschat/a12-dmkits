@@ -6260,6 +6260,85 @@
           "evidence": {}
         }
       }
+    },
+    "kf530": {
+      "sha256": "3a8c9d1ba45da956e86c75bc68820ac42ae5d36215b0062c833f431651011ec7",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "an enumeration's value in a concatenation"
+        ],
+        "dmkits": [
+          "an enumeration's value in a concatenation"
+        ],
+        "interpreter": [
+          "an enumeration's value in a concatenation"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "an enumeration's value in a concatenation"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured on four documents through the adapter's differential, and both spellings read back into the typed form.",
+          "evidence": {
+            "an enumeration's value in a concatenation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EnumConcatenationDiffTest.kt#anEnumerationJoinsATextAsItsStoredValue",
+              "witness": "The stored value joins on every row, and an empty concatenation clears its target."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "EnumRef.plus and StringExpr.plus(EnumRef) author the concatenation and render the enumeration braced.",
+          "evidence": {
+            "an enumeration's value in a concatenation": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/docsnippets/NewShapesSnippetsTest.java#enumerationConcatenationSnippet",
+              "witness": "The braced rendering is admitted by the kernel."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter joins the stored value as both kernel strategies do.",
+          "evidence": {
+            "an enumeration's value in a concatenation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EnumConcatenationDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on every document."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime value; the checker's admission of the braced read is KF396's.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here and authors conditions as text.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime value does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime value does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-08-04; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
     }
   }
 }
