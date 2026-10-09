@@ -3,6 +3,12 @@ package io.github.mbackschat.a12.dm.consistency.syntax
 /** Recognition outcomes distinguish a required terminal from an unresolved choice (KF493). */
 enum class SyntaxFailureKind { MATCH, DECISION, LEXICAL }
 
+/** A12's `datumExtractOpName`, by catalog id: the operations a `Date`/`Time` component may call. */
+internal val DATE_EXTRACT_OPERATIONS = setOf(
+    "YearFromDate", "QuarterFromDate", "MonthFromDate", "DayFromDate",
+    "HoursFromTime", "MinutesFromTime", "SecondsFromTime", "DateFromDateTime", "TimeFromDateTime",
+)
+
 internal data class Recognition(
     val failure: ShapeFailure?,
     val calls: List<CallShape>,
@@ -382,11 +388,16 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         }
     }
 
+    /**
+     * A `Date`/`Time` component, which A12's `datumParam` admits only as an entity, a quoted constant or one of
+     * the nine `datumExtractOp` calls; any other call is a parse error there
+     * (`adapter.laws.CheckerConstructorComponentAgreementTest`).
+     */
     private fun component() {
         when {
             name(peek()) || peek()?.text in PATH_STARTS -> entity()
             peek()?.kind == TokenKind.STRING -> take()
-            kind(peek()) == KeywordKind.FUNCTION -> call()
+            kind(peek()) == KeywordKind.FUNCTION && identity(peek()) in DATE_EXTRACT_OPERATIONS -> call()
             else -> fail(SyntaxFailureKind.DECISION)
         }
     }

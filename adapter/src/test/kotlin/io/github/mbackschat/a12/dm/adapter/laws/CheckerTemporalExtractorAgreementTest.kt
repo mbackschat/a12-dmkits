@@ -64,8 +64,9 @@ class CheckerTemporalExtractorAgreementTest {
         // A key-selected, a starred and an unaddressed read of a repeatable group's dates.
         "Claims/FiledOn For \"C1\"", "Claims/FiledDay For \"C1\"", "Claims/NotedOn For \"C1\"", "Claims*/FiledOn",
         "Claims/FiledOn",
-        // A stamp from an aggregate, which this checker does not type.
-        "DateFromDateTime(MaxValue(Claims*/StampedAt))",
+        // A stamp from an aggregate, which this checker does not type, and an aggregate as a component, which
+        // A12's grammar refuses.
+        "DateFromDateTime(MaxValue(Claims*/StampedAt))", "Time(MaxValue(Claims*/HourNo))",
     )
 
     /** Each extractor with a comparand of its result's kind. */

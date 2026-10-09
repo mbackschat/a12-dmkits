@@ -12799,3 +12799,22 @@ A key that selects nothing, an empty cell and a malformed selected cell all give
 The index column's own defects reach the keyed `ValueAsDate` as they reach any keyed read, and the resolution is an ordinary date to the operations above it. In a `YEAR_OPTIONAL` ledger with `Key` = `C2` selecting `2023-05-00`, an empty or malformed `Code` cell in another row leaves the rule reading the clean match: `DifferenceInDays(ValueAsDate(…, FirstDay), [Limit]) > 5` fires on its 254 days, while `ValueAsDate(…, LastDay) > [Limit]` and `AddDays(ValueAsDate(…, FirstDay), 30) > [Limit]` do not. The computation over that column clears. A duplicated key, and a key naming the malformed cell, resolve nothing. A selected value whose year is unknown (`0000-00-00`) clears the keyed computation, exactly as the same value clears the row-local unkeyed one.
 
 *(Locked: `validate.laws.KeyedTemporalOperandLawsTest` — the admission grid and the typed authoring of every admitted shape; `adapter.laws.KeyedTemporalOperandDiffTest` — the runtime rows against both strategies; the checker's agreement by `adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerAdmitsAKeyedTemporalOperandA12Admits`; the column defects, the unknown year and the nested operations by `adapter.laws.KeyedTemporalOperandEdgeDiffTest`; the interpreter on JVM and Node by `KeyedValueAsDateTest`; the read back into the typed form by `adapter.KeyedTemporalOperandReadTest`.)*
+
+## §6 supplement — a `Date`/`Time` component is an entity, a quoted constant or one of the nine extract operations; every other operation there is a parse error (kernel `checkConsistency`, 2026-10-09) <a id="kf532"></a>
+
+> Fold: pending — the grammar side of [KF373](#kf373)'s slot laws.
+
+The grammar's `datumParam` is `entitySpec | datumExtractOp | StringLiteral`, and `datumExtractOpName` lists all nine extractors, the two stamp-splitting ones included. `CheckerConstructorComponentAgreementTest` writes eighteen components into each slot of `Date(…)` and `Time(…)`:
+
+| component | A12 |
+|---|---|
+| a bounded field, a keyed field (`Claims/HourNo For "C1"`), `"01"`, the slot's own extractor | the slot gates of [KF373](#kf373) |
+| an aggregate (`MaxValue(Claims*/HourNo)`, `Sum(…)`), `RoundUp(…)`, a nested `Time(…)` or `Date(…)`, arithmetic, `[F]`, `{ F }` | `MVK_UNEXPECTED_TOKEN` |
+| a bare number (`1`) | `MVK_INVALID_ENTITY` |
+| a starred field (`Claims*/HourNo`) | `MVK_NO_WILDCARDS_ALLOWED` |
+| `DateFromDateTime(…)`, `TimeFromDateTime(…)` | `MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED`: an extract operation no slot expects |
+| a group (`Claims`) | as the slot gates answer it |
+
+So a temporal extractor over a construction built from an aggregate, `YearFromDate(Time(MaxValue(Claims*/HourNo)))`, is the parse error, never the extractor's format class.
+
+*(Locked: `adapter.laws.CheckerConstructorComponentAgreementTest` — the checker against the kernel on every row, the separating rows pinned; `consistency.DateConstructionSlotsTest` mirrors them on both checker targets.)*

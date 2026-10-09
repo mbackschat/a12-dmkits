@@ -171,11 +171,13 @@ private class ExtractorOperandReader(
 
     /**
      * Whether a construction's component is one whose slot gates [CheckFamily.DATE_CONSTRUCTION_SLOT] answers
-     * completely: a quoted constant, a nested operation, or a bare number or text field. A `TypeDefType`
+     * completely: a quoted constant, a nested extract operation, or a bare number or text field. A `TypeDefType`
      * component is the one it delegates.
      */
     private fun judgedComponent(operand: CallOperand, inAFilterBody: Boolean): Boolean = with(facts) {
-        operand.literal != null || execution.callsByStart[operand.at]?.end == operand.end ||
+        operand.literal != null ||
+            execution.callsByStart[operand.at]?.takeIf { it.end == operand.end }
+                ?.let { shape -> identities[shape.operator]?.let(Extractor::of) } != null ||
             bareReferenceField(operand.text, group, element, inAFilterBody)?.declaredFieldType()
                 .let { it == FieldType.NUMBER || it == FieldType.STRING }
     }

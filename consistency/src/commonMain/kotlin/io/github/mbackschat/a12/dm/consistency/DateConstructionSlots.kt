@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
+import io.github.mbackschat.a12.dm.consistency.syntax.DATE_EXTRACT_OPERATIONS
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.inAFilterBody
@@ -32,6 +33,7 @@ import kotlinx.serialization.json.intOrNull
  * | any other extract operator | `MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED` |
  * | a string field whose pattern is not one A12 reads as digits | `MVK_NO_DIGIT_PATTERN` |
  * | a field whose declaration does not fit the slot | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+ * | a starred field | `MVK_NO_WILDCARDS_ALLOWED` ([KF532](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf532)) |
  *
  * **`QuarterFromDate` is why rows two and three are not one rule.** It is a DATE extract operator and no slot
  * expects it, so a family keying on "an operator of this construction's family" would name the wrong-slot
@@ -242,6 +244,7 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
                 is SlotArm.Extract -> slot.extractDefect(arm.op, ownFamily)
                 is SlotArm.Entity -> slot.entityDefect(model, element, arm.path, keyed = false, inAFilterBody)
                 is SlotArm.Keyed -> arm.value?.let { slot.entityDefect(model, element, it, keyed = true, inAFilterBody) }
+                is SlotArm.Starred -> SlotDefect("MVK_NO_WILDCARDS_ALLOWED", slot.name, arm.written, "a field read without a star")
                 SlotArm.Unjudged -> null
             }
             if (defect != null) {
@@ -283,10 +286,7 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
 private const val SPLIT_YEAR_ARITY = 4
 
 /** The catalog ids of every operator A12's `datumExtractOp` rule admits, keyed for spelling lookup. */
-private val EXTRACT_OPS = listOf(
-    "DayFromDate", "MonthFromDate", "YearFromDate", "QuarterFromDate",
-    "HoursFromTime", "MinutesFromTime", "SecondsFromTime",
-).associateWith { it }
+private val EXTRACT_OPS = DATE_EXTRACT_OPERATIONS.associateWith { it }
 
 private sealed interface SlotArm {
     /** A quoted constant, already unquoted. */
@@ -300,6 +300,9 @@ private sealed interface SlotArm {
 
     /** An entity spec carrying a semantic index: its value where the chain vouches for the key, else null. */
     data class Keyed(val value: String?) : SlotArm
+
+    /** A path crossing a level with a star, as written. */
+    data class Starred(val written: String) : SlotArm
 
     /** Any shape this reader did not reduce to one of the arms above. */
     data object Unjudged : SlotArm
@@ -343,10 +346,15 @@ private fun armOf(operand: List<Token>, extractOps: Map<String, String>): SlotAr
     if (head.kind == TokenKind.NAME && operand.getOrNull(1)?.text == "(") {
         extractOps[head.text]?.let { return SlotArm.Extract(it) }
     }
-    // A bare path and nothing else. A star, a category arrow, a filter or a bracket each brings a gate of
-    // its own that runs ahead of the declaration tests, so such an operand is left to the family owning it.
+    // A bare path and nothing else. A category arrow, a filter or a bracket each brings a gate of its own that
+    // runs ahead of the declaration tests, so such an operand is left to the family owning it.
     if (operand.all { it.isName() || it.text in BARE_PATH_PUNCTUATION }) {
         return SlotArm.Entity(normalizedPath(operand))
+    }
+    // A starred path is refused as a wildcard in the slot, ahead of its declaration
+    // (`adapter.laws.CheckerConstructorComponentAgreementTest`).
+    if (operand.any { it.text == "*" } && operand.all { it.isName() || it.text in BARE_PATH_PUNCTUATION || it.text == "*" }) {
+        return SlotArm.Starred(operand.joinToString("") { it.text })
     }
     return SlotArm.Unjudged
 }
@@ -416,9 +424,8 @@ private fun slotFinding(
  * and each judged type satisfies it its own way — a number by its stored width or its declared bound, a
  * string by its stored width alone, a date only by being the complete year written exactly `yyyy`.
  *
- * **Silent on the two shapes whose own gates run even earlier**: a GROUP operand draws
- * `MVK_NO_GROUPS_ALLOWED` and a starred one `MVK_NO_WILDCARDS_ALLOWED`, both unmeasured here, and the star
- * never reaches this arm at all ([armOf] leaves it unjudged). Silent too on every declared type but the
+ * **Silent on a GROUP operand**, whose own gate runs even earlier; a starred one never reaches this arm, since
+ * [armOf] gives it its own. Silent too on every declared type but the
  * three: A12 refuses the rest outright, but a `TypeDefType` stands for a definition whose body this reader
  * may not have, and that is the one type whose refusal cannot be told apart from the others by name.
  */

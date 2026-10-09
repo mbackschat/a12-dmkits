@@ -56,6 +56,38 @@ class DateConstructionSlotsTest {
     private fun time(construction: String) = codes("Departure", construction)
 
     /**
+     * A component outside A12's `datumParam` (an entity, a quoted constant or an extract operation): a nested
+     * call is a parse error, a starred field a wildcard, and the two stamp-splitting extract operations are
+     * extract operations no slot expects. Mirrors `adapter.laws.CheckerConstructorComponentAgreementTest`.
+     */
+    @Test
+    fun aComponentOutsideTheGrammarIsRefusedWithA12sClass() {
+        val legs = """
+            {"type":"Field","id":"f3","name":"BookedAt","Field":{"fieldType":{"type":"DateTimeType",
+              "DateTimeType":{"format":"yyyy-MM-dd'T'HH:mm:ss"}}}},
+            {"type":"Group","id":"g1","name":"Legs","Group":{"repeatability":5,"elements":[
+              {"type":"Field","id":"f4","name":"LegHour","Field":{"fieldType":{"type":"NumberType",
+                "NumberType":{"maxFractionalDigits":0,"minValue":"0","maxValue":"23"}}}}]}},
+        """.trimIndent()
+        val actual = linkedMapOf(
+            "an aggregate" to codes("Departure", "Time(MaxValue(Legs*/LegHour))", legs),
+            "a nested construction" to codes("TravelDate", """Date(Time("10"), "01", "2024")""", legs),
+            "a starred field" to codes("Departure", "Time(Legs*/LegHour)", legs),
+            "a stamp's date" to codes("TravelDate", """Date("01", DateFromDateTime(BookedAt), "2024")""", legs),
+            "a stamp's time" to codes("Departure", """Time("10", TimeFromDateTime(BookedAt))""", legs),
+            "the expected extract operation — the control" to codes("Departure", "Time(HoursFromTime(Departure))", legs),
+        )
+        assertEquals(linkedMapOf(
+            "an aggregate" to listOf("MVK_UNEXPECTED_TOKEN"),
+            "a nested construction" to listOf("MVK_UNEXPECTED_TOKEN"),
+            "a starred field" to listOf("MVK_NO_WILDCARDS_ALLOWED"),
+            "a stamp's date" to listOf(wrongFamily),
+            "a stamp's time" to listOf(wrongFamily),
+            "the expected extract operation — the control" to emptyList(),
+        ), actual)
+    }
+
+    /**
      * The four-parameter SPLIT-YEAR form, which the ledger had as an H-model shape with no A12 reach.
      *
      * The rows that carry the correction are the two controls: the very same extract operator is ADMITTED in
