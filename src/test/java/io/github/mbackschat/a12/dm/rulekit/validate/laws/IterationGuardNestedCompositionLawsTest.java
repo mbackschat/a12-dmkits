@@ -115,6 +115,10 @@ class IterationGuardNestedCompositionLawsTest {
         actual.put("(same-level Or same-level) And negative",
                 verdict(sameLevelPositive().or(otherSameLevelPositive()).and(negative())));
 
+        // A presence arm and a comparison arm on the same level: the two ways a positive references it, under one Or.
+        actual.put("(same-level presence Or same-level comparison) And negative",
+                verdict(sameLevelPositive().or(M.num("/Order/Items/Count").gt(0)).and(negative())));
+
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("same-level guard, conjoined", KernelLaws.ADMITTED);
         expected.put("unguarded", NEG);
@@ -122,6 +126,7 @@ class IterationGuardNestedCompositionLawsTest {
         expected.put("(off-level Or same-level) And negative", NEG);
         expected.put("(off-level Or off-level) And negative", NEG);
         expected.put("(same-level Or same-level) And negative", KernelLaws.ADMITTED);
+        expected.put("(same-level presence Or same-level comparison) And negative", KernelLaws.ADMITTED);
 
         assertEquals(expected, actual);
     }

@@ -10131,6 +10131,7 @@ Measured on two independent repeatable groups plus a non-repeating root field, n
 | `(off-level positive Or same-level positive) And negative` | `MVK_NEG_CONDITION_IN_ITERATION` |
 | **control** — `(off-level Or off-level) And negative` | `MVK_NEG_CONDITION_IN_ITERATION` |
 | `(same-level positive Or same-level positive) And negative` (added 2026-10-09) | admitted |
+| `(same-level presence Or same-level comparison) And negative` (added 2026-10-09) | admitted |
 
 So an `Or` lends nothing, and it lends nothing at every depth rather than only between direct siblings: a positive licenses the conjoined negative **only when reached through `And` alone**. *Corrected 2026-10-09: an `Or` lends what EVERY arm guards — the added row, where both arms are same-level positives, is admitted. The three refused rows each had an arm that guards nothing, so they could not tell "an `Or` lends nothing" from "an `Or` lends only what all its arms lend"; the parallel twin is [KF537](#kf537).* The control row is what makes the two middle rows mean something — it differs from them in nothing but whether a same-level positive appears inside the disjunction, so the refusals are not merely the negative's own.
 

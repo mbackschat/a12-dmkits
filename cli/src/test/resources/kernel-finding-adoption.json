@@ -7826,7 +7826,7 @@
       }
     },
     "kf435": {
-      "sha256": "007d603149c03142c475c2b7e142f40de61784c41ee8aeb78567513c1f5a7270",
+      "sha256": "c4024b925676d3d2b1af35247f165c04ffb4af9cad7b60ae25611622a2df1842",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [],
@@ -7852,7 +7852,7 @@
           "evidence": {
             "the nested-Or iteration-guard lint": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/lint/NonIteratingGuardLintTest.java#aPositiveAtNoRepeatableLevelLeavesTheNegativeUnguarded",
-              "witness": "An Or of two same-level guards does not warn; an Or with one same-level arm does."
+              "witness": "An Or of two same-level guards, or of a same-level presence and comparison in either order, does not warn; an Or with one off-level arm does."
             }
           }
         },

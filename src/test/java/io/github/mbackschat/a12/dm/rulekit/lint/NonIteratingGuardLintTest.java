@@ -48,6 +48,10 @@ class NonIteratingGuardLintTest {
                 M.field("/Order/Reference"), M.field("/Order/Customer/Name"))));
         actual.put("an Or whose every arm is a same-level guard", warns(Dsl.fieldFilled(M.field("/Order/Items/Count"))
                 .or(Dsl.fieldFilled(SKU))));
+        actual.put("an Or of a same-level presence and comparison", warns(Dsl.fieldFilled(M.field("/Order/Items/Count"))
+                .or(M.num("/Order/Items/Count").gt(0))));
+        actual.put("the mirror: a comparison Or a presence", warns(M.num("/Order/Items/Count").gt(0)
+                .or(Dsl.fieldFilled(M.field("/Order/Items/Count")))));
         actual.put("an Or with one same-level arm", warns(Dsl.fieldFilled(M.field("/Order/Items/Count"))
                 .or(Dsl.fieldFilled(M.field("/Order/Reference")))));
         actual.put("the rule group's presence, the rule in the non-repeating root",
@@ -64,6 +68,8 @@ class NonIteratingGuardLintTest {
         expected.put("root group presence", true);
         expected.put("a field list at no repeatable level", true);
         expected.put("an Or whose every arm is a same-level guard", false);
+        expected.put("an Or of a same-level presence and comparison", false);
+        expected.put("the mirror: a comparison Or a presence", false);
         expected.put("an Or with one same-level arm", true);
         expected.put("the rule group's presence, the rule in the non-repeating root", true);
         expected.put("the rule group's presence, the rule in the repeatable group", false);
