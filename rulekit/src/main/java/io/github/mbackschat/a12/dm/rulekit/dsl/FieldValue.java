@@ -11,6 +11,12 @@ import java.util.Optional;
  */
 public record FieldValue(FieldRef field, boolean outer) implements Calculation, DuplicateOperand {
 
+    /** The marker lives on {@link #outer()}, the form the reader builds, so an authored read equals the one read back. */
+    public FieldValue {
+        outer |= field.correlated();
+        field = field.marked(false);
+    }
+
     /** An ordinary (non-correlated) value read. */
     public FieldValue(FieldRef field) {
         this(field, false);

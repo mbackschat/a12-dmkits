@@ -561,6 +561,18 @@ final class ConditionConverter {
             // members from their plain paths read `NoFieldFilled($a, B*/c)` back as `NoFieldFilled($a, B/c)`.
             if (entities.stream().anyMatch(IEntityId::isOuter)) {
                 FieldOperand[] ops = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
+                // one marked field is a presence, exactly as the unmarked arm below canonicalizes it
+                if (single && ops[0] instanceof FieldRef marked) {
+                    switch (name) {
+                        case AllFieldsFilled -> {
+                            return marked.filled();
+                        }
+                        case NoFieldFilled -> {
+                            return marked.notFilled();
+                        }
+                        default -> { }
+                    }
+                }
                 return fieldFillQuantifier(name, ops, entityList);
             }
             // An unfiltered wildcard field-fill quantifier is still a list operation. Route every operand
@@ -958,9 +970,11 @@ final class ConditionConverter {
     }
 
     private NumberExpr lengthOf(IEntityId entity) {
-        return hasSemanticIndex(entity)
-                ? Dsl.length(semanticIndex(entity, entity).index())
-                : model.str(entity.getFullName()).length();
+        if (hasSemanticIndex(entity)) {
+            return Dsl.length(semanticIndex(entity, entity).index());
+        }
+        StringRef text = model.str(entity.getFullName());
+        return (entity.isOuter() ? text.outer() : text).length();
     }
 
     /** {@link #toFieldOperand} without the index, for {@code FirstFilledValue}, which keys its own operand. */
@@ -1070,19 +1084,20 @@ final class ConditionConverter {
             return new ValueListCondition(toScalarCell(valueList.getField()), included, vals);
         }
         List<String> values = valueList.getValueList().stream().map(op -> constantValue(op, valueList)).toList();
+        boolean outer = valueList.getField().isOuter();   // $Code In ("AB12") reads the rule's row inside a filter
         return switch (kind) {
             case STRING -> {
-                StringRef r = model.str(path);
+                StringRef r = outer ? model.str(path).outer() : model.str(path);
                 String[] rest = values.subList(1, values.size()).toArray(String[]::new);
                 yield included ? r.in(values.get(0), rest) : r.notIn(values.get(0), rest);
             }
             case ENUMERATION -> {
-                EnumRef r = model.enumOf(path);
+                EnumRef r = outer ? model.enumOf(path).outer() : model.enumOf(path);
                 String[] rest = values.subList(1, values.size()).toArray(String[]::new);
                 yield included ? r.in(values.get(0), rest) : r.notIn(values.get(0), rest);
             }
             case NUMBER -> {
-                NumberRef r = model.num(path);
+                NumberRef r = outer ? model.num(path).outer() : model.num(path);
                 long[] longs = new long[values.size()];
                 for (int i = 0; i < values.size(); i++) {
                     try {
@@ -1231,12 +1246,10 @@ final class ConditionConverter {
         if (left instanceof ICompositeOperation concat && concat.getType() == OperationType.STRING) {
             return stringExprComparison(convertConcatenation(concat), op, right, comparison);
         }
-        // "text" == / != a concatenation — flipped like "constant op [field]" below, which is sound because both
-        // operators are symmetric; the typed surface has no text-literal expression to keep on the left
-        if (left instanceof IConstantOperation && right instanceof ICompositeOperation concat
-                && concat.getType() == OperationType.STRING
-                && (op == ComparisonOperation.EQ || op == ComparisonOperation.NE)) {
-            return stringExprComparison(convertConcatenation(concat), op, left, comparison);
+        // "text" == / != a concatenation — read in place, as Dsl.text(…) authors it
+        if (left instanceof IConstantOperation constant && right instanceof ICompositeOperation concat
+                && concat.getType() == OperationType.STRING) {
+            return stringExprComparison(Dsl.text(constant.getValue()), op, right, comparison);
         }
         // a numeric expression on the left not matched above (e.g. arithmetic on both sides, ([a]+1) == ([b]-2)
         // or a rounding/root-group count) — compare it expression-vs-expression. A constant on the left is read in
@@ -2050,7 +2063,9 @@ final class ConditionConverter {
             return Optional.empty();
         }
         String path = field.getField().getFullName();
-        return model.fieldAt(path).filter(f -> f.kind() == ValueKind.ENUMERATION).map(f -> model.enumOf(path));
+        boolean outer = field.getField().isOuter();   // {[$Plan]} + "-" reads the rule's row inside a filter
+        return model.fieldAt(path).filter(f -> f.kind() == ValueKind.ENUMERATION)
+                .map(f -> outer ? model.enumOf(path).outer() : model.enumOf(path));
     }
 
     /** One operand of a concatenation: a string literal, a string field value, or a nested concatenation. */
@@ -2059,8 +2074,10 @@ final class ConditionConverter {
             return Dsl.text(constant.getValue());
         }
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            return indexedCell(field, origin).map(StringExpr::new)
-                    .orElseGet(() -> model.str(field.getField().getFullName()).asString());
+            return indexedCell(field, origin).map(StringExpr::new).orElseGet(() -> {
+                StringRef text = model.str(field.getField().getFullName());
+                return (field.getField().isOuter() ? text.outer() : text).asString();
+            });
         }
         if (isStringCoercion(op)) {
             return stringCoercion((IFieldIdOperation) op);
@@ -2167,7 +2184,10 @@ final class ConditionConverter {
         throw unsupported("semantic index ([field For …]) with key " + key.getClass().getSimpleName(), origin);
     }
 
-    /** A comparison whose left operand is a string expression (a coercion) — vs a constant, field, or coercion. */
+    /**
+     * A comparison whose left operand is a string expression — against a constant, a text field, a coercion, a text
+     * first-filled value or a concatenation. Only {@code ==} and {@code !=} exist for text.
+     */
     private Condition stringExprComparison(StringExpr left, ComparisonOperation op, IOperation right,
             ICondition origin) {
         if (right instanceof IConstantOperation constant) {
@@ -2177,6 +2197,16 @@ final class ConditionConverter {
                 default -> throw unsupported("string-expression comparison operator " + op, origin);
             };
         }
+        StringExpr other = comparedText(right, left, origin);
+        return switch (op) {
+            case EQ -> left.eq(other);
+            case NE -> left.ne(other);
+            default -> throw unsupported("string-expression comparison operator " + op, origin);
+        };
+    }
+
+    /** The right side of a text comparison as a string expression; {@code left} decides a first-filled value's kind. */
+    private StringExpr comparedText(IOperation right, StringExpr left, ICondition origin) {
         if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
             String path = rf.getField().getFullName();
             ValueKind kind = model.fieldAt(path)
@@ -2185,29 +2215,18 @@ final class ConditionConverter {
             if (kind != ValueKind.STRING && kind != ValueKind.CUSTOM && kind != ValueKind.ENUMERATION) {
                 throw unsupported("string-family expression compared against a " + kind + " field", origin);
             }
-            StringExpr other = new StringExpr(fieldValueCalculation(rf.getField(), rf.getField().isOuter()));
-            return switch (op) {
-                case EQ -> left.eq(other);
-                case NE -> left.ne(other);
-                default -> throw unsupported("string-expression comparison operator " + op, origin);
-            };
+            return new StringExpr(fieldValueCalculation(rf.getField(), rf.getField().isOuter()));
         }
         if (isStringCoercion(right)) {
-            StringExpr other = stringCoercion((IFieldIdOperation) right);
-            return switch (op) {
-                case EQ -> left.eq(other);
-                case NE -> left.ne(other);
-                default -> throw unsupported("string-expression comparison operator " + op, origin);
-            };
+            return stringCoercion((IFieldIdOperation) right);
         }
         // a text first-filled value on the right too — the two FirstFilledValue sides of one comparison
         if (right instanceof IEntityListOperation aggregate) {
-            StringExpr other = stringAggregate(aggregate, left.expression().kind());
-            return switch (op) {
-                case EQ -> left.eq(other);
-                case NE -> left.ne(other);
-                default -> throw unsupported("string-expression comparison operator " + op, origin);
-            };
+            return stringAggregate(aggregate, left.expression().kind());
+        }
+        // a concatenation on both sides ([$Code] + "-" == [Code] + "-")
+        if (right instanceof ICompositeOperation concat && concat.getType() == OperationType.STRING) {
+            return convertConcatenation(concat);
         }
         throw unsupported("string-expression compared against an unsupported operand", origin);
     }

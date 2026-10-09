@@ -10,6 +10,12 @@ import java.util.List;
  */
 public record StringRef(FieldRef field, boolean correlated) {
 
+    /** The marker lives on {@link #field()}, so every node built from it reads the rule's row; see {@link FieldRef#marked}. */
+    public StringRef {
+        correlated |= field.correlated();
+        field = field.marked(correlated);
+    }
+
     public StringRef(FieldRef field) {
         this(field, false);
     }

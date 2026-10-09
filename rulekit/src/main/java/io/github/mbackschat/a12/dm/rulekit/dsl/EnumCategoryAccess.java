@@ -17,6 +17,12 @@ import java.util.Optional;
 public record EnumCategoryAccess(FieldRef field, String category, boolean outer)
         implements Calculation, ValueListOperand {
 
+    /** The marker lives on {@link #outer()}, the form the reader builds, so an authored read equals the one read back. */
+    public EnumCategoryAccess {
+        outer |= field.correlated();
+        field = field.marked(false);
+    }
+
     /** A non-correlated category access. */
     public EnumCategoryAccess(FieldRef field, String category) {
         this(field, category, false);

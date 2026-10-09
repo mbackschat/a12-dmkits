@@ -15,7 +15,10 @@ import io.github.mbackschat.a12.dm.core.Refusals;
 public record CategoryRef(FieldRef field, String name, List<String> values, boolean correlated)
         implements EnumListRef, NumericTextSource {
 
+    /** The marker lives on {@link #field()}, so every node built from it reads the rule's row; see {@link FieldRef#marked}. */
     public CategoryRef {
+        correlated |= field.correlated();
+        field = field.marked(correlated);
         values = List.copyOf(values);
     }
 

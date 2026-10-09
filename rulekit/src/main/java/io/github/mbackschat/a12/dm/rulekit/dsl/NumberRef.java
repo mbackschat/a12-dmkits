@@ -13,6 +13,12 @@ import java.util.List;
  */
 public record NumberRef(FieldRef field, int scale, boolean correlated) {
 
+    /** The marker lives on {@link #field()}, so every node built from it reads the rule's row; see {@link FieldRef#marked}. */
+    public NumberRef {
+        correlated |= field.correlated();
+        field = field.marked(correlated);
+    }
+
     public NumberRef(FieldRef field, int scale) {
         this(field, scale, false);
     }
@@ -24,14 +30,6 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
      */
     public NumberRef outer() {
         return new NumberRef(field, scale, true);
-    }
-
-    /**
-     * The field as the operand of a field operation, carrying this reference's {@code $} marker — the marker lives
-     * on this record, not on {@link #field()}, so a node built from the bare field reads the filter's candidate row.
-     */
-    public FieldRef operand() {
-        return correlated ? field.outer() : field;
     }
 
     public Condition filled() {

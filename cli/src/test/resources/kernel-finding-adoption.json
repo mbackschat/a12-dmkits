@@ -6813,19 +6813,23 @@
       }
     },
     "kf534": {
-      "sha256": "f351b31142eb1c7038d86fdcc92f23b39653295f0942d3998df40b6aeda334b1",
+      "sha256": "6294055b1626d72bb25ee9a03d1b85ecc497ac8eeda16132354b4e6950fd9236",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
+          "a marked field in a slot a field reference takes",
           "a marked operand of a plain-field operation"
         ],
         "dmkits": [
+          "a marked field in a slot a field reference takes",
           "a marked operand of a plain-field operation"
         ],
         "interpreter": [
+          "a marked field in a slot a field reference takes",
           "a marked operand of a plain-field operation"
         ],
         "checker": [
+          "a marked field in a slot a field reference takes",
           "a marked operand of a plain-field operation"
         ],
         "dmtool-cli": [],
@@ -6838,40 +6842,56 @@
       "consumers": {
         "adapter": {
           "state": "APPLIED",
-          "basis": "The reader keeps the marker on all six operations, and the kernel's runtime answer is pinned.",
+          "basis": "The reader keeps the marker on all six operations, and the kernel's runtime answer is pinned. The reader keeps the marker on a value-list subject, a Length operand and concatenation parts, and reads one marked field as a presence.",
           "evidence": {
             "a marked operand of a plain-field operation": {
               "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/CorrelatedFieldOperandReadTest.java#aMarkedOperandReadsBackMarkedInEverySlot",
               "witness": "Every marked operand reads back marked."
+            },
+            "a marked field in a slot a field reference takes": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/CorrelatedTypedRefReadTest.java#aMarkedTypedReferenceReadsBackMarkedInEverySlot",
+              "witness": "Every slot reads back as authored."
             }
           }
         },
         "dmkits": {
           "state": "APPLIED",
-          "basis": "The renderer writes the marker for every plain-field operand, and the rounding factories carry NumberRef's marker.",
+          "basis": "The renderer writes the marker for every plain-field operand, and the rounding factories carry NumberRef's marker. Every typed reference keeps its marker on its field, so presence, value lists, pattern, length, concatenation and comparison built from it carry the marker too.",
           "evidence": {
             "a marked operand of a plain-field operation": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CorrelatedFieldOperandDiffTest.kt#theKernelReadsTheRulesOwnRow",
               "witness": "Rules authored through the typed surface fire only on matching claims."
+            },
+            "a marked field in a slot a field reference takes": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/CorrelatedTypedRefMarkerTest.java#everyNodeBuiltFromAMarkedRefCarriesTheMarker",
+              "witness": "Every node built from a marked typed reference renders its $."
             }
           }
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "The interpreter reads the rule's row for a marked operand in each of these operations.",
+          "basis": "The interpreter reads the rule's row for a marked operand in each of these operations. It reads the rule's row in these slots as well.",
           "evidence": {
             "a marked operand of a plain-field operation": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CorrelatedFieldOperandDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
               "witness": "All three engines agree on every document."
+            },
+            "a marked field in a slot a field reference takes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CorrelatedTypedRefSlotDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on both documents."
             }
           }
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "The checker reports nothing on the model A12 admits.",
+          "basis": "The checker reports nothing on the model A12 admits. It is silent on those slots too.",
           "evidence": {
             "a marked operand of a plain-field operation": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CorrelatedFieldOperandDiffTest.kt#theCheckerIsSilentOnTheModelA12Admits",
+              "witness": "No rejecting finding."
+            },
+            "a marked field in a slot a field reference takes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CorrelatedTypedRefSlotDiffTest.kt#theCheckerIsSilentOnTheModelA12Admits",
               "witness": "No rejecting finding."
             }
           }

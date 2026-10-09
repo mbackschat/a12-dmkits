@@ -85,6 +85,16 @@ public record FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boo
     }
 
     /**
+     * This reference with its {@code $} marker set to {@code on}. The marker has to live in ONE place per record, or
+     * a node built from the other place renders the candidate's row instead: a typed ref keeps it on its field, so
+     * every node built from that field carries it, while a value node keeps it on its own flag, the form the reader
+     * builds (see each record's compact constructor).
+     */
+    FieldRef marked(boolean on) {
+        return on == correlated ? this : new FieldRef(path, kind, styleHint, on, repeatingAncestors);
+    }
+
+    /**
      * This reference spelled ABSOLUTE, whatever group the surrounding rule renders against — the one
      * per-operand escape from the renderer's path policy (API-FINDINGS AF159).
      *

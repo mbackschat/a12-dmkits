@@ -8,6 +8,12 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  */
 public record TimeRef(FieldRef field, boolean correlated) implements TimeOperand {
 
+    /** The marker lives on {@link #field()}, so every node built from it reads the rule's row; see {@link FieldRef#marked}. */
+    public TimeRef {
+        correlated |= field.correlated();
+        field = field.marked(correlated);
+    }
+
     public TimeRef(FieldRef field) {
         this(field, false);
     }

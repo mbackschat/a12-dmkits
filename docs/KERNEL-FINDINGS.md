@@ -12852,7 +12852,7 @@ Read as slots: a per-row read of the iterated row is bound, while a fixed-root f
 
 *(Locked: `validate.laws.IterationBindingLawsTest.theIterationGuardCountsIndependentSlots`.)*
 
-## §9 supplement — a `$` operand of a plain-field operation inside a filter is admitted and reads the rule's own row (kernel + both strategies, 2026-10-09) <a id="kf534"></a>
+## §9 supplement — a `$` operand inside a filter is admitted in every field slot measured and reads the rule's own row (kernel + both strategies, 2026-10-09) <a id="kf534"></a>
 
 > Fold: pending — beside §9's `$` correlation account.
 
@@ -12868,4 +12868,15 @@ At runtime the marked operand reads the RULE's row. Each rule fires when another
 
 An unmarked operand would compare each candidate with itself and fire on every claim with a sibling. Dynamic Groovy, static Java and the a12-dmkits interpreter agree on every document. `Valid` is measured for admission only; its lookup needs a registered validator ([KF51](#kf51)).
 
-*(Locked: `adapter.laws.CorrelatedFieldOperandDiffTest`, `adapter.CorrelatedFieldOperandReadTest`.)*
+**The same holds in the slots a field reference takes directly** (*added 2026-10-09*), on the same carrier with the error field `FiledOn`: `FieldNotFilled($Claims/Note)`, `FieldValueIncludedInValueList($Claims/Code, "AB12")` and its Number and Enumeration twins, `FieldValueIncludedInValueList($Claims/Code, [Claims/Code])`, `[$Claims/Code] Matches "AB.*"`, `Length($Claims/Code) == Length(Claims/Code)`, `[$Claims/Code] + "-" == [Claims/Code] + "-"`, its braced Enumeration twin, `[$Claims/Code] == [Claims/Code]`, and the equal-or-both-empty pair over `$Claims/Code` and `Claims/Code` are all admitted. The control is the same marked presence outside the filter, which draws `MVK_INVALID_OUTER_ITERATION`, so the marker reaches the kernel. A keyed cell has no row: a filter refuses any semantic index (`MVK_SEMANTIC_INDEX_NOT_ALLOWED`), marked or not.
+
+At runtime, on two documents built so that reading the candidate instead would move a firing to the other claim:
+
+| document | fires |
+|---|---|
+| two claims with equal code, units and plan, the first without a note | every rule for both claims; the note rule for the first only |
+| claim 1 `AB12`/1/`GOLD` with a note, claim 2 `CD345`/2/`BASIC` without | the three list rules for claim 1, the note rule for claim 2 |
+
+The three engines agree on both documents.
+
+*(Locked: `adapter.laws.CorrelatedFieldOperandDiffTest`, `adapter.CorrelatedFieldOperandReadTest`, `validate.laws.CorrelatedTypedRefSlotLawsTest`, `adapter.laws.CorrelatedTypedRefSlotDiffTest`, `adapter.CorrelatedTypedRefReadTest`.)*

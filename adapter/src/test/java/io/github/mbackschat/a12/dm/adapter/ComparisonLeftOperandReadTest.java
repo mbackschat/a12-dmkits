@@ -8,7 +8,6 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
@@ -19,8 +18,8 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 
 /**
  * Left operands the reader did not dispatch: a numeric literal before a count (a12-kernel-lean's
- * `src-mandatory-information-distinct-comparisons` capture read six such rules back {@code Opaque}) and a text
- * concatenation before a field. Each is authored, admitted by the kernel's consistency gate and converted back;
+ * `src-mandatory-information-distinct-comparisons` capture read six such rules back {@code Opaque}), a text
+ * concatenation before a field or a text, and a text before a concatenation. Each is authored, admitted by the kernel's consistency gate and converted back;
  * the read must equal the authored object, so the authored operand order survives.
  *
  * <p>Own domain (a web shop order).
@@ -49,6 +48,8 @@ class ComparisonLeftOperandReadTest {
                 .plus(m.str("/Order/LastName").asString()).eq(m.str("/Order/ShipTo").asString())));
         authored.put("ConcatenationDiffersFromText", named.and(m.str("/Order/FirstName").asString().plus(" ")
                 .plus(m.str("/Order/LastName").asString()).ne("Guest Buyer")));
+        authored.put("TextDiffersFromConcatenation", named.and(Dsl.text("Guest Buyer")
+                .ne(m.str("/Order/FirstName").asString().plus(" ").plus(m.str("/Order/LastName").asString()))));
         BoundModel withRules = m;
         for (Map.Entry<String, Condition> rule : authored.entrySet()) {
             withRules = withRules.add(m.rule(m.group("/Order")).name(rule.getKey())
@@ -61,20 +62,5 @@ class ComparisonLeftOperandReadTest {
         authored.keySet().forEach(name -> read.put(name, adapter.read("/Order/" + name) instanceof
                 ReadResult.Converted converted ? converted.condition() : adapter.read("/Order/" + name)));
         assertEquals(authored, read);
-    }
-
-    /**
-     * A quoted literal before a concatenation reads back flipped, as {@code "x" == [field]} already does: the typed
-     * surface has no text-literal expression to put first, and the flip is sound only because {@code ==} and
-     * {@code !=} are symmetric. The condition is text because that missing expression is the subject.
-     */
-    @Test
-    void aLiteralBeforeAConcatenationReadsBackFlipped() {
-        BoundModel m = BoundModel.ofJson(RuntimeLaws.withRule(ORDER, "/Order", "NotTheGuest", "../ShipTo", "C",
-                "FieldFilled(ShipTo) And \"Guest Buyer\" != [FirstName] + \" \" + [LastName]"));
-        ReadResult read = KernelAdapter.checkAndOpen(m).read("/Order/NotTheGuest");
-        Condition flipped = m.str("/Order/ShipTo").filled().and(m.str("/Order/FirstName").asString().plus(" ")
-                .plus(m.str("/Order/LastName").asString()).ne("Guest Buyer"));
-        assertEquals(flipped, read instanceof ReadResult.Converted converted ? converted.condition() : read);
     }
 }

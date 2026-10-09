@@ -8,6 +8,12 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  */
 public record DateRef(FieldRef field, boolean correlated) implements DateOperand {
 
+    /** The marker lives on {@link #field()}, so every node built from it reads the rule's row; see {@link FieldRef#marked}. */
+    public DateRef {
+        correlated |= field.correlated();
+        field = field.marked(correlated);
+    }
+
     public DateRef(FieldRef field) {
         this(field, false);
     }

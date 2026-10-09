@@ -15,7 +15,10 @@ import io.github.mbackschat.a12.dm.core.Refusals;
 public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, List<String>> categories,
         boolean correlated) implements EnumListRef, NumericTextSource {
 
+    /** The marker lives on {@link #field()}, so every node built from it reads the rule's row; see {@link FieldRef#marked}. */
     public EnumRef {
+        correlated |= field.correlated();
+        field = field.marked(correlated);
         allowedValues = List.copyOf(allowedValues);
         categories = Map.copyOf(categories);
     }
@@ -24,7 +27,7 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
 
     @Override
     public ValueListOperand listOperand() {
-        return correlated ? field.outer() : field;
+        return field;
     }
 
     @Override

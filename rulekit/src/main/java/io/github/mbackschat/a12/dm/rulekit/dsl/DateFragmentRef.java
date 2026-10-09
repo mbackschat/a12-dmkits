@@ -12,6 +12,12 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  */
 public record DateFragmentRef(FieldRef field, boolean correlated) implements DateOperand {
 
+    /** The marker lives on {@link #field()}, so every node built from it reads the rule's row; see {@link FieldRef#marked}. */
+    public DateFragmentRef {
+        correlated |= field.correlated();
+        field = field.marked(correlated);
+    }
+
     public DateFragmentRef(FieldRef field) {
         this(field, false);
     }
