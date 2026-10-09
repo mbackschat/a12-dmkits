@@ -311,11 +311,14 @@ private sealed interface SlotArm {
 private data class SlotDefect(val code: String, val slot: String, val wrote: String, val expected: String)
 
 /**
- * The arm [operand] of [shape] takes, read as [armOf] reads it except for a slot that writes a semantic index.
+ * The arm [operand] of [shape] takes, read as [armOf] reads it except for a slot that IS a keyed entity spec.
  *
  * A keyed slot is an entity spec like a bare one, so it names an entity and its declaration is judged — read
  * through [operandReferenceIn], which yields its value only where the chain vouches for the key and stands
- * the slot down otherwise, the key's own class answering first ([KERNEL-FINDINGS KF476]).
+ * the slot down otherwise, the key's own class answering first ([KERNEL-FINDINGS KF476]). An extract operator
+ * whose ARGUMENT is keyed stays the extract arm: A12 asks the slot, not what the operator reads, so it neither
+ * names an entity for the validity gate nor escapes the slot gates (a12-kernel-lean SPEC-2026-10-06-05,
+ * `adapter.laws.CheckerSelectedDateValidityAgreementTest`).
  */
 private fun TrackedFactBase.armIn(
     shape: CallShape,
@@ -324,8 +327,9 @@ private fun TrackedFactBase.armIn(
     extractOps: Map<String, String>,
 ): SlotArm {
     val text = shape.textOf(operand)
-    if (!writesASemanticIndex(text)) {
-        return armOf(operand, extractOps)
+    val arm = armOf(operand, extractOps)
+    if (arm is SlotArm.Extract || !writesASemanticIndex(text)) {
+        return arm
     }
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     return SlotArm.Keyed(operandReferenceIn(text, declaringGroup, element) { null }?.reference)

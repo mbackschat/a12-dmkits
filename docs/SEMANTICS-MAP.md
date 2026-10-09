@@ -44,6 +44,9 @@ Facet placement follows the dimension's *question*: `emptyOperand` + `aggregateI
 | §12 message referenced and fill-to-fix scope | — | `MessageReferenceScopeDiffTest`, `SelectedMessageReferenceDiffTest` | — |
 | §6 calendar target completion | — | `CalendarTargetCompletionDiffTest` | — |
 | §6 temporal construction provenance | — | `ConstructionProvenanceDiffTest` | — |
+| §6 constructed-Date component relevance | — | `DateComponentRelevanceDiffTest` | — |
+| §6 temporal difference operand failure order | — | `DifferenceOperandFailureOrderDiffTest` | — |
+| §6 a temporal literal failure inside a filter | — | `FilterTemporalLiteralFailureDiffTest` | — |
 | §6 shift amount phase and provenance | — | `ShiftAmountPhaseDiffTest` | — |
 | §9 full-validation iteration domain | — | `ValidationIterationDomainDiffTest` | — |
 | §11 computation-guard read order and reached poison | — | `MembershipComputationGuardDiffTest`, `OverlapComputationGuardDiffTest`, `UniquenessComputationGuardDiffTest`, `FilteredFillComputationGuardDiffTest`, `UnregisteredPredefinedTypeComputationTest`, `RootGroupGuardDependencyDiffTest` | — |
@@ -122,6 +125,8 @@ Lock-tree classes whose subject is not one kernel-semantics section — the conc
 | …and over starred, `$`-captured and categorized operands, so the checker keeps a star and a capture out of the exact duplicate test and inside the nested one, and a category outside both ([kf325](KERNEL-FINDINGS.md#kf325), [kf388](KERNEL-FINDINGS.md#kf388)) | `CheckerOverlapIdentityAgreementTest` |
 | …and over braced comparison operands, so the checker types a braced Enumeration, finds a braced constant, and asks the display gate only of an immediate text read ([kf407](KERNEL-FINDINGS.md#kf407)) | `CheckerComparisonOperandShapeAgreementTest` |
 | …and over the whole-rule gates beside parse-time ones and beside each other, so the checker places a captured index selection, a captured parallel filter body and a candidate read as A12 does ([kf375](KERNEL-FINDINGS.md#kf375)) | `CheckerPostParseOrderAgreementTest` |
+| …and over Date slots that read a selected row, so the checker keeps an extractor over a selection an extractor — naming no entity for the validity gate and meeting the slot gates ([kf402](KERNEL-FINDINGS.md#kf402), [kf373](KERNEL-FINDINGS.md#kf373)) | `CheckerSelectedDateValidityAgreementTest` |
+| …and over a year extracted from a time, so the checker admits it on a clock field, a built time and a recovered one exactly under a declared Base Year ([kf261](KERNEL-FINDINGS.md#kf261)) | `CheckerTimeYearExtractorAgreementTest` |
 | …and over the one condition A12 joins a computation into, so the checker orders its members as that text does and judges each alternative's `[<target>] != <operation>` as the comparison it is ([kf483](KERNEL-FINDINGS.md#kf483)) | `CheckerComputationJoinedConditionAgreementTest` |
 | …and over a field copied into a field of every other kind, eleven declarations over nine kinds, so the checker names the first comparison arm that refuses each pair ([kf483](KERNEL-FINDINGS.md#kf483)) | `CheckerFieldCopyCrossAgreementTest` |
 | …and over each operator's argument slots, so the checker reads a place count, an operation, a day specification, a constant and `CustomCondition`'s name as their productions type them ([kf492](KERNEL-FINDINGS.md#kf492)) | `CheckerArgumentSlotAgreementTest` |

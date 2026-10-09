@@ -1449,7 +1449,7 @@ KERNEL-SEMANTICS §6 carries the exact corrections; the drained source (`Bedingu
 
 `Valid(Date(...))` fires only when **all referenced parts are specified AND** they form a real calendar date; `Invalid(Date(...))` fires when the date is impossible (e.g. 31 February) **OR any referenced part is unspecified**. Their strong-Kleene truth projections are exact complements: real → TRUE/FALSE, unreal or incomplete → FALSE/TRUE, malformed → UNKNOWN/UNKNOWN. The non-derivability is at the full verdict level: incomplete makes `Invalid` an OMISSION error, while present-but-unreal makes it VALUE; `Valid` is false in both cases. To fire `Invalid` only on a complete-but-impossible date, prefix `AllFieldsFilled(...)`. *(Locked: `adapter.laws.DateValidityLawsTest` + `DateConstructionDiffTest`.)*
 
-**The BA's "1583 Gregorian floor" (L3833) is NOT a runtime `Date(...)`-construct criterion (probed 2026-06-17, probe-evidence).** `Invalid(Date(1,1,1500))` does **not** fire — the runtime treats `01.01.1500` as a valid constructed date (the same rule fires for an impossible date, so the mechanism works). The floor **is** enforced — at the *value* tier: the later §3 supplement ("a DATE value has an always-on lower bound", 2026-07-09) verified and locked the formal check on stored/computed values (`datumFalsch`, `ComputedDateGregorianFloorDiffTest`). (A 4th BA-vs-source/runtime discrepancy found this review, after `INVALID_INTERVAL`, the semantic-index operator, and the fragment-comparison code.)
+**The BA's "1583 Gregorian floor" (L3833) is NOT a runtime `Date(...)`-construct criterion (probed 2026-06-17, probe-evidence).** `Invalid` over a 1500 date built from field components does **not** fire — the runtime treats it as a valid constructed date (the same rule fires for an impossible date, so the mechanism works; locked by `adapter.laws.ConstructedDateCalendarDiffTest` on `29.02.1500`, `28.02.1500` and `01.03.1500`). *Corrected 2026-10-09: this sentence gave the probe as `Invalid(Date(1,1,1500))`, which A12 refuses statically with `MVK_ONLY_CONSTANTS_USED` ([KF402](#kf402)), so it cannot have run as written (a12-kernel-lean SPEC-2026-10-06-05).* The floor **is** enforced — at the *value* tier: the later §3 supplement ("a DATE value has an always-on lower bound", 2026-07-09) verified and locked the formal check on stored/computed values (`datumFalsch`, `ComputedDateGregorianFloorDiffTest`). (A 4th BA-vs-source/runtime discrepancy found this review, after `INVALID_INTERVAL`, the semantic-index operator, and the fragment-comparison code.)
 
 ### §6 supplement — date-fragment comparability partition (probe-confirmed, 2026-06-17) <a id="kf93"></a>
 
@@ -4981,19 +4981,21 @@ This is static corroboration of the identity split that [KF173](#kf173)/[KF253](
 
 *(Locked: `validate.laws.PartialDatePrecisionOperandLawsTest`.)*
 
-## §6 supplement — a declared Base Year reaches the temporal EXTRACTOR gate, and the admitted extractor then decides nothing (kernel `checkConsistency` + differential, 2026-09-06) <a id="kf261"></a>
+## §6 supplement — a declared Base Year reaches the temporal EXTRACTOR gate, and the admitted extractor then answers the epoch's year, 1970 (kernel `checkConsistency` + differential, 2026-09-06; corrected 2026-10-09) <a id="kf261"></a>
 
 > Fold: pending — extends the Base-Year supplementation rule to a third gate; folds beside [KF193](#kf193).
 
 Our record had the Base Year supplementing the year at the **comparison** gate and the **aggregate** gate. It reaches the **extractor** gate too: `YearFromDate` on a pure `HH:mm:ss` field is refused `MVK_WRONG_DATE_FORMAT_FOR_OP` with no Base Year and **ADMITTED** with one. So the year part's gate is *component present OR a Base Year supplies one*, not *component present*. The control is within-model — the same draft built twice, differing in one builder call — and the ordinary-DATE extractor row is admitted on both, so the gate is visibly armed either way.
 
-**Admission is not a value.** At runtime that admitted extractor decides nothing: neither `== 2024` (the declared base year) nor `== 2023` fires on a filled clock cell, on both kernel strategies and in the interpreter, while the same rule shape over an ordinary DATE field fires on the same document. Asking one comparand could not separate "the Base Year supplies the year" from "the operand yields nothing"; asking two does.
+**Admission is not a value, and the value is not the Base Year.** At runtime the admitted extractor answers **1970**: `== 1970` fires on a filled clock cell, on both kernel strategies, while neither `== 2024` (the declared base year) nor `== 2023` does, and the same rule shape over an ordinary DATE field fires on the same document. A time carries a hidden date, 1 January 1970, and the year is read from it. *Corrected 2026-10-09: this paragraph said the extractor "decides nothing". Its two comparands separated "the Base Year supplies the year" from "the operand yields nothing" but not from "the operand yields a third year", and the epoch's was that third year (a12-kernel-lean SPEC-2026-10-08-01). The interpreter had answered nothing too, so the agreement was no evidence for the reading.*
+
+**A constructed time carries the same anchor.** Under a Base Year, `YearFromDate(Time(Hour))` and `YearFromDate(TimeFromDateTime(DateTime(StartOn, Time(Hour))))` both answer 1970 and not 2024, and `Date("01", "01", YearFromDate(Time(Hour)))` builds `01.01.1970`; without a Base Year both extractors are refused `MVK_WRONG_DATE_FORMAT_FOR_OP`, like the clock field. The interpreter read a time-only value as having no calendar date and now reads the anchor ([IF371](INTERPRETER-FINDINGS.md#if371)). The typed surface offers `YearFromDate` over Date and DateTime operands only; an author wanting a time's year always gets 1970, so the missing factory refuses nothing useful.
 
 **The declared FORMAT decides the operand family, and the KIND is not read** — [KF211](#kf211)'s rule reaching the completed-period difference: `DifferenceInYears` takes a TIME-declared `yyyy-MM-dd` field beside an ordinary DATE and refuses a pure clock field, `HoursFromTime` the mirror on the same declaration.
 
 **Reported by a12-kernel-lean as `SPEC-2026-09-05-14`** (narrowed by them to these two rows after finding the wider claim already in [KF211](#kf211)); their limit is static admission, and the runtime row is added here.
 
-*(Locked: `validate.laws.TemporalExtractorBaseYearGateLawsTest` + `adapter.laws.BaseYearExtractorAdmissionDiffTest`.)*
+*(Locked: `validate.laws.TemporalExtractorBaseYearGateLawsTest` + `adapter.laws.BaseYearExtractorAdmissionDiffTest`, both including the constructed-time rows.)*
 
 ## §6 supplement — the distinct count and the extrema fold a COMPONENT-OMITTING temporal operand at its declared precision (differential, 2026-09-06) <a id="kf262"></a>
 
@@ -7980,6 +7982,8 @@ Reported by the portable checker: `CheckFamily.BASE_YEAR_REQUIREMENT` for the DS
 **The construction's own slot gates answer before the date arm's question**, measured on `Valid(Date("32", "02", "2024"))`, which draws `MVK_WRONG_DATE_FORMAT_FOR_OP` rather than this arm's class although every slot is a constant.
 
 Reported by the portable checker (`CheckFamily.VALIDITY_CONDITION_OPERANDS`), which owns all five gates of the first arm — nothing else reads that carrier, so deferring the first three would leave a model A12 refuses with no finding at all — and reads the construction through the slot family's own walk rather than restating what a slot demands. Silent on a `TypeDefType` or `UnspecifiedType` subject, whose effective type this reader does not resolve, and on a subject shape it cannot reduce to one bare path.
+
+**Extended 2026-10-09 — a SELECTED slot is an entity, and an extractor over one is not** (reconciles a12-kernel-lean `SPEC-2026-10-06-05`). `Events/Month For Key` in one slot admits both predicates, as do three selected numbers. Three extractors over a selection, or over a shift of one, are constants-only, and so is an extractor over a shifted partial date beside constants. The slot gates draw the same line ([KF373](#kf373)): a month extractor over a selection in the day slot is `MVK_INVALID_DATE_OR_TIME_EXTRACT_OP`, a quarter extractor in the month slot `MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED`, and likewise in a `Time` construction. The portable checker had read any slot whose text carried a semantic index as a keyed entity, extractor or not, so it stayed silent on all five refusing rows; it now keeps an extractor the extract arm. *(Locked: `adapter.laws.CheckerSelectedDateValidityAgreementTest`, kernel and checker on every row; mirrored by `consistency.SelectedDateSlotTest`.)*
 
 *Locked by:* `rulekit.validate.laws.ValidityConditionOperandLawsTest`, mirrored by `consistency.ValidityConditionOperandsTest`.
 
@@ -12593,4 +12597,51 @@ A root group is never expanded into its fields, and the reference inventory keep
 | `Sum(Bins/Slots*/Qty For Wanted)` | the selected row's `BinCode`, `Slots[0]/Qty`, and `Wanted` |
 
 The selected row is the matched one; a key no admitted row carries, or an empty key, names row `-5`, and every level below the key that repeats names `0`. The rows are named even where the read is never reached, and where an invalid payload refuses the read. An omission's fill-to-fix carries the same selected pointers. A DUPLICATED key refuses the value read, while the unreached selections still name one row, which A12 takes from its index cache, written in hash-map order. Two measured documents name the first match, and the general order is open (INTERPRETER-GAPS IG164). *(Locked: `adapter.laws.SelectedMessageReferenceDiffTest`, tri-engine on seven documents, with the duplicate rows pinned on the kernel alone.)*
+
+## §6 supplement — a constructed Date's cause-free non-relevant component clears cleanly without stopping the walk, and an empty selection is a missing component (both strategies, 2026-10-09) <a id="kf523"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-06-04` and `SPEC-2026-10-06-05`.
+
+`DateComponentRelevanceDiffTest` compares validation signatures and every computation outcome on nine documents across dynamic Groovy, static Java and the interpreter. Its model builds a Date four ways into seeded targets: a day extracted from a shifted partial date beside a selected month and year, a year extracted from that shift beside constants, three selected numbers, and three extractors over a shifted selection. Each form has a `Min` against `15.02.2024`, and a `FieldNotFilled` guard reading the target. The first and third also have `Valid`/`Invalid` alternatives, a `Valid` common guard and an `Invalid` rule. The pinned rows are dynamic Groovy's:
+
+| Input | Kernel observation |
+|---|---|
+| the partial date's year unknown (`0000-00-00`) | the targets of both partial-date forms clear, the guard reading the first selects its alternative (`VALUE|1`), and `Min` clears too |
+| the same, under the validity alternatives and the `Valid` common guard | both clear: neither predicate is true, so the alternatives fall through and the common guard does not hold |
+| the unknown year, and the selected month malformed | the target still clears, but the guard reading it clears instead of selecting: the malformed month is reached after the non-relevant day and poisons |
+| the selected row's components empty | `Invalid` over three selected numbers fires `OMISSION_ERROR`, asking for them, and `Min` over three extractors from a shifted empty selection falls back to `15.02.2024` |
+
+So a cause-free non-relevant component does not stop the construction: a later formally invalid one is still read and wins, and otherwise the result is non-relevant — a clean clear that absorbs `Min`. An empty selection, whether the key matches a row whose cell is empty or no row at all, is a missing component exactly like an empty field. The interpreter had stopped at the first non-relevant component, and had dropped the cause-free flag through a shift, so the malformed month was never reached; it had also read an empty selection as zero, making the incomplete construction unreal ([IF369](INTERPRETER-FINDINGS.md#if369)). *(Locked: `adapter.laws.DateComponentRelevanceDiffTest`, tri-engine on nine documents with the separating rows pinned on the kernel. String keys, full validation and UTC only; selected String components and a selected partial date in `ValueAsDate` have no typed authoring surface yet, so they are not in this model.)*
+
+## §6 supplement — a temporal difference's computation stops at a formally unavailable FIRST operand, validation reaches both, and an empty operand stops neither (both strategies, 2026-10-09) <a id="kf524"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-08-02`; the gap-label failure itself is [KF513](#kf513).
+
+`DifferenceOperandFailureOrderDiffTest` (JVM default UTC, model `Europe/Berlin`) compares validation signatures, every computation outcome and the operand-error channel on three documents across dynamic Groovy, static Java and the interpreter. Each `DifferenceInDays` pairs a leg stamp — read directly, shifted a day, or rebuilt as `Date(DayFromDate(stamp), "03", "2024")` — with `DateFromDateTime` of the Berlin gap label, in both orders. Each is computed plainly from a root stamp and as a filter over a leg sum, and a rule checks each. The pinned rows are dynamic Groovy's, identical on all six source and carrier cells:
+
+| First operand | Computation | Validation |
+|---|---|---|
+| a malformed stamp | the target clears with no failure of its own: the stop comes before the label | the rule aborts with VALUE: the label is still reached |
+| the gap label, before a malformed stamp | the target clears with `berechnungsWertFehler` | — |
+| an empty stamp | the target clears with `berechnungsWertFehler`: emptiness does not stop the read | — |
+
+So the computation's first-formal stop is phase-specific, and cause-free emptiness never stops either phase. The interpreter already agreed. *(Locked: `adapter.laws.DifferenceOperandFailureOrderDiffTest`. Day differences only; the other units share the template by source and are not measured here.)*
+
+## §11 supplement — a gap label reached in a `Sum` filter fails rather than drops its row, and the filter's connectives short-circuit on known truth in validation too (both strategies, 2026-10-09) <a id="kf525"></a>
+
+> Fold: pending — a12-kernel-lean `SPEC-2026-10-07-04`; the label failure is [KF513](#kf513).
+
+`FilterTemporalLiteralFailureDiffTest` (JVM default UTC, model `Europe/Berlin`) sums leg weights through four filters — weight above zero and the leg's stamp equal to the gap label, in both operand orders; a weight above 100 before that comparison; and weight above zero `Or` it — with a computation and a rule over each. It compares all three engines on an ordinary, an empty and a malformed stamp, and pins dynamic Groovy's rows:
+
+| Input | Kernel observation |
+|---|---|
+| the label reached past an empty stamp | the target clears with `berechnungsWertFehler`, the rule aborts with VALUE |
+| a malformed stamp read before the label | the target clears with no failure of its own; the rule still aborts with VALUE |
+| the label read before a malformed stamp | the target keeps `berechnungsWertFehler` |
+| a false left conjunct, one leg | the label is not read: `0`, no failure, no message |
+| a true left disjunct, one leg | the label is not read: `7`, and the rule fires as an ordinary OMISSION |
+| no legs, a false left conjunct | `0`, nothing reached |
+| no legs, an `Or` whose left reads an empty weight | the label IS reached: the target clears with `berechnungsWertFehler` and the rule aborts |
+
+The false- and true-prefix rows measure what a12-kernel-lean held from source alone: the generated filter code short-circuits on known truth in validation as well as in computation. The last row shows the filter running on missing declared slots, where an empty weight leaves the `Or` unknown. The interpreter had evaluated filter bodies eagerly in validation and now short-circuits them ([IF370](INTERPRETER-FINDINGS.md#if370)); it does not yet visit missing declared slots (INTERPRETER-GAPS IG165), so the last row is pinned on the kernel alone. *(Locked: `adapter.laws.FilterTemporalLiteralFailureDiffTest`. One repeatable level, `Sum`, a DateTime field against the label; no `Now` comparison and no partial validation measured here.)*
 

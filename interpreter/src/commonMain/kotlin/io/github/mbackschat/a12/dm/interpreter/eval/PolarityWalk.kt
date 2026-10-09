@@ -347,7 +347,7 @@ private fun Interpreter.countFill(
         val group = st.path.substringBeforeLast('/')
         for (rc in ctxOf(st).rowContexts(group, st.bindDepth)) {
             total++
-            if (havingInterp(rc).fires(having) && rc.filled(st.path) && qualifies(rc, st.path)) {
+            if (havingInterp(rc).keeps(having) && rc.filled(st.path) && qualifies(rc, st.path)) {
                 counted++; anyFilteredCounted = true
             }
         }

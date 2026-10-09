@@ -51,6 +51,7 @@ class TemporalExtractorBaseYearGateLawsTest {
                 .rootGroup("Term", t -> t
                         .stringField("Holder", s -> { })
                         .timeField("RenewalClock", c -> c.format("HH:mm:ss"))
+                        .numberField("RenewalHour", n -> n.fractionDigits(0).min("0").max("23"))
                         .timeField("TimeAsDate", c -> c.format("yyyy-MM-dd"))
                         .dateField("StartOn", d -> d.format("yyyy-MM-dd"))
                         .dateField("EndOn", d -> d.format("yyyy-MM-dd")))
@@ -86,6 +87,28 @@ class TemporalExtractorBaseYearGateLawsTest {
         expected.put("YearFromDate on an ordinary DATE, NO base year — armed control", KernelLaws.ADMITTED);
         expected.put("YearFromDate on an ordinary DATE, base year 2024 — armed control", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the year gate is 'component present OR a Base Year supplies one'");
+    }
+
+    /**
+     * A CONSTRUCTED time meets the same gate as a clock field (a12-kernel-lean SPEC-2026-10-08-01): its year is
+     * admitted exactly when the model declares a Base Year, built directly or recovered from a date-time.
+     */
+    @Test
+    void aConstructedTimeMeetsTheSameYearGate() {
+        String built = "YearFromDate(Time(RenewalHour)) == 1970";
+        String recovered = "YearFromDate(TimeFromDateTime(DateTime(StartOn, Time(RenewalHour)))) == 1970";
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a built time, NO base year", verdict(NO_BASE_YEAR, built));
+        actual.put("a built time, base year 2024", verdict(WITH_BASE_YEAR, built));
+        actual.put("a time recovered from a date-time, NO base year", verdict(NO_BASE_YEAR, recovered));
+        actual.put("a time recovered from a date-time, base year 2024", verdict(WITH_BASE_YEAR, recovered));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a built time, NO base year", WRONG_COMPONENTS);
+        expected.put("a built time, base year 2024", KernelLaws.ADMITTED);
+        expected.put("a time recovered from a date-time, NO base year", WRONG_COMPONENTS);
+        expected.put("a time recovered from a date-time, base year 2024", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "a constructed time's year is admitted only under a Base Year");
     }
 
     /** The declared FORMAT decides the operand family; the declared KIND is not read. */

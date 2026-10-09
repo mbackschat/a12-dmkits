@@ -1339,16 +1339,26 @@ private fun Interpreter.rangeSubstring(args: List<Expr>): String? {
  * An operand that reads as the kernel's fillable EMPTY value (`nichtAngegeben` & check-relevant) for the
  * value functions that coerce an unspecified operand to **0** and FIRE — `Length` (`BigDecimalUtils.laenge`),
  * the date/time extractors (`getDatumsTeil`) and the date diffs (`getDatumsDiff`), unlike a direct comparison
- * on an empty field (which is suppressed). A plain field ref that is not filled and not formally invalid;
- * non-field operands (constants, constructions) are never empty here. KERNEL-FINDINGS §6, IF73.
+ * on an empty field (which is suppressed). A plain field ref that is not filled and not formally invalid, or a
+ * SELECTED read that resolves to no cell — a clean no-match or a matched empty cell, judged like an empty field
+ * (SPEC-2026-10-06-04, `adapter.laws.DateComponentRelevanceDiffTest`); constants and constructions are never
+ * empty here. KERNEL-FINDINGS §6, IF73.
  */
-private fun Interpreter.emptyCheckRelevant(e: Expr): Boolean =
-    e is Expr.Field && !ctxOf(e).filled(e.path) && !invalid(ctxOf(e), e.path)
+private fun Interpreter.emptyCheckRelevant(e: Expr): Boolean = when (e) {
+    is Expr.Field -> !ctxOf(e).filled(e.path) && !invalid(ctxOf(e), e.path)
+    is Expr.SemanticIndex -> computeGuardedIndexCell(e) == null
+    else -> false
+}
 
-/** A field operand that is formally invalid (a malformed value, or a required-but-empty field): the empty-as-0
- *  value functions stay NON-evaluable on it (`nichtPruefungsrelevant` → `NICHT_PRUEF_REL_ZAHL`, the comparison
- *  is suppressed) — malformed BEATS empty (checked first in `getDatumsDiff`). */
-private fun Interpreter.malformedField(e: Expr): Boolean = e is Expr.Field && invalid(ctxOf(e), e.path)
+/** A field operand that is formally invalid (a malformed value, or a required-but-empty field), or a selected read
+ *  the index cannot resolve (a duplicated or malformed key, a malformed matched cell): the empty-as-0 value
+ *  functions stay NON-evaluable on it (`nichtPruefungsrelevant` → `NICHT_PRUEF_REL_ZAHL`, the comparison is
+ *  suppressed) — malformed BEATS empty (checked first in `getDatumsDiff`). */
+private fun Interpreter.malformedField(e: Expr): Boolean = when (e) {
+    is Expr.Field -> invalid(ctxOf(e), e.path)
+    is Expr.SemanticIndex -> computeGuardedIndexCell(e) is Val.Unknown
+    else -> false
+}
 
 /** `DifferenceIn{Months,Years}(a, b)` → a signed whole-period count; an empty operand reads as the fillable 0
  *  (either empty → 0, kernel `getDatumsDiff`); a malformed operand → Unknown (suppressed). */
@@ -1382,6 +1392,9 @@ private fun Interpreter.dateComponent(e: Expr, pick: (Int, Int, Int) -> Int): Va
  *  a garbage value stays garbage — the downstream date parse still rejects it. */
 private fun dateOnly(v: String): String = v.substringBefore('T')
 
+/** The date a time-of-day is anchored on ([TemporalValue.date]). */
+private const val TIME_ANCHOR_DATE = "1970-01-01"
+
 /** A number picked from a TIME operand's (hours, minutes, seconds) `HH:mm:ss`; an EMPTY time → the fillable
  *  **0** (`getDatumsTeil`, symmetric fill), a MALFORMED time → Unknown (suppressed). A DATE_TIME operand
  *  extracts from its TIME part (IF95's time half — the kernel parses the datetime with the field's own
@@ -1396,19 +1409,23 @@ private fun Interpreter.timeComponent(e: Expr, pick: (Int, Int, Int) -> Int): Va
 }
 
 /** The status of a `Date(day, month, year)` construction — the basis for the constructor's value AND the
- *  `Valid`/`Invalid` verdicts (kernel-probed, KERNEL-FINDINGS §6). MALFORMED (a part is a non-evaluable
- *  Unknown) makes the whole non-evaluable; HAS_EMPTY (a part is an empty field) is fillable. */
-internal enum class DateStatus { REAL, UNREAL_PRESENT, HAS_EMPTY, MALFORMED }
+ *  `Valid`/`Invalid` verdicts (kernel-probed, KERNEL-FINDINGS §6). MALFORMED (a part is a formally invalid read)
+ *  makes the whole non-evaluable; NON_RELEVANT (a part is cause-free non-relevance, such as an unknown year) does
+ *  too, but clears cleanly; HAS_EMPTY (a part is an empty field) is fillable. */
+internal enum class DateStatus { REAL, UNREAL_PRESENT, HAS_EMPTY, NON_RELEVANT, MALFORMED }
 
 private data class DateAnalysis(val status: DateStatus, val iso: String?)
 
 /** Classify a `Date(...)` construction's operands. Two arities: `Date(day, month, year)` and the 4-arg
  *  century form `Date(day, month, century, year)` whose full year is `century*100 + year` (kernel-probed,
- *  IF31). Precedence: any malformed part → MALFORMED; else any empty field part → HAS_EMPTY; else
- *  REAL/UNREAL_PRESENT by the calendar check. */
+ *  IF31). Precedence: a formally invalid part → MALFORMED, read at once; else a cause-free non-relevant part →
+ *  NON_RELEVANT, which does NOT stop the walk, so a later formally invalid part is still reached and wins
+ *  (SPEC-2026-10-06-04, `adapter.laws.DateComponentRelevanceDiffTest`); else any empty field part → HAS_EMPTY;
+ *  else REAL/UNREAL_PRESENT by the calendar check. */
 private fun Interpreter.analyzeDate(parts: List<Expr>): DateAnalysis {
     if (parts.size !in 2..4) return DateAnalysis(DateStatus.MALFORMED, null)
     var hasEmpty = false
+    var nonRelevant = false
     val nums = IntArray(parts.size)
     for (i in parts.indices) {
         when (val component = temporalConstructionComponentInt(parts[i])) {
@@ -1416,10 +1433,12 @@ private fun Interpreter.analyzeDate(parts: List<Expr>): DateAnalysis {
             is Evaluated.NoValue -> when (component.reason) {
                 NoValueReason.NOT_GIVEN -> hasEmpty = true
                 NoValueReason.PRESENT_NO_VALUE -> nums[i] = 0
-                NoValueReason.NON_RELEVANT -> return DateAnalysis(DateStatus.MALFORMED, null)
+                NoValueReason.NON_RELEVANT ->
+                    if (component.formal) return DateAnalysis(DateStatus.MALFORMED, null) else nonRelevant = true
             }
         }
     }
+    if (nonRelevant) return DateAnalysis(DateStatus.NON_RELEVANT, null)
     if (hasEmpty) return DateAnalysis(DateStatus.HAS_EMPTY, null)
     val d = nums[0]; val m = nums[1]
     // The 2-arg form takes the model's Base Year, which the kernel requires it to declare (MVK_MISSING_YEAR,
@@ -1537,7 +1556,13 @@ private data class TemporalValue(
      */
     val missing: Boolean = false,
 ) {
-    val date: String get() = dateOnly(text)
+    /**
+     * The calendar date this value carries. A pure time-of-day has none of its own, but A12 anchors a time on
+     * 1 January 1970, so a year a Base Year admits on it is 1970 — on a clock field, a built time and a time
+     * recovered from a date-time alike, never the declared Base Year (SPEC-2026-10-08-01,
+     * `adapter.laws.BaseYearExtractorAdmissionDiffTest`).
+     */
+    val date: String get() = if (isTimeOnly) TIME_ANCHOR_DATE else dateOnly(text)
     val isDateTime: Boolean get() = 'T' in text
 
     /** A pure time-of-day (`HH:mm:ss`, no date) — it has no model-zone instant and folds by its decoded
@@ -1572,12 +1597,14 @@ private fun Evaluated<String>.asTimeVal(): Val = when (this) {
 private fun Evaluated.NoValue.numericDefault(): Val =
     if (reason == NoValueReason.NON_RELEVANT) Val.Unknown else Val.Num(DEC_ZERO)
 
-/** NON_RELEVANT dominates NOT_GIVEN, which dominates a reached-but-valueless result. */
+/** NON_RELEVANT dominates NOT_GIVEN, which dominates a reached-but-valueless result. A NON_RELEVANT result is
+ *  formal when any of its non-relevant inputs is, so cause-free non-relevance survives a shift or a composition. */
 private fun dominantNoValue(vararg values: Evaluated<*>): Evaluated.NoValue? {
     val absent = values.filterIsInstance<Evaluated.NoValue>()
+    val nonRelevant = absent.filter { it.reason == NoValueReason.NON_RELEVANT }
     return when {
-        absent.any { it.reason == NoValueReason.NON_RELEVANT } ->
-            Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+        nonRelevant.isNotEmpty() ->
+            Evaluated.NoValue(NoValueReason.NON_RELEVANT, formal = nonRelevant.any { it.formal })
         absent.any { it.reason == NoValueReason.NOT_GIVEN } ->
             Evaluated.NoValue(NoValueReason.NOT_GIVEN)
         absent.isNotEmpty() -> Evaluated.NoValue(NoValueReason.PRESENT_NO_VALUE)
@@ -1627,6 +1654,7 @@ private fun Interpreter.evaluateDateConstruction(args: List<Expr>): Evaluated<Te
         )
         DateStatus.UNREAL_PRESENT -> Evaluated.NoValue(NoValueReason.PRESENT_NO_VALUE)
         DateStatus.HAS_EMPTY -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        DateStatus.NON_RELEVANT -> Evaluated.NoValue(NoValueReason.NON_RELEVANT, formal = false)
         DateStatus.MALFORMED -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     }
 }
@@ -1983,7 +2011,7 @@ private sealed interface FirstFilledStep {
 internal fun Interpreter.keptRowsWithSuccessorLookahead(
     rows: List<EvalContext>,
     having: Cond,
-): Sequence<EvalContext> = keptRowsWithSuccessorLookahead(rows) { havingInterp(it).fires(having) }
+): Sequence<EvalContext> = keptRowsWithSuccessorLookahead(rows) { havingInterp(it).keeps(having) }
 
 /** [keptRowsWithSuccessorLookahead] for a caller whose filter is evaluated by its own [keeps] — the overlap and
  *  uniqueness predicates evaluate `Having` without an enclosing iteration. */

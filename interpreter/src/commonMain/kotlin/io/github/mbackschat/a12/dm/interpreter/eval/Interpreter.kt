@@ -279,6 +279,14 @@ class Interpreter(
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
 
     /**
+     * Whether a `Having` filter keeps this candidate row. The verdict is [fires]', but the walk is the kernel's
+     * generated filter code, which short-circuits on known truth in validation as in computation: an `And` stops
+     * after a not-true left and an `Or` after a true one, so a later leaf that would fail at runtime
+     * ([TemporalLabelFailure]) is not reached (SPEC-2026-10-07-04, `adapter.laws.FilterTemporalLiteralFailureDiffTest`).
+     */
+    internal fun keeps(filter: Cond): Boolean = gated(filter) && knownTrue(filter)
+
+    /**
      * Evaluate a value expression (a computation's RHS) to a typed [Val] — NOT gated by the row's
      * `evaluated` flag, since a computation computes even on an otherwise-empty row (an empty numeric
      * operand reads as 0, so `[BaseFee]` over no base fee yields 0, not nothing).
@@ -504,13 +512,13 @@ class Interpreter(
                 else when (dateStatusOf(p.args.single())) {
                     DateStatus.REAL -> Tri.TRUE
                     DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.FALSE
-                    DateStatus.MALFORMED -> Tri.UNKNOWN
+                    DateStatus.NON_RELEVANT, DateStatus.MALFORMED -> Tri.UNKNOWN
                 }
             PredicateOp.INVALID -> if (p.args.size == 2) predefinedTypeValidity(p.args, expectValid = false)
                 else when (dateStatusOf(p.args.single())) {
                     DateStatus.REAL -> Tri.FALSE
                     DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.TRUE
-                    DateStatus.MALFORMED -> Tri.UNKNOWN
+                    DateStatus.NON_RELEVANT, DateStatus.MALFORMED -> Tri.UNKNOWN
                 }
             // List quantifiers over the (TRUE, FALSE) operand tally (row-evaluated gate is upstream in eval).
             // COMPUTE mode replaces the tally with the kernel's ordered SCAN so a read is order-observable and a
@@ -608,7 +616,7 @@ class Interpreter(
         var n = 0
         var unknown = false
         for (rc in c.rowContexts(star.path.substringBeforeLast('/'), star.bindDepth)) {
-            if (!havingInterp(rc).fires(having)) continue
+            if (!havingInterp(rc).keeps(having)) continue
             n++
             when {
                 rc.presenceUnknown(star.path) -> {}
@@ -621,7 +629,7 @@ class Interpreter(
             var allFilled = true
             var anyEmpty = false
             for (rc in c.declaredStarRows(star.path, star.bindDepth)) {
-                if (!havingInterp(rc).fires(having)) continue
+                if (!havingInterp(rc).keeps(having)) continue
                 when {
                     rc.presenceUnknown(star.path) -> allFilled = false
                     !rc.filled(star.path) -> { allFilled = false; anyEmpty = true }
@@ -877,7 +885,7 @@ class Interpreter(
                 sequenceOf(Tri.FALSE), sequenceOf(Tri.UNKNOWN)) { groupFillStates(listOf(it)) })
             arg is Expr.Star -> {
                 for (rc in ctxOf(arg).groupListEnvironments(arg.path, arg.bindDepth)) {
-                    if (arg.having != null && !havingInterp(rc).fires(arg.having)) continue
+                    if (arg.having != null && !havingInterp(rc).keeps(arg.having)) continue
                     yield(groupPresence(rc, arg.path).fillProduct)
                 }
             }
@@ -1023,7 +1031,7 @@ class Interpreter(
         var f = 0
         var n = 0
         for (rc in ctx.rowContexts(group, star.bindDepth)) {
-            if (star.having != null && !havingInterp(rc).fires(star.having)) continue
+            if (star.having != null && !havingInterp(rc).keeps(star.having)) continue
             n++
             when {
                 rc.presenceUnknown(star.path) -> {}
@@ -1256,7 +1264,7 @@ class Interpreter(
     /** The overlap and uniqueness predicates' filter on [star]'s rows, evaluated without an enclosing iteration
      *  ([overlapFilterInterp]); null when the operand is unfiltered. */
     private fun overlapFilter(star: Expr.Star): ((EvalContext) -> Boolean)? =
-        star.having?.let { having -> { row: EvalContext -> overlapFilterInterp(row).fires(having) } }
+        star.having?.let { having -> { row: EvalContext -> overlapFilterInterp(row).keeps(having) } }
 
     /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; empty → not evaluated. */
     internal fun evalPattern(p: Cond.Pattern): Tri {
@@ -1474,7 +1482,7 @@ class Interpreter(
     /** The rows a starred operand keeps — every row when it carries no `Having`, else the rows its filter keeps. */
     private fun keptRowContexts(star: Expr.Star): List<EvalContext> {
         val rows = ctxOf(star).rowContexts(star.path.substringBeforeLast('/'), star.bindDepth)
-        return if (star.having == null) rows else rows.filter { rc -> overlapFilterInterp(rc).fires(star.having) }
+        return if (star.having == null) rows else rows.filter { rc -> overlapFilterInterp(rc).keeps(star.having) }
     }
 
     /** The path of a plain field-ref operand. Any other operand shape in a field-ref position is a construct

@@ -5396,6 +5396,431 @@
           "evidence": {}
         }
       }
+    },
+    "kf92": {
+      "sha256": "22be6650fa2e0d88f85afca00ce6aa1b9f7547c3e0335a95250ef34a819f228c",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "Gregorian floor illustration"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "Gregorian floor illustration"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The runtime reality test is measured on field-built 1500 dates through the adapter's differential.",
+          "evidence": {
+            "Gregorian floor illustration": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ConstructedDateCalendarDiffTest.kt#utcJulianLeapDayAndNeighborsTriCheck",
+              "witness": "Field-built 29.02, 28.02 and 01.03.1500 are valid on all three engines."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The correction replaces an unauthorable illustration; the typed surface is unchanged.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The correction changes no runtime behaviour.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The all-constant refusal is KF402's, already reported.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No CLI surface carries the illustration.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The illustration does not reach JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The illustration does not reach JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-05; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf261": {
+      "sha256": "ee99e662d49a936cfa4fa63f6e0050878f0970eec5552e4ee9c988efa4eb64bf",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "a time's year is the epoch's"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "a time's year is the epoch's"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "a time's year is the epoch's"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured on every row through the adapter's differential.",
+          "evidence": {
+            "a time's year is the epoch's": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BaseYearExtractorAdmissionDiffTest.kt#aConstructedTimesYearIsTheEpochsNotTheBaseYear",
+              "witness": "A clock field, a built time and a recovered one answer 1970, never the Base Year."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed surface offers YearFromDate over Date and DateTime only, a documented narrowing: a time's year is always 1970.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "A time-only value's calendar date is the epoch's.",
+          "evidence": {
+            "a time's year is the epoch's": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BaseYearExtractorAdmissionDiffTest.kt#aConstructedTimesYearIsTheEpochsNotTheBaseYear",
+              "witness": "The interpreter answers 1970 on all five rows with both kernel strategies."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The extractor format gate is not read by the checker; that silence is CONSISTENCY-GAPS DG126.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A time's year does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A time's year does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-08-01, with the correction of our earlier runtime row; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf402": {
+      "sha256": "97e47376e2095a9c9a2a1d1f1c09ff99aa2fb466a60be7da2aa46a6564542e65",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "selected Date slots"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "selected Date slots"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "selected Date slots"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The kernel's class is measured on every row through the adapter's validator.",
+          "evidence": {
+            "selected Date slots": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerSelectedDateValidityAgreementTest.kt#aSelectedSlotIsAnEntityAndAnExtractorOverOneIsNot",
+              "witness": "Three extractors over a selection are constants-only; a selected month admits."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed validity condition delegates the gate to A12.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static admission; the interpreter evaluates admitted models only.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "An extract operator whose argument is keyed stays the extract arm.",
+          "evidence": {
+            "selected Date slots": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerSelectedDateValidityAgreementTest.kt#anExtractorOverASelectionMeetsTheSlotGates",
+              "witness": "The checker names the wrong-slot and not-allowed classes on an extractor over a selection."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reports the kernel's and the checker's classes unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The gate does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The gate does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-05; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf523": {
+      "sha256": "d4757557ab9e239d1546d486d8f879c0231078cd51a90cc3efd9276b73fe389a",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "Date component relevance"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "Date component relevance"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "Date component relevance"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured on nine documents through the adapter's differential.",
+          "evidence": {
+            "Date component relevance": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateComponentRelevanceDiffTest.kt#nonRelevanceClearsCleanlyAndALaterPoisonStillWins",
+              "witness": "The unknown year clears cleanly; a malformed month after it poisons the reading guard."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the lock authors every form through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "A cause-free non-relevant component no longer stops the walk, and an empty selection is a missing component.",
+          "evidence": {
+            "Date component relevance": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateComponentRelevanceDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on nine documents."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-06-04 and SPEC-2026-10-06-05; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf524": {
+      "sha256": "084530de48fd197e96cb935fd345649a34f2da8d13d02abd9f2f79b0912aed09",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "difference operand failure order"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "difference operand failure order"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "difference operand failure order"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured on three documents through the adapter's differential.",
+          "evidence": {
+            "difference operand failure order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DifferenceOperandFailureOrderDiffTest.kt#aFormalFirstOperandStopsOnlyTheComputation",
+              "witness": "A malformed first operand stops the computation and not the validation."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the lock authors every difference through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter already evaluated a difference's operands in this order.",
+          "evidence": {
+            "difference operand failure order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DifferenceOperandFailureOrderDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on three documents."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-08-02; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf525": {
+      "sha256": "9e96e46262c06a892b238796ac9eca0e4c7dd92fa8ecdb4686e505f0e4f924b2",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "temporal literal failure in a filter"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "temporal literal failure in a filter"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "temporal literal failure in a filter"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are measured through the adapter's differential, the missing-slot row included.",
+          "evidence": {
+            "temporal literal failure in a filter": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterTemporalLiteralFailureDiffTest.kt#aReachedLabelFailsAndAKnownPrefixLeavesItUnread",
+              "witness": "A known prefix leaves the label unread; an unknown disjunct on a missing slot reaches it."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the lock authors every filter through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "A filter body short-circuits on known truth in validation.",
+          "evidence": {
+            "temporal literal failure in a filter": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterTemporalLiteralFailureDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on three documents; the missing-slot row is INTERPRETER-GAPS IG165."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Reported in the 2026-10-09 handback for SPEC-2026-10-07-04; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

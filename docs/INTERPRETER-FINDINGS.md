@@ -4478,3 +4478,22 @@ Enforcement: `FilteredThresholdDeclaredWorkTest` holds the four threshold operat
 `AstRefs.messageReferences` named only a field-valued key for a semantic-index read, on the reading that the lookup target is not a referenced field. Both kernel strategies reference the selected payload and the selected row's index field as well, reached or not, and resolve the row through the index cache rather than the value read ([KF522](KERNEL-FINDINGS.md#kf522)'s 2026-10-09 extension). A third reference kind, `MessageReference.Selected`, carries the key. The model expands it into the fields it covers plus the index field, and `DmInterpreter` resolves it per firing row through `EvalContext.indexPointerRepetitions`. That lookup keeps a duplicated key's row, where the value lookup refuses it. A key no admitted row carries, or an empty key, yields `-5`, and a repeatable level below the key yields `0`.
 
 Enforcement: `SelectedMessageReferenceDiffTest` compares all three engines on seven documents. The duplicated key's row is IG164.
+
+### IF369: a constructed Date reads past a cause-free non-relevant component, and an empty selection is a missing component (2026-10-09) <a id="if369"></a>
+
+Two defects in one carrier ([KF523](KERNEL-FINDINGS.md#kf523)). `analyzeDate` returned at the first non-relevant component, so a malformed component after an unknown-year one was never reached and its poison never applied; it now stops only at a formally invalid component and reports cause-free non-relevance as its own `DateStatus.NON_RELEVANT`, a clean clear. `dominantNoValue` had rebuilt a non-relevant result as formal, so an unknown year lost its cause-free flag through `AddDays`; it now keeps the flag unless an input is formal. Separately, `emptyCheckRelevant` and `malformedField` recognised only a plain field, so an empty selection read as zero, an unreal component. They now treat a selected read that resolves to no cell as empty and one the index cannot resolve as malformed, for every temporal consumer that asks them.
+
+Enforcement: `DateComponentRelevanceDiffTest` compares all three engines on nine documents; the temporal and index differentials (171 classes) stayed green.
+
+### IF370: a filter body short-circuits on known truth in validation (2026-10-09) <a id="if370"></a>
+
+[KF525](KERNEL-FINDINGS.md#kf525). Validation evaluated a `Having` body with eager Kleene logic, so a gap label behind a false left conjunct or a true left disjunct was reached and aborted the rule. The kernel generates a filter body as short-circuit Boolean code in both phases. Every filter call site now asks `Interpreter.keeps`, which gives `fires`' verdict through the rule truth pass's known-truth walk; `fires` keeps its eager walk, which a whole condition still needs.
+
+Enforcement: `FilterTemporalLiteralFailureDiffTest`, red before the change on the false- and true-prefix rows; the filter, aggregate, partial and temporal differentials (216 classes) stayed green.
+
+### IF371: a time-only value's calendar date is the epoch's (2026-10-09) <a id="if371"></a>
+
+[KF261](KERNEL-FINDINGS.md#kf261), corrected. `TemporalValue.date` returned the clock text for a time-only value, so `YearFromDate` over a clock field or a constructed time had no calendar parts and answered nothing. The kernel anchors a time on 1 January 1970, so the year is 1970, on both strategies; the getter now returns that anchor. The earlier agreement on "decides nothing" was the interpreter matching a reading that never asked the epoch's year.
+
+Enforcement: `BaseYearExtractorAdmissionDiffTest`, red before the change on the clock-field and constructed-time rows; the temporal differentials (119 classes) stayed green.
+

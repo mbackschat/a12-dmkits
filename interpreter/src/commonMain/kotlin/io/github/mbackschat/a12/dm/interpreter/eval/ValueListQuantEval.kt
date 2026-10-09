@@ -82,7 +82,7 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = exp
             if (computeMode) {
                 if (e.having == null && c.starOmission(e.path, e.bindDepth)) op.omittedTail = true
                 val having = e.having
-                val keeps = having?.let { filter -> { row: EvalContext -> havingInterp(row).fires(filter) } }
+                val keeps = having?.let { filter -> { row: EvalContext -> havingInterp(row).keeps(filter) } }
                 return@map op.readLazily(computeStarReads(e, keeps).map { it?.value })
             }
             // Partial validation: this starred entry's COMPLETE extent is established by WILDCARD coverage of
@@ -120,7 +120,7 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = exp
                 for (rc in c.rowContexts(group, e.bindDepth)) {
                     val repetitions = rc.repsOf(e.path)
                     if (cellRelevant?.invoke(e.path, repetitions) == false) continue   // [IF267]
-                    if (!havingInterp(rc).fires(e.having)) continue
+                    if (!havingInterp(rc).keeps(e.having)) continue
                     val value = if (indexValuesByRepetitions != null) {
                         indexValuesByRepetitions[repetitions]
                     } else if (rc.filled(e.path)) {

@@ -406,6 +406,8 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerOverlapIdentityAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerComparisonOperandShapeAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerPostParseOrderAgreementTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerSelectedDateValidityAgreementTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerTimeYearExtractorAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerNearMissSweepTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.OperationHarvestStorageTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerCompositionSweepTest'
@@ -700,6 +702,10 @@ tasks.register('checkerSilenceGuardTest', Test) {
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerComparisonOperandShapeAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerPostParseOrderAgreementTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.CheckerSelectedDateValidityAgreementTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.CheckerTimeYearExtractorAgreementTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerNearMissSweepTest')
         includeTestsMatching(

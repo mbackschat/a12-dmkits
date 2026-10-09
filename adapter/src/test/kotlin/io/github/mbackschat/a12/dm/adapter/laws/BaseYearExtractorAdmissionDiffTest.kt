@@ -33,6 +33,7 @@ class BaseYearExtractorAdmissionDiffTest {
         const val HOLDER = "/Term/Holder"
         const val CLOCK = "/Term/RenewalClock"
         const val START = "/Term/StartOn"
+        const val HOUR = "/Term/RenewalHour"
     }
 
     private val term: String =
@@ -40,6 +41,7 @@ class BaseYearExtractorAdmissionDiffTest {
             .rootGroup("Term") { g ->
                 g.stringField("Holder") { }
                 g.timeField("RenewalClock") { c -> c.format("HH:mm:ss") }
+                g.numberField("RenewalHour") { n -> n.fractionDigits(0).min("0").max("23") }
                 g.dateField("StartOn") { d -> d.format("yyyy-MM-dd") }
             }
             .build().toJson()
@@ -60,6 +62,7 @@ class BaseYearExtractorAdmissionDiffTest {
         doc.field(HOLDER, "Acme Logistics", 1, 1)
         doc.field(CLOCK, "12:30:00", 1, 1)
         doc.field(START, "2024-05-05", 1, 1)
+        doc.field(HOUR, "8", 1, 1)
         val dynamic = code in RuntimeLaws.firedCodes(model, doc)
 
         val staticEngine = RuntimeLaws.kernelJavaEngine(model)
@@ -70,6 +73,7 @@ class BaseYearExtractorAdmissionDiffTest {
         iDoc.field(HOLDER, "Acme Logistics", 1, 1)
         iDoc.field(CLOCK, "12:30:00", 1, 1)
         iDoc.field(START, "2024-05-05", 1, 1)
+        iDoc.field(HOUR, "8", 1, 1)
         val interpreter = code in DmInterpreter(def).validate(iDoc).messages.map { it.code }.toSet()
 
         assertEquals(dynamic, static, "generated Java vs normative dynamic-Groovy on '$condition'")
@@ -93,5 +97,34 @@ class BaseYearExtractorAdmissionDiffTest {
             "YearFromDate(an ordinary DATE) == its year — liveness control" to true,
         )
         assertEquals(expected, actual, "the Base Year opens the static gate and supplies no runtime value")
+    }
+
+    /**
+     * The year a TIME carries is the epoch's, 1970, which neither comparand above asked for (a12-kernel-lean
+     * SPEC-2026-10-08-01). A clock field, a time built from an hour, and one recovered from a date-time are all
+     * anchored on 1 January 1970, so their year is 1970 and not the declared Base Year; a constructed Date takes
+     * that year as a component. The clock-field row corrects the test above's reading that the extractor decides
+     * nothing: it decides 1970.
+     */
+    @Test
+    fun aConstructedTimesYearIsTheEpochsNotTheBaseYear() {
+        val actual = linkedMapOf(
+            "YearFromDate(clock field) == 1970" to bothFire("YRCLOCK70", "YearFromDate(RenewalClock) == 1970"),
+            "YearFromDate(a built time) == 1970" to bothFire("YRBUILT70", "YearFromDate(Time(RenewalHour)) == 1970"),
+            "YearFromDate(a built time) == the declared base year" to
+                bothFire("YRBUILTBASE", "YearFromDate(Time(RenewalHour)) == 2024"),
+            "YearFromDate(a time recovered from a date-time) == 1970" to bothFire("YRREC70",
+                "YearFromDate(TimeFromDateTime(DateTime(StartOn, Time(RenewalHour)))) == 1970"),
+            "a Date whose year is a built time's" to bothFire("YRDATE70",
+                "Date(\"01\", \"01\", YearFromDate(Time(RenewalHour))) == \"01.01.1970\""),
+        )
+        val expected = linkedMapOf(
+            "YearFromDate(clock field) == 1970" to true,
+            "YearFromDate(a built time) == 1970" to true,
+            "YearFromDate(a built time) == the declared base year" to false,
+            "YearFromDate(a time recovered from a date-time) == 1970" to true,
+            "a Date whose year is a built time's" to true,
+        )
+        assertEquals(expected, actual, "a constructed time's hidden date is the epoch's")
     }
 }

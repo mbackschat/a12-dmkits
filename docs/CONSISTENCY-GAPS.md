@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-_None open._
+- **DG126 — the checker has no reading of the temporal EXTRACTOR format gate (`checkDatumExtractOp`).** `YearFromDate` over a clock field, over `Time(Hour)`, or over `TimeFromDateTime(DateTime(StartOn, Time(Hour)))` draws `MVK_WRONG_DATE_FORMAT_FOR_OP` from A12 on a model with no Base Year and is admitted with one ([KF261](KERNEL-FINDINGS.md#kf261)); the checker is silent on all three refusals. Its date-arithmetic family already asks the same question of a shift's operand (does its format carry the component), so the missing structure is that question asked of an extractor's operand, with a Base Year supplying the year. Locked as the checker's current answer in `adapter.laws.CheckerTimeYearExtractorAgreementTest`.
 
 ## 2. Out of scope
 
