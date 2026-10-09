@@ -574,8 +574,13 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in the handback answering SPEC-2026-10-09-11; no peer receipt is inferred.",
-          "evidence": {}
+          "basis": "SPEC-2026-10-09-11 is answered at 2d57eca2: native decimal semantics corroborated and the inline scale-loss requirement withdrawn as our probe defect. The peer's SG5 keeps the repaired inline route and large scientific String values as an executable audit.",
+          "evidence": {
+            "native number node text": {
+              "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-11",
+              "witness": "Native and quoted Number and String inputs, signed zero, scientific thresholds and a native 1e999999999 String value corroborated (A12JsonIngressKernelTest; KF1)."
+            }
+          }
         }
       }
     },
@@ -657,8 +662,17 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Disclosed in the handback answering SPEC-2026-10-09-10; no peer receipt is inferred.",
-          "evidence": {}
+          "basis": "Accepted under SPEC-2026-10-09-10 at 2d57eca2 and adopted in spec/07 and spec/09; the peer's target-formal-scope obligation (SG16) and H10-R6 own the executable reconciliation of the formal and cache halves.",
+          "evidence": {
+            "compute formal scope": {
+              "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/sources/inbound-handbacks.md#src-inbound-2026-10-09a",
+              "witness": "Uncomputed descendants of a target's innermost repeatable group enter formal and over-limit findings; an inner target excludes its outer parent's fields; a root-only target adds no subtree (ComputeFormalScopeDiffTest; KF538)."
+            },
+            "nested repeatable target scope": {
+              "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/sources/inbound-handbacks.md#src-inbound-2026-10-09a",
+              "witness": "Nested repeatable groups below a target's innermost repeatable group contribute to filter extents even when no computation names them (ComputeTargetSubgroupScopeDiffTest; KF538)."
+            }
+          }
         }
       }
     },
@@ -747,9 +761,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in the handback answering SPEC-2026-10-09-09; no peer receipt is inferred.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Peer-originated SPEC-2026-10-09-09, accepted at 2d57eca2 after inspecting our committed locks at 59b94e1e5; the peer did not rerun them.",
+          "evidence": {
+            "parallel guard connective admission": {
+              "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-09",
+              "witness": "Recursive And/Or guards and the earlier combination precedence corroborated (ParallelGuardConnectiveLawsTest, ParallelGuardConnectiveDiffTest, ParallelIterationGateLawsTest; KF537)."
+            }
+          }
         }
       }
     },
@@ -6729,11 +6748,19 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The peer added the missing-coordinate extent clause to spec/07 at 5472a915 after inspecting 40a510808; H10-R6 owns its executable reconciliation, and the cache cause stays a hypothesis. The programme-wide scope, target-only, unreached-read and fixed-depth rows are reported in the handback answering SPEC-2026-10-09-10; no peer receipt is inferred. The receipt's own clause that sibling influence depends on whether computations READ the group is superseded by the target-only and unreached-read rows.",
+          "basis": "SPEC-2026-10-09-10 is accepted at 2d57eca2 and the whole-programme scope clause is in spec/07; the peer superseded its earlier read-only scope wording itself. H10-R6 owns the executable reconciliation, and the cache cause stays a hypothesis.",
           "evidence": {
             "filter walk extent": {
               "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-09-extensions",
               "witness": "Small finite-capacity filters can evaluate unstored coordinates; extent follows per-depth maxima across stored parents/groups, with a minimum of one (KF528)."
+            },
+            "computation walk scope": {
+              "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-10",
+              "witness": "Target-only and unreached static reads, full path depth including fixed groups, and whole-programme scope for a subplan corroborated (FilterCacheScopeDiffTest; KF528)."
+            },
+            "target-group nested walk": {
+              "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/sources/inbound-handbacks.md#src-inbound-2026-10-09a",
+              "witness": "A target's innermost repeatable group brings its nested repeatable groups into the walk; the capacity-150 control does not establish sparse traversal (ComputeTargetSubgroupScopeDiffTest; KF528)."
             }
           }
         }
@@ -7770,7 +7797,9 @@
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "a12-kernel-lean": []
+        "a12-kernel-lean": [
+          "parallel message references"
+        ]
       },
       "consumers": {
         "adapter": {
@@ -7819,9 +7848,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "NOT_APPLICABLE",
-          "basis": "Their spec states no message reference inventory for parallel iteration; disclosed in the handback for SPEC-2026-10-09-09.",
-          "evidence": {}
+          "state": "OPEN",
+          "basis": "Adopted in spec/07 at 2d57eca2 after inspecting our differential at 59b94e1e5; the peer's SG10 owns the executable reconciliation, so no receipt is inferred from prose adoption.",
+          "evidence": {
+            "parallel message references": {
+              "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/sources/inbound-handbacks.md#src-inbound-2026-10-09a",
+              "witness": "A joined group's referenced payload brings its index field into the reference and fill-to-fix lists; the single-group control does not (ParallelGuardConnectiveDiffTest; KF539)."
+            }
+          }
         }
       }
     },
@@ -7838,7 +7872,9 @@
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "a12-kernel-lean": []
+        "a12-kernel-lean": [
+          "ordinary-level Or guard"
+        ]
       },
       "consumers": {
         "adapter": {
@@ -7882,9 +7918,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "NOT_APPLICABLE",
-          "basis": "Their spec states the every-branch Or rule for parallel guards (SPEC-2026-10-09-09); the single-level row is reported in that handback, and no peer surface carries the corrected single-level reading.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The peer corrected its statement that a positive inside an Or never lends a guard, in spec/07 at 2d57eca2, after inspecting our locks at 59b94e1e5; the peer did not rerun them.",
+          "evidence": {
+            "ordinary-level Or guard": {
+              "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/sources/inbound-handbacks.md#src-inbound-2026-10-09a",
+              "witness": "An Or guards a conjoined negative at an ordinary level when every branch references and guards that level; off-level positives do not (IterationGuardNestedCompositionLawsTest; KF435)."
+            }
+          }
         }
       }
     },
@@ -7906,7 +7947,8 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "shared DateRange runtime format"
+          "shared DateRange runtime format",
+          "computed target stored read"
         ]
       },
       "consumers": {
@@ -7965,8 +8007,17 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in the handback answering SPEC-2026-10-09-12; no peer receipt is inferred.",
-          "evidence": {}
+          "basis": "SPEC-2026-10-09-12 is accepted at 2d57eca2 for the shared runtime format; dependent stored-value readback is adopted in prose but the peer's SG6 owns its executable audit, so that surface stays open.",
+          "evidence": {
+            "shared DateRange runtime format": {
+              "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-12",
+              "witness": "All eight source profiles, both interpretations, default and configured year and the additional-check partition corroborated within the measured first profiles (DateRangeSharedRuntimeDiffTest, DateRangeSharedFormatOrderDiffTest; KF540)."
+            },
+            "computed target stored read": {
+              "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/sources/inbound-handbacks.md#src-inbound-2026-10-09a",
+              "witness": "Dependents read computed Date and DateRange targets as stored: yearless rollover reads the Base Year, cross-interpretation copies re-anchor (ComputedDateStoredReadDiffTest; KF540)."
+            }
+          }
         }
       }
     },
