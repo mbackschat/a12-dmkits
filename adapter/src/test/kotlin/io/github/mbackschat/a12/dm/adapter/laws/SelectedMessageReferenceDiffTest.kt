@@ -94,7 +94,8 @@ class SelectedMessageReferenceDiffTest {
      * Which row a DUPLICATED key's pointer names, pinned on both kernel strategies alone. The value reads refuse the
      * duplicate and their rules stay silent, while the unreached selections still name one row, and it is not the
      * first or the last matching one in general: A12 names the row its index cache was written with last, in the
-     * iteration order of a hash map over the Document's cells (INTERPRETER-GAPS IG164). These two
+     * iteration order of a hash map over the Document's cells; the interpreter names the first match instead, a
+     * characterized divergence (INTERPRETER-FINDINGS IF376). These two
      * rows happen to name the first match, which is why they are kept out of the agreement above.
      */
     @Test

@@ -129,8 +129,8 @@ interface EvalContext {
 
     /** The row a fired message's SELECTED pointer names: the admitted row carrying [indexValue], and one row even
      *  where several do, which the value lookup above refuses (SPEC-2026-10-07-02). Null when no admitted row
-     *  carries the key. Which duplicate the kernel's index cache names is not the first row in general
-     *  (INTERPRETER-GAPS IG164); this names the first. */
+     *  carries the key. Which duplicate the kernel's index cache names is not the first row in general; this
+     *  names the first, a characterized divergence (INTERPRETER-FINDINGS IF376). */
     fun indexPointerRepetitions(
         targetPath: String,
         indexField: String,
