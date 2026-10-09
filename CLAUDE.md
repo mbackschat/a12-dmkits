@@ -209,6 +209,8 @@ Applies hardest to a claim reached by **reasoning rather than execution**: if a 
 
 **The session you are in plans, implements, and verifies.** Use plan mode or a task list for anything multi-step. **Sub-agents are read-only**: they review, search, and report findings. Never delegate implementation to one, and never use one to double-check work you can check yourself. Never let two sessions write the same tree: **one active session per worktree, always** (a read-only reviewer is compatible with that rule; concurrent editing is not).
 
+**Model tiers are symbolic (HIGH, MEDIUM).** Resolve them through the tier table in your global instructions; the maintainer's table is [Model tier mappings](https://github.com/mbackschat/coding-setup/blob/main/CLAUDE.md#model-tier-mappings). Without such a table, run HIGH on your most capable model and MEDIUM on a faster, cheaper one, and say which models you used.
+
 Pick the review checkpoints **while writing the plan**, not while working, and record them as real tasks so they cannot be skipped silently. Planning them is this rule's job; which ones are warranted is "Cold adversarial review gates" below.
 
 Work that outgrows one session carries its state in a proposal/design doc whose work-item table is the state carrier, updated in the same commit as each landing. No separate tracker, and no relay protocol: the next session reads that table and continues.
