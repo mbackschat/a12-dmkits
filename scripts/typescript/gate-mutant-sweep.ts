@@ -165,7 +165,7 @@ function report(sites: Site[]): { lines: string[]; unknown: string[] } {
   return { lines, unknown };
 }
 
-module.exports = { collectSites, key, report, EXPECTED };
+module.exports = { collectSites, key, report, EXPECTED, PINNED };
 
 if (require.main === module) {
   const root = process.cwd();

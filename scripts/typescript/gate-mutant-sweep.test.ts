@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
-const { collectSites, key, report, EXPECTED } = require("./gate-mutant-sweep.ts");
+const { collectSites, key, report, EXPECTED, PINNED } = require("./gate-mutant-sweep.ts");
 
 const DSL = "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl";
 const TESTS = "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl";
@@ -50,13 +50,15 @@ test("DuplicateGate's own calls are not sites — it IS the gate", () => {
 });
 
 test("a NEW site is reported against the pin — the check that failed twice by hand", () => {
-  // One call site where the pin expects ten: the report must say so rather than pass quietly.
+  // One call site against the live pin: the report must say so rather than pass quietly. The pin is read, not
+  // copied — a literal copy broke this test on each legitimate pin move (bc04f0634, 62a2b930a).
   const root = fixture({
     "Carrier.java": "class Carrier { Carrier { DuplicateGate.rejectDuplicates(\"X\", ops); } }",
   });
+  assert.notEqual(PINNED.call, 1, "a pin of one would make this fixture match it and the test vacuous");
   const { unknown } = report(collectSites(root));
   assert.ok(
-    unknown.some((u: string) => u.includes("call sites: found 1, pinned 10")),
+    unknown.some((u: string) => u.includes(`call sites: found 1, pinned ${PINNED.call}`)),
     `the pin must report a moved denominator, got: ${JSON.stringify(unknown)}`,
   );
 });
