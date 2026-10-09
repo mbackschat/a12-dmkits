@@ -98,5 +98,11 @@ class CorrelatedTypedRefMarkerTest {
         FieldRef code = M.field(G + "/Code");
         assertEquals(new FieldValue(code, true), code.outer().value());
         assertEquals(new FieldValue(code, true), M.str(G + "/Code").outer().asString().expression());
+        // a marked field with the flag unset moves its marker onto the flag rather than dropping it
+        assertEquals(new FieldValue(code, true), new FieldValue(code.outer(), false));
+        FieldRef plan = M.field(G + "/Plan");
+        assertEquals(new EnumCategoryAccess(plan, "Tier", true), new EnumCategoryAccess(plan.outer(), "Tier", false));
+        FieldListRef codes = M.flatten("/Register/Claims*/Code");
+        assertEquals(codes.outer(), new FieldListRef(codes.field().outer(), codes.flattened(), codes.filter(), false));
     }
 }

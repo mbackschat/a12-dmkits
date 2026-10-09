@@ -21,8 +21,8 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 
 /**
  * A {@code $}-marked typed reference reads back marked in every slot its own methods build: presence, value lists,
- * pattern, length, concatenation, text comparison, the equal-or-both-empty pair, and the number and enumeration
- * forms. Each is authored, admitted by the kernel's consistency gate and converted back; the read must equal the
+ * pattern, length, concatenation, text comparison, the equal-or-both-empty pair, the number and enumeration
+ * forms, a value-list entry, arithmetic, a group-list quantifier and a date component. Each is authored, admitted by the kernel's consistency gate and converted back; the read must equal the
  * authored object, which needs the marker on both sides and one spelling of a marked value read.
  *
  * <p>Own domain (an insurance claims register).
@@ -36,6 +36,7 @@ class CorrelatedTypedRefReadTest {
                             .stringField("Code", f -> { })
                             .stringField("Note", f -> { })
                             .numberField("Units", n -> n.fractionDigits(0))
+                            .numberField("Day", n -> n.fractionDigits(0).min("1").max("31"))
                             .enumField("Plan", e -> e.value("BASIC").value("GOLD"))
                             .dateField("FiledOn", d -> d.format("yyyy-MM-dd"))))
             .build().toJson();
@@ -60,6 +61,11 @@ class CorrelatedTypedRefReadTest {
         matches.put("NumberList", units.outer().in(1, 2));
         matches.put("EnumList", plan.outer().in("GOLD"));
         matches.put("EnumConcatenation", plan.outer().plus("-").eq(plan.plus("-")));
+        matches.put("MarkedListEntry", code.in(code.outer()));
+        matches.put("Arithmetic", units.outer().plus(1).lt(units.plus(2)));
+        matches.put("GroupList", Dsl.allGroupsFilled(note.field().outer(), code.field()));
+        matches.put("DateComponent", filedOn.eq(Dsl.date(m.field(G + "/Day").outer(),
+                Dsl.temporalComponent("01"), Dsl.temporalComponent("2024"))));
         Map<String, Condition> authored = new LinkedHashMap<>();
         BoundModel withRules = m;
         for (Map.Entry<String, Condition> match : matches.entrySet()) {

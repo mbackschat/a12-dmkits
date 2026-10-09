@@ -12820,7 +12820,7 @@ The index column's own defects reach the keyed `ValueAsDate` as they reach any k
 
 > Fold: pending — the grammar side of [KF373](#kf373)'s slot laws.
 
-The grammar's `datumParam` is `entitySpec | datumExtractOp | StringLiteral`, and `datumExtractOpName` lists all nine extractors, the two stamp-splitting ones included. `CheckerConstructorComponentAgreementTest` writes eighteen components into each slot of `Date(…)` and `Time(…)`:
+The grammar's `datumParam` is `entitySpec | datumExtractOp | StringLiteral`, and `datumExtractOpName` lists all nine extractors, the two stamp-splitting ones included. `CheckerConstructorComponentAgreementTest` writes every component below into each slot of `Date(…)` and `Time(…)`:
 
 | component | A12 |
 |---|---|
@@ -12874,14 +12874,14 @@ At runtime the marked operand reads the RULE's row. Each rule fires when another
 
 An unmarked operand would compare each candidate with itself and fire on every claim with a sibling. Dynamic Groovy, static Java and the a12-dmkits interpreter agree on every document. `Valid` is measured for admission only; its lookup needs a registered validator ([KF51](#kf51)).
 
-**The same holds in the slots a field reference takes directly** (*added 2026-10-09*), on the same carrier with the error field `FiledOn`: `FieldNotFilled($Claims/Note)`, `FieldValueIncludedInValueList($Claims/Code, "AB12")` and its Number and Enumeration twins, `FieldValueIncludedInValueList($Claims/Code, [Claims/Code])`, `[$Claims/Code] Matches "AB.*"`, `Length($Claims/Code) == Length(Claims/Code)`, `[$Claims/Code] + "-" == [Claims/Code] + "-"`, its braced Enumeration twin, `[$Claims/Code] == [Claims/Code]`, and the equal-or-both-empty pair over `$Claims/Code` and `Claims/Code` are all admitted. The control is the same marked presence outside the filter, which draws `MVK_INVALID_OUTER_ITERATION`, so the marker reaches the kernel. A keyed cell has no row: a filter refuses any semantic index (`MVK_SEMANTIC_INDEX_NOT_ALLOWED`), marked or not.
+**The same holds in the slots a field reference takes directly** (*added 2026-10-09*), on the same carrier with the error field `FiledOn`: `FieldNotFilled($Claims/Note)`, `FieldValueIncludedInValueList($Claims/Code, "AB12")` and its Number and Enumeration twins, `FieldValueIncludedInValueList($Claims/Code, [Claims/Code])`, `[$Claims/Code] Matches "AB.*"`, `Length($Claims/Code) == Length(Claims/Code)`, `[$Claims/Code] + "-" == [Claims/Code] + "-"`, its braced Enumeration twin, `[$Claims/Code] == [Claims/Code]`, the equal-or-both-empty pair over `$Claims/Code` and `Claims/Code`, a marked entry of a value list (`FieldValueIncludedInValueList(Claims/Code, [$Claims/Code])`), arithmetic (`[$Claims/Units] + 1 < [Claims/Units] + 2`), a group-list quantifier member (`AllGroupsFilled($Claims/Note, Claims/Code)`) and a date component (`[Claims/FiledOn] == Date($Claims/Day, "03", "2024")`) are all admitted. The control is the same marked presence outside the filter, which draws `MVK_INVALID_OUTER_ITERATION`, so the marker reaches the kernel. A keyed cell has no row: a filter refuses any semantic index (`MVK_SEMANTIC_INDEX_NOT_ALLOWED`), marked or not.
 
 At runtime, on two documents built so that reading the candidate instead would move a firing to the other claim:
 
 | document | fires |
 |---|---|
-| two claims with equal code, units and plan, the first without a note | every rule for both claims; the note rule for the first only |
-| claim 1 `AB12`/1/`GOLD` with a note, claim 2 `CD345`/2/`BASIC` without | the three list rules for claim 1, the note rule for claim 2 |
+| two claims with equal code, units, plan and day, the first without a note | every rule for both claims; the note-gap rule for the first only, the group-list rule for the second only |
+| claim 1 `AB12`/1/`GOLD`/day 10 with a note, claim 2 `CD345`/2/`BASIC`/day 11 without | the three list rules, the arithmetic, the group-list and the date rules for claim 1; the note-gap rule for claim 2 |
 
 The three engines agree on both documents.
 

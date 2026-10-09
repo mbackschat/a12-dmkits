@@ -79,22 +79,23 @@ class CorrelatedFieldOperandDiffTest {
     }
 
     /**
-     * The rules each document fires on the kernel's dynamic strategy, sorted. Agreeing claims fire every rule
-     * once per claim and differing ones none, which a lost marker could not give, since a candidate compared with
-     * itself always matches. With a third claim matching only the first, the matching rules fire for those two
-     * claims alone, and the report rule for the claims filed after another claim's reported month.
+     * The rules each document fires on the kernel's dynamic strategy, keyed by the claim they report on. Agreeing
+     * claims fire every rule for both claims and differing ones none, which a lost marker could not give, since a
+     * candidate compared with itself always matches. With a third claim matching only the first, every rule fires
+     * for the first and third claims and never for the second.
      */
     @Test
     fun theKernelReadsTheRulesOwnRow() {
         val observed = documents.mapValues { (_, doc) ->
-            DocumentDifferential.kernel(model, doc, dynamic = true).messages.map { it.code }.sorted().joinToString()
+            DocumentDifferential.kernel(model, doc, dynamic = true).messages
+                .map { it.code + "@" + it.pointer.substringAfter("Claims[").substringBefore("]") }
+                .sorted().joinToString()
         }
-        val all = "FiledAfterReport, FiledAfterReport, SameAmountText, SameAmountText, SamePrefix, SamePrefix, " +
-            "SameRoundedAmount, SameRoundedAmount, SameSuffix, SameSuffix"
+        val rules = listOf("FiledAfterReport", "SameAmountText", "SamePrefix", "SameRoundedAmount", "SameSuffix")
         assertEquals(linkedMapOf(
-            "two claims agreeing on every slot" to all,
+            "two claims agreeing on every slot" to rules.flatMap { listOf("$it@1", "$it@2") }.joinToString(),
             "two claims differing on every slot" to "",
-            "a third claim matching only the first" to all,
+            "a third claim matching only the first" to rules.flatMap { listOf("$it@1", "$it@3") }.joinToString(),
         ), observed)
     }
 

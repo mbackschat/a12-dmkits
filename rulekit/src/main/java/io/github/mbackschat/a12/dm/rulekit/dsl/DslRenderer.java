@@ -255,7 +255,7 @@ public final class DslRenderer {
     public String render(Condition condition) {
         return switch (condition) {
             case FieldPresenceCondition f ->
-                    keyword(f.operatorId()) + "(" + (f.field().correlated() ? "$" : "") + path(f.field()) + ")";
+                    keyword(f.operatorId()) + "(" + operandPath(f.field()) + ")";
             case EntityListPredicate p -> keyword(p.operatorId()) + "("
                     + p.operands().stream().map(this::aggregateOperand)
                             .collect(Collectors.joining(", "))
@@ -573,8 +573,8 @@ public final class DslRenderer {
     private String numericTextSource(NumericTextSource source) {
         return switch (source) {
             case FieldRef field -> canonicalOperandPath(field);
-            case EnumRef field -> (field.correlated() ? "$" : "") + path(field.field());
-            case CategoryRef category -> (category.correlated() ? "$" : "") + path(category.field())
+            case EnumRef field -> operandPath(field.field());
+            case CategoryRef category -> operandPath(category.field())
                     + " " + keyword("EnumCategory") + " " + category.name();
         };
     }
@@ -635,12 +635,10 @@ public final class DslRenderer {
     private String indexBody(IndexedFieldValue index) {
         return switch (index) {
             case SemanticIndexValue v ->   // literal key: a quoted constant
-                    (v.field().correlated() ? "$" : "") + path(v.field()) + " "
-                            + keyword(v.operatorId()) + " " + quote(v.indexValue());
+                    operandPath(v.field()) + " " + keyword(v.operatorId()) + " " + quote(v.indexValue());
             case SemanticIndexFieldValue v ->   // field key: a bare field path, not a quoted literal
-                    (v.field().correlated() ? "$" : "") + path(v.field()) + " "
-                            + keyword(v.operatorId()) + " "
-                            + (v.indexField().correlated() ? "$" : "") + path(v.indexField().path().value());
+                    operandPath(v.field()) + " " + keyword(v.operatorId()) + " "
+                            + canonicalOperandPath(v.indexField());
         };
     }
 
@@ -654,7 +652,7 @@ public final class DslRenderer {
                     groupScope(v.group()) + " " + keyword("SemanticIndex") + " " + quote(v.indexValue());
             case GroupSemanticIndexFieldValue v ->
                     groupScope(v.group()) + " " + keyword("SemanticIndex") + " "
-                            + (v.indexField().correlated() ? "$" : "") + path(v.indexField().path().value());
+                            + canonicalOperandPath(v.indexField());
         };
     }
 
@@ -674,10 +672,7 @@ public final class DslRenderer {
             switch (index) {
                 case FirstFilledOperand.LiteralIndex literal -> rendered.append(quote(literal.value()));
                 case FirstFilledOperand.FieldIndex field -> {
-                    if (field.field().correlated()) {
-                        rendered.append('$');
-                    }
-                    rendered.append(path(field.field()));
+                    rendered.append(operandPath(field.field()));
                 }
             }
         });

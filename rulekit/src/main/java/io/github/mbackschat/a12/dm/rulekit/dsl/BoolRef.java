@@ -12,9 +12,9 @@ public record BoolRef(FieldRef field) {
      * Marks this reference as the {@code $} outer-iteration correlation ({@code [$path] == True}) — it binds
      * to the enclosing rule iteration, and is legal only inside a {@code Having} filter (D13).
      *
-     * <p>The marker rides the underlying {@link FieldRef}, because every comparison here is built from
-     * {@code field.value()} and {@link FieldValue} already carries it — so this needs no state of its own,
-     * unlike {@link NumberRef#outer()} where the handle also carries a scale.
+     * <p>The marker rides the underlying {@link FieldRef}, the home every typed reference keeps it in (API-FINDINGS
+     * AF181), and every comparison here is built from {@code field.value()}, which moves it onto the value's own
+     * flag. This record mirrors it in no flag of its own, since nothing it builds bypasses its field.
      *
      * <p><b>It was absent until 2026-09-05, and the absence was a defect rather than a decision.</b> The
      * kernel admits a correlated boolean comparison in a filter — measured in

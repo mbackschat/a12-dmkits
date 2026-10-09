@@ -515,7 +515,7 @@ final class ConditionConverter {
                     // an index-selected field is one cell, so it keeps its key like any entity-list member (AF167)
                     return hasSemanticIndex(e)
                             ? (GroupListOperand) semanticIndex(e, entityList).index()
-                            : (GroupListOperand) model.field(e.getFullName());
+                            : (GroupListOperand) markedField(e);
                 }
                 return groupListOperand(e, isWildcard(e) ? reconstructStarPath(e) : e.getFullName(), entityList);
             }).toArray(GroupListOperand[]::new);
@@ -555,24 +555,20 @@ final class ConditionConverter {
                 FieldListRef scope = (FieldListRef) toFieldOperand(entities.get(0));
                 return fieldFillQuantifier(name, new FieldOperand[] {scope}, entityList);
             }
+            // single-field FieldFilled/FieldNotFilled canonicalize to AllFieldsFilled/NoFieldFilled[x], marked or
+            // not, so one plain field reads back as the presence leaf the typed surface builds
+            if (single && !isWildcard(entities.get(0))) {
+                Optional<Condition> presence = singleFieldPresence(name, markedField(entities.get(0)));
+                if (presence.isPresent()) {
+                    return presence.get();
+                }
+            }
             // $-correlated presence predicate (e.g. NoFieldFilled($a, $b) inside a filter, D13): build
             // outer-marked field operands so the $ survives — else the count-check refuses the conversion. Each
             // member goes through the shared conversion, which also keeps a sibling's star and key: rebuilding
             // members from their plain paths read `NoFieldFilled($a, B*/c)` back as `NoFieldFilled($a, B/c)`.
             if (entities.stream().anyMatch(IEntityId::isOuter)) {
                 FieldOperand[] ops = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
-                // one marked field is a presence, exactly as the unmarked arm below canonicalizes it
-                if (single && ops[0] instanceof FieldRef marked) {
-                    switch (name) {
-                        case AllFieldsFilled -> {
-                            return marked.filled();
-                        }
-                        case NoFieldFilled -> {
-                            return marked.notFilled();
-                        }
-                        default -> { }
-                    }
-                }
                 return fieldFillQuantifier(name, ops, entityList);
             }
             // An unfiltered wildcard field-fill quantifier is still a list operation. Route every operand
@@ -585,9 +581,8 @@ final class ConditionConverter {
                 return fieldFillQuantifier(name, operands, entityList);
             }
             return switch (name) {
-                // single-field FieldFilled/FieldNotFilled canonicalize to AllFieldsFilled/NoFieldFilled[x]
-                case AllFieldsFilled -> single ? model.field(p[0]).filled() : model.allFieldsFilled(p);
-                case NoFieldFilled -> single ? model.field(p[0]).notFilled() : model.noFieldFilled(p);
+                case AllFieldsFilled -> model.allFieldsFilled(p);
+                case NoFieldFilled -> model.noFieldFilled(p);
                 case AtLeastOneFieldFilled -> model.atLeastOneFieldFilled(p);
                 case NotAllFieldsFilled -> model.notAllFieldsFilled(p);
                 case FieldsNotCollectivelyFilled -> model.fieldsNotCollectivelyFilled(p);
@@ -668,6 +663,15 @@ final class ConditionConverter {
             case NoGroupFilled -> Dsl.noGroupFilled(scopes[0], rest);
             case AtLeastOneGroupFilled -> Dsl.atLeastOneGroupFilled(scopes[0], rest);
             default -> throw unsupported("starred group-list condition " + name, origin);
+        };
+    }
+
+    /** The presence leaf one field under {@code AllFieldsFilled}/{@code NoFieldFilled} reads back as. */
+    private static Optional<Condition> singleFieldPresence(EntityListConditionName name, FieldRef field) {
+        return switch (name) {
+            case AllFieldsFilled -> Optional.of(field.filled());
+            case NoFieldFilled -> Optional.of(field.notFilled());
+            default -> Optional.empty();
         };
     }
 
@@ -1125,7 +1129,7 @@ final class ConditionConverter {
      *  matching the field's kind. */
     private Calculation valueListEntry(IOperation op, ValueKind fieldKind, ICondition origin) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            return fieldValueCalculation(field.getField(), false);
+            return fieldValueCalculation(field.getField(), field.getField().isOuter());
         }
         if (op instanceof IConstantOperation constant) {
             return fieldKind == ValueKind.NUMBER ? NumberLiteral.of(constant.getValue())
@@ -1836,7 +1840,8 @@ final class ConditionConverter {
                 && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             String path = field.getField().getFullName();
             if (model.fieldAt(path).map(info -> info.kind() == ValueKind.NUMBER).orElse(false)) {
-                return indexedCell(field, field).map(NumberExpr::new).orElseGet(() -> model.num(path).asNumber());
+                NumberRef number = field.getField().isOuter() ? model.num(path).outer() : model.num(path);
+                return indexedCell(field, field).map(NumberExpr::new).orElseGet(number::asNumber);
             }
         }
         return null;
@@ -2668,7 +2673,7 @@ final class ConditionConverter {
         }
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             Optional<IndexedFieldValue> cell = indexedCell(field, origin);
-            return cell.isPresent() ? cell.get() : new FieldValue(model.field(field.getField().getFullName()));
+            return cell.isPresent() ? cell.get() : new FieldValue(markedField(field.getField()));
         }
         if (op instanceof IDateExtractionOperation ext) {
             return convertDateExtraction(ext).expression();

@@ -82,6 +82,7 @@ class CheckerConstructorComponentAgreementTest {
             "Date(\"01\", DateFromDateTime(SignedAt), \"2024\") > [StartOn]" to "MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED",
             "Time(\"10\", HoursFromTime(RenewalClock)) > [RenewalClock]" to "MVK_INVALID_DATE_OR_TIME_EXTRACT_OP",
             "Time(\"10\", \"10\", 1.5) > [RenewalClock]" to "MVK_UNEXPECTED_TOKEN",
+            "Time(\"10\", \"10\", -1) > [RenewalClock]" to "MVK_UNEXPECTED_TOKEN",
             "Time(True) > [RenewalClock]" to "MVK_UNEXPECTED_TOKEN",
             "Time(Today) > [RenewalClock]" to "MVK_UNEXPECTED_TOKEN",
             "Date(\"01\", \"01\", DateFromDateTime(SignedAt), \"24\") > [StartOn]" to
@@ -92,6 +93,7 @@ class CheckerConstructorComponentAgreementTest {
             "Date(\"01\", \"01\", Bounded10, \"24\") > [StartOn]" to "",
             "Date(\"01\", \"01\", Bounded9, \"24\") > [StartOn]" to "MVK_WRONG_DATE_FORMAT_FOR_OP",
             "Date(\"01\", \"01\", \"20\", Bounded99) > [StartOn]" to "",
+            "Date(\"01\", \"01\", \"20\", \"01\") > [StartOn]" to "",
             "Date(\"01\", \"01\", \"20\", \"1\") > [StartOn]" to "MVK_WRONG_DATE_FORMAT_FOR_OP",
         ), observed.filterKeys { it in PINNED })
     }
@@ -139,7 +141,7 @@ class CheckerConstructorComponentAgreementTest {
             "Time(1) > [RenewalClock]", "Time(Claims*/HourNo) > [RenewalClock]",
             "Date(\"01\", DateFromDateTime(SignedAt), \"2024\") > [StartOn]",
             "Time(\"10\", HoursFromTime(RenewalClock)) > [RenewalClock]",
-            "Time(\"10\", \"10\", 1.5) > [RenewalClock]",
+            "Time(\"10\", \"10\", 1.5) > [RenewalClock]", "Time(\"10\", \"10\", -1) > [RenewalClock]",
             "Time(True) > [RenewalClock]", "Time(Today) > [RenewalClock]",
             "Date(\"01\", \"01\", DateFromDateTime(SignedAt), \"24\") > [StartOn]",
             "Date(\"01\", \"01\", RenewalHour, \"24\") > [StartOn]",
@@ -147,6 +149,7 @@ class CheckerConstructorComponentAgreementTest {
             "Date(\"01\", \"01\", \"01\", \"24\") > [StartOn]",
             "Date(\"01\", \"01\", Bounded10, \"24\") > [StartOn]", "Date(\"01\", \"01\", Bounded9, \"24\") > [StartOn]",
             "Date(\"01\", \"01\", \"20\", Bounded99) > [StartOn]", "Date(\"01\", \"01\", \"20\", \"1\") > [StartOn]",
+            "Date(\"01\", \"01\", \"20\", \"01\") > [StartOn]",
         )
     }
 }

@@ -57,7 +57,11 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
         return firstFilledOperand().overlapModifier();
     }
 
+    /** The marker lives on {@link #correlated()}, the flag the renderer reads, so a list built from a marked field
+     *  keeps it and equals the list marked through {@link #outer()}. */
     public FieldListRef {
+        correlated |= field.correlated();
+        field = field.marked(false);
         semanticIndex = java.util.Objects.requireNonNull(semanticIndex, "semanticIndex");
         flattened = List.copyOf(flattened);
         if (flattened.isEmpty()) {

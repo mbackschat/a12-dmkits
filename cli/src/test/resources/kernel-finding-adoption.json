@@ -6455,7 +6455,7 @@
       }
     },
     "kf532": {
-      "sha256": "3b5a9b2700762438889e3bd99e639c3d4e425b7ba5a738bd11b2e2bca22eaf17",
+      "sha256": "4307f5199880954e30f47881c1d9e29ba1505e51aa3692d986b61d6e894b640b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -6823,7 +6823,7 @@
       }
     },
     "kf534": {
-      "sha256": "6294055b1626d72bb25ee9a03d1b85ecc497ac8eeda16132354b4e6950fd9236",
+      "sha256": "880e5847e45361372b6551f23aeb01ebebd637b71344fd48ed3f5293f948d19c",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -6852,7 +6852,7 @@
       "consumers": {
         "adapter": {
           "state": "APPLIED",
-          "basis": "The reader keeps the marker on all six operations, and the kernel's runtime answer is pinned. The reader keeps the marker on a value-list subject, a Length operand and concatenation parts, and reads one marked field as a presence.",
+          "basis": "The reader keeps the marker on all six operations, and the kernel's runtime answer is pinned. The reader keeps the marker on a value-list subject and field entry, a Length operand, concatenation parts, an arithmetic operand, a group-list member and a Date component, and reads one marked field as a presence.",
           "evidence": {
             "a marked operand of a plain-field operation": {
               "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/CorrelatedFieldOperandReadTest.java#aMarkedOperandReadsBackMarkedInEverySlot",
@@ -6866,7 +6866,7 @@
         },
         "dmkits": {
           "state": "APPLIED",
-          "basis": "The renderer writes the marker for every plain-field operand, and the rounding factories carry NumberRef's marker. Every typed reference keeps its marker on its field, so presence, value lists, pattern, length, concatenation and comparison built from it carry the marker too.",
+          "basis": "The renderer writes the marker for every plain-field operand, and the rounding factories carry NumberRef's marker. Every typed reference keeps its marker on its field, so presence, value lists, pattern, length, concatenation and comparison built from it carry the marker too. A repetition list keeps it on its own flag, as a value read does.",
           "evidence": {
             "a marked operand of a plain-field operation": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CorrelatedFieldOperandDiffTest.kt#theKernelReadsTheRulesOwnRow",
