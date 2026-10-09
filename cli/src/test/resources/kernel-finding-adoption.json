@@ -6811,6 +6811,92 @@
           "evidence": {}
         }
       }
+    },
+    "kf534": {
+      "sha256": "f351b31142eb1c7038d86fdcc92f23b39653295f0942d3998df40b6aeda334b1",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "a marked operand of a plain-field operation"
+        ],
+        "dmkits": [
+          "a marked operand of a plain-field operation"
+        ],
+        "interpreter": [
+          "a marked operand of a plain-field operation"
+        ],
+        "checker": [
+          "a marked operand of a plain-field operation"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "a marked operand of a plain-field operation"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The reader keeps the marker on all six operations, and the kernel's runtime answer is pinned.",
+          "evidence": {
+            "a marked operand of a plain-field operation": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/CorrelatedFieldOperandReadTest.java#aMarkedOperandReadsBackMarkedInEverySlot",
+              "witness": "Every marked operand reads back marked."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "The renderer writes the marker for every plain-field operand, and the rounding factories carry NumberRef's marker.",
+          "evidence": {
+            "a marked operand of a plain-field operation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CorrelatedFieldOperandDiffTest.kt#theKernelReadsTheRulesOwnRow",
+              "witness": "Rules authored through the typed surface fire only on matching claims."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter reads the rule's row for a marked operand in each of these operations.",
+          "evidence": {
+            "a marked operand of a plain-field operation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CorrelatedFieldOperandDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "All three engines agree on every document."
+            }
+          }
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker reports nothing on the model A12 admits.",
+          "evidence": {
+            "a marked operand of a plain-field operation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CorrelatedFieldOperandDiffTest.kt#theCheckerIsSilentOnTheModelA12Admits",
+              "witness": "No rejecting finding."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool renders through the renderer and evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A condition's operand marker does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A condition's operand marker does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "A new measurement disclosed in the 2026-10-09 handback; no peer receipt is inferred.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

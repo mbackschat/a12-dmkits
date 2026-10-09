@@ -450,7 +450,7 @@ final class ConditionConverter {
         if (node instanceof IPredefinedTypeValidityCondition typeValidity) {
             // Valid(field, "Type") / Invalid(field, "Type") — the custom-field-type validity condition
             boolean valid = typeValidity.getConditionName() == ValidityConditionName.Valid;
-            FieldRef field = model.field(typeValidity.getField().getFullName());
+            FieldRef field = markedField(typeValidity.getField());
             return valid
                     ? Dsl.validType(field, typeValidity.getPredefinedTypeConstant())
                     : Dsl.invalidType(field, typeValidity.getPredefinedTypeConstant());
@@ -876,6 +876,15 @@ final class ConditionConverter {
         // date-range overlap carries no category and needs plain FieldOperands (its Dsl factory's shape)
         if (name == EntityListAndValueListConditionName.AtLeastOneDateRangeOverlaps) {
             FieldOperand[] f = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
+            IEntityId soleValue = valueEntities.size() == 1 ? valueEntities.getFirst() : null;
+            if (soleValue != null && !soleValue.isField()) {
+                // a range against a starred group's ranges — the group-list overload; a filtered or keyed group
+                // has no slot there, so it stays verbatim rather than losing its filter or key
+                if (soleValue.getFilterCondition() != null || hasSemanticIndex(soleValue)) {
+                    throw unsupported("date-range overlap against a filtered or keyed group", node);
+                }
+                return Dsl.atLeastOneDateRangeOverlaps(f[0], groupScopeOf(soleValue, reconstructStarPath(soleValue)));
+            }
             FieldOperand[] vf = valueEntities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
             return Dsl.atLeastOneDateRangeOverlaps(f[0], vf[0], Arrays.copyOfRange(vf, 1, vf.length));
         }
@@ -1734,7 +1743,7 @@ final class ConditionConverter {
         // numeric coercions (family 4): RangeAsNumber(field, s, e) — 1-based syntax over the kernel's 0-based start
         if (operand instanceof IFieldIdOperationWithParameters params
                 && params.getOperatorName() == FieldIdOperationName.RangeAsNumber) {
-            return new NumberExpr(new RangeAsNumber(model.field(params.getField().getFullName()),
+            return new NumberExpr(new RangeAsNumber(markedField(params.getField()),
                     params.getRangeStart() + 1, params.getRangeEnd()));
         }
         // FieldValueAsNumber(field | field -> category) — the selected stored/category token coerced to a number
@@ -1746,14 +1755,14 @@ final class ConditionConverter {
                 CategoryRef ref = model.enumOf(entity.getFullName()).category(category);
                 return Dsl.fieldValueAsNumber(entity.isOuter() ? ref.outer() : ref);
             }
-            FieldRef ref = model.field(entity.getFullName());
-            return Dsl.fieldValueAsNumber(entity.isOuter() ? ref.outer() : ref);
+            return Dsl.fieldValueAsNumber(markedField(entity));
         }
         // field-level rounding/abs: RoundDownValue(f)/RoundUpValue(f)/RoundAccountingValue(f)/AbsValue(f)
         if (operand instanceof IFieldIdOperation fieldOp) {
             NumberRef field = switch (fieldOp.getOperatorName()) {
-                case RoundDownValue, RoundUpValue, RoundAccountingValue, AbsValue ->
-                        model.num(fieldOp.getField().getFullName());
+                case RoundDownValue, RoundUpValue, RoundAccountingValue, AbsValue -> fieldOp.getField().isOuter()
+                        ? model.num(fieldOp.getField().getFullName()).outer()
+                        : model.num(fieldOp.getField().getFullName());
                 default -> null;
             };
             if (field != null) {
@@ -2078,15 +2087,14 @@ final class ConditionConverter {
 
     /** Convert a string-coercion field operation to a {@link StringExpr}. */
     private StringExpr stringCoercion(IFieldIdOperation field) {
-        String path = field.getField().getFullName();
         return switch (field.getOperatorName()) {
             case FieldValueAsString -> hasSemanticIndex(field.getField())
                     ? Dsl.fieldValueAsString(semanticIndex(field.getField(), field))
-                    : Dsl.fieldValueAsString(model.field(path));
+                    : Dsl.fieldValueAsString(markedField(field.getField()));
             case RangeAsString -> {
                 // the kernel stores a 0-based start; the rule-language syntax is 1-based (verified by round-trip)
                 IFieldIdOperationWithParameters params = (IFieldIdOperationWithParameters) field;
-                yield Dsl.rangeAsString(model.field(path), params.getRangeStart() + 1, params.getRangeEnd());
+                yield Dsl.rangeAsString(markedField(field.getField()), params.getRangeStart() + 1, params.getRangeEnd());
             }
             default -> throw unsupported("string coercion " + field.getOperatorName(), field);
         };
@@ -2103,6 +2111,16 @@ final class ConditionConverter {
                 && hasSemanticIndex(field.getField())
                 ? Optional.of(semanticIndex(field.getField(), origin).index())
                 : Optional.empty();
+    }
+
+    /**
+     * The plain field an operation reads, keeping the {@code $} that makes it read the rule's own row inside a
+     * filter. A lost marker still converts to a valid reference — to the candidate row — so the outer-marker
+     * count guard above would be the only thing to notice, and it can only refuse the whole rule.
+     */
+    private FieldRef markedField(IEntityId entity) {
+        FieldRef ref = model.field(entity.getFullName());
+        return entity.isOuter() ? ref.outer() : ref;
     }
 
     /** Whether this entity carries the kernel's {@code [Field For key]} semantic-index payload. */
@@ -2161,6 +2179,15 @@ final class ConditionConverter {
         }
         if (isStringCoercion(right)) {
             StringExpr other = stringCoercion((IFieldIdOperation) right);
+            return switch (op) {
+                case EQ -> left.eq(other);
+                case NE -> left.ne(other);
+                default -> throw unsupported("string-expression comparison operator " + op, origin);
+            };
+        }
+        // a text first-filled value on the right too — the two FirstFilledValue sides of one comparison
+        if (right instanceof IEntityListOperation aggregate) {
+            StringExpr other = stringAggregate(aggregate, left.expression().kind());
             return switch (op) {
                 case EQ -> left.eq(other);
                 case NE -> left.ne(other);
@@ -2547,7 +2574,7 @@ final class ConditionConverter {
                 && vad.getOperatorName() == FieldIdOperationName.ValueAsDate) {
             ValueAsDate.Source source = hasSemanticIndex(vad.getField())
                     ? semanticIndex(vad.getField(), op).index()
-                    : model.field(vad.getField().getFullName());
+                    : markedField(vad.getField());
             return new DateExpr(new ValueAsDate(source, vad.isFirstDay()));
         }
         if (op instanceof IPointInTimeOperation pit) {

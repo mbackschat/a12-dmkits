@@ -86,6 +86,20 @@ public final class DslRenderer {
     }
 
     /**
+     * A field OPERAND: its path, behind the {@code $} when it reads the enclosing rule's row. Dropping the marker
+     * renders a valid reference to the filter's candidate row instead, so the condition silently compares
+     * something else; emitting it leaves admission to the kernel, which is the side that owns it.
+     */
+    private String operandPath(FieldRef ref) {
+        return (ref.correlated() ? "$" : "") + path(ref);
+    }
+
+    /** {@link #operandPath}, spelled canonically whatever style the reference asks for. */
+    private String canonicalOperandPath(FieldRef ref) {
+        return (ref.correlated() ? "$" : "") + path(ref.path().value());
+    }
+
+    /**
      * The same, for an operand that states how it wants to be spelled — the per-reference override that
      * makes a mixed-style condition authorable (API-FINDINGS AF159). Path style used to be a property of the
      * renderer, so {@code FieldFilled(Effort) And Sum(/Project/Milestones*}{@code /Budget) > 0} could not be
@@ -266,7 +280,7 @@ public final class DslRenderer {
                     + ")";
             case CustomConditionRef c -> keyword(c.operatorId()) + " " + quoteSegment(c.name());
             case RepetitionNotUniqueCondition r -> keyword(r.operatorId()) + "("
-                    + r.keys().stream().map(k -> path(k.path().value())).collect(Collectors.joining(", "))
+                    + r.keys().stream().map(this::canonicalOperandPath).collect(Collectors.joining(", "))
                     + r.scope().map(s -> " " + keyword("FromScope") + " " + path(s.path().value())).orElse("")
                     + ")";
             case FieldListValueListCondition v -> keyword(v.operatorId()) + "("
@@ -286,7 +300,7 @@ public final class DslRenderer {
                     + ")";
             case DateValidity v -> keyword(v.operatorId()) + "(" + renderArg(v.dateConstruct()) + ")";
             case CustomTypeValidity v ->
-                    keyword(v.operatorId()) + "(" + path(v.field()) + ", " + quote(v.typeName()) + ")";
+                    keyword(v.operatorId()) + "(" + operandPath(v.field()) + ", " + quote(v.typeName()) + ")";
         };
     }
 
@@ -327,7 +341,7 @@ public final class DslRenderer {
     /** A `ValueAsDate` source: the bare field, or the keyed cell written as `Field For key` (KERNEL-FINDINGS KF531). */
     private String valueAsDateSource(ValueAsDate.Source source) {
         return switch (source) {
-            case FieldRef field -> path(field);
+            case FieldRef field -> operandPath(field);
             case IndexedFieldValue indexed -> indexBody(indexed);
         };
     }
@@ -386,7 +400,7 @@ public final class DslRenderer {
      *  an index-selected group or field its localized {@code … For key} body. */
     private String entityOperand(GroupListOperand op) {
         return switch (op) {
-            case FieldRef field -> path(field.path().value());
+            case FieldRef field -> canonicalOperandPath(field);
             case GroupListRef scope -> groupScope(scope);
             case IndexedGroupValue indexed -> groupIndexBody(indexed);
             case IndexedFieldValue indexed -> indexBody(indexed);
@@ -522,12 +536,12 @@ public final class DslRenderer {
                     + a.operands().stream().map(this::firstFilledOperand)
                             .collect(Collectors.joining(", "))
                     + ")";
-            case FieldValueAsString c -> keyword(c.operatorId()) + "(" + path(c.field()) + ")";
+            case FieldValueAsString c -> keyword(c.operatorId()) + "(" + operandPath(c.field()) + ")";
             case IndexedFieldValueAsString c -> keyword(c.operatorId()) + "(" + indexBody(c.index()) + ")";
-            case RangeAsString c -> keyword(c.operatorId()) + "(" + path(c.field())
+            case RangeAsString c -> keyword(c.operatorId()) + "(" + operandPath(c.field())
                     + ", " + c.start() + ", " + c.end() + ")";
             case FieldValueAsNumber c -> keyword(c.operatorId()) + "(" + numericTextSource(c.source()) + ")";
-            case RangeAsNumber c -> keyword(c.operatorId()) + "(" + path(c.field())
+            case RangeAsNumber c -> keyword(c.operatorId()) + "(" + operandPath(c.field())
                     + ", " + c.start() + ", " + c.end() + ")";
             case OpListMath m -> keyword(m.operatorId()) + "("
                     + m.operands().stream().map(this::render).collect(Collectors.joining(", ")) + ")";
@@ -547,7 +561,7 @@ public final class DslRenderer {
                     + renderArg(dtc.time()) + ")";
             case DateRangeConstruction dr -> keyword(dr.operatorId()) + "(" + renderArg(dr.start()) + ", "
                     + renderArg(dr.end()) + ")";
-            case FieldRounding r -> keyword(r.operatorId()) + "(" + path(r.field())
+            case FieldRounding r -> keyword(r.operatorId()) + "(" + operandPath(r.field())
                     + r.decimalPlaces().map(places -> ", " + places).orElse("") + ")";
             case DateRangeBound b -> keyword(b.operatorId()) + "(" + renderArg(b.source()) + ")";
             // The star goes in before relativizing: appended after, a rule inside the root rendered `..*`, which
@@ -558,7 +572,7 @@ public final class DslRenderer {
 
     private String numericTextSource(NumericTextSource source) {
         return switch (source) {
-            case FieldRef field -> (field.correlated() ? "$" : "") + path(field.path().value());
+            case FieldRef field -> canonicalOperandPath(field);
             case EnumRef field -> (field.correlated() ? "$" : "") + path(field.field());
             case CategoryRef category -> (category.correlated() ? "$" : "") + path(category.field())
                     + " " + keyword("EnumCategory") + " " + category.name();

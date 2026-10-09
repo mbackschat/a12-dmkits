@@ -214,40 +214,40 @@ public final class Dsl {
 
     /** {@code RoundDownValue(field)} — floor the field value to zero decimal places. catalog:RoundDownValue */
     public static NumberExpr roundDownValue(NumberRef field) {
-        return NumberExpr.fixedScale(new FieldRounding(FieldRounding.Mode.ROUND_DOWN, field.field()), 0);
+        return NumberExpr.fixedScale(new FieldRounding(FieldRounding.Mode.ROUND_DOWN, field.operand()), 0);
     }
 
     /** {@code RoundDownValue(field, n)} — floor the field value to {@code n} decimal places ({@code 0..14}). catalog:RoundDownValue */
     public static NumberExpr roundDownValue(NumberRef field, int decimalPlaces) {
         return NumberExpr.fixedScale(
-                new FieldRounding(FieldRounding.Mode.ROUND_DOWN, field.field(), decimalPlaces), decimalPlaces);
+                new FieldRounding(FieldRounding.Mode.ROUND_DOWN, field.operand(), decimalPlaces), decimalPlaces);
     }
 
     /** {@code RoundUpValue(field)} — ceiling the field value to zero decimal places. catalog:RoundUpValue */
     public static NumberExpr roundUpValue(NumberRef field) {
-        return NumberExpr.fixedScale(new FieldRounding(FieldRounding.Mode.ROUND_UP, field.field()), 0);
+        return NumberExpr.fixedScale(new FieldRounding(FieldRounding.Mode.ROUND_UP, field.operand()), 0);
     }
 
     /** {@code RoundUpValue(field, n)} — ceiling the field value to {@code n} decimal places ({@code 0..14}). catalog:RoundUpValue */
     public static NumberExpr roundUpValue(NumberRef field, int decimalPlaces) {
         return NumberExpr.fixedScale(
-                new FieldRounding(FieldRounding.Mode.ROUND_UP, field.field(), decimalPlaces), decimalPlaces);
+                new FieldRounding(FieldRounding.Mode.ROUND_UP, field.operand(), decimalPlaces), decimalPlaces);
     }
 
     /** {@code RoundAccountingValue(field)} — commercial rounding to zero decimal places. catalog:RoundAccountingValue */
     public static NumberExpr roundAccountingValue(NumberRef field) {
-        return NumberExpr.fixedScale(new FieldRounding(FieldRounding.Mode.ROUND_ACCOUNTING, field.field()), 0);
+        return NumberExpr.fixedScale(new FieldRounding(FieldRounding.Mode.ROUND_ACCOUNTING, field.operand()), 0);
     }
 
     /** {@code RoundAccountingValue(field, n)} — commercial rounding to {@code n} decimal places ({@code 0..14}). catalog:RoundAccountingValue */
     public static NumberExpr roundAccountingValue(NumberRef field, int decimalPlaces) {
         return NumberExpr.fixedScale(
-                new FieldRounding(FieldRounding.Mode.ROUND_ACCOUNTING, field.field(), decimalPlaces), decimalPlaces);
+                new FieldRounding(FieldRounding.Mode.ROUND_ACCOUNTING, field.operand(), decimalPlaces), decimalPlaces);
     }
 
     /** {@code AbsValue(field)} — the absolute value of the field. catalog:AbsValue */
     public static NumberExpr absValue(NumberRef field) {
-        return NumberExpr.field(new FieldRounding(FieldRounding.Mode.ABS, field.field()), field.scale());
+        return NumberExpr.field(new FieldRounding(FieldRounding.Mode.ABS, field.operand()), field.scale());
     }
 
     /** {@code MaxValue(…)} over number fields/repetition lists — unspecified fields are ignored. catalog:MaxValue */

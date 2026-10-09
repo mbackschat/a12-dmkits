@@ -2265,6 +2265,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notIn(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef, io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notIn(long, long[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef operand()
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef outer()
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr plus(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr plus(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)

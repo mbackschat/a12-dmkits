@@ -12851,3 +12851,21 @@ A fixed root `/Policy` reports on a field of the repeatable `Claims` (capacity 3
 Read as slots: a per-row read of the iterated row is bound, while a fixed-root field is one INDEPENDENT slot and a starred field counts as many independent slots as its declared capacity. `AtLeastOneFieldFilled` and `FieldsNotCollectivelyFilled` refuse at one independent slot, `MoreThanOneFieldFilled` and `FieldValuesNotUnique` at two, so the root pair separates the two thresholds and the capacity-3 star exceeds both. The three negatives refuse any operand list with a per-row read. The marked filter binds the rule to the claim, which is why it reaches the gate at all, but it does not make the starred list a per-row read, so the negatives admit it and the positives see three independent slots. An unmarked filter read binds nothing, so neither does a bare star, and neither rule iterates. A guard on the bound row admits every row, and `AllFieldsFilled` admits every shape. The slot reading follows a12-kernel-lean's `IterationNotValidVisitor` account (`SPEC-2026-10-09-05`); the rows above are what was measured here. That a capacity-1 star counts as one slot is not measured.
 
 *(Locked: `validate.laws.IterationBindingLawsTest.theIterationGuardCountsIndependentSlots`.)*
+
+## §9 supplement — a `$` operand of a plain-field operation inside a filter is admitted and reads the rule's own row (kernel + both strategies, 2026-10-09) <a id="kf534"></a>
+
+> Fold: pending — beside §9's `$` correlation account.
+
+On a repeatable `Claims` with the rule in `Claims`, each slot below sits in a `Having` filter that also reads the candidate row; A12 requires that read of every filter (`MVK_NO_ITERATION_FOR_WILDCARD` without it). All are admitted: `ValueAsDate($Claims/ReportedAbout, LastDay)`, `Valid($Claims/Code, "Postcode")`, `FieldValueAsString($Claims/Amount)`, `RangeAsString($Claims/Code, 1, 2)`, `RangeAsNumber($Claims/Code, 3, 4)`, `RoundUpValue($Claims/Amount)`.
+
+At runtime the marked operand reads the RULE's row. Each rule fires when another claim matches the rule's claim through one slot:
+
+| document | fires |
+|---|---|
+| two claims agreeing on every slot | every rule, once per claim |
+| two claims differing on every slot | nothing |
+| a third claim matching only the first | every rule, for the first and third claims only |
+
+An unmarked operand would compare each candidate with itself and fire on every claim with a sibling. Dynamic Groovy, static Java and the a12-dmkits interpreter agree on every document. `Valid` is measured for admission only; its lookup needs a registered validator ([KF51](#kf51)).
+
+*(Locked: `adapter.laws.CorrelatedFieldOperandDiffTest`, `adapter.CorrelatedFieldOperandReadTest`.)*
