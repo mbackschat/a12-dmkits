@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.StreamSupport;
 
@@ -29,6 +30,31 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 class PartialValidationCliTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Test
+    void completeConcreteSelectionsUseDeclaredCapacity(@TempDir Path dir) throws Exception {
+        Path doc = document(dir, """
+                {"Delivery":{"Reference":"dispatch","Labels":[{"Code":"north"},{"Code":"south"}]}}
+                """);
+        for (int capacity : List.of(2, 3)) {
+            var session = EditSession.read(DocumentModelDraft.named("delivery-coverage-cli").locale("en_US")
+                    .rootGroup("Delivery", delivery -> delivery.stringField("Reference", field -> {})
+                            .group("Labels", labels -> labels.repeatable(capacity).stringField("Code", field -> {})))
+                    .build().toJson());
+            var delivery = session.group("/Delivery");
+            var reference = delivery.str("Reference");
+            delivery.addRule(rule -> rule.name("NoUrgentLabel").code("NO_URGENT").errorField(reference)
+                    .when(reference.filled().and(Dsl.noFieldValueIncludedInValueList(
+                            List.of("urgent"), delivery.flatten("Labels*/Code"))))
+                    .message(Dsl.en("No urgent label.")).build());
+            Path model = dir.resolve("delivery-" + capacity + ".dm.json");
+            Files.writeString(model, session.toJson());
+            JsonNode result = data(CliTestSupport.run("-m", model.toString(), "model", "eval",
+                    "--instance", doc.toString(), "--no-computations", "--relevant",
+                    "[\"/Delivery/Reference\",\"/Delivery/Labels[1]/Code\",\"/Delivery/Labels[2]/Code\"]"));
+            assertEquals(capacity == 2, fired(result).contains("NO_URGENT"), "declared capacity=" + capacity);
+        }
+    }
 
     @Test
     void relevantPageRunsOnlyItsRulesPlusGlobalFields(@TempDir Path dir) throws Exception {

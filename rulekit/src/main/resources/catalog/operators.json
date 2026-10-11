@@ -2365,7 +2365,7 @@
           ]
         },
         {
-          "text": "a fired AtLeastOne is OMISSION only when the DECIDING (matching) fields operand carries the Having filter, or a filtered VALUES operand selected a PRESENT member — an earlier filtered nonwitness operand, a filter that kept only empty cells, or one that dropped everything leaves the fire VALUE (witness-specific, never one side-wide flag)",
+          "text": "a fired AtLeastOne is OMISSION only when the DECIDING (matching) fields operand carries the Having filter, or a filtered VALUES operand selected a PRESENT member — an earlier filtered nonwitness operand, a filter that kept only empty cells, or one that dropped everything leaves the fire VALUE (witness-specific, never one side-wide flag); in partial validation this operator can use a relevant matching cell without establishing the complete starred extent",
           "kind": "SURPRISE",
           "seeAlso": [
             "NoFieldValueIncludedInValueList",
@@ -2459,7 +2459,7 @@
       ],
       "gotchas": [
         {
-          "text": "unlike the scalar FieldValueNotIncludedInValueList (a one-subject specialization that does NOT fire on an empty subject), the multi-field No FIRES when nothing is filled; an UNKNOWN fields cell OR values member poisons it",
+          "text": "unlike the scalar FieldValueNotIncludedInValueList (a one-subject specialization that does NOT fire on an empty subject), the multi-field No FIRES when nothing is filled; an UNKNOWN fields cell OR values member poisons it; in partial validation an ordinary starred operand needs wildcard coverage or concrete coverage of every declared slot on either side; covering only the held rows is insufficient",
           "kind": "SURPRISE",
           "seeAlso": [
             "FieldValueNotIncludedInValueList",
@@ -2555,7 +2555,7 @@
       ],
       "gotchas": [
         {
-          "text": "needs a FILLED fields cell to fire; an UNKNOWN VALUES member poisons it, but an UNKNOWN FIELDS cell is merely skipped — the No-vs-NotAll asymmetry",
+          "text": "needs a FILLED fields cell to fire; an UNKNOWN VALUES member poisons it, but an UNKNOWN FIELDS cell is merely skipped — the No-vs-NotAll asymmetry; in partial validation complete starred extent is required on the values side, via wildcard or complete declared-slot coverage; the fields side can use a relevant outside witness without complete extent",
           "kind": "SURPRISE",
           "seeAlso": [
             "NoFieldValueIncludedInValueList",
@@ -4285,7 +4285,7 @@
           "kind": "AUTHORING"
         },
         {
-          "text": "over a Having-filtered list the fired polarity is asymmetric: ANY reached filter lets the count grow, but the count can SHRINK only when a currently counted cell — one that matched the constant — came through the filter; a filtered non-match leaves a grow-only zero, so a fired lower-bound comparison over it is a VALUE error, not OMISSION",
+          "text": "over a Having-filtered list the fired polarity is asymmetric: ANY reached filter lets the count grow, but the count can SHRINK only when a currently counted cell — one that matched the constant — came through the filter; a filtered non-match leaves a grow-only zero, so a fired lower-bound comparison over it is a VALUE error, not OMISSION; in partial validation an ordinary starred operand accepts wildcard or complete declared-slot coverage, independently of how many rows the document holds",
           "kind": "SURPRISE",
           "seeAlso": [
             "NumberOfFilledFields"

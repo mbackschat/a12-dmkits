@@ -3135,7 +3135,7 @@
       "operator": "AtLeastOneFieldValueIncludedInValueList",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:aea9716b72281feae87f2a276c8342e392fbd17d273b89b5622883cb0b5891c2",
+      "digest": "sha256:3df366a29159ed1a97a98c92727a104a0bf6b66f72b75ca6994f21485d49c260",
       "classifications": [
         "RUNTIME"
       ],
@@ -3144,6 +3144,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "ValueListQuantifierOrderDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "PartialDeclaredListExtentDiffTest"
         }
       ]
     },
@@ -3177,7 +3182,7 @@
       "operator": "NoFieldValueIncludedInValueList",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:2a4d6af67dc828d514958a6ded7c0f1997440b95195f8c67c4bb4d1bc4f777d3",
+      "digest": "sha256:146b267961701ca9df1e1d6d4e3a0cd504d296694643b2181692b2d426e9e741",
       "classifications": [
         "RUNTIME"
       ],
@@ -3196,6 +3201,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "ValueListQuantifierStarDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "PartialDeclaredListExtentDiffTest"
         }
       ]
     },
@@ -3245,7 +3255,7 @@
       "operator": "NotAllFieldValuesIncludedInValueList",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:8125bf346f519db53b3dd33c7b0a61b61b17b562708127ec5a5dd3a304133c4d",
+      "digest": "sha256:88008d0524c0fac89bc6febf9c02c9d62ee32a6f1d514412ad33c20e02416b30",
       "classifications": [
         "RUNTIME"
       ],
@@ -3264,6 +3274,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "ValueListQuantifierStarDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "PartialDeclaredListExtentDiffTest"
         }
       ]
     },
@@ -5213,7 +5228,7 @@
       "operator": "NumberOfValueInFields",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:ac605ec70fe92ccb339d9778877da16ceb4aba3607b9abae13593d6324a13041",
+      "digest": "sha256:c2dd0fc7e3cf5dbdb2b9dc87670687152e1db0af108a98ef4670d0b3bd57b912",
       "classifications": [
         "RUNTIME"
       ],
@@ -5222,6 +5237,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "NumberOfValueInFieldsPolarityDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "PartialDeclaredListExtentDiffTest"
         }
       ]
     },

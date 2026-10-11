@@ -894,7 +894,7 @@ private fun Interpreter.extentUnknown(star: Expr.Star, gate: (String, Int, List<
 private fun Interpreter.evalFunc(f: Expr.Func): Val {
     val op = FunctionOp.byName(f.name)
     // Partial validation chooses the extent predicate by operator family. Most direct starred functions use
-    // the reduced-universal all-rows gate. `NumberOfValueInFields` instead shares the existential value-list
+    // the reduced-universal all-rows gate. `NumberOfValueInFields` instead shares the declared-coverage value-list
     // gate, `SumOfProducts` accepts a complete concrete enumeration, `FirstFilledValue` is order-aware via
     // per-cell relevance, and `NumberOfFilledGroups` asks its own [GroupCountGate] in [filledGroupsValue],
     // because A12 iterates the counted group rather than its fields. These are five measured contracts, not

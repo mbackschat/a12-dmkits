@@ -11,22 +11,22 @@ import kotlin.test.assertEquals
 
 /**
  * Multiplatform (JVM+Node) lock for the partial-validation star-extent gate (SPEC-2026-07-22-09): a starred
- * value-list entry establishes its complete extent only from WILDCARD coverage of the starred level, not from
- * concretely enumerating every current row. `No` (either side) and `NotAll` (values side) are suppressed
+ * value-list entry establishes extent from wildcard coverage or a complete enumeration of declared slots
+ * (SPEC-2026-10-10-15). Enumerating only the currently held rows is insufficient. `No` (either side) and `NotAll` (values side) are suppressed
  * (UNKNOWN) when the extent is unknown. The JVM tri-differential `PartialValidationValueListDiffTest` anchors
  * these to both kernel strategies; this pins the interpreter's own JVM+Node behavior.
  */
 class PartialValidationValueListExtentTest {
 
-    private fun model(rawCond: String) = ModelDef(
+    private fun model(rawCond: String, capacity: Int) = ModelDef(
         fields = listOf(FieldDef(ACK, Kind.STRING), FieldDef(TAG, Kind.STRING)),
         rules = listOf(RuleDef("/Order/VLQ", "/Order", "FieldFilled(/Order/Ack) And ($rawCond)", "VLQ", "../Ack")),
         repeatableGroups = setOf("/Order/Items"),
-        declaredReps = mapOf("/Order/Items" to 50),
+        declaredReps = mapOf("/Order/Items" to capacity),
     )
 
-    private fun fired(rawCond: String, rel: Set<RelevantEntity>, ack: String = "X"): Int {
-        val m = model(rawCond)
+    private fun fired(rawCond: String, rel: Set<RelevantEntity>, ack: String = "X", capacity: Int = 50): Int {
+        val m = model(rawCond, capacity)
         val doc = m.newDocument().group("/Order", 1).field(ACK, ack, 1, 1)
             .group("/Order/Items", 1, 1).field(TAG, "C", 1, 1, 1)
             .group("/Order/Items", 1, 2).field(TAG, "D", 1, 2, 1)
@@ -38,24 +38,33 @@ class PartialValidationValueListExtentTest {
     private val ancestor = setOf(RelevantEntity.anyRep("/Order"))
 
     @Test
-    fun noFieldsSideStarFiresOnlyWithWildcardExtent() {
+    fun noFieldsSideStarRequiresDeclaredExtent() {
         val cond = "NoFieldValueIncludedInValueList(/Order/Items*/Tag In \"A\")"   // Tags C,D ∉ {A} → No holds
-        assertEquals(1, fired(cond, wild), "wildcard coverage establishes extent → No fires")
-        assertEquals(0, fired(cond, concrete), "concrete rows do NOT establish extent → No is UNKNOWN")
+        for (capacity in listOf(2, 3, 50)) {
+            assertEquals(1, fired(cond, wild, capacity = capacity), "wildcard, capacity=$capacity")
+            assertEquals(if (capacity == 2) 1 else 0, fired(cond, concrete, capacity = capacity),
+                "two concrete rows, capacity=$capacity")
+        }
     }
 
     @Test
-    fun noValuesSideStarFiresOnlyWithWildcardExtent() {
+    fun noValuesSideStarRequiresDeclaredExtent() {
         val cond = "NoFieldValueIncludedInValueList(/Order/Ack In /Order/Items*/Tag)"   // Ack X ∉ {C,D} → No holds
-        assertEquals(1, fired(cond, wild), "wildcard coverage establishes extent → No fires")
-        assertEquals(0, fired(cond, concrete), "concrete rows do NOT establish extent → No is UNKNOWN")
+        for (capacity in listOf(2, 3, 50)) {
+            assertEquals(1, fired(cond, wild, capacity = capacity), "wildcard, capacity=$capacity")
+            assertEquals(if (capacity == 2) 1 else 0, fired(cond, concrete, capacity = capacity),
+                "two concrete rows, capacity=$capacity")
+        }
     }
 
     @Test
-    fun notAllValuesSideStarFiresOnlyWithWildcardExtent() {
+    fun notAllValuesSideStarRequiresDeclaredExtent() {
         val cond = "NotAllFieldValuesIncludedInValueList(/Order/Ack In /Order/Items*/Tag)"   // Ack X ∉ {C,D} → NotAll holds
-        assertEquals(1, fired(cond, wild), "wildcard coverage establishes extent → NotAll(values) fires")
-        assertEquals(0, fired(cond, concrete), "concrete rows do NOT establish extent → NotAll(values) is UNKNOWN")
+        for (capacity in listOf(2, 3, 50)) {
+            assertEquals(1, fired(cond, wild, capacity = capacity), "wildcard, capacity=$capacity")
+            assertEquals(if (capacity == 2) 1 else 0, fired(cond, concrete, capacity = capacity),
+                "two concrete rows, capacity=$capacity")
+        }
     }
 
     @Test

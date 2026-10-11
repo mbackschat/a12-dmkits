@@ -8895,6 +8895,90 @@
           }
         }
       }
+    },
+    "kf55": {
+      "sha256": "7e60bd25a4a8d9d216ea369fb5f3ff76f4a775d0962adeb45de27583c5c641ab",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "ordinary partial declared-list extent"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "ordinary partial declared-list extent"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "ordinary partial declared-list extent"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "ordinary partial declared-list extent"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Capacity two versus three separates declared coverage from held rows.",
+          "evidence": {
+            "ordinary partial declared-list extent": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDeclaredListExtentDiffTest.kt#completeDeclaredSlotsEstablishListExtentWithoutChangingAggregateGates",
+              "witness": "Capacity two versus three separates declared coverage from held rows."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Existing typed field/group value-list operands author the measured models.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The existing extent gate now accepts complete declared-slot coverage.",
+          "evidence": {
+            "ordinary partial declared-list extent": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/PartialValidationValueListExtentTest.kt#noFieldsSideStarRequiresDeclaredExtent",
+              "witness": "The existing extent gate now accepts complete declared-slot coverage."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Partial runtime coverage does not change model admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Concrete selectors follow declared capacity; catalog and schema describe the distinction.",
+          "evidence": {
+            "ordinary partial declared-list extent": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/PartialValidationCliTest.java#completeConcreteSelectionsUseDeclaredCapacity",
+              "witness": "Concrete selectors follow declared capacity; catalog and schema describe the distinction."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No imported keyword or synthesized rule changes.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No exported keyword or rule carriage changes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-15 awaits peer verification.",
+          "evidence": {
+            "ordinary partial declared-list extent": {
+              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-15",
+              "witness": "SPEC-2026-10-10-15 awaits peer verification."
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -377,7 +377,7 @@ class DmInterpreter private constructor(
      * expand to the operand path, and a broader wildcard identifier removes every narrower identifier it encompasses.
      * After that reduction, ANY remaining concrete coordinate at a starred level makes the extent unknown.
      * `FirstFilled` does not use this path because it is order-aware. Starred value-list quantifiers and
-     * `NumberOfValueInFields` use the existential [starExtentKnownOf] instead.
+     * `NumberOfValueInFields` use the declared-coverage [starExtentKnownOf] instead.
      */
     private fun starRelevantOf(relevant: Set<RelevantEntity>): (String, Int, List<Int>) -> Boolean {
         val candidates = wellFormed(relevant)
@@ -483,8 +483,9 @@ class DmInterpreter private constructor(
 
     /**
      * A starred VALUE-LIST or `NumberOfValueInFields` entry's complete-extent gate uses the same star anchor and
-     * per-iteration-row scope as [starRelevantOf], but **EXISTENTIAL**: one covering relevant identifier that
-     * wildcards every reopened level establishes the extent, and concrete siblings surviving beside it do NOT suppress it.
+     * per-iteration-row scope as [starRelevantOf]. A wildcard covering every reopened level or a union covering
+     * every declared slot establishes extent; concrete siblings do not suppress either (SPEC-2026-10-10-15,
+     * `PartialDeclaredListExtentDiffTest`). Wildcards still establish extent for unbounded declarations.
      *
      * The two gates were briefly one predicate, on the reasoning that they answer the same structural question.
      * They do not. On `{field wildcard} + {concrete group rows}` the kernel FIRES a starred `No` and is SILENT
@@ -501,7 +502,7 @@ class DmInterpreter private constructor(
                 candidates.any { e ->
                     covers(e, starPath) && addressesRow(e, scope.bound) &&
                         scope.levels.all { i -> i >= e.indices.size || e.indices[i] == RelevantEntity.ALL }
-                }
+                } || coversEveryRepetition(candidates, starPath, scope)
             }
         }
     }

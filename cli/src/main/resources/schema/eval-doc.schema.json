@@ -10,7 +10,7 @@
     "validationMode": {
       "type": "string",
       "const": "partial",
-      "description": "present only when `--relevant` selected partial validation; absent means full validation. Structural over-repetition findings do not by themselves make ancestor groups erroneous for partial counts; in-capacity invalid values still can. Nonempty partial selections report structural over-repetition outside the selection, including present null/empty fields; an empty selection emits no structural findings"
+      "description": "present only when `--relevant` selected partial validation; absent means full validation. Structural over-repetition findings do not by themselves make ancestor groups erroneous for partial counts; in-capacity invalid values still can. Nonempty partial selections report structural over-repetition outside the selection, including present null/empty fields; an empty selection emits no structural findings. Starred value-list extent and NumberOfValueInFields accept wildcard or complete declared-slot coverage; selecting every held row is insufficient when the declaration allows more"
     },
     "fired": {
       "type": "array",

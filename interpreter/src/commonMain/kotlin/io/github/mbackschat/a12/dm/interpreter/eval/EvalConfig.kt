@@ -64,14 +64,13 @@ class EvalConfig(
      *  UNIVERSAL over the reduced identifier set: a surviving concrete sibling suppresses it even beside a
      *  wildcard ([IF262]). `SumOfProducts` is NOT one of them — it carries the weaker [starFullyEnumerated]
      *  gate instead ([IF255]); a starred value-list entry and `NumberOfValueInFields` use [starExtentKnown],
-     *  which is the EXISTENTIAL gate and NOT this one ([IF264], [IF310]); `FirstFilled` uses none of the three
+     *  which accepts wildcard or complete declared-slot coverage ([KF55], [IF264], [IF310]); `FirstFilled` uses none of the three
      *  (it is order-aware via [cellRelevant]). **Null in full validation.** */
     val starRelevant: ((String, Int, List<Int>) -> Boolean)? = null,
     /** Partial validation only: whether a starred VALUE-LIST or `NumberOfValueInFields` entry's complete extent
-     *  is established. Same star anchor and per-iteration-row scope as [starRelevant], but **existential**: ONE covering relevant
-     *  identifier that wildcards every reopened level is enough, and concrete siblings beside it do not
-     *  suppress. The two gates split on exactly that shape, measured on both kernel strategies by
-     *  `PartialExtentGateShapeDiffTest` ([IF264]). **Null in full validation.** */
+     *  is established by a covering wildcard or complete declared-slot coverage. Concrete siblings do not
+     *  suppress a wildcard (`PartialExtentGateShapeDiffTest`, IF264); concrete selections must cover the
+     *  declaration, not merely held rows (`PartialDeclaredListExtentDiffTest`, KF55). **Null in full validation.** */
     val starExtentKnown: ((String, Int, List<Int>) -> Boolean)? = null,
     /** `SumOfProducts`' weaker completeness gate: wildcard OR a COMPLETE concrete enumeration of the declared
      *  repetitions. Takes the star path plus the CURRENT ROW's repetition coordinates, because completeness is

@@ -31,8 +31,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
  * [filtered] marks a `Having`-bearing operand — its polarity effect is decided by the consuming pass
  * (witness-specific / reached-specific), never side-wide. [omittedTail] is an unfiltered star's
  * un-instantiated declared tail. [extentUnknown] is the SEPARATE partial-validation fact: a starred entry's
- * COMPLETE extent is established only by wildcard coverage of its repeatable level(s) — concretely
- * enumerating every current row does NOT (SPEC-2026-07-22-09); never set in full validation.
+ * complete extent requires wildcard coverage or complete declared-slot coverage (SPEC-2026-10-10-15),
+ * independently from the held rows; never set in full validation.
  */
 private class VlqOperand(val filtered: Boolean) {
     private val collected = mutableListOf<Val?>()
@@ -84,12 +84,8 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = exp
                 val keeps = having?.let { filter -> { row: EvalContext -> havingInterp(row).keeps(filter) } }
                 return@map op.readLazily(computeStarReads(e, keeps).map { it?.value })
             }
-            // Partial validation: this starred entry's COMPLETE extent is established by WILDCARD coverage of
-            // its repeatable level(s) (or a relevant ancestor); enumerating concrete rows, even all of them,
-            // does NOT (SPEC-2026-07-22-09). It is its OWN seam, not the all-rows aggregates' [starRelevant]:
-            // that one is universal over the reduced identifier set, this one is existential, and the two
-            // kernel-diverge on a wildcard beside concrete siblings ([IF264]).
-            // Null in full validation → never set → the full path stays byte-identical.
+            // Declared-slot completeness is independent of cell relevance below (SPEC-2026-10-10-15).
+            // It also differs from aggregates' reduced-identifier gate on mixed wildcard/concrete sets (IF264).
             if (starExtentKnown?.invoke(e.path, e.bindDepth, c.repsOf(e.path)) == false) op.extentUnknown = true
             // …and, independently of the extent, a NON-RELEVANT cell is not in the kernel's evaluation cache at
             // all, so it contributes nothing to the scan ([IF267], measured on both strategies: with the only

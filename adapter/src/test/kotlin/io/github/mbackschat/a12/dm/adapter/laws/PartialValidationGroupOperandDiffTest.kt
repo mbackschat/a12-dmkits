@@ -107,7 +107,7 @@ class PartialValidationGroupOperandDiffTest {
         val groupConcrete = agree(group, rows, concreteK, concreteI, "group operand, concrete-only relevance")
         val explicitConcrete = agree(explicit, rows, concreteK, concreteI, "explicit list, concrete relevance")
         assertEquals(explicitConcrete, groupConcrete,
-            "…and the same under concrete-only relevance, where the starred extent is unknown")
+            "…and the same under two-row concrete relevance, where the capacity-50 extent is unknown")
     }
 
     /**
