@@ -163,6 +163,8 @@ A value the converter cannot parse stays verbatim and is written back as a JSON 
 
 The measurement is `adapter … A12JsonIngressKernelTest` (the kernel's own ingress) and `A12JsonIngressDiffTest` (ours against it, with the exhaustive characterized residual).
 
+Authored DSL string literals have a separate decode step: each CRLF pair becomes LF once, including literal semantic-index keys. This does not rewrite Document transport text or normalize an admitted value again. The repeated-CR comparison and selection controls are in [KF542](KERNEL-FINDINGS.md#kf542) and `AuthoredStringNewlineDiffTest`.
+
 ### 4.3 Strict reading
 
 `PreparedModel.documents.readDocument` validates the complete text before any document state exists:

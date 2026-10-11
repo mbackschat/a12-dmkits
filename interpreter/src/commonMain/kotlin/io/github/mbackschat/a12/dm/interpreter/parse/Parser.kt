@@ -527,7 +527,8 @@ private class ConditionParser(
         }
         val s = src.substring(start, pos)
         expect('"')
-        return Expr.StrLit(s)
+        // AuthoredStringNewlineDiffTest separates literal decoding from Document ingestion.
+        return Expr.StrLit(s.replace("\r\n", "\n"))
     }
 
     private fun readIdent(): String {

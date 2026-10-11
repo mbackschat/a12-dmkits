@@ -8207,6 +8207,83 @@
           "evidence": {}
         }
       }
+    },
+    "kf542": {
+      "sha256": "76548b00c5d1e2e46f9b26f3fdc968f9aa6d94c811117c54771410e3bf716d95",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "literal value and selected-key decoding"
+        ],
+        "interpreter": [
+          "literal value and selected-key decoding"
+        ],
+        "dmtool-cli": [
+          "literal value and selected-key decoding"
+        ],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed literals and rendering preserve authored text; the runtime reader owns decoding. No authoring shape changes.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "Static literal admission is a separate decoder consumer, assigned its own finite differential slice before the batch handback.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "No import claim is made by this runtime matrix; declaration-pattern and synthesized-rule boundaries are assigned a separate session verification slice.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "No projection claim is made by this runtime matrix; kernel-backed readback and lossless authored carriage are assigned a separate session verification slice.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The shared interpreter parser consumes authored literals for library evaluation and dmtool; both kernel strategies lock the normalized values and selected rows.",
+          "evidence": {
+            "literal value and selected-key decoding": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/AuthoredStringNewlineDiffTest.kt#semanticIndexLiteralsDecodeOnceBeforeSelectingStoredKeys",
+              "witness": "Lone CR, LF, CRLF and repeated-CR literals select independently identified rows; both strategies agree with the interpreter."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The shared interpreter parser consumes authored literals for library evaluation and dmtool; both kernel strategies lock the normalized values and selected rows.",
+          "evidence": {
+            "literal value and selected-key decoding": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/AuthoredStringNewlineDiffTest.kt#semanticIndexLiteralsDecodeOnceBeforeSelectingStoredKeys",
+              "witness": "Lone CR, LF, CRLF and repeated-CR literals select independently identified rows; both strategies agree with the interpreter."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "The packaged launcher locks model eval and model compute, preserving one-pass literal values, a selected-key read and read-only Document transport.",
+          "evidence": {
+            "literal value and selected-key decoding": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedLiteralDecodingPreservesOnePassAndSelectedKeys",
+              "witness": "Repeated-CR versus CRLF comparison, CRLF semantic-index selection and both literal computation values through the packaged launcher."
+            }
+          }
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The newly exposed runtime literal gap accompanies SPEC-2026-10-10-11/12 and awaits peer verification with the final batch revision.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

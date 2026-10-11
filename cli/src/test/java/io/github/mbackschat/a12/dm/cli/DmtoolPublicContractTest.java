@@ -313,6 +313,62 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void packagedLiteralDecodingPreservesOnePassAndSelectedKeys(@TempDir Path dir) throws Exception {
+        String base = DocumentModelDraft.named("dispatch-literal-cli").locale("en_US")
+                .rootGroup("Dispatch", g -> g.stringField("Note", f -> f.lineBreaks())
+                        .stringField("PairCopy", f -> f.lineBreaks())
+                        .stringField("RepeatedCopy", f -> f.lineBreaks())
+                        .group("Bins", b -> b.repeatable(2).indexField("Code")
+                                .stringField("Code", f -> f.lineBreaks()).numberField("Stock", f -> f.fractionDigits(0))))
+                .build().toJson();
+        var bound = BoundModel.ofJson(base);
+        var group = bound.group("/Dispatch");
+        var note = bound.str("/Dispatch/Note");
+        var stock = bound.num("/Dispatch/Bins/Stock");
+        var edit = EditSession.read(base);
+        edit.addRule(m -> m.rule(group).name("ComparePair").code("PAIR").errorField(note)
+                .when(note.eq("A\r\nB")).message(Dsl.en("Review the note.")).build());
+        edit.addRule(m -> m.rule(group).name("CompareRepeated").code("REPEATED").errorField(note)
+                .when(note.eq("A\r\r\nB")).message(Dsl.en("Review the note.")).build());
+        edit.addRule(m -> m.rule(group).name("SelectBin").code("SELECTED").errorField(note)
+                .when(note.filled().and(stock.forIndex("A\r\nB").eq(11)))
+                .message(Dsl.en("Review stock.")).build());
+        for (var literal : Map.of("PairCopy", "A\r\nB", "RepeatedCopy", "A\r\r\nB").entrySet()) {
+            var target = bound.str("/Dispatch/" + literal.getKey());
+            edit.addComputation(m -> m.computation(target).name("Write" + literal.getKey())
+                    .calc(new io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral(literal.getValue()))
+                    .message(Dsl.en("Review the copied note.")).build());
+        }
+        Path model = dir.resolve("dispatch.dm.json");
+        Path document = dir.resolve("dispatch.json");
+        Files.writeString(model, edit.toJson());
+        String input = MAPPER.writeValueAsString(Map.of("Dispatch", Map.of("Note", "A\r\r\nB",
+                "Bins", List.of(Map.of("Code", "A\nB", "Stock", 11)))));
+        Files.writeString(document, input);
+        var dmtool = new PackagedDmtool(dir);
+        var evaluated = dmtool.run("-m", model.toString(), "model", "eval", "--instance", document.toString());
+        assertEquals(0, evaluated.code(), () -> evaluated.out() + evaluated.err());
+        var fired = new HashSet<String>();
+        MAPPER.readTree(evaluated.out()).path("data").path("fired").forEach(code -> fired.add(code.asText()));
+        var oracle = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", document.toString());
+        assertEquals(0, oracle.code(), () -> oracle.out() + oracle.err());
+        var kernelFired = new HashSet<String>();
+        MAPPER.readTree(oracle.out()).path("data").path("fired").forEach(code -> kernelFired.add(code.asText()));
+        assertEquals(kernelFired, fired, evaluated::out);
+        assertTrue(fired.containsAll(Set.of("REPEATED", "SELECTED")), evaluated::out);
+        assertFalse(fired.contains("PAIR"), evaluated::out);
+        var computed = dmtool.run("-m", model.toString(), "model", "compute", "--instance", document.toString());
+        assertEquals(0, computed.code(), () -> computed.out() + computed.err());
+        var values = new HashMap<String, String>();
+        for (JsonNode cell : MAPPER.readTree(computed.out()).path("data").path("computed")) {
+            assertEquals("value", cell.path("outcome").asText(), computed::out);
+            values.put(cell.path("field").asText(), cell.path("value").asText());
+        }
+        assertEquals(Map.of("Dispatch/PairCopy", "A\nB", "Dispatch/RepeatedCopy", "A\r\nB"), values, computed::out);
+        assertEquals(input, Files.readString(document));
+    }
+
+    @Test
     void packagedRuleEvalRunsANonPersistedCandidate(@TempDir Path dir) throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
         Path model = resource(dir.resolve("candidate-rule-eval"), "order-ruled.dm.json");

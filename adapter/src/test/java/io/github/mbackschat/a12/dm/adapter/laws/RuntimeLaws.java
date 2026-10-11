@@ -137,8 +137,7 @@ public final class RuntimeLaws {
     /** JSON-string-escape a spliced value — quotes, backslashes, AND control characters (a stored condition can
      *  legally carry embedded newlines/indentation, as the kernel-mm metamodels do). */
     private static String jsonEscape(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"")
-                .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
+        return new String(com.fasterxml.jackson.core.io.JsonStringEncoder.getInstance().quoteAsString(s));
     }
 
     /** Load a model JSON fixture from the adapter test resources (e.g. {@code "models/order.dm.json"}). */
@@ -245,7 +244,7 @@ public final class RuntimeLaws {
      */
     public static String withComputation(String modelJson, String groupId, String name, String computedFieldRelPath,
             String operation, List<String> errorCodesToSuppress) {
-        String op = operation.replace("\\", "\\\\").replace("\"", "\\\"");
+        String op = jsonEscape(operation);
         String suppress = errorCodesToSuppress.isEmpty() ? ""
                 : " \"errorCodesToSuppress\": [ " + errorCodesToSuppress.stream()
                         .map(c -> "\"" + c + "\"").collect(Collectors.joining(", ")) + " ],";
@@ -393,15 +392,15 @@ public final class RuntimeLaws {
             }
             alts.append("{ ");
             if (a.precondition() != null) {
-                alts.append("\"precondition\": \"").append(esc(a.precondition())).append("\", ");
+                alts.append("\"precondition\": \"").append(jsonEscape(a.precondition())).append("\", ");
             }
             if (a.toleranceRangeOp() != null) {
-                alts.append("\"toleranceRangeOp\": \"").append(esc(a.toleranceRangeOp())).append("\", ");
+                alts.append("\"toleranceRangeOp\": \"").append(jsonEscape(a.toleranceRangeOp())).append("\", ");
             }
-            alts.append("\"operation\": \"").append(esc(a.operation())).append("\" }");
+            alts.append("\"operation\": \"").append(jsonEscape(a.operation())).append("\" }");
         }
         String common = commonPrecondition == null ? ""
-                : " \"commonPrecondition\": \"" + esc(commonPrecondition) + "\",";
+                : " \"commonPrecondition\": \"" + jsonEscape(commonPrecondition) + "\",";
         String mode = roundingMode.stored().map(stored -> " \"roundingMode\": \"" + stored + "\",").orElse("");
         String suppress = errorCodesToSuppress.isEmpty() ? ""
                 : " \"errorCodesToSuppress\": [ " + errorCodesToSuppress.stream()
@@ -419,9 +418,6 @@ public final class RuntimeLaws {
         return modelJson.substring(0, br + 1) + "\n" + comp + modelJson.substring(br + 1);
     }
 
-    private static String esc(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
-    }
 
     /**
      * Evaluate the model (rules included) against a document instance and return the error codes that
