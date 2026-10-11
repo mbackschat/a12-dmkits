@@ -27,6 +27,12 @@ export PATH="$PWD/bin:$PATH"
 
 Long `dmtool` calls are wrapped with trailing `\` (one logical piece per line) for readability — `showboat` runs each ```bash``` block as one shell, so continuations execute identically and `verify` stays green (the contract and its ratchet: [Reader-facing formatting](#reader-facing-formatting--three-rules-each-with-its-guard) below).
 
+### Verification cadence
+
+**Full demo verification belongs at relevant checkpoints, not at every commit (owner directive, 2026-10-11).** Name the checkpoint in the task list: completion of a related CLI feature/fix batch, integration of changes across CLI workflows, or release preparation. A small fix, intermediate commit, or documentation-only edit does not itself create a checkpoint.
+
+During iteration, update affected demos with the change and run targeted tests plus the affected demo(s) against a current launcher. At the relevant checkpoint, run [`scripts/verify-demos.sh`](../scripts/verify-demos.sh) once for the accumulated CLI changes; its discovery covers all demos. Reuse successful evidence while subsequent edits do not affect what it verified. Before a push or final handback, close any outstanding full-demo checkpoint required by the accumulated changes. Same-commit documentation updates and applicable document guards still apply; commit count never determines full-suite frequency.
+
 ## Authoring model — how showboat builds a demo (so you never have to re-derive it)
 
 A demo is **built by an append-only sequence of commands**, not hand-written. The full command set (`showboat <cmd> --help`):

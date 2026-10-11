@@ -289,7 +289,7 @@ Research kernel facts by **SOURCE, never by jar** (the golden rule): the consult
 |---|---|---|
 | learned a non-obvious fact | write the finding in its home; fix contradicted notes | — |
 | shipped a DSL/API capability | test-backed [`API-GUIDE`](docs/API-GUIDE.md) snippet (+ an [`API-FINDINGS`](docs/API-FINDINGS.md) finding if design-worthy) | `DocSnippetFreshnessTest` (locked snippets) |
-| added/renamed a CLI verb, or changed ANY verb's output shape/behavior/diagnostics | [`CLI-SPEC`](docs/CLI-SPEC.md)/[`CLI-CONFORMANCE-SPEC`](docs/CLI-CONFORMANCE-SPEC.md) + the README verb tour + extend **and re-verify** the `examples/` demos | **`./scripts/verify-demos.sh` before committing** + the Manifest/CliTour/Conformance guards |
+| added/renamed a CLI verb, or changed ANY verb's output shape/behavior/diagnostics | [`CLI-SPEC`](docs/CLI-SPEC.md)/[`CLI-CONFORMANCE-SPEC`](docs/CLI-CONFORMANCE-SPEC.md) + the README verb tour + extend **and re-verify** the `examples/` demos | Affected demo checks + the Manifest/CliTour/Conformance guards; full demo suite at [relevant checkpoints](docs/CLI-TOUR-SPEC.md#verification-cadence) |
 | structural change (module, boundary, dependency edge, verb family, native build) | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (the as-is view; no roadmap/status there) | — |
 | added/renamed/removed a demo, eval task, or `scripts/` file | its index: `examples/README.md` + the CI-gate list / `eval/TASKS.md` + `eval/README.md` / `scripts/README.md` | partial (the CI demo gate) |
 | measured an eval/benchmark | [`eval/RESULTS.md`](eval/RESULTS.md) (dated, newest first) — results never land in a spec | — |
