@@ -31,8 +31,8 @@ class SchemaEmptyPatternRuntimeTest {
             listOf(mapOf("kind" to "express"), mapOf("kind" to "express")),
             listOf(emptyMap(), emptyMap(), emptyMap()), null,
         )
-        for (property in listOf("label", "phantom")) for (required in listOf(false, true)) {
-            for (rootFilled in listOf(false, true)) for (keyword in listOf("contains", "minItems")) {
+        for (keyword in listOf("contains", "minItems")) for (required in listOf(false, true)) {
+            for (property in if (keyword == "contains") listOf("label", "phantom") else listOf("label")) {
                 val requiredSchema = if (required) "\"required\":[\"legs\"]," else ""
                 val constraint = if (keyword == "contains")
                     """"contains":{"properties":{"$property":{"pattern":""}}},"minContains":1,"maxContains":2"""
@@ -55,7 +55,7 @@ class SchemaEmptyPatternRuntimeTest {
                 val validator = schemas.getSchema(supportedSchema)
                 val model = dir.resolve("$keyword-$property-$required.dm.json")
                 Files.writeString(model, imported.dmJson())
-                for ((row, values) in rows.withIndex()) {
+                for (rootFilled in listOf(false, true)) for ((row, values) in rows.withIndex()) {
                     val body = linkedMapOf<String, Any>()
                     if (rootFilled) body["ref"] = "parcel"
                     if (values != null) body["legs"] = values

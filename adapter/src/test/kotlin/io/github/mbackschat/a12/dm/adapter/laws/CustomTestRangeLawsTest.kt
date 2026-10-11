@@ -110,9 +110,7 @@ class CustomTestRangeLawsTest {
                         val instance = if (strategy == 0) dynamic.instance(document(source)) else static.instance(document(source))
                         val relevant = if (route == Route.FULL) null else setOf(RuntimeLaws.Relevant("/Parcel/Marker", listOf(1, 1))) +
                             if (route == Route.INCLUDED) setOf(RuntimeLaws.Relevant("/Parcel/Identifier", listOf(1, 1))) else emptySet()
-                        runCatching { oracle.validate(instance, relevant, mode, recorder).toString() }
-                            .fold({ it }, { "FAULT:" + it.javaClass.name + ":" + it.message }) +
-                            "; calls=" + ObjectMapper().writeValueAsString(recorder.calls)
+                        oracle.validate(instance, relevant, mode, recorder) + ("calls" to recorder.calls.toList())
                     }
                     observed += listOf(unique, answer.name, source.name, route.name, mode.name, results)
                     assertEquals(results[0], results[1], "$unique/$answer/$source/$route/$mode")
@@ -136,25 +134,30 @@ class CustomTestRangeLawsTest {
                     val instance = if (strategy == 0) dynamic.instance(document(source)) else static.instance(document(source))
                     val relevant = setOf(RuntimeLaws.Relevant("/Parcel/Marker", listOf(1, 1))) +
                         if (route == Route.INCLUDED) setOf(RuntimeLaws.Relevant("/Parcel/Identifier", listOf(1, 1))) else emptySet()
-                    val observation = runCatching {
-                        when (route) {
-                            Route.FULL -> (if (strategy == 0) dynamic.validationMessages(instance, null, Locale.US, recorder)
-                                else static.validationMessages(instance, null, Locale.US, recorder))
-                                .map { "${it.errorCode}|${it.messageType}|${it.errorFieldPointer}" }.sorted().toString()
-                            Route.INCLUDED, Route.EXCLUDED -> (if (strategy == 0)
-                                dynamic.partialValidationMessages(instance, relevant, null, Locale.US, recorder)
-                                else static.partialValidationMessages(instance, relevant, null, Locale.US, recorder))
-                                .map { "${it.errorCode}|${it.messageType}|${it.errorFieldPointer}" }.sorted().toString()
-                            Route.COMPUTE -> {
-                                val changes = if (strategy == 0) dynamic.computation(instance, null, Locale.US, recorder)
-                                    else static.computation(instance, null, Locale.US, recorder)
-                                val result = if (strategy == 0) dynamic.computeResults(instance, null, Locale.US, recorder)
-                                    else static.computeResults(instance, null, Locale.US, recorder)
-                                "changes=${changes.outcomes()}; formal=${changes.formalErrorsInOperands().map { "${it.errorCode}|${it.messageType}|${it.errorFieldPointer}" }}; successes=${result.withoutErrors()}; applied=${result.applied()}"
-                            }
+                    val observation = when (route) {
+                        Route.FULL -> mapOf("messages" to CustomTestRangeOracle.messages(
+                            if (strategy == 0) dynamic.validationMessages(instance, null, Locale.US, recorder)
+                            else static.validationMessages(instance, null, Locale.US, recorder)))
+                        Route.INCLUDED, Route.EXCLUDED -> mapOf("messages" to CustomTestRangeOracle.messages(if (strategy == 0)
+                            dynamic.partialValidationMessages(instance, relevant, null, Locale.US, recorder)
+                            else static.partialValidationMessages(instance, relevant, null, Locale.US, recorder)))
+                        Route.COMPUTE -> {
+                            val changes = if (strategy == 0) dynamic.computation(instance, null, Locale.US, recorder)
+                                else static.computation(instance, null, Locale.US, recorder)
+                            val result = if (strategy == 0) dynamic.computeResults(instance, null, Locale.US, recorder)
+                                else static.computeResults(instance, null, Locale.US, recorder)
+                            mapOf(
+                                "changes" to changes.outcomes().map { mapOf("path" to it.path(), "pointer" to it.pointer().toString(),
+                                    "value" to it.value().orElse(null), "cleared" to it.cleared(), "errored" to it.errored()) },
+                                "formal" to CustomTestRangeOracle.messages(changes.formalErrorsInOperands(), sorted = false),
+                                "successes" to result.withoutErrors().map { mapOf("pointer" to it.pointer().toString(),
+                                    "value" to it.value().orElse(null), "errorMessage" to it.errorMessage().map { message ->
+                                        CustomTestRangeOracle.messages(listOf(message)) }.orElse(null)) },
+                                "applied" to result.applied(),
+                            )
                         }
-                    }.fold({ it }, { e -> "FAULT:" + generateSequence(e) { it.cause }.joinToString("/") { it.javaClass.simpleName + ":" + it.message } })
-                    observation + "; calls=" + ObjectMapper().writeValueAsString(recorder.calls)
+                    }
+                    observation + ("calls" to recorder.calls.toList())
                 }
                 observed += listOf(unique, answer.name, source.name, route.name, results)
                 assertEquals(results[0], results[1], "$unique/$answer/$source/$route")
@@ -376,6 +379,12 @@ class CustomTestRangeLawsTest {
     private fun assertRetained(name: String, observed: List<List<Any>>) {
         val mapper = ObjectMapper()
         val expected = javaClass.getResourceAsStream("/custom-test-range/$name.json")!!.use { mapper.readTree(it) }
-        assertEquals(expected, mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(observed), name)
+        // KF541's indexed control and both strategies share expectations, but each execution is checked separately.
+        val variants = observed.groupBy { it.first() }
+        assertEquals(setOf(false, true), variants.keys, "$name: indexed controls")
+        for ((indexed, rows) in variants) for (strategy in 0..1) {
+            val actual = rows.map { it.drop(1).dropLast(1) + listOf((it.last() as List<*>)[strategy]) }
+            assertEquals(expected, mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(actual), "$name/indexed=$indexed/strategy=$strategy")
+        }
     }
 }

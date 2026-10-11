@@ -8209,11 +8209,11 @@
           "evidence": {
             "raw callback input and reserved report admission": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTestRangeLawsTest.kt#modernRoutesRetainAdmissionContinuationAndEveryComputationChannel",
-              "witness": "Accept, ordinary rejection and exact reserved result; CR input, empty/absent and excluded cells; source/target combinations and callback lifecycle."
+              "witness": "Accept, ordinary rejection and exact reserved source result; original CR input, empty/absent and excluded cells, with accepting targets."
             },
             "computed target and dependent read": {
-              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTestRangeLawsTest.kt#modernRoutesRetainAdmissionContinuationAndEveryComputationChannel",
-              "witness": "Accept, ordinary rejection and exact reserved result; CR input, empty/absent and excluded cells; source/target combinations and callback lifecycle."
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTestRangeLawsTest.kt#publicInterpreterSeparatesStoredAdmissionFromComputedTargetErrors",
+              "witness": "Source/target result combinations compare both kernel strategies with the public interpreter across attempted values, target errors, dependent reads, application and callback lifecycle."
             }
           }
         },

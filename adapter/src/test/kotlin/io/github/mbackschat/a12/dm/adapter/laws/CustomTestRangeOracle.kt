@@ -26,7 +26,7 @@ internal class CustomTestRangeOracle(private val service: DocumentRtService, pri
         mode: ValidationMode.ValidationType,
         fieldTypes: ICustomFieldTypeFactory,
         observeIncorrect: (Set<com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer>) -> Unit = {},
-    ): String {
+    ): Map<String, Any> {
         val result = DocumentValidationResultImpl()
         val data = LowKernelApiUtils.createData(document, service.getMetaModel(model), Locale.US, result,
             IdentifierToStringForValidation(Locale.US, null, { model }, model.header.id))
@@ -36,11 +36,11 @@ internal class CustomTestRangeOracle(private val service: DocumentRtService, pri
             ruleType = ValidationMode.RuleType.ALL
             setCustomFieldTypeFactory(fieldTypes)
         }
-        val observations = mutableListOf<String>()
+        val observations = mutableListOf<Map<String, Any?>>()
         val observer = com.mgmtp.a12.kernel.core.rt.a12internal.validation.ICustomCondition { _, supplied, incorrect, _ ->
             observeIncorrect(DocumentPointerConverter.convertToDocumentPointerSet(incorrect))
-            observations += "relevant=" + supplied?.map { it.toString() }?.sorted() +
-                "; incorrect=" + incorrect.map { it.toString() }.sorted()
+            observations += mapOf("relevant" to supplied?.map { it.toString() }?.sorted(),
+                "incorrect" to incorrect.map { it.toString() }.sorted())
             false
         }
         val conditions = mapOf("ObserveMembership" to observer)
@@ -48,6 +48,12 @@ internal class CustomTestRangeOracle(private val service: DocumentRtService, pri
         if (relevant == null) validator.validateAll(data, conditions, result, config)
         else validator.validatePartlyWith3ValueLogic(data,
             DocumentPointerConverter.convertToIIdentifierSet(RuntimeLaws.relevantPointers(relevant)), conditions, result, config)
-        return result.messages.map { "${it.errorCode}|${it.messageType}|${it.errorFieldPointer}" }.sorted().toString() + "; membership=" + observations
+        return mapOf("messages" to messages(result.messages), "membership" to observations)
+    }
+
+    companion object {
+        fun messages(messages: List<com.mgmtp.a12.kernel.md.rt.api.IMessage>, sorted: Boolean = true) =
+            (if (sorted) messages.sortedBy { "${it.errorCode}|${it.messageType}|${it.errorFieldPointer.fullName()}|${it.errorFieldPointer.repetitionIndexes()}" } else messages)
+            .map { listOf(it.errorCode, it.messageType.toString(), it.errorFieldPointer.fullName(), it.errorFieldPointer.repetitionIndexes()) }
     }
 }
