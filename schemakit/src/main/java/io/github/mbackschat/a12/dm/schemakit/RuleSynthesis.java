@@ -123,11 +123,10 @@ final class RuleSynthesis {
      *  group's row fields (resolved post-build from {@code groupPath}). */
     record UniqueItems(String groupPath) implements Need {}
 
-    /** {@code contains}/{@code minContains}/{@code maxContains}: the repeatable group must have {@code ≥ bound}
-     *  ({@code min}) or {@code ≤ bound} (not {@code min}) rows matching ALL {@code clauses} — a {@code Having}-
-     *  filtered {@code NumberOfFilledFields} count over the conjunction of positive match conditions
-     *  (equality, range, enum, or pattern per clause — SCHEMAKIT-SPEC §4f). */
-    record ContainsCount(String groupPath, List<Clause> clauses, boolean min, int bound) implements Need {}
+    enum ContainsSubject { OBJECT_PROPERTIES, SCALAR_VALUE }
+
+    /** Object properties match vacuously when absent; scalar array elements have no property-absence case. */
+    record ContainsCount(String groupPath, List<Clause> clauses, ContainsSubject subject, boolean min, int bound) implements Need {}
 
     /** One {@code contains} predicate clause: a row field must satisfy a value constraint (positive match). */
     record Clause(String field, ValueConstraint constraint) {}
@@ -464,16 +463,8 @@ final class RuleSynthesis {
             }
             case ContainsCount cc -> {
                 List<Clause> active = cc.clauses().stream().filter(cl -> !isUniversal(cl.constraint())).toList();
-                List<Condition> matches = new ArrayList<>();
-                for (Clause cl : active) {
-                    Optional<Condition> mc = matchCondition(m, doc, cc.groupPath() + "/" + cl.field(), cl.constraint(), report);
-                    if (mc.isEmpty()) {
-                        report.diagnostic("contains on '" + lastSegment(cc.groupPath()) + "' skipped — clause field '"
-                                + cl.field() + "' cannot carry the predicate (kind mismatch, or wasn't imported)");
-                        yield Optional.empty();
-                    }
-                    matches.add(mc.get());
-                }
+                Optional<NumberExpr> count = matchingRows(m, doc, cc, active, report);
+                if (count.isEmpty()) yield Optional.empty();
                 String row = lastSegment(cc.groupPath());
                 Optional<String> anchorPath = active.isEmpty()
                         ? doc.fieldPaths().stream().filter(p -> p.startsWith(cc.groupPath() + "/")
@@ -483,16 +474,7 @@ final class RuleSynthesis {
                     report.omit(source(cc), "contains on '" + row + "' omitted — the current typed synthesis needs a scalar field to anchor the error on");
                     yield Optional.empty();
                 }
-                NumberExpr count;
-                if (active.isEmpty()) {
-                    // JSON Schema's empty regex is universal; A12's empty authored regex fails at execution (SPEC-2026-10-10-13).
-                    count = Dsl.numberOfFilledGroups(m.group(cc.groupPath()));
-                } else {
-                    Condition having = matches.get(0);
-                    for (int i = 1; i < matches.size(); i++) having = having.and(matches.get(i));
-                    count = Dsl.numberOfFilledFields(m.flatten(cc.groupPath() + "*/" + active.get(0).field()).having(having));
-                }
-                Condition violation = cc.min() ? count.lt(cc.bound()) : count.gt(cc.bound());
+                Condition violation = cc.min() ? count.get().lt(cc.bound()) : count.get().gt(cc.bound());
                 String tag = cc.clauses().stream().map(cl -> fieldTag(cl.field())).collect(Collectors.joining());
                 String desc = cc.clauses().stream()
                         .map(cl -> cl.constraint().requirement(cl.field())).collect(Collectors.joining(" and "));
@@ -550,6 +532,72 @@ final class RuleSynthesis {
                         .code("UNIQUE_ITEMS_" + row.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
                         .message(Dsl.en("Each " + row + " row must be unique.")).build());
             }
+        };
+    }
+
+    private record ClauseTruth(Condition satisfied, Condition violated) {}
+
+    private static Optional<NumberExpr> matchingRows(BoundModel model, ModelDocument doc, ContainsCount need,
+                                                      List<Clause> active, TranscodeReport.Builder report) {
+        NumberExpr total = Dsl.numberOfFilledGroups(model.group(need.groupPath()));
+        if (active.isEmpty()) return Optional.of(total);
+        return switch (need.subject()) {
+            case SCALAR_VALUE -> {
+                Clause clause = active.getFirst();
+                Optional<Condition> match = matchCondition(model, doc, need.groupPath() + "/" + clause.field(), clause.constraint(), report);
+                if (match.isEmpty()) {
+                    report.omit(source(need), "contains omitted — the imported scalar cannot carry its predicate; retain source-schema validation");
+                    yield Optional.empty();
+                }
+                yield Optional.of(Dsl.numberOfFilledFields(model.flatten(need.groupPath() + "*/" + clause.field()).having(match.get())));
+            }
+            case OBJECT_PROPERTIES -> {
+                NumberExpr count = total;
+                Condition previousSatisfied = null;
+                for (Clause clause : active) {
+                    String path = need.groupPath() + "/" + clause.field();
+                    Optional<ClauseTruth> truth = objectClauseTruth(model, doc, path, clause.constraint(), report);
+                    if (truth.isEmpty()) {
+                        report.omit(source(need), "contains on '" + need.groupPath() + "' omitted — the current translator does not support "
+                                + "the absent/empty behavior of predicate field '" + clause.field() + "'; retain source-schema validation");
+                        yield Optional.empty();
+                    }
+                    // SchemaContainsPresenceTest: subtract only the first failing clause so a row failing twice counts once.
+                    Condition failure = previousSatisfied == null ? truth.get().violated() : truth.get().violated().and(previousSatisfied);
+                    count = count.minus(Dsl.numberOfFilledFields(model.flatten(need.groupPath() + "*/" + clause.field()).having(failure)));
+                    previousSatisfied = previousSatisfied == null ? truth.get().satisfied() : previousSatisfied.and(truth.get().satisfied());
+                }
+                yield Optional.of(count);
+            }
+        };
+    }
+
+    private static Optional<ClauseTruth> objectClauseTruth(BoundModel model, ModelDocument doc, String path,
+                                                           ValueConstraint constraint, TranscodeReport.Builder report) {
+        return switch (doc.fieldKind(path).orElse("")) {
+            case "STRING" -> {
+                StringRef field = model.str(path);
+                Optional<List<String>> choices = switch (constraint.kind()) {
+                    case CONST -> constraint.value().isEmpty() ? Optional.of(List.of()) : Optional.empty();
+                    case ENUM -> constraint.values().contains("")
+                            ? Optional.of(constraint.values().stream().filter(v -> !v.isEmpty()).toList()) : Optional.empty();
+                    case PATTERN, MINIMUM, MAXIMUM, EXCLUSIVE_MIN, EXCLUSIVE_MAX -> Optional.empty();
+                };
+                if (choices.isEmpty()) yield Optional.empty();
+                List<String> nonemptyValues = choices.get();
+                if (nonemptyValues.isEmpty()) yield Optional.of(new ClauseTruth(field.notFilled(), field.filled()));
+                String[] rest = nonemptyValues.subList(1, nonemptyValues.size()).toArray(new String[0]);
+                yield Optional.of(new ClauseTruth(field.notFilled().or(field.in(nonemptyValues.getFirst(), rest)),
+                        field.filled().and(field.notIn(nonemptyValues.getFirst(), rest))));
+            }
+            case "NUMBER", "ENUMERATION" -> {
+                Optional<Condition> match = matchCondition(model, doc, path, constraint, report);
+                Optional<Condition> violation = violationCondition(model, doc, path, constraint, report);
+                yield match.isPresent() && violation.isPresent()
+                        ? Optional.of(new ClauseTruth(model.field(path).notFilled().or(match.get()), violation.get()))
+                        : Optional.empty();
+            }
+            default -> Optional.empty();
         };
     }
 

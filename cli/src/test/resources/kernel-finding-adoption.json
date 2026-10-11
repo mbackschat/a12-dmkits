@@ -8296,7 +8296,9 @@
           "inactive declaration"
         ],
         "json-schema-import": [
-          "inactive field pattern"
+          "inactive field pattern",
+          "empty composition",
+          "universal contains"
         ],
         "json-schema-export": [
           "authored pattern carriage"
@@ -8334,9 +8336,22 @@
           }
         },
         "json-schema-import": {
-          "state": "OPEN",
-          "basis": "Inactive field-pattern import, positive empty-pattern composition, universal contains counting, applicability omissions and negated empty-pattern omissions have executable controls in FieldConstraintsShapeTest, ArrayMinimumApplicabilityTest and SchemaEmptyPatternRuntimeTest. Mixed contains predicates still need the separate row-property presence checkpoint before complete import adoption.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Inactive declarations and universal composition retain JSON Schema semantics; unsupported negation, compound predicates, applicability and property-presence distinctions are explicitly omitted with correctives.",
+          "evidence": {
+            "inactive field pattern": {
+              "reference": "schemakit/src/test/java/io/github/mbackschat/a12/dm/schemakit/FieldConstraintsShapeTest.java#anEmptyPatternRoundTripsWithoutInventingAPatternMessage",
+              "witness": "Empty declaration round-trips without an invented message."
+            },
+            "empty composition": {
+              "reference": "schemakit/src/test/java/io/github/mbackschat/a12/dm/schemakit/FieldConstraintsShapeTest.java#composedEmptyPatternsNeverGenerateAnExecutingEmptyPattern",
+              "witness": "Then/else empty predicates are no-ops and empty negation is explicitly omitted."
+            },
+            "universal contains": {
+              "reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/SchemaEmptyPatternRuntimeTest.kt#arrayLowerBoundsAreExactOrExplicitlyOmitted",
+              "witness": "Real/phantom predicate properties, absent/empty/populated rows and array applicability agree with source validation or carry an explicit omission."
+            }
+          }
         },
         "json-schema-export": {
           "state": "APPLIED",

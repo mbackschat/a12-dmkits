@@ -8,8 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@code contains}/{@code minContains}/{@code maxContains} (SCHEMAKIT-SPEC §4f): the array must have ≥/≤ N rows
- * matching a <em>simple</em> predicate — synthesized as a {@code Having}-filtered {@code NumberOfFilledFields}
- * count over the repeatable group. A non-simple predicate (arbitrary item subschema) stays reported.
+ * matching a supported predicate. Object properties use a disjoint failure count; unsupported empty-value
+ * distinctions and compound predicates are explicitly reported.
  */
 class ContainsShapeTest {
 
@@ -18,7 +18,7 @@ class ContainsShapeTest {
     }
 
     @Test
-    void containsOnObjectArraySynthesizesAMinCountRule() {
+    void anEmptyRejectingObjectPredicateIsExplicitlyOmitted() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "type": "object", "required": ["members"], "properties": {
                     "members": { "type": "array", "maxItems": 10,
@@ -29,8 +29,8 @@ class ContainsShapeTest {
                 """);
 
         assertKernelAccepts(r.dmJson());
-        assertEquals(1, synthesized(r), () -> "≥2 members with kind=VIP → one count rule: " + r.report().dispositions());
-        assertTrue(r.dmJson().contains("VIP"), "the rule keys on the contains predicate value");
+        assertEquals(0, synthesized(r));
+        assertTrue(r.report().dispositions().stream().anyMatch(d -> d.tier() == TranscodeReport.Tier.OMITTED));
     }
 
     @Test
@@ -51,7 +51,7 @@ class ContainsShapeTest {
                 { "type": "object", "required": ["slots"], "properties": {
                     "slots": { "type": "array", "maxItems": 10,
                       "items": { "type": "object", "properties": { "state": { "type": "string" } } },
-                      "contains": { "properties": { "state": { "const": "OPEN" } } },
+                      "contains": { "properties": { "state": { "enum": ["", "OPEN"] } } },
                       "minContains": 1, "maxContains": 3 } } }
                 """);
 
@@ -60,7 +60,7 @@ class ContainsShapeTest {
     }
 
     @Test
-    void multiPropertyContainsSynthesizesACountRule() {
+    void anUnsupportedObjectClauseOmitsTheWholeConjunction() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "type": "object", "required": ["members"], "properties": {
                     "members": { "type": "array", "maxItems": 10,
@@ -70,8 +70,8 @@ class ContainsShapeTest {
                 """);
 
         assertKernelAccepts(r.dmJson());
-        assertEquals(1, synthesized(r), () -> "≥1 member with kind=VIP AND region=EU → one count rule: " + r.report().dispositions());
-        assertTrue(r.dmJson().contains("VIP") && r.dmJson().contains("EU"), "both predicate clauses key the Having filter");
+        assertEquals(0, synthesized(r));
+        assertTrue(r.report().dispositions().stream().anyMatch(d -> d.tier() == TranscodeReport.Tier.OMITTED));
     }
 
     @Test
@@ -105,26 +105,23 @@ class ContainsShapeTest {
 
     @Test
     void aNestedObjectContainsClauseSynthesizesACountRule() {
-        // the contains predicate descends one level into a nested object (a non-repeatable subgroup of the row):
-        // "≥1 order whose payment.method == CARD" → a Having-filtered count over /orders*/payment/method.
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "type": "object", "required": ["orders"], "properties": {
                     "orders": { "type": "array", "maxItems": 50,
                       "items": { "type": "object", "properties": {
                         "ref": { "type": "string" },
                         "payment": { "type": "object", "properties": { "method": { "type": "string" } } } } },
-                      "contains": { "properties": { "payment": { "properties": { "method": { "const": "CARD" } } } } },
+                      "contains": { "properties": { "payment": { "properties": { "method": { "const": "" } } } } },
                       "minContains": 1 } } }
                 """);
 
         assertKernelAccepts(r.dmJson());
-        assertEquals(1, synthesized(r), () -> "≥1 order with payment.method=CARD → one count rule: " + r.report().dispositions());
-        assertTrue(r.dmJson().contains("CARD"), "the rule keys on the nested predicate value");
+        assertEquals(1, synthesized(r));
+        assertTrue(r.dmJson().contains("orders*/payment/method"));
     }
 
     @Test
     void aDeeplyNestedObjectContainsClauseSynthesizesACountRule() {
-        // two levels deep: "≥1 shipment whose origin.address.country == DE".
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "type": "object", "required": ["shipments"], "properties": {
                     "shipments": { "type": "array", "maxItems": 50,
@@ -132,13 +129,13 @@ class ContainsShapeTest {
                         "origin": { "type": "object", "properties": {
                           "address": { "type": "object", "properties": { "country": { "type": "string" } } } } } } },
                       "contains": { "properties": { "origin": { "properties": {
-                        "address": { "properties": { "country": { "const": "DE" } } } } } } },
+                        "address": { "properties": { "country": { "const": "" } } } } } } },
                       "minContains": 1 } } }
                 """);
 
         assertKernelAccepts(r.dmJson());
-        assertEquals(1, synthesized(r), () -> "≥1 shipment with origin.address.country=DE → one rule: " + r.report().dispositions());
-        assertTrue(r.dmJson().contains("DE"), "the rule keys on the two-level-nested predicate value");
+        assertEquals(1, synthesized(r));
+        assertTrue(r.dmJson().contains("shipments*/origin/address/country"));
     }
 
     @Test

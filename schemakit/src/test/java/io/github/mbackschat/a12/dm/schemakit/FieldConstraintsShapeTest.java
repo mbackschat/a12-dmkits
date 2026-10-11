@@ -52,7 +52,7 @@ class FieldConstraintsShapeTest {
     }
 
     @Test
-    void universalContainsCountsRowsAndMixedContainsUsesTheRemainingAnchor() {
+    void universalContainsCountsRowsAndAnUnsupportedMixedPredicateIsOmitted() {
         for (boolean mixed : java.util.List.of(false, true)) {
             var imported = new JsonSchemaImporter().importSchema("""
                     {"type":"object","required":["legs"],"properties":{"legs":{"type":"array","maxItems":3,
@@ -61,7 +61,8 @@ class FieldConstraintsShapeTest {
                     """.formatted(mixed ? ",\"kind\":{\"const\":\"express\"}" : ""));
             assertKernelAccepts(imported.dmJson());
             org.junit.jupiter.api.Assertions.assertFalse(imported.dmJson().contains("PatternMatched"));
-            org.junit.jupiter.api.Assertions.assertTrue(imported.dmJson().contains(mixed ? "legs*/kind" : "NumberOfFilledGroups"));
+            assertEquals(mixed, imported.report().dispositions().stream().anyMatch(d -> d.tier() == TranscodeReport.Tier.OMITTED));
+            if (!mixed) org.junit.jupiter.api.Assertions.assertTrue(imported.dmJson().contains("NumberOfFilledGroups"));
         }
     }
 

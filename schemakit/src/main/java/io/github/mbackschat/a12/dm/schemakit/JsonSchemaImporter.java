@@ -789,10 +789,12 @@ public final class JsonSchemaImporter {
         }
         int minContains = arraySchema.path("minContains").isInt() ? arraySchema.get("minContains").asInt() : 1;
         if (minContains >= 1 && canEnforceArrayMinimum(groupPath, "minContains", required, ctx)) {
-            ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, clauses.get(), true, minContains));
+            ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, clauses.get(), objectArray
+                    ? RuleSynthesis.ContainsSubject.OBJECT_PROPERTIES : RuleSynthesis.ContainsSubject.SCALAR_VALUE, true, minContains));
         }
         if (arraySchema.path("maxContains").isInt()) {
-            ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, clauses.get(), false,
+            ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, clauses.get(), objectArray
+                    ? RuleSynthesis.ContainsSubject.OBJECT_PROPERTIES : RuleSynthesis.ContainsSubject.SCALAR_VALUE, false,
                     arraySchema.get("maxContains").asInt()));
         }
     }

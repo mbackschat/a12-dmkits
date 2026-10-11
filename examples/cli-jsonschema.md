@@ -159,6 +159,20 @@ dmtool model import-jsonschema --schema /tmp/parcel.schema.json -o /tmp/parcel.d
 {"outcome":"applied","omitted":1}
 ```
 
+A string-property `contains` predicate may also need the original validator: a missing `label` satisfies a `properties` constraint, but a present empty `label` fails `const:"express"`. The importer reports that unsupported distinction even when the array is required:
+
+```bash
+jq '.required=["legs"] | del(.properties.legs.minItems)
+    | .properties.legs.contains={properties:{label:{const:"express"}}}' \
+  /tmp/parcel.schema.json > /tmp/parcel-contains.schema.json
+dmtool model import-jsonschema --schema /tmp/parcel-contains.schema.json -o /tmp/parcel-contains.dm.json \
+  2>/dev/null | jq -c '{outcome, omitted: .changed.report.omitted}'
+```
+
+```output
+{"outcome":"applied","omitted":1}
+```
+
 ## OpenAPI dialects & whole-document bundles
 
 Most schemas ship inside **OpenAPI**, where definitions live under `components/schemas` and a few keywords differ by version. The importer **auto-detects the dialect** and can import the **whole document** as many models — `--out-dir` writes one per component, wiring each object `$ref` as an a12 **mount** (single-sourced, not inlined):
