@@ -1034,6 +1034,14 @@ class Document(internal val config: DocumentConfig) {
         return if (raw.isNullOrEmpty()) StoredCellState.PresentEmpty else StoredCellState.PresentValue(raw)
     }
 
+    // CustomConditionInvocationDiffTest locks the document-wide view independently of ordinary or joined rows.
+    // The callback's separate error pointer carries the current row, including an unmatched join coordinate.
+    private fun callbackData(): CustomConditionData = object : CustomConditionData {
+        override fun getValue(field: CustomConditionFieldPointer): String? = valueAt(field.path, field.indices)?.value
+        override fun fields(): List<CustomConditionFieldPointer> =
+            index().valued.map { CustomConditionFieldPointer(it.path, it.reps) }
+    }
+
     private inner class RowContext(
         private val group: String,
         private val rowReps: List<Int>,
@@ -1561,13 +1569,7 @@ class Document(internal val config: DocumentConfig) {
             return allFilled to anyEmpty
         }
 
-        // The data view a CustomCondition reads (the kernel's IData): document-wide raw-value lookup by
-        // (path, indices) and the set of present field instances — a custom condition's IData spans the whole
-        // document, the current row is carried by the error-field pointer (not row-scoped here).
-        override fun customConditionData(): CustomConditionData = object : CustomConditionData {
-            override fun getValue(field: CustomConditionFieldPointer): String? = valueAt(field.path, field.indices)?.value
-            override fun fields(): List<CustomConditionFieldPointer> = index().valued.map { CustomConditionFieldPointer(it.path, it.reps) }
-        }
+        override fun customConditionData(): CustomConditionData = callbackData()
 
         override fun enumCategory(path: String, category: String): Val =
             enumCategoryOf(path, category, valueAt(path, reps(path))?.value)
@@ -1628,6 +1630,8 @@ class Document(internal val config: DocumentConfig) {
 
         // A row over a present index value is always evaluated (the value exists in at least one group).
         override val evaluated: Boolean = true
+
+        override fun customConditionData(): CustomConditionData = callbackData()
 
         /**
          * Everything below is memoized by path for this row, exactly as [RowContext] memoizes `reps`/`placeOf`

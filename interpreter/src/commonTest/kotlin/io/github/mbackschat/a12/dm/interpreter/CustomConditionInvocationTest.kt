@@ -21,6 +21,31 @@ import kotlin.test.assertEquals
 class CustomConditionInvocationTest {
 
     @Test
+    fun parallelContextsExposeTheSameDocumentWideCallbackDataAsOrdinaryRows() {
+        val groups = listOf("/Shipment/Offered", "/Shipment/Accepted")
+        val reference = "/Shipment/Reference"
+        val model = ModelDef(
+            fields = listOf(FieldDef(reference, Kind.STRING)) + groups.map { FieldDef("$it/Code", Kind.STRING) },
+            rules = emptyList(), declaredReps = groups.associateWith { 3 },
+            indexFields = groups.map { "$it/Code" }.toSet(),
+        )
+        val document = model.newDocument().field(reference, "SHIP", 1, 1)
+        for ((i, group) in groups.withIndex()) document.group(group, 1, 1).field("$group/Code", "code$i", 1, 1, 1)
+        val contexts = document.parallelContexts(groups, "Code", "/Shipment")
+        assertEquals(2, contexts.size)
+        val ordinary = document.onceContextFor("/Shipment").single().customConditionData()
+        val expected = ordinary.fields().associateWith(ordinary::getValue)
+        assertEquals(3, expected.size)
+        for (context in contexts) {
+            val data = context.customConditionData()
+            val fields = data.fields()
+            assertEquals(3, fields.size)
+            assertEquals(expected, fields.associateWith(data::getValue))
+            assertEquals(null, data.getValue(CustomConditionFieldPointer("${groups.first()}/Code", listOf(1, 2, 1))))
+        }
+    }
+
+    @Test
     fun callbackReceivesExactFormalAddressesAndCurrentRepeatedErrorPointer() {
         val model = ModelDef(
             fields = listOf(

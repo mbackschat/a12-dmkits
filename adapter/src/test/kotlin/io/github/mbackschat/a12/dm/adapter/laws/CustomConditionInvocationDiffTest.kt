@@ -6,6 +6,7 @@ import com.mgmtp.a12.kernel.md.rt.api.ICustomCondition
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
@@ -23,6 +24,66 @@ import org.junit.jupiter.api.Test
  * partial relevance (or null in full), and the current repeated error pointer without pre-suppressing it.
  */
 class CustomConditionInvocationDiffTest {
+
+    @Test
+    fun parallelCallbacksReadTheWholeDocumentAtMatchedAndUnmatchedErrorRows() {
+        val structure = DocumentModelDraft.named("shipment-offers").locale("en_US")
+            .rootGroup("Shipment") { root ->
+                root.stringField("Reference") { }
+                for (name in listOf("Offered", "Accepted")) root.group(name) { group ->
+                    group.repeatable(3).indexField("Code").stringField("Code") { }.stringField("Note") { }
+                }
+            }.build().toJson()
+        val bound = BoundModel.ofJson(structure)
+        val offered = bound.str("/Shipment/Offered/Note")
+        val accepted = bound.str("/Shipment/Accepted/Note")
+        val json = TypedRules.inject(structure, bound.rule(bound.group("/Shipment")).name("ReviewOffers")
+            .errorField(offered.field()).`when`(offered.filled().or(accepted.filled()).and(Dsl.customCondition("ObserveOffers")))
+            .code("OFFERS").message(Dsl.en("Review the shipment offers.")).build())
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(json))
+        val input = """{"Shipment":{"Reference":"SHIP","Offered":[{"Code":"shared","Note":"offer"},{"Code":"offer","Note":"extra"}],"Accepted":[{"Code":"shared","Note":"accepted"},{"Code":"accept","Note":"other"}]}}"""
+        for (fires in listOf(false, true)) {
+            val observed = mutableListOf<Pair<String, Map<String, String>>>()
+            val callback = object : ICustomCondition {
+                override fun check(document: IDocument, relevant: Set<IEntityInstance>?,
+                    formallyIncorrect: Set<IEntityInstance>, errorEntity: IEntityInstance): Boolean {
+                    assertEquals(null, relevant)
+                    assertEquals(emptySet<IEntityInstance>(), formallyIncorrect)
+                    val fields = document.entityInstances.filterIsInstance<com.mgmtp.a12.kernel.md.document.api.IFieldInstance>()
+                        .mapNotNull { field -> field.value.orElse(null)?.let { kPointer(field) to it.toString() } }
+                    assertEquals(9, fields.size)
+                    observed += kPointer(errorEntity) to fields.toMap()
+                    return fires
+                }
+            }
+            val dynamic = RuntimeLaws.kernelEngine(json)
+            val messages = dynamic.validationSignaturesSorted(dynamic.instance(input), java.util.Locale.US, null,
+                mapOf("ObserveOffers" to callback))
+            val expected = observed.sortedBy { it.first }
+            assertEquals(listOf("/Shipment/Offered/Note@1,-5,1", "/Shipment/Offered/Note@1,1,1", "/Shipment/Offered/Note@1,2,1"), expected.map { it.first })
+            assertEquals(9, expected.first().second.size)
+            assertEquals(setOf("SHIP"), expected.map { it.second["/Shipment/Reference@1,1"] }.toSet())
+            observed.clear()
+            val static = RuntimeLaws.kernelJavaEngine(json)
+            assertEquals(messages, static.validationSignaturesSorted(static.instance(input), java.util.Locale.US, null,
+                mapOf("ObserveOffers" to callback)))
+            assertEquals(expected, observed.sortedBy { it.first })
+            observed.clear()
+            val def = ModelLoader.load(json)
+            val evaluator = DmInterpreter(def, customConditions = mapOf("ObserveOffers" to CustomCondition { data, relevant, invalid, error ->
+                assertEquals(null, relevant)
+                assertEquals(emptySet<CustomConditionFieldPointer>(), invalid)
+                val fields = data.fields()
+                assertEquals(9, fields.size)
+                observed += iPointer(error) to fields.associate { iPointer(it) to data.getValue(it).orEmpty() }
+                fires
+            }))
+            val actual = evaluator.validate(def.readDocumentJson(input))
+            assertEquals(emptyList<Any>(), actual.unsupported)
+            assertEquals(if (fires) 3 else 0, actual.messages.count { it.code == "OFFERS" })
+            assertEquals(expected, observed.sortedBy { it.first })
+        }
+    }
 
     private val base = DocumentModelDraft.named("claim-review").locale("en_US")
         .rootGroup("Claim") { claim ->

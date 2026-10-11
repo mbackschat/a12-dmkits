@@ -42,7 +42,7 @@ interface CustomConditionData {
      *  `IData.getValue(IIdentifier)`. */
     fun getValue(field: CustomConditionFieldPointer): String?
 
-    /** Every present (valued) field instance in the row's scope — the kernel's `IData.iterator()`. */
+    /** Every present (valued) field instance in the document — the kernel's `IData.iterator()`. */
     fun fields(): List<CustomConditionFieldPointer>
 }
 
