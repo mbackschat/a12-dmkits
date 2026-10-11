@@ -209,13 +209,13 @@ internal class ComputationEngine(
         val operandOverRepetitionRelevant: Relevance =
             { path, _ -> path in operands.fields || path in operands.ancestorGroups }
         val unsupported = checks.customTypeUnsupported(doc, operandRelevant).toMutableList()
-        val formalErrorsInOperands = LinkedHashMap<Pair<String, String>, Message>()
+        val formalErrorsInOperands = LinkedHashMap<Pair<String, A12PartiallyKnownMultiPointer>, Message>()
         (
             checks.formalErrors(doc, locale, operandRelevant, formalResults, unsupported) +
                 checks.mandatoryErrors(doc, locale, selectedIndexRelevant, formalResults, unsupported) +
                 checks.uniquenessMessages(doc, dup, locale, selectedIndexRelevant) +
                 checks.overRepetitionMessages(doc, locale, operandOverRepetitionRelevant, gateNeeded)
-        ).forEach { formalErrorsInOperands[it.code to it.errorPath] = it }
+        ).forEach { formalErrorsInOperands[it.code to it.errorPointer] = it }
         val computedErrors = LinkedHashMap<Pair<String, List<Int>>, Message>()
         // The compute-invariant config, built once for every instance's Interpreter (computeMode; no
         // CustomCondition / relevance seams on the compute path). The poison gate uses the reading context
@@ -313,7 +313,7 @@ internal class ComputationEngine(
                             }
                             attempt.computedError?.let { computedErrors[targetKey] = it }
                             attempt.formalOperandError?.let {
-                                formalErrorsInOperands[it.code to it.errorPath] = it
+                                formalErrorsInOperands[it.code to it.errorPointer] = it
                             }
                             if (v is Val.DomainFailure) {
                                 // No stored value/delta distinguishes a domain failure from an ordinary clear,

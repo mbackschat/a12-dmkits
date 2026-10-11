@@ -1,18 +1,50 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** Portable locks of the dual-kernel measurements in RootOverLimitPositionDiffTest. */
+/** Portable locks of RootOverLimitPositionDiffTest and OverLimitOperandComputeArmDiffTest. */
 class RootOverLimitPositionTest {
     private val shipment = "/Shipment"
     private val parcels = "$shipment/Parcels"
     private val note = "$shipment/Note"
     private val quantity = "$parcels/Quantity"
+
+    @Test
+    fun computationDiagnosticsKeepDistinctTerminalGroupCoordinates() {
+        val root = "/Claim"
+        val payouts = "$root/Payouts"
+        val items = "$payouts/Items"
+        val splits = "$items/Splits"
+        val part = "$splits/Part"
+        val total = "$root/Total"
+        val model = ModelDef(
+            fields = listOf(FieldDef(part, Kind.NUMBER), FieldDef(total, Kind.NUMBER)),
+            rules = emptyList(), groupPaths = setOf(root, payouts, items, splits),
+            repeatableGroups = setOf(items, splits), declaredReps = mapOf(items to 2, splits to 2),
+            computations = listOf(ComputationDef(total, root, "Sum(Payouts/Items*/Splits*/Part)")),
+        )
+        val doc = model.newDocument().group(root, 1).group(payouts, 1, 1)
+            .group(items, 1, 1, 1).group(items, 1, 1, 2).group(items, 1, 1, 3)
+            .group(splits, 1, 1, 3, 1).group(splits, 1, 1, 3, 2)
+            .field(part, "9", 1, 1, 3, 1, 1).field(part, "8", 1, 1, 3, 2, 1)
+        val report = DmInterpreter(model).retainedComputations(doc)
+        assertEquals(
+            listOf(
+                "zuGrosseKontextnummer@/Claim[1]/Payouts[1]/Items[3]/Splits[1]",
+                "zuGrosseKontextnummer@/Claim[1]/Payouts[1]/Items[3]/Splits[1]/Part[1]",
+                "zuGrosseKontextnummer@/Claim[1]/Payouts[1]/Items[3]/Splits[2]",
+                "zuGrosseKontextnummer@/Claim[1]/Payouts[1]/Items[3]/Splits[2]/Part[1]",
+                "zuGrosseZeile@/Claim[1]/Payouts[1]/Items[3]",
+            ),
+            report.formalErrorsInOperands.map { "${it.code}@${it.errorKey}" }.sorted(),
+        )
+    }
 
     @Test
     fun rootOverflowUsesTheSerialCodeForEveryWrittenNode() {

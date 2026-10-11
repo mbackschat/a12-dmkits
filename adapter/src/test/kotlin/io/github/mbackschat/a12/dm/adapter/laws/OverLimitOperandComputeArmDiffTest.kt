@@ -9,6 +9,8 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
+import io.github.mbackschat.a12.dm.edit.EditSession
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import java.util.function.Consumer
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -44,6 +46,44 @@ import org.junit.jupiter.api.Test
  * [theGroupOperandNamesTheGroupsWholeSubtreeNotTheOneFieldAOneFieldFixtureCannotSeparate].
  */
 class OverLimitOperandComputeArmDiffTest {
+
+    @Test
+    fun descendantGroupDiagnosticsRetainEachTerminalCoordinate() {
+        val session = EditSession.read(base)
+        val claim = session.group(CLAIM)
+        val model = TypedRules.inject(session.toJson(), claim.computation(claim.num("Total")) {
+            it.name("TotalComp").calc(Dsl.sum(claim.flatten("Payouts/Items*/Splits*/Part")))
+                .message(Dsl.en("Check the payout total.")).build()
+        })
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model))
+        val dynamic = RuntimeLaws.kernelEngine(model)
+        val static = RuntimeLaws.kernelJavaEngine(model)
+        val prepared = PreparedModel.loadExpandedJson(model)
+        data class Case(val name: String, val items: String, val count: Int, val childRows: List<Int>)
+        val cases = listOf(
+            Case("one descendant above capacity", """{},{},{"Splits":[{"Part":9}]}""", 3, listOf(1)),
+            Case("two descendants above capacity", """{},{},{"Splits":[{"Part":9},{"Part":8}]}""", 5, listOf(1, 2)),
+            Case("two descendants in capacity", """{"Splits":[{"Part":9},{"Part":8}]}""", 0, emptyList()),
+        )
+        for (case in cases) {
+            val json = """{"Claim":{"Adjuster":"AJ","Payouts":{"Items":[${case.items}]}}}"""
+            val expected = dynamic.computation(dynamic.instance(json), null, java.util.Locale.US)
+                .formalErrorsInOperands().map {
+                    it.errorCode to (it.errorFieldPointer.fullName() to it.errorFieldPointer.repetitionIndexes())
+                }.sortedBy { it.toString() }
+            assertEquals(case.count, expected.size, case.name)
+            assertEquals(case.childRows, expected.filter { it.second.first.endsWith("/Splits") }
+                .map { it.second.second.last() }.sorted(), case.name)
+            assertEquals(expected, static.computation(static.instance(json), null, java.util.Locale.US)
+                .formalErrorsInOperands().map {
+                    it.errorCode to (it.errorFieldPointer.fullName() to it.errorFieldPointer.repetitionIndexes())
+                }.sortedBy { it.toString() }, "static: ${case.name}")
+            val actual = prepared.createInterpreter().compute(prepared.documents.readDocument(json))
+                .formalErrorsInOperands.map { it.code to (it.errorPath.fullName to it.errorPath.repetitionIndexes) }
+                .sortedBy { it.toString() }
+            assertEquals(expected, actual, "interpreter: ${case.name}")
+        }
+    }
 
     private companion object {
         const val CLAIM = "/Claim"
