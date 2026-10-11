@@ -112,6 +112,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
@@ -806,8 +808,8 @@ final class ConditionConverter {
      * A field-list × value-list quantifier: "(at least one / no / not all) of these fields' values are
      * in this value list". The kernel carries the fields in {@code getEntityList()} and the constants in
      * {@code getValueListAsStringList()}; we route to the {@code Dsl} factory by field kind (string-,
-     * enum-, or flattened-repetition list). Entity-valued value lists, mixed-kind field lists, and the
-     * two unmodeled names (date-range overlap, value-consistency) stay opaque.
+     * enum-, or flattened-repetition list). Group handles retain their selection instead of rebuilding the
+     * kernel-owned expansion (KF187); an entity-valued value list uses the same operand reader on both sides.
      */
     private Condition convertEntityListAndValueList(IEntityListAndValueListCondition node) {
         List<IEntityId> entities = node.getEntityList().getEntityIdList();
@@ -819,6 +821,16 @@ final class ConditionConverter {
         if (values.isEmpty()) {
             // entity-valued value list (field list checked against another field list)
             return convertEntityValuedList(node, name, entities);
+        }
+        if (entities.stream().anyMatch(e -> !e.isField())) {
+            ValueListQuantifier quantifier = switch (name) {
+                case AtLeastOneFieldValueIncludedInValueList -> ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED;
+                case NoFieldValueIncludedInValueList -> ValueListQuantifier.NO_FIELD_VALUE_INCLUDED;
+                case NotAllFieldValuesIncludedInValueList -> ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED;
+                default -> throw unsupported("group + literal value-list condition " + name, node);
+            };
+            return new FieldListValueListCondition(quantifier, entities.stream().map(this::toValueListOperand).toList(),
+                    values.stream().<Calculation>map(StringLiteral::new).toList());
         }
         if (entities.stream().allMatch(e -> e.isField() && !isWildcard(e))) {
             List<String> paths = entities.stream().map(IEntityId::getFullName).toList();
@@ -881,8 +893,8 @@ final class ConditionConverter {
 
     /**
      * The entity-valued form: the value list is itself a list of fields/repetition lists (a field {@code In}
-     * a starred repetition list). Both sides become {@link FieldOperand}s (a plain field or a flattened
-     * wildcard list); type compatibility is the kernel's call (F4/N7).
+     * a starred repetition list). Both sides retain {@link ValueListOperand}s, including selected groups;
+     * group expansion and type compatibility remain the kernel's call (KF187).
      */
     private Condition convertEntityValuedList(IEntityListAndValueListCondition node,
             EntityListAndValueListConditionName name, List<IEntityId> entities) {
@@ -998,6 +1010,11 @@ final class ConditionConverter {
      * bare field (SPEC-2026-07-22-05). Category projections ride on {@code getCategoryName()}.
      */
     private ValueListOperand toValueListOperand(IEntityId entity) {
+        if (!entity.isField()) {
+            if (entity.getFilterCondition() != null) throw unsupported("value-list group with a Having filter", entity);
+            String path = reconstructStarPath(entity);
+            return hasSemanticIndex(entity) ? indexedGroup(entity, path, entity) : groupScopeOf(entity, path);
+        }
         String category = entity.getCategoryName();
         if (category != null && !category.isEmpty()) {
             CategoryRef cat = model.enumOf(entity.getFullName()).category(category);

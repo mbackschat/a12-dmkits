@@ -9315,6 +9315,85 @@
           }
         }
       }
+    },
+    "kf187": {
+      "sha256": "00992a17821c446f51c9f5a4ba51bb7c6776f42e480585e4c956e00769c0d5f3",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "selected group value-list admission and read-back"
+        ],
+        "dmkits": [
+          "selected group value-list admission and read-back"
+        ],
+        "interpreter": [
+          "selected group value-list admission and read-back"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "selected group value-list admission and read-back"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Measured selected and unindexed group carriers retain typed construction and exact adapter read-back.",
+          "evidence": {
+            "selected group value-list admission and read-back": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/IndexedValueListGroupLawsTest.java#homogeneousGroupsAreAdmittedOnBothSidesAndReadBackWithTheirSelection",
+              "witness": "Measured selected and unindexed group carriers retain typed construction and exact adapter read-back."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "Measured selected and unindexed group carriers retain typed construction and exact adapter read-back.",
+          "evidence": {
+            "selected group value-list admission and read-back": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/IndexedValueListGroupLawsTest.java#homogeneousGroupsAreAdmittedOnBothSidesAndReadBackWithTheirSelection",
+              "witness": "Measured selected and unindexed group carriers retain typed construction and exact adapter read-back."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "The prepared audit declines selected group value lists; runtime expansion and partial coverage are the next SPEC16 partition.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Kernel admission is unchanged; this checkpoint removes a typed operand erasure.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No CLI verb or result contract changes; adapter reading retains the existing DSL shape.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No imported keyword or synthesized rule changes.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No exported keyword or rule carriage changes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-16 awaits runtime reconciliation and peer verification.",
+          "evidence": {
+            "selected group value-list admission and read-back": {
+              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-16",
+              "witness": "SPEC-2026-10-10-16 awaits runtime reconciliation and peer verification."
+            }
+          }
+        }
+      }
     }
   }
 }

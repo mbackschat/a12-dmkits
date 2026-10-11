@@ -7,7 +7,8 @@ import java.util.Optional;
  * {@link IndexedFieldValue}: the literal-keyed {@link GroupSemanticIndexValue} or the field-keyed
  * {@link GroupSemanticIndexFieldValue}. Unlike an indexed field, an indexed group carries no VALUE of
  * its own (a group is never a {@link Calculation}) — it exists purely as an
- * entity-list / group-list-quantifier member ({@link AggregateOperand}, {@link GroupListOperand}). Its arity
+ * entity-list / group-list-quantifier member ({@link AggregateOperand}, {@link GroupListOperand},
+ * {@link ValueListOperand}). Its arity
  * is an unindexed group's: alone it satisfies an entity list's param law, and alone it is refused by
  * {@code AllGroupsFilled}'s (KF351, {@code validate.laws.SemanticIndexGroupOperandCarrierLawsTest}). It
  * participates in exact-duplicate detection keyed on group path AND index unless its scope carries a star.
@@ -24,7 +25,7 @@ import java.util.Optional;
  * to the kernel too: A12 admits one below the index group and refuses one on or above it, and which group is
  * the index group is a model fact these records never see ({@code validate.laws.SemanticIndexWildcardPlacementLawsTest}).
  */
-public sealed interface IndexedGroupValue extends GroupScope, GroupListOperand
+public sealed interface IndexedGroupValue extends GroupScope, GroupListOperand, ValueListOperand
         permits GroupSemanticIndexValue, GroupSemanticIndexFieldValue {
 
     /** The group scope the index is written on; it may carry a star below the index group (see the class doc). */

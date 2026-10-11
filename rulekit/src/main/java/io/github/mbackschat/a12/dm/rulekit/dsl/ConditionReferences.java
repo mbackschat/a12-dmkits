@@ -331,6 +331,8 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             // matches a calculated field against the KEY as well as against the read (KF182).
             refs.projectedField(indexed.field().path().value());
             refs.projectedField(indexed.indexField().path().value());
+        } else if (op instanceof IndexedGroupValue indexed) {
+            collectIndexedGroup(indexed, refs);
         } else if (op instanceof GroupListRef group) {
             // A GROUP scope registers as a GROUP, not as a field. Registering its path in `fieldPaths` would
             // typecheck and read plausibly, and it would make `covers` blind to every field the kernel expands

@@ -443,6 +443,9 @@ public final class DslRenderer {
         // does — indexBody already folds correlation and localizes/quotes the key, so this must not fall
         // through to the generic path(op.renderedPath()) below, which would emit that diagnostic form's
         // hardcoded "For" and unquoted key instead of the actual condition text.
+        if (op instanceof IndexedGroupValue indexed) {
+            return groupIndexBody(indexed);
+        }
         if (op instanceof IndexedFieldValue indexed) {
             return indexBody(indexed);
         }
@@ -489,6 +492,11 @@ public final class DslRenderer {
     /** Renders a flattened field-list operand with its key, filter and path-style modifiers. */
     public String render(FieldListRef list) {
         return operand(list);
+    }
+
+    /** Renders an index-selected group member with the configured language and relative path base. */
+    public String render(IndexedGroupValue group) {
+        return groupIndexBody(group);
     }
 
     /** Renders a value expression — e.g. a computation slot's {@code operation}. */

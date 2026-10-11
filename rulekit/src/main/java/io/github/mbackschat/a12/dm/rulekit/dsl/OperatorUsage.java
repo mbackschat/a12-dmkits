@@ -209,6 +209,8 @@ public final class OperatorUsage {
     private static void collectOperand(ValueListOperand operand, Set<String> ops) {
         if (operand instanceof EnumCategoryAccess c) {
             ops.add(c.operatorId());   // the `->` category projection is its own catalog operator
+        } else if (operand instanceof IndexedGroupValue) {
+            ops.add("SemanticIndex");
         } else if (operand instanceof IndexedFieldValue index) {
             ops.add(index.operatorId());
         } else if (operand instanceof FieldListRef list) {

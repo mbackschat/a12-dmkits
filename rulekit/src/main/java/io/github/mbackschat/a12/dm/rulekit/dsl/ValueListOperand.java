@@ -21,8 +21,10 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * {@code kind()} lives on the field-like arms that actually know one, and the group arm's kind is arbitrated by
  * the kernel ({@code MVK_VARYING_TYPES_NOT_ALLOWED} / {@code MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED}).
  * {@link AggregateOperand} made the identical call for the identical reason, and this interface now matches it
- * rather than carrying a member one of its arms cannot honestly answer.
+ * rather than carrying a member one of its arms cannot honestly answer. A selected group retains that same
+ * contract through {@link IndexedGroupValue}; selected fixed Number and lower-star String groups are measured
+ * on both entity sides by {@code IndexedValueListGroupLawsTest} (KF187).
  */
 public sealed interface ValueListOperand extends DuplicateOperand
-        permits FieldOperand, EnumCategoryAccess, GroupListRef {
+        permits FieldOperand, EnumCategoryAccess, GroupListRef, IndexedGroupValue {
 }

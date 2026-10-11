@@ -38,6 +38,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedPresenceCondition;
@@ -186,6 +187,9 @@ final class ExplanationTreeBuilder {
     }
 
     private List<RuleExplanation.Node> indexedListMember(ValueListOperand field) {
+        if (field instanceof IndexedGroupValue group) {
+            return List.of(new RuleExplanation.Node("SemanticIndex", renderer.render(group), List.of()));
+        }
         if (field instanceof IndexedFieldValue index) {
             return operand(index);
         }

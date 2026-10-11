@@ -13,8 +13,9 @@ import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
  * separator is a language-independent grammar literal (like the comparison symbols).
  *
  * <p>The fields side is {@code List<}{@link ValueListOperand}{@code >} — a plain field, a flattened
- * repetition list, or (for enums) a category projection {@code [field -> Cat]} — the kernel's own
- * three admissible member forms here.
+ * repetition list, plain or indexed group scope, or (for enums) a category projection {@code [field -> Cat]}.
+ * Group expansion kinds remain kernel-arbitrated (KF187); a quoted String list does not become numeric
+ * merely because its text can be parsed as a number ({@code IndexedValueListGroupLawsTest}).
  */
 public record FieldListValueListCondition(
         ValueListQuantifier quantifier, List<ValueListOperand> fields, List<Calculation> values)

@@ -13,10 +13,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * list (e.g. a field {@code In} a starred repetition list). The sibling of {@link
  * FieldListValueListCondition} (literal value lists); the difference is purely the value side, which
  * here renders as bare entity paths (a {@link ValueListOperand} each — a plain field, a flattened
- * repetition list, or an enum category projection {@code [field -> Cat]}) rather than quoted
- * constants. Same-base-kind and combined-reference uniqueness are enforced by the {@link Dsl} entry
- * point (the smallest model-aware owner); the value entities carry their static {@link
- * ValueListOperand#kind() kind} here.
+ * repetition list, a plain or indexed group scope, or an enum category projection {@code [field -> Cat]})
+ * rather than quoted constants. The {@link Dsl} entry point checks known field kinds; group expansion kinds
+ * remain kernel-arbitrated (KF187). This record owns the duplicate/containment gates on both lists.
  */
 public record FieldListEntityListCondition(
         ValueListQuantifier quantifier, List<ValueListOperand> fields, List<ValueListOperand> valueFields)

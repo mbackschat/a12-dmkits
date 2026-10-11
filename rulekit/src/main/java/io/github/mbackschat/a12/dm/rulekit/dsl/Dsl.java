@@ -2088,6 +2088,7 @@ public final class Dsl {
         return switch (op) {
             case FieldOperand field -> field.kind();
             case EnumCategoryAccess category -> category.kind();
+            case IndexedGroupValue group -> kindOf(group.group());
             case GroupListRef group -> throw new IllegalStateException(
                     "a group scope has no declared kind — its kind is the kernel's verdict on the expansion of "
                             + group.renderedPath() + "; the caller must handle the group arm before asking");
@@ -2123,7 +2124,7 @@ public final class Dsl {
             // `AggregateOperand` declined to do, and an over-strict copy would refuse a legal model, so the
             // kernel arbitrates this arm (MVK_VARYING_TYPES_NOT_ALLOWED / MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED).
             // The kernel ADMITS the shape in both slots — measured, EntityListValueListGroupOperandLawsTest.
-            if (op instanceof GroupListRef) {
+            if (op instanceof GroupScope) {
                 continue;
             }
             ValueListBaseKind k = baseKind(kindOf(op));

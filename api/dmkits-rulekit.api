@@ -1603,6 +1603,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
   public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
   public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
   public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
+  public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer.Rendered renderWithSpans(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
 
 public static record io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer.Rendered
@@ -2081,7 +2082,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupPresenceCondit
   public java.lang.String operatorId()
   public final java.lang.String toString()
 
-public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupScope
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupScope, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
   public default java.lang.String duplicateIdentity()
   public default java.util.Optional<java.lang.String> exactIdentity()
   public default java.lang.String fieldPath()
