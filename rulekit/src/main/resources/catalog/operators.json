@@ -2758,7 +2758,7 @@
           "kind": "AUTHORING"
         },
         {
-          "text": "in the plain multi-group form, a non-repeatable group counts by formally admitted content: in a rule, an operand group holding ONLY a malformed value leaves the entire count unavailable rather than returning the admitted subset's count, while one holding admitted content beside the malformed value still counts; in a computation the malformed-only group is counted instead, and the computation's implicit self-validation message is withheld",
+          "text": "a non-repeatable group counts by formally admitted content: under full validation, malformed-only content makes the whole count unavailable, while admitted content beside the error still counts; partial validation additionally requires each operand's first declared instance to be fully relevant and error-free, then every later instance must have decided presence, so hidden or malformed-only content cannot silently contribute zero; in a computation the malformed-only group is counted instead, and its implicit self-validation message is withheld",
           "kind": "SURPRISE"
         },
         {
@@ -2779,6 +2779,10 @@
         },
         {
           "text": "the list sums OPERAND POSITIONS, so naming one starred group twice counts it twice: NumberOfFilledGroups(Riders*, Riders*) over three instantiated rows is 6, not 3 — that exact spelling is statically admitted, so no diagnostic warns you",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "the declared count extent adds one contribution per authored operand position: a fixed operand contributes one, and a starred operand contributes the product of capacities of the repetition levels it reopens; bound ancestors and descendants below the counted group do not enlarge that product. The extent controls whether a filled-group count can still grow, including the polarity of seeded computation messages",
           "kind": "SURPRISE"
         }
       ],

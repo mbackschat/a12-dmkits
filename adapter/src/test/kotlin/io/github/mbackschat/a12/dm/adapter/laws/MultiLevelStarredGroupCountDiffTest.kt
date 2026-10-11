@@ -1,11 +1,14 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.edit.EditSession
+import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -21,6 +24,53 @@ import java.util.Locale
  * `AncestorStarredGroupCountDiffTest`.
  */
 class MultiLevelStarredGroupCountDiffTest {
+
+    @Test
+    fun aBoundParentDoesNotEnlargeTheChildCountExtent() {
+        for (parentCapacity in listOf(2, 3)) {
+            val draft = DocumentModelDraft.named("shipment-bound-crate-count").locale("en_US")
+                .rootGroup("Shipment") { shipment ->
+                    shipment.group("Manifests") { manifest ->
+                        manifest.repeatable(parentCapacity).stringField("Label") { }
+                            .group("Crates") { crate ->
+                                crate.repeatable(2).stringField("Tag") { }
+                            }
+                    }
+                }.build().toJson()
+            val session = EditSession.read(draft)
+            val manifest = session.group("/Shipment/Manifests")
+            val label = manifest.str("Label")
+            val crates = manifest.flattenGroup("Crates*")
+            for (n in 0L..2L) manifest.addRule {
+                it.name("CrateCount$n").code("BOUND$n").errorField(label)
+                    .`when`(label.filled().and(Dsl.numberOfFilledGroups(crates).eq(n)))
+                    .message(Dsl.en("Check the manifest crate count.")).build()
+            }
+            val jsonModel = session.toJson()
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(jsonModel))
+            val dynamic = RuntimeLaws.kernelEngine(jsonModel)
+            val static = RuntimeLaws.kernelJavaEngine(jsonModel)
+            val prepared = PreparedModel.loadExpandedJson(jsonModel)
+            for (held in 1..2) {
+                val rows = (1..held).joinToString(",") { """{"Tag":"crate-$it"}""" }
+                val json = """{"Shipment":{"Manifests":[{"Label":"dispatch","Crates":[$rows]}]}}"""
+                val case = "parentCapacity=$parentCapacity/held=$held"
+                val kernel = dynamic.validationMessages(dynamic.instance(json), null, Locale.US)
+                val expected = listOf("BOUND$held|${if (held == 2) "VALUE" else "OMISSION"}_ERROR|/Shipment/Manifests/Label|[1, 1, 1]")
+                assertEquals(expected, kernel.map {
+                    "${it.errorCode}|${it.messageType}|${it.errorFieldPointer.fullName()}|${it.errorFieldPointer.repetitionIndexes()}"
+                }, "$case: dynamic")
+                assertEquals(expected, static.validationMessages(static.instance(json), null, Locale.US).map {
+                    "${it.errorCode}|${it.messageType}|${it.errorFieldPointer.fullName()}|${it.errorFieldPointer.repetitionIndexes()}"
+                }, "$case: static")
+                val report = prepared.createInterpreter().validateFull(prepared.documents.readDocument(json))
+                assertEquals(emptyList<Any>(), report.unsupported, case)
+                assertEquals(expected, report.findings.map {
+                    "${it.code}|${it.type.name}_ERROR|${it.errorPath.fullName}|${it.errorPath.repetitionIndexes}"
+                }, "$case: interpreter")
+            }
+        }
+    }
 
     private companion object {
         const val ITEM = "/Item"

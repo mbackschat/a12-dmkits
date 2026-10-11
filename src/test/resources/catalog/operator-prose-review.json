@@ -3528,7 +3528,7 @@
       "operator": "NumberOfFilledGroups",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:a7ecea87a040dd25932f416cc37b6d7733d082d037c785f7494719c36c8ae927",
+      "digest": "sha256:b168eb1d6118727d2714cf74c9c2f62b90c69e926f26616d447895228a9ab350",
       "classifications": [
         "RUNTIME"
       ],
@@ -3552,6 +3552,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "AncestorStarredGroupCountComputationDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "PartialGroupCountRelevanceDiffTest"
         }
       ]
     },
@@ -3660,6 +3665,27 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "NestedGroupFillCountLawsTest#aRepeatedStarredOperandIsCountedTWICEAndTwoDistinctStarredOperandsAdd"
+        }
+      ]
+    },
+    {
+      "operator": "NumberOfFilledGroups",
+      "lane": "GOTCHA",
+      "ordinal": 7,
+      "digest": "sha256:91985f986c9839e5eafcfa28107ecc1cb886b376f77a055a033d94dd9bd827b6",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "MultiLevelStarredGroupCountDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "AncestorStarredGroupCountComputationDiffTest"
         }
       ]
     },

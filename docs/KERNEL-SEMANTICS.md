@@ -126,7 +126,7 @@ For an **unstarred fixed entity list**, let `pₜ` be definitely filled operands
 | `NotAllGroupsFilled` | `pₑ ≥ 1` | OMISSION |
 | `GroupsNotCollectivelyFilled` | `pₜ ≥ 1 ∧ pₑ ≥ 1` | OMISSION |
 
-The plain numeric `NumberOfFilledGroups(g1, g2, …)` is stricter than this partial tally: any erroneous or not-fully-relevant operand makes the count unavailable ([§9](#9-repetition-iteration-and-cross-array-evaluation)) — it never consumes the bypass the quantifiers get from a decisive witness.
+The plain numeric `NumberOfFilledGroups(g1, g2, …)` requires decided presence for every counted instance: malformed-only or hidden content can make the whole count unavailable, while admitted content can establish presence beside an error. Partial validation also requires the first declared instance of each operand to be fully relevant and free of errors ([§9](#9-repetition-iteration-and-cross-array-evaluation)) — one decided instance does not bypass another instance whose presence is unknown.
 
 **Computation** instead uses ordered scans over the expanded field stream. A declared-but-uninstantiated slot is a clean absence, not a value read:
 

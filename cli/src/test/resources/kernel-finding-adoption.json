@@ -8727,6 +8727,174 @@
           }
         }
       }
+    },
+    "kf463": {
+      "sha256": "adbae38f86006496b0c2d51d709b54c2404b2c57d1bec22cf4206df3ba7ea95c",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "reopened count capacities and operand positions"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "reopened count capacities and operand positions"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "reopened count capacities and operand positions"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "reopened count capacities and operand positions"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Owned kernel differential and retained observations agree on the bounded count contract.",
+          "evidence": {
+            "reopened count capacities and operand positions": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MultiLevelStarredGroupCountDiffTest.kt#aSealBelowTwoStarredLevels",
+              "witness": "Owned kernel differential and retained observations agree on the bounded count contract."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The existing typed count and group-reference surface authors these models without a new shape.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Existing count evaluation preserves capacity and presence semantics; this batch strengthens the regression evidence and corrects stale prose.",
+          "evidence": {
+            "reopened count capacities and operand positions": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MultiLevelStarredGroupCountDiffTest.kt#aSealBelowTwoStarredLevels",
+              "witness": "Existing count evaluation preserves capacity and presence semantics; this batch strengthens the regression evidence and corrects stale prose."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime count availability and polarity do not change static model admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "The NumberOfFilledGroups catalog entry distinguishes full validation from the partial first-instance and later-presence gates.",
+          "evidence": {
+            "reopened count capacities and operand positions": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/OperatorsVerbTest.java#servesTheCorrectedNumberOfFilledGroupsOperandForms",
+              "witness": "The NumberOfFilledGroups catalog entry distinguishes full validation from the partial first-instance and later-presence gates."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No imported declaration or synthesized constraint changes; this is runtime count semantics.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No exported keyword or rule carriage changes; this is runtime count semantics.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-17 awaits peer verification; no receipt is claimed.",
+          "evidence": {
+            "reopened count capacities and operand positions": {
+              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-17",
+              "witness": "SPEC-2026-10-10-17 awaits peer verification; no receipt is claimed."
+            }
+          }
+        }
+      }
+    },
+    "kf464": {
+      "sha256": "bef2db33a741191c39f32f9787022c12b2309a2971b8113838f79d18aa0940b6",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "later counted presence remains three-valued"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "later counted presence remains three-valued"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "later counted presence remains three-valued"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "later counted presence remains three-valued"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Owned kernel differential and retained observations agree on the bounded count contract.",
+          "evidence": {
+            "later counted presence remains three-valued": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialGroupCountRelevanceDiffTest.kt#laterPresenceMustRemainDecidedAfterTheStrictFirstInstanceGate",
+              "witness": "Owned kernel differential and retained observations agree on the bounded count contract."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The existing typed count and group-reference surface authors these models without a new shape.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Existing count evaluation preserves capacity and presence semantics; this batch strengthens the regression evidence and corrects stale prose.",
+          "evidence": {
+            "later counted presence remains three-valued": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialGroupCountRelevanceDiffTest.kt#laterPresenceMustRemainDecidedAfterTheStrictFirstInstanceGate",
+              "witness": "Existing count evaluation preserves capacity and presence semantics; this batch strengthens the regression evidence and corrects stale prose."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime count availability and polarity do not change static model admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "The NumberOfFilledGroups catalog entry distinguishes full validation from the partial first-instance and later-presence gates.",
+          "evidence": {
+            "later counted presence remains three-valued": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/OperatorsVerbTest.java#servesTheCorrectedNumberOfFilledGroupsOperandForms",
+              "witness": "The NumberOfFilledGroups catalog entry distinguishes full validation from the partial first-instance and later-presence gates."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No imported declaration or synthesized constraint changes; this is runtime count semantics.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No exported keyword or rule carriage changes; this is runtime count semantics.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-19 awaits peer verification; no receipt is claimed.",
+          "evidence": {
+            "later counted presence remains three-valued": {
+              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-19",
+              "witness": "SPEC-2026-10-10-19 awaits peer verification; no receipt is claimed."
+            }
+          }
+        }
+      }
     }
   }
 }

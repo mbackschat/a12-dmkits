@@ -1,6 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws.Relevant
+import io.github.mbackschat.a12.dm.edit.EditSession
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.interpreter.PreparedModel
+import io.github.mbackschat.a12.dm.interpreter.RelevantCoordinate
+import java.util.Locale
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
@@ -19,7 +24,7 @@ import org.junit.jupiter.api.Test
  * split on them. Asking the fields one by one, as the field-expanding `NumberOfFilledFields` beside the counts
  * does, refuses a group whose own identifiers are settled. Counting the held rows alone misses that A12 also
  * inspects the FIRST declared row and every declared row the document lacks. Gating every row on its errors
- * refuses a count A12 gives, since only the first row's errors matter there. The fixed `Label` beside the
+ * refuses a count A12 gives: only the first row has the strict error gate, while later presence must still be decided. The fixed `Label` beside the
  * fixed `Stamp` carries the first-row rule to an operand with no star; A12 refuses a lone fixed operand
  * (`MVK_PARAMSIZE_INVALIDGN`), so the count takes both. The mixed count over `Batches*` and `Label` is decided
  * only when both operands are, measured with each side undecided in turn.
@@ -28,6 +33,80 @@ import org.junit.jupiter.api.Test
  * full-validation reading runs beside each row as the liveness control.
  */
 class PartialGroupCountRelevanceDiffTest {
+
+    @Test
+    fun laterPresenceMustRemainDecidedAfterTheStrictFirstInstanceGate() {
+        val base = DocumentModelDraft.named("seal-count-availability").locale("en_US")
+            .rootGroup("Item") { item ->
+                item.stringField("Title") { }.group("Batches") { batch ->
+                    batch.repeatable(2).group("Seal") { seal ->
+                        seal.numberField("Mass") { it.fractionDigits(0) }
+                            .numberField("Volume") { it.fractionDigits(0) }
+                    }
+                }
+            }.build().toJson()
+        val session = EditSession.read(base)
+        val item = session.group("/Item")
+        val title = item.str("Title")
+        val seals = item.flattenGroup("Batches*/Seal")
+        for (n in 0..2) item.addRule {
+            it.name("Count$n").code("COUNT$n").errorField(title)
+                .`when`(title.filled().and(Dsl.numberOfFilledGroups(seals).eq(n.toLong())))
+                .message(Dsl.en("Check seal count.")).build()
+        }
+        val jsonModel = session.toJson()
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(jsonModel))
+        val dynamic = RuntimeLaws.kernelEngine(jsonModel)
+        val static = RuntimeLaws.kernelJavaEngine(jsonModel)
+        val prepared = PreparedModel.loadExpandedJson(jsonModel)
+        val whole = setOf(Relevant.of("/Item", 0))
+        fun fields(massRow: Int, volumeRow: Int) = setOf(
+            Relevant.of("/Item/Title", 0, 0),
+            Relevant.of("/Item/Batches/Seal/Mass", 0, massRow, 0, 0),
+            Relevant.of("/Item/Batches/Seal/Volume", 0, volumeRow, 0, 0),
+        )
+        data class Case(val name: String, val later: String, val selection: Set<Relevant>,
+                        val full: String?, val partial: String?, val formalCount: Int = 0)
+        val cases = listOf(
+            Case("clean empty", "{}", whole, "COUNT1:OMISSION_ERROR", "COUNT1:OMISSION_ERROR"),
+            Case("malformed only", """{"Mass":"bad"}""", whole, null, null, 1),
+            Case("admitted beside malformed", """{"Mass":"bad","Volume":2}""", whole,
+                "COUNT2:VALUE_ERROR", "COUNT2:VALUE_ERROR", 1),
+            Case("content visible", """{"Mass":2}""", fields(0, 1), "COUNT2:VALUE_ERROR", "COUNT2:VALUE_ERROR"),
+            Case("same content hidden", """{"Mass":2}""", fields(1, 0), "COUNT2:VALUE_ERROR", null),
+        )
+        for (case in cases) {
+            val json = """{"Item":{"Title":"ready","Batches":[{"Seal":{"Mass":1}},{"Seal":${case.later}}]}}"""
+            for (partial in listOf(false, true)) {
+                val label = "${case.name}/partial=$partial"
+                val kernel = if (partial) dynamic.partialValidationMessages(dynamic.instance(json), case.selection, null, Locale.US)
+                    else dynamic.validationMessages(dynamic.instance(json), null, Locale.US)
+                val java = if (partial) static.partialValidationMessages(static.instance(json), case.selection, null, Locale.US)
+                    else static.validationMessages(static.instance(json), null, Locale.US)
+                assertEquals(listOfNotNull(if (partial) case.partial else case.full),
+                    kernel.filter { it.errorCode.startsWith("COUNT") }.map { "${it.errorCode}:${it.messageType}" },
+                    "$label: count/polarity")
+                assertEquals(case.formalCount, kernel.count { it.errorCode == "zahlHatUngueltigeZeichen" }, "$label: formal")
+                val expected = kernel.map {
+                    "${it.errorCode}|${it.messageType}|${it.errorFieldPointer.fullName()}|${it.errorFieldPointer.repetitionIndexes()}"
+                }.sorted()
+                assertEquals(expected, java.map {
+                    "${it.errorCode}|${it.messageType}|${it.errorFieldPointer.fullName()}|${it.errorFieldPointer.repetitionIndexes()}"
+                }.sorted(), "$label: static")
+                val doc = prepared.documents.readDocument(json)
+                val interpreter = prepared.createInterpreter()
+                val report = if (partial) interpreter.validatePart(doc, case.selection.map { pointer ->
+                    prepared.model.relevantPointer(pointer.path(), pointer.reps().map {
+                        if (it == 0) RelevantCoordinate.All else RelevantCoordinate.Exact(it)
+                    })
+                }) else interpreter.validateFull(doc)
+                assertEquals(emptyList<Any>(), report.unsupported, label)
+                assertEquals(expected, report.findings.map {
+                    "${it.code}|${it.type.name}_ERROR|${it.errorPath.fullName}|${it.errorPath.repetitionIndexes}"
+                }.sorted(), "$label: interpreter")
+            }
+        }
+    }
 
     private companion object {
         const val ITEM = "/Item"

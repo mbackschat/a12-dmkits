@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test
  * operand group of `NumberOfFilledGroups(Alpha, Beta)` is formally unavailable and that count is the **direct**
  * expression of a **seeded** Number computed target, does the target become `VALUE|0`, `CLEARED`, or `ERRORED`?
  *
- * The validation half is already closed elsewhere (an erroneous operand group makes the plain multi-group count
+ * The validation half is already closed elsewhere (a malformed-only operand group makes the plain multi-group count
  * unavailable rather than counting the admitted subset — `GroupPresenceFormalInvalidDiffTest`), and is not
  * re-measured here. The competing accounts: the general third-state rule predicts `ERRORED`, because a
  * computation reading a formally invalid cell aborts the computing instance; the entry's source audit instead

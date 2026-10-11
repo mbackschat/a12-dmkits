@@ -111,6 +111,10 @@ class OperatorsVerbTest {
                 () -> "the mixed starred/fixed form must be discoverable: " + operator);
         assertTrue(authoring.contains("repeatable") && authoring.contains("MVK_INVALID_WILDCARD"),
                 () -> "starring a non-repeatable group must be refused explicitly: " + operator);
+        assertTrue(authoring.contains("under full validation") && authoring.contains("first declared instance")
+                        && authoring.contains("hidden or malformed-only content cannot silently contribute zero")
+                        && authoring.contains("product of capacities of the repetition levels it reopens"),
+                () -> "the full/partial count distinction must reach the operator surface: " + operator);
     }
 
     @Test

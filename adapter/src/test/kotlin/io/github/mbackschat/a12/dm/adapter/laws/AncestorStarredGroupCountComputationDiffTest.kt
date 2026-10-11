@@ -16,8 +16,8 @@ import java.util.Locale
 
 /**
  * Differential + tri-check — `NumberOfFilledGroups` on the COMPUTATION arm, over a fixed group below a starred
- * level (`Batches*` + `/Seal`), a starred repeatable group, and two fixed groups (KERNEL-FINDINGS KF463 lists
- * this arm as unmeasured; a12-kernel-lean SPEC-2026-09-24-02, their report only, every row measured here).
+ * level (`Batches*` + `/Seal`), a starred repeatable group, and two fixed groups (KERNEL-FINDINGS KF463;
+ * a12-kernel-lean SPEC-2026-09-24-02, every row independently measured here).
  *
  * Each document is read as `value:TYPE` per computation: the value it computes, and the type of its implicit
  * self-validation message, which fires because every stored tally is seeded wrong (V is VALUE_ERROR, O is
