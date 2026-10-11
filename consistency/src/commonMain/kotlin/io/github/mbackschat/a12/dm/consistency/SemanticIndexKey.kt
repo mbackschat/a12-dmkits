@@ -21,15 +21,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * the class from the answer. So this family answers the key's two questions in A12's order — does the read
  * iterate, and only then is the key a field.
  *
- * **The gate turns on the rule's ANCHORING, which is why it takes the error target's group.** A repeatable
- * level the target itself sits inside is addressed by the target's own coordinates and the read does not
- * iterate; only a level strictly BELOW that group does. Reporting without the anchoring would refuse a key
- * A12 admits, which is the one direction forbidden here.
- *
- * **Silent on every other geometry**, and deliberately: a level PARALLEL to the target's chain draws one of
- * four index-keyed classes outside an index ([KF350]) and nothing has measured which name it takes inside
- * one, so this reports only the geometry both halves were measured on — a level strictly below the target's
- * group ([KF351]).
+ * **Addressing is relative to the error target.** A field key uses the same per-level address walk as an
+ * ordinary operand: a compatible parallel index is admitted; missing, mismatched or ambiguous indexes
+ * retain their own diagnostic. Only `MVK_NO_WILDCARD` is renamed to `MVK_SEMANTIC_INDEX_INVALID_ITER`
+ * (`SemanticKeyAddressAgreementTest`, SPEC-2026-10-10-03). Group keys retain the measured below-target
+ * boundary; parallel group-key admission has not been calibrated here.
  *
  * **And it is asked only of a key the RULE reads directly.** Inside a `Having` filter the anchoring is the
  * filtered entity rather than the error target, and A12 draws no iteration class there: two measured shapes
@@ -74,20 +70,27 @@ private fun TrackedFactBase.keyIterationFinding(
     if ('*' in key) {
         return null
     }
+    if (insideAFilter || targetGroup == null) return null
     val resolved = resolveEntity(group, key, element.origin) as? Reference.Resolved ?: return null
-    iteratedBelow(resolved.path, targetGroup.takeUnless { insideAFilter })?.let { level ->
-        return Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            "MVK_SEMANTIC_INDEX_INVALID_ITER",
-            "this $member keys a semantic index on `$key`, which is read from inside the repeatable " +
-                "`$level` while the error target sits outside it — the key names one value, so the read " +
-                "may not iterate; star the level on the target's side, or key on a field that does not repeat",
-            element.path,
-            span,
-        )
+    val addressClass = if (declarationAt(resolved.path)?.declaredKind == DeclaredKind.FIELD) {
+        levelClassOf(key, group, targetGroup, element)
+    } else {
+        iteratedBelow(resolved.path, targetGroup)?.let { "MVK_NO_WILDCARD" }
+    } ?: return null
+    val code = when (addressClass) {
+        "MVK_NO_WILDCARD" -> "MVK_SEMANTIC_INDEX_INVALID_ITER"
+        else -> addressClass
     }
-    return null
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        code,
+        "this $member keys a semantic index on `$key`, whose repetition cannot be addressed from " +
+            "the error target's group `$targetGroup` — use a key in the target's own scope, or " +
+            "compatible index fields for parallel repetitions",
+        element.path,
+        span,
+    )
 }
 
 private fun TrackedFactBase.keyFieldFinding(

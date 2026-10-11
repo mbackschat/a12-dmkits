@@ -545,6 +545,29 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void packagedPortableCheckReportsTheKeyAddressFailure(@TempDir Path dir) throws Exception {
+        String base = DocumentModelDraft.named("depot-key-address").locale("en_US")
+                .rootGroup("Store", store -> store.group("Depots", depot -> depot.repeatable(2)
+                        .stringField("Wanted", f -> {}))
+                        .group("Catalog", catalog -> catalog.repeatable(3).indexField("Code")
+                                .stringField("Code", f -> {}).numberField("Stock", f -> {}).numberField("Reserve", f -> {})))
+                .build().toJson();
+        var session = EditSession.read(base);
+        var store = session.group("/Store");
+        var rule = store.rule(builder -> builder.name("Selected").code("Selected")
+                .errorField(store.field("Catalog/Reserve"))
+                .when(Dsl.groupFilled(store.ref()).and(store.num("Catalog/Stock").forIndex(store.field("Depots/Wanted")).gt(0)))
+                .message(Dsl.en("Check selected stock.")).build());
+        Path model = dir.resolve("key-address.dm.json");
+        Files.writeString(model, new io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator().inject(base, rule.draft()));
+        var result = new PackagedDmtool(dir).run("-m", model.toString(), "model", "check", "--engine", "portable");
+        assertEquals(1, result.code(), result::out);
+        var codes = MAPPER.readTree(result.out()).findValuesAsText("code");
+        assertTrue(codes.contains("MVK_SEMANTIC_INDEX_INVALID_ITER"), result::out);
+        assertFalse(codes.contains("MVK_ERROR_FIELDGROUP_ITERATION5_INVALID"), result::out);
+    }
+
+    @Test
     void packagedSelectedListKeepsItsOuterRowAndSelectedErrorPointer(@TempDir Path dir) throws Exception {
         var session = EditSession.read(DocumentModelDraft.named("depot-runtime-scope").locale("en_US")
                 .rootGroup("Store", store -> store.group("Depots", depot -> depot.repeatable(2)

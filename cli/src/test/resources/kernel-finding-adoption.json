@@ -9430,21 +9430,24 @@
       }
     },
     "kf488": {
-      "sha256": "aab0d2209a7edeb354b6761180438db56bb619cd21884b4068c1af5a91794cae",
+      "sha256": "184f0f2bbf50da7ed3b5852861721037087ecea86c19599fe5d33a2ac1b9b18b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "selected authored scope admission"
+          "selected authored scope admission",
+          "field-key address admission"
         ],
         "dmkits": [
           "typed selected reference identity"
         ],
         "interpreter": [],
         "checker": [
-          "ordinary levels of selected authored references"
+          "ordinary levels of selected authored references",
+          "field-key address admission"
         ],
         "dmtool-cli": [
-          "portable model check selected scope"
+          "portable model check selected scope",
+          "portable key-address diagnostic"
         ],
         "json-schema-import": [],
         "json-schema-export": [],
@@ -9460,6 +9463,10 @@
             "selected authored scope admission": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedAuthoredScopeDiffTest.kt#selectedPayloadKeepsAncestorsButDoesNotBindItsSelectedLevel",
               "witness": "Live kernel accepts ancestor and own guards, refuses sibling guards, and accepts all computation twins."
+            },
+            "field-key address admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SemanticKeyAddressAgreementTest.kt#fieldKeyAddressingKeepsParallelClassesAndRenamesOnlyUnaddressedIteration",
+              "witness": "Eleven independently expected kernel cases preserve admitted target/key bindings and ordinary parallel index diagnostics; only NO_WILDCARD is renamed."
             }
           }
         },
@@ -9485,6 +9492,10 @@
             "ordinary levels of selected authored references": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedAuthoredScopeDiffTest.kt#aFieldKeyKeepsItsOwnBindingWhenThePayloadHasNoRepeatingAncestor",
               "witness": "Per-occurrence levels retain payload ancestors and independent field-key binding; direct and composed payloads agree with the kernel."
+            },
+            "field-key address admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SemanticKeyAddressAgreementTest.kt#fieldKeyAddressingKeepsParallelClassesAndRenamesOnlyUnaddressedIteration",
+              "witness": "Eleven independently expected kernel cases preserve admitted target/key bindings and ordinary parallel index diagnostics; only NO_WILDCARD is renamed."
             }
           }
         },
@@ -9495,6 +9506,10 @@
             "portable model check selected scope": {
               "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedPortableCheckPreservesSelectedAncestorBinding",
               "witness": "The packaged portable checker returns INCONCLUSIVE for admitted ancestor/own guards and REJECTED for the sibling guard."
+            },
+            "portable key-address diagnostic": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedPortableCheckReportsTheKeyAddressFailure",
+              "witness": "Packaged portable model check reports INVALID_ITER ahead of the later ITERATION5 class."
             }
           }
         },
@@ -9510,7 +9525,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "SPEC-2026-10-10-03 remains pending until the runtime partition and peer verification complete.",
+          "basis": "The peer owns verification and acceptance of SPEC-2026-10-10-03; static and runtime checkpoints are recorded in the unsent handback.",
           "evidence": {
             "selected authored scope admission": {
               "reference": "a12-kernel-lean@f2343f50c874f9835242a18423a72570b6255b9e:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-03",
