@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter;
 
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -75,6 +76,8 @@ import com.mgmtp.a12.kernel.md.rt.api.IDocumentRtService;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentValidationResult;
 import com.mgmtp.a12.kernel.md.rt.api.ILabelProvider;
 import com.mgmtp.a12.kernel.md.rt.api.IMessage;
+import com.mgmtp.a12.kernel.md.document.api.services.DocumentDeserializationConfig;
+import com.mgmtp.a12.kernel.md.serializer.MDSerializerFactory;
 import com.mgmtp.a12.kernel.md.rt.api.IModelCode;
 import com.mgmtp.a12.kernel.md.rt.api.IModelCodeCache;
 
@@ -1111,17 +1114,28 @@ public final class KernelAdapter {
     // ---- runtime evaluation (does a rule FIRE on a document instance?) — the eval-doc seam -----------
 
     /**
+     * Validate canonical A12 Document JSON using the kernel's model-driven reader. Numeric, Boolean and
+     * temporal values undergo A12's normal conversion; failed conversions retain their raw text (A12K-3638).
+     * Use this overload for serialized Documents; the Map overload deliberately authors raw field strings.
+     */
+    public EvalResult evaluate(String documentJson, Locale locale) {
+        DocRuntime runtime = prepare(documentJson);
+        return toEvalResult(runtime.rt().validateFull(runtime.document(), config(locale)));
+    }
+
+    /**
      * Run the kernel's runtime validation over a document <b>instance</b> (actual field data) and report
      * every message that fired — the runtime counterpart of the static {@link #diagnose} (does-this-rule
      * <em>fire on data</em>, not is-this-rule <em>accepted</em>). The WHOLE model is evaluated; narrow to
-     * one rule by matching {@link EvalResult#firedCodes()} against its code. Powers the {@code eval-doc}
-     * verb and lets a judge decide rule equivalence by EXECUTION against the kernel, not by reasoning.
+     * one rule by matching {@link EvalResult#firedCodes()} against its code. The adapter is the kernel oracle;
+     * production dmtool evaluates through its kernel-free interpreter.
      *
      * <p>{@code fields} is the nested document tree (boundary = JDK types only): a <b>repeatable</b> group
      * is a {@link List} of row {@link Map}s, a <b>non-repeatable</b> group a nested {@link Map}, a
      * <b>field</b> its text value ({@code null}/empty string = present-but-unfilled; an <em>absent</em> key
      * = no instance). Repetition indices (one 1-based index per path segment) are <em>derived</em> from the
-     * structure, never authored.
+     * structure, never authored. This raw-value authoring route deliberately bypasses model-driven JSON conversion;
+     * serialized Documents belong in {@link #evaluate(String, Locale)}.
      *
      * @throws IllegalArgumentException if a key doesn't resolve to a field/group at its path, or its JSON
      *         shape contradicts the model (an array for a non-repeatable group, an object for a field, …)
@@ -1143,7 +1157,15 @@ public final class KernelAdapter {
      * NEW document (the applied one) rather than mutating in place, and that returned instance is validated.
      */
     public EvalResult evaluateApplied(Map<String, Object> fields, Locale locale) {
-        DocRuntime runtime = prepare(fields);
+        return evaluateApplied(prepare(fields), locale);
+    }
+
+    /** Compute, apply and validate canonical Document JSON through the same reader as {@link #evaluate(String, Locale)}. */
+    public EvalResult evaluateApplied(String documentJson, Locale locale) {
+        return evaluateApplied(prepare(documentJson), locale);
+    }
+
+    private static EvalResult evaluateApplied(DocRuntime runtime, Locale locale) {
         DocumentProcessingConfig config = config(locale);
         DocumentV2 applied = runtime.rt().compute(runtime.document(), config).applyTo(runtime.document());
         return toEvalResult(runtime.rt().validateFull(applied, config));
@@ -1192,6 +1214,23 @@ public final class KernelAdapter {
     public RuleTestOutcome testRule(String ruleFullName, Map<String, Object> fields, Locale locale, boolean applyComputations) {
         Set<String> referenced = referencedFields(ruleFullName);
         List<EvalMessage> messages = (applyComputations ? evaluateApplied(fields, locale) : evaluate(fields, locale)).messages();
+        return ruleTestOutcome(ruleFullName, referenced, messages);
+    }
+
+    /** Test a stored rule against canonical Document JSON without applying computations. */
+    public RuleTestOutcome testRule(String ruleFullName, String documentJson, Locale locale) {
+        return testRule(ruleFullName, documentJson, locale, false);
+    }
+
+    /** Test a stored rule against canonical Document JSON, optionally using the compute/apply validation flow. */
+    public RuleTestOutcome testRule(String ruleFullName, String documentJson, Locale locale, boolean applyComputations) {
+        Set<String> referenced = referencedFields(ruleFullName);
+        List<EvalMessage> messages = (applyComputations ? evaluateApplied(documentJson, locale)
+                : evaluate(documentJson, locale)).messages();
+        return ruleTestOutcome(ruleFullName, referenced, messages);
+    }
+
+    private static RuleTestOutcome ruleTestOutcome(String ruleFullName, Set<String> referenced, List<EvalMessage> messages) {
         Optional<EvalMessage> firedMessage = messages.stream()
                 .filter(m -> m.rulePath().filter(ruleFullName::equals).isPresent()).findFirst();
         if (firedMessage.isPresent()) {
@@ -1230,12 +1269,21 @@ public final class KernelAdapter {
      * (the kernel never mutates the input; applying it back is a separate, opt-in step), so this reports
      * what each computed field <em>becomes</em> — a value, cleared (computed nothing — e.g. an empty
      * operand, see {@code DateRangeComputationLawsTest}), or an error. These are the three <b>change-projection</b>
-     * channels of the fuller five-channel result (KERNEL-FINDINGS §11 five-channel supplement). Powers the {@code compute-doc} verb
-     * and lets a computation judge verify computation-equivalence by EXECUTION.
+     * channels of the fuller five-channel result (KERNEL-FINDINGS §11 five-channel supplement). This raw-value
+     * authoring route is distinct from {@link #compute(String, Locale)} for serialized Documents.
      */
     public ComputeResult compute(Map<String, Object> fields, Locale locale) {
         DocRuntime runtime = prepare(fields);
-        IDocumentComputationResult result = runtime.rt().compute(runtime.document(), config(locale));
+        return toComputeResult(runtime.rt().compute(runtime.document(), config(locale)));
+    }
+
+    /** Compute over canonical A12 Document JSON, preserving the kernel reader's model-driven value conversion. */
+    public ComputeResult compute(String documentJson, Locale locale) {
+        DocRuntime runtime = prepare(documentJson);
+        return toComputeResult(runtime.rt().compute(runtime.document(), config(locale)));
+    }
+
+    private static ComputeResult toComputeResult(IDocumentComputationResult result) {
         List<ComputedField> computed = new ArrayList<>();
         // Carry each instance's repetitions through: the kernel exposes the row identity on every channel, and
         // dropping it here is what made a repeated computed field's rows indistinguishable downstream.
@@ -1260,6 +1308,18 @@ public final class KernelAdapter {
      *  null factories + empty additional-info + no clock override. */
     private static DocumentProcessingConfig config(Locale locale) {
         return DocumentProcessingConfig.builder(locale).build();
+    }
+
+    /** A12K-3638 preserves unconvertible raw values for validation, so deserialize notifications are not a refusal gate. */
+    private DocRuntime prepare(String documentJson) {
+        ModelResolver resolver = model.resolver() != null ? model.resolver() : ReferenceResolvers.selfContained();
+        IDocumentModel expanded = loadExpanded(model.toJson(), resolver);
+        IDocumentModelResolver modelResolver = id -> expanded;
+        DocumentV2 document = new MDSerializerFactory().createDocumentSerializerV2(modelResolver)
+                .deserializeV2(new StringReader(documentJson), modelId(model.toJson()),
+                        DocumentDeserializationConfig.builder().build(), notification -> { });
+        IDocumentRtService rt = new DocumentRtServiceFactory(modelResolver).createDocumentRtService(dynamicConfig());
+        return new DocRuntime(rt, document);
     }
 
     /** Build the runtime service + the document instance from the nested {@code fields} tree (model-aware walk). */

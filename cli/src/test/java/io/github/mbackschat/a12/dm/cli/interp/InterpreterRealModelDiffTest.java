@@ -8,13 +8,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 
@@ -39,7 +35,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
  */
 class InterpreterRealModelDiffTest {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String EFF = "/Subscription/Billing/EffectiveFee";
 
     @Test
@@ -106,7 +101,7 @@ class InterpreterRealModelDiffTest {
 
     private void assertComputeMatches(String instanceJson, String expectedValue) {
         String model = resource("models/subscription-computed.dm.json");
-        String kernelValue = KernelAdapter.ofJson(model).compute(kernelFields(instanceJson), Locale.US)
+        String kernelValue = KernelAdapter.ofJson(model).compute(instanceJson, Locale.US)
                 .computed().stream()
                 .filter(c -> c.path().equals(EFF)).findFirst().flatMap(ComputedField::value).orElse(null);
 
@@ -123,7 +118,7 @@ class InterpreterRealModelDiffTest {
     private void assertValidationMatches(String modelResource, String instanceJson, Set<String> expectedSupportedFired) {
         String model = resource(modelResource);
         Set<String> kernelFired =
-                KernelAdapter.ofJson(model).evaluate(kernelFields(instanceJson), Locale.US).firedCodes();
+                KernelAdapter.ofJson(model).evaluate(instanceJson, Locale.US).firedCodes();
 
         ModelDef def = InterpreterModelLoader.load(model);
         Document doc = InterpreterModelLoader.document(instanceJson, def);
@@ -148,19 +143,6 @@ class InterpreterRealModelDiffTest {
     private static String codeOf(ModelDef def, String rulePath) {
         return def.getRules().stream().filter(r -> r.getPath().equals(rulePath))
                 .map(RuleDef::getErrorCode).findFirst().orElse("");
-    }
-
-    /**
-     * The KERNEL leg's document input. Both legs are fed the SAME canonical A12 Document JSON text; the
-     * interpreter leg reads it through the interpreter's codec, while {@link KernelAdapter}'s public API still
-     * takes a nested field map (a test-harness boundary with no production caller — CONFORMANCE-CORPUS-SPEC §13).
-     */
-    private static Map<String, Object> kernelFields(String instanceJson) {
-        try {
-            return MAPPER.convertValue(MAPPER.readTree(instanceJson), new TypeReference<Map<String, Object>>() { });
-        } catch (Exception e) {
-            throw new IllegalArgumentException("bad instance JSON", e);
-        }
     }
 
     private static String resource(String path) {

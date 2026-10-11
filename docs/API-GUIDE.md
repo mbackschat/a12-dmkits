@@ -1770,7 +1770,9 @@ Map<ModelDocument.ReferencePurpose, Map<String, String>> references =
 
 ## 5e. Run rules against data — does it actually fire? (runtime evaluation)
 
-Beyond "is this rule kernel-valid?" (the static gate) is "does it do the **right thing** on real data?" — the verify-by-execution angle that catches an *inverted-but-valid* rule. `KernelAdapter.evaluate` runs a model's rules over a **document instance** (a nested, name-keyed tree — repeatable groups as lists, field values as their kernel string form) and reports which rule **codes** fired; its peer `compute` reports what each field computes. (CLI: `model eval` / `model compute`.)
+Beyond "is this rule kernel-valid?" (the static gate) is "does it do the **right thing** on real data?" — the verify-by-execution angle that catches an inverted but valid rule. `KernelAdapter.evaluate(String documentJson, Locale)` validates canonical A12 Document JSON through the kernel's model-driven reader. `evaluateApplied` runs compute → apply → validate; `compute` returns computed changes; `testRule` reports one rule's verdict, with an optional compute/apply flow. The same JSON overload exists on each method. dmtool runs the corresponding evaluation through its kernel-free interpreter; the adapter is the JVM kernel oracle.
+
+For example, `adapter.evaluate("{\"Invoice\":{\"Amount\":5}}", Locale.US)` reads a Number field declaring two minimum fractional digits as `5.00`, just as A12 does. Failed conversion preserves the original text for formal validation. The `Map<String, Object>` overloads deliberately construct raw field strings: passing `"5"` there does not perform JSON conversion and can report a missing decimal separator on that field. Use the JSON overload for serialized Documents and the Map overload for deliberate raw-value laws. These routes are kept distinct by `adapter.laws.KernelAdapterCanonicalDocumentTest`; [AF183](API-FINDINGS.md#af183) explains the boundary.
 
 <!-- teaser -->
 ```java
