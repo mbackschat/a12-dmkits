@@ -66,12 +66,27 @@ private class VlqOperand(val filtered: Boolean) {
 // Measured against both kernel strategies, which ADMIT the shape ([KF187]): on a document holding a listed
 // value, `AtLeastOne` returned false and `No` returned true — the opposite-direction signature of an empty
 // selection rather than of a wrong verdict ([IF287]'s class; `GroupOperandValueListQuantifierDiffTest`).
-private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = expandGroupOperands(entries).map { e ->
-    if (e.isIndexedStar()) return@map withIndexedStar(e as Expr.EntitySpec,
-        VlqOperand(filtered = false).also { it.add(Val.Unknown) }) {
-            vlqOperands(listOf(it)).single()
+// Selection itself can read an invalid index in computation. Delay each operand until its pass reaches it
+// (SelectedGroupValueListDiffTest.anEarlierFieldDecisionDoesNotReadALaterSelectedGroupsIndex).
+private fun Interpreter.vlqOperands(entries: List<Expr>): Sequence<VlqOperand> = expandGroupOperands(entries).asSequence().flatMap { e ->
+    val unavailable = { sequenceOf(VlqOperand(filtered = false).also { it.add(Val.Unknown) }) }
+    if (e.isIndexedStar()) return@flatMap withIndexedStar(e as Expr.EntitySpec, unavailable()) {
+        vlqOperands(listOf(it))
+    }
+    if (isKeyedGroup(e)) {
+        val indexed = e as Expr.SemanticIndex
+        val row = when (val selection = keyedGroupSelection(indexed)) {
+            is KeyedGroupSelection.Row -> selection.ctx
+            is KeyedGroupSelection.Absent -> ctxOf(e).absentGroupRow(e.path, selection.repetitions)
+            KeyedGroupSelection.Unavailable -> return@flatMap unavailable()
         }
-    when (e) {
+        return@flatMap selectedRowInterp(row).vlqOperands(listOf(Expr.Field(e.path)))
+    }
+    sequenceOf(vlqOperand(e))
+}
+
+private fun Interpreter.vlqOperand(e: Expr): VlqOperand {
+    return when (e) {
         is Expr.Star -> {
             val op = VlqOperand(filtered = e.having != null)
             val c = ctxOf(e)
@@ -82,7 +97,8 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = exp
                 if (e.having == null && c.starOmission(e.path, e.bindDepth)) op.omittedTail = true
                 val having = e.having
                 val keeps = having?.let { filter -> { row: EvalContext -> havingInterp(row).keeps(filter) } }
-                return@map op.readLazily(computeStarReads(e, keeps).map { it?.value })
+                val reads = computeStarReads(e, keeps).map { it?.value }
+                return op.readLazily(if (having == null) reads.ifEmpty { sequenceOf(null) } else reads)
             }
             // Declared-slot completeness is independent of cell relevance below (SPEC-2026-10-10-15).
             // It also differs from aggregates' reduced-identifier gate on mixed wildcard/concrete sets (IF264).
@@ -104,6 +120,9 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = exp
                     if (cellRelevant?.invoke(e.path, reps) == false) continue   // [IF267]
                     op.classify(v, dupIndexValues)
                 }
+                // An absent fixed group has no held rows, but its declared fields remain empty operands
+                // (SelectedGroupValueListDiffTest); irrelevant held cells above must not become empty ones.
+                if (cells.isEmpty()) op.add(null)
                 if (c.starOmission(e.path, e.bindDepth)) op.omittedTail = true   // un-instantiated declared tail
             } else {
                 // A `Having` filter (IG48): classify ONLY rows the filter keeps (keep iff it fires TRUE — the
@@ -178,7 +197,7 @@ private fun VlqOperand.classify(v: Val?, dupIndexValues: Set<Val>?) {
  *  present-selection rule). Null = poisoned: an UNKNOWN member or an extent-unknown star suppresses. */
 private class VlqValues(val members: List<Val>, val omission: Boolean)
 
-private fun vlqValuesOf(operands: List<VlqOperand>): VlqValues? {
+private fun vlqValuesOf(operands: Sequence<VlqOperand>): VlqValues? {
     var omission = false
     val members = mutableListOf<Val>()
     for (op in operands) {
@@ -224,8 +243,8 @@ private fun vlqValuesOf(operands: List<VlqOperand>): VlqValues? {
  * side, at its position in the scan) and `NotAll` on the VALUES side to UNKNOWN, while `AtLeastOne` (either
  * side) and `NotAll` on the fields side ignore it.
  *
- * Validation expands each side eagerly, since its reads cannot poison; only the VERDICT is the operator's ordered
- * pass. Computation instead reads each operand as a stream that pass pulls, so its read set is the pass's own
+ * Operand selection is lazy because resolving an index can itself poison a computation. Validation classifies
+ * each reached operand eagerly; computation reads its cells as a stream, so its read set is the pass's own
  * (SPEC-2026-10-03-04): every operator consumes the values side completely, then scans the fields only to the
  * deciding cell, and a filtered list reads one kept successor ahead. A malformed cell the pass reaches poisons; one
  * beyond the decision is never read. The side-consumption laziness is the kernel's: `AtLeastOne`/`No` never touch
@@ -242,7 +261,7 @@ internal fun Interpreter.vlqRes(c: Cond.ValueListQuant): Res = when (c.op) {
 }
 
 private fun Interpreter.atLeastOneRes(c: Cond.ValueListQuant): Res {
-    val values = vlqOperands(c.values).onEach { it.drain() }
+    val values = vlqOperands(c.values).onEach { it.drain() }.toList()
     val members = values.flatMap { op -> op.cells.mapNotNull { cell -> cell.takeUnless { it is Val.Unknown } } }
     if (members.isEmpty()) return Res.of(Tri.FALSE, MsgType.VALUE)
     // A values-side filter keeps its polarity only when that operand SELECTED a present member

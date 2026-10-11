@@ -9317,20 +9317,27 @@
       }
     },
     "kf187": {
-      "sha256": "00992a17821c446f51c9f5a4ba51bb7c6776f42e480585e4c956e00769c0d5f3",
+      "sha256": "694b3f09aa39c0339e4829f6806349b331cedba74f0c963ca5416054f73daf0f",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "selected group value-list admission and read-back"
+          "selected group value-list runtime and read-back"
         ],
         "dmkits": [
           "selected group value-list admission and read-back"
         ],
         "interpreter": [
-          "selected group value-list admission and read-back"
+          "selected group field expansion",
+          "absent fixed-group polarity",
+          "selected lower-list partial extent",
+          "selected operand computation order"
         ],
-        "checker": [],
-        "dmtool-cli": [],
+        "checker": [
+          "selected group value-list runtime and read-back"
+        ],
+        "dmtool-cli": [
+          "selected group value-list runtime and read-back"
+        ],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
@@ -9340,11 +9347,11 @@
       "consumers": {
         "adapter": {
           "state": "APPLIED",
-          "basis": "Measured selected and unindexed group carriers retain typed construction and exact adapter read-back.",
+          "basis": "Both read-back providers retain admitted selected-group entity and String literal lists.",
           "evidence": {
-            "selected group value-list admission and read-back": {
-              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/IndexedValueListGroupLawsTest.java#homogeneousGroupsAreAdmittedOnBothSidesAndReadBackWithTheirSelection",
-              "witness": "Measured selected and unindexed group carriers retain typed construction and exact adapter read-back."
+            "selected group value-list runtime and read-back": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedGroupValueListDiffTest.kt#portableReaderAndCheckerPreserveAdmittedSelections",
+              "witness": "Both read-back providers retain admitted selected-group entity and String literal lists."
             }
           }
         },
@@ -9359,19 +9366,46 @@
           }
         },
         "interpreter": {
-          "state": "OPEN",
-          "basis": "The prepared audit declines selected group value lists; runtime expansion and partial coverage are the next SPEC16 partition.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Selected-group value-list behavior is measured on the named runtime boundaries.",
+          "evidence": {
+            "selected group field expansion": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedGroupValueListDiffTest.kt#selectionExpandsBothFieldsAndExcludesTheOtherParent",
+              "witness": "Number/String fixed and lower-star selections retain both fields and exclude another parent."
+            },
+            "absent fixed-group polarity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedGroupValueListDiffTest.kt#absentUnselectedFixedGroupPreservesOmissionPolarity",
+              "witness": "Absent and empty fixed groups preserve OMISSION in both membership sides."
+            },
+            "selected lower-list partial extent": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedGroupValueListDiffTest.kt#selectedParentAndDeclaredLowerSlotsControlPartialExtent",
+              "witness": "Complete lower slots, wrong parent and unmatched-key coverage are distinguished."
+            },
+            "selected operand computation order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedGroupValueListDiffTest.kt#anEarlierFieldDecisionDoesNotReadALaterSelectedGroupsIndex",
+              "witness": "Early scalar decisions avoid later selection poison; reached controls and dependent outcomes agree."
+            }
+          }
         },
         "checker": {
-          "state": "NOT_APPLICABLE",
-          "basis": "Kernel admission is unchanged; this checkpoint removes a typed operand erasure.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Portable consistency checking accepts the independently kernel-admitted selected-group models.",
+          "evidence": {
+            "selected group value-list runtime and read-back": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedGroupValueListDiffTest.kt#portableReaderAndCheckerPreserveAdmittedSelections",
+              "witness": "Portable consistency checking accepts the independently kernel-admitted selected-group models."
+            }
+          }
         },
         "dmtool-cli": {
-          "state": "NOT_APPLICABLE",
-          "basis": "No CLI verb or result contract changes; adapter reading retains the existing DSL shape.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Packaged model eval retains second-field matches and absent fixed-group OMISSION diagnostics.",
+          "evidence": {
+            "selected group value-list runtime and read-back": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedSelectedGroupsExpandColumnsAndRetainOmissionType",
+              "witness": "Packaged model eval retains second-field matches and absent fixed-group OMISSION diagnostics."
+            }
+          }
         },
         "json-schema-import": {
           "state": "NOT_APPLICABLE",
@@ -9385,7 +9419,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "SPEC-2026-10-10-16 awaits runtime reconciliation and peer verification.",
+          "basis": "SPEC-2026-10-10-16 retained observations agree; the peer owns acceptance and executable reconciliation.",
           "evidence": {
             "selected group value-list admission and read-back": {
               "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-16",

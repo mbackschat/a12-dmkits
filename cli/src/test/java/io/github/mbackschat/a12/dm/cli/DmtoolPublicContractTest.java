@@ -513,6 +513,57 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void packagedSelectedGroupsExpandColumnsAndRetainOmissionType(@TempDir Path dir) throws Exception {
+        var session = EditSession.read(DocumentModelDraft.named("selected-group-cli").locale("en_US")
+                .rootGroup("Order", order -> order.numberField("Needle", f -> {})
+                        .group("Packages", packages -> packages.repeatable(3).indexField("Code").stringField("Code", f -> {})
+                                .group("Pair", pair -> pair.numberField("A", f -> {}).numberField("B", f -> {}))
+                                .group("Rows", rows -> rows.repeatable(3).numberField("A", f -> {}).numberField("B", f -> {}))))
+                .build().toJson());
+        var order = session.group("/Order");
+        var needle = order.num("Needle");
+        order.addRule(rule -> rule.name("Row").code("ROW").errorField(needle)
+                .when(Dsl.atLeastOneFieldValueIncludedInValueList(List.of(needle.field()), order.flattenGroup("Packages/Rows*").forIndex("P1")))
+                .message(Dsl.en("Check selected row.")).build());
+        order.addRule(rule -> rule.name("Pair").code("PAIR").errorField(needle)
+                .when(Dsl.noFieldValueIncludedInValueList(List.of(needle.field()), order.flattenGroup("Packages/Pair").forIndex("P1")))
+                .message(Dsl.en("Check selected pair.")).build());
+        Path model = dir.resolve("selected.dm.json");
+        Path document = dir.resolve("selected.json");
+        Files.writeString(model, session.toJson());
+        Files.writeString(document, """
+                {"Order":{"Needle":10,"Packages":[{"Code":"P1","Rows":[{"A":7,"B":10}]},{"Code":"P2","Rows":[{"A":7,"B":7}]}]}}
+                """);
+        String[] args = {"-m", model.toString(), "model", "eval", "--instance", document.toString(), "--no-computations"};
+        var result = new PackagedDmtool(dir).run(args);
+        var oracle = CliTestSupport.runKernel(args);
+        assertEquals(0, result.code(), result::out);
+        assertEquals(0, oracle.code(), oracle::out);
+        JsonNode actual = MAPPER.readTree(result.out()).path("data").path("messages");
+        JsonNode expected = MAPPER.readTree(oracle.out()).path("data").path("messages");
+        var normalized = new java.util.ArrayList<List<String>>();
+        for (JsonNode messages : List.of(expected, actual)) {
+            var signatures = new java.util.ArrayList<String>();
+            for (JsonNode message : messages) {
+                for (String channel : List.of("referenced", "fillToFix")) {
+                    if (!message.has(channel)) continue;
+                    var pointers = new java.util.ArrayList<JsonNode>();
+                    message.path(channel).forEach(pointers::add);
+                    pointers.sort(java.util.Comparator.comparing(JsonNode::asText));
+                    ((com.fasterxml.jackson.databind.node.ObjectNode) message).set(channel, MAPPER.valueToTree(pointers));
+                }
+                signatures.add(message.toString());
+            }
+            signatures.sort(String::compareTo);
+            normalized.add(signatures);
+        }
+        assertEquals(normalized.get(0), normalized.get(1));
+        var types = new HashMap<String, String>();
+        actual.forEach(message -> types.put(message.path("code").asText(), message.path("type").asText()));
+        assertEquals(Map.of("ROW", "VALUE_ERROR", "PAIR", "OMISSION_ERROR"), types);
+    }
+
+    @Test
     void packagedLiteralDecodingPreservesOnePassAndSelectedKeys(@TempDir Path dir) throws Exception {
         String base = DocumentModelDraft.named("dispatch-literal-cli").locale("en_US")
                 .rootGroup("Dispatch", g -> g.stringField("Note", f -> f.lineBreaks())

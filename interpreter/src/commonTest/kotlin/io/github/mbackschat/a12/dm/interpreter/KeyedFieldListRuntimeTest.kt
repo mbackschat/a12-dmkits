@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -45,6 +46,29 @@ class KeyedFieldListRuntimeTest {
             "NotAllFieldValuesIncludedInValueList($operand In \"S1\")" to true,
             "FieldValuesNotUnique($operand)" to false,
         )) assertEquals(expected, fires(condition), condition)
+    }
+
+    @Test fun selectedGroupsExpandSecondFieldsAndPreserveAbsentFixedPolarity() {
+        val root = "/Order"
+        val packages = "$root/Packages"
+        val model = ModelDef(
+            fields = listOf(FieldDef("$root/Needle", Kind.NUMBER), FieldDef("$packages/Code", Kind.STRING)) +
+                listOf("Pair", "Rows").flatMap { group -> listOf("A", "B").map { FieldDef("$packages/$group/$it", Kind.NUMBER) } },
+            rules = listOf(
+                "ROW" to "AtLeastOneFieldValueIncludedInValueList(Packages/Rows* For \"P1\" In Needle)",
+                "PAIR" to "NoFieldValueIncludedInValueList(Packages/Pair For \"P1\" In Needle)",
+            ).map { (code, condition) -> RuleDef("$root/$code", root, condition, code, "../Needle") },
+            repeatableGroups = setOf(packages, "$packages/Rows"),
+            declaredReps = mapOf(packages to 3, "$packages/Rows" to 3),
+            indexFields = setOf("$packages/Code"), groupPaths = setOf(root, packages, "$packages/Rows", "$packages/Pair"),
+        )
+        val interpreter = DmInterpreter(model)
+        assertEquals(emptyList(), interpreter.supportAudit())
+        for (matches in listOf(false, true)) {
+            val document = model.readDocumentJson("""{"Order":{"Needle":10,"Packages":[{"Code":"P1","Rows":[{"A":7,"B":${if (matches) 10 else 7}}]},{"Code":"P2","Rows":[{"A":10,"B":10}]}]}}""")
+            assertEquals(if (matches) setOf("ROW|VALUE", "PAIR|OMISSION") else setOf("PAIR|OMISSION"),
+                interpreter.validateFull(document).map { "${it.code}|${it.type}" }.toSet())
+        }
     }
 
     @Test fun productsCheckBothListsBeforePairingTheirCommonPositions() {

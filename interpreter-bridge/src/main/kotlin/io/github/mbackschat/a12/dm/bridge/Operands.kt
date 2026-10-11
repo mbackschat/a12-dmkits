@@ -206,13 +206,25 @@ internal class Operands(private val mapping: Mapping) {
     /**
      * Resolve an operand in an entity-list slot, which accepts a field, a repetition list, a group scope, an
      * index-selected FIELD, or — since [IndexedGroupValue] became an [AggregateOperand] — an index-selected
-     * GROUP. Both indexed forms behave like a single entity here: they never satisfy arity alone the way a
-     * starred [FieldListRef]/[GroupListRef] does, and the duplicate gate keys on path AND index (the identity
+     * GROUP. A bare selected scope is one entity; a selected lower-star scope retains its list shape
+     * (IndexedStarDuplicateLawsTest). The duplicate gate keys on path AND index (the identity
      * switches [IndexedFieldValue.duplicateIdentity] / [IndexedGroupValue.duplicateIdentity] feed are
      * rulekit's, not this bridge's).
      */
     fun aggregateOperand(node: Expr): AggregateOperand {
-        if (node is Expr.EntitySpec) return fieldOperand(node)
+        if (node is Expr.EntitySpec) {
+            val source = node.source
+            if (source is Expr.Star && node.category == null && mapping.isGroup(source.path)) {
+                val group = groupScope(source)
+                return when (val key = node.semanticIndex) {
+                    null -> group
+                    is Expr.EntityIndex.Literal -> group.forIndex(key.value)
+                    is Expr.EntityIndex.Field -> group.forIndex(
+                        correlate(mapping.model().field(declared(key.path)), key.outer))
+                }
+            }
+            return fieldOperand(node)
+        }
         if (node is Expr.Star) {
             // A starred GROUP is a group scope; a starred field is a flattened repetition list. Asking the
             // model which it is beats guessing from the path's shape.

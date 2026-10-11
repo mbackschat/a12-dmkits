@@ -25,6 +25,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition
+import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
@@ -363,6 +365,14 @@ internal class Conditions(private val mapping: Mapping) {
                 ValueListQuantOp.NOT_ALL -> Dsl.notAllFieldValuesIncludedInValueList(values, head)
             }
         }
+        if (head is IndexedGroupValue && operands.size == 1) {
+            val quantifier = when (op) {
+                ValueListQuantOp.AT_LEAST_ONE -> ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED
+                ValueListQuantOp.NO -> ValueListQuantifier.NO_FIELD_VALUE_INCLUDED
+                ValueListQuantOp.NOT_ALL -> ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED
+            }
+            return FieldListValueListCondition(quantifier, listOf(head), values.map(::StringLiteral))
+        }
         if (head is FieldListRef) {
             val lists = operands.map {
                 it as? FieldListRef ?: throw UnmappedConstructException(
@@ -447,14 +457,7 @@ internal class Conditions(private val mapping: Mapping) {
     private fun valueListOperand(node: Expr): ValueListOperand = when (val operand = mapping.aggregateOperand(node)) {
         is FieldOperand -> operand
         is GroupListRef -> operand
-        // Not evidenced for this family — ValueListOperand has no arm for it either, so leave it unmapped
-        // rather than guess.
-        is IndexedGroupValue -> throw UnmappedConstructException(
-            "an index-selected group in a value-list quantifier's entity slot, " + operand.renderedPath()
-        )
-        else -> throw UnmappedConstructException(
-            "entity-list operand " + operand.javaClass.simpleName + " in a value-list quantifier's slot"
-        )
+        is IndexedGroupValue -> operand
     }
 
     // --- typed handles ------------------------------------------------------------------------

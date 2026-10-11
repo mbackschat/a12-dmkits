@@ -196,8 +196,8 @@ internal class PreparedEvaluationPlan(
             is Cond.ValueListQuant -> {
                 // Value-list quantifiers are themselves collection operators: a starred field/value list is a
                 // first-class operand, not a bare star outside an aggregate.
-                cond.fields.forEach { auditExpr(it, outerAllowed, starAllowed = true) }
-                cond.values.forEach { auditExpr(it, outerAllowed, starAllowed = true) }
+                cond.fields.forEach { auditExpr(it, outerAllowed, starAllowed = true, groupSemanticIndexAllowed = true) }
+                cond.values.forEach { auditExpr(it, outerAllowed, starAllowed = true, groupSemanticIndexAllowed = true) }
             }
             is Cond.Custom -> if (cond.name !in support.customConditions) {
                 throw UnsupportedConstructException(

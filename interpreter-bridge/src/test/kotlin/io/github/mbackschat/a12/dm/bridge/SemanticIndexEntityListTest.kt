@@ -193,16 +193,10 @@ class SemanticIndexEntityListTest {
         assertInstanceOf(SemanticIndexValue::class.java, count.operands().get(0))
     }
 
-    /**
-     * §2b (an index-selected GROUP inside the entity-valued value-list quantifier form) is not evidenced
-     * for this task and `ValueListOperand` carries no arm for it — [Conditions.valueListOperand]
-     * explicitly refuses it rather than silently routing it through the new
-     * `AggregateOperand` arm, exactly the failure mode the prior guardrail breach was.
-     */
     @Test
-    fun aGroupTargetedIndexInAValueListEntitySlotStaysUnmapped() {
-        assertThrows(UnmappedConstructException::class.java) {
-            translate("NoFieldValueIncludedInValueList(Items For \"a\" In ProductCode)")
+    fun aHomogeneousSelectedGroupInAValueListEntitySlotConverts() {
+        assertDoesNotThrow {
+            translate("NoFieldValueIncludedInValueList(ShippingAddress For \"a\" In ProductCode)")
         }
     }
 
