@@ -145,6 +145,20 @@ And FieldNotFilled(vatId)
 
 → `total` is in error when it's filled **and** `≤ 0` (the negation of `exclusiveMinimum: 0`); the `if/then` fires when `tier = PREMIUM` **and** `vatId` is absent. Each is authored through the typed rulekit DSL and kernel-gated, so it's well-formed by construction.
 
+An optional array's `minItems` cannot become an unconditional A12 rule: absent and empty arrays share the A12 state. The import report exposes the omitted constraint:
+
+```bash
+echo '{"title":"Parcel","type":"object","properties":{
+  "legs":{"type":"array","maxItems":3,"minItems":1,
+    "items":{"type":"object","properties":{"label":{"type":"string"}}}}}}' > /tmp/parcel.schema.json
+dmtool model import-jsonschema --schema /tmp/parcel.schema.json -o /tmp/parcel.dm.json 2>/dev/null \
+  | jq -c '{outcome, omitted: .changed.report.omitted}'
+```
+
+```output
+{"outcome":"applied","omitted":1}
+```
+
 ## OpenAPI dialects & whole-document bundles
 
 Most schemas ship inside **OpenAPI**, where definitions live under `components/schemas` and a few keywords differ by version. The importer **auto-detects the dialect** and can import the **whole document** as many models — `--out-dir` writes one per component, wiring each object `$ref` as an a12 **mount** (single-sourced, not inlined):

@@ -165,7 +165,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | bare `number` (no `multipleOf`) | NUMBER at the default scale (a flagged guess) | strategy (profile; **imported by default**) |
 | `format: <other>` | pattern / custom field type / plain string | strategy (profile: format) |
 | recursive `$ref` | expand `--recursion-depth` levels (default 1) | strategy (profile; **imported by default**, 1 level) |
-| `minItems: N` | **synthesized** rule `NumberOfFilledGroups(G*) < N`, in-group anchored + unguarded (§4f) — enforced | `minItems` (projected back, Tier A) |
+| `minItems: N` | rule `NumberOfFilledGroups(G*) < N` for a required root array; other applicability scopes are explicitly omitted (§4f) | `minItems` (projected back, Tier A) |
 | cross-kind `type:[X,Y]` · mixed `oneOf`/`anyOf` | reported | omitted (§4c) |
 | `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
 | `$dynamicRef` / `$dynamicAnchor` | reported | omitted (§4c) |
@@ -252,7 +252,7 @@ The keywords with no field-config home become real a12 **rules** (§4 "Rules (co
 | `const: V` | `Filled(f) And [f] ≠ V` | `f` | `str.ne(V)` / `num.ne(V)` |
 | `dependentRequired: A → B` | `Filled(A) And Not Filled(B)` | `B` | `fieldFilled` + `fieldNotFilled` |
 | `oneOf`/`anyOf` discriminator (`disc = V` ⇒ `R` required) | `[disc] = V And Not Filled(R)` | `R` | `enum.is(V)`/`str.eq(V)` + `fieldNotFilled` |
-| `minItems: N` (on an `array` → repeatable group `G`) | `NumberOfFilledGroups(G*) < N` | the row's first scalar field (**in-group, unguarded**) | `Dsl.numberOfFilledGroups(group).lt(N)` — fires at `0…N-1` rows **unconditionally**; the in-group error anchor (not a guarded outside field) is deliberate, so an empty guard field can't suppress the "too few rows" error (KERNEL-FINDINGS §9). `maxItems` stays structural (repeatability). `minItems ≤ 0` is a no-op |
+| `minItems: N` (on a required root `array` → repeatable group `G`) | `NumberOfFilledGroups(G*) < N` | the row's first scalar field (**in-group, unguarded**) | `Dsl.numberOfFilledGroups(group).lt(N)` — fires at `0…N-1` rows **unconditionally**; the in-group error anchor (not a guarded outside field) is deliberate, so an empty guard field can't suppress the "too few rows" error (KERNEL-FINDINGS §9). `maxItems` stays structural (repeatability). `minItems ≤ 0` is a no-op |
 | `uniqueItems: true` | `RepetitionNotUnique(row fields …)` | first row field | `Dsl.repetitionNotUnique(…)` |
 | `contains {f≈V[, g≈W]}` + `minContains: N` | `NumberOfFilledFields(G*/f Having matches(f) [And matches(g)]) < N` | the `f` row field | each clause is a positive match — `=`/`≥`/`≤`/`In`/`matches` (const/range/enum/pattern); a multi-property predicate ANDs them; a `maxContains` peer uses `> M`. A clause may target a **nested-object** field (`payment/method`, even `origin/address/country`) — the `Having` filter reaches into the row's non-repeatable subgroups; a clause descending into a nested *array* (deeper repetition) stays declined (§3) |
 | `if {f = V} then {required:[D]}` | `[f] = V And Not Filled(D)` | `D` | `enum.is(V)`/`str.eq(V)` + `fieldNotFilled` |
@@ -262,12 +262,16 @@ The keywords with no field-config home become real a12 **rules** (§4 "Rules (co
 | `if {f = V} else {properties:{g:{maximum:M}}}` (else value-constraint) | `Filled(f) And [f] ≠ V And [g] > M` | `g` | the negated condition + the violation mapper; a multi-property `if` → an `Or` of the per-condition negations (`a≠X Or b≠Y`) |
 | `not {const: V}` | `Filled(f) And [f] = V` | `f` | `str.eq(V)` / `num.eq(V)` |
 | `not {enum: […]}` | `Filled(f) And [f] In […]` | `f` | `str.in(…)` |
-| `not {pattern: P}` | `Filled(f) And [f] matches /P/` | `f` | `str.matches(P)` |
+| `not {pattern: P}` (nonempty `P`) | `Filled(f) And [f] matches /P/` | `f` | `str.matches(P)` |
 | `not {minimum: N}` | `Filled(f) And [f] ≥ N` | `f` | `num.ge(N)` (value must be `< N`) |
 | `not {maximum: N}` | `Filled(f) And [f] ≤ N` | `f` | `num.le(N)` (value must be `> N`) |
 | `not {minLength: N}` | `Filled(f) And length([f]) ≥ N` | `f` | `str.length().ge(N)` (length `< N`) |
 | `not {maxLength: N}` | `Filled(f) And length([f]) ≤ N` | `f` | `str.length().le(N)` (length `> N`) |
 | object `not {required:[a, b]}` | `AllFieldsFilled(a, b)` | first field | `Dsl.allFieldsFilled` / `fieldFilled` — a/b must not all be present together |
+
+**Array lower-bound applicability.** A positive `minItems` or `minContains` is synthesized only for an unconditionally required property of the model root. An optional array may be absent while a present empty array violates its lower bound; canonical A12 ingestion erases that distinction. `JsonSchemaImporter.canEnforceArrayMinimum` therefore reports the lower bound as `OMITTED` for optional arrays, nested arrays and conditional union properties, with a corrective to retain source-schema validation. Nested requiredness is a support boundary, not a claim that every nested translation is impossible. Upper `maxContains` bounds remain independent. `SchemaEmptyPatternRuntimeTest.arrayLowerBoundsAreExactOrExplicitlyOmitted` compares absence, empty arrays and populated/empty rows against a stock JSON Schema validator, kernel evaluation and dmtool; its root can also be empty. `ArrayMinimumApplicabilityTest` locks root `allOf`, selected OpenAPI components and nested applicability. Standalone `required` subschemas participate in the `allOf` union even without their own `properties`.
+
+**Empty patterns in composition.** A `then`/`else` value constraint whose sole assertion is `pattern:""` is a reported no-op. Compound value constraints and additional assertions on a `contains` object or nested property are explicitly omitted; simplifying an empty pattern must not discard a sibling assertion. Universal empty-pattern clauses disappear from a `contains` predicate; if none remain, synthesis counts instantiated groups with `NumberOfFilledGroups`, so missing predicate properties and empty rows count. The error anchor comes from an actual imported scalar field, not a property named only in the predicate. When no scalar anchor exists, the current typed synthesis reports an omission. Negated `not {pattern:""}` is also explicitly omitted: A12 value admission cannot preserve the absent-versus-present-empty distinction needed by that constraint. Enforcement is in `RuleSynthesis`; `FieldConstraintsShapeTest` and `SchemaEmptyPatternRuntimeTest` lock the no-op, counting and omission cases. These translations avoid executing the empty authored A12 pattern, whose failure behavior is distinct from JSON Schema's universal regex ([KF543](KERNEL-FINDINGS.md#kf543)).
 
 **Why the conditions look "inverted" — polarity.** An a12 rule produces an error when its condition is **true**, so a *constraint* `field > N` is encoded as the *error condition* `[field] ≤ N`. Every row above is therefore the logical negation of the keyword it implements; reading the table is easiest as "the rule fires exactly on the values the schema forbids."
 

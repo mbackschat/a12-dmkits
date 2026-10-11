@@ -8335,7 +8335,7 @@
         },
         "json-schema-import": {
           "state": "OPEN",
-          "basis": "Inactive field-pattern import is guarded by FieldConstraintsShapeTest.anEmptyPatternRoundTripsWithoutInventingAPatternMessage. Positive/negated composition and contains synthesis are a separate finite session checkpoint; no complete import adoption is claimed yet.",
+          "basis": "Inactive field-pattern import, positive empty-pattern composition, universal contains counting, applicability omissions and negated empty-pattern omissions have executable controls in FieldConstraintsShapeTest, ArrayMinimumApplicabilityTest and SchemaEmptyPatternRuntimeTest. Mixed contains predicates still need the separate row-property presence checkpoint before complete import adoption.",
           "evidence": {}
         },
         "json-schema-export": {

@@ -163,6 +163,15 @@ final class RuleSynthesis {
         BoundModel m = resolver == null ? BoundModel.ofJson(dmJson) : BoundModel.ofJson(dmJson, resolver);
         ModelDocument doc = ModelDocument.read(dmJson);   // to resolve a repeatable group's actual row fields
         for (Need need : needs) {
+            boolean universal = switch (need) {
+                case ThenConstrained tc -> isUniversal(tc.constraint());
+                case ElseConstrained ec -> isUniversal(ec.constraint());
+                default -> false;
+            };
+            if (universal) {
+                report.mapped(source(need), "empty pattern imposes no constraint", TranscodeReport.Tier.TIER_A_PLUS);
+                continue;
+            }
             Optional<Rule> rule = ruleFor(m, doc, need, report);
             if (rule.isPresent()) {
                 m = m.add(rule.get());
@@ -283,6 +292,10 @@ final class RuleSynthesis {
                         .message(Dsl.en(mc.requiredField() + " is required when " + when + ".")).build());
             }
             case ForbiddenPattern f -> {
+                if (f.regex().isEmpty()) {
+                    report.omit(source(f), "not{pattern: empty} omitted — A12 cannot distinguish a present empty string from an absent value; enforce this constraint with the source JSON Schema validator");
+                    yield Optional.empty();
+                }
                 String field = lastSegment(f.fieldPath());
                 if (!doc.fieldKind(f.fieldPath()).map("STRING"::equals).orElse(false)) {
                     report.diagnostic("'not pattern' on '" + field + "' skipped — only string fields supported");
@@ -450,8 +463,9 @@ final class RuleSynthesis {
                         .message(Dsl.en(ec.constraint().requirement(ec.targetField()) + " when " + when + ".")).build());
             }
             case ContainsCount cc -> {
+                List<Clause> active = cc.clauses().stream().filter(cl -> !isUniversal(cl.constraint())).toList();
                 List<Condition> matches = new ArrayList<>();
-                for (Clause cl : cc.clauses()) {
+                for (Clause cl : active) {
                     Optional<Condition> mc = matchCondition(m, doc, cc.groupPath() + "/" + cl.field(), cl.constraint(), report);
                     if (mc.isEmpty()) {
                         report.diagnostic("contains on '" + lastSegment(cc.groupPath()) + "' skipped — clause field '"
@@ -460,20 +474,31 @@ final class RuleSynthesis {
                     }
                     matches.add(mc.get());
                 }
-                Condition having = matches.get(0);
-                for (int i = 1; i < matches.size(); i++) {
-                    having = having.and(matches.get(i));
-                }
                 String row = lastSegment(cc.groupPath());
-                String anchor = cc.clauses().get(0).field();   // flatten on a clause field; Having filters by all
-                NumberExpr count = Dsl.numberOfFilledFields(m.flatten(cc.groupPath() + "*/" + anchor).having(having));
+                Optional<String> anchorPath = active.isEmpty()
+                        ? doc.fieldPaths().stream().filter(p -> p.startsWith(cc.groupPath() + "/")
+                                && doc.fieldKind(p).isPresent()).findFirst()
+                        : Optional.of(cc.groupPath() + "/" + active.get(0).field());
+                if (anchorPath.isEmpty()) {
+                    report.omit(source(cc), "contains on '" + row + "' omitted — the current typed synthesis needs a scalar field to anchor the error on");
+                    yield Optional.empty();
+                }
+                NumberExpr count;
+                if (active.isEmpty()) {
+                    // JSON Schema's empty regex is universal; A12's empty authored regex fails at execution (SPEC-2026-10-10-13).
+                    count = Dsl.numberOfFilledGroups(m.group(cc.groupPath()));
+                } else {
+                    Condition having = matches.get(0);
+                    for (int i = 1; i < matches.size(); i++) having = having.and(matches.get(i));
+                    count = Dsl.numberOfFilledFields(m.flatten(cc.groupPath() + "*/" + active.get(0).field()).having(having));
+                }
                 Condition violation = cc.min() ? count.lt(cc.bound()) : count.gt(cc.bound());
                 String tag = cc.clauses().stream().map(cl -> fieldTag(cl.field())).collect(Collectors.joining());
                 String desc = cc.clauses().stream()
                         .map(cl -> cl.constraint().requirement(cl.field())).collect(Collectors.joining(" and "));
                 yield Optional.of(m.rule(m.group(parentGroup(cc.groupPath())))
                         .name(row + (cc.min() ? "MinContains" : "MaxContains") + tag)
-                        .errorField(m.field(cc.groupPath() + "/" + anchor))
+                        .errorField(m.field(anchorPath.get()))
                         .when(violation)
                         .code((cc.min() ? "MIN_CONTAINS_" : "MAX_CONTAINS_") + row.toUpperCase(Locale.ROOT)
                                 + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
@@ -494,7 +519,7 @@ final class RuleSynthesis {
                         .filter(p -> p.startsWith(mi.groupPath() + "/") && doc.fieldKind(p).isPresent())
                         .findFirst();
                 if (anchor.isEmpty()) {
-                    report.diagnostic("minItems on '" + group + "' skipped — the row has no scalar field to anchor "
+                    report.omit(source(mi), "minItems on '" + group + "' omitted — the current typed synthesis needs a scalar field to anchor "
                             + "the error on");
                     yield Optional.empty();
                 }
@@ -594,6 +619,10 @@ final class RuleSynthesis {
                     ? Optional.of(m.str(path).filled().and(m.str(path).violates(c.value())))
                     : reportUnsupported(report, field, "pattern");
         };
+    }
+
+    private static boolean isUniversal(ValueConstraint constraint) {
+        return constraint.kind() == ConstraintKind.PATTERN && constraint.value().isEmpty();
     }
 
     private static Optional<Condition> reportUnsupported(TranscodeReport.Builder report, String field, String what) {

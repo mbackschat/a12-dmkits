@@ -95,6 +95,7 @@ class NestedAndArrayShapeTest {
         String withMin = """
                 {
                   "type": "object",
+                  "required": ["rows"],
                   "properties": {
                     "rows": {
                       "type": "array", "minItems": 1, "maxItems": 10,

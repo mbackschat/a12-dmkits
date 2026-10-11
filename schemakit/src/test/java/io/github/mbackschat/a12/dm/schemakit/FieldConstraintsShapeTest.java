@@ -29,6 +29,43 @@ class FieldConstraintsShapeTest {
             """;
 
     @Test
+    void composedEmptyPatternsNeverGenerateAnExecutingEmptyPattern() {
+        for (String arm : java.util.List.of("then", "else")) {
+            var imported = new JsonSchemaImporter().importSchema("""
+                    {"type":"object","properties":{"mode":{"type":"string"},"code":{"type":"string"}},
+                     "if":{"properties":{"mode":{"const":"active"}}},"%s":{"properties":{"code":{"pattern":""}}}}
+                    """.formatted(arm));
+            assertKernelAccepts(imported.dmJson());
+            assertEquals(0, ModelDocument.read(imported.dmJson()).ruleCount());
+            org.junit.jupiter.api.Assertions.assertTrue(imported.report().dispositions().stream()
+                    .anyMatch(d -> d.tier() == TranscodeReport.Tier.TIER_A_PLUS));
+        }
+        var forbidden = new JsonSchemaImporter().importSchema("""
+                {"type":"object","properties":{"code":{"type":"string","not":{"pattern":""}}}}
+                """);
+        assertKernelAccepts(forbidden.dmJson());
+        assertEquals(0, ModelDocument.read(forbidden.dmJson()).ruleCount());
+        org.junit.jupiter.api.Assertions.assertTrue(forbidden.report().diagnostics().stream()
+                .anyMatch(d -> d.contains("empty") && d.contains("absent")));
+        org.junit.jupiter.api.Assertions.assertTrue(forbidden.report().dispositions().stream()
+                .anyMatch(d -> d.tier() == TranscodeReport.Tier.OMITTED));
+    }
+
+    @Test
+    void universalContainsCountsRowsAndMixedContainsUsesTheRemainingAnchor() {
+        for (boolean mixed : java.util.List.of(false, true)) {
+            var imported = new JsonSchemaImporter().importSchema("""
+                    {"type":"object","required":["legs"],"properties":{"legs":{"type":"array","maxItems":3,
+                     "items":{"type":"object","properties":{"label":{"type":"string"},"kind":{"type":"string"}}},
+                     "contains":{"properties":{"label":{"pattern":""}%s}},"minContains":1,"maxContains":2}}}
+                    """.formatted(mixed ? ",\"kind\":{\"const\":\"express\"}" : ""));
+            assertKernelAccepts(imported.dmJson());
+            org.junit.jupiter.api.Assertions.assertFalse(imported.dmJson().contains("PatternMatched"));
+            org.junit.jupiter.api.Assertions.assertTrue(imported.dmJson().contains(mixed ? "legs*/kind" : "NumberOfFilledGroups"));
+        }
+    }
+
+    @Test
     void anEmptyPatternRoundTripsWithoutInventingAPatternMessage() {
         String schema = "{\"type\":\"object\",\"properties\":{\"code\":{\"type\":\"string\",\"pattern\":\"\"}}}";
         var imported = new JsonSchemaImporter().importSchema(schema);

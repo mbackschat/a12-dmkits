@@ -1,5 +1,5 @@
 // :schemakit (docs/SCHEMAKIT-SPEC.md) — JSON Schema ⇄ Document Model import/export.
-// JVM/Java, native-safe (NOT Kotlin Multiplatform — proposal §10). It authors through dmkits' typed
+// JVM with Java implementation and Kotlin tests, native-safe (NOT Kotlin Multiplatform — proposal §10). It authors through dmkits' typed
 // surface (the dogfood rule): import builds via modelkit DocumentModelDraft + rulekit Dsl/DslRenderer;
 // export reads via modelkit ModelDocument. The structural validity oracle is the kernel, reached ONLY
 // through the public facade (ModelLoader).
@@ -12,6 +12,7 @@
 // Reuse-first: do not rebuild capability that already exists in those modules; surface gaps for the owner.
 plugins {
     id 'java-library'
+    id 'org.jetbrains.kotlin.jvm'
     id 'maven-publish'
 }
 

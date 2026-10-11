@@ -507,8 +507,8 @@ public final class JsonSchemaImporter {
             if (vc.isPresent()) {
                 ctx.ruleNeeds().add(new RuleSynthesis.ThenConstrained(groupPath, conditions, e.getKey(), vc.get()));
             } else {
-                ctx.report().diagnostic("if/then at '" + groupPath + "': then constraint on '" + e.getKey()
-                        + "' is not a simple const/enum/min/max (e.g. pattern) — not mapped; add it by hand");
+                ctx.report().omit(groupPath + "/then/" + e.getKey(), "if/then at '" + groupPath + "': then constraint on '" + e.getKey()
+                        + "' is not a single const/enum/min/max/pattern assertion — omitted; retain source-schema validation");
             }
         }
     }
@@ -528,14 +528,19 @@ public final class JsonSchemaImporter {
             if (vc.isPresent()) {
                 ctx.ruleNeeds().add(new RuleSynthesis.ElseConstrained(groupPath, conditions, e.getKey(), vc.get()));
             } else {
-                ctx.report().diagnostic("if/else at '" + groupPath + "': else constraint on '" + e.getKey()
-                        + "' is not a simple const/enum/min/max/pattern — not mapped; add it by hand");
+                ctx.report().omit(groupPath + "/else/" + e.getKey(), "if/else at '" + groupPath + "': else constraint on '" + e.getKey()
+                        + "' is not a single const/enum/min/max/pattern assertion — omitted; retain source-schema validation");
             }
         }
     }
 
     /** A simple {@code then}/{@code else} value constraint, or empty (no direct violation condition — reported). */
     private static Optional<RuleSynthesis.ValueConstraint> valueConstraintOf(JsonNode schema) {
+        int assertions = schema.size();
+        for (String annotation : ANNOTATION_KEYWORDS) {
+            if (schema.has(annotation)) assertions--;
+        }
+        if (assertions != 1) return Optional.empty();
         if (schema.has("const")) {
             return Optional.of(RuleSynthesis.ValueConstraint.scalar(
                     RuleSynthesis.ConstraintKind.CONST, schema.get("const").asText()));
@@ -631,7 +636,8 @@ public final class JsonSchemaImporter {
                     }
                 }
             }
-            case "array" -> addArray(g, name, schema, path, ctx);
+            case "array" -> addArray(g, name, schema, path,
+                    required && groupPath.equals("/" + ROOT_GROUP), ctx);
             default -> addScalar(g, name, schema, required, path, ctx);
         }
     }
@@ -700,14 +706,14 @@ public final class JsonSchemaImporter {
     }
 
     private static void addArray(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
-                                 String path, Ctx ctx) {
+                                 String path, boolean required, Ctx ctx) {
         if (schema.path("uniqueItems").asBoolean(false)) {
             // a repeatable group is built below (object or scalar array) → key its rows for uniqueness; the
             // synthesis resolves the actual row fields post-build and skips if the group/fields didn't import.
             ctx.ruleNeeds().add(new RuleSynthesis.UniqueItems(path));
         }
-        collectMinItems(schema, path, ctx);   // minItems → a NumberOfFilledGroups(G*) < N rule (both array kinds)
-        collectContains(schema, path, ctx);   // contains/minContains/maxContains → a filtered-count rule (simple predicate)
+        collectMinItems(schema, path, required, ctx);   // minItems → a NumberOfFilledGroups(G*) < N rule (both array kinds)
+        collectContains(schema, path, required, ctx);   // contains/minContains/maxContains → a filtered-count rule (simple predicate)
         JsonNode items = schema.path("items");
         if (items.has("$ref")) {   // array of $ref items (ubiquitous in OpenAPI) — resolve before the scalar/object dispatch
             addRefItemsArray(g, name, schema, items, path, ctx);
@@ -769,20 +775,20 @@ public final class JsonSchemaImporter {
     /** {@code contains}/{@code minContains}/{@code maxContains} → a filtered-count rule when the {@code contains}
      *  predicate is simple ({@code {const}} on a scalar array, or {@code {properties:{f:{const}}}} on an object
      *  array); a non-simple predicate is reported, not silently dropped (SCHEMAKIT-SPEC §4f). */
-    private static void collectContains(JsonNode arraySchema, String groupPath, Ctx ctx) {
+    private static void collectContains(JsonNode arraySchema, String groupPath, boolean required, Ctx ctx) {
         if (!arraySchema.has("contains")) {
             return;
         }
         boolean objectArray = "object".equals(arraySchema.path("items").path("type").asText(""));
         Optional<List<RuleSynthesis.Clause>> clauses = containsClauses(arraySchema.get("contains"), objectArray);
         if (clauses.isEmpty()) {
-            ctx.report().diagnostic("array '" + groupPath + "' has a 'contains' with a non-mappable predicate — not "
-                    + "mapped (each clause must be a simple const/enum/min/max/pattern on a scalar array or an "
-                    + "object array's property); add the count rule by hand");
+            ctx.report().omit(groupPath + "/contains", "array '" + groupPath + "' has a 'contains' with a non-mappable predicate — "
+                    + "omitted (each clause must be a single const/enum/min/max/pattern on a scalar array or an "
+                    + "object array's property, without other assertions); retain source-schema validation");
             return;
         }
         int minContains = arraySchema.path("minContains").isInt() ? arraySchema.get("minContains").asInt() : 1;
-        if (minContains >= 1) {   // bare 'contains' = ≥1; minContains:0 is vacuous
+        if (minContains >= 1 && canEnforceArrayMinimum(groupPath, "minContains", required, ctx)) {
             ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, clauses.get(), true, minContains));
         }
         if (arraySchema.path("maxContains").isInt()) {
@@ -799,7 +805,7 @@ public final class JsonSchemaImporter {
     private static Optional<List<RuleSynthesis.Clause>> containsClauses(JsonNode contains, boolean objectArray) {
         if (objectArray) {
             JsonNode props = contains.path("properties");
-            if (!props.isObject() || props.isEmpty()) {
+            if (!hasOnlyAssertion(contains, "properties") || !props.isObject() || props.isEmpty()) {
                 return Optional.empty();
             }
             return objectClauses(props, "");
@@ -821,7 +827,8 @@ public final class JsonSchemaImporter {
             Optional<RuleSynthesis.ValueConstraint> vc = valueConstraintOf(e.getValue());
             if (vc.isPresent()) {
                 clauses.add(new RuleSynthesis.Clause(field, vc.get()));
-            } else if (e.getValue().path("properties").isObject() && !e.getValue().path("properties").isEmpty()) {
+            } else if (hasOnlyAssertion(e.getValue(), "properties")
+                    && e.getValue().path("properties").isObject() && !e.getValue().path("properties").isEmpty()) {
                 Optional<List<RuleSynthesis.Clause>> nested = objectClauses(e.getValue().get("properties"), field + "/");
                 if (nested.isEmpty()) {
                     return Optional.empty();
@@ -898,11 +905,24 @@ public final class JsonSchemaImporter {
         return true;
     }
 
+    /**
+     * A12 readers erase absent-versus-empty arrays (SchemaEmptyPatternRuntimeTest); only a required root
+     * property has an unconditional applicability witness in this synthesis pass.
+     */
+    private static boolean canEnforceArrayMinimum(String path, String keyword, boolean required, Ctx ctx) {
+        if (required) return true;
+        ctx.report().omit(path + "/" + keyword, keyword + " on '" + path + "' omitted — the array or an ancestor "
+                + "does not have unconditional root-property applicability. A12 Documents normalize an absent array and an empty array to the same "
+                + "state; an unconditional minimum could reject permitted absence. Keep this constraint in JSON Schema validation.");
+        return false;
+    }
+
     /** {@code minItems} → a synthesized {@code NumberOfFilledGroups(G*) < N} rule (SCHEMAKIT-SPEC §4f). The Need
      *  is collected here; {@link RuleSynthesis} resolves the actual row anchor post-build and skips gracefully if
      *  the array did not import as a repeatable group (e.g. no cap). {@code minItems <= 0} is a no-op (always met). */
-    private static void collectMinItems(JsonNode schema, String path, Ctx ctx) {
-        if (schema.has("minItems") && schema.get("minItems").asInt() >= 1) {
+    private static void collectMinItems(JsonNode schema, String path, boolean required, Ctx ctx) {
+        if (schema.has("minItems") && schema.get("minItems").asInt() >= 1
+                && canEnforceArrayMinimum(path, "minItems", required, ctx)) {
             ctx.ruleNeeds().add(new RuleSynthesis.MinItemsCount(path, schema.get("minItems").asInt()));
         }
     }
@@ -1080,7 +1100,7 @@ public final class JsonSchemaImporter {
         List<JsonNode> result = new ArrayList<>();
         for (JsonNode sub : schema.path("allOf")) {
             JsonNode resolved = sub.has("$ref") ? ctx.defs().path(defName(sub)) : sub;
-            if (resolved.path("properties").isObject()) {
+            if (resolved.path("properties").isObject() || resolved.path("required").isArray()) {
                 result.add(resolved);
             }
         }
@@ -1091,7 +1111,7 @@ public final class JsonSchemaImporter {
     private static void addAllOfGroup(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
                                       String path, Ctx ctx) {
         boolean ownProps = schema.path("properties").isObject() && !schema.get("properties").isEmpty();
-        if (!ownProps && allOfObjectSubschemas(schema, ctx).isEmpty()) {
+        if (!ownProps && allOfObjectSubschemas(schema, ctx).stream().noneMatch(sub -> sub.path("properties").isObject())) {
             ctx.report().omit(path, "property '" + name + "' is an allOf with no object subschema carrying "
                     + "properties — omitted (an empty group is invalid). TO DO: it may be a scalar-constraint "
                     + "allOf; add the field by hand");

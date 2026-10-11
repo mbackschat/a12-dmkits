@@ -25,7 +25,7 @@ class MinItemsSynthesisTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final String ARRAY_WITH_MIN = """
-            { "type": "object", "properties": {
+            { "type": "object", "required": ["lines"], "properties": {
                 "lines": { "type": "array", "minItems": 2, "maxItems": 50,
                            "items": { "type": "object", "properties": { "sku": { "type": "string" } } } } } }
             """;

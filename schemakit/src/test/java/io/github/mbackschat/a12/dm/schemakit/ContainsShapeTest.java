@@ -20,7 +20,7 @@ class ContainsShapeTest {
     @Test
     void containsOnObjectArraySynthesizesAMinCountRule() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
-                { "type": "object", "properties": {
+                { "type": "object", "required": ["members"], "properties": {
                     "members": { "type": "array", "maxItems": 10,
                       "items": { "type": "object",
                         "properties": { "kind": { "type": "string" }, "name": { "type": "string" } } },
@@ -36,7 +36,7 @@ class ContainsShapeTest {
     @Test
     void containsOnScalarArraySynthesizesAMinCountRule() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
-                { "type": "object", "properties": {
+                { "type": "object", "required": ["tags"], "properties": {
                     "tags": { "type": "array", "maxItems": 10, "items": { "type": "string" },
                       "contains": { "const": "vip" } } } }
                 """);
@@ -48,7 +48,7 @@ class ContainsShapeTest {
     @Test
     void minAndMaxContainsSynthesizeTwoRules() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
-                { "type": "object", "properties": {
+                { "type": "object", "required": ["slots"], "properties": {
                     "slots": { "type": "array", "maxItems": 10,
                       "items": { "type": "object", "properties": { "state": { "type": "string" } } },
                       "contains": { "properties": { "state": { "const": "OPEN" } } },
@@ -62,7 +62,7 @@ class ContainsShapeTest {
     @Test
     void multiPropertyContainsSynthesizesACountRule() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
-                { "type": "object", "properties": {
+                { "type": "object", "required": ["members"], "properties": {
                     "members": { "type": "array", "maxItems": 10,
                       "items": { "type": "object", "properties": { "kind": { "type": "string" }, "region": { "type": "string" } } },
                       "contains": { "properties": { "kind": { "const": "VIP" }, "region": { "const": "EU" } } },
@@ -77,7 +77,7 @@ class ContainsShapeTest {
     @Test
     void rangeContainsClauseSynthesizesACountRule() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
-                { "type": "object", "properties": {
+                { "type": "object", "required": ["scores"], "properties": {
                     "scores": { "type": "array", "maxItems": 10,
                       "items": { "type": "object", "properties": { "value": { "type": "integer" } } },
                       "contains": { "properties": { "value": { "minimum": 80 } } }, "minContains": 1 } } }
@@ -91,7 +91,7 @@ class ContainsShapeTest {
     void aContainsWithANonValueClauseIsReported() {
         // a clause with no value constraint (just a type) has no positive match condition → reported.
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
-                { "type": "object", "properties": {
+                { "type": "object", "required": ["items"], "properties": {
                     "items": { "type": "array", "maxItems": 10,
                       "items": { "type": "object", "properties": { "a": { "type": "string" } } },
                       "contains": { "properties": { "a": { "type": "string" } } } } } }
@@ -108,7 +108,7 @@ class ContainsShapeTest {
         // the contains predicate descends one level into a nested object (a non-repeatable subgroup of the row):
         // "≥1 order whose payment.method == CARD" → a Having-filtered count over /orders*/payment/method.
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
-                { "type": "object", "properties": {
+                { "type": "object", "required": ["orders"], "properties": {
                     "orders": { "type": "array", "maxItems": 50,
                       "items": { "type": "object", "properties": {
                         "ref": { "type": "string" },
@@ -126,7 +126,7 @@ class ContainsShapeTest {
     void aDeeplyNestedObjectContainsClauseSynthesizesACountRule() {
         // two levels deep: "≥1 shipment whose origin.address.country == DE".
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
-                { "type": "object", "properties": {
+                { "type": "object", "required": ["shipments"], "properties": {
                     "shipments": { "type": "array", "maxItems": 50,
                       "items": { "type": "object", "properties": {
                         "origin": { "type": "object", "properties": {
@@ -146,9 +146,9 @@ class ContainsShapeTest {
         // descending into a nested *array* (a deeper repetition) is NOT attempted — that is nested aggregation,
         // which stays a declined gap (SCHEMAKIT-GAPS §3). The structure imports; the predicate is reported.
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
-                { "type": "object", "properties": {
+                { "type": "object", "required": ["orders"], "properties": {
                     "orders": { "type": "array", "maxItems": 50,
-                      "items": { "type": "object", "properties": {
+                      "items": { "type": "object", "required": ["lines"], "properties": {
                         "lines": { "type": "array", "maxItems": 10,
                           "items": { "type": "object", "properties": { "sku": { "type": "string" } } } } } },
                       "contains": { "properties": { "lines": { "type": "array" } } }, "minContains": 1 } } }

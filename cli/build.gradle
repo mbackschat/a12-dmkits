@@ -1,5 +1,6 @@
 plugins {
     id 'application'
+    id 'org.jetbrains.kotlin.jvm'
     id 'org.graalvm.buildtools.native' version '1.1.1'   // release native image (opt-in `:cli:nativeCompile`, GraalVM 25)
 }
 
