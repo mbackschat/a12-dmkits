@@ -2373,7 +2373,7 @@
           ]
         },
         {
-          "text": "a fired AtLeastOne is OMISSION only when the DECIDING (matching) fields operand carries the Having filter, or a filtered VALUES operand selected a PRESENT member — an earlier filtered nonwitness operand, a filter that kept only empty cells, or one that dropped everything leaves the fire VALUE (witness-specific, never one side-wide flag); in partial validation this operator can use a relevant matching cell without establishing the complete starred extent",
+          "text": "a fired AtLeastOne is OMISSION only when the DECIDING (matching) fields operand carries the Having filter, or a filtered VALUES operand selected a PRESENT member — an earlier filtered nonwitness operand, a filter that kept only empty cells, or one that dropped everything leaves the fire VALUE (witness-specific, never one side-wide flag); in partial validation this operator can use a relevant matching cell without establishing the complete starred extent. In full validation and computation, ordinary filtered membership collects the complete values side before searching subjects to the first match; both sides use sparse traversal above 100 cache-bounded candidates. Each filtered pass reads one kept successor ahead, and a suffix beyond its decision is unread",
           "kind": "SURPRISE",
           "seeAlso": [
             "NoFieldValueIncludedInValueList",
@@ -2467,7 +2467,7 @@
       ],
       "gotchas": [
         {
-          "text": "unlike the scalar FieldValueNotIncludedInValueList (a one-subject specialization that does NOT fire on an empty subject), the multi-field No FIRES when nothing is filled; an UNKNOWN fields cell OR values member poisons it; in partial validation an ordinary starred operand needs wildcard coverage or concrete coverage of every declared slot on either side; covering only the held rows is insufficient",
+          "text": "unlike the scalar FieldValueNotIncludedInValueList (a one-subject specialization that does NOT fire on an empty subject), the multi-field No FIRES when nothing is filled; a REACHED UNKNOWN fields cell OR values member suppresses validation; a reached invalid computation read poisons it; in partial validation an ordinary starred operand needs wildcard coverage or concrete coverage of every declared slot on either side; covering only the held rows is insufficient",
           "kind": "SURPRISE",
           "seeAlso": [
             "FieldValueNotIncludedInValueList",
@@ -2476,7 +2476,7 @@
           ]
         },
         {
-          "text": "the fields side is scanned in authored order — a match decides non-firing before a later malformed cell is reached; when No fires, a REACHED values-side Having keeps omission potential even when it selected nothing (fired No is OMISSION), asymmetric to AtLeastOne's present-selection rule",
+          "text": "the fields side is scanned in authored order — a match decides non-firing before a later malformed cell is reached; when No fires, a REACHED values-side Having keeps omission potential even when it selected nothing (fired No is OMISSION), asymmetric to AtLeastOne's present-selection rule. In full validation and computation, ordinary filtered membership uses dense traversal on both sides: strict values collection stops on an unavailable member, then the subject search stops at a match or unavailable cell. The values side is not skipped by an early subject match; each filtered pass reads one kept successor ahead",
           "kind": "SURPRISE",
           "seeAlso": [
             "AtLeastOneFieldValueIncludedInValueList",
@@ -2571,7 +2571,7 @@
           ]
         },
         {
-          "text": "polarity follows the outside WITNESS: OMISSION only when the witness operand is filtered or the values side carries omission potential (empty member / omitted tail / filter) — a filtered nonwitness fields operand never escalates; the fields-PRESENCE prepass also decides no-fire before an UNKNOWN values member can poison",
+          "text": "polarity follows the outside WITNESS: OMISSION only when the witness operand is filtered or the values side carries omission potential (empty member / omitted tail / filter) — a filtered nonwitness fields operand never escalates; the fields-PRESENCE prepass also decides no-fire before an UNKNOWN values member can poison. In full validation and computation, ordinary filtered membership uses dense traversal: the subject-presence pass precedes strict values collection, and the outside-witness search restarts from the first subject. An empty subject side skips even a failing values filter; each filtered pass reads one kept successor ahead",
           "kind": "SURPRISE",
           "seeAlso": [
             "AtLeastOneFieldValueIncludedInValueList",

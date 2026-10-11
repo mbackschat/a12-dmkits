@@ -9772,6 +9772,85 @@
           "evidence": {}
         }
       }
+    },
+    "kf68": {
+      "sha256": "340bb2734e6f360d68fecc446c67799220cbf0b54150fef5a65a04ea71b75401",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "ordinary filtered membership pass policies and deciding prefixes"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "ordinary filtered membership pass policies and deciding prefixes"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "membership operator guidance"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "ordinary filtered membership pass policies and deciding prefixes"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies agree on the independently predicted six-Document Number/String matrix.",
+          "evidence": {
+            "ordinary filtered membership pass policies and deciding prefixes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseMembershipTraversalDiffTest.kt#membershipPassesKeepTheirPolicyAndSideSpecificStops",
+              "witness": "Both kernel strategies agree on the independently predicted six-Document Number/String matrix."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The existing typed field-valued membership factories author the measured model; no operand shape changes.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Shared operand expansion preserves consumer traversal policy and lazy filtered prefix decisions.",
+          "evidence": {
+            "ordinary filtered membership pass policies and deciding prefixes": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/SparseMembershipTraversalTest.kt#membershipKeepsBothSidePoliciesAndPrefixStops",
+              "witness": "Shared operand expansion preserves consumer traversal policy and lazy filtered prefix decisions."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime pass consumption changes no condition-admission gate.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "The shared interpreter supplies CLI evaluation; the three catalog entries describe the corrected pass contract.",
+          "evidence": {
+            "membership operator guidance": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/catalog/CatalogProseReviewGuardTest.java#everyOperatorHasAContentBoundReviewAndEveryClaimResolves",
+              "witness": "The shared interpreter supplies CLI evaluation; the three catalog entries describe the corrected pass contract."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No imported keyword changes or introduces these two-sided filtered field-list conditions.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The runtime scan policy changes no exported keyword or rule carriage.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-02 and the narrowed KF68 claim await peer verification.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

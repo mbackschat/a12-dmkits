@@ -46,7 +46,7 @@ Facet placement follows the dimension's *question*: `emptyOperand` + `aggregateI
 | §6 temporal construction provenance | — | `ConstructionProvenanceDiffTest` | — |
 | §6 constructed-Date component relevance | — | `DateComponentRelevanceDiffTest` | — |
 | §6 temporal difference operand failure order | — | `DifferenceOperandFailureOrderDiffTest` | — |
-| §6 a temporal literal failure inside a filter | — | `FilterTemporalLiteralFailureDiffTest`, `FilterMissingSlotDiffTest`, `FilterCacheScopeDiffTest`, `SparseFilteredAggregateDiffTest`, `SparseFilteredFillDiffTest`, `SparseOverlapPolicyDiffTest`, `OverlapFilterBindingDiffTest` | `SparseFilteredAggregateTest`, `SparseFilteredFillTest`, `SparseOverlapPolicyTest` |
+| §6 a temporal literal failure inside a filter | — | `FilterTemporalLiteralFailureDiffTest`, `FilterMissingSlotDiffTest`, `FilterCacheScopeDiffTest`, `SparseFilteredAggregateDiffTest`, `SparseFilteredFillDiffTest`, `SparseMembershipTraversalDiffTest`, `SparseOverlapPolicyDiffTest`, `OverlapFilterBindingDiffTest` | `SparseFilteredAggregateTest`, `SparseFilteredFillTest`, `SparseMembershipTraversalTest`, `SparseOverlapPolicyTest` |
 | §6 Date construction argument reads per phase | — | `ConstructionArgumentPhaseDiffTest` | — |
 | §6 shift amount phase and provenance | — | `ShiftAmountPhaseDiffTest` | — |
 | §9 full-validation iteration domain | — | `ValidationIterationDomainDiffTest`, `DeeperErrorFieldIterationDiffTest` | — |

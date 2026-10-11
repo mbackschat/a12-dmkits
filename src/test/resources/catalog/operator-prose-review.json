@@ -3207,7 +3207,7 @@
       "operator": "AtLeastOneFieldValueIncludedInValueList",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:3df366a29159ed1a97a98c92727a104a0bf6b66f72b75ca6994f21485d49c260",
+      "digest": "sha256:fccf3b62d99269152702b437d9a074c4d65c721dd37b62b3f8c1a8dc817486dd",
       "classifications": [
         "RUNTIME"
       ],
@@ -3221,6 +3221,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "PartialDeclaredListExtentDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseMembershipTraversalDiffTest.membershipPassesKeepTheirPolicyAndSideSpecificStops"
         }
       ]
     },
@@ -3254,7 +3259,7 @@
       "operator": "NoFieldValueIncludedInValueList",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:146b267961701ca9df1e1d6d4e3a0cd504d296694643b2181692b2d426e9e741",
+      "digest": "sha256:97aeceb28c6f6f04ea3b9a0d4ef72ec2cc1ccd8ddc193b7c3e2ee06f6c7ed380",
       "classifications": [
         "RUNTIME"
       ],
@@ -3278,6 +3283,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "PartialDeclaredListExtentDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseMembershipTraversalDiffTest.membershipPassesKeepTheirPolicyAndSideSpecificStops"
         }
       ]
     },
@@ -3285,7 +3295,7 @@
       "operator": "NoFieldValueIncludedInValueList",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:5d06f706e6c9430462cca8ed799823444c89ff897843e97a55eeae58ae675f2b",
+      "digest": "sha256:a5448a0317576a527569d3a8e3f607a43795eeeff50c6bb74ba51ac144338ecd",
       "classifications": [
         "RUNTIME"
       ],
@@ -3294,6 +3304,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "ValueListQuantifierOrderDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseMembershipTraversalDiffTest.membershipPassesKeepTheirPolicyAndSideSpecificStops"
         }
       ]
     },
@@ -3358,7 +3373,7 @@
       "operator": "NotAllFieldValuesIncludedInValueList",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:c598e411790977d6a49fc6830464f9651ad9bac1c5f9d88de640bae2963d89c4",
+      "digest": "sha256:695f5544a3d8e4955bcc75b6225437b9de64b9985765bccfec3cf46b3710ac6d",
       "classifications": [
         "RUNTIME"
       ],
@@ -3367,6 +3382,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "ValueListQuantifierOrderDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseMembershipTraversalDiffTest.membershipPassesKeepTheirPolicyAndSideSpecificStops"
         }
       ]
     },
