@@ -542,3 +542,39 @@ done
   ]
 }
 ```
+
+## Excess descendants do not invalidate ancestor counts
+
+The [shipment model](models/shipment-ancestor-errors.dm.json) counts manifests. A malformed Quantity in an excess Item reports structural errors while the manifest count remains available. The same malformed value inside capacity suppresses that partial count.
+
+```bash
+cat > /tmp/rt-shipment-excess.json <<'JSON'
+{ "Shipment": { "Title": "shipment", "Manifests": [
+  { "Label": "first", "Crates": [{ "Tag": "crate", "Items": [{"Quantity":1}, {}, {"Quantity":"bad"}] }] },
+  { "Label": "second" }
+] } }
+JSON
+cat > /tmp/rt-shipment-invalid.json <<'JSON'
+{ "Shipment": { "Title": "shipment", "Manifests": [
+  { "Label": "first", "Crates": [{ "Tag": "crate", "Items": [{"Quantity":"bad"}] }] },
+  { "Label": "second" }
+] } }
+JSON
+for placement in excess invalid; do
+  dmtool -m examples/models/shipment-ancestor-errors.dm.json model eval \
+    --instance "/tmp/rt-shipment-$placement.json" --no-computations --relevant '["/Shipment"]' \
+    | jq '{rootCountAvailable: (.data.fired | index("ROOT2") != null),
+           structuralErrors: ([.data.messages[] | select(.code | startswith("zuGrosse"))] | length)}'
+done
+```
+
+```output
+{
+  "rootCountAvailable": true,
+  "structuralErrors": 2
+}
+{
+  "rootCountAvailable": false,
+  "structuralErrors": 0
+}
+```

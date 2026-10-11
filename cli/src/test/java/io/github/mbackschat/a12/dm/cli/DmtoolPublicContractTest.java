@@ -313,6 +313,44 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void packagedPartialCountsIgnoreExcessDescendantCacheErrors(@TempDir Path dir) throws Exception {
+        var base = DocumentModelDraft.named("shipment-cache-cli").locale("en_US")
+                .rootGroup("Shipment", s -> s.stringField("Title", f -> { })
+                        .group("Manifests", m -> m.repeatable(2).stringField("Label", f -> { })
+                                .group("Crates", c -> c.repeatable(2).stringField("Tag", f -> { })
+                                        .group("Items", i -> i.repeatable(2)
+                                                .numberField("Quantity", f -> f.fractionDigits(0)))))).build().toJson();
+        var edit = EditSession.read(base);
+        var shipment = edit.group("/Shipment");
+        shipment.addRule(b -> b.name("RootCount").code("ROOT2").errorField(shipment.str("Title"))
+                .when(shipment.str("Title").filled().and(Dsl.numberOfFilledGroups(shipment.flattenGroup("Manifests*")).eq(2)))
+                .message(Dsl.en("Check manifest count.")).build());
+        String modelJson = edit.toJson();
+        Path model = dir.resolve("shipment.dm.json");
+        Files.writeString(model, modelJson);
+        var dmtool = new PackagedDmtool(dir);
+        for (boolean excess : List.of(false, true)) {
+            String items = excess ? "{\"Quantity\":1},{},{\"Quantity\":\"bad\"}" : "{\"Quantity\":\"bad\"}";
+            String json = "{\"Shipment\":{\"Title\":\"shipment\",\"Manifests\":[{\"Label\":\"first\","
+                    + "\"Crates\":[{\"Tag\":\"crate\",\"Items\":[" + items + "]}]},{\"Label\":\"second\"}]}}";
+            Path document = dir.resolve("shipment.json");
+            Files.writeString(document, json);
+            var result = dmtool.run("-m", model.toString(), "model", "eval", "--instance", document.toString(),
+                    "--no-computations", "--relevant", "[\"/Shipment\"]");
+            assertEquals(0, result.code(), result::out);
+            JsonNode data = MAPPER.readTree(result.out()).path("data");
+            assertEquals("partial", data.path("validationMode").asText());
+            var codes = new java.util.ArrayList<String>();
+            data.path("messages").forEach(message -> codes.add(message.path("code").asText()));
+            codes.sort(String::compareTo);
+            assertEquals(excess ? List.of("ROOT2", "zuGrosseKontextnummer", "zuGrosseZeile")
+                    : List.of("zahlHatUngueltigeZeichen"), codes, result::out);
+            assertEquals(json, Files.readString(document));
+            assertEquals(modelJson, Files.readString(model));
+        }
+    }
+
+    @Test
     void packagedFirstFilledRetainsNestedPrefixPolarity(@TempDir Path dir) throws Exception {
         String base = DocumentModelDraft.named("claim-first-payout-cli").locale("en_US")
                 .rootGroup("Claim", claim -> claim.stringField("Ref", f -> { })

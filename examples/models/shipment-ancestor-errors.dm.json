@@ -1,0 +1,187 @@
+{
+  "header" : {
+    "id" : "shipment-ancestor-errors",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "shipment-ancestor-errors",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Shipment",
+        "name" : "Shipment",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Shipment/Title",
+            "name" : "Title",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Shipment/Manifests",
+            "name" : "Manifests",
+            "Group" : {
+              "repeatability" : 2,
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/Shipment/Manifests/Label",
+                "name" : "Label",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              }, {
+                "type" : "Group",
+                "id" : "/Shipment/Manifests/Crates",
+                "name" : "Crates",
+                "Group" : {
+                  "repeatability" : 2,
+                  "elements" : [ {
+                    "type" : "Field",
+                    "id" : "/Shipment/Manifests/Crates/Tag",
+                    "name" : "Tag",
+                    "Field" : {
+                      "fieldType" : {
+                        "type" : "StringType"
+                      }
+                    }
+                  }, {
+                    "type" : "Group",
+                    "id" : "/Shipment/Manifests/Crates/Items",
+                    "name" : "Items",
+                    "Group" : {
+                      "repeatability" : 2,
+                      "elements" : [ {
+                        "type" : "Field",
+                        "id" : "/Shipment/Manifests/Crates/Items/Quantity",
+                        "name" : "Quantity",
+                        "Field" : {
+                          "fieldType" : {
+                            "type" : "NumberType",
+                            "NumberType" : {
+                              "maxFractionalDigits" : 0
+                            }
+                          }
+                        }
+                      } ]
+                    }
+                  } ]
+                }
+              }, {
+                "type" : "Rule",
+                "id" : "/Shipment/Manifests/BoundCount0",
+                "name" : "BoundCount0",
+                "Rule" : {
+                  "errorEntityRelPath" : "../Label",
+                  "errorCode" : "BOUND0",
+                  "errorCondition" : "FieldFilled(Label) And NumberOfFilledGroups(Crates*) == 0",
+                  "severity" : "ERROR",
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "Check crate count."
+                  } ]
+                }
+              }, {
+                "type" : "Rule",
+                "id" : "/Shipment/Manifests/BoundCount1",
+                "name" : "BoundCount1",
+                "Rule" : {
+                  "errorEntityRelPath" : "../Label",
+                  "errorCode" : "BOUND1",
+                  "errorCondition" : "FieldFilled(Label) And NumberOfFilledGroups(Crates*) == 1",
+                  "severity" : "ERROR",
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "Check crate count."
+                  } ]
+                }
+              }, {
+                "type" : "Rule",
+                "id" : "/Shipment/Manifests/BoundCount2",
+                "name" : "BoundCount2",
+                "Rule" : {
+                  "errorEntityRelPath" : "../Label",
+                  "errorCode" : "BOUND2",
+                  "errorCondition" : "FieldFilled(Label) And NumberOfFilledGroups(Crates*) == 2",
+                  "severity" : "ERROR",
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "Check crate count."
+                  } ]
+                }
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Shipment/RootCount0",
+            "name" : "RootCount0",
+            "Rule" : {
+              "errorEntityRelPath" : "../Title",
+              "errorCode" : "ROOT0",
+              "errorCondition" : "FieldFilled(Title) And NumberOfFilledGroups(Manifests*) == 0",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "Check manifest count."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Shipment/RootCount1",
+            "name" : "RootCount1",
+            "Rule" : {
+              "errorEntityRelPath" : "../Title",
+              "errorCode" : "ROOT1",
+              "errorCondition" : "FieldFilled(Title) And NumberOfFilledGroups(Manifests*) == 1",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "Check manifest count."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Shipment/RootCount2",
+            "name" : "RootCount2",
+            "Rule" : {
+              "errorEntityRelPath" : "../Title",
+              "errorCode" : "ROOT2",
+              "errorCondition" : "FieldFilled(Title) And NumberOfFilledGroups(Manifests*) == 2",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "Check manifest count."
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

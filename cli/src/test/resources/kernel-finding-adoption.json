@@ -8623,6 +8623,90 @@
           "evidence": {}
         }
       }
+    },
+    "kf58": {
+      "sha256": "b355a262fc8d24e7691f94c6e5d47694306067b8d3a5daaf665b829b55048eff",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "ancestor structural error cache"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "ancestor structural error cache"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "ancestor structural error cache"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "ancestor structural error cache"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies distinguish structural reporting from partial ancestor count suppression.",
+          "evidence": {
+            "ancestor structural error cache": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionAncestorCacheDiffTest.kt#excessDescendantsReportWithoutPoisoningTheirAncestors",
+              "witness": "Sixteen typed nested JSON cases compare counts and raw diagnostic identity."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The existing typed rule and group-count surfaces author this measurement.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Structural failures retain invalid operand admission but are excluded from the ancestor error cache.",
+          "evidence": {
+            "ancestor structural error cache": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionAncestorCacheDiffTest.kt#excessDescendantsReportWithoutPoisoningTheirAncestors",
+              "witness": "Ordinary malformed in-capacity controls still suppress affected counts; excess descendants do not."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Document instance repetition and runtime cache state are outside static model consistency.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Partial model evaluation inherits the corrected runtime cache distinction.",
+          "evidence": {
+            "ancestor structural error cache": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedPartialCountsIgnoreExcessDescendantCacheErrors",
+              "witness": "Packaged partial validation preserves ROOT2 beside structural errors; in-capacity malformed data suppresses it."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime ancestor cache state does not change imported model declarations or constraint synthesis.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime ancestor cache state does not change exported model constraints or carriage.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-18 remains pending peer verification; its other structural diagnostic relevance variants remain separate work.",
+          "evidence": {
+            "ancestor structural error cache": {
+              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-18",
+              "witness": "Pending queue entry separates structural diagnostics from ancestor error state."
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -213,7 +213,7 @@ class OverLimitAddressPresenceMultiplatformTest {
         assertEquals(FormalResult.Valid, skipped, "gate not needed → the coordinate is never consulted")
         assertEquals(
             OVER_REPETITION_CONTEXT,
-            ((run as? FormalResult.Invalid)?.failure as? FormalFailure.Generated)?.code,
+            ((run as? FormalResult.Invalid)?.failure as? FormalFailure.OverRepetition)?.code,
             "and the same cell WITH the gate is over-repetition — so the skip is what the flag controls",
         )
     }
@@ -247,6 +247,21 @@ class OverLimitAddressPresenceMultiplatformTest {
         val messages = DmInterpreter(def).validate(doc).messages
 
         assertEquals(1, messages.count { it.code == OVER_REPETITION_ROW }, "the over-limit row still emits zuGrosseZeile")
+    }
+
+    @Test
+    fun structuralFailuresStayInvalidWithoutEnteringTheAncestorErrorCache() {
+        val def = policyModel().copy(fields = listOf(FieldDef(RIDER_CODE, Kind.NUMBER), FieldDef(NOTE_TEXT, Kind.STRING)))
+        for (row in listOf(1, 3)) {
+            val reps = listOf(1, row, 1)
+            val doc = def.newDocument().group(POLICY, 1).group(RIDERS, 1, row)
+                .field(RIDER_CODE, "bad", *reps.toIntArray())
+            val checks = checksFor(def)
+            val admissions = ValueAdmissionCache(checks, "en_US", doc, overRepetitionGateNeeded = row == 3)
+            val cache = FormalResultCache(checks, "en_US", emptySet(), valueAdmissions = admissions)
+            assertTrue(cache.resultAt(RIDER_CODE, reps, "bad") is FormalResult.Invalid)
+            assertEquals(if (row == 3) emptyList() else listOf(reps), cache.invalidPointers().map { it.indices })
+        }
     }
 
     private fun policyModel() = ModelDef(

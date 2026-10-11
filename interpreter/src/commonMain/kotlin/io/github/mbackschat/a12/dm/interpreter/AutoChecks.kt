@@ -102,6 +102,7 @@ internal class AutoChecks(
                         MsgType.VALUE,
                         customMessage(failure.rejection, vf.path, locale),
                     )
+                    is FormalFailure.OverRepetition -> null
                     is FormalFailure.Generated -> result.reportedRejection?.let { rejection ->
                         formalMessage(rejection.code, FORMAL_RULE_PATH, doc.messagePointer(vf.path, vf.reps),
                             MsgType.VALUE, customMessage(rejection, vf.path, locale))
@@ -455,7 +456,7 @@ internal class AutoChecks(
      */
     fun overRepetitionResultAt(path: String, reps: List<Int>): FormalResult.Invalid? =
         paths.exceededBound(path, reps)?.let { exceeded ->
-            FormalResult.Invalid(FormalFailure.Generated(overRepetitionType(exceeded).code))
+            FormalResult.Invalid(FormalFailure.OverRepetition(overRepetitionType(exceeded).code))
         }
 
     /**

@@ -28,6 +28,8 @@ internal sealed interface FormalFailure {
         override val code: String get() = rejection.code
     }
 
+    data class OverRepetition(override val code: String) : FormalFailure
+
     data class Generated(override val code: String) : FormalFailure
 }
 
@@ -169,7 +171,10 @@ internal class FormalResultCache(
                 checks.computeFormalResultAt(path, reps, null, ctx, duplicates, valueAdmissions, groupFilled)
             }
         }
-        if (result is FormalResult.Invalid) invalidPointers += CustomConditionFieldPointer(path, reps)
+        // Address rejection reports separately and never marks ancestors erroneous (SPEC-2026-10-10-18).
+        if (result is FormalResult.Invalid && result.failure !is FormalFailure.OverRepetition) {
+            invalidPointers += CustomConditionFieldPointer(path, reps)
+        }
         return result
     }
 
