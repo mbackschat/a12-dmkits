@@ -32,8 +32,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  *
  * <p>The third arm, {@link IndexedGroupValue} — a group scope reached through a semantic index
  * ({@code [Group For key]}) — satisfies arity alone, as an unindexed group scope does, and it participates in
- * exact-duplicate detection keyed on group path AND index (KF351,
- * {@code validate.laws.SemanticIndexGroupOperandCarrierLawsTest}). Added directly rather than nested under {@link GroupListRef}
+ * exact-duplicate detection keyed on group path AND index unless its lower scope is starred (KF439,
+ * {@code validate.laws.IndexedStarDuplicateLawsTest}). Added directly rather than nested under {@link GroupListRef}
  * because that record is {@code final} — unlike {@link FieldOperand}'s own indexed-field arm, which
  * nested inside an existing sealed member.
  */

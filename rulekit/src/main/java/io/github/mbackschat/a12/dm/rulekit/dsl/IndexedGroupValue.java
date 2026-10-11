@@ -10,7 +10,7 @@ import java.util.Optional;
  * entity-list / group-list-quantifier member ({@link AggregateOperand}, {@link GroupListOperand}). Its arity
  * is an unindexed group's: alone it satisfies an entity list's param law, and alone it is refused by
  * {@code AllGroupsFilled}'s (KF351, {@code validate.laws.SemanticIndexGroupOperandCarrierLawsTest}). It
- * participates in exact-duplicate detection keyed on group path AND index, never on path alone.
+ * participates in exact-duplicate detection keyed on group path AND index unless its scope carries a star.
  *
  * <p>The scope may carry the {@code $} capture marker ({@link GroupListRef#outer()}), and the marker stays in the
  * rendering and in the identity. A12 refuses a semantic index anywhere in a filter body, which is the only place
@@ -58,10 +58,9 @@ public sealed interface IndexedGroupValue extends GroupScope, GroupListOperand
      * The compound identity for exact-duplicate detection ({@code MVK_DUPLICATE_PARAM1}) — group path,
      * index key, and the key's own {@code $} correlation if field-keyed. Shared with {@link
      * IndexedFieldValue#duplicateIdentity()}'s caller ({@code DuplicateGate})
-     * rather than a second, independent identity switch. Deliberately excludes the indirect-overlap
-     * case ({@code MVK_DUPLICATE_PARAM2} — an indexed field overlapping an indexed group over the same
-     * repetition): that stays kernel-arbitrated, exactly as the plain group arm's own indirect-overlap
-     * case already is.
+     * rather than a second, independent identity switch. The exact gate exempts a starred scope before reading
+     * this identity (KF439, {@code validate.laws.IndexedStarDuplicateLawsTest}); the independent containment
+     * arm still compares {@link #overlapModifier()} for starred and unstarred operands alike.
      */
     default String duplicateIdentity() {
         return renderedPath();
@@ -69,7 +68,7 @@ public sealed interface IndexedGroupValue extends GroupScope, GroupListOperand
 
     @Override
     default Optional<String> exactIdentity() {
-        return Optional.of(duplicateIdentity());
+        return group().flattened().isEmpty() ? Optional.of(duplicateIdentity()) : Optional.empty();
     }
 
     /** The base group this index selects a repetition of — the path the containment relation uses. */
