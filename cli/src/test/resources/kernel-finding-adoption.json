@@ -9430,12 +9430,13 @@
       }
     },
     "kf488": {
-      "sha256": "184f0f2bbf50da7ed3b5852861721037087ecea86c19599fe5d33a2ac1b9b18b",
+      "sha256": "e0a3556d1307ddc2ef2863ab84be6011757408968f425857ff04661b16439c47",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "selected authored scope admission",
-          "field-key address admission"
+          "field-key address admission",
+          "selected-level parallel uniqueness"
         ],
         "dmkits": [
           "typed selected reference identity"
@@ -9443,7 +9444,8 @@
         "interpreter": [],
         "checker": [
           "ordinary levels of selected authored references",
-          "field-key address admission"
+          "field-key address admission",
+          "selected-level parallel uniqueness"
         ],
         "dmtool-cli": [
           "portable model check selected scope",
@@ -9467,6 +9469,10 @@
             "field-key address admission": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SemanticKeyAddressAgreementTest.kt#fieldKeyAddressingKeepsParallelClassesAndRenamesOnlyUnaddressedIteration",
               "witness": "Eleven independently expected kernel cases preserve admitted target/key bindings and ordinary parallel index diagnostics; only NO_WILDCARD is renamed."
+            },
+            "selected-level parallel uniqueness": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedParallelUniquenessAgreementTest.kt#selectedLevelsDoNotCreateParallelIterationButOrdinaryTwinsDo",
+              "witness": "Literal/field-key selected-only conditions admit; adding an ordinary occurrence before or after selection draws PARALLEL_ITERATION_NOT_ALLOWED."
             }
           }
         },
@@ -9496,6 +9502,10 @@
             "field-key address admission": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SemanticKeyAddressAgreementTest.kt#fieldKeyAddressingKeepsParallelClassesAndRenamesOnlyUnaddressedIteration",
               "witness": "Eleven independently expected kernel cases preserve admitted target/key bindings and ordinary parallel index diagnostics; only NO_WILDCARD is renamed."
+            },
+            "selected-level parallel uniqueness": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedParallelUniquenessAgreementTest.kt#selectedLevelsDoNotCreateParallelIterationButOrdinaryTwinsDo",
+              "witness": "Literal/field-key selected-only conditions admit; adding an ordinary occurrence before or after selection draws PARALLEL_ITERATION_NOT_ALLOWED."
             }
           }
         },
