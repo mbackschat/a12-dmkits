@@ -116,6 +116,7 @@ class Interpreter(
     internal val starExtentKnown = config.starExtentKnown
     internal val starFullyEnumerated = config.starFullyEnumerated
     internal val groupCountGate = config.groupCountGate
+    private val absentGroupsCovered = config.absentGroupsCovered
     private val customRelevant = config.customRelevant
     private val computeScanState = config.computeScanState
     internal val computeMode = config.computeMode
@@ -898,7 +899,8 @@ class Interpreter(
      *  - a STARRED GROUP scope (`NoGroupFilled`/`AtLeastOneGroupFilled`, the only forms the kernel lets carry a
      *    `*`) yields one state per selected environment: a repeatable terminal row is FILLED structurally
      *    (IF46/IF68), while a non-repeatable terminal below starred ancestors retains its ordinary group-product
-     *    state (SPEC-2026-07-26-02);
+     *    state (SPEC-2026-07-26-02). Partial validation also yields UNKNOWN when a missing declared position
+     *    is not fully covered, after the held states so a positive witness remains decisive (SPEC-2026-10-10-20/21);
      *  - a KEYED FIELD (`Field For key`) contributes the presence of the cell its key selects, as `FieldFilled`
      *    reads it;
      *  - a KEYED GROUP (`Group For key`) contributes the product of the row its key selects; no row reads as an
@@ -913,10 +915,15 @@ class Interpreter(
                 groupFillStates(listOf(it))
             })
             arg is Expr.Star -> {
-                for (rc in ctxOf(arg).groupListEnvironments(arg.path, arg.bindDepth)) {
+                val context = ctxOf(arg)
+                val present = absentGroupsCovered?.let { HashSet<List<Int>>() }
+                for (rc in context.groupListEnvironments(arg.path, arg.bindDepth)) {
                     if (arg.having != null && !havingInterp(rc).keeps(arg.having)) continue
+                    present?.add(rc.repsOf(arg.path))
                     yield(groupPresence(rc, arg.path).fillProduct)
                 }
+                if (present != null && absentGroupsCovered?.invoke(
+                        arg.path, arg.bindDepth, context.repsOf(arg.path), present) == false) yield(Tri.UNKNOWN)
             }
             // a keyed operand names its target by path, so a keyed FIELD reads its selected cell like `FieldFilled`
             ctxOf(arg).declaredKind(if (arg is Expr.SemanticIndex) arg.path else pathOf(arg)) != null ->

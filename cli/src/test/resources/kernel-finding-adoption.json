@@ -9063,6 +9063,258 @@
           }
         }
       }
+    },
+    "kf13": {
+      "sha256": "511009851d41a526b0ecd45a248ad366dc33bac2cc74a8023495b12dc035f1e0",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "partial starred group missing-position coverage"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "partial starred group missing-position coverage"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "partial starred group missing-position coverage"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "partial starred group missing-position coverage"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Ordinary, keyed, duplicate and mixed operands agree on both kernel strategies, including coverage and positive-witness controls.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialStarredGroupCoverageDiffTest.kt#missingDeclaredPositionsRemainUnknownUnlessCovered",
+              "witness": "Ordinary, keyed, duplicate and mixed operands agree on both kernel strategies, including coverage and positive-witness controls."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Existing typed group handles author the runtime cases; the indexed duplicate exemption landed separately in 6ffc81990.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Missing versus selected parents and positive witnesses retain the measured distinction on JVM and Node.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/PartialStarredGroupCoverageTest.kt#missingPositionsNeedCoverageButAnIncludedRowDecidesPresence",
+              "witness": "Missing versus selected parents and positive witnesses retain the measured distinction on JVM and Node."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime relevance does not change model admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "The same concrete selectors establish starred group absence at capacity two but not three.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/PartialValidationCliTest.java#completeConcreteSelectionsUseDeclaredCapacity",
+              "witness": "The same concrete selectors establish starred group absence at capacity two but not three."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No imported keyword or synthesized rule changes.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No exported keyword or rule carriage changes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-20/21 await peer verification.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-20",
+              "witness": "SPEC-2026-10-10-20/21 await peer verification."
+            }
+          }
+        }
+      }
+    },
+    "kf229": {
+      "sha256": "b3e504f42c2bdb4bfca650287708c01c9e2bedf0beca5f8e9052682c64befbd2",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "partial starred group missing-position coverage"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "partial starred group missing-position coverage"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "partial starred group missing-position coverage"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "partial starred group missing-position coverage"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Ordinary, keyed, duplicate and mixed operands agree on both kernel strategies, including coverage and positive-witness controls.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialStarredGroupCoverageDiffTest.kt#missingDeclaredPositionsRemainUnknownUnlessCovered",
+              "witness": "Ordinary, keyed, duplicate and mixed operands agree on both kernel strategies, including coverage and positive-witness controls."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Existing typed group handles author the runtime cases; the indexed duplicate exemption landed separately in 6ffc81990.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Missing versus selected parents and positive witnesses retain the measured distinction on JVM and Node.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/PartialStarredGroupCoverageTest.kt#missingPositionsNeedCoverageButAnIncludedRowDecidesPresence",
+              "witness": "Missing versus selected parents and positive witnesses retain the measured distinction on JVM and Node."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime relevance does not change model admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "The same concrete selectors establish starred group absence at capacity two but not three.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/PartialValidationCliTest.java#completeConcreteSelectionsUseDeclaredCapacity",
+              "witness": "The same concrete selectors establish starred group absence at capacity two but not three."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No imported keyword or synthesized rule changes.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No exported keyword or rule carriage changes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-20/21 await peer verification.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-20",
+              "witness": "SPEC-2026-10-10-20/21 await peer verification."
+            }
+          }
+        }
+      }
+    },
+    "kf461": {
+      "sha256": "6d7ada5159103ffbb3801a1aca2fa167b0a68e2e1249f8d64425761f93d9f381",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "partial starred group missing-position coverage"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "partial starred group missing-position coverage"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "partial starred group missing-position coverage"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "partial starred group missing-position coverage"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Ordinary, keyed, duplicate and mixed operands agree on both kernel strategies, including coverage and positive-witness controls.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialStarredGroupCoverageDiffTest.kt#missingDeclaredPositionsRemainUnknownUnlessCovered",
+              "witness": "Ordinary, keyed, duplicate and mixed operands agree on both kernel strategies, including coverage and positive-witness controls."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Existing typed group handles author the runtime cases; the indexed duplicate exemption landed separately in 6ffc81990.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Missing versus selected parents and positive witnesses retain the measured distinction on JVM and Node.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/PartialStarredGroupCoverageTest.kt#missingPositionsNeedCoverageButAnIncludedRowDecidesPresence",
+              "witness": "Missing versus selected parents and positive witnesses retain the measured distinction on JVM and Node."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime relevance does not change model admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "The same concrete selectors establish starred group absence at capacity two but not three.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/PartialValidationCliTest.java#completeConcreteSelectionsUseDeclaredCapacity",
+              "witness": "The same concrete selectors establish starred group absence at capacity two but not three."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No imported keyword or synthesized rule changes.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No exported keyword or rule carriage changes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-20/21 await peer verification.",
+          "evidence": {
+            "partial starred group missing-position coverage": {
+              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-20",
+              "witness": "SPEC-2026-10-10-20/21 await peer verification."
+            }
+          }
+        }
+      }
     }
   }
 }

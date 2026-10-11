@@ -369,7 +369,7 @@ private fun Interpreter.countFill(
  * per unstarred operand, and for a starred one [declaredGroupListExtent], the product of the declared capacities
  * of the repeatable levels it ranges over (KF463). Reading the
  * declared extent rather than the instantiated rows is what makes an EMPTY repeatable group growable — with no
- * rows at all there is nothing for [Interpreter.groupFillStates] to yield, and an instantiated-row tally would
+ * rows at all [Interpreter.groupFillStates] contributes no TRUE state, and an instantiated-row tally would
  * answer `0 > 0` and type a fired comparison VALUE. An unbounded repeatable operand never closes its tail.
  *
  * Before this, every shape here fell through to `leafOmission(Expr.Field(<group path>))`, whose `!filled(<group

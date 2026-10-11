@@ -338,7 +338,7 @@ class DmInterpreter private constructor(
             starFullyEnumerated = starFullyEnumeratedOf(relevant),
             groupRelevance = groupRelevanceOf(relevant),
             relevantWithin = queries::isRelevantWithin,
-            groupCounts = GroupCountExtents(relevant),
+            groupExtents = PartialGroupExtents(relevant),
         ))
     }
 
@@ -361,8 +361,8 @@ class DmInterpreter private constructor(
         val groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL },
         /** [EffectiveRelevanceIndex.isRelevantWithin] — the rule-run gate's bound-level query ([IF268]). */
         val relevantWithin: ((String, List<Int>, Int) -> Boolean)? = null,
-        /** The relevance side of `NumberOfFilledGroups`' [GroupCountGate] ([IF339]). */
-        val groupCounts: GroupCountExtents? = null,
+        /** Missing-position coverage for group predicates and the stricter count gate ([IF193], [IF339]). */
+        val groupExtents: PartialGroupExtents? = null,
     ) {
         companion object {
             val FULL = CallRelevance(ALL_RELEVANT)
@@ -404,7 +404,8 @@ class DmInterpreter private constructor(
     }
 
     /**
-     * Partial validation's [GroupCountGate] for `NumberOfFilledGroups`, which A12 decides on the counted group
+     * Partial group predicates and counts share the missing-position coverage check (SPEC-2026-10-10-20/21).
+     * The stricter [GroupCountGate] for `NumberOfFilledGroups` is decided on the counted group
      * itself rather than on its fields (KF464, IF339). An operand is countable when three things hold:
      *
      * 1. **The group's own identifiers establish the extent.** They are the relevant entities at or above the
@@ -423,9 +424,10 @@ class DmInterpreter private constructor(
      * A group without a declared capacity, which only a hand-built model can express since `ModelLoader` gives
      * every A12 repeatable group one, is read as having such a row beyond every named index.
      */
-    private inner class GroupCountExtents(relevant: Set<RelevantEntity>) {
+    private inner class PartialGroupExtents(relevant: Set<RelevantEntity>) {
         private val candidates = wellFormed(relevant)
         private val reducedByPath = HashMap<String, List<RelevantEntity>>()
+        private val absentCoverage = HashMap<Triple<String, Int, List<Int>>, Boolean>()
 
         fun gate(presence: (String, List<Int>) -> GroupPresenceState): GroupCountGate {
             val decided = HashMap<Triple<String, Int, List<Int>>, Boolean>()
@@ -435,9 +437,19 @@ class DmInterpreter private constructor(
                     wildcardsEveryStarredLevel(reducedByPath.getOrPut(groupPath) { ownIdentifiers(groupPath) }, scope) &&
                         presence(groupPath, firstInstance(groupPath, scope))
                             .let { it.relevance == GroupRelevance.FULL && !it.erroneous } &&
-                        absentRepresentatives(groupPath, scope, present)
-                            .all { presence(groupPath, it).relevance == GroupRelevance.FULL }
+                        coversAbsent(groupPath, bindDepth, rowReps, present, presence)
                 }
+            }
+        }
+
+        /** Missing positions have the same coverage requirement for predicates and counts; predicates do not
+         * inherit the count's own-identifier wildcard or first-instance gates (SPEC-2026-10-10-20/21). */
+        fun coversAbsent(groupPath: String, bindDepth: Int, rowReps: List<Int>, present: Set<List<Int>>,
+                presence: (String, List<Int>) -> GroupPresenceState): Boolean {
+            val scope = starScope(groupPath, bindDepth, rowReps)
+            return absentCoverage.getOrPut(Triple(groupPath, bindDepth, scope.bound)) {
+                absentRepresentatives(groupPath, scope, present)
+                    .all { presence(groupPath, it).relevance == GroupRelevance.FULL }
             }
         }
 
@@ -813,7 +825,7 @@ class DmInterpreter private constructor(
                 validationConfig(
                     relevance,
                     indexIdentityAdmitted,
-                    relevance.groupCounts?.gate { path, reps -> groupPresence.state(path, reps) },
+                    relevance.groupExtents?.gate { path, reps -> groupPresence.state(path, reps) },
                 ) { path, reps -> groupPresence.state(path, reps) },
                 formalResults, { formallyIncorrect })
             for (rule in model.rules) {
@@ -1039,7 +1051,12 @@ class DmInterpreter private constructor(
             starRelevant = relevance.starRelevant, starExtentKnown = relevance.starExtentKnown,
             starFullyEnumerated = relevance.starFullyEnumerated,
             customRelevant = relevance.customRelevant, groupPresence = groupPresence, groupCountGate = groupCountGate)
-            .also { it.work = workLedger }
+            .also { config ->
+                config.work = workLedger
+                config.absentGroupsCovered = relevance.groupExtents?.let { extents ->
+                    { path, depth, reps, present -> extents.coversAbsent(path, depth, reps, present, groupPresence) }
+                }
+            }
 
     /** The kernel's allowed-and-eliminated raw-type length shape (see [rowOutcomes]): the whole condition is
      *  `Length(nvv) > constant` or the mirrored `constant < Length(nvv)` — GT/LT only (`>=`-style variants are

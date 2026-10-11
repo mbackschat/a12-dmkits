@@ -52,6 +52,9 @@ class PartialValidationCliTest {
             delivery.addRule(rule -> rule.name("ReviewEmpty").code("REVIEW_EMPTY").errorField(reference)
                     .when(reference.filled().and(delivery.group("Review").notFilled()))
                     .message(Dsl.en("Review is empty.")).build());
+            delivery.addRule(rule -> rule.name("ChecksEmpty").code("CHECKS_EMPTY").errorField(reference)
+                    .when(reference.filled().and(Dsl.noGroupFilled(delivery.flattenGroup("Review/Checks*"))))
+                    .message(Dsl.en("No check is present.")).build());
             Path model = dir.resolve("delivery-" + capacity + ".dm.json");
             Files.writeString(model, session.toJson());
             JsonNode result = data(CliTestSupport.run("-m", model.toString(), "model", "eval",
@@ -60,6 +63,7 @@ class PartialValidationCliTest {
                             + "\"/Delivery/Review/Checks[1]/Code\",\"/Delivery/Review/Checks[2]/Code\"]"));
             assertEquals(capacity == 2, fired(result).contains("NO_URGENT"), "declared capacity=" + capacity);
             assertEquals(capacity == 2, fired(result).contains("REVIEW_EMPTY"), "parent coverage at capacity=" + capacity);
+            assertEquals(capacity == 2, fired(result).contains("CHECKS_EMPTY"), "missing group coverage at capacity=" + capacity);
         }
     }
 

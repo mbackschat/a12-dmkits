@@ -1486,6 +1486,10 @@
         {
           "text": "despite the group-list name, FIELD operands are admitted (mixed or field-only): an unavailable field (formally invalid or not check-relevant) is NOT empty, so it blocks NoGroupFilled exactly like an erroneous group",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "in partial validation, a starred group cannot be proved empty while any missing declared position lacks full coverage; complete concrete lower slots suffice under a selected parent, but a missing keyed parent requires wildcard coverage there",
+          "kind": "SURPRISE"
         }
       ],
       "validExample": {
@@ -1526,6 +1530,10 @@
         },
         {
           "text": "despite the group-list name, FIELD operands are admitted (mixed or field-only): a checked-filled field is a decisive positive witness even beside an unavailable sibling",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "in partial validation, an included positive group row remains decisive even when missing declared positions are not covered; a fixed child below a star retains its own group state",
           "kind": "SURPRISE"
         }
       ],

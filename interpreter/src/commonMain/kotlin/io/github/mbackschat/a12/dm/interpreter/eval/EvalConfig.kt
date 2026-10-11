@@ -115,6 +115,12 @@ class EvalConfig(
     val filterWalkGroups: ((String) -> Boolean)? = null,
 ) {
 
+    /** Validation-owned partial group-predicate extent check. Full validation and computation retain the
+     * held-row walk; only partial validation asks whether missing declared positions are covered
+     * (`PartialStarredGroupCoverageDiffTest`, SPEC-2026-10-10-20/21). */
+    internal var absentGroupsCovered: ((String, Int, List<Int>, Set<List<Int>>) -> Boolean)? = null
+
+
     /**
      * The call's deterministic work tally, or null in production — see [WorkLedger] for why a count and not a
      * clock. It rides the config rather than the constructor because the config is allocated ONCE per call and

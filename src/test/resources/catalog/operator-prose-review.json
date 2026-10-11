@@ -2,6 +2,38 @@
   "schemaVersion": 2,
   "units": [
     {
+      "operator": "NoGroupFilled",
+      "lane": "GOTCHA",
+      "ordinal": 3,
+      "digest": "sha256:660a3bd61c8e7d0f5bf85b2f22ebdea2f4b81ac60acee6669f708163eea6d988",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.PartialStarredGroupCoverageDiffTest.missingDeclaredPositionsRemainUnknownUnlessCovered"
+        }
+      ]
+    },
+    {
+      "operator": "AtLeastOneGroupFilled",
+      "lane": "GOTCHA",
+      "ordinal": 2,
+      "digest": "sha256:bdf970ad5713383c62cbd63e8d3d811f5298cc8e48e193a19e98b6859cd4b85b",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.PartialStarredGroupCoverageDiffTest.missingDeclaredPositionsRemainUnknownUnlessCovered"
+        }
+      ]
+    },
+    {
       "operator": "FieldFilled",
       "lane": "MEANING",
       "ordinal": 0,
