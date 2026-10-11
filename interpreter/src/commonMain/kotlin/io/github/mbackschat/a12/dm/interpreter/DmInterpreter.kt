@@ -482,10 +482,11 @@ class DmInterpreter private constructor(
     }
 
     /**
-     * A starred VALUE-LIST or `NumberOfValueInFields` entry's complete-extent gate uses the same star anchor and
+     * The complete-extent gate for value lists, value counts and descendant group coverage uses the same star anchor and
      * per-iteration-row scope as [starRelevantOf]. A wildcard covering every reopened level or a union covering
      * every declared slot establishes extent; concrete siblings do not suppress either (SPEC-2026-10-10-15,
-     * `PartialDeclaredListExtentDiffTest`). Wildcards still establish extent for unbounded declarations.
+     * `PartialDeclaredListExtentDiffTest`). Descendant group coverage shares this union (SPEC-2026-10-10-22,
+     * `PartialParentGroupCoverageDiffTest`). Wildcards still establish extent for unbounded declarations.
      *
      * The two gates were briefly one predicate, on the reasoning that they answer the same structural question.
      * They do not. On `{field wildcard} + {concrete group rows}` the kernel FIRES a starred `No` and is SILENT
@@ -1350,6 +1351,7 @@ class DmInterpreter private constructor(
      */
     private fun groupRelevanceOf(relevant: Set<RelevantEntity>): (String, List<Int>) -> GroupRelevance {
         val effective = relevant + model.globalFields.map(RelevantEntity::anyRep)
+        val coversField = starExtentKnownOf(effective)
         val fieldsByAncestor = HashMap<String, MutableList<String>>()
         for (field in model.fields) {
             val parts = pathParts(field.path)
@@ -1369,31 +1371,13 @@ class DmInterpreter private constructor(
             }
         }
 
-        fun fullyCoversField(
-            entity: RelevantEntity,
-            fieldPath: String,
-            groupPath: String,
-            groupReps: List<Int>,
-        ): Boolean {
-            if (!touchesGroup(entity, groupPath, groupReps)) return false
-            val entityParts = pathParts(entity.path)
-            val fieldParts = pathParts(fieldPath)
-            if (entityParts.size > fieldParts.size || entityParts != fieldParts.take(entityParts.size)) return false
-            val groupDepth = pathParts(groupPath).size
-            for (level in groupDepth until entityParts.size) {
-                val prefix = "/" + entityParts.take(level + 1).joinToString("/")
-                if (prefix in model.repeatable && entity.indices[level] != RelevantEntity.ALL) return false
-            }
-            return true
-        }
-
         return { groupPath, groupReps ->
             cache.getOrPut(groupPath) { HashMap() }.getOrPut(groupReps) {
                 if (effective.none { touchesGroup(it, groupPath, groupReps) }) {
                     GroupRelevance.NONE
                 } else if (effective.any { matches(it, groupPath, groupReps) } ||
                     fieldsByAncestor[groupPath].orEmpty().all { field ->
-                        effective.any { fullyCoversField(it, field, groupPath, groupReps) }
+                        coversField(field, pathParts(groupPath).size, groupReps)
                     }) {
                     GroupRelevance.FULL
                 } else {

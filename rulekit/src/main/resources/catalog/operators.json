@@ -1384,7 +1384,7 @@
       ],
       "gotchas": [
         {
-          "text": "GroupNotFilled is not the Boolean inverse of GroupFilled under formal errors: an invalid-only non-repeatable group is neither filled nor definitely empty",
+          "text": "GroupNotFilled is not the Boolean inverse of GroupFilled under formal errors: an invalid-only non-repeatable group is neither filled nor definitely empty; in partial validation, clean absence needs full group relevance, which concrete descendant selections can jointly establish by covering every declared finite repetition combination and every descendant field, independently of held rows",
           "kind": "SURPRISE"
         },
         {

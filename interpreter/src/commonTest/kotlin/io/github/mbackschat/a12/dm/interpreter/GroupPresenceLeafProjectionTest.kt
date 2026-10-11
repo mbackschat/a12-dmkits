@@ -6,7 +6,12 @@ import io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState
 import io.github.mbackschat.a12.dm.interpreter.eval.GroupRelevance
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
+import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,6 +39,37 @@ import kotlin.test.assertEquals
  * the leaf and the GROUP-fill tally now project one presence notion instead of two.
  */
 class GroupPresenceLeafProjectionTest {
+
+    @Test
+    fun descendantCoverageMatchesEveryConcreteTuple() {
+        val parent = "/Shipment/Assessment"
+        val packages = "$parent/Packages"
+        val items = "$packages/Items"
+        val quantity = "$items/Quantity"
+        val reference = "/Shipment/Reference"
+        val patterns = (0..2).flatMap { p -> (0..2).map { i -> p to i } }
+        for (bounded in listOf(true, false)) {
+            val model = ModelDef(
+                fields = listOf(FieldDef(reference, Kind.STRING), FieldDef("$parent/Score", Kind.NUMBER), FieldDef(quantity, Kind.NUMBER)),
+                rules = listOf(RuleDef("/Shipment/Coverage", "/Shipment", "FieldFilled(Reference) And GroupNotFilled(Assessment)", "EMPTY", "../Reference")),
+                repeatableGroups = setOf(packages, items),
+                declaredReps = if (bounded) mapOf(packages to 2, items to 2) else emptyMap(),
+            )
+            val interpreter = DmInterpreter(model)
+            val document = model.newDocument().group("/Shipment", 1).field(reference, "ready", 1, 1)
+            val direct = setOf(RelevantEntity.anyRep(reference), RelevantEntity.anyRep("$parent/Score"))
+            val concreteProduct = patterns.indices.filter { patterns[it].first > 0 && patterns[it].second > 0 }.sumOf { 1 shl it }
+            for (mask in if (bounded) 0 until (1 shl patterns.size) else listOf(1, concreteProduct)) {
+                val selected = patterns.filterIndexed { index, _ -> mask and (1 shl index) != 0 }
+                val complete = if (bounded) (1..2).all { p -> (1..2).all { i ->
+                    selected.any { (a, b) -> (a == 0 || a == p) && (b == 0 || b == i) }
+                } } else selected.any { it == (0 to 0) }
+                val relevant = direct + selected.map { (p, i) -> RelevantEntity(quantity, listOf(0, 0, p, i, 0)) }
+                val report = interpreter.validatePart(document, relevant)
+                assertEquals(if (complete) 1 else 0, report.messages.count { it.code == "EMPTY" }, "bounded=$bounded/subset=$mask")
+            }
+        }
+    }
 
     private val CASE = "/Case"
     private val ANCHOR = "/Case/Anchor"

@@ -1399,7 +1399,7 @@
       "operator": "GroupNotFilled",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:c7980c1f16b40b66ce24c917b25b2bcbf8805d44026b462e32d6e5eb6117ff28",
+      "digest": "sha256:cf4c5958b8889c09a43da543133935df3867aef3e07fb027431d663a010a2bfa",
       "classifications": [
         "RUNTIME"
       ],
@@ -1408,6 +1408,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.GroupPresenceFormalInvalidDiffTest.malformedOnlyGroupIsNeitherFilledNorDefinitelyEmpty"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.PartialParentGroupCoverageDiffTest.descendantCoverageUsesTheWholeDeclaredProduct"
         }
       ]
     },

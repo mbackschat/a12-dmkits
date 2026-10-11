@@ -39,7 +39,9 @@ class PartialValidationCliTest {
         for (int capacity : List.of(2, 3)) {
             var session = EditSession.read(DocumentModelDraft.named("delivery-coverage-cli").locale("en_US")
                     .rootGroup("Delivery", delivery -> delivery.stringField("Reference", field -> {})
-                            .group("Labels", labels -> labels.repeatable(capacity).stringField("Code", field -> {})))
+                            .group("Labels", labels -> labels.repeatable(capacity).stringField("Code", field -> {}))
+                            .group("Review", review -> review.group("Checks", checks ->
+                                    checks.repeatable(capacity).stringField("Code", field -> {}))))
                     .build().toJson());
             var delivery = session.group("/Delivery");
             var reference = delivery.str("Reference");
@@ -47,12 +49,17 @@ class PartialValidationCliTest {
                     .when(reference.filled().and(Dsl.noFieldValueIncludedInValueList(
                             List.of("urgent"), delivery.flatten("Labels*/Code"))))
                     .message(Dsl.en("No urgent label.")).build());
+            delivery.addRule(rule -> rule.name("ReviewEmpty").code("REVIEW_EMPTY").errorField(reference)
+                    .when(reference.filled().and(delivery.group("Review").notFilled()))
+                    .message(Dsl.en("Review is empty.")).build());
             Path model = dir.resolve("delivery-" + capacity + ".dm.json");
             Files.writeString(model, session.toJson());
             JsonNode result = data(CliTestSupport.run("-m", model.toString(), "model", "eval",
                     "--instance", doc.toString(), "--no-computations", "--relevant",
-                    "[\"/Delivery/Reference\",\"/Delivery/Labels[1]/Code\",\"/Delivery/Labels[2]/Code\"]"));
+                    "[\"/Delivery/Reference\",\"/Delivery/Labels[1]/Code\",\"/Delivery/Labels[2]/Code\","
+                            + "\"/Delivery/Review/Checks[1]/Code\",\"/Delivery/Review/Checks[2]/Code\"]"));
             assertEquals(capacity == 2, fired(result).contains("NO_URGENT"), "declared capacity=" + capacity);
+            assertEquals(capacity == 2, fired(result).contains("REVIEW_EMPTY"), "parent coverage at capacity=" + capacity);
         }
     }
 

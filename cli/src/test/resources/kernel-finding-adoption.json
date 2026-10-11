@@ -8979,6 +8979,90 @@
           }
         }
       }
+    },
+    "kf120": {
+      "sha256": "010196cc4152f2c682b501bca3f1552ffc741a89bad4f02bfe844baaa32415a0",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "finite descendant coverage of parent groups"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "finite descendant coverage of parent groups"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "finite descendant coverage of parent groups"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "finite descendant coverage of parent groups"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Complete products versus diagonal, duplicate, missing-field and out-of-capacity controls agree on both kernel strategies.",
+          "evidence": {
+            "finite descendant coverage of parent groups": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialParentGroupCoverageDiffTest.kt#descendantCoverageUsesTheWholeDeclaredProduct",
+              "witness": "Complete products versus diagonal, duplicate, missing-field and out-of-capacity controls agree on both kernel strategies."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Existing typed group predicates and relevance pointers author the measured cases.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The shared coverage gate matches an independent four-tuple oracle on JVM and Node.",
+          "evidence": {
+            "finite descendant coverage of parent groups": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/GroupPresenceLeafProjectionTest.kt#descendantCoverageMatchesEveryConcreteTuple",
+              "witness": "The shared coverage gate matches an independent four-tuple oracle on JVM and Node."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime relevance does not change model admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Concrete descendant selections prove parent absence at capacity two but not three.",
+          "evidence": {
+            "finite descendant coverage of parent groups": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/PartialValidationCliTest.java#completeConcreteSelectionsUseDeclaredCapacity",
+              "witness": "Concrete descendant selections prove parent absence at capacity two but not three."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No imported keyword or synthesized rule changes.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No exported keyword or rule carriage changes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-22 awaits peer verification.",
+          "evidence": {
+            "finite descendant coverage of parent groups": {
+              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-22",
+              "witness": "SPEC-2026-10-10-22 awaits peer verification."
+            }
+          }
+        }
+      }
     }
   }
 }
