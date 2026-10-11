@@ -9430,13 +9430,15 @@
       }
     },
     "kf488": {
-      "sha256": "e0a3556d1307ddc2ef2863ab84be6011757408968f425857ff04661b16439c47",
+      "sha256": "1853e71f12af8e8da9140f3c05f23263ac36673fb4033cf84dcadd0080267b29",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "selected authored scope admission",
           "field-key address admission",
-          "selected-level parallel uniqueness"
+          "selected-level parallel uniqueness",
+          "selected-reference containment",
+          "selected lower-star containment"
         ],
         "dmkits": [
           "typed selected reference identity"
@@ -9445,7 +9447,9 @@
         "checker": [
           "ordinary levels of selected authored references",
           "field-key address admission",
-          "selected-level parallel uniqueness"
+          "selected-level parallel uniqueness",
+          "selected-reference containment",
+          "selected lower-star containment"
         ],
         "dmtool-cli": [
           "portable model check selected scope",
@@ -9473,6 +9477,14 @@
             "selected-level parallel uniqueness": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedParallelUniquenessAgreementTest.kt#selectedLevelsDoNotCreateParallelIterationButOrdinaryTwinsDo",
               "witness": "Literal/field-key selected-only conditions admit; adding an ordinary occurrence before or after selection draws PARALLEL_ITERATION_NOT_ALLOWED."
+            },
+            "selected-reference containment": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedContainmentAgreementTest.kt#containmentChecksOnlyTheOrdinaryLevelsLeftBySelection",
+              "witness": "Selected field and fixed-group payloads retain ordinary payload/key ancestors for containment; selected-only controls admit from both declaring groups."
+            },
+            "selected lower-star containment": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedContainmentAgreementTest.kt#lowerStarsPreserveTheSameContainmentBoundary",
+              "witness": "The separately measured lower-star field/group carriers retain the same containment boundary and selected-only admissions."
             }
           }
         },
@@ -9506,6 +9518,14 @@
             "selected-level parallel uniqueness": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedParallelUniquenessAgreementTest.kt#selectedLevelsDoNotCreateParallelIterationButOrdinaryTwinsDo",
               "witness": "Literal/field-key selected-only conditions admit; adding an ordinary occurrence before or after selection draws PARALLEL_ITERATION_NOT_ALLOWED."
+            },
+            "selected-reference containment": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedContainmentAgreementTest.kt#containmentChecksOnlyTheOrdinaryLevelsLeftBySelection",
+              "witness": "Selected field and fixed-group payloads retain ordinary payload/key ancestors for containment; selected-only controls admit from both declaring groups."
+            },
+            "selected lower-star containment": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedContainmentAgreementTest.kt#lowerStarsPreserveTheSameContainmentBoundary",
+              "witness": "The separately measured lower-star field/group carriers retain the same containment boundary and selected-only admissions."
             }
           }
         },

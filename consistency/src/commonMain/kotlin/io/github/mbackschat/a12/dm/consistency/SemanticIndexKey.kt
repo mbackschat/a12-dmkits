@@ -71,6 +71,8 @@ private fun TrackedFactBase.keyIterationFinding(
         return null
     }
     if (insideAFilter || targetGroup == null) return null
+    // Containment answers first on an iterating key (SelectedContainmentAgreementTest, KF488).
+    if (targetGroup != group && !targetGroup.startsWith("$group/")) return null
     val resolved = resolveEntity(group, key, element.origin) as? Reference.Resolved ?: return null
     val addressClass = if (declarationAt(resolved.path)?.declaredKind == DeclaredKind.FIELD) {
         levelClassOf(key, group, targetGroup, element)

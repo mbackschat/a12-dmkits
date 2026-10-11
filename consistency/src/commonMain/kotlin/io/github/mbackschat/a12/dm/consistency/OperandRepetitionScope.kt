@@ -119,12 +119,26 @@ internal fun TrackedFactBase.rulesOwnIterationLevels(element: TrackedDeclaration
         for (read in referenceSpansIn(rulesOwnReadsIn(text, conditionLanguage), conditionLanguage)) {
             val path = (resolveEntity(group, read.written.replace("*", ""), element.origin) as? Reference.Resolved)
                 ?.path ?: return null
-            val levels = unstarredRepeatableLevels(read.written, path, group, element) ?: return null
-            val selected = if (indexes.any { it.indexes(read.end, text) }) indexGroupOf(path) else null
-            levelsByReference.getOrPut(read.written) { mutableSetOf() }.addAll(levels.filter { it != selected })
+            val levels = ordinaryRepeatableLevels(read.written, path, group, element,
+                indexed = indexes.any { it.indexes(read.end, text) }) ?: return null
+            levelsByReference.getOrPut(read.written) { mutableSetOf() }.addAll(levels)
         }
     }
     return levelsByReference
+}
+
+/** Selection replaces one indexed level, while stars replace only their own levels (KF488). Sharing this
+ * calculation keeps parse-time containment and post-parse binding on the same authored scope. */
+internal fun TrackedFactBase.ordinaryRepeatableLevels(
+    written: String,
+    path: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+    indexed: Boolean,
+): List<String>? {
+    val levels = unstarredRepeatableLevels(written, path, declaringGroup, element) ?: return null
+    val selected = if (indexed) indexGroupOf(path) else null
+    return levels.filter { it != selected }
 }
 
 /**

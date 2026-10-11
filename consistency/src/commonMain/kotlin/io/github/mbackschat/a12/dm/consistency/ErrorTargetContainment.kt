@@ -49,12 +49,12 @@ internal fun TrackedFactBase.errorContainmentContributions(element: TrackedDecla
     val group = element.path.substringBeforeLast('/')
     if (target == group || target.startsWith("$group/")) return emptyList()
     return entityContributions(element, EntityCheck.ADDRESS) { entity, span ->
-        if (entity.indexKey || entity.indexed || entity.inFilter && entity.path.first().text != "$")
+        if (entity.inFilter && entity.path.first().text != "$")
             return@entityContributions null
         val written = normalizedPath(entity.path.dropWhile { it.text == "$" })
         val reference = ConditionReference(element.path, span.member, written,
             resolveEntity(group, written, element.origin), span)
-        if (!readsOneRowAtATime(reference, group, element)) return@entityContributions null
+        if (!readsOneRowAtATime(reference, group, element, entity.indexed)) return@entityContributions null
         containmentFinding(declared, target, group, reference)
     }
 }
@@ -64,8 +64,8 @@ internal fun TrackedFactBase.errorContainmentContributions(element: TrackedDecla
  *
  * A star makes its level an aggregate over the extent rather than a read within it, and the authored
  * spelling is where that shows: the resolved path carries no star, so a family reading only the path cannot
- * tell the two apart and would refuse every aggregate. So a read is per-row exactly when a repeatable level it
- * crosses carries no star. A star that lands on a level that does not repeat is `MVK_INVALID_WILDCARD`, which
+ * tell the two apart and would refuse every aggregate. Selection likewise replaces only its indexed level
+ * (SelectedContainmentAgreementTest, KF488); a read is per-row when any ordinary level remains. A star that lands on a level that does not repeat is `MVK_INVALID_WILDCARD`, which
  * A12 answers alone (`rulekit.validate.laws.PartialStarContainmentLawsTest`), so such a reference is the
  * wildcard family's and reads no row here.
  */
@@ -73,9 +73,10 @@ private fun TrackedFactBase.readsOneRowAtATime(
     reference: ConditionReference,
     declaringGroup: String,
     element: TrackedDeclaration,
+    indexed: Boolean,
 ): Boolean {
     val path = (reference.target as? Reference.Resolved)?.path ?: return false
-    return unstarredRepeatableLevels(reference.written, path, declaringGroup, element)?.isNotEmpty() == true
+    return ordinaryRepeatableLevels(reference.written, path, declaringGroup, element, indexed)?.isNotEmpty() == true
 }
 
 /**
