@@ -4306,6 +4306,10 @@
           "seeAlso": [
             "NumberOfFilledFields"
           ]
+        },
+        {
+          "text": "Having-filtered Number and String value counts spanning two unbound repetition levels retain dense candidate selection above 100 cache-bounded candidates, unlike Sum and NumberOfFilledFields. Missing slots can therefore expose a failing filter that those sparse aggregate scans skip (KF528).",
+          "kind": "SURPRISE"
         }
       ],
       "validExample": {
@@ -5645,6 +5649,10 @@
         {
           "text": "polarity follows the REACHED filter scan, not mere filter presence: the error becomes OMISSION only after a kept, filled value from a Having-filtered operand was processed, and that flag then stays sticky through a later firing pair even if the earlier range was disjoint. A filtered operand with no kept, filled value does not taint a later unfiltered pair. Having is applied per value (keep iff TRUE; a $-correlation term here has no enclosing iteration, so it is trivially satisfied).",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "For Having-filtered exact yyyy-MM-dd and yearless MM-dd range lists spanning two unbound repetition levels, any-pair overlap retains dense candidate selection even above 100 cache-bounded candidates; scalar-to-list AtLeastOneDateRangeOverlaps enables occupied-prefix selection instead (KF528).",
+          "kind": "SURPRISE"
         }
       ],
       "constraints": [
@@ -5736,6 +5744,10 @@
         },
         {
           "text": "genuinely SCALAR-vs-LIST (unlike DateRangesOverlap's any-pair set): the scalar is checked first and compared against each list value, never added to a set. A not-filled, malformed, or formally unavailable scalar exits with no fire before list-internal overlaps can matter. Polarity belongs only to the MATCHED list container: a filtered match is OMISSION and an unfiltered match VALUE; an earlier filtered-but-disjoint or empty container does not taint a later unfiltered match.",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "For Having-filtered exact yyyy-MM-dd and yearless MM-dd range lists spanning two unbound repetition levels, scalar-to-list overlap enables occupied-prefix selection above 100 cache-bounded candidates. An explicitly blank row still counts as occupied and can expose a failing filter; DateRangesOverlap retains dense selection (KF528).",
           "kind": "SURPRISE"
         }
       ],

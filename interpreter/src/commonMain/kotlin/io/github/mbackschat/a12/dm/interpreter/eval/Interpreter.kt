@@ -1250,7 +1250,7 @@ class Interpreter(
         for (i in 1 until args.size) {
             val arg = args[i]
             val filtered = arg is Expr.Star && arg.having != null
-            for (cell in overlapCells(arg)) {
+            for (cell in overlapCells(arg, FilterTraversal.SPARSE)) {
                 if (rangesOverlap(scalar, cell))
                     return Res.of(Tri.TRUE, if (filtered) MsgType.OMISSION else MsgType.VALUE)
             }
@@ -1269,7 +1269,7 @@ class Interpreter(
      * malformed real operand drops them. Distinct from the quantifier-`Having` path ([starOperandVals], `$` bound
      * to the enclosing row). (KERNEL-FINDINGS §6, IF72.)
      */
-    private fun overlapCells(arg: Expr): Sequence<Val.Range> = when {
+    private fun overlapCells(arg: Expr, traversal: FilterTraversal = FilterTraversal.DENSE): Sequence<Val.Range> = when {
         // A GROUP operand names no declared field, so BOTH arms below were blind to it and by different
         // mechanisms: the starred arm read `star` at the group path (zero cells, a silent non-overlap), while the
         // unstarred arm asked `evalExpr` for a range at a path holding no value and THREW `no kind declared` —
@@ -1283,8 +1283,8 @@ class Interpreter(
         // that accessor, so the emptiness question is now asked of the model directly.
         namesAGroup(arg) ->
             if (ctxOf(arg).containedFields((arg as Expr.EntitySource).path).isEmpty()) emptySequence()
-            else expandOneGroupOperand(arg).asSequence().flatMap { overlapCells(it) }
-        arg is Expr.Star -> filteredStarCells(arg).filterIsInstance<Val.Range>()
+            else expandOneGroupOperand(arg).asSequence().flatMap { overlapCells(it, traversal) }
+        arg is Expr.Star -> filteredStarCells(arg, traversal).filterIsInstance<Val.Range>()
         else -> sequence { (evalExpr(arg) as? Val.Range)?.let { yield(it) } }
     }
 
@@ -1297,10 +1297,14 @@ class Interpreter(
      * via [overlapFilterInterp]); a kept row's empty cell is dropped, a kept malformed cell surfaces as
      * [Val.Unknown]. Distinct from the quantifier-`Having` path ([starOperandVals], `$` bound). KERNEL-FINDINGS §6.
      */
-    private fun filteredStarCells(star: Expr.Star): Sequence<Val> {
-        if (computeMode) return computeStarReads(star, overlapFilter(star)).mapNotNull { it?.value }
+    private fun filteredStarCells(star: Expr.Star, traversal: FilterTraversal = FilterTraversal.DENSE): Sequence<Val> {
+        if (computeMode) return computeStarReads(star, overlapFilter(star), traversal).mapNotNull { it?.value }
         if (star.having == null) return ctxOf(star).star(star.path, star.bindDepth).asSequence()
-        return keptRowContexts(star).asSequence().mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
+        val rows = when (traversal) {
+            FilterTraversal.DENSE -> keptRowContexts(star)
+            FilterTraversal.SPARSE -> filteredRows(ctxOf(star), star, traversal, overlapFilter(star)).toList()
+        }
+        return rows.asSequence().mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
 
     /** The overlap and uniqueness predicates' filter on [star]'s rows, evaluated without an enclosing iteration

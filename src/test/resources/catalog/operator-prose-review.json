@@ -8761,6 +8761,54 @@
           "id": "adapter.laws.SparseFilteredAggregateDiffTest.sparseAggregatesRespectCacheWidthOccupancyAndKeptCursor"
         }
       ]
+    },
+    {
+      "operator": "NumberOfValueInFields",
+      "lane": "GOTCHA",
+      "ordinal": 2,
+      "digest": "sha256:e3f1757a92be6202906d9b0b554cca3e5f52cd23f105ea52898b5b78be148301",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseOverlapPolicyDiffTest.scalarOverlapUsesSparseSelectionWhilePairOverlapAndValueCountsStayDense"
+        }
+      ]
+    },
+    {
+      "operator": "DateRangesOverlap",
+      "lane": "GOTCHA",
+      "ordinal": 3,
+      "digest": "sha256:77504e8dcc3b36cb7313c011d4b36e469e69d3c66aab694fa8a74636f4ee62e1",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseOverlapPolicyDiffTest.scalarOverlapUsesSparseSelectionWhilePairOverlapAndValueCountsStayDense"
+        }
+      ]
+    },
+    {
+      "operator": "AtLeastOneDateRangeOverlaps",
+      "lane": "GOTCHA",
+      "ordinal": 3,
+      "digest": "sha256:ff35c6ff2282bacb39972e936ae996285f36d88635628c69ac6ba78104fba029",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseOverlapPolicyDiffTest.scalarOverlapUsesSparseSelectionWhilePairOverlapAndValueCountsStayDense"
+        }
+      ]
     }
   ],
   "claims": [

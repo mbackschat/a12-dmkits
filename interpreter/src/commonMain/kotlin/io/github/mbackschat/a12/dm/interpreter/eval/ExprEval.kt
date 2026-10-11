@@ -2071,11 +2071,12 @@ private sealed interface FirstFilledStep {
 internal fun Interpreter.keptRowsWithSuccessorLookahead(
     rows: List<EvalContext>,
     having: Cond,
+    keeps: ((EvalContext) -> Boolean)? = null,
     eligible: (EvalContext?, EvalContext) -> Boolean = { _, _ -> true },
 ): Sequence<EvalContext> = sequence {
     var lastKept: EvalContext? = null
     yieldAll(keptRowsWithSuccessorLookahead(rows) { row ->
-        (eligible(lastKept, row) && havingInterp(row).keeps(having)).also { if (it) lastKept = row }
+        (eligible(lastKept, row) && (keeps?.invoke(row) ?: havingInterp(row).keeps(having))).also { if (it) lastKept = row }
     })
 }
 
@@ -2089,7 +2090,12 @@ internal enum class FilterTraversal { DENSE, SPARSE }
 /** Sparse consumers test occupancy at the first coordinate differing from the last kept row. A rejected
  * candidate never advances that cursor, so initial/reset searches retain their dense prefix (SPEC-2026-10-10-02,
  * SparseFilteredAggregateDiffTest). The shared scanner still fetches a kept successor before consuming payload. */
-internal fun Interpreter.filteredRows(context: EvalContext, star: Expr.Star, traversal: FilterTraversal): Sequence<EvalContext> {
+internal fun Interpreter.filteredRows(
+    context: EvalContext,
+    star: Expr.Star,
+    traversal: FilterTraversal,
+    keeps: ((EvalContext) -> Boolean)? = null,
+): Sequence<EvalContext> {
     val group = star.path.substringBeforeLast('/')
     val rows = filterCandidates(context, group, star.bindDepth)
     val occupied = when (traversal) {
@@ -2097,8 +2103,8 @@ internal fun Interpreter.filteredRows(context: EvalContext, star: Expr.Star, tra
         FilterTraversal.SPARSE -> (context as? FilterWalkRowProvider)?.sparseFilterPrefixes(group, star.bindDepth, filterWalkGroups)
     }
     val having = requireNotNull(star.having)
-    if (occupied == null) return keptRowsWithSuccessorLookahead(rows, having)
-    return keptRowsWithSuccessorLookahead(rows, having) { previous, row ->
+    if (occupied == null) return keptRowsWithSuccessorLookahead(rows, having, keeps)
+    return keptRowsWithSuccessorLookahead(rows, having, keeps) { previous, row ->
         val coordinates = row.repsOf(group)
         val last = previous?.repsOf(group)
         val changed = if (last == null) -1 else coordinates.indices.firstOrNull { coordinates[it] != last[it] } ?: -1
@@ -2127,10 +2133,14 @@ internal fun keptRowsWithSuccessorLookahead(
  * and every cell pulled is a read that poisons when invalid ([filledOrPoison]). Yields the read cell, or null for an
  * empty one. Validation keeps each consumer's own expansion, whose malformed cells are unknown rather than poison.
  */
-internal fun Interpreter.computeStarReads(star: Expr.Star, keeps: ((EvalContext) -> Boolean)?): Sequence<ScanCell?> {
+internal fun Interpreter.computeStarReads(
+    star: Expr.Star,
+    keeps: ((EvalContext) -> Boolean)?,
+    traversal: FilterTraversal = FilterTraversal.DENSE,
+): Sequence<ScanCell?> {
     val context = ctxOf(star)
     val cells = if (keeps == null) context.starScanCells(star.path, star.bindDepth)
-    else keptRowsWithSuccessorLookahead(filterCandidates(context, star.path.substringBeforeLast('/'), star.bindDepth), keeps)
+    else filteredRows(context, star, traversal, keeps)
         .map { scanCell(star.path, it) }
     return cells.map { cell -> cell.takeIf { filledOrPoison(it) } }
 }

@@ -6726,21 +6726,23 @@
       }
     },
     "kf528": {
-      "sha256": "ef310b8555550b85f77cca6a0254a26e220aae7bf88e7efb915c3a96fb6bd1e6",
+      "sha256": "955f14f1f4456e58302e1cc77e541f01610ada49b1be535c30ecc258ba308c32",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "filter walk extent",
           "computation walk scope",
           "target-group nested walk",
-          "sparse aggregate traversal"
+          "sparse aggregate traversal",
+          "overlap traversal policies"
         ],
         "dmkits": [],
         "interpreter": [
           "filter walk extent",
           "computation walk scope",
           "target-group nested walk",
-          "sparse aggregate traversal"
+          "sparse aggregate traversal",
+          "overlap traversal policies"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -6772,6 +6774,10 @@
             "sparse aggregate traversal": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseFilteredAggregateDiffTest.kt#sparseAggregatesRespectCacheWidthOccupancyAndKeptCursor",
               "witness": "Eleven Number field-list Documents calibrate actual 98/100/102 candidates, initial/reset rejection, blank and phase-visible foreign occupancy, captured parents and dense first-filled successor controls; both kernel strategies and interpreter agree."
+            },
+            "overlap traversal policies": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseOverlapPolicyDiffTest.kt#scalarOverlapUsesSparseSelectionWhilePairOverlapAndValueCountsStayDense",
+              "witness": "Four ordinary two-level Documents separate scalar exact/yearless sparse overlap from dense any-pair overlap and Number/String counts at cache products 2/100/102 and explicit blank occupancy; both kernels and interpreter agree."
             }
           }
         },
@@ -6782,7 +6788,7 @@
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "Filtered consumers share a cache-bounded candidate domain. Sum and filled count additionally select occupied prefixes above 100 candidates, including the count polarity pass; other traversal policies are separate consumers.",
+          "basis": "Filtered consumers share a cache-bounded candidate domain. Sum, filled count and scalar-to-list overlap select occupied prefixes above 100 candidates; any-pair overlap and value counts retain dense selection. Other consumer policies remain separate.",
           "evidence": {
             "filter walk extent": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterMissingSlotDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
@@ -6799,6 +6805,10 @@
             "sparse aggregate traversal": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseFilteredAggregateDiffTest.kt#sparseAggregatesRespectCacheWidthOccupancyAndKeptCursor",
               "witness": "Eleven Number field-list Documents calibrate actual 98/100/102 candidates, initial/reset rejection, blank and phase-visible foreign occupancy, captured parents and dense first-filled successor controls; both kernel strategies and interpreter agree."
+            },
+            "overlap traversal policies": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseOverlapPolicyDiffTest.kt#scalarOverlapUsesSparseSelectionWhilePairOverlapAndValueCountsStayDense",
+              "witness": "Four ordinary two-level Documents separate scalar exact/yearless sparse overlap from dense any-pair overlap and Number/String counts at cache products 2/100/102 and explicit blank occupancy; both kernels and interpreter agree."
             }
           }
         },
