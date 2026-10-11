@@ -58,6 +58,7 @@ fun ModelDef.newDocument(): Document = Document(DocumentConfig(
     timeFormats = timeFormats,
     baseYear = baseYear,
     fieldConstraints = fieldConstraints,
+    customFields = customTypes.keys,
     timeZone = timeZone,
     repeatableGroups = repeatable,
     effectiveGroupRepetitionMaximums = effectiveGroupRepetitionMaximums,
@@ -1015,6 +1016,9 @@ class Document(internal val config: DocumentConfig) {
      */
     internal fun messageDisplayValueAt(path: String, reps: List<Int>): String? = valueAt(path, reps)?.raw
 
+    /** Custom admission precedes evaluated CRLF normalization; the stored input is the validator contract (SPEC-2026-10-10-11). */
+    internal fun customValidationInputAt(path: String, reps: List<Int>): String? = valueAt(path, reps)?.raw
+
     /**
      * The stored state of the field cell at [path]/[reps] — [StoredCellState.Absent] (no placement),
      * [StoredCellState.PresentEmpty] (a placement with no value, a `""` value included), or
@@ -1837,6 +1841,7 @@ class Document(internal val config: DocumentConfig) {
      *  gate, and the COMPUTE-mode poison trigger ([EvalContext.cellState], IF85). Format + declared constraints,
      *  the full per-cell check. */
     private fun formallyInvalid(path: String, raw: String): Boolean {
+        if (path in config.customFields) return false
         val kind = kindOf(path)
         val precision = datePrecisions[path] ?: DatePrecision.FULL
         return formalError(kind, raw, scales[path], declaredTemporalFormat(path, kind), precision,

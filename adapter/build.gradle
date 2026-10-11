@@ -136,6 +136,9 @@ dependencies {
     // are on one classpath, which is what makes the parity differential (ConditionReadBackParityTest)
     // expressible. Test scope keeps :interpreter-bridge off :adapter's own consumers.
     testImplementation project(':interpreter-bridge')
+    // The reserved-custom law observes the core validation mode absent from the modern API (SPEC-2026-10-10-12).
+    testImplementation "com.mgmtp.a12.kernel:kernel-md-runtime-service:${kernelVersion}"
+    testImplementation "com.mgmtp.a12.kernel:kernel-core-runtime-30-8:${kernelVersion}"
 
     // The classpath a COLD checker process gets, and it is a configuration rather than a filter over this
     // module's test runtime on purpose: H5-b measures standalone checking, so a kernel or Java-kit artifact on

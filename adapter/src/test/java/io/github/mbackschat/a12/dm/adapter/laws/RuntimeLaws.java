@@ -1285,6 +1285,7 @@ public final class RuntimeLaws {
         private final IDocumentRtService rt;
         private final DocumentServiceFactory dsf;
         private final IDocumentFactory df;
+        private final IDocumentDynamicServiceConfig serviceConfig;
 
         KernelEngine(String modelJson) {
             this(modelJson, KernelModelCodeCache.forModel(modelJson));
@@ -1296,8 +1297,15 @@ public final class RuntimeLaws {
             this.model = model;
             IDocumentModelResolver resolver = id -> model;
             this.dsf = new DocumentServiceFactory(resolver);
-            this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig(codeCache));
+            this.serviceConfig = dynamicConfig(codeCache);
+            this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(serviceConfig);
             this.df = dsf.createDocumentFactory();
+        }
+
+        /** The explicit core-mode route: the modern API always selects full examination. */
+        CustomTestRangeOracle coreModeOracle() {
+            return new CustomTestRangeOracle(
+                    new com.mgmtp.a12.kernel.md.rt.a12internal.service.DocumentRtService(serviceConfig), model);
         }
 
         /** Build the kernel {@link DocumentV2} for {@code doc} once — including the V1-&gt;V2 conversion, so it is
@@ -1602,6 +1610,7 @@ public final class RuntimeLaws {
         private final IDocumentRtService rt;
         private final IDocumentFactory df;
         private final DocumentServiceFactory dsf;   // kept for the V1→V2 conversion the modern validatePart needs
+        private final IDocumentStaticServiceConfig serviceConfig;
 
         JavaKernelEngine(String modelJson) {
             this.modelJson = modelJson;
@@ -1613,8 +1622,15 @@ public final class RuntimeLaws {
             ClassLoader codeLoader = compileInMemory(sources).loader();
             IDocumentModelResolver resolver = id -> expanded;
             this.dsf = new DocumentServiceFactory(resolver);
-            this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(staticConfig(idToPackage, codeLoader));
+            this.serviceConfig = staticConfig(idToPackage, codeLoader);
+            this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(serviceConfig);
             this.df = dsf.createDocumentFactory();
+        }
+
+        /** The explicit core-mode route: the modern API always selects full examination. */
+        CustomTestRangeOracle coreModeOracle() {
+            return new CustomTestRangeOracle(
+                    new com.mgmtp.a12.kernel.md.rt.a12internal.service.DocumentRtService(serviceConfig), model);
         }
 
         /** Build the kernel {@link DocumentV2} for {@code doc} once — including the V1-&gt;V2 conversion, OUTSIDE the

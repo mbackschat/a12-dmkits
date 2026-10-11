@@ -47,7 +47,7 @@ internal class AdmittedGroupContentIndex private constructor(
             for (field in doc.valuedFields()) {
                 if (!isRelevant(field.path, field.reps)) continue
                 val admitted = when (val result = formalResults.resultAt(field.path, field.reps, field.raw)) {
-                    FormalResult.Valid, is FormalResult.Unsupported -> true
+                    FormalResult.Valid, is FormalResult.Reported, is FormalResult.Unsupported -> true
                     is FormalResult.Invalid ->
                         result.failure is FormalFailure.Generated && result.failure.code == UNIQUE_INDEX
                 }

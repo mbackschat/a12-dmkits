@@ -339,10 +339,14 @@ public final class InterpreterEngine {
     }
 
     /** {@code model compute}: each computed field's outcome (value / cleared / error). */
-    public static ObjectNode computeData(String modelJson, String documentJson, String locale) {
+    public static ObjectNode computeData(String modelJson, String documentJson, String locale,
+            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
+            Map<String, CustomFieldType> customFieldTypes) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
         Document doc = InterpreterModelLoader.document(documentJson, def);
-        List<Computed> computed = new DmInterpreter(def).compute(doc, locale);
+        var evaluation = new DmInterpreter(def, null, predefinedTypes, customConditions, customFieldTypes)
+                .computeWithSupport(doc, locale);
+        List<Computed> computed = evaluation.getResults();
 
         ObjectNode data = MAPPER.createObjectNode();
         ArrayNode arr = data.putArray("computed");
@@ -365,6 +369,7 @@ public final class InterpreterEngine {
         // "field(s)" — which was wrong on both axes.
         data.put("declarations", declarations.size());
         data.put("instances", computed.size());
+        addUnsupported(data, evaluation.getUnsupported());
         return data;
     }
 

@@ -906,6 +906,12 @@ data class ValidationOutcome(
     val unsupported: List<UnsupportedRule>,
 )
 
+/** Legacy integration result: computed values and unsupported constructs from the same computation pass. */
+data class ComputationEvaluation(
+    val results: List<Computed>,
+    val unsupported: List<UnsupportedRule>,
+)
+
 /**
  * The result of [DmInterpreter.testRule] / [DmInterpreter.evalCandidate].
  *

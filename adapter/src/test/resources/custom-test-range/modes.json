@@ -1,0 +1,1586 @@
+[
+  [
+    false,
+    "ACCEPT",
+    "PLAIN",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "PLAIN",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "PLAIN",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "PLAIN",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "CR",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "CR",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "CR",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "CR",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "CR",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "CR",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "EMPTY",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "EMPTY",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "EMPTY",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "EMPTY",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "ABSENT",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "ABSENT",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "ABSENT",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "ABSENT",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "PLAIN",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "PLAIN",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "PLAIN",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "PLAIN",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "CR",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "CR",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "CR",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "CR",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "CR",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "CR",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "EMPTY",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "EMPTY",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "EMPTY",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "EMPTY",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "ABSENT",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "ABSENT",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "ABSENT",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "ABSENT",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "PLAIN",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "PLAIN",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "PLAIN",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "PLAIN",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "CR",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "CR",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "CR",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "CR",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "CR",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "CR",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "EMPTY",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "EMPTY",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "EMPTY",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "EMPTY",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "ABSENT",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "ABSENT",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "ABSENT",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "ABSENT",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "PLAIN",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "PLAIN",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "PLAIN",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "PLAIN",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "CR",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "CR",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "CR",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "CR",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "CR",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "CR",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "EMPTY",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "EMPTY",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "EMPTY",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "EMPTY",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "ABSENT",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "ABSENT",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "ABSENT",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "ABSENT",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "PLAIN",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "PLAIN",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "PLAIN",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "PLAIN",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "CR",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "CR",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "CR",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[/Parcel[1]/Identifier[1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "CR",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "CR",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "CR",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "EMPTY",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "EMPTY",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "EMPTY",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "EMPTY",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "ABSENT",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "ABSENT",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "ABSENT",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "ABSENT",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "PLAIN",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "PLAIN",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "PLAIN",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "PLAIN",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "PLAIN",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "CR",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "CR",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "CR",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "CR",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; membership=[]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "CR",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "CR",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "EMPTY",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "EMPTY",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "EMPTY",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "EMPTY",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "EMPTY",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "ABSENT",
+    "FULL",
+    "fullExamination",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "ABSENT",
+    "FULL",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=null; incorrect=[]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "ABSENT",
+    "INCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "ABSENT",
+    "INCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Identifier[1], /Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExamination",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "ABSENT",
+    "EXCLUDED",
+    "fullExaminationWithAbortOnFormalErrors",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; membership=[relevant=[/Parcel[1]/Marker[1]]; incorrect=[]]; calls=[]"
+    ]
+  ]
+]

@@ -3,7 +3,7 @@
 *2026-06-27T21:13:11Z by Showboat 0.6.1*
 <!-- showboat-id: 0d9765d1-2b87-406e-80d5-141de904cc63 -->
 
-Real document models lean on **custom constructs** — a `CustomFieldType` (an IBAN, an ISIN, a policy number) and a `CustomCondition` (logic the rule DSL can't express). Their validation logic is *project code* that lives in the deploying application, not in the model JSON, so a native, kernel-free `dmtool` cannot *run* it. Full-fidelity evaluation of arbitrary custom logic is the **library's** job (a JVM/JS consumer registers the real impl). What `dmtool` does instead is **author** such models (it's just text) and **test-run** them honestly — degrading visibly, and accepting *declarative* custom types so the common cases still validate. These runtime verbs default to the native-safe interpreter; output is captured by [showboat](https://github.com/simonw/showboat) (re-check with `uvx showboat@0.6.1 verify examples/cli-custom-types.md`).
+Custom field types and conditions carry project logic outside the model JSON. `dmtool` accepts declarative custom types through `--predefined-types`, or project JavaScript through `--custom-field-types-js` and `--custom-conditions-js`. Validation and computation run on the kernel-free interpreter; missing handlers are visible under `data.unsupported`, and `--strict-custom` turns them into a refusal. JVM/JS library consumers can register callbacks directly. Output is captured by [showboat](https://github.com/simonw/showboat) (re-check with `uvx showboat@0.6.1 verify examples/cli-custom-types.md`).
 
 ## The model
 
@@ -98,7 +98,7 @@ dmtool -m examples/models/payment-customtype.dm.json \
 
 ## `--strict-custom`: fail instead of degrade
 
-The lenient default lets you test-run a model that uses constructs the engine can't evaluate. When you instead want kernel fidelity — *fail* if anything couldn't be validated — add `--strict-custom`: a non-empty `unsupported` becomes a **refusal** (exit 2), nothing read.
+The lenient default lets you test-run a model that uses constructs the engine can't evaluate. To refuse a result when a custom construct could not be evaluated, add `--strict-custom`: a non-empty `unsupported` becomes a **refusal** (exit 2), retaining the evaluation data so the missing support can be inspected.
 
 ```bash
 dmtool -m examples/models/payment-customtype.dm.json \
@@ -189,3 +189,60 @@ dmtool -m examples/models/payment-customtype.dm.json \
 The object vocabulary is exactly `{ valid, errorKey?, errorMessage? }`; alias-only or wrongly typed objects are rejected rather than guessed. The worker **never outlives `dmtool`** (it self-exits when the parent's pipe closes — even on a hard kill — plus an idle timeout and a JVM shutdown hook). No `node` on PATH, a `.js` exception, or a malformed result leaves the construct visibly `unsupported` rather than crashing or reporting a false clean result.
 
 So `dmtool` stays useful on models full of custom constructs: it **authors** them, **validates** the declarative custom types (`--predefined-types`), runs the **imperative** ones from the project's own JS (`--custom-field-types-js` / `--custom-conditions-js`), and is **honest** about anything still unhandled — surfacing it (and failing on demand with `--strict-custom`) rather than reporting a false clean pass. For full in-process fidelity, register the impls on the `:interpreter` library directly.
+
+## Compute a custom target
+
+A payment can compute its settlement account from a configured IBAN. Author the computation on a temporary model; its CUSTOM target uses the same validator registry as stored values. `model compute` reports the result without writing the Document.
+
+```bash
+cp examples/models/payment-customtype.dm.json /tmp/ct-computed.dm.json
+cat > /tmp/ct-computation.json <<'JSON'
+{
+  "computedField": "/Payment/Iban",
+  "alternatives": [{"operation": "\"DE89370400440532013000\""}],
+  "messages": [{"locale": "en_US", "text": "Check the settlement account."}]
+}
+JSON
+dmtool -m /tmp/ct-computed.dm.json computation add /tmp/ct-computation.json > /tmp/ct-added.json
+dmtool -m /tmp/ct-computed.dm.json model compute --instance /tmp/ct-fr.json \
+  --custom-field-types-js /tmp/ct-js --strict-custom \
+  | jq '{computed: .data.computed, unsupported: .data.unsupported}'
+
+```
+
+```output
+{
+  "computed": [
+    {
+      "field": "Payment/Iban",
+      "declaration": "Payment/Iban",
+      "outcome": "value",
+      "value": "DE89370400440532013000"
+    }
+  ],
+  "unsupported": null
+}
+```
+
+A computed target is checked even when its old stored value is absent. Missing target handlers therefore appear in `data.unsupported` and are refused by `--strict-custom`. A validator rejection remains a computation error; the exact reserved `testIDNummer` result preserves the attempted value for dependent computations, as measured in [KF541](../docs/KERNEL-FINDINGS.md#kf541).
+
+```bash
+dmtool -m /tmp/ct-computed.dm.json model compute --instance /tmp/ct-fr.json --strict-custom \
+  > /tmp/ct-compute-strict.json; echo "(exit $?)"
+jq '{outcome, unsupported: .data.unsupported}' /tmp/ct-compute-strict.json
+
+```
+
+```output
+(exit 2)
+{
+  "outcome": "refused",
+  "unsupported": [
+    {
+      "name": "Payment/Iban",
+      "subject": "cell",
+      "reason": "custom field type 'Iban' has no registered validator"
+    }
+  ]
+}
+```

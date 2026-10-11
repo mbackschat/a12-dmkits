@@ -60,6 +60,8 @@ data class DocumentConfig(
      *  constraint-violating value then resolves to `Val.Unknown` — not-check-relevant — everywhere resolution
      *  is used (aggregate `starCells`, the `fillScope` fill tally), matching the kernel's `isWertAngegeben`. */
     val fieldConstraints: Map<String, FieldConstraints> = emptyMap(),
+    /** Custom admission belongs to the call-bound validator, not ordinary StringType constraints (SPEC-2026-10-10-11). */
+    val customFields: Set<String> = emptySet(),
     /** The model's configured time zone ([ModelTimeZone], `modelConfig.timeZone`, default UTC) — the formal
      *  check ([Document.formallyInvalid]) needs it because a Europe/Berlin DATE_TIME value inside the spring-forward
      *  gap (a wall time that does not exist, e.g. `2024-03-31T02:30:00`) is the kernel's `datumFormatFalsch`: its

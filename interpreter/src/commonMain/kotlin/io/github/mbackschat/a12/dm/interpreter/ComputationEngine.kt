@@ -27,6 +27,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
+import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 
@@ -84,6 +85,11 @@ internal class ComputationEngine(
     fun computeRun(doc: Document, locale: String): ComputationEngineRun =
         computeOver(doc, plans.allComputationOrder(), locale)
 
+    fun computeRunWithSupport(doc: Document, locale: String): ComputationEngineRun =
+        computeOver(doc, plans.allComputationOrder(), locale, UnsupportedHandling.RETAIN_COMPLETED)
+
+    private enum class UnsupportedHandling { THROW, RETAIN_COMPLETED }
+
     /**
      * Compute ONE computed field — its transitive computed-dependency CLOSURE run in dependency order (so cascade
      * operands aren't read stale/empty), the target's own instances projected out (IF129, graduated from IG74).
@@ -114,7 +120,12 @@ internal class ComputationEngine(
      * `CalculationFieldException` → "fehlerhaft berechnet"): no value, reported CLEARED (report-all), and its
      * own dependents' reads poison transitively. Read-driven, so evaluation order/short-circuits decide.
      */
-    private fun computeOver(rawDoc: Document, comps: List<ComputationDef>, locale: String): ComputationEngineRun {
+    private fun computeOver(
+        rawDoc: Document,
+        comps: List<ComputationDef>,
+        locale: String,
+        unsupportedHandling: UnsupportedHandling = UnsupportedHandling.THROW,
+    ): ComputationEngineRun {
         // Computation applies the SAME full-call index-default staging as full validation, after formal
         // ingestion and before its preliminary rules (SPEC-2026-07-23-15; the kernel's inherited
         // `formalePruefung` tail): an eligible clean-empty enum index reads its declaration-owned S-value,
@@ -168,7 +179,7 @@ internal class ComputationEngine(
         // computed on the STAGED document, so a defaulted cell participates as its S-value instead.
         // Once per compute call, on the document every gate below reads (IG127.1).
         val gateNeeded = checks.overRepetitionGateNeeded(doc)
-        val valueAdmissions = ValueAdmissionCache(checks, locale, gateNeeded)
+        val valueAdmissions = ValueAdmissionCache(checks, locale, doc, gateNeeded)
         val dup = checks.duplicateIndexCells(doc, valueAdmissions)
         val emptyIndexCells = checks.preliminaryEmptyIndexCells(doc)
         val formalResults = FormalResultCache(checks, locale, dup, valueAdmissions = valueAdmissions)
@@ -283,9 +294,8 @@ internal class ComputationEngine(
                     val computed = try {
                         val selection = evalComputation(parsed, interp, comp.targetPath)
                         val v = selection.value
-                        // ERRORED: poison the target + do NOT overlay — a dependent's READ of it must poison, not read
-                        // the bad value. A resolved VALUE overlays (dependents read the computed result). Either way
-                        // the cell is DECIDED.
+                        // Ordinary target errors poison; the exact reserved custom result retains its readable
+                        // attempted value (SPEC-2026-10-10-12). Both decide the target for this call.
                         //
                         // A CLEARED result splits on SELECTION, which is the whole of SPEC-2026-07-26-03: an
                         // alternative that WAS selected but stored nothing (an Unknown result, or a final empty TEXT —
@@ -295,6 +305,12 @@ internal class ComputationEngine(
                         // EMPTY, IF77) that a later computation for the SAME cell can still win.
                         toComputed(comp, v, targetKey.second, doc, locale).also { attempt ->
                             val c = attempt.result
+                            if (!c.value.isNullOrEmpty()) checks.customTypeUnsupportedAt(
+                                comp.targetPath, doc.formattedPointer(comp.targetPath, targetKey.second),
+                            )?.let { if (it !in unsupported) unsupported += it }
+                            if (c.outcome == ComputeOutcome.VALUE || attempt.computedError?.code == CUSTOM_TEST_RANGE) {
+                                c.value?.let { valueAdmissions.admitComputedCustomValue(c.path, c.indices, it) }
+                            }
                             attempt.computedError?.let { computedErrors[targetKey] = it }
                             attempt.formalOperandError?.let {
                                 formalErrorsInOperands[it.code to it.errorPath] = it
@@ -306,7 +322,13 @@ internal class ComputationEngine(
                                 decided += targetKey
                             } else {
                                 when (c.outcome) {
-                                    ComputeOutcome.ERRORED -> { cascade.poison(targetKey.first, targetKey.second); decided += targetKey }
+                                    ComputeOutcome.ERRORED -> {
+                                        // testIDNummer remains readable despite its errored result/apply channel (SPEC-2026-10-10-12).
+                                        if (attempt.computedError?.code == CUSTOM_TEST_RANGE) {
+                                            cascade.overlay(targetKey.first, targetKey.second, storedReading(v, c, doc))
+                                        } else cascade.poison(targetKey.first, targetKey.second)
+                                        decided += targetKey
+                                    }
                                     ComputeOutcome.VALUE -> {
                                         cascade.overlay(targetKey.first, targetKey.second, storedReading(v, c, doc))
                                         decided += targetKey
@@ -380,6 +402,15 @@ internal class ComputationEngine(
                     continue
                 }
                 for (ctx in doc.computeContexts(scope)) computeAt(ctx)
+            } catch (failure: UnsupportedConstructException) {
+                when (unsupportedHandling) {
+                    UnsupportedHandling.THROW -> throw failure
+                    UnsupportedHandling.RETAIN_COMPLETED -> {
+                        // Stop this execution without erasing earlier observations (ComputeDocVerbTest).
+                        unsupported += UnsupportedRule("<compute>", failure.message.orEmpty(), UnsupportedSubject.ELEMENT)
+                        break
+                    }
+                }
             } finally {
                 views.release()
             }

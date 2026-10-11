@@ -657,7 +657,7 @@ private fun numberFormalError(raw: String, scale: Int?, c: FieldConstraints): Fo
  * **BMP** (`0x0000-0xFFFF`), so any supplementary-plane character — a UTF-16 surrogate (e.g. an emoji) — is
  * illegal. A leading/trailing blank is reported even when the type check would otherwise pass or fail differently.
  */
-private fun baselineValueError(raw: String, legalCharset: LegalCharset): FormalErrorCode? = when {
+internal fun baselineValueError(raw: String, legalCharset: LegalCharset): FormalErrorCode? = when {
     !legalCharset.matches(raw) -> FormalErrorCode.CHARSET
     raw.startsWith(' ') -> FormalErrorCode.LEADING_BLANK
     raw.endsWith(' ') -> FormalErrorCode.TRAILING_BLANK

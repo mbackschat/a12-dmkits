@@ -1,0 +1,962 @@
+[
+  [
+    false,
+    "ACCEPT",
+    "PLAIN",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "PLAIN",
+    "INCLUDED",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "PLAIN",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "PLAIN",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"ABCD\",\"Dependent\":\"ABCD\",\"DependentSize\":4,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"ABCD\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\"]",
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"ABCD\",\"Dependent\":\"ABCD\",\"DependentSize\":4,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"ABCD\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "CR",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "CR",
+    "INCLUDED",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "CR",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "CR",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"A\\r\\nB\",\"Dependent\":\"A\\r\\nB\",\"DependentSize\":4,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"A\\r\\nB\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\"]",
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"A\\r\\nB\",\"Dependent\":\"A\\r\\nB\",\"DependentSize\":4,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"A\\r\\nB\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "EMPTY",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "EMPTY",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "EMPTY",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "EMPTY",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "ABSENT",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "ABSENT",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "ABSENT",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "ACCEPT",
+    "ABSENT",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "PLAIN",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "PLAIN",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "PLAIN",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "PLAIN",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional.empty, cleared=true, errored=false]]; formal=[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":null,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":null,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"ParcelIdentifier:ABCD\"]",
+      "changes=[ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional.empty, cleared=true, errored=false]]; formal=[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":null,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":null,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "CR",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "CR",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "CR",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "CR",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional.empty, cleared=true, errored=false]]; formal=[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":null,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":null,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "changes=[ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional.empty, cleared=true, errored=false]]; formal=[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":null,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":null,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "EMPTY",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "EMPTY",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "EMPTY",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "EMPTY",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "ABSENT",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "ABSENT",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "ABSENT",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "REJECT",
+    "ABSENT",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "PLAIN",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "PLAIN",
+    "INCLUDED",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "PLAIN",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "PLAIN",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"ABCD\",\"Dependent\":\"ABCD\",\"DependentSize\":4,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"ABCD\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\"]",
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"ABCD\",\"Dependent\":\"ABCD\",\"DependentSize\":4,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"ABCD\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "CR",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "CR",
+    "INCLUDED",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "CR",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "CR",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"A\\r\\nB\",\"Dependent\":\"A\\r\\nB\",\"DependentSize\":4,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"A\\r\\nB\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\"]",
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"A\\r\\nB\",\"Dependent\":\"A\\r\\nB\",\"DependentSize\":4,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"A\\r\\nB\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "EMPTY",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "EMPTY",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "EMPTY",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "EMPTY",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "ABSENT",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "ABSENT",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "ABSENT",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    false,
+    "TEST",
+    "ABSENT",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "PLAIN",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "PLAIN",
+    "INCLUDED",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "PLAIN",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "PLAIN",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"ABCD\",\"Dependent\":\"ABCD\",\"DependentSize\":4,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"ABCD\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\"]",
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"ABCD\",\"Dependent\":\"ABCD\",\"DependentSize\":4,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"ABCD\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "CR",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "CR",
+    "INCLUDED",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "CR",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "CR",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"A\\r\\nB\",\"Dependent\":\"A\\r\\nB\",\"DependentSize\":4,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"A\\r\\nB\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\"]",
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"A\\r\\nB\",\"Dependent\":\"A\\r\\nB\",\"DependentSize\":4,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"A\\r\\nB\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "EMPTY",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "EMPTY",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "EMPTY",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "EMPTY",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "ABSENT",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "ABSENT",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "ABSENT",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "ACCEPT",
+    "ABSENT",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "PLAIN",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "PLAIN",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "PLAIN",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "PLAIN",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional.empty, cleared=true, errored=false]]; formal=[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":null,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":null,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"ParcelIdentifier:ABCD\"]",
+      "changes=[ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional.empty, cleared=true, errored=false]]; formal=[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":null,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":null,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "CR",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "CR",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "CR",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "CR",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional.empty, cleared=true, errored=false]]; formal=[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":null,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":null,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "changes=[ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional.empty, cleared=true, errored=false]]; formal=[PROJECT_REJECT|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":null,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":null,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "EMPTY",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "EMPTY",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "EMPTY",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "EMPTY",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "ABSENT",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "ABSENT",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "ABSENT",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "REJECT",
+    "ABSENT",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "PLAIN",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "PLAIN",
+    "INCLUDED",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], VALUE|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "PLAIN",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "PLAIN",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"ABCD\",\"Dependent\":\"ABCD\",\"DependentSize\":4,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"ABCD\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\"]",
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[ABCD], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[ABCD], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"ABCD\",\"Dependent\":\"ABCD\",\"DependentSize\":4,\"Identifier\":\"ABCD\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"ABCD\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"ParcelIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\",\"CopiedIdentifier:ABCD\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "CR",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], CopyIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Copy, [1, 1]], IdentifierSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], SameIdentifier|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Same, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "CR",
+    "INCLUDED",
+    [
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]",
+      "[LENGTH|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]], testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; calls=[\"ParcelIdentifier:A\\r\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "CR",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "CR",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"A\\r\\nB\",\"Dependent\":\"A\\r\\nB\",\"DependentSize\":4,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"A\\r\\nB\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\"]",
+      "changes=[ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[4], cleared=false, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional[A\r\nB], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[4], cleared=false, errored=false]]; formal=[testIDNummer|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Identifier, [1, 1]]]; successes=[ResultInstance[pointer=Parcel/Dependent, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/DependentSize, value=Optional[4], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Copy, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Same, value=Optional[A\r\nB], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[4], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":\"A\\r\\nB\",\"Dependent\":\"A\\r\\nB\",\"DependentSize\":4,\"Identifier\":\"A\\r\\r\\nB\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"A\\r\\nB\",\"Size\":4,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"ParcelIdentifier:A\\r\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\",\"CopiedIdentifier:A\\r\\nB\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "EMPTY",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "EMPTY",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "EMPTY",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "EMPTY",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Identifier\":\"\",\"Independent\":7,\"Marker\":\"ready\",\"Same\":\"\",\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "ABSENT",
+    "FULL",
+    [
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]",
+      "[CopiedSize|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/DependentSize, [1, 1]], IdentifierSize|OMISSION_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Size, [1, 1]], MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\",\"CopiedIdentifier:stale\"]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "ABSENT",
+    "INCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "ABSENT",
+    "EXCLUDED",
+    [
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]",
+      "[MARKER|VALUE_ERROR|PartiallyKnownDocumentMultiPointerImpl[/Parcel/Marker, [1, 1]]]; calls=[]"
+    ]
+  ],
+  [
+    true,
+    "TEST",
+    "ABSENT",
+    "COMPUTE",
+    [
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]",
+      "changes=[ComputedInstance[path=/Parcel/DependentSize, pointer=Parcel/DependentSize, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Size, pointer=Parcel/Size, value=Optional[0], cleared=false, errored=false], ComputedInstance[path=/Parcel/Same, pointer=Parcel/Same, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Dependent, pointer=Parcel/Dependent, value=Optional.empty, cleared=true, errored=false], ComputedInstance[path=/Parcel/Copy, pointer=Parcel/Copy, value=Optional.empty, cleared=true, errored=false]]; formal=[]; successes=[ResultInstance[pointer=Parcel/DependentSize, value=Optional[0], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Independent, value=Optional[7], errorMessage=Optional.empty], ResultInstance[pointer=Parcel/Size, value=Optional[0], errorMessage=Optional.empty]]; applied={\"Parcel\":{\"Copy\":null,\"Dependent\":null,\"DependentSize\":0,\"Independent\":7,\"Marker\":\"ready\",\"Same\":null,\"Size\":0,\"Tags\":[{\"Key\":\"priority\"}]}}; calls=[]"
+    ]
+  ]
+]

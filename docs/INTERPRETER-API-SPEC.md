@@ -303,7 +303,7 @@ Custom field validators are synchronous and receive:
 - effective model length bounds;
 - `isDisplayValue = false` for stored-document validation.
 
-They return accepted or a project-owned error key plus optional message. The evaluator does not add a second generic validation around a declared custom type.
+They return accepted or a project-owned error key plus optional message. Stored custom input reaches the validator before evaluated CRLF normalization; ordinary StringType newline/length/pattern constraints are not applied around that validator. The exact case-sensitive key `testIDNummer` reports a finding while keeping the value readable; all other rejecting keys exclude it. A computed CUSTOM target is validated too: the reserved key still gives an ERRORED result and clears the target on application, while dependent computations can read its attempted value. [KF541](KERNEL-FINDINGS.md#kf541) records the measured scope; `CustomTestRangeLawsTest` locks these channels.
 
 Custom conditions are synchronous Boolean error conditions: `true` means the owning rule fires. Each invocation receives a read-only document view, full-versus-partial relevance, formally incorrect fields, and the concrete error pointer.
 

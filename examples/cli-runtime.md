@@ -321,7 +321,8 @@ dmtool schema model compute \
   "dataKeys": [
     "computed",
     "declarations",
-    "instances"
+    "instances",
+    "unsupported"
   ]
 }
 ```

@@ -18,23 +18,9 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 /**
- * The shared options for supporting models that use <b>custom constructs</b> (custom field types, custom
- * conditions) on the runtime-validation verbs ({@code model eval}, {@code rule eval}). A native {@code dmtool}
- * cannot host arbitrary project validator/condition code, so the interpreter degrades leniently — but these
- * two knobs make that honest and useful:
- * <ul>
- *   <li>{@code --predefined-types <file>} (G30) supplies a declarative custom-field-type registry
- *       (length/pattern), so a format-constraint custom type is actually validated instead of skipped.</li>
- *   <li>{@code --strict-custom} (G29) turns the lenient degrade into a failure: if the engine reported any
- *       {@code unsupported} construct, the verb refuses (exit 2) instead of returning a (misleadingly clean)
- *       read — for users who want kernel fidelity over test-run-ability.</li>
- *   <li>{@code --custom-conditions-js <dir>} (G31) runs the project's real JS {@code CustomCondition} impls
- *       ({@code <Name>.js}) via a persistent Node worker, so a model's imperative custom conditions actually
- *       evaluate instead of being reported unsupported.</li>
- * </ul>
- *
- * <p>All refine the interpreter engine (the sole runtime eval engine); a native {@code dmtool} cannot host
- * arbitrary project code, so these make the degrade honest and useful.
+ * Shared custom registries and support policy for {@code model eval}, {@code rule eval} and {@code model compute}.
+ * Project JavaScript runs through a persistent Node worker; library consumers can register callbacks in-process.
+ * Missing or unusable handlers remain visible in the result, and strict mode refuses that degraded observation.
  */
 @Command // a mixin must be a "command"
 public final class CustomSupportOptions {
@@ -47,8 +33,8 @@ public final class CustomSupportOptions {
 
     @Option(names = "--strict-custom",
             description = "fail (exit 2) instead of degrading when the engine can't evaluate a custom "
-                    + "construct (a custom field type with no --predefined-types entry, or a CustomCondition "
-                    + "with no impl) — kernel fidelity over test-run-ability. Interpreter-only.")
+                    + "construct because its handler is missing or unusable; retain the observed data and "
+                    + "unsupported details. Interpreter-only.")
     boolean strictCustom;
 
     @Option(names = "--custom-conditions-js", paramLabel = "<dir>",
@@ -121,7 +107,7 @@ public final class CustomSupportOptions {
     /**
      * The refused envelope (exit 2) when {@code --strict-custom} is set AND {@code data} carries a non-empty
      * {@code unsupported} array — the engine couldn't evaluate those constructs and the caller asked for
-     * fidelity-or-fail. Returns {@code null} when not strict, or when everything was evaluated (proceed with
+     * complete custom support. Returns {@code null} when not strict, or when everything was evaluated (proceed with
      * the normal read). The refused envelope keeps the {@code unsupported} list visible in {@code data}.
      */
     public ResultEnvelope strictRefusal(ResultIdentity identity, ObjectNode data, RuntimeEvidence evidence) {

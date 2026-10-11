@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.RuntimeEvidence;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -45,6 +46,9 @@ final class ModelComputeCommand extends BaseCommand {
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
+    @Mixin
+    CustomSupportOptions customSupport = new CustomSupportOptions();
+
     @Override
     public Integer call() {
         String model = model();
@@ -72,7 +76,8 @@ final class ModelComputeCommand extends BaseCommand {
 
         ObjectNode data;
         try {
-            data = InterpreterEngine.computeData(interpJson, documentJson, localeTag);
+            data = InterpreterEngine.computeData(interpJson, documentJson, localeTag,
+                    customSupport.predefinedTypes(), customSupport.customConditions(), customSupport.customFieldTypes());
         } catch (UnsupportedModelTimeZoneException e) {
             return refuseExplainedPrecheck(RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
                     model, RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED.fix());
@@ -90,11 +95,17 @@ final class ModelComputeCommand extends BaseCommand {
         // Two counts, because one cannot stand for the other: 2 declarations over 5 rows is neither "2 field(s)"
         // nor "10 field(s)". The old summary counted INSTANCES and called them fields, so it was wrong on both
         // axes at once — and the list it summarized mixes declarations, so position was ambiguous too.
+        RuntimeEvidence evidence = RuntimeEvidence.interpreter();
+        ResultEnvelope refusal = customSupport.strictRefusal(resultIdentity(), data, evidence);
+        if (refusal != null) {
+            out().print(refusal.toJsonString());
+            return refusal.exitCode();
+        }
         int declarations = data.path("declarations").asInt();
         int instances = data.path("instances").asInt();
         ResultEnvelope env = ResultEnvelope.runtimeObservation(resultIdentity(),
                 "computed " + declarations + " computation(s) over " + instances + " field instance(s)",
-                data, RuntimeEvidence.interpreter());
+                data, evidence);
         out().print(env.toJsonString());
         return env.exitCode();
     }

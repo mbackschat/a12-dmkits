@@ -2,15 +2,21 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/compute-doc.schema.json",
   "title": "ComputeDocResult",
-  "description": "Output of `model compute` — the runtime computation over a document INSTANCE: what each computed field becomes, evaluated by the native-safe dm interpreter (the sole runtime eval engine on every target; the envelope's `engine` names it). Read-only — the input --instance is never modified. The INPUT --instance shape is NOT restated here — it is `document-instance.schema.json`, served as the `input` half of `dmtool schema model compute`.",
+  "description": "Output of `model compute` \u2014 the runtime computation over a document INSTANCE: what each computed field becomes, evaluated by the native-safe dm interpreter (the sole runtime eval engine on every target; the envelope's `engine` names it). Read-only \u2014 the input --instance is never modified. The INPUT --instance shape is NOT restated here \u2014 it is `document-instance.schema.json`, served as the `input` half of `dmtool schema model compute`.",
   "type": "object",
-  "required": ["computed", "declarations", "instances"],
+  "required": [
+    "computed",
+    "declarations",
+    "instances"
+  ],
   "additionalProperties": false,
   "properties": {
     "computed": {
       "type": "array",
-      "items": { "$ref": "#/$defs/computedField" },
-      "description": "one entry per computed field INSTANCE — a repeated computed field yields one per row — in evaluation order"
+      "items": {
+        "$ref": "#/$defs/computedField"
+      },
+      "description": "one entry per computed field INSTANCE \u2014 a repeated computed field yields one per row \u2014 in evaluation order"
     },
     "declarations": {
       "type": "integer",
@@ -19,18 +25,72 @@
     "instances": {
       "type": "integer",
       "description": "how many field instances they produced (= computed.length). Separate from `declarations` because neither implies the other: 2 computations over 5 rows is 2 and 10, and a summary reporting one number is wrong about the other"
+    },
+    "unsupported": {
+      "type": "array",
+      "description": "Present when a computation or custom source/target value could not be evaluated with the configured handlers. An unsupported construct reached during computation stops execution while retaining earlier completed results and support observations. This is observed in the same computation pass; --strict-custom retains this data and refuses with exit 2. Supply --predefined-types or --custom-field-types-js for custom validators.",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "subject",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "what could not be evaluated \u2014 read it according to `subject`, since the two kinds are different addresses"
+          },
+          "subject": {
+            "type": "string",
+            "enum": [
+              "element",
+              "cell"
+            ],
+            "description": "element = a model path or <compute> for a whole-call computation failure (a rule/computation/field declaration, no repetition); cell = a canonical A12 instance pointer to a document cell. Published because the two used to share one key with nothing to tell them apart, so neither a consumer nor the renderer could treat the pointer half as a pointer"
+          },
+          "reason": {
+            "type": "string",
+            "description": "why it couldn't be evaluated"
+          }
+        }
+      }
     }
   },
   "$defs": {
     "computedField": {
       "type": "object",
-      "required": ["field", "declaration", "outcome"],
+      "required": [
+        "field",
+        "declaration",
+        "outcome"
+      ],
       "additionalProperties": false,
       "properties": {
-        "field": { "type": "string", "format": "a12-pointer", "description": "the canonical A12 pointer to the computed cell INSTANCE — `Order/Items[2]/Total`: no leading slash, `[1]` omitted, one repetition per part. Identifies the ROW, so a repeated computed field's entries are distinguishable without relying on list position" },
-        "declaration": { "type": "string", "format": "a12-pointer", "description": "the canonical A12 path of the computation's target with no repetition — `Order/Items/Total`. Group by this to fold a repeated computed field's rows back into the one computation that produced them" },
-        "outcome": { "type": "string", "enum": ["value", "cleared", "error"], "description": "value (computed a value) | cleared (computed nothing, e.g. an empty operand) | error" },
-        "value": { "type": "string", "description": "the computed value AS THE TARGET FIELD STORES IT — always a string, and the TARGET's own declaration governs the form: nothing of the operand's spelling or the --instance JSON's type survives into it. NUMBER: plain decimal notation, never exponent; the fraction digits are the natural scale raised to the target's declared `minFractionalDigits` and capped by its `maxFractionalDigits`, with no length cap — a min-2 target computes `3` as \"3.00\", `1e3` as \"1000.00\", `4.50` as \"4.50\", and an EMPTY number operand (which reads as 0) as \"0.00\". DATE / date-range: the TARGET's declared `format` (and range separator), so a yyyy-MM-dd source computed into a dd.MM.yyyy target reads \"01.03.2026\". On outcome 'error' this is the ATTEMPTED value, rendered by those same rules and reported although the cell is not stored. Absent when cleared" }
+        "field": {
+          "type": "string",
+          "format": "a12-pointer",
+          "description": "the canonical A12 pointer to the computed cell INSTANCE \u2014 `Order/Items[2]/Total`: no leading slash, `[1]` omitted, one repetition per part. Identifies the ROW, so a repeated computed field's entries are distinguishable without relying on list position"
+        },
+        "declaration": {
+          "type": "string",
+          "format": "a12-pointer",
+          "description": "the canonical A12 path of the computation's target with no repetition \u2014 `Order/Items/Total`. Group by this to fold a repeated computed field's rows back into the one computation that produced them"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "value",
+            "cleared",
+            "error"
+          ],
+          "description": "value (computed a value) | cleared (computed nothing, e.g. an empty operand) | error"
+        },
+        "value": {
+          "type": "string",
+          "description": "the computed value AS THE TARGET FIELD STORES IT \u2014 always a string, and the TARGET's own declaration governs the form: nothing of the operand's spelling or the --instance JSON's type survives into it. NUMBER: plain decimal notation, never exponent; the fraction digits are the natural scale raised to the target's declared `minFractionalDigits` and capped by its `maxFractionalDigits`, with no length cap \u2014 a min-2 target computes `3` as \"3.00\", `1e3` as \"1000.00\", `4.50` as \"4.50\", and an EMPTY number operand (which reads as 0) as \"0.00\". DATE / date-range: the TARGET's declared `format` (and range separator), so a yyyy-MM-dd source computed into a dd.MM.yyyy target reads \"01.03.2026\". On outcome 'error' this is the ATTEMPTED value, rendered by those same rules and reported although the cell is not stored. Absent when cleared"
+        }
       }
     }
   }

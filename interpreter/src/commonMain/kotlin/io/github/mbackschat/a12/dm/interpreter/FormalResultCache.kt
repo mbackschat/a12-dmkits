@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.FormalErrorCode
 import io.github.mbackschat.a12.dm.interpreter.eval.INDEX_DEFAULT_SUPPRESSED
@@ -9,7 +10,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 /** The complete result of formally checking one cell. */
 internal sealed interface FormalResult {
     data object Valid : FormalResult
-    data class Invalid(val failure: FormalFailure) : FormalResult
+    /** The reserved test-range result reports a finding without excluding the value (SPEC-2026-10-10-12). */
+    data class Reported(val rejection: CustomTypeRejection) : FormalResult
+    data class Invalid(val failure: FormalFailure, val reportedRejection: CustomTypeRejection? = null) : FormalResult
     data class Unsupported(val reason: String) : FormalResult
 }
 
@@ -42,6 +45,7 @@ internal sealed interface FormalFailure {
 internal class ValueAdmissionCache(
     private val checks: AutoChecks,
     private val locale: String,
+    private val document: Document,
     /**
      * Whether the coordinate-dependent gate below has to run for this call's document
      * ([AutoChecks.overRepetitionGateNeeded], computed once per call). When it does not — the ordinary document —
@@ -72,6 +76,13 @@ internal class ValueAdmissionCache(
 
     private val byValue = HashMap<ValueKey, FormalResult>()
     private val byCell = HashMap<CellKey, FormalResult>()
+    private val computedAdmissions = HashSet<CellKey>()
+
+    /** A computed custom target has already run its validator; dependent reads reuse that admission (SPEC-2026-10-10-12). */
+    fun admitComputedCustomValue(path: String, reps: List<Int>, raw: String) {
+        if (!checks.isCustomAt(path)) return
+        computedAdmissions += CellKey(path, reps, raw)
+    }
 
     fun resultAt(path: String, reps: List<Int>, raw: String): FormalResult {
         // Cell-shaped, so it stays out of the memo — and it must run FIRST, because an over-limit cell is exempt
@@ -80,10 +91,15 @@ internal class ValueAdmissionCache(
         // path's bounds through a map probe BEFORE it can answer "no", and on an ordinary document the answer is
         // "no" for every cell (IG127.1).
         if (overRepetitionGateNeeded) checks.overRepetitionResultAt(path, reps)?.let { return it }
+        val input = if (checks.isCustomAt(path)) {
+            // The attempted value supersedes even an explicitly empty stored target (CustomTestRangeLawsTest).
+            if (CellKey(path, reps, raw) in computedAdmissions) return FormalResult.Valid
+            document.customValidationInputAt(path, reps) ?: raw
+        } else raw
         return if (checks.hasCodeBasedValidatorAt(path)) {
-            byCell.getOrPut(CellKey(path, reps, raw)) { checks.computeValueAdmissionAt(path, raw, locale) }
+            byCell.getOrPut(CellKey(path, reps, input)) { checks.computeValueAdmissionAt(path, raw, locale, input) }
         } else {
-            byValue.getOrPut(ValueKey(path, raw)) { checks.computeValueAdmissionAt(path, raw, locale) }
+            byValue.getOrPut(ValueKey(path, input)) { checks.computeValueAdmissionAt(path, raw, locale, input) }
         }
     }
 
@@ -167,7 +183,7 @@ internal class FormalResultCache(
 
     fun failureAt(path: String, reps: List<Int>, ctx: EvalContext): FormalFailure? =
         when (val result = resultAt(path, reps, ctx)) {
-            FormalResult.Valid -> null
+            FormalResult.Valid, is FormalResult.Reported -> null
             is FormalResult.Invalid -> result.failure
             is FormalResult.Unsupported -> throw UnsupportedConstructException(result.reason)
         }
@@ -176,7 +192,7 @@ internal class FormalResultCache(
      *  repetitions, so no synthetic row context is needed for a filled cell. */
     fun failureAt(path: String, reps: List<Int>, raw: String): FormalFailure? =
         when (val result = resultAt(path, reps, raw)) {
-            FormalResult.Valid -> null
+            FormalResult.Valid, is FormalResult.Reported -> null
             is FormalResult.Invalid -> result.failure
             is FormalResult.Unsupported -> throw UnsupportedConstructException(result.reason)
         }

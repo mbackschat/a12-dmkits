@@ -18,6 +18,10 @@ import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -272,6 +276,39 @@ class DmtoolPublicContractTest {
             assertEquals("refused", envelope.path("outcome").asText(), refusal::out);
             assertEquals("DM_INTERPRETER", envelope.path("engine").asText(), refusal::out);
             assertTrue(envelope.hasNonNull("engineVersion") && envelope.hasNonNull("toolVersion"), refusal::out);
+        }
+    }
+
+    @Test
+    void packagedComputeStrictModeChecksComputedTargetSupport(@TempDir Path dir) throws Exception {
+        String base = DocumentModelDraft.named("claim-custom-copy").locale("en_US")
+                .rootGroup("Claim", g -> g.customField("Source", f -> f.type("SourceType"))
+                        .customField("Copy", f -> f.type("TargetType"))).build().toJson();
+        var bound = BoundModel.ofJson(base);
+        var source = bound.custom("/Claim/Source");
+        var copy = bound.custom("/Claim/Copy");
+        String json = EditSession.read(base).addComputation(m -> m.computation(copy).name("CopyIdentifier")
+                .calc(source.asString()).message(Dsl.en("Check the copy.")).build()).toJson();
+        Path model = dir.resolve("custom.dm.json");
+        Path document = dir.resolve("document.json");
+        Path registry = dir.resolve("types.json");
+        Files.writeString(model, json);
+        Files.writeString(document, "{\"Claim\":{\"Source\":\"ready\",\"Copy\":\"stale\"}}");
+        String original = Files.readString(document);
+        PackagedDmtool dmtool = new PackagedDmtool(dir);
+        for (boolean targetRegistered : List.of(true, false)) {
+            Files.writeString(registry, targetRegistered ? "{\"SourceType\":{},\"TargetType\":{}}" : "{\"SourceType\":{}}");
+            var result = dmtool.run("-m", model.toString(), "model", "compute", "--instance", document.toString(),
+                    "--predefined-types", registry.toString(), "--strict-custom");
+            assertEquals(targetRegistered ? 0 : 2, result.code(), result::out);
+            JsonNode envelope = MAPPER.readTree(result.out());
+            assertEquals("DM_INTERPRETER", envelope.path("engine").asText(), result::out);
+            assertTrue(envelope.hasNonNull("engineVersion") && envelope.hasNonNull("toolVersion"), result::out);
+            if (!targetRegistered) {
+                assertEquals("refused", envelope.path("outcome").asText(), result::out);
+                assertEquals("Claim/Copy", envelope.path("data").path("unsupported").get(0).path("name").asText());
+            }
+            assertEquals(original, Files.readString(document));
         }
     }
 

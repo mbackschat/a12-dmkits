@@ -205,9 +205,9 @@ class OverLimitAddressPresenceMultiplatformTest {
         val checks = checksFor(policyModel())
         val overLimit = listOf(1, 3, 1)
 
-        val skipped = ValueAdmissionCache(checks, "en_US", overRepetitionGateNeeded = false)
+        val skipped = ValueAdmissionCache(checks, "en_US", policyModel().newDocument(), overRepetitionGateNeeded = false)
             .resultAt(RIDER_CODE, overLimit, "RC-3")
-        val run = ValueAdmissionCache(checks, "en_US", overRepetitionGateNeeded = true)
+        val run = ValueAdmissionCache(checks, "en_US", policyModel().newDocument(), overRepetitionGateNeeded = true)
             .resultAt(RIDER_CODE, overLimit, "RC-3")
 
         assertEquals(FormalResult.Valid, skipped, "gate not needed → the coordinate is never consulted")

@@ -23,6 +23,8 @@ import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.eval.semanticIndexRepetitions
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationEvaluation
+import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
@@ -768,7 +770,7 @@ class DmInterpreter private constructor(
             val unavailable = if (full) emptySet() else indexDefaults.keys
             // Computed on the STAGED document (the one every gate below consults), once per call (IG127.1).
             val gateNeeded = checks.overRepetitionGateNeeded(call)
-            val valueAdmissions = ValueAdmissionCache(checks, locale, gateNeeded)
+            val valueAdmissions = ValueAdmissionCache(checks, locale, call, gateNeeded)
             val dup = checks.duplicateIndexCells(call, valueAdmissions, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
             lateinit var formalResults: FormalResultCache
             val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
@@ -870,6 +872,18 @@ class DmInterpreter private constructor(
     fun compute(doc: Document, locale: String = "en_US"): List<Computed> =
         retainedComputations(doc, locale).results
 
+    /** Retain support observations without rerunning custom callbacks for a separate support audit. */
+    fun computeWithSupport(doc: Document, locale: String = "en_US"): ComputationEvaluation = try {
+        observeCaches(doc) {
+            val run = engine.computeRunWithSupport(doc, locale)
+            ComputationEvaluation(run.results, run.unsupported)
+        }
+    } catch (failure: UnsupportedConstructException) {
+        ComputationEvaluation(emptyList(), listOf(UnsupportedRule(
+            "<compute>", failure.message.orEmpty(), UnsupportedSubject.ELEMENT,
+        )))
+    }
+
     /** One compute pass retaining the source-relative actions consumed by both application surfaces. */
     internal fun retainedComputations(doc: Document, locale: String = "en_US"): RetainedComputationRun =
         observeCaches(doc) {
@@ -942,7 +956,7 @@ class DmInterpreter private constructor(
         // Full-call semantics, so the eligible index defaults are staged exactly as in [validate] (SPEC-2026-07-23-14).
         val indexDefaults = checks.eligibleIndexDefaults(doc)
         val call = if (indexDefaults.isEmpty()) doc else doc.withComputed(indexDefaults)
-        val valueAdmissions = ValueAdmissionCache(checks, locale, checks.overRepetitionGateNeeded(call))
+        val valueAdmissions = ValueAdmissionCache(checks, locale, call, checks.overRepetitionGateNeeded(call))
         val dup = checks.duplicateIndexCells(call, valueAdmissions)
         val relevance = CallRelevance.FULL
         lateinit var formalResults: FormalResultCache

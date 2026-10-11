@@ -2048,7 +2048,10 @@
         "checker": [
           "portable keyed-list topology verdict"
         ],
-        "a12-kernel-lean": ["specification", "evidence"],
+        "a12-kernel-lean": [
+          "specification",
+          "evidence"
+        ],
         "dmtool-cli": [
           "rule check and rule read"
         ],
@@ -2348,7 +2351,10 @@
           "generated corrective",
           "syntax JVM and JS"
         ],
-        "a12-kernel-lean": ["specification", "evidence"],
+        "a12-kernel-lean": [
+          "specification",
+          "evidence"
+        ],
         "dmtool-cli": [
           "CLI corrective"
         ],
@@ -2476,7 +2482,10 @@
         "checker": [
           "numeric entity-name finding"
         ],
-        "a12-kernel-lean": ["specification", "historical KF492 adoption review"],
+        "a12-kernel-lean": [
+          "specification",
+          "historical KF492 adoption review"
+        ],
         "dmtool-cli": [
           "CLI applicability and public behavior"
         ],
@@ -2553,7 +2562,11 @@
         "checker": [
           "declared-locale and no-pattern message coverage"
         ],
-        "a12-kernel-lean": ["specification", "trailing-dollar rendering lock", "evidence"],
+        "a12-kernel-lean": [
+          "specification",
+          "trailing-dollar rendering lock",
+          "evidence"
+        ],
         "dmtool-cli": [
           "CLI field output",
           "CLI field schema",
@@ -2671,7 +2684,11 @@
           "field-message rendering"
         ],
         "checker": [],
-        "a12-kernel-lean": ["specification", "trailing-dollar rendering lock", "evidence"],
+        "a12-kernel-lean": [
+          "specification",
+          "trailing-dollar rendering lock",
+          "evidence"
+        ],
         "dmtool-cli": [
           "CLI applicability and public behavior"
         ],
@@ -2888,7 +2905,10 @@
         "json-schema-export": [
           "CurrentRepetition static-gate adoption"
         ],
-        "a12-kernel-lean": ["specification", "CurrentRepetition static-gate adoption"]
+        "a12-kernel-lean": [
+          "specification",
+          "CurrentRepetition static-gate adoption"
+        ]
       },
       "consumers": {
         "adapter": {
@@ -2903,12 +2923,12 @@
         },
         "dmkits": {
           "state": "OPEN",
-          "basis": "Assess this new static-gate evidence on the consumer\u2019s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
+          "basis": "Assess this new static-gate evidence on the consumer’s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
           "evidence": {}
         },
         "interpreter": {
           "state": "NOT_APPLICABLE",
-          "basis": "This KF122 revision measures rejection classes for malformed operator operands and their filter precedence. It adds no runtime behavior, valid syntax or model shape; the already-known fixed-group admission control does not change the interpreter\u2019s accepted domain.",
+          "basis": "This KF122 revision measures rejection classes for malformed operator operands and their filter precedence. It adds no runtime behavior, valid syntax or model shape; the already-known fixed-group admission control does not change the interpreter’s accepted domain.",
           "evidence": {}
         },
         "checker": {
@@ -2923,17 +2943,17 @@
         },
         "dmtool-cli": {
           "state": "OPEN",
-          "basis": "Assess this new static-gate evidence on the consumer\u2019s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
+          "basis": "Assess this new static-gate evidence on the consumer’s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
           "evidence": {}
         },
         "json-schema-import": {
           "state": "OPEN",
-          "basis": "Assess this new static-gate evidence on the consumer\u2019s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
+          "basis": "Assess this new static-gate evidence on the consumer’s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
           "evidence": {}
         },
         "json-schema-export": {
           "state": "OPEN",
-          "basis": "Assess this new static-gate evidence on the consumer\u2019s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
+          "basis": "Assess this new static-gate evidence on the consumer’s own surface under F-USE-BACKLOG; a checker oracle does not establish other consumer adoption.",
           "evidence": {}
         },
         "a12-kernel-lean": {
@@ -2961,7 +2981,9 @@
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "a12-kernel-lean": ["DG75 adoption notice"]
+        "a12-kernel-lean": [
+          "DG75 adoption notice"
+        ]
       },
       "consumers": {
         "adapter": {
@@ -3010,7 +3032,7 @@
           "evidence": {
             "DG75 adoption notice": {
               "reference": "a12-kernel-lean@3831425df05ba9afecdf5805e80be4fad164ec6c:docs/SOURCES.md#inbound-2026-09-27a-consistent",
-              "witness": "Peer lists KF458 \u00a740.42 among the already-conforming rows."
+              "witness": "Peer lists KF458 §40.42 among the already-conforming rows."
             }
           }
         }
@@ -8087,6 +8109,101 @@
         "a12-kernel-lean": {
           "state": "NOT_APPLICABLE",
           "basis": "The peer superseded SPEC-2026-08-24-02 on this order control; the shared-format contract it led to is SPEC-2026-10-09-12, reviewed under KF540.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf541": {
+      "sha256": "82e954d2fd2ccc6ea6399958c29a334e12e79f7aab405d003378fbfb0f1d516a",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "raw callback input and reserved report admission",
+          "computed target and dependent read"
+        ],
+        "interpreter": [
+          "raw callback input and reserved report admission",
+          "computed target and dependent read"
+        ],
+        "dmtool-cli": [
+          "raw callback input and reserved report admission",
+          "computed target and dependent read"
+        ],
+        "a12-kernel-lean": [
+          "raw callback input and reserved report admission",
+          "computed target and dependent read"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed CUSTOM declaration and Document shape are unchanged; callback admission is runtime configuration.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Model consistency does not execute runtime validators.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "JSON Schema has no project callback or reserved A12 error-key semantics to import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "CUSTOM export retains its existing explicit unmapped boundary; project callbacks cannot be expressed as JSON Schema patterns.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies and the public interpreter are compared across raw input, callback results, relevance, computation channels and application.",
+          "evidence": {
+            "raw callback input and reserved report admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTestRangeLawsTest.kt#modernRoutesRetainAdmissionContinuationAndEveryComputationChannel",
+              "witness": "Accept, ordinary rejection and exact reserved result; CR input, empty/absent and excluded cells; source/target combinations and callback lifecycle."
+            },
+            "computed target and dependent read": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTestRangeLawsTest.kt#modernRoutesRetainAdmissionContinuationAndEveryComputationChannel",
+              "witness": "Accept, ordinary rejection and exact reserved result; CR input, empty/absent and excluded cells; source/target combinations and callback lifecycle."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies and the public interpreter are compared across raw input, callback results, relevance, computation channels and application.",
+          "evidence": {
+            "raw callback input and reserved report admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTestRangeLawsTest.kt#publicInterpreterSeparatesStoredAdmissionFromComputedTargetErrors",
+              "witness": "Accept, ordinary rejection and exact reserved result; CR input, empty/absent and excluded cells; source/target combinations and callback lifecycle."
+            },
+            "computed target and dependent read": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTestRangeLawsTest.kt#publicInterpreterSeparatesStoredAdmissionFromComputedTargetErrors",
+              "witness": "Accept, ordinary rejection and exact reserved result; CR input, empty/absent and excluded cells; source/target combinations and callback lifecycle."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "model compute configures the same custom registries as evaluation and retains support observations from its single execution. Strict refusal preserves the computation data and runtime provenance.",
+          "evidence": {
+            "raw callback input and reserved report admission": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/ComputeDocVerbTest.java#customCallbacksRetainRawInputReservedCascadeAndSingleInvocation",
+              "witness": "The 3×3 source/target callback result grid locks original source input, computed target input, dependent results and one callback per reached cell."
+            },
+            "computed target and dependent read": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/ComputeDocVerbTest.java#customCallbacksRetainRawInputReservedCascadeAndSingleInvocation",
+              "witness": "The 3×3 source/target callback result grid locks original source input, computed target input, dependent results and one callback per reached cell."
+            }
+          }
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-11/12 await the peer verification and receipt for this committed batch.",
           "evidence": {}
         }
       }
