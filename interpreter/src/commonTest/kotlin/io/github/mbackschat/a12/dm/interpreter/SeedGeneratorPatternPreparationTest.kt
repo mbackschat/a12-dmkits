@@ -10,6 +10,15 @@ import kotlin.test.assertEquals
 
 class SeedGeneratorPatternPreparationTest {
     @Test
+    fun inactiveEmptyPatternGeneratesTheSameBoundedTextAsNoPattern() {
+        val field = FieldDef("/Load/Reference", Kind.STRING, minLength = 3, maxLength = 8)
+        val plain = SeedGenerator(ModelDef(listOf(field), emptyList()))
+        val empty = SeedGenerator(ModelDef(listOf(field.copy(pattern = "")), emptyList()))
+        assertEquals(record(plain, "/Load", 1, 42L), record(empty, "/Load", 1, 42L))
+        assertEquals(0, empty.patternPreparationCount())
+    }
+
+    @Test
     fun preparesEachDistinctPatternOncePerGeneratorAcrossManyCells() {
         val rows = "/Load/Rows"
         val model = ModelDef(

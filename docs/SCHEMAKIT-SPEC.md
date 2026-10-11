@@ -149,7 +149,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `type:[X,"null"]` (nullable) | optional `X` | structure |
 | `format: date` / `date-time` / `time` | DATE / DATE_TIME / TIME field | structure |
 | `required` | field requiredness | structure |
-| `minLength` / `maxLength` / `pattern` | string field config | field-config |
+| `minLength` / `maxLength` / `pattern` | string field config; empty pattern remains inactive without a message ([KF543](KERNEL-FINDINGS.md#kf543)) | field-config |
 | `minimum` / `maximum` | number value bounds | field-config |
 | `format: email` / `uuid` | STRING + standard pattern | field-config (profile: format) |
 | `exclusiveMinimum` / `exclusiveMaximum` | strict `<` / `>` rule | rule (Tier A+) |
@@ -183,7 +183,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | NUMBER scale 0 / scale > 0 (+ `min`/`max`) | `integer` / `number` (+ `minimum`/`maximum`) | exact |
 | BOOLEAN · ENUMERATION | `boolean` · `enum` | exact |
 | typeDefinition | `$defs` entry + `$ref` | exact |
-| Rule recognized as a field `pattern` (Tier-A) | native `pattern` keyword | projected |
+| Rule recognized as a field `pattern` (Tier-A) | native `pattern` keyword for a nonempty authored regex; empty regex stays carriage-only ([KF543](KERNEL-FINDINGS.md#kf543)) | projected |
 | any other Rule | `x-a12-rule` (a12↔a12 round-trip) | carriage |
 | Computation | `x-a12-computation` (a12↔a12 round-trip) | carriage |
 | DATE / DATE_TIME / TIME / DATE_RANGE / DATE_FRAGMENT | `string` placeholder + diagnostic | **lossy** (no `format` emitted yet) |

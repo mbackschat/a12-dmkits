@@ -7,7 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.ComputationApplication
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
-import io.github.mbackschat.a12.dm.interpreter.eval.TemporalLabelFailure
+import io.github.mbackschat.a12.dm.interpreter.eval.RuntimeEvaluationFailure
 import io.github.mbackschat.a12.dm.interpreter.eval.evalTyped
 import io.github.mbackschat.a12.dm.interpreter.eval.WorkLedger
 import io.github.mbackschat.a12.dm.interpreter.eval.EffectiveRelevanceIndex
@@ -1207,7 +1207,7 @@ class DmInterpreter private constructor(
         for (ctx in iterationContexts) {
             try {
                 outcomes += rowOutcome(ctx)
-            } catch (failure: TemporalLabelFailure) {
+            } catch (failure: RuntimeEvaluationFailure) {
                 val first = iterationContexts.first()
                 outcomes += RowOutcome.Fired(Message(rule.errorCode, rule.path,
                     pass.doc.messagePointer(errorPath, first.repsOf(errorPath)), rule.severity, MsgType.VALUE,

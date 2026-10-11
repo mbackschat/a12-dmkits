@@ -74,7 +74,8 @@ sealed interface Cond {
     /**
      * An infix pattern test: `value PatternMatched "regex"` / `value PatternViolated "regex"`. The regex
      * is anchored over the WHOLE value (kernel semantics). [expectMatch] = PatternMatched (fires when the
-     * value matches); PatternViolated fires when a *present* value does NOT match (empty → not evaluated).
+     * value matches); PatternViolated fires when a *present* value does NOT match. A nonempty regex leaves
+     * an empty operand unevaluated; an empty authored regex fails when reached (SPEC-2026-10-10-13).
      */
     data class Pattern(val value: Expr, val pattern: Expr, val expectMatch: Boolean) : Cond
 

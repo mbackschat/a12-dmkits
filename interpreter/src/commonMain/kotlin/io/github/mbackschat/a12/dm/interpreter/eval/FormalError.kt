@@ -572,7 +572,7 @@ private fun stringConstraintError(
     // A plain STRING: pattern → length. [raw] arrives CRLF-normalized (the Document's eval-ingestion
     // normalization, IF124), so a permitted "\r\n" measures ONE unit here — exactly the kernel, which
     // normalizes inside `validiereFormat` before these clauses.
-    if (c.pattern != null && !patternMatches(c.pattern, raw)) return FormalErrorCode.PATTERN
+    if (!c.pattern.isNullOrEmpty() && !patternMatches(c.pattern, raw)) return FormalErrorCode.PATTERN
     if (c.minLength != null && raw.length < c.minLength) return FormalErrorCode.STRING_TOO_SHORT
     if (c.maxLength != null && raw.length > c.maxLength) return FormalErrorCode.STRING_TOO_LONG
     return null

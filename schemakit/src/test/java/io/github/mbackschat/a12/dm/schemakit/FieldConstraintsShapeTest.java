@@ -29,6 +29,15 @@ class FieldConstraintsShapeTest {
             """;
 
     @Test
+    void anEmptyPatternRoundTripsWithoutInventingAPatternMessage() {
+        String schema = "{\"type\":\"object\",\"properties\":{\"code\":{\"type\":\"string\",\"pattern\":\"\"}}}";
+        var imported = new JsonSchemaImporter().importSchema(schema);
+        assertKernelAccepts(imported.dmJson());
+        var exported = new JsonSchemaExporter().export(imported.dmJson());
+        assertEquals(normalize(schema), normalize(exported.jsonSchema()));
+    }
+
+    @Test
     void constraintsImportToFieldConfig() {
         JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(CONSTRAINED);
         assertKernelAccepts(imported.dmJson());

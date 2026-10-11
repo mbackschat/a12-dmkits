@@ -84,6 +84,11 @@ class StringTypeMessageAndPatternLawsTest {
     private static Map<String, Consumer<ObjectNode>> grid() {
         Map<String, Consumer<ObjectNode>> rows = new LinkedHashMap<>();
         rows.put("neither member — the control", stringType -> stringType.put("maxLength", 40));
+        rows.put("an empty pattern without a message", stringType -> stringType.put("pattern", ""));
+        rows.put("an empty pattern with a message", stringType -> {
+            stringType.put("pattern", "");
+            message(stringType, DECLARED_LOCALE, "the reference is malformed");
+        });
         rows.put("a pattern and its error message", stringType -> {
             stringType.put("pattern", "[A-Z]{2}[0-9]+");
             message(stringType, DECLARED_LOCALE, "the reference is malformed");
@@ -144,6 +149,8 @@ class StringTypeMessageAndPatternLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("neither member — the control", KernelLaws.ADMITTED);
+        expected.put("an empty pattern without a message", KernelLaws.ADMITTED);
+        expected.put("an empty pattern with a message", MESSAGE_WITHOUT_PATTERN);
         expected.put("a pattern and its error message", KernelLaws.ADMITTED);
         expected.put("a pattern with NO error message", PATTERN_WITHOUT_MESSAGE);
         expected.put("an error message with NO pattern", MESSAGE_WITHOUT_PATTERN);

@@ -321,7 +321,7 @@ class Interpreter(
 
     /**
      * The kernel's two-pass rule evaluation, for a condition whose reached leaves are observable because one can
-     * fail at runtime ([TemporalLabelFailure]). The first pass asks only whether the condition is KNOWN TRUE, in
+     * fail at runtime ([RuntimeEvaluationFailure]). The first pass asks only whether the condition is KNOWN TRUE, in
      * authored order with both connectives short-circuited — `And` stops after a not-true left, `Or` after a true
      * one — which fires on exactly the rows the three-valued walk fires on but reaches fewer leaves. A true rule
      * whose constructs enable classification ([classifies], [classificationEnabled]) then re-evaluates every leaf
@@ -1301,12 +1301,13 @@ class Interpreter(
     private fun overlapFilter(star: Expr.Star): ((EvalContext) -> Boolean)? =
         star.having?.let { having -> { row: EvalContext -> overlapFilterInterp(row).keeps(having) } }
 
-    /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; empty → not evaluated. */
+    /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; an empty pattern fails after the operand read. */
     internal fun evalPattern(p: Cond.Pattern): Tri {
         val v = evalExpr(p.value)
+        val pattern = (p.pattern as Expr.StrLit).v
+        if (pattern.isEmpty()) throw EmptyPatternFailure()
         if (v is Val.Unknown) return Tri.UNKNOWN
         val text = (v as? Val.Txt)?.v ?: error("pattern comparison needs a string value, got $v")
-        val pattern = (p.pattern as Expr.StrLit).v
         val matched = config.patternMatches(pattern, text)
         return Tri.of(if (p.expectMatch) matched else !matched)
     }

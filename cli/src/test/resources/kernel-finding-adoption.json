@@ -8284,6 +8284,106 @@
           "evidence": {}
         }
       }
+    },
+    "kf543": {
+      "sha256": "99448ee566fd488a062c0c37574a5c0b06900739e58cc1d9f89da150a00eec27",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [
+          "inactive declaration"
+        ],
+        "checker": [
+          "inactive declaration"
+        ],
+        "json-schema-import": [
+          "inactive field pattern"
+        ],
+        "json-schema-export": [
+          "authored pattern carriage"
+        ],
+        "adapter": [
+          "reached execution failure"
+        ],
+        "interpreter": [
+          "reached execution failure"
+        ],
+        "dmtool-cli": [
+          "reached execution failure"
+        ],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "Typed empty-pattern authoring and readback retain the source without requiring a message.",
+          "evidence": {
+            "inactive declaration": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/FieldConfigTest.java#anInactiveEmptyPatternSurvivesAuthoringAndReadbackWithoutAMessage",
+              "witness": "Typed empty-pattern authoring and readback retain the source without requiring a message."
+            }
+          }
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The empty declaration does not activate pattern-message co-requirement.",
+          "evidence": {
+            "inactive declaration": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/StringTypeMessageTest.kt#emptyDeclaredPatternIsInactive",
+              "witness": "The empty declaration does not activate pattern-message co-requirement."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Inactive field-pattern import is guarded by FieldConstraintsShapeTest.anEmptyPatternRoundTripsWithoutInventingAPatternMessage. Positive/negated composition and contains synthesis are a separate finite session checkpoint; no complete import adoption is claimed yet.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "APPLIED",
+          "basis": "No native pattern is projected and the authored model root survives export and reimport exactly.",
+          "evidence": {
+            "authored pattern carriage": {
+              "reference": "schemakit/src/test/java/io/github/mbackschat/a12/dm/schemakit/TierAProjectionShapeTest.java#emptyAuthoredPatternIsCarriedWithoutClaimingAUniversalNativeConstraint",
+              "witness": "No native pattern is projected and the authored model root survives export and reimport exactly."
+            }
+          }
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both operators, empty and nonempty patterns, filled/empty/absent inputs, guards and filters; complete signatures against both strategies.",
+          "evidence": {
+            "reached execution failure": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EmptyAuthoredPatternDiffTest.kt#everyReachedAndHiddenCarrierAgreesWithBothStrategies",
+              "witness": "Both operators, empty and nonempty patterns, filled/empty/absent inputs, guards and filters; complete signatures against both strategies."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Both operators, empty and nonempty patterns, filled/empty/absent inputs, guards and filters; complete signatures against both strategies.",
+          "evidence": {
+            "reached execution failure": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EmptyAuthoredPatternDiffTest.kt#everyReachedAndHiddenCarrierAgreesWithBothStrategies",
+              "witness": "Both operators, empty and nonempty patterns, filled/empty/absent inputs, guards and filters; complete signatures against both strategies."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Packaged eval compares reached, hidden and nonempty controls to the kernel for absent and filled operands.",
+          "evidence": {
+            "reached execution failure": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedEmptyPatternFailsOnlyWhenReached",
+              "witness": "Packaged eval compares reached, hidden and nonempty controls to the kernel for absent and filled operands."
+            }
+          }
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-13 awaits peer verification and receipt at the final batch revision.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

@@ -38,6 +38,12 @@ class StringTypeMessageTest {
         """"errorMessage":[{"locale":"$locale","text":"$text"}]"""
 
     @Test
+    fun emptyDeclaredPatternIsInactive() {
+        assertEquals(emptyList(), codes("\"pattern\":\"\""))
+        assertEquals(listOf(messageWithoutPattern), codes("\"pattern\":\"\"," + message("en_US", "review")))
+    }
+
+    @Test
     fun aDeclaredPatternAndItsOwnErrorMessageRequireEachOther() {
         val actual = mutableMapOf<String, List<String>>()
         actual["neither member — the control"] = codes(""""maxLength":40""")

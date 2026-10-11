@@ -1376,7 +1376,7 @@ public final class JsonSchemaImporter {
                 s.maxLength(maxLength);
             }
             if (pattern != null) {
-                s.pattern(pattern, "must match " + pattern);   // a12 needs a message; JSON Schema has none → synthesize
+                s.pattern(pattern, pattern.isEmpty() ? null : "must match " + pattern); // Empty declarations are inactive (SPEC-2026-10-10-13).
             }
             if (isRequired) {
                 s.required();

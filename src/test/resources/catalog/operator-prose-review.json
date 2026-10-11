@@ -2782,7 +2782,7 @@
       "operator": "PatternMatched",
       "lane": "GOTCHA",
       "ordinal": 4,
-      "digest": "sha256:f4a825325f0c39b38aba4b6cec3136e4d9f9736e2d04538dce773dafe528c21a",
+      "digest": "sha256:fa7cf9088302e3d4d03bf659142319e28ae00e725c6007b377f448050868bead",
       "classifications": [
         "RUNTIME"
       ],
@@ -2844,7 +2844,7 @@
       "operator": "PatternViolated",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:58798214cbf9e0811e1d2762672eee6468373f087e3e4cced3d65239e3d2a037",
+      "digest": "sha256:67cf89518ff69f75f5e9514ffa0aec1504cd793c41bf962c339c3c0d094141f3",
       "classifications": [
         "RUNTIME"
       ],
@@ -8588,6 +8588,48 @@
         "REJECTION"
       ],
       "evidence": []
+    },
+    {
+      "operator": "PatternMatched",
+      "lane": "GOTCHA",
+      "ordinal": 5,
+      "digest": "sha256:dccd0f9a76f8cbf4ba31968587884963b664101c7cd8bce93fd3957c2c3def58",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.EmptyAuthoredPatternDiffTest.everyReachedAndHiddenCarrierAgreesWithBothStrategies"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "StringTypeMessageAndPatternLawsTest#aDeclaredPatternAndItsOwnErrorMessageRequireEachOther"
+        }
+      ]
+    },
+    {
+      "operator": "PatternViolated",
+      "lane": "GOTCHA",
+      "ordinal": 2,
+      "digest": "sha256:dccd0f9a76f8cbf4ba31968587884963b664101c7cd8bce93fd3957c2c3def58",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.EmptyAuthoredPatternDiffTest.everyReachedAndHiddenCarrierAgreesWithBothStrategies"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "StringTypeMessageAndPatternLawsTest#aDeclaredPatternAndItsOwnErrorMessageRequireEachOther"
+        }
+      ]
     }
   ],
   "claims": [

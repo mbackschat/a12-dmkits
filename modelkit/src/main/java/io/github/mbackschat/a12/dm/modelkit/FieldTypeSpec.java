@@ -116,11 +116,12 @@ public sealed interface FieldTypeSpec {
     /**
      * A string field: optional length bounds and an anchored pattern (KERNEL-SEMANTICS §7).
      *
-     * <p>A pattern is inseparable from its {@code patternMessage}, and the refusal below is measured in BOTH
+     * <p>A non-empty pattern is inseparable from its {@code patternMessage}, and the refusal below is measured in BOTH
      * directions rather than only the obvious one ([KERNEL-FINDINGS KF318], locked by
      * {@code rulekit.validate.laws.StringTypeMessageAndPatternLawsTest}): a pattern with no error text draws
      * {@code MVK_ERROR_MESSAGE_AND_PATTERN_INVALID} and a type-level message with no pattern draws
-     * {@code MVK_ERROR_MESSAGE_AND_NO_PATTERN}, so the two are set or unset together.
+     * {@code MVK_ERROR_MESSAGE_AND_NO_PATTERN}, so active patterns require their message. An empty pattern is inactive and may be stored without a message
+     * (SPEC-2026-10-10-13; the same law test locks that boundary).
      *
      * <p>Where this check is WEAKER than A12 it under-rejects, which is the safe direction: A12 asks whether
      * the message reaches a declared locale with a non-blank text, and a blank {@code patternMessage} passes
@@ -133,7 +134,8 @@ public sealed interface FieldTypeSpec {
             if (declaresLength(minLength) && declaresLength(maxLength) && minLength > maxLength) {
                 throw new IllegalArgumentException("minLength " + minLength + " > maxLength " + maxLength);
             }
-            if ((pattern == null) != (patternMessage == null)) {
+            if ((pattern == null && patternMessage != null)
+                    || (pattern != null && !pattern.isEmpty() && patternMessage == null)) {
                 throw new IllegalArgumentException("a pattern and its error message must be set together");
             }
             if (pattern != null) {

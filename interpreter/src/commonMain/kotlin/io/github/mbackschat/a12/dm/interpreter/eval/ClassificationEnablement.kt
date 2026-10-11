@@ -11,7 +11,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
  * The kernel tests truth first, short-circuiting both connectives, and only when the complete condition is true
  * and this predicate holds does it re-evaluate every leaf in authored order to combine the message type. The two
  * passes agree on the type, so the second one is observable only through a leaf that can FAIL at runtime
- * ([TemporalLabelFailure]): a failure skipped by the truth pass is reached here and aborts the rule.
+ * ([RuntimeEvaluationFailure]): a failure skipped by the truth pass is reached here and aborts the rule.
  *
  * The predicate follows the kernel's omission-capability visitor (`CodeGenHelper.canCreateOmissionErrors`) node
  * kind by node kind, on the kernel's parsed form — which is why the presence keywords need their lowering:
@@ -73,30 +73,30 @@ private fun filtered(e: Expr): Boolean = when (e) {
 }
 
 /**
- * Whether the condition holds a DateTime literal — the only leaf that can raise a [TemporalLabelFailure]. The
+ * Whether a condition contains a temporal literal or empty pattern that can raise [RuntimeEvaluationFailure]. The
  * eager classification pass agrees with the lazy single walk on every message type, so it is run only where it
  * could reach a failure the truth pass skipped; everywhere else it would be a second walk with nothing to observe.
  * The shape test is deliberately loose: a false positive costs one extra walk, never a different result.
  */
-internal fun containsDateTimeLiteral(cond: Cond): Boolean = when (cond) {
-    is Cond.And -> containsDateTimeLiteral(cond.left) || containsDateTimeLiteral(cond.right)
-    is Cond.Or -> containsDateTimeLiteral(cond.left) || containsDateTimeLiteral(cond.right)
-    is Cond.Not -> containsDateTimeLiteral(cond.c)
-    is Cond.Cmp -> hasDateTimeLiteral(cond.left) || hasDateTimeLiteral(cond.right)
-    is Cond.Tolerance -> hasDateTimeLiteral(cond.left) || hasDateTimeLiteral(cond.right)
-    is Cond.Pattern -> hasDateTimeLiteral(cond.value)
+internal fun canRaiseRuntimeFailure(cond: Cond): Boolean = when (cond) {
+    is Cond.And -> canRaiseRuntimeFailure(cond.left) || canRaiseRuntimeFailure(cond.right)
+    is Cond.Or -> canRaiseRuntimeFailure(cond.left) || canRaiseRuntimeFailure(cond.right)
+    is Cond.Not -> canRaiseRuntimeFailure(cond.c)
+    is Cond.Cmp -> expressionCanRaiseRuntimeFailure(cond.left) || expressionCanRaiseRuntimeFailure(cond.right)
+    is Cond.Tolerance -> expressionCanRaiseRuntimeFailure(cond.left) || expressionCanRaiseRuntimeFailure(cond.right)
+    is Cond.Pattern -> (cond.pattern as? Expr.StrLit)?.v == "" || expressionCanRaiseRuntimeFailure(cond.value)
     is Cond.Custom -> false
-    is Cond.ValueListQuant -> (cond.fields + cond.values).any(::hasDateTimeLiteral)
-    is Cond.Pred -> cond.args.any(::hasDateTimeLiteral)
+    is Cond.ValueListQuant -> (cond.fields + cond.values).any(::expressionCanRaiseRuntimeFailure)
+    is Cond.Pred -> cond.args.any(::expressionCanRaiseRuntimeFailure)
 }
 
 private val DATE_TIME_LITERAL_SHAPE = Regex("""\d{1,2}\.\d{1,2}\.\d{4}T\d{1,2}:\d{1,2}:\d{1,2}""")
 
-private fun hasDateTimeLiteral(e: Expr): Boolean = when (e) {
+private fun expressionCanRaiseRuntimeFailure(e: Expr): Boolean = when (e) {
     is Expr.StrLit -> DATE_TIME_LITERAL_SHAPE.matches(e.v)
-    is Expr.Func -> e.args.any(::hasDateTimeLiteral)
-    is Expr.Arith -> hasDateTimeLiteral(e.left) || hasDateTimeLiteral(e.right)
-    is Expr.Star -> e.having?.let(::containsDateTimeLiteral) ?: false
-    is Expr.EntitySpec -> hasDateTimeLiteral(e.source)
+    is Expr.Func -> e.args.any(::expressionCanRaiseRuntimeFailure)
+    is Expr.Arith -> expressionCanRaiseRuntimeFailure(e.left) || expressionCanRaiseRuntimeFailure(e.right)
+    is Expr.Star -> e.having?.let(::canRaiseRuntimeFailure) ?: false
+    is Expr.EntitySpec -> expressionCanRaiseRuntimeFailure(e.source)
     is Expr.Field, is Expr.SemanticIndex, is Expr.EnumCategory, is Expr.Const, is Expr.NumLit, is Expr.BoolLit -> false
 }

@@ -373,7 +373,7 @@ object ValidValues : ValueStrategy {
         // A STRING pattern (unless noValueValidation waives all string checks): satisfy it cheaply, else leave
         // empty (S2 MEDIUM). A satisfying sample is VERIFIED against the pattern before use, so a wrong guess is
         // discarded (→ empty), never emitted; an empty value skips the pattern check (no stringFalschesMuster).
-        field.pattern != null && !field.noValueValidation -> sampleFor(field.pattern)
+        !field.pattern.isNullOrEmpty() && !field.noValueValidation -> sampleFor(field.pattern)
         else -> byKind(field, reps, rnd)
     }
 

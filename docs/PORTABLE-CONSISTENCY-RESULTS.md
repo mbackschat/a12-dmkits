@@ -8,6 +8,10 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-10-11 16:04 CEST — empty declared-pattern check-path gate <a id="empty-pattern-check-2026-10-11"></a>
+
+`./build.sh :adapter:checkerPreparedNodePerfTest` passed after inactive empty patterns were excluded from declared-pattern admission and message co-requirements. One warm Node v24.18.0 process measured 51 pairs at 200 and 800 programs: medians 739.37 and 2915.14 ms, paired growth ratio 4.02x. Report size stayed 5395 characters at both scales. These are informative timings on this working checkpoint, not a before/after attribution or a certified latency claim. The full `:consistency:check` also passed; the new empty-declaration controls run on JVM and Node.
+
 ## 2026-09-18 — the draft path stopped recording a store it discards, and the lane is re-run WITHOUT a claimed delta <a id="draft-retention-2026-09-18"></a>
 
 **Lane:** `./build.sh :adapter:checkerAfterEditPerfTest` (`adapter.perf.CheckerAfterEditPerfTest`), 200 programs, 11 samples, its own invocation. Measured after `ConsistencySnapshot.draft` was switched to `CellRetention.DISCARDED`: build-snapshot stateless 63.027 → snapshot 97.367 ms (1.537x), **keystroke stateless 145.908 → snapshot 51.117 ms (0.319x)**, saved-edit 65.403 → 99.328 ms (1.513x). The keystroke arm's ratified `1.0x` ceiling holds.

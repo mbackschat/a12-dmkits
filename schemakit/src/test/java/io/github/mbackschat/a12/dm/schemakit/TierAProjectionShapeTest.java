@@ -27,6 +27,15 @@ class TierAProjectionShapeTest {
     private static final String PATTERN = "[0-9]{5}";
 
     @Test
+    void emptyAuthoredPatternIsCarriedWithoutClaimingAUniversalNativeConstraint() throws Exception {
+        var exported = new JsonSchemaExporter().export(modelWithPatternRule(""));
+        assertFalse(MAPPER.readTree(exported.jsonSchema()).path("properties").path("PostalCode").has("pattern"));
+        assertTrue(exported.jsonSchema().contains(Carriage.X_RULE));
+        assertEquals(MAPPER.readTree(modelWithPatternRule("")).path("content").path("modelRoot"),
+                MAPPER.readTree(new JsonSchemaImporter().importSchema(exported.jsonSchema()).dmJson()).path("content").path("modelRoot"));
+    }
+
+    @Test
     void indexedPatternIsCarriedWithoutProjectingAConstraintOnEveryRow() throws Exception {
         String structure = DocumentModelDraft.named("Order").locale("en_US")
                 .rootGroup("Root", g -> g.field("Title", FieldKind.STRING)
@@ -49,7 +58,9 @@ class TierAProjectionShapeTest {
         assertTrue(exported.jsonSchema().contains(Carriage.X_RULE));
     }
 
-    private static String modelWithPatternRule() {
+    private static String modelWithPatternRule() { return modelWithPatternRule(PATTERN); }
+
+    private static String modelWithPatternRule(String pattern) {
         String structure = DocumentModelDraft.named("Order")
                 .locale("en_US")
                 .rootGroup("Root", g -> g.field("PostalCode", FieldKind.STRING))
@@ -60,7 +71,7 @@ class TierAProjectionShapeTest {
         Rule rule = m.rule(m.group("/Root"))
                 .name("PostalCodeFormat")
                 .errorField(postal)
-                .when(postal.filled().and(postal.violates(PATTERN)))
+                .when(postal.filled().and(postal.violates(pattern)))
                 .code("POSTAL_CODE_MALFORMED")
                 .severity(Severity.ERROR)
                 .message(Dsl.en("The postal code must be exactly five digits."))

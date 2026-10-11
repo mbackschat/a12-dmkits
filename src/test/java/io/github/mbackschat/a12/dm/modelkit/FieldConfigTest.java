@@ -77,6 +77,15 @@ class FieldConfigTest {
     }
 
     @Test
+    void anInactiveEmptyPatternSurvivesAuthoringAndReadbackWithoutAMessage() {
+        for (boolean typedef : List.of(false, true)) {
+            ModelDocument document = patternMessageDocument(typedef, text -> text.pattern("", null));
+            ModelLoader.loadSelfContained(document.toJson());
+            assertEquals("", messageType(ModelDocument.read(document.toJson()), typedef).pattern());
+        }
+    }
+
+    @Test
     void explicitMessagesWithoutAPatternArePreservedForValidation() {
         for (boolean typedef : List.of(false, true)) {
             for (var row : Map.of("declared", "en_US", "undeclared", "fr_FR").entrySet()) {

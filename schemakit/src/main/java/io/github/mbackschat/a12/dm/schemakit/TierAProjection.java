@@ -105,7 +105,7 @@ final class TierAProjection {
     /** A field must MATCH a regex iff a rule ERRORS on {@code PatternViolated} — find that anywhere in an AND chain. */
     private static Optional<PatternHit> findPatternConstraint(Condition condition) {
         // SCHEMAKIT-SPEC §4f: a row selected by `For` cannot become a constraint on every array item.
-        if (condition instanceof PatternCondition p && !p.matched() && p.field() instanceof FieldRef field) {
+        if (condition instanceof PatternCondition p && !p.matched() && !p.regex().isEmpty() && p.field() instanceof FieldRef field) {
             return Optional.of(new PatternHit(field.path().value(), p.regex()));
         }
         if (condition instanceof LogicCondition logic && logic.op() == LogicCondition.Op.AND) {

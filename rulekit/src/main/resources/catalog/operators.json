@@ -2045,7 +2045,11 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "an empty field is not evaluated — the match never fires on absence",
+          "text": "with a nonempty regex, an empty field is not evaluated — the match never fires on absence",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "an empty authored regex is admitted but fails when reached, even with an empty or absent operand; an earlier false guard hides the call. An empty declared field pattern is instead inactive",
           "kind": "SURPRISE"
         }
       ],
@@ -2113,12 +2117,16 @@
       ],
       "gotchas": [
         {
-          "text": "an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present-but-malformed values",
+          "text": "with a nonempty regex, an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present-but-malformed values",
           "kind": "SURPRISE"
         },
         {
           "text": "authoring first requires valid Java Pattern syntax, then the kernel's additional admission gate, which reads the pattern's SOURCE TEXT: Java-valid lookbehind, lowercase \\p (uppercase \\P is admitted) and even an ESCAPED metacharacter before a quantifier such as a\\*+ are rejected, and acceptance is not a JavaScript-portability guarantee",
           "kind": "AUTHORING"
+        },
+        {
+          "text": "an empty authored regex is admitted but fails when reached, even with an empty or absent operand; an earlier false guard hides the call. An empty declared field pattern is instead inactive",
+          "kind": "SURPRISE"
         }
       ],
       "validExample": {

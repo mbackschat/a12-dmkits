@@ -411,7 +411,7 @@ public final class DocumentModelDraft {
                     ObjectNode inner = fieldType.putObject("StringType");
                     // KF490 judges declared locales; undeclared entries are legal authored content too.
                     Map<String, String> messages = new LinkedHashMap<>();
-                    if (s.pattern() != null) {
+                    if (s.patternMessage() != null) {
                         locales.forEach(loc -> messages.put(loc, s.patternMessage()));
                     }
                     messages.putAll(s.patternMessages());

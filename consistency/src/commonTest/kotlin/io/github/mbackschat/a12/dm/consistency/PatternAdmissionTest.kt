@@ -134,6 +134,7 @@ class PatternAdmissionTest {
                 ),
             ).gaps.count { it.reason.contains("compiles as a JAVA regular expression") }
         assertEquals(1, compilability("[A-Z]+"), "a model with a pattern discloses the half left to A12")
+        assertEquals(0, compilability(""), "an inactive empty declaration needs no Java compilation coverage")
         assertEquals(0, compilability(null), "a model with no pattern has nothing to disclose")
         assertEquals(0, compilability("[A-Z]+", filtered = true), "a removed field has no pattern to examine")
     }

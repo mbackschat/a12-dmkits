@@ -21,9 +21,9 @@
       "properties": {
         "minLength": { "type": "integer", "description": "minimum character length. seeAlso: the Length operator (`operators Length`)" },
         "maxLength": { "type": "integer", "description": "maximum character length" },
-        "pattern": { "type": "string", "description": "anchored Java Pattern; REQUIRES patternMessage. Authoring first requires Java syntax, then the kernel 30.8.x restrictions: the finite A12K-30 blacklist (possessive quantifiers, (?<… / (?>…), \\A \\G \\Z \\z \\a \\e \\p \\Q \\E — lowercase \\p only, uppercase \\P is admitted — and nested unescaped [), read on the pattern SOURCE TEXT so an escaped metacharacter before a quantifier (a\\*+) is refused too. Passing them does not prove JavaScript portability. seeAlso: PatternViolated/PatternMatched" },
-        "patternMessage": { "type": "string", "description": "required base/fallback error text whenever pattern is set" },
-        "patternMessages": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Explicit per-locale pattern error texts. With a pattern, each entry overrides patternMessage for its locale; patternMessage remains the required fallback. Entries for undeclared locales are preserved. Without a pattern, entries are still preserved and validated by the kernel; legality depends on the declared locales and message content."},
+        "pattern": { "type": "string", "description": "anchored Java Pattern; a non-empty pattern REQUIRES patternMessage; an empty pattern is inactive and needs no message. Authoring first requires Java syntax, then the kernel 30.8.x restrictions: the finite A12K-30 blacklist (possessive quantifiers, (?<… / (?>…), \\A \\G \\Z \\z \\a \\e \\p \\Q \\E — lowercase \\p only, uppercase \\P is admitted — and nested unescaped [), read on the pattern SOURCE TEXT so an escaped metacharacter before a quantifier (a\\*+) is refused too. Passing them does not prove JavaScript portability. seeAlso: PatternViolated/PatternMatched" },
+        "patternMessage": { "type": "string", "description": "required base/fallback error text whenever pattern is non-empty" },
+        "patternMessages": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Explicit per-locale pattern error texts. With a non-empty pattern, each entry overrides patternMessage for its locale; patternMessage remains the required fallback. Entries for undeclared locales are preserved. Without a pattern, entries are still preserved and validated by the kernel; legality depends on the declared locales and message content."},
         "lineBreaks": { "type": "boolean", "description": "permit multi-line input" },
         "noValueValidation": { "type": "boolean", "description": "skip per-value validation; requires lineBreaks:true" },
         "alphabeticalSorting": { "type": "boolean" },
@@ -134,6 +134,14 @@
     }
   },
   "examples": [
+    {
+      "group": "/Subscription/Addons",
+      "name": "MonthlyFee",
+      "kind": "STRING",
+      "string": {
+        "pattern": ""
+      }
+    },
     {
       "group": "/Subscription/Addons",
       "name": "MonthlyFee",

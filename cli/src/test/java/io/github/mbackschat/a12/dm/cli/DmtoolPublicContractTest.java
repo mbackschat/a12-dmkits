@@ -313,6 +313,42 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void packagedEmptyPatternFailsOnlyWhenReached(@TempDir Path dir) throws Exception {
+        String base = DocumentModelDraft.named("parcel-pattern-cli").locale("en_US")
+                .rootGroup("Parcel", g -> g.stringField("Ref", f -> { }).stringField("Label", f -> { }))
+                .build().toJson();
+        var edit = EditSession.read(base);
+        var parcel = edit.group("/Parcel");
+        var ref = parcel.str("Ref");
+        var label = parcel.str("Label");
+        var reached = label.violates("");
+        parcel.addRule(b -> b.name("Reached").code("REACHED").errorField(ref)
+                .when(ref.filled().and(reached)).message(Dsl.en("Review the label.")).build());
+        parcel.addRule(b -> b.name("Hidden").code("HIDDEN").errorField(ref)
+                .when(ref.eq("hide").and(reached)).message(Dsl.en("Review the label.")).build());
+        parcel.addRule(b -> b.name("Nonempty").code("NONEMPTY").errorField(ref)
+                .when(ref.filled().and(label.violates(".*"))).message(Dsl.en("Review the label.")).build());
+        Path model = dir.resolve("parcel.dm.json");
+        Files.writeString(model, edit.toJson());
+        var dmtool = new PackagedDmtool(dir);
+        for (String body : List.of("{\"Ref\":\"parcel\"}", "{\"Ref\":\"parcel\",\"Label\":\"ready\"}")) {
+            Path document = dir.resolve("parcel.json");
+            String input = "{\"Parcel\":" + body + "}";
+            Files.writeString(document, input);
+            String[] args = {"-m", model.toString(), "model", "eval", "--instance", document.toString()};
+            var evaluated = dmtool.run(args);
+            var oracle = CliTestSupport.runKernel(args);
+            assertEquals(0, evaluated.code(), evaluated::out);
+            assertEquals(0, oracle.code(), oracle::out);
+            assertEquals(MAPPER.readTree(oracle.out()).path("data").path("fired"),
+                    MAPPER.readTree(evaluated.out()).path("data").path("fired"));
+            assertEquals(List.of("REACHED"), MAPPER.convertValue(
+                    MAPPER.readTree(evaluated.out()).path("data").path("fired"), List.class));
+            assertEquals(input, Files.readString(document));
+        }
+    }
+
+    @Test
     void packagedLiteralDecodingPreservesOnePassAndSelectedKeys(@TempDir Path dir) throws Exception {
         String base = DocumentModelDraft.named("dispatch-literal-cli").locale("en_US")
                 .rootGroup("Dispatch", g -> g.stringField("Note", f -> f.lineBreaks())

@@ -14,9 +14,9 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 class PoisonedReadException(val path: String) : RuntimeException("compute read of a formally-invalid cell: $path")
 
 /**
- * A runtime value failure: a DateTime wall label that names no instant in the model zone — a spring-forward gap
- * label — raised where the label is EVALUATED, in every carrier (a comparison, a temporal operand, an assignment).
- * The kernel converts the label only at execution and the conversion throws, so the failure is not an operand
+ * A reached runtime failure, shared by an empty authored pattern and a DateTime wall label with no instant.
+ * The failure belongs to execution rather than an operand state.
+ * The kernel raises it only at execution, so the failure is not an operand
  * state the three-valued algebra can absorb: an earlier operand that already decided the expression (a malformed
  * read that poisons first, a false `And` prefix) prevents it, and nothing after it can (SPEC-2026-10-03-06).
  *
@@ -25,4 +25,9 @@ class PoisonedReadException(val path: String) : RuntimeException("compute read o
  * validation rule ends its row loop and reports its own code once, at its FIRST iteration address
  * (`DmInterpreter.rowOutcomes`). Never caught anywhere else.
  */
-class TemporalLabelFailure(val label: String) : RuntimeException("the wall label $label has no instant in the model zone")
+sealed class RuntimeEvaluationFailure(message: String) : RuntimeException(message)
+
+/** An empty authored pattern is rejected on execution, after its operand read (SPEC-2026-10-10-13). */
+class EmptyPatternFailure : RuntimeEvaluationFailure("an authored pattern must not be empty")
+
+class TemporalLabelFailure(val label: String) : RuntimeEvaluationFailure("the wall label $label has no instant in the model zone")
