@@ -8625,24 +8625,28 @@
       }
     },
     "kf58": {
-      "sha256": "b355a262fc8d24e7691f94c6e5d47694306067b8d3a5daaf665b829b55048eff",
+      "sha256": "518a6e96827cdcd534390994e5025256152a6dfb85b80ef95eca5964ab6ab5b9",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "ancestor structural error cache"
+          "ancestor structural error cache",
+          "structural field occurrence and partial scope"
         ],
         "dmkits": [],
         "interpreter": [
-          "ancestor structural error cache"
+          "ancestor structural error cache",
+          "structural field occurrence and partial scope"
         ],
         "checker": [],
         "dmtool-cli": [
-          "ancestor structural error cache"
+          "ancestor structural error cache",
+          "structural field occurrence and partial scope"
         ],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "ancestor structural error cache"
+          "ancestor structural error cache",
+          "structural field occurrence and partial scope"
         ]
       },
       "consumers": {
@@ -8653,6 +8657,10 @@
             "ancestor structural error cache": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionAncestorCacheDiffTest.kt#excessDescendantsReportWithoutPoisoningTheirAncestors",
               "witness": "Sixteen typed nested JSON cases compare counts and raw diagnostic identity."
+            },
+            "structural field occurrence and partial scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionOccurrenceDiffTest.kt#structuralDiagnosticsRetainEmptyFieldOccurrencesOutsidePartialSelection",
+              "witness": "Both strategies compare fifty partial rows; computation separately retains operand scope and present empty occurrences."
             }
           }
         },
@@ -8668,6 +8676,10 @@
             "ancestor structural error cache": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionAncestorCacheDiffTest.kt#excessDescendantsReportWithoutPoisoningTheirAncestors",
               "witness": "Ordinary malformed in-capacity controls still suppress affected counts; excess descendants do not."
+            },
+            "structural field occurrence and partial scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionOccurrenceDiffTest.kt#structuralDiagnosticsRetainEmptyFieldOccurrencesOutsidePartialSelection",
+              "witness": "Both strategies compare fifty partial rows; computation separately retains operand scope and present empty occurrences."
             }
           }
         },
@@ -8683,6 +8695,10 @@
             "ancestor structural error cache": {
               "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedPartialCountsIgnoreExcessDescendantCacheErrors",
               "witness": "Packaged partial validation preserves ROOT2 beside structural errors; in-capacity malformed data suppresses it."
+            },
+            "structural field occurrence and partial scope": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedPartialValidationReportsEmptyExcessOccurrences",
+              "witness": "Null/empty excess cells report outside Marker-only relevance; empty selection stays silent and input files remain unchanged."
             }
           }
         },
@@ -8698,11 +8714,15 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "SPEC-2026-10-10-18 remains pending peer verification; its other structural diagnostic relevance variants remain separate work.",
+          "basis": "SPEC-2026-10-10-18 remains pending peer verification of both committed partitions.",
           "evidence": {
             "ancestor structural error cache": {
               "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-18",
               "witness": "Pending queue entry separates structural diagnostics from ancestor error state."
+            },
+            "structural field occurrence and partial scope": {
+              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-18",
+              "witness": "Pending peer verification of cache and structural occurrence reconciliation."
             }
           }
         }

@@ -313,6 +313,35 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void packagedPartialValidationReportsEmptyExcessOccurrences(@TempDir Path dir) throws Exception {
+        String modelJson = DocumentModelDraft.named("parcel-occurrences-cli").locale("en_US")
+                .rootGroup("Parcel", p -> p.stringField("Marker", f -> { })
+                        .group("Rows", r -> r.repeatable(2).numberField("Quantity", f -> f.fractionDigits(0))))
+                .build().toJson();
+        Path model = dir.resolve("parcel.dm.json");
+        Files.writeString(model, modelJson);
+        var dmtool = new PackagedDmtool(dir);
+        for (String cell : List.of("null", "\"\"")) {
+            String json = "{\"Parcel\":{\"Marker\":\"ready\",\"Rows\":[{},{},{\"Quantity\":" + cell + "}]}}";
+            Path document = dir.resolve("parcel.json");
+            Files.writeString(document, json);
+            for (String relevant : List.of("[]", "[\"/Parcel/Marker\"]")) {
+                var result = dmtool.run("-m", model.toString(), "model", "eval", "--instance", document.toString(),
+                        "--no-computations", "--relevant", relevant);
+                assertEquals(0, result.code(), result::out);
+                var codes = new java.util.ArrayList<String>();
+                MAPPER.readTree(result.out()).path("data").path("messages")
+                        .forEach(message -> codes.add(message.path("code").asText()));
+                codes.sort(String::compareTo);
+                assertEquals(relevant.equals("[]") ? List.of() : List.of("zuGrosseKontextnummer", "zuGrosseZeile"),
+                        codes, result::out);
+                assertEquals(json, Files.readString(document));
+                assertEquals(modelJson, Files.readString(model));
+            }
+        }
+    }
+
+    @Test
     void packagedPartialCountsIgnoreExcessDescendantCacheErrors(@TempDir Path dir) throws Exception {
         var base = DocumentModelDraft.named("shipment-cache-cli").locale("en_US")
                 .rootGroup("Shipment", s -> s.stringField("Title", f -> { })

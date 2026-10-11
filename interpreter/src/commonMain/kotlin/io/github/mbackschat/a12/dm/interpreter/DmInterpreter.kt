@@ -331,6 +331,7 @@ class DmInterpreter private constructor(
         val queries = relevanceQueriesOf(relevant)
         return validateWith(doc, locale, CallRelevance(
             isRelevant = queries::isRelevant,
+            structuralChecksEnabled = relevant.isNotEmpty(),
             customRelevant = customRelevantOf(relevant),
             starRelevant = starRelevantOf(relevant),
             starExtentKnown = starExtentKnownOf(relevant),
@@ -349,6 +350,8 @@ class DmInterpreter private constructor(
      */
     private class CallRelevance(
         val isRelevant: Relevance,
+        /** Empty partial calls skip structural checks; nonempty ones report every address (KF58). */
+        val structuralChecksEnabled: Boolean = true,
         /** The set a `CustomCondition` sees: the caller's set plus the globals ([IF38]). */
         val customRelevant: Set<CustomConditionFieldPointer>? = null,
         /** Whether an all-rows aggregate's star is wildcard-relevant ([IF42]). */
@@ -791,7 +794,8 @@ class DmInterpreter private constructor(
             val messages = (checks.formalErrors(call, locale, isRelevant, formalResults, unsupported) +
                     checks.mandatoryErrors(call, locale, isRelevant, formalResults, unsupported)
                     + checks.uniquenessMessages(call, dup, locale, isRelevant)
-                    + checks.overRepetitionMessages(call, locale, isRelevant, gateNeeded)).toMutableList()
+                    + checks.overRepetitionMessages(call, locale, ALL_RELEVANT,
+                        gateNeeded && relevance.structuralChecksEnabled)).toMutableList()
             // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
             // immutable here), and the EvalConfig is built once for the whole call.
             val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) {

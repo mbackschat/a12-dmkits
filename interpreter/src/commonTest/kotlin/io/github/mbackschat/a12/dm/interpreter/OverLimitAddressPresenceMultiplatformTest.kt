@@ -264,6 +264,22 @@ class OverLimitAddressPresenceMultiplatformTest {
         }
     }
 
+    @Test
+    fun structuralEmissionIncludesPresentEmptyCellsAndRespectsItsCallerScope() {
+        val def = policyModel()
+        val checks = checksFor(def)
+        for (raw in listOf(null, "", "RC-3")) {
+            val doc = def.newDocument().group(POLICY, 1).group(RIDERS, 1, 3)
+            if (raw == null) doc.emptyField(RIDER_CODE, 1, 3, 1) else doc.field(RIDER_CODE, raw, 1, 3, 1)
+            val messages = checks.overRepetitionMessages(doc, "en_US", ALL_RELEVANT, gateNeeded = true)
+            assertEquals(listOf(OVER_REPETITION_CONTEXT, OVER_REPETITION_ROW).sorted(),
+                messages.map { it.code }.sorted(), "raw=$raw")
+            assertEquals(listOf(OVER_REPETITION_ROW),
+                checks.overRepetitionMessages(doc, "en_US", { path, _ -> path == RIDERS }, true)
+                    .map { it.code }, "group-only caller scope, raw=$raw")
+        }
+    }
+
     private fun policyModel() = ModelDef(
         listOf(FieldDef(RIDER_CODE, Kind.STRING), FieldDef(NOTE_TEXT, Kind.STRING)),
         emptyList(),

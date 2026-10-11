@@ -578,3 +578,23 @@ done
   "structuralErrors": 0
 }
 ```
+
+A nonempty partial selection still reports structural errors elsewhere in the document. A null Quantity is a present field occurrence, so it reports alongside its excess Item row even when only Title is selected.
+
+```bash
+cat > /tmp/rt-shipment-empty-excess.json <<'JSON'
+{ "Shipment": { "Title": "shipment", "Manifests": [
+  { "Crates": [{ "Items": [{}, {}, {"Quantity":null}] }] }
+] } }
+JSON
+dmtool -m examples/models/shipment-ancestor-errors.dm.json model eval \
+  --instance /tmp/rt-shipment-empty-excess.json --no-computations --relevant '["/Shipment/Title"]' \
+  | jq '[.data.messages[] | select(.code | startswith("zuGrosse")) | .code] | sort'
+```
+
+```output
+[
+  "zuGrosseKontextnummer",
+  "zuGrosseZeile"
+]
+```

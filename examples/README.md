@@ -17,7 +17,7 @@ The [tariff parallel-join fixture](models/tariff-parallel.dm.json) demonstrates 
 
 The [claim first-payout fixture](models/claim-first-payout.dm.json) demonstrates missing nested prefixes and directional message polarity in the [runtime tour](cli-runtime.md).
 
-The [shipment ancestor-count fixture](models/shipment-ancestor-errors.dm.json) demonstrates structural diagnostics alongside decidable partial counts in the [runtime tour](cli-runtime.md).
+The [shipment ancestor-count fixture](models/shipment-ancestor-errors.dm.json) demonstrates structural diagnostics alongside decidable partial counts and present-empty occurrences outside a partial selection in the [runtime tour](cli-runtime.md).
 
 The [`profiles/`](profiles/) directory carries the three approved domain-blind performance-calibration artifacts used by the profile-driven synthesis and interpreter scalability workflow. They are current-format `profile′` outputs from own-domain synthesized models, not copies or profiles of private source models.
 

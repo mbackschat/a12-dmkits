@@ -608,12 +608,15 @@ internal class AutoChecks(
     ): List<Message> {
         if (!gateNeeded || model.effectiveGroupRepetitionMaximums.isEmpty()) return emptyList()
         val out = mutableListOf<Message>()
-        for (vf in doc.valuedFields()) {
-            val exceeded = paths.exceededBound(vf.path, vf.reps) ?: continue
-            if (!isRelevant(vf.path, vf.reps)) continue
-            val type = overRepetitionType(exceeded)
-            out += formalMessage(type.code, FORMAL_RULE_PATH, doc.messagePointer(vf.path, vf.reps), MsgType.VALUE,
-                type.messageText(locale))
+        // Null/empty cells still own addresses rejected by the kernel (OverRepetitionOccurrenceDiffTest).
+        for ((path, cells) in doc.placedAddresses()) {
+            for (reps in cells.keys) {
+                val exceeded = paths.exceededBound(path, reps) ?: continue
+                if (!isRelevant(path, reps)) continue
+                val type = overRepetitionType(exceeded)
+                out += formalMessage(type.code, FORMAL_RULE_PATH, doc.messagePointer(path, reps), MsgType.VALUE,
+                    type.messageText(locale))
+            }
         }
         for (group in model.effectiveGroupRepetitionMaximums.keys) {
             val ownLevel = paths.levelOf(group)
