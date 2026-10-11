@@ -480,7 +480,8 @@ class Interpreter(
                     DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.TRUE
                     DateStatus.NON_RELEVANT, DateStatus.MALFORMED -> Tri.UNKNOWN
                 }
-            // List quantifiers over the (TRUE, FALSE) operand tally (row-evaluated gate is upstream in eval).
+            // List quantifiers retain the row-evaluated gate upstream. Arbitrary full-validation filters use
+            // deciding-prefix scans (KF512); ordinary and optimized correlations retain their operand tallies.
             // COMPUTE mode replaces the tally with the kernel's ordered SCAN so a read is order-observable and a
             // later invalid operand after the deciding one is never read (IF85): the FIELD-fill family scans cells
             // ([computeFillQuantifier]); the GROUP-fill family scans its common entity list ([computeGroupFillQuantifier],
@@ -494,6 +495,7 @@ class Interpreter(
             PredicateOp.NOT_ALL_GROUPS_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> when {
                 computeMode && !op.countsGroups -> computeFillQuantifier(op, p.args)
                 computeMode && op.countsGroups -> computeGroupFillQuantifier(op, p.args)
+                incrementalFill(op, p.args) -> filteredFillResult(op, p.args).truth
                 !op.countsGroups && (hasFillScopeOperand(p.args) ||
                     (op in DECLARED_FILL_OPERATORS && p.args.any { it is Expr.Star && it.having != null })) -> Tri.of(fillScopeFires(op, fillScopeInfo(p.args)))
                 else -> {
@@ -660,10 +662,84 @@ class Interpreter(
         else -> throw UnsupportedConstructException("not a fill-scope operand: $e")
     }
 
+    /** SPEC-2026-10-10-02: arbitrary filters can fail after a deciding prefix; safe correlation
+     * plans retain their indexed tally and partial validation retains its relevance-owned gates. */
+    internal fun incrementalFill(op: PredicateOp, args: List<Expr>): Boolean =
+        !computeMode && cellRelevant == null && op in FIELD_FILL_OPERATORS && args.any {
+            it is Expr.Star && it.having != null && correlationStrategy(it) == CorrelationStrategy.NESTED
+        }
+
+    private enum class FillPass(val declared: Boolean = false, val traversal: FilterTraversal = FilterTraversal.DENSE) {
+        ALL(declared = true), NONE, ANY(traversal = FilterTraversal.SPARSE), SECOND, EMPTY(declared = true);
+    }
+
+    /** A pass owns its cursor; composite predicates restart from operand one (SPEC-2026-10-10-02).
+     * Truth and reached-filter polarity travel together so typing cannot drain a skipped suffix. */
+    internal fun filteredFillResult(op: PredicateOp, args: List<Expr>): Res = when (op) {
+        PredicateOp.ALL_FIELDS_FILLED -> filteredFillPass(args, FillPass.ALL)
+        PredicateOp.NO_FIELD_FILLED -> filteredFillPass(args, FillPass.NONE)
+        PredicateOp.AT_LEAST_ONE_FIELD_FILLED -> filteredFillPass(args, FillPass.ANY)
+        PredicateOp.MORE_THAN_ONE_FIELD_FILLED -> filteredFillPass(args, FillPass.SECOND)
+        PredicateOp.NOT_ALL_FIELDS_FILLED -> filteredFillPass(args, FillPass.EMPTY)
+        PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED -> filteredFillPass(args, FillPass.NONE).let {
+            if (it.truth == Tri.TRUE) it else filteredFillPass(args, FillPass.SECOND)
+        }
+        PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED -> filteredFillPass(args, FillPass.ANY).let {
+            if (it.truth == Tri.TRUE) filteredFillPass(args, FillPass.EMPTY) else it
+        }
+        else -> throw UnsupportedConstructException("not a field-fill quantifier: $op")
+    }
+
+    private fun filteredFillPass(args: List<Expr>, pass: FillPass): Res {
+        var filled = 0
+        var filteredWitness = false
+        fun observe(t: Int, f: Int, n: Int, filtered: Boolean): Res? {
+            filled += t
+            if (filtered && t > 0) filteredWitness = true
+            val decided = when (pass) {
+                FillPass.ALL -> t != n
+                FillPass.NONE -> f != n
+                FillPass.ANY -> filled > 0
+                FillPass.SECOND -> filled > 1
+                FillPass.EMPTY -> f > 0
+            }
+            if (!decided) return null
+            val positive = pass == FillPass.ANY || pass == FillPass.SECOND
+            return Res.of(Tri.of(pass != FillPass.ALL && pass != FillPass.NONE),
+                if (!positive || filteredWitness) MsgType.OMISSION else MsgType.VALUE)
+        }
+        for (arg in args) {
+            if (arg is Expr.Star && arg.having != null) {
+                val c = ctxOf(arg)
+                val rows = if (pass.declared)
+                    keptRowsWithSuccessorLookahead(c.declaredStarRows(arg.path, arg.bindDepth).toList(), arg.having)
+                else filteredRows(c, arg, pass.traversal)
+                for (row in rows) {
+                    val state = when {
+                        row.presenceUnknown(arg.path) -> Tri.UNKNOWN
+                        !row.filled(arg.path) -> Tri.FALSE
+                        row.field(arg.path) is Val.Unknown -> Tri.UNKNOWN
+                        else -> Tri.TRUE
+                    }
+                    observe(if (state == Tri.TRUE) 1 else 0, if (state == Tri.FALSE) 1 else 0, 1, true)?.let { return it }
+                }
+            } else {
+                val scope = if (arg is Expr.SemanticIndex) keyedFillScope(arg) else operandFillScope(arg)
+                val decision = when (pass) {
+                    FillPass.ALL -> observe(if (scope.allFilledDeclared) 1 else 0, 0, 1, false)
+                    FillPass.EMPTY -> observe(0, if (scope.anyEmptyDeclared) 1 else 0, 1, false)
+                    else -> observe(scope.tInst, scope.fInst, scope.nInst, false)
+                }
+                decision?.let { return it }
+            }
+        }
+        return Res.of(Tri.of(pass == FillPass.ALL || pass == FillPass.NONE), MsgType.OMISSION)
+    }
+
     // ---- COMPUTE-mode fill-quantifier scans (IF85 — the kernel's RuntimeController read order) --------------
 
     /**
-     * COMPUTE-mode field-fill quantifiers — the kernel's ordered SCAN, not validation's tally: each visited
+     * COMPUTE-mode field-fill quantifiers — ordered scans with read poisoning: each visited
      * cell is a READ (an INVALID one poisons, [PoisonedReadException]), and each operator stops at its deciding
      * cell, so a cell after the stop is never read (kernel `mindestensEineEntityAngegeben` stops at the first
      * filled; `keineEntityAngegeben` at the first filled; `alleEntitiesAngegeben` / `nichtAlleOderKeine…` at the
@@ -674,25 +750,25 @@ class Interpreter(
      * cell is simply FILLED or EMPTY. Locked by `adapter.laws.ComputePoisonReadDiffTest`.
      */
     private fun computeFillQuantifier(op: PredicateOp, args: List<Expr>): Tri = when (op) {
-        PredicateOp.AT_LEAST_ONE_FIELD_FILLED -> Tri.of(scanFilled(args, declaredTail = false).any { it })
-        PredicateOp.NO_FIELD_FILLED -> Tri.of(scanFilled(args, declaredTail = false).none { it })
-        PredicateOp.ALL_FIELDS_FILLED -> Tri.of(scanFilled(args, declaredTail = true).all { it })
-        PredicateOp.NOT_ALL_FIELDS_FILLED -> Tri.of(!scanFilled(args, declaredTail = true).all { it })
+        PredicateOp.AT_LEAST_ONE_FIELD_FILLED -> Tri.of(scanFilled(args, FillPass.ANY).any { it })
+        PredicateOp.NO_FIELD_FILLED -> Tri.of(scanFilled(args, FillPass.NONE).none { it })
+        PredicateOp.ALL_FIELDS_FILLED -> Tri.of(scanFilled(args, FillPass.ALL).all { it })
+        PredicateOp.NOT_ALL_FIELDS_FILLED -> Tri.of(!scanFilled(args, FillPass.ALL).all { it })
         PredicateOp.MORE_THAN_ONE_FIELD_FILLED -> {
             var seen = 0
-            Tri.of(scanFilled(args, declaredTail = false).any { it && ++seen > 1 })
+            Tri.of(scanFilled(args, FillPass.SECOND).any { it && ++seen > 1 })
         }
         // The kernel's two-pass composition: TRUE when NONE is filled, else the more-than-one scan decides.
         PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED ->
-            if (scanFilled(args, declaredTail = false).none { it }) Tri.TRUE
+            if (scanFilled(args, FillPass.NONE).none { it }) Tri.TRUE
             else {
                 var seen = 0
-                Tri.of(scanFilled(args, declaredTail = false).any { it && ++seen > 1 })
+                Tri.of(scanFilled(args, FillPass.SECOND).any { it && ++seen > 1 })
             }
         // at-least-one filled AND not-all filled (kernel `entitiesNichtGemeinsamAngegeben`, two passes).
         PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED ->
-            if (scanFilled(args, declaredTail = false).none { it }) Tri.FALSE
-            else Tri.of(!scanFilled(args, declaredTail = true).all { it })
+            if (scanFilled(args, FillPass.ANY).none { it }) Tri.FALSE
+            else Tri.of(!scanFilled(args, FillPass.ALL).all { it })
         else -> throw UnsupportedConstructException("not a field-fill quantifier: $op")
     }
 
@@ -703,7 +779,7 @@ class Interpreter(
      * scan (its reads can poison too). An INVALID visited cell throws ([PoisonedReadException]); an uninstantiated
      * declared repetition reads empty without a value read, so it cannot poison.
      */
-    private fun scanFilled(args: List<Expr>, declaredTail: Boolean): Sequence<Boolean> = sequence {
+    private fun scanFilled(args: List<Expr>, pass: FillPass): Sequence<Boolean> = sequence {
         // A starred GROUP expands here through the SHARED owner, which is the point rather than a convenience.
         // The bare-group arm below already expanded and the starred one did not, so this operator was correct on
         // the validation path — which dispatches on `fillScope(isGroup = …)` — and read ZERO cells on the compute
@@ -714,11 +790,11 @@ class Interpreter(
         // of a wrong verdict (IF287's class, seventh instance).
         for (a in expandGroupStars(args)) when {
             a.isIndexedStar() -> yieldAll(withIndexedStar(a as Expr.EntitySpec, sequenceOf(false)) {
-                scanFilled(listOf(it), declaredTail)
+                scanFilled(listOf(it), pass)
             })
             a is Expr.Star && a.having == null -> {
                 val c = ctxOf(a)
-                for (cell in c.starScanCells(a.path, a.bindDepth, declaredTail)) yield(filledOrPoison(cell))
+                for (cell in c.starScanCells(a.path, a.bindDepth, pass.declared)) yield(filledOrPoison(cell))
             }
             a is Expr.Star -> {
                 // The declared-range scans select among EVERY declared coordinate, a missing one reading empty
@@ -726,16 +802,17 @@ class Interpreter(
                 // Both read one kept successor ahead of the candidate they consume ([KF105], SPEC-2026-10-04-05),
                 // and each consumed candidate is a read under the call-local formal oracle that can poison.
                 val c = ctxOf(a)
-                val candidates = if (declaredTail) c.declaredStarRows(a.path, a.bindDepth).toList()
-                    else filterCandidates(c, a.path.substringBeforeLast('/'), a.bindDepth)
-                for (rc in keptRowsWithSuccessorLookahead(candidates, a.having!!)) yield(filledOrPoison(scanCell(a.path, rc)))
+                val rows = if (pass.declared)
+                    keptRowsWithSuccessorLookahead(c.declaredStarRows(a.path, a.bindDepth).toList(), a.having!!)
+                else filteredRows(c, a, pass.traversal)
+                for (rc in rows) yield(filledOrPoison(scanCell(a.path, rc)))
             }
             // A keyed GROUP scans the selected row as the bare group arm below scans its instance (IF340). The
             // selection itself poisons on a compromised key column; a key no row carries has only empty cells,
             // read without a value read, so nothing past it can poison.
             isKeyedGroup(a) -> when (val cells = keyedGroupCells(a as Expr.SemanticIndex)) {
                 is KeyedGroupCells.Selected ->
-                    yieldAll(cells.interpreter.scanFilled(listOf(Expr.Field(a.path)), declaredTail))
+                    yieldAll(cells.interpreter.scanFilled(listOf(Expr.Field(a.path)), pass))
                 KeyedGroupCells.Empty, KeyedGroupCells.Undecided -> yield(false)
             }
             a is Expr.Field && ctxOf(a).declaredKind(a.path) == null -> {
@@ -744,7 +821,7 @@ class Interpreter(
                 // ordered getAllContainedFields scan (IF147). Was an eager whole-group tally that poisoned on ANY
                 // unknown regardless of a preceding decisive cell (the IF147 over-poison, probe-confirmed).
                 val c = ctxOf(a)
-                for (cell in c.containedFieldCells(a.path, declaredTail)) yield(filledOrPoison(cell))
+                for (cell in c.containedFieldCells(a.path, pass.declared)) yield(filledOrPoison(cell))
             }
             else -> yield(
                 when (presenceTri(a)) {
@@ -1481,3 +1558,7 @@ internal val PARTIAL_PRECISIONS = setOf(DatePrecision.DAY_OPTIONAL, DatePrecisio
 
 private val DECLARED_FILL_OPERATORS = setOf(PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
     PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED)
+
+private val FIELD_FILL_OPERATORS = setOf(PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED,
+    PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.MORE_THAN_ONE_FIELD_FILLED,
+    PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED)

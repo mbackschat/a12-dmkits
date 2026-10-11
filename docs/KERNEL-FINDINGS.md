@@ -12462,7 +12462,7 @@ Fourteen seeded/filled root-document outcomes additionally agree between both ke
 
 ## §1 supplement — filtered field-fill lists retain selected declared slots and deciding-prefix polarity (both strategies, 2026-10-03) <a id="kf512"></a>
 
-> Fold: pending — SPEC-2026-10-03-03 narrows the sole-filter escalation account.
+> Fold: folded → §1.
 
 `FilteredFillDecisionDiffTest` measures all seven field-fill quantifiers on seven operand lists and nine documents: 441 full and 441 whole-root partial outcomes on Kernel 30.8.1, comparing complete authored `code|pointer|type` signatures across dynamic Groovy, static Java and the interpreter. `SpecSyncRuntimeTest` replays the same retained models, canonical Documents and observations on JVM and Node.
 
@@ -12477,6 +12477,9 @@ Fourteen seeded/filled root-document outcomes additionally agree between both ke
 | Whole-root partial relevance | Every filtered rule is silent on all nine documents; the unfiltered list remains the control |
 
 Positive thresholds take polarity from the filled witnesses before their decision, not from filter presence anywhere in the list. Declared-range flags require evaluating the filter at missing declared coordinates; instantiated rows alone cannot determine them. The matrix is finite single-level Number field lists with one filtered operand, coordinate-one/positive-coordinate/positive-value filters, and direct operands before or after it. Multiple filters, nested/unbounded ranges, group operands, other kinds, computations and message-reference coordinates are outside this measurement.
+
+
+**Nested traversal and failure-prefix extension, 2026-10-12 (SPEC-2026-10-10-02).** `SparseFilteredFillDiffTest` independently predicts five Documents across all seven predicates in validation and computation: cache widths 2/100/102, an early filled prefix, and a retained blank successor. Both kernel strategies agree on full message/reference/fill signatures, computed values/clears and operand errors. Positive presence uses sparse candidates above the cache-product threshold; negative presence and second-filled searches stay dense, while all/empty searches retain declared coordinates. `NotExactlyOneFieldFilled` restarts the second-filled pass after a failed none-filled pass; `FieldsNotCollectivelyFilled` restarts a declared-empty pass after positive presence succeeds. Each pass consumes only its deciding prefix, including one kept successor before the pending payload. A reached temporal-literal failure remains observable in either phase; a later suffix is unread. This extension measures full validation, nested Number field lists and the filter's date-time failure discriminator; the earlier partial and mixed-list matrix remains a separate guard. `SparseFilteredFillTest` carries the five controls on JVM/Node.
 
 ## §6/§12 supplement — a gap wall label is a runtime failure where it is evaluated: it poisons a computation, aborts a rule's row loop, and is reached by classification only when the authored constructs enable it (both strategies, 2026-10-04) <a id="kf513"></a>
 

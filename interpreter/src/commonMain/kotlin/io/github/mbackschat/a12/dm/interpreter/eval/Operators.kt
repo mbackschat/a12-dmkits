@@ -53,8 +53,8 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
     VALID("Valid", MsgType.VALUE),
     INVALID("Invalid", null),
 
-    // Validation list quantifiers use the extensional (true, false, unavailable) tally; an unavailable operand
-    // is in N but in neither count. Computation uses the separate ordered scans in Interpreter. polarity = null
+    // Validation classifies cells as true, false or unavailable; unavailable contributes to neither count.
+    // Arbitrary filtered lists consume deciding prefixes (KF512); computation also preserves read poisoning. polarity = null
     // means the fired message type is computed from the reached data (KERNEL-FINDINGS §1).
     ALL_FIELDS_FILLED("AllFieldsFilled", null),                          // t == N
     NO_FIELD_FILLED("NoFieldFilled", null),                              // f == N

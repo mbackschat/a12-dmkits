@@ -835,7 +835,7 @@
       "operator": "AllFieldsFilled",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:58fbe490fcc6aaacc0b6235005a5672276268f0d0eca113872aa8445d803e226",
+      "digest": "sha256:3952c6376b981aca74939da6df42d417740455d96b23c2e187af2aa63aea159a",
       "classifications": [
         "RUNTIME"
       ],
@@ -849,6 +849,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.BareGroupComputePoisonDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredFillDiffTest.allSevenConsumersPreserveSparsePresenceDenseAbsenceAndDecidingPrefixes"
         }
       ]
     },
@@ -898,7 +903,7 @@
       "operator": "NoFieldFilled",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:3bb86fea8da9b8a5e7f4434a4f2c9e11444cf2ca0ccdcf964756f3264c1471e5",
+      "digest": "sha256:c4ca6ebe44f794fb638899ad6d5581d8b6680fc4fd54e1a0d892a78f472bc9db",
       "classifications": [
         "RUNTIME"
       ],
@@ -912,6 +917,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.BareGroupComputePoisonDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredFillDiffTest.allSevenConsumersPreserveSparsePresenceDenseAbsenceAndDecidingPrefixes"
         }
       ]
     },
@@ -961,7 +971,7 @@
       "operator": "AtLeastOneFieldFilled",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:ccfe2e93c631e9e465a6bc83b2613eb77ee378f16f7ac598ecad3f46c5956772",
+      "digest": "sha256:2333fb34ddd5aeca1a4113b150bbe5d912c5165f3a8204ad9f9303e38c60b9c0",
       "classifications": [
         "RUNTIME"
       ],
@@ -975,6 +985,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.BareGroupComputePoisonDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredFillDiffTest.allSevenConsumersPreserveSparsePresenceDenseAbsenceAndDecidingPrefixes"
         }
       ]
     },
@@ -1055,7 +1070,7 @@
       "operator": "NotAllFieldsFilled",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:579550fdb30ae163baed2eb83833da9ff6d3529a6d61ff260745b72d9b373aca",
+      "digest": "sha256:5c0c07960fa5176a7cfe22a8da9972e2f395bb3616ebbccf5616372c5598079e",
       "classifications": [
         "RUNTIME"
       ],
@@ -1069,6 +1084,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.BareGroupComputePoisonDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredFillDiffTest.allSevenConsumersPreserveSparsePresenceDenseAbsenceAndDecidingPrefixes"
         }
       ]
     },
@@ -1149,7 +1169,7 @@
       "operator": "FieldsNotCollectivelyFilled",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:d8f3a68fb3fae18cf58dc403fea66dc57f463dd35e938d974c656173bf489f12",
+      "digest": "sha256:81a9b3f63d8a3017da5db5b6337a477b4391bc58ff054556e4a5f3f82ca21a07",
       "classifications": [
         "RUNTIME"
       ],
@@ -1168,6 +1188,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.ComputationFillQuantifierRestartDiffTest.collectivelyFilledSecondStageRestartsBeforeTheFilledWitness"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredFillDiffTest.allSevenConsumersPreserveSparsePresenceDenseAbsenceAndDecidingPrefixes"
         }
       ]
     },
@@ -1212,7 +1237,7 @@
       "operator": "NotExactlyOneFieldFilled",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:0d0e766f048750b5b25ff869af4cfb4f675d509ceb64ca20a8f4f408f667f4f2",
+      "digest": "sha256:c6c69fdc07b5b4c5696257641992269f287e76336f62aa98f5e8ef219ba0052f",
       "classifications": [
         "RUNTIME"
       ],
@@ -1226,6 +1251,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.BareGroupComputePoisonDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredFillDiffTest.allSevenConsumersPreserveSparsePresenceDenseAbsenceAndDecidingPrefixes"
         }
       ]
     },
@@ -1270,7 +1300,7 @@
       "operator": "MoreThanOneFieldFilled",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:21e948f980c16e1898623e53111a9ab97e6cd9f598f71ccbb23e0ff1bc4b2ee9",
+      "digest": "sha256:62016d293759dec77f651e90cce6d0362815dd03b2b1bfbd7cdddc8604cf404e",
       "classifications": [
         "RUNTIME"
       ],
@@ -1284,6 +1314,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.BareGroupComputePoisonDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredFillDiffTest.allSevenConsumersPreserveSparsePresenceDenseAbsenceAndDecidingPrefixes"
         }
       ]
     },

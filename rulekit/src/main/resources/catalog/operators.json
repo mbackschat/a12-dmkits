@@ -1010,7 +1010,7 @@
       ],
       "gotchas": [
         {
-          "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first empty slot decides, a reached invalid slot poisons, and a suffix after the decision is unread",
+          "text": "in validation, an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first empty slot decides, a reached invalid slot poisons, and a suffix after the decision is unread. For a Having-filtered list in full validation or computation, the all-filled pass scans selected declared coordinates densely and stops at the first non-filled or unavailable payload. Each pass reads one kept successor ahead; a reached filter failure matters, while later suffixes remain unread",
           "kind": "SURPRISE"
         }
       ],
@@ -1069,7 +1069,7 @@
       ],
       "gotchas": [
         {
-          "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty, so unavailable alone is not the same as empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first filled slot decides, a reached invalid slot poisons, and a suffix after the decision is unread",
+          "text": "in validation, an unavailable slot stays in the range but counts as neither filled nor empty, so unavailable alone is not the same as empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first filled slot decides, a reached invalid slot poisons, and a suffix after the decision is unread. For a Having-filtered list in full validation or computation, the none-filled pass scans cache-bounded candidates densely and stops at the first filled or unavailable payload. Each pass reads one kept successor ahead; a reached filter failure matters, while later suffixes remain unread",
           "kind": "SURPRISE"
         }
       ],
@@ -1105,7 +1105,7 @@
       ],
       "gotchas": [
         {
-          "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first filled slot decides, a reached invalid slot poisons, and a suffix after the decision is unread",
+          "text": "in validation, an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first filled slot decides, a reached invalid slot poisons, and a suffix after the decision is unread. For a Having-filtered list in full validation or computation, the positive-presence pass uses sparse traversal above 100 cache-bounded positions and stops at the first filled payload. Each pass reads one kept successor ahead; a reached filter failure matters, while later suffixes remain unread",
           "kind": "SURPRISE"
         }
       ],
@@ -1145,7 +1145,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first empty slot in the declared range decides, a reached invalid slot poisons, and a suffix after the decision is unread",
+          "text": "in validation, an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first empty slot in the declared range decides, a reached invalid slot poisons, and a suffix after the decision is unread. For a Having-filtered list in full validation or computation, the empty-search pass scans selected declared coordinates densely and stops at the first known-empty payload. Each pass reads one kept successor ahead; a reached filter failure matters, while later suffixes remain unread",
           "kind": "SURPRISE"
         }
       ],
@@ -1205,7 +1205,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, the instantiated at-least-one scan runs in declaration order; after a filled witness, the declared-range not-all scan restarts from the beginning. Each stage stops independently, and any invalid slot it reaches poisons",
+          "text": "in validation, an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, the instantiated at-least-one scan runs in declaration order; after a filled witness, the declared-range not-all scan restarts from the beginning. Each stage stops independently, and any invalid slot it reaches poisons. For a Having-filtered list in full validation or computation, positive presence uses sparse traversal above 100 cache-bounded positions; on success, a fresh dense declared-empty pass restarts at operand one. Each pass reads one kept successor ahead; a reached filter failure matters, while later suffixes remain unread",
           "kind": "SURPRISE"
         }
       ],
@@ -1261,7 +1261,7 @@
       ],
       "gotchas": [
         {
-          "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty, so zero known filled does not fire when unavailable slots remain. In a computation, the no-filled scan runs in declaration order; after a filled witness, the more-than-one scan restarts from the beginning. Each stage stops independently, and any invalid slot it reaches poisons",
+          "text": "in validation, an unavailable slot stays in the range but counts as neither filled nor empty, so zero known filled does not fire when unavailable slots remain. In a computation, the no-filled scan runs in declaration order; after a filled witness, the more-than-one scan restarts from the beginning. Each stage stops independently, and any invalid slot it reaches poisons. For a Having-filtered list in full validation or computation, the dense none-filled pass runs first; if it fails, a fresh dense second-filled pass restarts at operand one. Each pass reads one kept successor ahead; a reached filter failure matters, while later suffixes remain unread",
           "kind": "SURPRISE"
         }
       ],
@@ -1294,7 +1294,7 @@
       ],
       "gotchas": [
         {
-          "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the second filled slot decides, a reached invalid slot poisons, and a suffix after the decision is unread",
+          "text": "in validation, an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the second filled slot decides, a reached invalid slot poisons, and a suffix after the decision is unread. For a Having-filtered list in full validation or computation, the second-filled pass scans cache-bounded candidates densely and stops at its second filled payload. Each pass reads one kept successor ahead; a reached filter failure matters, while later suffixes remain unread",
           "kind": "SURPRISE"
         }
       ],

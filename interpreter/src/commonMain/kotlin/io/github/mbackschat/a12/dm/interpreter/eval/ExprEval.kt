@@ -2061,8 +2061,8 @@ private sealed interface FirstFilledStep {
  * poison met during that search precedes the pending current target, while filters beyond one prefetched
  * successor stay unread when the current target terminates the consumer's pull ([firstFilledScan]'s prefix
  * stop). Filtering never becomes globally eager; a draining consumer ([starOperandVals]) still visits every
- * kept row. In validation mode filter reads cannot poison (3VL row-drop), so the kept-row stream is
- * indistinguishable from the eager order — one traversal serves both modes.
+ * kept row. Validation drops unknown filter results, but a reached temporal-literal failure still
+ * matters; its deciding-prefix consumers therefore use this lazy traversal too (SPEC-2026-10-10-02).
  */
 internal fun Interpreter.keptRowsWithSuccessorLookahead(
     rows: List<EvalContext>,

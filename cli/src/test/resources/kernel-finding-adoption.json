@@ -4864,22 +4864,27 @@
       }
     },
     "kf512": {
-      "sha256": "59b47333215e4ee18fa607e5e7a4d009925c829be96cd0607f8962e7e3cbc2e5",
+      "sha256": "b94441f399e1c681a5067fc6742984b1626159c8a56b98ac4e910728d86f6faf",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "filtered field-fill slots and deciding prefixes"
+          "filtered field-fill slots and deciding prefixes",
+          "nested sparse/dense field-fill deciding prefixes"
         ],
         "dmkits": [],
         "interpreter": [
-          "filtered field-fill slots and deciding prefixes"
+          "filtered field-fill slots and deciding prefixes",
+          "nested sparse/dense field-fill deciding prefixes"
         ],
         "checker": [],
-        "dmtool-cli": [],
+        "dmtool-cli": [
+          "field-fill operator guidance"
+        ],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "filtered field-fill slots and deciding prefixes"
+          "filtered field-fill slots and deciding prefixes",
+          "nested sparse/dense field-fill deciding prefixes"
         ]
       },
       "consumers": {
@@ -4890,6 +4895,10 @@
             "filtered field-fill slots and deciding prefixes": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilteredFillDecisionDiffTest.kt#selectedMissingSlotsAndDecidingPrefixesAgreeOnBothValidationArms",
               "witness": "Seven quantifiers by seven lists by nine documents, full and whole-root partial; exact signatures and retained replay."
+            },
+            "nested sparse/dense field-fill deciding prefixes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseFilteredFillDiffTest.kt#allSevenConsumersPreserveSparsePresenceDenseAbsenceAndDecidingPrefixes",
+              "witness": "Five nested traversal/failure Documents across all seven predicates in validation and computation."
             }
           }
         },
@@ -4905,6 +4914,10 @@
             "filtered field-fill slots and deciding prefixes": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilteredFillDecisionDiffTest.kt#selectedMissingSlotsAndDecidingPrefixesAgreeOnBothValidationArms",
               "witness": "Seven quantifiers by seven lists by nine documents, full and whole-root partial; exact signatures and retained replay."
+            },
+            "nested sparse/dense field-fill deciding prefixes": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/SparseFilteredFillTest.kt#sevenPredicatesKeepTheirPassPoliciesAndDecidingPrefixes",
+              "witness": "Five nested traversal/failure Documents across all seven predicates in validation and computation."
             }
           }
         },
@@ -4914,9 +4927,14 @@
           "evidence": {}
         },
         "dmtool-cli": {
-          "state": "NOT_APPLICABLE",
-          "basis": "No distinct CLI contract changed; evaluation and portable checking delegate to the interpreter and checker assessed here.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The shared runtime correction also reaches dmtool; operator guidance now states filtered pass policy and prefix stops.",
+          "evidence": {
+            "field-fill operator guidance": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/catalog/CatalogProseReviewGuardTest.java#everyOperatorHasAContentBoundReviewAndEveryClaimResolves",
+              "witness": "All seven changed gotchas are bound to the owned runtime differential."
+            }
+          }
         },
         "json-schema-import": {
           "state": "NOT_APPLICABLE",
@@ -4929,8 +4947,8 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "ALREADY_CONFORMS",
-          "basis": "Peer-originated SPEC-2026-10-03-03, receipted against our revision 35ad60446 in the peer's 2026-10-03 review; the peer did not rerun the suites.",
+          "state": "OPEN",
+          "basis": "The earlier receipt covers only SPEC-2026-10-03-03. The SPEC-2026-10-10-02 extension awaits peer verification.",
           "evidence": {
             "filtered field-fill slots and deciding prefixes": {
               "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
