@@ -14,10 +14,9 @@ package io.github.mbackschat.a12.dm.consistency
  * referenced-ness gate and is still refused, while the error field's own per-row guard admits it. The plain
  * list admits because nothing iterates, and a computation has no error field to bind.
  *
- * **Only the rule's own unkeyed reads iterate**, the set `IterationChecker` asks: a reference outside every
- * filter or carrying the `$` marker, with a semantic index's value and key recording an index rather than an
- * iteration (source-read; [KERNEL-FINDINGS KF488], [KF205] for a keyed error reference that this class then
- * refuses).
+ * **Only the rule's own ordinary levels iterate**: references outside filters or carrying `$`. A selection
+ * replaces its indexed level, retaining ordinary ancestors and the field-valued key's own levels
+ * (`SelectedAuthoredScopeDiffTest`; [KERNEL-FINDINGS KF488], [KF205]).
  *
  * **Two arms, and the second is narrower.** When the field or a non-root group names the error field
  * (`checkIteration4NotOnlyVRefs`), every repeatable level on the error field's path is asked. When only its
@@ -40,13 +39,10 @@ internal fun TrackedFactBase.errorFieldIterationBindingFindings(element: Tracked
     if (references.isEmpty() || references.any { it.target !is Reference.Resolved } ||
         namesTheRulesOwnGroup(element)
     ) return emptyList()
-    val ruleGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val own = rulesOwnReferences(element)
-    val unkeyed = rulesOwnUnkeyedReferences(element)
+    val ordinaryLevels = rulesOwnIterationLevels(element) ?: return emptyList()
     val iterating = references.filter { it.written in own }.associateWith { reference ->
-        if (reference.written !in unkeyed) emptyList() else unstarredRepeatableLevels(
-            reference.written, (reference.target as Reference.Resolved).path, ruleGroup, element,
-        ) ?: return emptyList()
+        ordinaryLevels[reference.written].orEmpty()
     }
     val levels = iteratedLevels(target)
     if (iterating.values.flatten().any { it !in levels }) return emptyList()

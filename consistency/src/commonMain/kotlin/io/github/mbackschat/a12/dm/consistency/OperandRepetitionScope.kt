@@ -88,9 +88,6 @@ internal fun TrackedFactBase.operandScopeContributions(element: TrackedDeclarati
     }
 }
 
-/** Whether the reference spanning [start] to [end] is this index's key. */
-private fun SemanticIndexUse.keys(start: Int, end: Int): Boolean = this.start <= start && end <= this.end
-
 /** Whether the reference ending at [end] is the value this index keys, written right before its keyword. */
 private fun SemanticIndexUse.indexes(end: Int, text: String): Boolean =
     end <= keywordAt && text.substring(end, keywordAt).isBlank()
@@ -107,19 +104,27 @@ internal fun TrackedFactBase.rulesOwnReferences(element: TrackedDeclaration): Se
 }
 
 /**
- * The spellings [element] reads as the rule's own that ITERATE by their path: [rulesOwnReferences] less every
- * semantic index's value and key, which put an index at the level they key, never an ITERATION
- * (`IterationChecker`, source-read; `adapter.laws.CheckerRuleReferenceSetAgreementTest`, [KERNEL-FINDINGS KF488]).
+ * Ordinary iteration levels of the rule's own authored references. Selection replaces only the indexed
+ * payload level; its ancestors and the field-valued key retain their own scope (SPEC-2026-10-10-03,
+ * `SelectedAuthoredScopeDiffTest`). Repeated spellings union their levels so an ordinary error-field
+ * guard binds the selected level regardless of which occurrence appears first.
  */
-internal fun TrackedFactBase.rulesOwnUnkeyedReferences(element: TrackedDeclaration): Set<String> {
-    val declared = element.body ?: return emptySet()
+internal fun TrackedFactBase.rulesOwnIterationLevels(element: TrackedDeclaration): Map<String, Set<String>>? {
+    val declared = element.body ?: return emptyMap()
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
-    return conditionTexts(element.kind, declared).flatMap { (_, text) ->
+    val levelsByReference = mutableMapOf<String, MutableSet<String>>()
+    for ((_, text) in conditionTexts(element.kind, declared)) {
         val indexes = keyword?.let { semanticIndexUsesIn(text, conditionLanguage, it) }.orEmpty()
-        referenceSpansIn(rulesOwnReadsIn(text, conditionLanguage), conditionLanguage)
-            .filterNot { read -> indexes.any { it.keys(read.start, read.end) || it.indexes(read.end, text) } }
-            .map { it.written }
-    }.toSet()
+        for (read in referenceSpansIn(rulesOwnReadsIn(text, conditionLanguage), conditionLanguage)) {
+            val path = (resolveEntity(group, read.written.replace("*", ""), element.origin) as? Reference.Resolved)
+                ?.path ?: return null
+            val levels = unstarredRepeatableLevels(read.written, path, group, element) ?: return null
+            val selected = if (indexes.any { it.indexes(read.end, text) }) indexGroupOf(path) else null
+            levelsByReference.getOrPut(read.written) { mutableSetOf() }.addAll(levels.filter { it != selected })
+        }
+    }
+    return levelsByReference
 }
 
 /**

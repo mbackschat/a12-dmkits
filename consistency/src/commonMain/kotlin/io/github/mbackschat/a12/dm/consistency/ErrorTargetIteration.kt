@@ -36,9 +36,10 @@ package io.github.mbackschat.a12.dm.consistency
  *
  * **Only the rule's own ITERATING reads count**, which is what `IterationChecker` decides over: it keeps a
  * reference created with the filter flag off or carrying the `$` marker, and asks for an ITERATION index, which
- * a star is not, nor is a semantic index (source-read). So a starred or keyed read, of the error field's group
- * or a parallel one, and an unmarked filter-body read are admitted, while a marked body read of the error
- * field's group is the own-group class
+ * a star is not, nor is the level replaced by a semantic index. Ordinary ancestors of a selected payload
+ * and a field-valued key still count (`SelectedAuthoredScopeDiffTest`). A read with no remaining ordinary
+ * level and an unmarked filter-body read are admitted; a marked body read of the error field's group is
+ * the own-group class
  * (`adapter.laws.CheckerRuleReferenceSetAgreementTest`, [KERNEL-FINDINGS KF488]). The same set decides what
  * reaches and pins the target.
  *
@@ -64,12 +65,10 @@ private fun TrackedFactBase.errorTargetIterationFindings(element: TrackedDeclara
     if (!(target == ruleGroup || target.startsWith("$ruleGroup/"))) return emptyList()
     val reaching = rulesOwn.filter { it.reaches(target) }
     if (reaching.isEmpty() || reaching.any { !(it.target as Reference.Resolved).path.isRootPath() }) return emptyList()
-    val unkeyed = rulesOwnUnkeyedReferences(element)
-    val read = rulesOwn.filter { it.written in unkeyed }.mapNotNull { reference ->
-        (reference.target as? Reference.Resolved)?.path?.takeIf { path ->
-            // `IterationChecker` asks these classes from level 1 down; a repeatable ROOT is the binding check's.
-            unstarredRepeatableLevels(reference.written, path, ruleGroup, element)?.any { !it.isRootPath() } == true
-        }
+    val ordinaryLevels = rulesOwnIterationLevels(element) ?: return emptyList()
+    val read = rulesOwn.mapNotNull { reference ->
+        val levels = ordinaryLevels[reference.written].orEmpty().filterNot { it.isRootPath() }.toSet()
+        (reference.target as? Reference.Resolved)?.path?.takeIf { levels.isNotEmpty() }?.let { it to levels }
     }
     val errorFieldGroup = target.substringBeforeLast('/', missingDelimiterValue = "")
     if (!repeats(errorFieldGroup)) return emptyList()
@@ -84,12 +83,14 @@ private fun TrackedFactBase.errorTargetIterationFindings(element: TrackedDeclara
  *     be parallel to the group it contains.
  */
 private fun TrackedFactBase.iterationFinding(
-    read: List<String>,
+    read: List<Pair<String, Set<String>>>,
     target: String,
     errorFieldGroup: String,
     at: String,
 ): Finding? {
-    val parallel = read.firstOrNull { parallelToTheErrorField(it, errorFieldGroup) }
+    val parallel = read.firstOrNull { (_, levels) ->
+        levels.any { level -> errorFieldGroup != level && !errorFieldGroup.startsWith("$level/") }
+    }?.first
     if (parallel != null) {
         return finding(
             "MVK_ERROR_FIELDGROUP_ITERATION5_INVALID",
@@ -99,7 +100,7 @@ private fun TrackedFactBase.iterationFinding(
             at,
         )
     }
-    val own = read.firstOrNull { it.startsWith("$errorFieldGroup/") && it != target }
+    val own = read.firstOrNull { (path, _) -> path.startsWith("$errorFieldGroup/") && path != target }?.first
         ?: return null
     return finding(
         "MVK_ERROR_FIELDGROUP_ITERATION4_INVALID",
@@ -109,19 +110,6 @@ private fun TrackedFactBase.iterationFinding(
         at,
     )
 }
-
-/**
- * Whether [path] repeats independently of the error field — under a repeatable group that does not contain it.
- *
- * The exclusion is what keeps the error field's OWN repetitions, and every level above them, out of this arm:
- * a repeatable ancestor of the error field's group repeats WITH it, so a read beneath one is the other class
- * or no class at all.
- */
-private fun TrackedFactBase.parallelToTheErrorField(path: String, errorFieldGroup: String): Boolean =
-    repeatableGroups().any { candidate ->
-        (path == candidate.path || path.startsWith("${candidate.path}/")) &&
-            !(errorFieldGroup == candidate.path || errorFieldGroup.startsWith("${candidate.path}/"))
-    }
 
 private fun finding(code: String, explain: String, at: String) =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)

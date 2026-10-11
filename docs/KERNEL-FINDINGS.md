@@ -11909,7 +11909,7 @@ The portable checker set every body carrying the marker aside, in the operand wa
 
 *Locked by:* `adapter.laws.CheckerFilterBodyAgreementTest.aMarkedReadInAFilterBodyIsTheRulesOwnRead`, A12's class written out on every row and the checker required to name it. Mirrored by `consistency.FilterBodyComparisonTest.aMarkedReadInABodyIsTheRulesOwnRead` and by [KF353](#kf353)'s rows in `consistency.IndexFieldBaseTypeTest`.
 
-## §12 supplement — the post-parse error-field gates count only the rule's own ITERATING reads: a star, a semantic index and an unmarked filter-body read are not among them (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf488"></a>
+## §12 supplement — the post-parse error-field gates count ordinary levels of authored references; selection replaces one level, not the whole reference (kernel `checkConsistency`, 2026-09-26; extended 2026-10-11) <a id="kf488"></a>
 
 > Fold: not-foldable — a diagnostic-class law about which references two post-parse gates count, not an evaluation behaviour.
 
@@ -11932,9 +11932,14 @@ Measured on KF348's shape with a fixed root, plus an unkeyed repeatable `Returns
 | `FieldFilled(Note) And` the first body | ADMITTED | control |
 | `[Quantity] > 0 And Sum(/Shipment/Received*/Quantity Having GroupFilled(/Shipment) And [/Shipment/Received/Quantity] > 1) > 0` | `MVK_ERROR_FIELD_NOT_REFERENCED` | the root named only in a body reaches nothing, so the iterating read beside it draws no class of its own |
 
-**The portable checker refused six of these models.** It counted every resolved reference as a read of its carrier: the three starred rows, both keyed rows and the unmarked body row. It named the parallel class on the marked row, from the unmarked `Returns` read. It stayed silent on the unreferenced row, counting a body read as reaching. It now reads the rule's own references (`rulesOwnReadsIn`). For the iteration pair it keeps only those that leave a repeatable level unstarred and are no index's value or key.
+**The portable checker refused six of these models.** It counted every resolved reference as a read of its carrier: the three starred rows, both keyed rows and the unmarked body row. It named the parallel class on the marked row, from the unmarked `Returns` read. It stayed silent on the unreferenced row, counting a body read as reaching. It now reads the rule's own references (`rulesOwnReadsIn`). For the iteration pair it keeps ordinary levels of those references; selection removes only its indexed payload level, not its ordinary ancestors or the field-valued key's own scope.
 
 *Locked by:* `adapter.laws.CheckerRuleReferenceSetAgreementTest`, A12's class written out on every row and the checker required to name it. Mirrored by `consistency.ErrorTargetIterationTest.onlyTheRulesOwnIteratingReadsCount` and by KF324's filter row in `consistency.ErrorFieldReferenceTest`.
+
+**Selected references, measured 2026-10-11 (SPEC-2026-10-10-03).** In a fixed Store with repeated Depots and indexed Bins, selecting a Stock field or a fixed Shelf group retains Depots' ordinary binding. An ancestor guard admits; a sibling guard inside Bins draws `MVK_ERROR_FIELD_AND_ITERATION_INVALID`; guarding the error field itself admits in either text order. Literal and field-valued keys agree. A root Catalog payload selected by Depots/Wanted separately proves the key's own binding, including a lower-star operand. Naming the index column only as an implicit lookup dependency draws `MVK_ERROR_FIELD_NOT_REFERENCED`; explicitly selecting or guarding it admits. With only the root naming the error target, a selected descendant still draws `MVK_ERROR_FIELDGROUP_ITERATION4_INVALID` for either the ancestor Marker or the selected level's Reserve. The same preconditions admit in computations targeting an independent field at the Bins level. These are static admission measurements with bounded NUMBER payloads and STRING keys, not runtime iteration or message-coordinate claims.
+
+The checker derives levels per authored occurrence and unions them for repeated spellings. This preserves an ordinary guard beside a selected occurrence without counting the implicit index dependency as authored membership. Locked by `adapter.laws.SelectedAuthoredScopeDiffTest`; packaged portable checking is locked by `cli.DmtoolPublicContractTest.packagedPortableCheckPreservesSelectedAncestorBinding`.
+
 
 ## §12 supplement — A12 refuses a character outside the Basic Multilingual Plane in the texts it validates as part of the model, with no class and once per element; the labels of the model, a group and a field are not among them (kernel `checkConsistency`, 2026-09-26) <a id="kf489"></a>
 

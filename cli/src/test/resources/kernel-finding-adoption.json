@@ -9428,6 +9428,97 @@
           }
         }
       }
+    },
+    "kf488": {
+      "sha256": "aab0d2209a7edeb354b6761180438db56bb619cd21884b4068c1af5a91794cae",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "selected authored scope admission"
+        ],
+        "dmkits": [
+          "typed selected reference identity"
+        ],
+        "interpreter": [],
+        "checker": [
+          "ordinary levels of selected authored references"
+        ],
+        "dmtool-cli": [
+          "portable model check selected scope"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "selected authored scope admission"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Live kernel accepts ancestor and own guards, refuses sibling guards, and accepts all computation twins.",
+          "evidence": {
+            "selected authored scope admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedAuthoredScopeDiffTest.kt#selectedPayloadKeepsAncestorsButDoesNotBindItsSelectedLevel",
+              "witness": "Live kernel accepts ancestor and own guards, refuses sibling guards, and accepts all computation twins."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Typed rules preserve payload, explicit index, and ordinary guard distinctions without a new public shape.",
+          "evidence": {
+            "typed selected reference identity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedAuthoredScopeDiffTest.kt#implicitLookupDoesNotNameTheIndexField",
+              "witness": "Typed rules preserve payload, explicit index, and ordinary guard distinctions without a new public shape."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding extension concerns static admission; runtime selected scope and error coordinates remain a separate SPEC-2026-10-10-03 partition.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "Per-occurrence levels retain payload ancestors and independent field-key binding; direct and composed payloads agree with the kernel.",
+          "evidence": {
+            "ordinary levels of selected authored references": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedAuthoredScopeDiffTest.kt#aFieldKeyKeepsItsOwnBindingWhenThePayloadHasNoRepeatingAncestor",
+              "witness": "Per-occurrence levels retain payload ancestors and independent field-key binding; direct and composed payloads agree with the kernel."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "The packaged portable checker returns INCONCLUSIVE for admitted ancestor/own guards and REJECTED for the sibling guard.",
+          "evidence": {
+            "portable model check selected scope": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedPortableCheckPreservesSelectedAncestorBinding",
+              "witness": "The packaged portable checker returns INCONCLUSIVE for admitted ancestor/own guards and REJECTED for the sibling guard."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No imported keyword, synthesized rule, or wire shape changes in this static checker correction; index-carriage reconciliation is tracked separately.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No exported keyword or rule-carriage changes in this static checker correction; index-carriage reconciliation is tracked separately.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-03 remains pending until the runtime partition and peer verification complete.",
+          "evidence": {
+            "selected authored scope admission": {
+              "reference": "a12-kernel-lean@f2343f50c874f9835242a18423a72570b6255b9e:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-03",
+              "witness": "The pending entry separates authored static membership and per-level iteration from runtime dependency/message sets."
+            }
+          }
+        }
+      }
     }
   }
 }

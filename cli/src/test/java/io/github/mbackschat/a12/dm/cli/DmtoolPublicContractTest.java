@@ -513,6 +513,38 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void packagedPortableCheckPreservesSelectedAncestorBinding(@TempDir Path dir) throws Exception {
+        String base = DocumentModelDraft.named("depot-check-scope").locale("en_US")
+                .rootGroup("Store", store -> store.group("Depots", depot -> depot.repeatable(2)
+                        .numberField("Marker", f -> {})
+                        .group("Bins", bin -> bin.repeatable(3).indexField("Code").stringField("Code", f -> {})
+                                .numberField("Stock", f -> {}).numberField("Reserve", f -> {}))))
+                .build().toJson();
+        for (String guard : List.of("ancestor", "sibling", "own")) {
+            var session = EditSession.read(base);
+            var store = session.group("/Store");
+            var depot = session.group("/Store/Depots");
+            var stock = depot.num("Bins/Stock");
+            var guarded = switch (guard) {
+                case "ancestor" -> depot.num("Marker");
+                case "sibling" -> depot.num("Bins/Reserve");
+                default -> stock;
+            };
+            var rule = store.rule(builder -> builder.name("Selected").code("Selected").errorField(stock)
+                    .when(guarded.filled().and(stock.forIndex("b").gt(0)))
+                    .message(Dsl.en("Check selected stock.")).build());
+            Path model = dir.resolve(guard + ".dm.json");
+            Files.writeString(model, new io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator().inject(base, rule.draft()));
+            var result = new PackagedDmtool(dir).run("-m", model.toString(), "model", "check", "--engine", "portable");
+            boolean rejected = guard.equals("sibling");
+            assertEquals(rejected ? 1 : 3, result.code(), result::out);
+            var envelope = MAPPER.readTree(result.out());
+            assertEquals("PORTABLE_CHECKER", envelope.path("engineExecuted").asText(), result::out);
+            assertEquals(rejected ? "INVALID" : "INCONCLUSIVE", envelope.path("data").path("status").asText(), result::out);
+        }
+    }
+
+    @Test
     void packagedSelectedGroupsExpandColumnsAndRetainOmissionType(@TempDir Path dir) throws Exception {
         var session = EditSession.read(DocumentModelDraft.named("selected-group-cli").locale("en_US")
                 .rootGroup("Order", order -> order.numberField("Needle", f -> {})
