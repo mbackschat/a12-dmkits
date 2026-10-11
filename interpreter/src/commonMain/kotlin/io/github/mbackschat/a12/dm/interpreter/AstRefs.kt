@@ -27,7 +27,11 @@ internal fun referencedFieldPaths(expr: Expr): List<String> = when (expr) {
     is Expr.Arith -> referencedFieldPaths(expr.left) + referencedFieldPaths(expr.right)
     is Expr.EnumCategory -> listOf(expr.path)
     is Expr.SemanticIndex -> listOfNotNull(expr.path, expr.indexFieldPath)
-    else -> emptyList()
+    is Expr.EntitySpec -> referencedFieldPaths(expr.source) + when (val index = expr.semanticIndex) {
+        null, is Expr.EntityIndex.Literal -> emptyList()
+        is Expr.EntityIndex.Field -> listOf(index.path)
+    }
+    is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit, is Expr.Const -> emptyList()
 }
 
 /** ALL field/star refs of a condition — the cascade-DEPENDENCY view of a precondition (its quantifier/
@@ -262,7 +266,9 @@ internal fun semanticIndexTargets(expr: Expr): List<String> = when (expr) {
     is Expr.Star -> expr.having?.let(::semanticIndexTargets).orEmpty()
     is Expr.Func -> expr.args.flatMap(::semanticIndexTargets)
     is Expr.Arith -> semanticIndexTargets(expr.left) + semanticIndexTargets(expr.right)
-    else -> emptyList()
+    is Expr.EntitySpec -> semanticIndexTargets(expr.source) +
+        if (expr.semanticIndex != null) listOf(expr.source.path) else emptyList()
+    is Expr.Field, is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit, is Expr.Const, is Expr.EnumCategory -> emptyList()
 }
 
 /** Condition twin of [semanticIndexTargets]. */
@@ -331,8 +337,7 @@ internal fun condRefsOrEmpty(cond: Cond?): List<String> = cond?.let { nonStarred
 /**
  * Every entity path [cond] NAMES, whether field or group, starred or not, in any operand position — the view a
  * declaration check needs. Deliberately **not** one of the walks above: each of those omits paths on purpose
- * (the scope view drops stars, the dependency view drops `CurrentRepetition`'s group and `EntitySpec`
- * altogether, the message view drops a semantic-index target), and every such omission would become a
+ * (the scope view drops stars, the dependency view drops `CurrentRepetition`'s group), and every such omission would become a
  * reference this walk fails to check. Both `when`s are exhaustive over the sealed AST so a new node cannot be
  * added without deciding what it names.
  *
