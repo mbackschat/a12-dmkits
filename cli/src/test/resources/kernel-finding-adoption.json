@@ -4926,33 +4926,41 @@
       }
     },
     "kf20": {
-      "sha256": "ca03bc5ef414b74a07d490dd27ecd1d3f5113dfd0184803a22ea06c8bfc369c5",
+      "sha256": "3e4f3c06772f00603719edb3c796550cebd0cf3b85a2db1d51df64db0b14b22c",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "empty Number computation guard boundary",
           "unchanged historical claims outside this amendment",
-          "parent-scoped index column"
+          "parent-scoped index column",
+          "numeric parallel validation token multiplicity",
+          "parallel validation lexical visit order"
         ],
         "dmkits": [],
         "interpreter": [
           "empty Number computation guard boundary",
           "unchanged historical claims outside this amendment",
-          "parent-scoped index column"
+          "parent-scoped index column",
+          "numeric parallel validation token multiplicity",
+          "parallel validation lexical visit order"
         ],
         "checker": [],
-        "dmtool-cli": [],
+        "dmtool-cli": [
+          "numeric parallel validation token multiplicity"
+        ],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
           "empty Number computation guard boundary",
-          "parent-scoped index column"
+          "parent-scoped index column",
+          "numeric parallel validation token multiplicity",
+          "parallel validation lexical visit order"
         ]
       },
       "consumers": {
         "adapter": {
           "state": "OPEN",
-          "basis": "This review discharges the 2026-10-03 amendment only; broader historical adoption remains unassessed under F-USE-BACKLOG.",
+          "basis": "Dated amendments have executable evidence; unchanged historical claims remain unassessed under F-USE-BACKLOG.",
           "evidence": {
             "empty Number computation guard boundary": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericComputationGuardDiffTest.kt#numericGuardsAndTheirDownstreamOutcomesAgree",
@@ -4961,6 +4969,14 @@
             "parent-scoped index column": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParentScopedIndexColumnDiffTest.kt#aDuplicatePoisonsOnlyItsOwnDepot",
               "witness": "A duplicate in either depot clears that depot's keyed computation while the other depot's computes, on dynamic Groovy."
+            },
+            "numeric parallel validation token multiplicity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt#validationJoinTokensPreserveEachGroupsDeclaredMinimumScale",
+              "witness": "Minimum scales 0/0, 0/2, 2/2 crossed with native JSON keys 5, -5 and 5.25; exact one-versus-two message occurrences across both kernel strategies and interpreter."
+            },
+            "parallel validation lexical visit order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt#validationVisitsRenderedTokensInLexicalOrder",
+              "witness": "Callback row order 3,2,1 for stored keys 5,2,10; differing-minimum integers revisit twice, fractional and String controls once, on all three engines."
             }
           }
         },
@@ -4971,7 +4987,7 @@
         },
         "interpreter": {
           "state": "OPEN",
-          "basis": "This review discharges the 2026-10-03 amendment only; broader historical adoption remains unassessed under F-USE-BACKLOG.",
+          "basis": "Dated amendments have executable evidence; unchanged historical claims remain unassessed under F-USE-BACKLOG.",
           "evidence": {
             "empty Number computation guard boundary": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericComputationGuardDiffTest.kt#numericGuardsAndTheirDownstreamOutcomesAgree",
@@ -4980,6 +4996,14 @@
             "parent-scoped index column": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParentScopedIndexColumnDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
               "witness": "Five documents across all three engines; the interpreter already keyed the column by the enclosing parent row, so no code changed."
+            },
+            "numeric parallel validation token multiplicity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt#validationJoinTokensPreserveEachGroupsDeclaredMinimumScale",
+              "witness": "Minimum scales 0/0, 0/2, 2/2 crossed with native JSON keys 5, -5 and 5.25; exact one-versus-two message occurrences across both kernel strategies and interpreter."
+            },
+            "parallel validation lexical visit order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt#validationVisitsRenderedTokensInLexicalOrder",
+              "witness": "Callback row order 3,2,1 for stored keys 5,2,10; differing-minimum integers revisit twice, fractional and String controls once, on all three engines."
             }
           }
         },
@@ -4989,9 +5013,14 @@
           "evidence": {}
         },
         "dmtool-cli": {
-          "state": "NOT_APPLICABLE",
-          "basis": "No distinct CLI contract changed; evaluation and portable checking delegate to the interpreter and checker assessed here.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Packaged evaluation retains duplicate occurrences and distinct fired codes through the interpreter.",
+          "evidence": {
+            "numeric parallel validation token multiplicity": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedNumericParallelValidationRetainsRenderedTokenMultiplicity",
+              "witness": "Three minimum-scale profiles crossed with integral/fractional values compare message occurrence counts and all message channels against the kernel adapter; both files remain unchanged."
+            }
+          }
         },
         "json-schema-import": {
           "state": "NOT_APPLICABLE",
@@ -5004,8 +5033,8 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "ALREADY_CONFORMS",
-          "basis": "The empty-guard boundary was receipted against 35ad60446 (SPEC-2026-10-03-01); the parent-scoped column was accepted under SPEC-2026-10-07-01 at 5472a915 after inspecting dce1d1bc6. The peer did not rerun either.",
+          "state": "OPEN",
+          "basis": "The empty-guard boundary was receipted against 35ad60446 (SPEC-2026-10-03-01); the parent-scoped column was accepted under SPEC-2026-10-07-01 at 5472a915 after inspecting dce1d1bc6. The peer did not rerun either. Numeric-token amendment awaits SPEC-2026-10-10-04 verification; prior receipts are retained.",
           "evidence": {
             "empty Number computation guard boundary": {
               "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
@@ -8396,6 +8425,98 @@
         "a12-kernel-lean": {
           "state": "OPEN",
           "basis": "SPEC-2026-10-10-13 awaits peer verification and receipt at the final batch revision.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf114": {
+      "sha256": "e88577fd43304545c693d7df2bd8432fadf0403f7c8cb2d7e20eed2d43ad5df1",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "unchanged historical claims outside this amendment",
+          "numeric parallel validation token multiplicity",
+          "parallel validation lexical visit order"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "unchanged historical claims outside this amendment",
+          "numeric parallel validation token multiplicity",
+          "parallel validation lexical visit order"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "numeric parallel validation token multiplicity"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "numeric parallel validation token multiplicity",
+          "parallel validation lexical visit order"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "OPEN",
+          "basis": "Dated amendments have executable evidence; unchanged historical claims remain unassessed under F-USE-BACKLOG.",
+          "evidence": {
+            "numeric parallel validation token multiplicity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt#validationJoinTokensPreserveEachGroupsDeclaredMinimumScale",
+              "witness": "Minimum scales 0/0, 0/2, 2/2 crossed with native JSON keys 5, -5 and 5.25; exact one-versus-two message occurrences across both kernel strategies and interpreter."
+            },
+            "parallel validation lexical visit order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt#validationVisitsRenderedTokensInLexicalOrder",
+              "witness": "Callback row order 3,2,1 for stored keys 5,2,10; differing-minimum integers revisit twice, fractional and String controls once, on all three engines."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the adapter lock authors every measured model through the existing typed surface.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "Dated amendments have executable evidence; unchanged historical claims remain unassessed under F-USE-BACKLOG.",
+          "evidence": {
+            "numeric parallel validation token multiplicity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt#validationJoinTokensPreserveEachGroupsDeclaredMinimumScale",
+              "witness": "Minimum scales 0/0, 0/2, 2/2 crossed with native JSON keys 5, -5 and 5.25; exact one-versus-two message occurrences across both kernel strategies and interpreter."
+            },
+            "parallel validation lexical visit order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt#validationVisitsRenderedTokensInLexicalOrder",
+              "witness": "Callback row order 3,2,1 for stored keys 5,2,10; differing-minimum integers revisit twice, fractional and String controls once, on all three engines."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Packaged evaluation retains duplicate occurrences and distinct fired codes through the interpreter.",
+          "evidence": {
+            "numeric parallel validation token multiplicity": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedNumericParallelValidationRetainsRenderedTokenMultiplicity",
+              "witness": "Three minimum-scale profiles crossed with integral/fractional values compare message occurrence counts and all message channels against the kernel adapter; both files remain unchanged."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-04 remains pending; peer verification of this amendment is outstanding. Numeric-token amendment awaits SPEC-2026-10-10-04 verification; prior receipts are retained.",
           "evidence": {}
         }
       }

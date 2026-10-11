@@ -20,7 +20,7 @@
     "messages": {
       "type": "array",
       "items": { "$ref": "#/$defs/message" },
-      "description": "every message the evaluation raised, in evaluation order. Evaluated by the dm interpreter — the envelope's `engine` names who produced these"
+      "description": "every message occurrence the evaluation raised, in evaluation order; occurrences are not deduplicated even when numeric parallel iteration renders two tokens for the same matched rows. Evaluated by the dm interpreter — the envelope's `engine` names who produced these"
     },
     "rule": {
       "type": "object",

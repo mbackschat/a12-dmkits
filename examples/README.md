@@ -13,6 +13,8 @@ uvx showboat@0.6.1 verify examples/cli-tour.md   # exit 0 = output still matches
 
 The demos use the bare `dmtool` and read their sample models from [`models/`](models/) — the demos' **own** fixtures, kept separate from the JUnit test fixtures (`cli/src/test/resources/models/`): same kind of model, different purpose (user-facing showcase vs. internal test coverage). Both the demos and `models/` are published to the release mirror, so the walkthroughs run there too.
 
+The [tariff parallel-join fixture](models/tariff-parallel.dm.json) demonstrates rendered numeric index tokens and message occurrence counts in the [runtime tour](cli-runtime.md).
+
 The [`profiles/`](profiles/) directory carries the three approved domain-blind performance-calibration artifacts used by the profile-driven synthesis and interpreter scalability workflow. They are current-format `profile′` outputs from own-domain synthesized models, not copies or profiles of private source models.
 
 **What a green `verify-demos.sh` proves, and what it does not.** The gate proves every documented command still

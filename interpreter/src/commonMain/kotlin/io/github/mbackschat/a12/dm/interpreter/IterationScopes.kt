@@ -88,11 +88,20 @@ internal class IterationScopes(private val model: ModelDef) {
         /** Full validation iterates the kernel's declared/occupied domain ([Document.fullValidationContextsFor]);
          *  partial validation and computation keep their own. */
         fullValidation: Boolean = false,
+        validation: Boolean = false,
     ): List<EvalContext> = when (plan) {
         is IterationPlan.Rows ->
             if (fullValidation) doc.fullValidationContextsFor(plan.group, ::capacityOf) else doc.contextsFor(plan.group)
         is IterationPlan.Once -> if (plan.global) doc.globalContextFor(plan.rootGroup) else doc.onceContextFor(plan.rootGroup)
-        is IterationPlan.Parallel -> doc.parallelContexts(
+        is IterationPlan.Parallel -> if (validation) doc.validationParallelContexts(
+            plan.joined,
+            plan.indexName,
+            plan.commonParent,
+            plan.frameGroup,
+            plan.deepestFrame,
+            cellRelevant,
+            indexIdentityAdmitted,
+        ) else doc.parallelContexts(
             plan.joined,
             plan.indexName,
             plan.commonParent,

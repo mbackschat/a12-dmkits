@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
+import io.github.mbackschat.a12.dm.interpreter.A12DocumentJson
 import io.github.mbackschat.a12.dm.interpreter.CacheObserver
 import io.github.mbackschat.a12.dm.interpreter.CacheOwnerKind
 import io.github.mbackschat.a12.dm.interpreter.messagePointerHouseForm
@@ -748,17 +749,11 @@ class Document(internal val config: DocumentConfig) {
     /**
      * **Parallel iteration** — joint iteration of sibling repeatable [groups] (neither nested in the other),
      * keyed by their shared **index field** [indexFieldName], within each row of their deepest common ancestor
-     * [commonParent]. The kernel evaluates this as an *outer join over the index VALUES* (KERNEL-SEMANTICS §9 /
-     * KERNEL-FINDINGS §9 — its `IndexFieldCache`): for each value present in ANY group, each group resolves to
-     * the row whose index cell equals that value, or counts as **not specified** when it has no such row. One
-     * [EvalContext] per (common-parent row × index value) is produced; a group with no matching row resolves its
-     * fields empty (and its pointer level to [UNKNOWN_REP], -5).
-     *
-     * The iteration value set is the **union of the groups' index-field values** within each common-parent row
-     * (the kernel's `ValidationCache.getIterationValuesForGroups` — the per-group value→repetition map keys, with
-     * empty cells excluded and a DUPLICATED value keying nothing at all, [IF270]). Each value resolves each group
-     * to the row that carries it, or **not specified** when the group has no row for it. Values are compared as
-     * canonical [indexKeyOf] keys, not as raw text ([IF272]).
+     * [commonParent]. Row lookup uses canonical [indexKeyOf] identity ([IF272]); a group without a matching
+     * row reads empty and carries [UNKNOWN_REP]. Computation enumerates each canonical identity once.
+     * [validationParallelContexts] instead enumerates the lexical union of each group's rendered tokens,
+     * because different Number minimum scales can revisit the same matched pair (KF114 / SPEC-2026-10-10-04).
+     * Duplicate and empty index cells contribute no selectable key ([IF270]).
      *
      * **Invalid index → 3VL (KERNEL-FINDINGS §9):** a group whose index is *invalid* here (a duplicate value or
      * an empty cell — `invalidIndexGroups`) reads its **unmatched** references as 3-valued **UNKNOWN**, not
@@ -766,7 +761,8 @@ class Document(internal val config: DocumentConfig) {
      * `FieldsNotCollectivelyFilled` on the compromised side. A *valid* group's unmatched reference is definite
      * "empty". A *matched* reference always resolves to its row (definite), regardless of group validity. The
      * duplicate/empty rows additionally carry the auto `uniqueIndex`/`mandatoryField` errors (emitted
-     * independently). Iteration order is irrelevant (the message multiset is compared).
+     * independently). Validation visits lexical rendered-token order, observable through custom callbacks
+     * (`NumericIndexKeyDiffTest.validationVisitsRenderedTokensInLexicalOrder`).
      *
      * **Frame (a nested repeatable above one joined group):** when one joined group [frameGroup] sits under a
      * repeatable non-indexed ancestor [deepestFrame] (between [commonParent] and it), the kernel iterates that
@@ -780,7 +776,22 @@ class Document(internal val config: DocumentConfig) {
             /** Partial validation only: gates which INDEX cells key the join ([IF269]). Null = every cell. */
             cellRelevant: ((String, List<Int>) -> Boolean)? = null,
             /** Complete formal-admission gate supplied by the validation/compute pass. */
-            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null): List<EvalContext> {
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null): List<EvalContext> =
+        parallelContexts(groups, indexFieldName, commonParent, frameGroup, deepestFrame,
+            cellRelevant, indexIdentityAdmitted, validation = false)
+
+    internal fun validationParallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
+            frameGroup: String?, deepestFrame: String?,
+            cellRelevant: ((String, List<Int>) -> Boolean)?,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?): List<EvalContext> =
+        parallelContexts(groups, indexFieldName, commonParent, frameGroup, deepestFrame,
+            cellRelevant, indexIdentityAdmitted, validation = true)
+
+    private fun parallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
+            frameGroup: String?, deepestFrame: String?,
+            cellRelevant: ((String, List<Int>) -> Boolean)?,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+            validation: Boolean): List<EvalContext> {
         val out = ArrayList<EvalContext>()
         for (cReps in parentRowsOf(commonParent)) {
             // The NON-framed (clean) groups are shared across every frame row — build their value maps + invalid
@@ -809,10 +820,20 @@ class Document(internal val config: DocumentConfig) {
                         cellRelevant,
                         indexIdentityAdmitted,
                     ))
-                val values = LinkedHashSet<String>().apply { groups.forEach { addAll(perGroup.getValue(it).keys) } }
-                for (v in values) {
+                // Validation enumerates rendered tokens but resolves each by numeric identity (SPEC-2026-10-10-04).
+                val values = LinkedHashSet<String>().apply {
+                    for (group in groups) {
+                        val indexPath = "$group/$indexFieldName"
+                        for (key in perGroup.getValue(group).keys) add(
+                            if (validation && kinds[indexPath] == Kind.NUMBER)
+                                A12DocumentJson.runtimeNumberForm(key, fieldConstraints[indexPath]?.minFractionalDigits ?: 0)
+                            else key,
+                        )
+                    }
+                }
+                for (v in if (validation) values.sorted() else values) {
                     out += ParallelRowContext(commonParent, cReps, groups, parentReps,
-                        groups.associateWith { perGroup.getValue(it)[v] }, invalid)
+                        groups.associateWith { perGroup.getValue(it)[indexKeyOf(v, kinds["$it/$indexFieldName"])] }, invalid)
                 }
             }
         }
@@ -840,7 +861,7 @@ class Document(internal val config: DocumentConfig) {
      *  is the same rule the semantic-index column already applies ([IndexColumn]); the parallel join was the one
      *  index-keyed lookup that resolved a duplicate by row order.
      *
-     *  Both the collision test and the join key itself are the CANONICAL [indexKeyOf] form, never the raw stored
+     *  Both the collision test and row lookup use the CANONICAL [indexKeyOf] form, never the raw stored
      *  text ([IF272]) — on a Number index field `5` and `5.00` are one kernel key, so they collide within a group
      *  and match across groups. */
     private fun indexMap(group: String, indexFieldName: String, ctxReps: List<Int>, invalidOut: MutableSet<String>,

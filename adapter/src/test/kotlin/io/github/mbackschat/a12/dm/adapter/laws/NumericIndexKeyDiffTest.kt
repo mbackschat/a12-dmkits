@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
+import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -45,6 +46,93 @@ import java.util.function.Consumer
  * rows separate admission, collision, row selection, 3VL, and pointer stages. Both kernel strategies agree.
  */
 class NumericIndexKeyDiffTest {
+
+    @Test
+    fun validationJoinTokensPreserveEachGroupsDeclaredMinimumScale() {
+        for ((leftScale, rightScale) in listOf(0 to 0, 0 to 2, 2 to 2)) {
+            val model = joinModel(leftScale, rightScale)
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model))
+            val documents = listOf("5", "-5", "5.25").associateWith { key ->
+                """{"Tariff":{"Offered":[{"Deductible":$key,"Premium":"p"}],"Quoted":[{"Deductible":$key,"Premium":"p"}]}}"""
+            }
+            for ((key, json) in documents) {
+                val expectedCount = if (leftScale != rightScale && key != "5.25") 2 else 1
+                assertEquals(expectedCount, DocumentDifferential.kernel(model, json, dynamic = true).messages.size,
+                    "$leftScale/$rightScale/$key")
+            }
+            DocumentDifferential.assertAgree(model, documents)
+        }
+    }
+
+    private fun joinModel(leftScale: Int, rightScale: Int, observe: Boolean = false, numberIndex: Boolean = true): String {
+        val base = DocumentModelDraft.named("tariff-index-rendering").locale("en_US")
+            .rootGroup("Tariff") { tariff ->
+                for ((name, scale) in listOf("Offered" to leftScale, "Quoted" to rightScale)) {
+                    tariff.group(name) { group ->
+                        group.repeatable(3).indexField("Deductible")
+                        if (numberIndex) group.numberField("Deductible") { it.fractionDigits(scale, 2) }
+                        else group.stringField("Deductible") { }
+                        group.stringField("Premium") { }
+                    }
+                }
+            }.build().toJson()
+        val session = EditSession.read(base)
+        val tariff = session.group("/Tariff")
+        val offered = session.group("/Tariff/Offered").str("Premium")
+        val quoted = session.group("/Tariff/Quoted").str("Premium")
+        val filled = Dsl.allFieldsFilled(offered.field(), quoted.field())
+        return TypedRules.inject(base, tariff.rule {
+            it.name("ComparePremiums").code("JOIN").errorField(offered.field())
+                .`when`(if (observe) filled.and(Dsl.customCondition("ObserveVisit")) else filled)
+                .message(Dsl.en("Compare the premiums.")).build()
+        })
+    }
+
+    @Test
+    fun validationVisitsRenderedTokensInLexicalOrder() {
+        for ((rightScale, numberIndex, fractional) in listOf(
+            Triple(0, true, false), Triple(2, true, false), Triple(2, true, true), Triple(0, false, false))) {
+            val model = joinModel(0, rightScale, observe = true, numberIndex = numberIndex)
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model))
+            val rows = listOf(5, 2, 10).map { key ->
+                val text = key.toString() + if (fractional) ".25" else ""
+                mapOf("Deductible" to if (numberIndex) java.math.BigDecimal(text) else text, "Premium" to "p")
+            }
+            val document = com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(
+                mapOf("Tariff" to mapOf("Offered" to rows, "Quoted" to rows)))
+            val visits = mutableListOf<Int>()
+            val callback = object : com.mgmtp.a12.kernel.md.rt.api.ICustomCondition {
+                override fun check(document: com.mgmtp.a12.kernel.md.document.api.IDocument,
+                    relevant: Set<com.mgmtp.a12.kernel.md.document.api.IEntityInstance>?,
+                    formallyIncorrect: Set<com.mgmtp.a12.kernel.md.document.api.IEntityInstance>,
+                    errorEntity: com.mgmtp.a12.kernel.md.document.api.IEntityInstance): Boolean {
+                    visits += errorEntity.repetitions[1]
+                    return true
+                }
+            }
+            val expected = listOf(3, 2, 1).flatMap { row -> List(if (rightScale != 0 && !fractional) 2 else 1) { row } }
+            val dynamic = RuntimeLaws.kernelEngine(model)
+            val dynamicMessages = dynamic.validationSignaturesSorted(dynamic.instance(document), java.util.Locale.US,
+                null, mapOf("ObserveVisit" to callback))
+            assertEquals(expected, visits, "dynamic scale=$rightScale")
+            visits.clear()
+            val static = RuntimeLaws.kernelJavaEngine(model)
+            assertEquals(dynamicMessages, static.validationSignaturesSorted(static.instance(document), java.util.Locale.US,
+                null, mapOf("ObserveVisit" to callback)))
+            assertEquals(expected, visits, "static scale=$rightScale")
+            visits.clear()
+            val def = ModelLoader.load(model)
+            val interpreter = DmInterpreter(def, customConditions = mapOf("ObserveVisit" to
+                io.github.mbackschat.a12.dm.interpreter.model.CustomCondition { _, _, _, error ->
+                    visits += error.indices[1]
+                    true
+                }))
+            val actual = interpreter.validate(def.readDocumentJson(document))
+            assertEquals(emptyList<Any>(), actual.unsupported)
+            assertEquals(expected.size, actual.messages.count { it.code == "JOIN" }, actual.toString())
+            assertEquals(expected, visits, "interpreter scale=$rightScale")
+        }
+    }
 
     private fun modelWithMaximum(maximum: Int) = DocumentModelDraft.named("tariff$maximum").locale("en_US")
         .rootGroup("Tariff", Consumer { g: GroupBuilder ->

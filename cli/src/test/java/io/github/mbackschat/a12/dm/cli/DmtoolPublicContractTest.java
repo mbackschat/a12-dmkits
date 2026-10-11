@@ -313,6 +313,62 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void packagedNumericParallelValidationRetainsRenderedTokenMultiplicity(@TempDir Path dir) throws Exception {
+        var dmtool = new PackagedDmtool(dir);
+        for (var scales : List.of(List.of(0, 0), List.of(0, 2), List.of(2, 2))) {
+            String base = DocumentModelDraft.named("tariff-rendered-keys-cli").locale("en_US")
+                    .rootGroup("Tariff", tariff -> {
+                        int ordinal = 0;
+                        for (String name : List.of("Offered", "Quoted")) {
+                            int scale = scales.get(ordinal++);
+                            tariff.group(name, group -> group.repeatable(3).indexField("Deductible")
+                                    .numberField("Deductible", field -> field.fractionDigits(scale, 2))
+                                    .stringField("Premium", field -> { }));
+                        }
+                    }).build().toJson();
+            var edit = EditSession.read(base);
+            var tariff = edit.group("/Tariff");
+            var offered = edit.group("/Tariff/Offered").str("Premium");
+            var quoted = edit.group("/Tariff/Quoted").str("Premium");
+            tariff.addRule(rule -> rule.name("ComparePremiums").code("JOIN").errorField(offered)
+                    .when(Dsl.allFieldsFilled(offered.field(), quoted.field()))
+                    .message(Dsl.en("Compare the premiums.")).build());
+            Path model = dir.resolve("tariff.dm.json");
+            String modelJson = edit.toJson();
+            Files.writeString(model, modelJson);
+            for (String key : List.of("5", "5.25")) {
+                var row = Map.of("Deductible", new java.math.BigDecimal(key).setScale(2), "Premium", "p");
+                String input = MAPPER.writeValueAsString(Map.of("Tariff",
+                        Map.of("Offered", List.of(row), "Quoted", List.of(row))));
+                Path document = dir.resolve("tariff.json");
+                Files.writeString(document, input);
+                String[] args = {"-m", model.toString(), "model", "eval", "--instance", document.toString()};
+                var evaluated = dmtool.run(args);
+                var oracle = CliTestSupport.runKernel(args);
+                assertEquals(0, evaluated.code(), evaluated::out);
+                assertEquals(0, oracle.code(), oracle::out);
+                JsonNode data = MAPPER.readTree(evaluated.out()).path("data");
+                int expected = !scales.get(0).equals(scales.get(1)) && key.equals("5") ? 2 : 1;
+                assertEquals(expected, data.path("messages").size(), evaluated::out);
+                JsonNode kernelMessages = MAPPER.readTree(oracle.out()).path("data").path("messages");
+                assertEquals(expected, kernelMessages.size(), oracle::out);
+                for (JsonNode messages : List.of(kernelMessages, data.path("messages"))) {
+                    for (JsonNode message : messages) {
+                        assertEquals("JOIN", message.path("code").asText());
+                        var references = new java.util.ArrayList<JsonNode>();
+                        message.path("referenced").forEach(references::add);
+                        references.sort(java.util.Comparator.comparing(JsonNode::asText));
+                        ((com.fasterxml.jackson.databind.node.ObjectNode) message).set("referenced", MAPPER.valueToTree(references));
+                    }
+                }
+                assertEquals(kernelMessages, data.path("messages"));
+                assertEquals(input, Files.readString(document));
+                assertEquals(modelJson, Files.readString(model));
+            }
+        }
+    }
+
+    @Test
     void packagedEmptyPatternFailsOnlyWhenReached(@TempDir Path dir) throws Exception {
         String base = DocumentModelDraft.named("parcel-pattern-cli").locale("en_US")
                 .rootGroup("Parcel", g -> g.stringField("Ref", f -> { }).stringField("Label", f -> { }))

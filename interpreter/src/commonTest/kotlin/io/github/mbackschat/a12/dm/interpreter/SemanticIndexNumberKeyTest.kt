@@ -20,6 +20,40 @@ import kotlin.test.assertEquals
  */
 class SemanticIndexNumberKeyTest {
 
+    @Test
+    fun parallelValidationRetainsRenderedAliasesWhileComputationKeepsNumericIdentity() {
+        val groups = listOf("/Tariff/Offered", "/Tariff/Quoted")
+        for ((leftScale, rightScale) in listOf(0 to 0, 0 to 2, 2 to 2)) {
+            for (fractional in listOf(false, true)) {
+                val model = ModelDef(
+                    fields = groups.zip(listOf(leftScale, rightScale)).flatMap { (group, scale) ->
+                        listOf(FieldDef("$group/Deductible", Kind.NUMBER, scale = 2, minFractionalDigits = scale),
+                            FieldDef("$group/Premium", Kind.STRING))
+                    },
+                    rules = emptyList(), declaredReps = groups.associateWith { 3 },
+                    indexFields = groups.map { "$it/Deductible" }.toSet(),
+                )
+                val document = model.newDocument()
+                for ((group, scale) in groups.zip(listOf(leftScale, rightScale))) for ((i, key) in listOf("5", "2", "10").withIndex()) {
+                    document.group(group, 1, i + 1)
+                        .field("$group/Deductible", key + if (fractional) ".25" else if (scale == 2) ".00" else "", 1, i + 1, 1)
+                        .field("$group/Premium", "p", 1, i + 1, 1)
+                }
+                val visits = document.validationParallelContexts(groups, "Deductible", "/Tariff", null, null, null, null)
+                val expected = listOf(3, 2, 1).flatMap { row ->
+                    List(if (leftScale != rightScale && !fractional) 2 else 1) { row }
+                }
+                for (group in groups) {
+                    assertEquals(expected, visits.map { it.repsOf("$group/Premium")[1] })
+                    assertEquals(List(expected.size) { io.github.mbackschat.a12.dm.interpreter.ast.Val.Txt("p") },
+                        visits.map { it.field("$group/Premium") })
+                }
+                assertEquals(3, document.parallelContexts(groups, "Deductible", "/Tariff").size)
+            }
+        }
+    }
+
+
     private val KEY = "/Shop/LookupKey"
     private val RESULT = "/Shop/Result"
     private val ITEM_NO = "/Shop/Items/ItemNo"

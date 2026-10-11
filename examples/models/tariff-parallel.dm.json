@@ -1,0 +1,116 @@
+{
+  "header" : {
+    "id" : "tariff-rendered-keys",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "tariff-rendered-keys",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Tariff",
+        "name" : "Tariff",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Group",
+            "id" : "/Tariff/Offered",
+            "name" : "Offered",
+            "Group" : {
+              "repeatability" : 3,
+              "indexFieldName" : "Deductible",
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/Tariff/Offered/Deductible",
+                "name" : "Deductible",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 2,
+                      "minFractionalDigits" : 0
+                    }
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/Tariff/Offered/Premium",
+                "name" : "Premium",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              } ]
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Tariff/Quoted",
+            "name" : "Quoted",
+            "Group" : {
+              "repeatability" : 3,
+              "indexFieldName" : "Deductible",
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/Tariff/Quoted/Deductible",
+                "name" : "Deductible",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 2,
+                      "minFractionalDigits" : 2
+                    }
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/Tariff/Quoted/Premium",
+                "name" : "Premium",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Tariff/ComparePremiums",
+            "name" : "ComparePremiums",
+            "Rule" : {
+              "errorEntityRelPath" : "../Offered/Premium",
+              "errorCode" : "JOIN",
+              "errorCondition" : "AllFieldsFilled(Offered/Premium, Quoted/Premium)",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "Compare the premiums."
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}
