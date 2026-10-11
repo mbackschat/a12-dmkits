@@ -171,7 +171,7 @@ internal fun Interpreter.valueListCell(e: Expr): Val? = when (e) {
         Tri.FALSE -> null
         Tri.UNKNOWN -> Val.Unknown
     }
-    is Expr.EnumCategory -> if (outerUnknown(e)) Val.Unknown else when (filledTri(ctxOf(e), e.path)) {
+    is Expr.EnumCategory -> when (filledTri(ctxOf(e), e.path)) {
         Tri.TRUE -> evalExpr(e)
         Tri.FALSE -> null
         Tri.UNKNOWN -> Val.Unknown

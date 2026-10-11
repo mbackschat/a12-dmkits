@@ -22,8 +22,8 @@ import org.junit.jupiter.api.Test
  *     members → the **self-pair** fires; a list-internal pair (arg0 disjoint) fires though arg0-vs-list misses it.
  *  2. Empty / malformed cells are SKIPPED (no unknown-suppression); an INVALID range (start > end) never overlaps.
  *  3. A `Having` filter on a rep-list arg is legal and APPLIED per cell — **keep iff the complete filter is
- *     TRUE**. A `$`-bearing term has no outer binding for a plain predicate's arg, so the codegen makes the
- *     complete comparison/predicate trivially TRUE. Thus `!= $RuleGroup` / `== $RuleGroup` keeps ALL rows.
+ *     TRUE**. `$` captures the enclosing row; [OverlapFilterBindingDiffTest] supplies disjoint controls
+ *     that distinguish self-exclusion from retaining a different list-internal pair.
  *  4. Any-pair polarity follows a sticky REACHED-filter flag: only a kept, filled range from a filtered operand
  *     flips it; an empty filtered container does not taint, while a reached disjoint range can taint a later pair.
  *  5. `AtLeastOneDateRangeOverlaps(scalar, list)` is genuinely scalar-vs-list (no self-pair); an unavailable
@@ -155,18 +155,17 @@ class DateRangeOverlapSemanticsDiffTest {
         assertEquals(0, triCount("/Order/Items", "../ItemCoverage", "AF",
             having("CurrentRepetition(/Order/Items) != CurrentRepetition(/Order/Items)"), listOf(acme), cov))
 
-    /** A `$`-self-"exclusion" `!=` — the `$` term has no outer binding here, so the complete comparison is
-     *  trivially TRUE and keeps ALL rows; the self-pair fires every row. */
-    @Test fun dollarSelfExclusionKeepsAll() =
+    /** The first two ranges overlap; excluding row 3 still leaves that pair. This is not a binding discriminator. */
+    @Test fun dollarSelfExclusionRetainsTheOtherOverlappingPair() =
         assertEquals(3, triCount("/Order/Items", "../ItemCoverage", "DSE",
             having("CurrentRepetition(/Order/Items) != CurrentRepetition(\$/Order/Items)"), listOf(acme), cov))
 
-    /** A `$`-self-"inclusion" `==` is likewise trivially TRUE and keeps ALL rows (the mirror of the `!=` case). */
-    @Test fun dollarSelfInclusionKeepsAll() =
+    /** Self-inclusion leaves the same value twice: the scalar and its selected list cell. */
+    @Test fun dollarSelfInclusionRetainsEachSelfPair() =
         assertEquals(3, triCount("/Order/Items", "../ItemCoverage", "DSI",
             having("CurrentRepetition(/Order/Items) == CurrentRepetition(\$/Order/Items)"), listOf(acme), cov))
 
-    /** A FALSE conjunct ANDed with a trivially-TRUE `$` term is FALSE, so it drops all and leaves only arg0. */
+    /** A false first conjunct drops the row before the correlated comparison. */
     @Test fun falseAndDollarDropsAll() =
         assertEquals(0, triCount("/Order/Items", "../ItemCoverage", "FAD",
             having("CurrentRepetition(/Order/Items) != CurrentRepetition(/Order/Items) " +
@@ -182,7 +181,7 @@ class DateRangeOverlapSemanticsDiffTest {
 
     /** The one case the characterization left open, now LOCKED (tri-check): a MALFORMED (non-`$`) filter operand
      *  → the comparison is runtime-UNKNOWN → the kernel's compiled boolean filter is not-TRUE → the row is
-     *  DROPPED (unlike a `$`-unbound term, which is trivially TRUE → kept). Every star cell drops → the set is
+     *  DROPPED. Every star cell drops → the set is
      *  just arg0 per row → no pair → 0. A malformed `Count` (a non-numeric value) is a formal error on `Count`
      *  alone; it does not suppress THIS rule (which references `ItemCoverage`), so the rule is still evaluated. */
     @Test fun malformedFilterOperandDropsAll() =

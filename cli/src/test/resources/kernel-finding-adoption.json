@@ -9675,6 +9675,85 @@
           }
         }
       }
+    },
+    "kf80": {
+      "sha256": "1281c6ac0e44e85ccaf510eec2c83c75f9cd8a51e768ef4d5a11c0fc593de07e",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "overlap and uniqueness enclosing-row filter binding"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "overlap and uniqueness enclosing-row filter binding"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "operator catalog binding guidance"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "overlap and uniqueness enclosing-row filter binding"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies agree on the controlled ordinary/indexed, disjoint/mixed range matrix across validation and computation.",
+          "evidence": {
+            "overlap and uniqueness enclosing-row filter binding": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverlapFilterBindingDiffTest.kt#overlapAndUniquenessCaptureTheOuterRowAcrossBothPhases",
+              "witness": "Both kernel strategies agree on the controlled ordinary/indexed, disjoint/mixed range matrix across validation and computation."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Existing typed CurrentRepetition outer references author the measured models; no authoring shape changes.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Shared list filters capture the enclosing row; the false unbound mode is removed.",
+          "evidence": {
+            "overlap and uniqueness enclosing-row filter binding": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/DateRangeOverlapTest.kt#dollarFiltersCaptureTheEnclosingRowInValidationAndComputation",
+              "witness": "Shared list filters capture the enclosing row; the false unbound mode is removed."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This correction changes evaluation of already admitted conditions, not consistency admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Corrected overlap guidance is content-bound to the kernel differential and projected from the shared operator catalog.",
+          "evidence": {
+            "operator catalog binding guidance": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/catalog/CatalogProseReviewGuardTest.java#everyOperatorHasAContentBoundReviewAndEveryClaimResolves",
+              "witness": "Corrected overlap guidance is content-bound to the kernel differential and projected from the shared operator catalog."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No imported keyword synthesizes these outer-row overlap filters.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No exported keyword represents enclosing-row Having evaluation.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The corrected KF80 claim awaits peer verification; no receipt is inferred.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

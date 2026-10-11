@@ -32,7 +32,7 @@ internal enum class CorrelationStrategy { KEYED, ORDERED, NESTED }
  * A rule FIRES when its error condition evaluates to TRUE.
  *
  * An instance is the **shared eval-state seam** (IF117): one immutable per-row state — `(ctx, config,
- * customErrorField, invalid, outer, outerUnbound)` — that this strategy core and its collaborator
+ * customErrorField, invalid, outer)` — that this strategy core and its collaborator
  * extension families (`ExprEval.kt`, `PolarityWalk.kt`, `ValueListQuantEval.kt`, same package) both hold,
  * with no per-row allocation beyond this object. The `internal` members ARE the seam contract — the state
  * reads plus the cross-cluster dispatch; everything else stays private to this class or to a collaborator
@@ -68,18 +68,16 @@ class Interpreter(
      *  filter. A marked ref resolves its own named path's coordinate from this environment, not one
      *  scalar index and not the inner filtered row. Null at top level. */
     private val outer: EvalContext? = null,
-    /** The overlap-predicate `Having` filter (a plain boolean predicate's rep-list arg) has NO enclosing
-     *  iteration to bind `$` to — unlike a quantifier's `Having`, whose star iterates. So here a `$`-marked
-     *  ref is UNBOUND; [evalCmp]/[evalPred] reproduce the kernel codegen's trivially-TRUE whole term rather
-     *  than binding to [outer] or throwing. Set only by [overlapFilterInterp] (KERNEL-FINDINGS §6, IF72). */
-    private val outerUnbound: Boolean = false,
+    /** Retained for source/binary constructor compatibility after KF80's binding correction. The former
+     * unbound mode was incorrect; every Having filter now captures its enclosing row. */
+    @Suppress("UNUSED_PARAMETER") outerUnbound: Boolean = false,
     /**
      * The per-row `RepetitionNotUnique` outcome for THIS rule (IF149) — `(row ctx) → VALUE / OMISSION / null`
      * (null = the row's key is not a duplicate). Read from the call-scoped duplicate cache
      * [io.github.mbackschat.a12.dm.interpreter.RepetitionNotUniqueEvaluator] builds ONCE per pass, so RNU is an
      * ordinary 3VL leaf composed by the boolean walk. Non-null only for a rule whose condition contains an RNU
      * leaf; a `RepetitionNotUnique` predicate reached with this null is reported unsupported (degrade-loud). Null
-     * in sub-interpreters ([havingInterp]/[overlapFilterInterp]) — RNU cannot appear inside a `Having`.
+     * in sub-interpreters ([havingInterp]) — RNU cannot appear inside a `Having`.
      */
     internal val rnuOutcome: ((EvalContext) -> MsgType?)? = null,
 ) {
@@ -103,7 +101,7 @@ class Interpreter(
 
     // The config bundle destructured into the fields the walk reads — keeps every internal reference and its
     // direct-field read speed unchanged while the constructor stays small ([EvalConfig]); the config object
-    // itself is allocated once per call and reused by [havingInterp]/[overlapFilterInterp], not per row.
+    // itself is allocated once per call and reused by [havingInterp], not per row.
     internal val clock = config.clock
     internal val baseYear = config.baseYear
     internal val timeZone = config.timeZone
@@ -216,41 +214,13 @@ class Interpreter(
     internal fun indexIdentityAdmitted(): ((String, List<Int>, String) -> Boolean)? =
         config.indexIdentityAdmitted
 
-    /** Whether a `$`-marked node is UNBOUND in this context — an overlap-predicate `Having` ([outerUnbound]) has
-     *  no enclosing iteration; its complete comparison/predicate becomes trivially TRUE (not [outer], not a throw). */
-    internal fun outerUnknown(node: Expr): Boolean = outerUnbound && when (node) {
-        is Expr.Field -> node.outer
-        is Expr.Star -> node.outer
-        is Expr.EntitySpec -> entitySourceOuter(node.source) || entityIndexOuter(node.semanticIndex)
-        is Expr.EnumCategory -> node.outer
-        is Expr.SemanticIndex -> node.outer || node.indexFieldOuter
-        else -> false
-    }
-
     private fun outerOrThrow(): EvalContext =
         outer ?: throw UnsupportedConstructException("a \$ outer-correlation reference is only valid inside a Having filter")
-
-    /** Whether [e]'s expression tree references a `$` outer-correlation — used ONLY in [outerUnbound] mode (an
-     *  overlap-predicate `Having`) to detect a term the codegen cannot compile (no enclosing iteration to bind
-     *  `$` to), which is therefore trivially satisfied. */
-    private fun hasUnboundOuter(e: Expr): Boolean = when (e) {
-        is Expr.Field -> e.outer
-        is Expr.Star -> e.outer
-        is Expr.EntitySpec -> entitySourceOuter(e.source) || entityIndexOuter(e.semanticIndex)
-        is Expr.EnumCategory -> e.outer
-        is Expr.SemanticIndex -> e.outer || e.indexFieldOuter
-        is Expr.Func -> e.args.any { hasUnboundOuter(it) }
-        is Expr.Arith -> hasUnboundOuter(e.left) || hasUnboundOuter(e.right)
-        else -> false
-    }
 
     private fun entitySourceOuter(source: Expr.EntitySource): Boolean = when (source) {
         is Expr.Field -> source.outer
         is Expr.Star -> source.outer
     }
-
-    private fun entityIndexOuter(index: Expr.EntityIndex?): Boolean =
-        index is Expr.EntityIndex.Field && index.outer
 
     /** A sub-interpreter for a `Having` candidate [rc], carrying the SAME config and capturing the
      *  enclosing iteration's complete [ctx] environment for path-specific `$` resolution. */
@@ -264,19 +234,9 @@ class Interpreter(
      *  `$` environment, so a bare-group consumer arm asked of it reads that row (IF340). It leaves the aggregate
      *  memo unset, which only costs a recomputation. */
     internal fun selectedRowInterp(rc: EvalContext): Interpreter =
-        Interpreter(rc, config, customErrorField, invalid, outer, outerUnbound).also {
+        Interpreter(rc, config, customErrorField, invalid, outer).also {
             it.indexColumnMemo = indexColumnMemo
         }
-
-    /** A sub-interpreter for the overlap predicates' `Having` filter row [rc] — like [havingInterp] but with NO
-     *  outer binding ([outerUnbound]): a plain boolean predicate's rep-list arg has no enclosing iteration, so
-     *  the codegen makes a `$`-bearing comparison/predicate trivially TRUE (KERNEL-FINDINGS §6). */
-    private fun overlapFilterInterp(rc: EvalContext): Interpreter =
-        Interpreter(rc, config, customErrorField, invalid, outer = null, outerUnbound = true)
-            .also {
-                it.aggregateMemo = aggregateMemo
-                it.indexColumnMemo = indexColumnMemo
-            }
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
 
@@ -485,8 +445,6 @@ class Interpreter(
     }
 
     internal fun evalPred(p: Cond.Pred): Tri {
-        // Overlap-predicate Having: a predicate touching an unbound `$` is trivially TRUE (see [evalCmp]).
-        if (outerUnbound && p.args.any { hasUnboundOuter(it) }) return Tri.TRUE
         val op = PredicateOp.byName(p.name) ?: throw UnsupportedConstructException("unsupported predicate ${p.name}")
         return when (op) {
             PredicateOp.FIELD_FILLED -> presenceTri(p.args.single())
@@ -1258,17 +1216,8 @@ class Interpreter(
         return Res.of(Tri.FALSE, MsgType.VALUE)
     }
 
-    /**
-     * The kept, FILLED range cells of an overlap operand, in row order — empties/malformed dropped (the kernel's
-     * `isWertAngegeben != TRUE → continue`). A scalar operand contributes its one range (or nothing); a starred
-     * operand expands over its group's rows, and a `Having` KEEPS a row iff the filter is TRUE (the kernel
-     * compiles the filter to a BOOLEAN — a runtime-UNKNOWN comparison, e.g. a malformed operand, is not-TRUE →
-     * the row is dropped). A `$`-correlation term has no enclosing iteration for a plain predicate's arg, so the
-     * codegen cannot compile it and the whole term is trivially TRUE ([evalCmp]/[evalPred] short-circuit under
-     * [outerUnbound]) — that is why a `!= $RuleGroup` / `== $RuleGroup` self-"exclusion" keeps ALL rows, while a
-     * malformed real operand drops them. Distinct from the quantifier-`Having` path ([starOperandVals], `$` bound
-     * to the enclosing row). (KERNEL-FINDINGS §6, IF72.)
-     */
+    /** Overlap drops empty/malformed ranges in validation and captures the enclosing row for `$` in a
+     * filtered operand (OverlapFilterBindingDiffTest). Traversal and filter binding are independent. */
     private fun overlapCells(arg: Expr, traversal: FilterTraversal = FilterTraversal.DENSE): Sequence<Val.Range> = when {
         // A GROUP operand names no declared field, so BOTH arms below were blind to it and by different
         // mechanisms: the starred arm read `star` at the group path (zero cells, a silent non-overlap), while the
@@ -1288,29 +1237,22 @@ class Interpreter(
         else -> sequence { (evalExpr(arg) as? Val.Range)?.let { yield(it) } }
     }
 
-    /**
-     * The FILLED cells of a starred rep-list operand of a plain boolean predicate (`DateRangesOverlap`,
-     * `FieldValuesNotUnique`), honoring an optional `Having` — the SHARED filter path. Without a `Having`:
-     * [EvalContext.star] (empties dropped, a malformed cell → [Val.Unknown]). With one: keep a row iff the filter
-     * FIRES (TRUE) — the kernel compiles the filter to a boolean, so a malformed operand (runtime-UNKNOWN) drops
-     * the row, and a `$`-correlation term (no enclosing iteration here) is trivially TRUE ([evalCmp] short-circuit
-     * via [overlapFilterInterp]); a kept row's empty cell is dropped, a kept malformed cell surfaces as
-     * [Val.Unknown]. Distinct from the quantifier-`Having` path ([starOperandVals], `$` bound). KERNEL-FINDINGS §6.
-     */
+    /** Overlap and uniqueness share filter binding, while computation retains poison-on-read and
+     * validation retains its unknown values (KF80, OverlapFilterBindingDiffTest). */
     private fun filteredStarCells(star: Expr.Star, traversal: FilterTraversal = FilterTraversal.DENSE): Sequence<Val> {
-        if (computeMode) return computeStarReads(star, overlapFilter(star), traversal).mapNotNull { it?.value }
+        if (computeMode) return computeStarReads(star, listFilter(star), traversal).mapNotNull { it?.value }
         if (star.having == null) return ctxOf(star).star(star.path, star.bindDepth).asSequence()
         val rows = when (traversal) {
             FilterTraversal.DENSE -> keptRowContexts(star)
-            FilterTraversal.SPARSE -> filteredRows(ctxOf(star), star, traversal, overlapFilter(star)).toList()
+            FilterTraversal.SPARSE -> filteredRows(ctxOf(star), star, traversal, listFilter(star)).toList()
         }
         return rows.asSequence().mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
 
-    /** The overlap and uniqueness predicates' filter on [star]'s rows, evaluated without an enclosing iteration
-     *  ([overlapFilterInterp]); null when the operand is unfiltered. */
-    private fun overlapFilter(star: Expr.Star): ((EvalContext) -> Boolean)? =
-        star.having?.let { having -> { row: EvalContext -> overlapFilterInterp(row).keeps(having) } }
+    /** Both overlap forms and uniqueness capture the enclosing row for `$` (OverlapFilterBindingDiffTest).
+     * Candidate traversal policy is independent of this binding. */
+    private fun listFilter(star: Expr.Star): ((EvalContext) -> Boolean)? =
+        star.having?.let { having -> { row: EvalContext -> havingInterp(row).keeps(having) } }
 
     /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; an empty pattern fails after the operand read. */
     internal fun evalPattern(p: Cond.Pattern): Tri {
@@ -1324,10 +1266,6 @@ class Interpreter(
     }
 
     internal fun evalCmp(c: Cond.Cmp): Tri {
-        // Overlap-predicate Having: a comparison touching an unbound `$` cannot be compiled (no enclosing
-        // iteration) → the kernel treats the term as trivially TRUE (KERNEL-FINDINGS §6). This is why a
-        // `$`-self-"exclusion" keeps every row, unlike a malformed real operand (which drops, evaluated below).
-        if (outerUnbound && (hasUnboundOuter(c.left) || hasUnboundOuter(c.right))) return Tri.TRUE
         val l = evalCmpOperand(c.left, c.right)
         val r = evalCmpOperand(c.right, c.left)
         if (l is Val.Unknown || r is Val.Unknown || l is Val.DomainFailure || r is Val.DomainFailure) return Tri.UNKNOWN
@@ -1400,7 +1338,6 @@ class Interpreter(
     /** The 3VL presence of a field-valued predicate/quantifier operand — a plain field ref ([filledTri]) or a
      *  semantic index ([semanticIndexPresence]). Any other operand shape is not a presence operand. */
     internal fun presenceTri(e: Expr): Tri = when {
-        outerUnknown(e) -> Tri.UNKNOWN   // an unbound `$` presence operand (overlap-predicate Having) → UNKNOWN
         e is Expr.SemanticIndex -> semanticIndexPresence(e)
         else -> filledTri(ctxOf(e), pathOf(e))
     }
@@ -1495,7 +1432,7 @@ class Interpreter(
         if (a is Expr.Star) {
             val c = ctxOf(a)
             if (c.datePrecisionOf(a.path) !in PARTIAL_PRECISIONS) return filteredStarCells(a)
-            if (computeMode) return computeStarReads(a, overlapFilter(a)).mapNotNull { cell ->
+            if (computeMode) return computeStarReads(a, listFilter(a)).mapNotNull { cell ->
                 cell?.value?.let { resolved -> if (resolved is Val.Unknown) wellFormedPartialText(c, a.path, cell.raw) ?: resolved else resolved }
             }
             return keptRowContexts(a).asSequence()
@@ -1529,7 +1466,7 @@ class Interpreter(
     private fun keptRowContexts(star: Expr.Star): List<EvalContext> {
         val group = star.path.substringBeforeLast('/')
         return if (star.having == null) ctxOf(star).rowContexts(group, star.bindDepth)
-            else filterCandidates(ctxOf(star), group, star.bindDepth).filter { rc -> overlapFilterInterp(rc).keeps(star.having) }
+            else filterCandidates(ctxOf(star), group, star.bindDepth).filter { rc -> havingInterp(rc).keeps(star.having) }
     }
 
     /** The path of a plain field-ref operand. Any other operand shape in a field-ref position is a construct

@@ -4,6 +4,8 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.eval.rangesOverlap
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -85,17 +87,17 @@ class DateRangeOverlapTest {
         ),
     )
 
-    // ---- the Having keep-law (`$` unbound → trivially TRUE; malformed → drops) ------------------------------
+    // ---- the Having keep-law (captured `$`; malformed → drops) ------------------------------
 
     private fun having(f: String) = "DateRangesOverlap(ItemCoverage, ../Items*/ItemCoverage Having ($f))"
 
     @Test fun alwaysFalseFilterDropsAll() = assertEquals(0,
         fires("/Order/Items", "../ItemCoverage", having("CurrentRepetition(/Order/Items) != CurrentRepetition(/Order/Items)"), null, cov))
 
-    @Test fun dollarSelfExclusionKeepsAll() = assertEquals(3,
+    @Test fun dollarSelfExclusionRetainsTheOtherOverlappingPair() = assertEquals(3,
         fires("/Order/Items", "../ItemCoverage", having("CurrentRepetition(/Order/Items) != CurrentRepetition(\$/Order/Items)"), null, cov))
 
-    @Test fun dollarSelfInclusionKeepsAll() = assertEquals(3,
+    @Test fun dollarSelfInclusionRetainsEachSelfPair() = assertEquals(3,
         fires("/Order/Items", "../ItemCoverage", having("CurrentRepetition(/Order/Items) == CurrentRepetition(\$/Order/Items)"), null, cov))
 
     @Test fun falseAndDollarDropsAll() = assertEquals(0,
@@ -103,12 +105,35 @@ class DateRangeOverlapTest {
             having("CurrentRepetition(/Order/Items) != CurrentRepetition(/Order/Items) " +
                 "And CurrentRepetition(/Order/Items) == CurrentRepetition(\$/Order/Items)"), null, cov))
 
-    /** A malformed filter operand (`abc` in a scale-0 Count) → the comparison is UNKNOWN → the row DROPS (unlike
-     *  the `$`-unbound term, which keeps) → set is arg0 only per row → 0. */
+    /** A malformed filter operand drops every candidate, leaving only the scalar and no pair. */
     @Test fun malformedFilterDropsAll() {
         val m = model("/Order/Items", "../ItemCoverage", having("[Count] <= 2"))
         val d = doc(m, null, cov).also { for (r in 1..3) it.field(CNT, "abc", 1, r, 1) }
         assertEquals(0, DmInterpreter(m).validateFull(d).count { it.code == "OV" })
+    }
+
+    @Test fun dollarFiltersCaptureTheEnclosingRowInValidationAndComputation() {
+        val filter = "CurrentRepetition(/Order/Items) != CurrentRepetition(\$/Order/Items)"
+        val disjoint = listOf("01.01.2026-10.01.2026", "01.02.2026-10.02.2026", "01.03.2026-10.03.2026")
+        val predicates = listOf(
+            "DateRangesOverlap(ItemCoverage, ../Items*/ItemCoverage Having ($filter))" to emptyList<Int>(),
+            "AtLeastOneDateRangeOverlaps(ItemCoverage In ../Items*/ItemCoverage Having ($filter))" to emptyList(),
+            "FieldValuesNotUnique(../Items*/Count Having ($filter))" to listOf(3),
+        )
+        for ((predicate, firingRows) in predicates) {
+            val target = "$ITEMS/Target"
+            val base = model(ITEMS, "../ItemCoverage", "FieldFilled(ItemCoverage) And $predicate")
+            val m = base.copy(fields = base.fields + FieldDef(target, Kind.NUMBER, scale = 0),
+                computations = listOf(ComputationDef(target, ITEMS,
+                    listOf(ComputationAlternative(null, "1")), commonPrecondition = predicate)))
+            val document = doc(m, null, disjoint)
+            for (row in 1..3) document.field(CNT, if (row == 3) "2" else "1", 1, row, 1).field(target, "9", 1, row, 1)
+            val engine = DmInterpreter(m)
+            assertEquals(firingRows.map { "/Order[1]/Items[$it]/ItemCoverage" },
+                engine.validateFull(document).filter { it.code == "OV" }.map { it.errorPath }, predicate)
+            assertEquals((1..3).map { if (it in firingRows) "VALUE" else "CLEARED" },
+                engine.compute(document).map { it.outcome.name }, predicate)
+        }
     }
 
     // ---- AtLeastOneDateRangeOverlaps — scalar-vs-list ------------------------------------------------------

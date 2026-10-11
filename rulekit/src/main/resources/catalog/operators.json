@@ -5643,11 +5643,11 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "ANY-PAIR among ALL operands (NOT a first-vs-rest test): DateRangesOverlap(X, Group*/Y) fires even when X is disjoint from every Y but two Y rows overlap EACH OTHER. And the SAME value reached via a scalar ref AND via the star — a per-row rule's DateRangesOverlap(Period, ../Group*/Period) — overlaps ITSELF, so it fires on EVERY filled row (there is no self-exclusion). Empty/malformed values are skipped; an INVALID range (start after end) never overlaps anything.",
+          "text": "ANY-PAIR among ALL operands (NOT a first-vs-rest test): DateRangesOverlap(X, Group*/Y) fires even when X is disjoint from every Y but two Y rows overlap EACH OTHER. And the SAME value reached via a scalar ref AND via the star — a per-row rule's DateRangesOverlap(Period, ../Group*/Period) — overlaps ITSELF, so it fires on EVERY filled row (the unfiltered list has no self-exclusion). Empty/malformed values are skipped; an INVALID range (start after end) never overlaps anything.",
           "kind": "SURPRISE"
         },
         {
-          "text": "polarity follows the REACHED filter scan, not mere filter presence: the error becomes OMISSION only after a kept, filled value from a Having-filtered operand was processed, and that flag then stays sticky through a later firing pair even if the earlier range was disjoint. A filtered operand with no kept, filled value does not taint a later unfiltered pair. Having is applied per value (keep iff TRUE; a $-correlation term here has no enclosing iteration, so it is trivially satisfied).",
+          "text": "polarity follows the REACHED filter scan, not mere filter presence: the error becomes OMISSION only after a kept, filled value from a Having-filtered operand was processed, and that flag then stays sticky through a later firing pair even if the earlier range was disjoint. A filtered operand with no kept, filled value does not taint a later unfiltered pair. Having is applied per value (keep iff TRUE; $ captures the enclosing rule/computation row; a self-exclusion filter removes that row, but a different list-internal pair may still overlap).",
           "kind": "SURPRISE"
         },
         {
@@ -5739,7 +5739,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "SELF-MEMBERSHIP in a per-row rule: AtLeastOneDateRangeOverlaps(Period IN Group*/Period) from a rule iterating over Group flattens ALL rows' periods INCLUDING the current row's, so the current Period overlaps ITSELF and the rule fires on EVERY row (rule check still says valid:true — it is a semantic trap, not a syntax error; there is no self-exclusion). For 'no two rows overlap', author a MODEL-LEVEL rule with DateRangesOverlap(/Group*/Period) over the single flattened list (error field a non-repeatable field, referenced via a FieldFilled guard) — it fires ONCE for the document instead of per row.",
+          "text": "SELF-MEMBERSHIP in a per-row rule: AtLeastOneDateRangeOverlaps(Period IN Group*/Period) from a rule iterating over Group flattens ALL rows' periods INCLUDING the current row's, so the current Period overlaps ITSELF and the rule fires on EVERY row (rule check still says valid:true — it is a semantic trap, not a syntax error; the unfiltered list has no self-exclusion; a Having filter comparing CurrentRepetition(Group) with CurrentRepetition($Group) can exclude the current row). For 'no two rows overlap', author a MODEL-LEVEL rule with DateRangesOverlap(/Group*/Period) over the single flattened list (error field a non-repeatable field, referenced via a FieldFilled guard) — it fires ONCE for the document instead of per row.",
           "kind": "SURPRISE"
         },
         {

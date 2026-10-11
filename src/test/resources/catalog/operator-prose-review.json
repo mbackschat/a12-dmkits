@@ -6863,7 +6863,7 @@
       "operator": "DateRangesOverlap",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:2dec63a594ee1ce7cad6b69dba0f3d44d924940ea46a4d2af993107bb6110cb9",
+      "digest": "sha256:421fa5d95ab9ed5b34a708c8faa08f51e6e8e20b17a4cba70d21fd3ac540c858",
       "classifications": [
         "RUNTIME"
       ],
@@ -6872,6 +6872,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.DateRangeOverlapSemanticsDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.OverlapFilterBindingDiffTest.overlapAndUniquenessCaptureTheOuterRowAcrossBothPhases"
         }
       ]
     },
@@ -6879,7 +6884,7 @@
       "operator": "DateRangesOverlap",
       "lane": "GOTCHA",
       "ordinal": 2,
-      "digest": "sha256:26a3abfa00f986aa578ed0068e03197bcf1f08e19c7ee272a7210e3e71e5548c",
+      "digest": "sha256:c6ea4b6a4f6df7cbdebad10b883a308091adf8d36b14bbced17ef5c29ebf7a59",
       "classifications": [
         "RUNTIME"
       ],
@@ -6888,6 +6893,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.DateRangeOverlapSemanticsDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.OverlapFilterBindingDiffTest.overlapAndUniquenessCaptureTheOuterRowAcrossBothPhases"
         }
       ]
     },
@@ -6942,7 +6952,7 @@
       "operator": "AtLeastOneDateRangeOverlaps",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:30ed4203284685d3a60fe7d14b1b24df5d81ec42f35c80e2e9298d942996c68f",
+      "digest": "sha256:186b01379f950eab4afed0346cf9500b3f197085b1f313a0b5fd841faf6fea25",
       "classifications": [
         "RUNTIME"
       ],
@@ -6951,6 +6961,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "DateRangeOverlapSemanticsDiffTest#selfPairFiresEveryRow"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.OverlapFilterBindingDiffTest.overlapAndUniquenessCaptureTheOuterRowAcrossBothPhases"
         }
       ]
     },

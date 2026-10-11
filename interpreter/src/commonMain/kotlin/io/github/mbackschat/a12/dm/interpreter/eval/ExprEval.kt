@@ -283,7 +283,6 @@ private fun Interpreter.evalExprNode(e: Expr): Val = when (e) {
     // gate throws, which IS the poisoning read (IF85). It is judged in the reading context, so a `Having` filter
     // row judges ITS row's cell (IF319).
     is Expr.Field -> when {
-        outerUnknown(e) -> Val.Unknown
         invalid(ctxOf(e), e.path) -> Val.Unknown
         else -> ctxOf(e).field(e.path)
     }
@@ -295,7 +294,6 @@ private fun Interpreter.evalExprNode(e: Expr): Val = when (e) {
     // A category read `[Plan -> Tier]` reads the same cell, so it takes the value read's gate: a duplicated or
     // missing index key and a row above capacity make it unavailable, not only a malformed value (IF338, IF341).
     is Expr.EnumCategory -> when {
-        outerUnknown(e) -> Val.Unknown
         invalid(ctxOf(e), e.path) -> Val.Unknown
         else -> ctxOf(e).enumCategory(e.path, e.category)
     }
@@ -303,7 +301,6 @@ private fun Interpreter.evalExprNode(e: Expr): Val = when (e) {
 }
 
 private fun Interpreter.evalEntitySpec(e: Expr.EntitySpec): Val {
-    if (outerUnknown(e)) return Val.Unknown
     val source = e.source as? Expr.Field
         ?: throw UnsupportedConstructException("a starred entitySpec must sit inside an aggregate")
     val selected = e.semanticIndex?.let { evalSemanticIndex(source.semanticIndex(it)) } ?: evalExpr(source)
@@ -1063,9 +1060,8 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // SumOfProducts(a*, b*): Σ aᵢ·bᵢ paired row-by-row (empty → 0); any malformed element → suppressed.
     FunctionOp.SUM_OF_PRODUCTS -> sumOfProducts(f.args)
     // CurrentRepetition(group): the current row's 1-based index at that group's level (the last reps part).
-    // An UNBOUND `$` group (an overlap-predicate Having, no enclosing iteration) → UNKNOWN (KERNEL-FINDINGS §6).
     FunctionOp.CURRENT_REPETITION ->
-        if (outerUnknown(f.args[0])) Val.Unknown else Val.Num(dec(ctxOf(f.args[0]).repsOf(pathOf(f.args[0])).last()))
+        Val.Num(dec(ctxOf(f.args[0]).repsOf(pathOf(f.args[0])).last()))
     null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
     if (memo != null && memoKey != null) memo[memoKey] = result
@@ -2112,8 +2108,7 @@ internal fun Interpreter.filteredRows(
     }
 }
 
-/** [keptRowsWithSuccessorLookahead] for a caller whose filter is evaluated by its own [keeps] — the overlap and
- *  uniqueness predicates evaluate `Having` without an enclosing iteration. */
+/** Callback form of [keptRowsWithSuccessorLookahead]; the caller supplies its filter binding. */
 internal fun keptRowsWithSuccessorLookahead(
     rows: List<EvalContext>,
     keeps: (EvalContext) -> Boolean,
