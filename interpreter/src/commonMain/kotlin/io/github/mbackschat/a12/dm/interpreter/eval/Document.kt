@@ -240,6 +240,7 @@ class Document(internal val config: DocumentConfig) {
         var occupiedChildren: Map<Int, Map<List<Int>, Set<Int>>>? = null
         // Per counted-group predicate (null = every group): the highest repetition stored at each depth.
         val highestRepetitionsByCount: MutableMap<Any?, IntArray> = HashMap()
+        val filterPrefixesByCount: MutableMap<Any?, Set<List<Int>>> = HashMap()
         // Computation iterates only stored V2 rows, unlike validation's implicit nested-child domain (IF277).
         val storedContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
         // The runtime iteration tree, distinct from stored V2 rows: below every existing repeatable parent, a
@@ -305,6 +306,7 @@ class Document(internal val config: DocumentConfig) {
                 idx.attachByGroup.size +
                 idx.validationContextsByGroup.size +
                 idx.fullValidationContextsByGroup.size +
+                idx.filterPrefixesByCount.values.sumOf { it.size } +
                 (idx.occupiedChildren?.values?.sumOf { it.size } ?: 0) +
                 idx.storedContextsByGroup.size +
                 idx.iterationRowsByGroup.size +
@@ -626,17 +628,31 @@ class Document(internal val config: DocumentConfig) {
 
     /** The coordinates of [groupPath] below [scope] a `Having` filter's walk visits ([FilterWalkRowProvider]). */
     private fun filterWalkCoordinates(groupPath: String, scope: List<Int>, counts: ((String) -> Boolean)?): List<List<Int>> {
+        return filterWalkWidths(groupPath, scope.size, counts).fold(listOf(scope)) { frontier, width ->
+            frontier.flatMap { prefix -> (1..width).map { prefix + it } }
+        }
+    }
+
+    private fun filterWalkWidths(groupPath: String, boundDepth: Int, counts: ((String) -> Boolean)?): List<Int> {
         val segs = parts(groupPath)
         val highest = highestRepetitions(counts)
-        var frontier = listOf(scope)
-        for (depth in scope.size + 1..segs.size) {
+        return (boundDepth + 1..segs.size).map { depth ->
             val capacity = declaredReps["/" + segs.take(depth).joinToString("/")]
-            frontier = if (capacity == null) frontier.map { it + 1 } else {
-                val end = minOf(capacity, maxOf(1, highest.getOrElse(depth - 1) { 0 }))
-                frontier.flatMap { prefix -> (1..end).map { prefix + it } }
+            if (capacity == null) 1 else minOf(capacity, maxOf(1, highest.getOrElse(depth - 1) { 0 }))
+        }
+    }
+
+    private fun sparseFilterPrefixes(groupPath: String, scope: List<Int>, counts: ((String) -> Boolean)?): Set<List<Int>>? {
+        val product = filterWalkWidths(groupPath, scope.size, counts).fold(1L) { size, width -> minOf(101L, size * width) }
+        if (product <= 100) return null
+        return index().filterPrefixesByCount.getOrPut(counts) {
+            buildSet {
+                for ((group, rows) in index().rowsByGroup) {
+                    if (counts != null && !counts(group)) continue
+                    for (row in rows) for (depth in 1..row.size) add(row.take(depth))
+                }
             }
         }
-        return frontier
     }
 
     private val filterWalkCache = HashMap<Triple<String, List<Int>, Any?>, List<EvalContext>>()
@@ -1344,6 +1360,9 @@ class Document(internal val config: DocumentConfig) {
 
         override fun filterWalkRows(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): List<EvalContext> =
             filterWalkRowsScoped(groupPath, groupScopePrefix(groupPath, bindDepth), counts)
+
+        override fun sparseFilterPrefixes(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): Set<List<Int>>? =
+            sparseFilterPrefixes(groupPath, groupScopePrefix(groupPath, bindDepth), counts)
 
         /** The memoized [IndexColumn] — built ONCE per (column, star-scope prefix) at the DOCUMENT level and
          *  shared across every row context of the scope (the [Index.indexColumnByScope] twin of

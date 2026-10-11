@@ -2682,6 +2682,10 @@
         {
           "text": "a listed field carrying a formal error makes the whole count non-evaluable — the rule is suppressed, the broken field is neither counted nor skipped",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "For filtered Number lists spanning two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection. Initial/reset searches remain dense until a candidate is kept; a blank stored row still counts as occupied. Declared capacity alone does not determine the threshold (KF528).",
+          "kind": "SURPRISE"
         }
       ],
       "validExample": {
@@ -3042,6 +3046,10 @@
         },
         {
           "text": "DECIMAL-SCALE COUPLING in a computation: a sum of N-decimal operands is itself N decimals, so the COMPUTED FIELD's scale must match the operands' — a scale-0 computed field over 2-decimal amounts is rejected MVK_INVALID_COMPARE_DEC_PLACES ('fractional digits of lhs and rhs differ'). The same rejection reappears if you later RE-SCALE an operand without re-scaling the computed field. Align the computed field's minFractionalDigits/maxFractionalDigits to the operand scale.",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "For filtered Number lists spanning two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection. Initial/reset searches remain dense until a candidate is kept; a blank stored row still counts as occupied. Declared capacity alone does not determine the threshold (KF528).",
           "kind": "SURPRISE"
         }
       ],

@@ -17,8 +17,8 @@ import org.junit.jupiter.api.TestInstance
  * computed `Total` fails exactly when the walk reaches a leg no row stores. Every model is the same base plus at most
  * one more computation, so each row varies one thing: a computation that reads the `Returns` rows, one whose only
  * contact is a target inside `Returns`, one that reads them behind a precondition that never holds, and one that reads
- * `Spares`, whose rows sit one fixed group deeper than the legs. One more model widens the legs past a capacity of 100,
- * where a12-kernel-lean reports A12 switching to a sparse iterator.
+ * `Spares`, whose rows sit one fixed group deeper than the legs. One more model declares capacity 150 but keeps actual cache width three; the sparse threshold is
+ * measured separately by [SparseFilteredAggregateDiffTest].
  *
  * Own domain (parcel delivery legs).
  */

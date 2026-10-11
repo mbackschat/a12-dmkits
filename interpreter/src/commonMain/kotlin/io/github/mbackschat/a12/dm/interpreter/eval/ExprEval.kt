@@ -209,11 +209,10 @@ private fun Interpreter.filledFieldsCount(args: List<Expr>): Int? {
                 // The filter drops rows FIRST — a malformed cell in a dropped row never suppresses (kernel-
                 // pinned) — then a KEPT row's malformed cell makes the count non-evaluable (poison in
                 // compute). Left index-unaware like the other Having paths (IF86's no-untested-logic call).
-                val group = arg.path.substringBeforeLast('/')
                 // Kept rows come through the SHARED one-kept-successor traversal — the sole filtered
                 // field-list owner (SPEC-2026-07-23-12 follow-up); the kernel's count constructs the same
                 // EntityIterator (`anzahlAngegebenerFelder`, IF94).
-                for (rc in keptRowsWithSuccessorLookahead(filterCandidates(ctx, group, arg.bindDepth), arg.having)) {
+                for (rc in filteredRows(ctx, arg, FilterTraversal.SPARSE)) {
                     if (!rc.filled(arg.path)) continue
                     if (rc.field(arg.path) is Val.Unknown) {
                         if (computeMode) throw PoisonedReadException(arg.path)
@@ -944,7 +943,7 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
         else combine(minMaxOperandVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
     }
     // starred aggregates: empties are SKIPPED (Sum substitutes 0 = same result; Max/distinct ignore)
-    FunctionOp.SUM -> combine(starVals(f), Aggregates::sum)
+    FunctionOp.SUM -> combine(starVals(f, FilterTraversal.SPARSE), Aggregates::sum)
     FunctionOp.MAX_VALUE -> combine(starVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
     FunctionOp.MIN_VALUE -> combine(starVals(f)) { Aggregates.min(it, minMaxEmpty(f)) }
     FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f), Aggregates::numberOfDifferentValues)
@@ -2072,12 +2071,40 @@ private sealed interface FirstFilledStep {
 internal fun Interpreter.keptRowsWithSuccessorLookahead(
     rows: List<EvalContext>,
     having: Cond,
-): Sequence<EvalContext> = keptRowsWithSuccessorLookahead(rows) { havingInterp(it).keeps(having) }
+    eligible: (EvalContext?, EvalContext) -> Boolean = { _, _ -> true },
+): Sequence<EvalContext> = sequence {
+    var lastKept: EvalContext? = null
+    yieldAll(keptRowsWithSuccessorLookahead(rows) { row ->
+        (eligible(lastKept, row) && havingInterp(row).keeps(having)).also { if (it) lastKept = row }
+    })
+}
 
 /** A filtered list's candidate rows as A12's filter walk visits them, missing coordinates included
  *  ([FilterWalkRowProvider]); in a computation only the groups the whole programme names extend the walk. */
 internal fun Interpreter.filterCandidates(c: EvalContext, groupPath: String, bindDepth: Int): List<EvalContext> =
     c.filterWalkRows(groupPath, bindDepth, filterWalkGroups)
+
+internal enum class FilterTraversal { DENSE, SPARSE }
+
+/** Sparse consumers test occupancy at the first coordinate differing from the last kept row. A rejected
+ * candidate never advances that cursor, so initial/reset searches retain their dense prefix (SPEC-2026-10-10-02,
+ * SparseFilteredAggregateDiffTest). The shared scanner still fetches a kept successor before consuming payload. */
+internal fun Interpreter.filteredRows(context: EvalContext, star: Expr.Star, traversal: FilterTraversal): Sequence<EvalContext> {
+    val group = star.path.substringBeforeLast('/')
+    val rows = filterCandidates(context, group, star.bindDepth)
+    val occupied = when (traversal) {
+        FilterTraversal.DENSE -> null
+        FilterTraversal.SPARSE -> (context as? FilterWalkRowProvider)?.sparseFilterPrefixes(group, star.bindDepth, filterWalkGroups)
+    }
+    val having = requireNotNull(star.having)
+    if (occupied == null) return keptRowsWithSuccessorLookahead(rows, having)
+    return keptRowsWithSuccessorLookahead(rows, having) { previous, row ->
+        val coordinates = row.repsOf(group)
+        val last = previous?.repsOf(group)
+        val changed = if (last == null) -1 else coordinates.indices.firstOrNull { coordinates[it] != last[it] } ?: -1
+        changed < 0 || coordinates.take(changed + 1) in occupied
+    }
+}
 
 /** [keptRowsWithSuccessorLookahead] for a caller whose filter is evaluated by its own [keeps] — the overlap and
  *  uniqueness predicates evaluate `Having` without an enclosing iteration. */
@@ -2462,16 +2489,17 @@ private fun Interpreter.refuseGroupOperandUnderMinMax(f: Expr.Func) {
  * with `B` empty ignores `B`, it never treats it as 0. A filled-but-malformed operand resolves to [Val.Unknown]
  * and [combine] then suppresses the whole aggregate.
  */
-private fun Interpreter.starVals(f: Expr.Func): List<Val> = f.args.flatMap { aggOperandVals(it) }
+private fun Interpreter.starVals(f: Expr.Func, traversal: FilterTraversal = FilterTraversal.DENSE): List<Val> =
+    f.args.flatMap { aggOperandVals(it, traversal) }
 
-private fun Interpreter.aggOperandVals(arg: Expr): List<Val> = when (arg) {
-    is Expr.EntitySpec -> withIndexedStar(arg, listOf(Val.Unknown)) { starOperandVals(it) }
-    is Expr.Star -> starOperandVals(arg)
+private fun Interpreter.aggOperandVals(arg: Expr, traversal: FilterTraversal = FilterTraversal.DENSE): List<Val> = when (arg) {
+    is Expr.EntitySpec -> withIndexedStar(arg, listOf(Val.Unknown)) { starOperandVals(it, traversal) }
+    is Expr.Star -> starOperandVals(arg, traversal)
     // A keyed GROUP contributes the selected row's cells as the bare group arm below contributes its instance's
     // (IF340); a keyed FIELD its one cell, dropped when empty like a plain field's.
     is Expr.SemanticIndex -> if (isKeyedGroup(arg)) {
         when (val cells = keyedGroupCells(arg)) {
-            is KeyedGroupCells.Selected -> cells.interpreter.aggOperandVals(Expr.Field(arg.path))
+            is KeyedGroupCells.Selected -> cells.interpreter.aggOperandVals(Expr.Field(arg.path), traversal)
             KeyedGroupCells.Empty -> emptyList()
             KeyedGroupCells.Undecided -> listOf(Val.Unknown)
         }
@@ -2490,7 +2518,7 @@ private fun Interpreter.aggOperandVals(arg: Expr): List<Val> = when (arg) {
         if (ctxOf(arg).declaredKind(path) == null) {
             // Through the shared owner, so the depth formula is not re-derived here. It used to be inlined, which
             // is how the same quantity came to be spelled three different ways across five resolvers (IF287).
-            expandOneGroupOperand(arg).flatMap { aggOperandVals(it) }
+            expandOneGroupOperand(arg).flatMap { aggOperandVals(it, traversal) }
         } else if (ctxOf(arg).filled(path)) listOf(evalExpr(arg)) else emptyList()   // plain field: empty dropped
     }
 }
@@ -2502,7 +2530,7 @@ private fun Interpreter.aggOperandVals(arg: Expr): List<Val> = when (arg) {
  *  feeds every row to the combiner), so any formally-INVALID selected cell poisons (IF85) — the filter's own
  *  reads poison inside [havingInterp], and a filter poison met while locating the next kept candidate
  *  precedes the pending current target. */
-private fun Interpreter.starOperandVals(star: Expr.Star): List<Val> {
+private fun Interpreter.starOperandVals(star: Expr.Star, traversal: FilterTraversal = FilterTraversal.DENSE): List<Val> {
     // A GROUP star (`Sum(Lines*)` — no field segment) expands to the group's contained FIELDS, recursively
     // (the kernel ExpandService → getAllContainedFields, exactly like the fill quantifiers — IF49/IF51),
     // each field's cells collected with the same star semantics (bindDepth + Having preserved; IF99).
@@ -2510,7 +2538,7 @@ private fun Interpreter.starOperandVals(star: Expr.Star): List<Val> {
         val contained = ctxOf(star).containedFields(star.path)
         if (contained.isNotEmpty()) {
             val depth = expansionBindDepth(star.path, star.bindDepth)
-            return contained.flatMap { starOperandVals(Expr.Star(it, star.having, star.outer, depth)) }
+            return contained.flatMap { starOperandVals(Expr.Star(it, star.having, star.outer, depth), traversal) }
         }
     }
     val having = star.having
@@ -2524,9 +2552,8 @@ private fun Interpreter.starOperandVals(star: Expr.Star): List<Val> {
         if (indexOperandNonEvaluable(ctx, star.path, star.bindDepth)) return listOf(Val.Unknown)
         return ctx.star(star.path, star.bindDepth)
     }
-    val group = star.path.substringBeforeLast('/')
     val vals = mutableListOf<Val>()
-    for (rc in keptRowsWithSuccessorLookahead(filterCandidates(ctx, group, star.bindDepth), having)) {
+    for (rc in filteredRows(ctx, star, traversal)) {
         if (computeMode && rc.cellState(star.path) == CellState.INVALID) throw PoisonedReadException(star.path)
         if (rc.filled(star.path)) vals += rc.field(star.path)
     }

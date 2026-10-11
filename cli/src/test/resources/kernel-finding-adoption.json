@@ -6726,19 +6726,21 @@
       }
     },
     "kf528": {
-      "sha256": "3eef2171bd664f5da475fa637f561096fa65d6f71bbb84b021fc6a71ad463b19",
+      "sha256": "ef310b8555550b85f77cca6a0254a26e220aae7bf88e7efb915c3a96fb6bd1e6",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "filter walk extent",
           "computation walk scope",
-          "target-group nested walk"
+          "target-group nested walk",
+          "sparse aggregate traversal"
         ],
         "dmkits": [],
         "interpreter": [
           "filter walk extent",
           "computation walk scope",
-          "target-group nested walk"
+          "target-group nested walk",
+          "sparse aggregate traversal"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -6766,6 +6768,10 @@
             "target-group nested walk": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeTargetSubgroupScopeDiffTest.kt#aTargetsGroupScopeAgainstItsNestedRepeatableGroup",
               "witness": "A Returns/Tag target makes the walk count the nested Marks rows at the legs' depth; no other computation does."
+            },
+            "sparse aggregate traversal": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseFilteredAggregateDiffTest.kt#sparseAggregatesRespectCacheWidthOccupancyAndKeptCursor",
+              "witness": "Eleven Number field-list Documents calibrate actual 98/100/102 candidates, initial/reset rejection, blank and phase-visible foreign occupancy, captured parents and dense first-filled successor controls; both kernel strategies and interpreter agree."
             }
           }
         },
@@ -6776,7 +6782,7 @@
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "Every filtered consumer reads one candidate source that merges stored rows with the walk's missing coordinates, bounded by the whole programme's operand and target groups since 2026-10-09, for computeField too.",
+          "basis": "Filtered consumers share a cache-bounded candidate domain. Sum and filled count additionally select occupied prefixes above 100 candidates, including the count polarity pass; other traversal policies are separate consumers.",
           "evidence": {
             "filter walk extent": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterMissingSlotDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
@@ -6789,6 +6795,10 @@
             "target-group nested walk": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeTargetSubgroupScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
               "witness": "All three engines agree on five models and three documents."
+            },
+            "sparse aggregate traversal": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseFilteredAggregateDiffTest.kt#sparseAggregatesRespectCacheWidthOccupancyAndKeptCursor",
+              "witness": "Eleven Number field-list Documents calibrate actual 98/100/102 candidates, initial/reset rejection, blank and phase-visible foreign occupancy, captured parents and dense first-filled successor controls; both kernel strategies and interpreter agree."
             }
           }
         },

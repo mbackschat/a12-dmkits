@@ -258,6 +258,9 @@ internal class OverlayContext(
             }
         }
 
+    override fun sparseFilterPrefixes(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): Set<List<Int>>? =
+        (d as? FilterWalkRowProvider)?.sparseFilterPrefixes(groupPath, bindDepth, counts)
+
     // A filtered declared-range fill scan selects among missing declared rows too (SPEC-2026-10-04-05); they are
     // wrapped like stored ones so a filter reads the cascade there as well.
     override fun declaredStarRows(fieldPath: String, bindDepth: Int): Sequence<EvalContext> =

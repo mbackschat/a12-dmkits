@@ -269,7 +269,7 @@ private fun Interpreter.funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f
     // CELLS, so a group operand contributes its expansion — the same read its value arm already does through
     // `fillScope(isGroup = true)`. `NumberOfFilledGroups` counts GROUPS, so its group operand IS the counted
     // entity and expanding it would be wrong in kind; it gets its own entity tally.
-    FunctionOp.NUMBER_OF_FILLED_FIELDS -> countFill(f, expandGroupOperands(f.args))
+    FunctionOp.NUMBER_OF_FILLED_FIELDS -> countFill(f, expandGroupOperands(f.args), FilterTraversal.SPARSE)
     FunctionOp.NUMBER_OF_FILLED_GROUPS -> filledGroupCountFill(f)
     // NumberOfValueInFields rides the same count rule, but a filtered cell only makes the count SHRINKABLE
     // when its value MATCHED the counted constant (the `containsFilteredValue` value gate) — so a filtered
@@ -336,6 +336,7 @@ private fun Interpreter.funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f
 private fun Interpreter.countFill(
     f: Expr.Func,
     operands: List<Expr> = f.args,
+    traversal: FilterTraversal = FilterTraversal.DENSE,
     qualifies: (EvalContext, String) -> Boolean = { _, _ -> true },
 ): Fill {
     var counted = 0
@@ -345,9 +346,14 @@ private fun Interpreter.countFill(
         val st = a as? Expr.Star ?: continue
         val having = st.having ?: continue
         val group = st.path.substringBeforeLast('/')
-        for (rc in filterCandidates(ctxOf(st), group, st.bindDepth)) {
-            total++
-            if (havingInterp(rc).keeps(having) && rc.filled(st.path) && qualifies(rc, st.path)) {
+        val candidates = filterCandidates(ctxOf(st), group, st.bindDepth)
+        total += candidates.size
+        val kept = when (traversal) {
+            FilterTraversal.DENSE -> candidates.asSequence().filter { havingInterp(it).keeps(having) }
+            FilterTraversal.SPARSE -> filteredRows(ctxOf(st), st, traversal)
+        }
+        for (rc in kept) {
+            if (rc.filled(st.path) && qualifies(rc, st.path)) {
                 counted++; anyFilteredCounted = true
             }
         }

@@ -8729,6 +8729,38 @@
           "id": "StringTypeMessageAndPatternLawsTest#aDeclaredPatternAndItsOwnErrorMessageRequireEachOther"
         }
       ]
+    },
+    {
+      "operator": "NumberOfFilledFields",
+      "lane": "GOTCHA",
+      "ordinal": 3,
+      "digest": "sha256:8109d6c5e21fd9ba9a90b91cdb687b178e1dec60982ce20ebd326f1a2e484e9b",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredAggregateDiffTest.sparseAggregatesRespectCacheWidthOccupancyAndKeptCursor"
+        }
+      ]
+    },
+    {
+      "operator": "Sum",
+      "lane": "GOTCHA",
+      "ordinal": 3,
+      "digest": "sha256:8109d6c5e21fd9ba9a90b91cdb687b178e1dec60982ce20ebd326f1a2e484e9b",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredAggregateDiffTest.sparseAggregatesRespectCacheWidthOccupancyAndKeptCursor"
+        }
+      ]
     }
   ],
   "claims": [

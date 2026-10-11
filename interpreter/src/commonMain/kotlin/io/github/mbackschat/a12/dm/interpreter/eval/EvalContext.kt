@@ -472,6 +472,7 @@ internal data class DeclaredFill(val allFilled: Boolean, val anyEmpty: Boolean)
  */
 internal interface FilterWalkRowProvider {
     fun filterWalkRows(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): List<EvalContext>
+    fun sparseFilterPrefixes(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): Set<List<Int>>?
 }
 
 internal fun EvalContext.filterWalkRows(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): List<EvalContext> =
