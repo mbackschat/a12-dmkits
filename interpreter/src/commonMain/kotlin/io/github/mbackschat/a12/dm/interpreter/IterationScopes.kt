@@ -58,7 +58,7 @@ internal class IterationScopes(private val model: ModelDef) {
      */
     fun prepare(rule: RuleDef, ast: Cond): IterationPlan {
         val refs = nonStarredRefs(ast)
-        val semanticAnchors = semanticIndexes(ast).flatMap(::repeatableDescendantsOfSelectedIndex)
+        val semanticAnchors = semanticIndexSpecs(ast, includeFilterBodies = false).flatMap(::ordinaryLevelsOfSelection)
         val scope = (listOfNotNull(deepestRepeatableAnchor(refs)) + semanticAnchors)
             .maxByOrNull { it.count { c -> c == '/' } } ?: run {
             val starAnchor = starBindingAnchor(ast)
@@ -293,13 +293,16 @@ internal class IterationScopes(private val model: ModelDef) {
                 .filter { it in model.repeatable }
         }.maxByOrNull { it.count { c -> c == '/' } }
 
-    /** Repeatable levels below the group selected by a semantic key remain ordinary iteration dimensions. The
-     * selected indexed group itself is absolute and therefore excluded. */
-    private fun repeatableDescendantsOfSelectedIndex(semanticIndex: Expr.SemanticIndex): List<String> {
-        val indexGroup = nearestIndexFieldOf(model.indexFields, semanticIndex.path)?.let(::parentGroup)
+    /** Selection replaces only the indexed level. Ordinary ancestors still iterate; a lower star collapses
+     * its own suffix (SelectedAuthoredScopeDiffTest, SPEC-2026-10-10-03). */
+    private fun ordinaryLevelsOfSelection(spec: Expr.EntitySpec): List<String> {
+        val source = spec.source
+        val indexGroup = nearestIndexFieldOf(model.indexFields, source.path)?.let(::parentGroup)
             ?: return emptyList()
-        val targetGroups = ancestorGroups(semanticIndex.path) +
-            listOfNotNull(semanticIndex.path.takeIf { it in model.groupPaths })
-        return targetGroups.filter { it in model.repeatable && it.startsWith("$indexGroup/") }
+        val targetGroups = when (source) {
+            is Expr.Field -> ancestorGroups(source.path) + listOfNotNull(source.path.takeIf { it in model.groupPaths })
+            is Expr.Star -> bindingLevels(source)
+        }
+        return targetGroups.filter { it in model.repeatable && it != indexGroup }
     }
 }

@@ -3079,6 +3079,8 @@ The control is what makes the rest meaningful — a fully relevant column still 
 
 **Correction 2026-10-11:** shared numeric row identity does not imply one validation visit per key. Validation separately unions each group's rendered keys in lexical order; distinct tokens can select the same matched pair twice. The scale, fractional-value and callback-order controls in `NumericIndexKeyDiffTest` distinguish these stages; [KF20](KERNEL-FINDINGS.md#kf20) records their full-validation scope.
 
+**Selected outer scope (2026-10-11).** The authored-source walk retains the existing `EntitySpec`, including a lower star's binding depth and the field key. Iteration planning removes only the selected index level; error re-anchoring also sees selected starred sources. Conflating these views either discarded ordinary ancestors or made a selected payload look like an ordinary error-field guard. `SelectedAuthoredScopeDiffTest` separates payload-ancestor scope from independent key scope, including field/group lower-star carriers; [KF429](KERNEL-FINDINGS.md#kf429) owns the measurements.
+
 **Discriminators.** Both kernel strategies agree on every row below. `5`/`5` is the textual control for every `5`/`5.00` collision, and every silence equivalence class has a firing peer on the same model and rule.
 
 | input | kernel and fixed interpreter | pre-fix rival ruled out |

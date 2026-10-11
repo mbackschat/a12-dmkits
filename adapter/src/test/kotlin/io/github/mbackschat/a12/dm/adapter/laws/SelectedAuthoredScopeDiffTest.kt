@@ -3,7 +3,10 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.edit.EditSession
+import io.github.mbackschat.a12.dm.interpreter.PreparedModel
+import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -11,6 +14,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class SelectedAuthoredScopeDiffTest {
+    private enum class Carrier { Field, Group, Star, StarGroup }
     private val base = DocumentModelDraft.named("depot-selected-scope").locale("en_US")
         .rootGroup("Store") { store -> store.stringField("Reference") { }
             .group("Depots") { depot -> depot.repeatable(2)
@@ -140,5 +144,58 @@ class SelectedAuthoredScopeDiffTest {
             assertEquals(setOf(expected), kernel, rule.render())
             assertEquals(kernel, portable, rule.render())
         }
+    }
+    @Test
+    fun selectedPayloadAndIndependentKeyEachRetainTheirOrdinaryAncestor() {
+        val session = EditSession.read(base)
+        val store = session.group("/Store")
+        val depot = session.group("/Store/Depots")
+        val wanted = depot.str("Wanted")
+        for (fieldKey in listOf(false, true)) for (carrier in Carrier.entries) {
+            val owner = if (fieldKey) store else depot
+            val path = if (fieldKey) "Catalog" else "Bins"
+            val condition: Condition = when (carrier) {
+                Carrier.Field -> owner.num("$path/Stock").let { if (fieldKey) it.forIndex(wanted.field()) else it.forIndex("b") }.gt(0)
+                Carrier.Group -> owner.flattenGroup("$path/Shelf").let { Dsl.sum(if (fieldKey) it.forIndex(wanted.field()) else it.forIndex("b")) }.gt(0)
+                Carrier.StarGroup -> owner.flattenGroup("$path/Slots*").let { Dsl.sum(if (fieldKey) it.forIndex(wanted.field()) else it.forIndex("b")) }.gt(0)
+                Carrier.Star -> owner.flatten("$path/Slots*/Qty").let { Dsl.sum(if (fieldKey) it.forIndex(wanted.field()) else it.forIndex("b")) }.gt(0)
+            }
+            val error = if (fieldKey) wanted.field() else when (carrier) {
+                Carrier.Field -> owner.field("$path/Stock")
+                Carrier.Group -> owner.field("$path/Shelf/Aisle")
+                Carrier.Star, Carrier.StarGroup -> owner.field("$path/Slots/Qty")
+            }
+            val name = "${if (fieldKey) "Key" else "Payload"}$carrier"
+            store.addRule { it.name(name).code(name).errorField(error).`when`(condition)
+                .message(Dsl.en("Check selected stock.")).build() }
+        }
+        val model = session.toJson()
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model))
+        val documents = listOf(0, 1).associate { active ->
+            val rows = (0..1).joinToString(",") { row ->
+                val value = if (row == active) 1 else 0
+                """{"Wanted":"${if (row == active) "b" else "a"}","Marker":1,"Bins":[{"Code":"a","Stock":0},{"Code":"b","Stock":$value,"Shelf":{"Aisle":$value,"Level":0},"Slots":[{"Qty":$value},{"Qty":0}]}]}"""
+            }
+            "active depot ${active + 1}" to """{"Store":{"Reference":"S","Depots":[$rows],"Catalog":[{"Code":"a","Stock":0,"Shelf":{"Aisle":0,"Level":0},"Slots":[{"Qty":0},{"Qty":0}]},{"Code":"b","Stock":1,"Shelf":{"Aisle":1,"Level":0},"Slots":[{"Qty":1},{"Qty":0}]}]}}"""
+        }
+        val prepared = PreparedModel.loadExpandedJson(model)
+        for ((label, document) in documents) {
+            val row = label.substringAfterLast(' ')
+            val expected = listOf("Field", "Group", "Star", "StarGroup").map { "Key$it|VALUE_ERROR|/Store[1]/Depots[$row]/Wanted" } +
+                listOf("Field" to "Stock", "Group" to "Shelf[1]/Aisle", "Star" to "Slots[1]/Qty", "StarGroup" to "Slots[1]/Qty").map { (carrier, field) ->
+                    "Payload$carrier|VALUE_ERROR|/Store[1]/Depots[$row]/Bins[2]/$field"
+                }
+            for (dynamic in listOf(true, false))
+                assertEquals(expected.sorted(), DocumentDifferential.kernel(model, document, dynamic).messages.map { it.brief }, label)
+            val report = prepared.createInterpreter().validateFull(prepared.documents.readDocument(document))
+            assertEquals(emptyList<Any>(), report.unsupported)
+            val messages = report.findings.map {
+                MessageSignature(it.code, "${it.type.name}_ERROR", formatPointer(it.errorPath.fullName, it.errorPath.repetitionIndexes),
+                    it.referenced.map { p -> formatPointer(p.fullName, p.repetitionIndexes) }.sorted(),
+                    it.fillToFix.map { p -> formatPointer(p.fullName, p.repetitionIndexes) }.sorted())
+            }.sorted()
+            assertEquals(DocumentDifferential.kernel(model, document, true).messages, messages, "$label public interpreter")
+        }
+        DocumentDifferential.assertAgree(model, documents)
     }
 }

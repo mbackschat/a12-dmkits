@@ -71,6 +71,37 @@ class KeyedFieldListRuntimeTest {
         }
     }
 
+    @Test fun selectedListsKeepAncestorAndIndependentKeyRows() {
+        val root = "/Store"
+        val depots = "$root/Depots"
+        val bins = "$depots/Bins"
+        val catalog = "$root/Catalog"
+        val model = ModelDef(
+            fields = listOf(FieldDef("$depots/Wanted", Kind.STRING)) + listOf(bins, catalog).flatMap {
+                listOf(FieldDef("$it/Code", Kind.STRING), FieldDef("$it/Slots/Qty", Kind.NUMBER))
+            },
+            rules = listOf(
+                RuleDef("$root/Payload", root, "Sum(Depots/Bins/Slots*/Qty For \"b\") > 0", "Payload", "../Depots/Bins/Slots/Qty"),
+                RuleDef("$root/Key", root, "Sum(Catalog/Slots*/Qty For Depots/Wanted) > 0", "Key", "../Depots/Wanted"),
+            ),
+            repeatableGroups = setOf(depots, bins, "$bins/Slots", catalog, "$catalog/Slots"),
+            declaredReps = mapOf(depots to 2, bins to 3, "$bins/Slots" to 2, catalog to 3, "$catalog/Slots" to 2),
+            indexFields = setOf("$bins/Code", "$catalog/Code"),
+            groupPaths = setOf(root, depots, bins, "$bins/Slots", catalog, "$catalog/Slots"),
+        )
+        val interpreter = DmInterpreter(model)
+        assertEquals(emptyList(), interpreter.supportAudit())
+        for (active in 1..2) {
+            val rows = (1..2).joinToString(",") { row ->
+                val value = if (row == active) 1 else 0
+                """{"Wanted":"${if (row == active) "b" else "a"}","Bins":[{"Code":"a"},{"Code":"b","Slots":[{"Qty":$value},{"Qty":0}]}]}"""
+            }
+            val document = model.readDocumentJson("""{"Store":{"Depots":[$rows],"Catalog":[{"Code":"a","Slots":[{"Qty":0},{"Qty":0}]},{"Code":"b","Slots":[{"Qty":1},{"Qty":0}]}]}}""")
+            assertEquals(listOf("Key|/Store[1]/Depots[$active]/Wanted", "Payload|/Store[1]/Depots[$active]/Bins[2]/Slots[1]/Qty"),
+                interpreter.validateFull(document).map { "${it.code}|${it.errorPath}" }.sorted())
+        }
+    }
+
     @Test fun productsCheckBothListsBeforePairingTheirCommonPositions() {
         for ((left, right) in listOf("P1" to "P2", "P2" to "P1")) {
             val sum = "SumOfProducts(/Order/Packages/Items*/Weight For \"$left\", /Order/Packages/Items*/Weight For \"$right\")"

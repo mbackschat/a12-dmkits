@@ -9965,11 +9965,11 @@ So the two codes partition on **parallelism**, not on polarity: the same unguard
 
 *(Locked: `validate.laws.ParallelIterationCodeBoundaryLawsTest`.)*
 
-## §9 supplement: an index-selected reference PINS a row and does not iterate (kernel `checkConsistency`, 2026-09-03) <a id="kf429"></a>
+## §9 supplement: an index selection pins its selected level while ordinary ancestor and key levels still iterate (kernel `checkConsistency`, 2026-09-03; runtime differential, 2026-10-11) <a id="kf429"></a>
 
 > Fold: pending — belongs with the iteration-admission entries above.
 
-An unguarded negative over an **index-selected** cell is **admitted**, where the same negative over a plain per-row read at the iterating level is `MVK_NEG_CONDITION_IN_ITERATION`. So an index selection is not a read of the repeatable level at all — it pins one row — and the iteration gates have nothing to say about it.
+An unguarded negative over an **index-selected** cell is **admitted**, where the same negative over a plain per-row read at the iterating level is `MVK_NEG_CONDITION_IN_ITERATION`. The selection pins that indexed level rather than iterating it. This does not remove ordinary ancestor levels or a field-valued key's own scope; their static admission is measured separately in [KF488](#kf488).
 
 | condition | verdict |
 |---|---|
@@ -9985,6 +9985,9 @@ An unguarded negative over an **index-selected** cell is **admitted**, where the
 **What is NOT measured here, and is therefore left permissive:** whether an index-selected POSITIVE can license a plain negative at that level. By the same pinning argument it should not, but that is an inference from this row rather than a measurement, and counting it as a guard is the under-warning direction.
 
 *(Locked: `validate.laws.IndexedOperandIterationLawsTest`.)*
+
+**Runtime scope, measured 2026-10-11 (SPEC-2026-10-10-03).** In a fixed Store with two Depots and indexed Bins, a literal selection of a numeric field, fixed group, lower starred field or lower starred group still visits the ordinary Depot rows. Moving the sole positive payload from the first Depot to the second moves each error to that Depot's selected Bin, including the lower list's first error row. A root Catalog selected by Depots/Wanted independently produces the same outer-row movement from the key alone. Fully held lower lists contribute one ancestor visit, not one visit per lower row. Both kernel strategies and the public interpreter agree on complete message signatures, including referenced and fill-to-fix pointers. The controls hold NUMBER payloads, STRING keys, unique valid indexes and full validation fixed; they do not calibrate partial coverage or duplicate-key ownership. Locked by `adapter.laws.SelectedAuthoredScopeDiffTest.selectedPayloadAndIndependentKeyEachRetainTheirOrdinaryAncestor`, mirrored by `KeyedFieldListRuntimeTest.selectedListsKeepAncestorAndIndependentKeyRows` on JVM/Node and `cli.DmtoolPublicContractTest.packagedSelectedListKeepsItsOuterRowAndSelectedErrorPointer`.
+
 
 ## §6 supplement: a date-range construction's ENDPOINTS must agree, and that refusal is the construction's, not the comparison's (kernel `checkConsistency`, 2026-09-04) <a id="kf430"></a>
 

@@ -545,6 +545,36 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void packagedSelectedListKeepsItsOuterRowAndSelectedErrorPointer(@TempDir Path dir) throws Exception {
+        var session = EditSession.read(DocumentModelDraft.named("depot-runtime-scope").locale("en_US")
+                .rootGroup("Store", store -> store.group("Depots", depot -> depot.repeatable(2)
+                        .group("Bins", bin -> bin.repeatable(3).indexField("Code").stringField("Code", f -> {})
+                                .group("Slots", slot -> slot.repeatable(2).numberField("Qty", f -> {})))))
+                .build().toJson());
+        var store = session.group("/Store");
+        var quantity = store.num("Depots/Bins/Slots/Qty");
+        store.addRule(rule -> rule.name("Selected").code("Selected").errorField(quantity)
+                .when(Dsl.sum(store.flatten("Depots/Bins/Slots*/Qty").forIndex("b")).gt(0))
+                .message(Dsl.en("Check selected stock.")).build());
+        Path model = dir.resolve("selected-scope.dm.json");
+        Path document = dir.resolve("selected-scope.json");
+        Files.writeString(model, session.toJson());
+        Files.writeString(document, """
+                {"Store":{"Depots":[{"Bins":[{"Code":"b","Slots":[{"Qty":0},{"Qty":0}]}]},
+                  {"Bins":[{"Code":"a"},{"Code":"b","Slots":[{"Qty":1},{"Qty":0}]}]}]}}
+                """);
+        String[] args = {"-m", model.toString(), "model", "eval", "--instance", document.toString(), "--no-computations"};
+        var result = new PackagedDmtool(dir).run(args);
+        var oracle = CliTestSupport.runKernel(args);
+        assertEquals(0, result.code(), result::out);
+        assertEquals(0, oracle.code(), oracle::out);
+        var messages = MAPPER.readTree(result.out()).path("data").path("messages");
+        assertEquals(MAPPER.readTree(oracle.out()).path("data").path("messages"), messages);
+        assertEquals(1, messages.size());
+        assertEquals("Store/Depots[2]/Bins[2]/Slots/Qty", messages.get(0).path("field").asText());
+    }
+
+    @Test
     void packagedSelectedGroupsExpandColumnsAndRetainOmissionType(@TempDir Path dir) throws Exception {
         var session = EditSession.read(DocumentModelDraft.named("selected-group-cli").locale("en_US")
                 .rootGroup("Order", order -> order.numberField("Needle", f -> {})

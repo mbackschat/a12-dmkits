@@ -254,6 +254,11 @@ internal fun exprRefs(expr: Expr): List<String> = when (expr) {
     // target `F` is an absolute semantic lookup (a specific repetition), not a per-row ref. A literal key
     // (`[F For "v"]`) references no field.
     is Expr.SemanticIndex -> expr.indexFieldPath?.let { listOf(it) } ?: emptyList()
+    is Expr.EntitySpec -> when (val key = expr.semanticIndex) {
+        null -> exprRefs(expr.source)
+        is Expr.EntityIndex.Literal -> emptyList()
+        is Expr.EntityIndex.Field -> listOf(key.path)
+    }
     else -> emptyList()
 }
 
@@ -287,45 +292,43 @@ internal fun semanticIndexTargets(cond: Cond): List<String> = when (cond) {
 /** Every concrete semantic-index node in evaluation order. Unlike [semanticIndexTargets], this retains the key
  *  specification because a rule whose repeated error field is semantically addressed inherits the selected
  *  repetition as its evaluation/error context. */
-internal fun semanticIndexes(cond: Cond): List<Expr.SemanticIndex> = when (cond) {
-    is Cond.Cmp -> semanticIndexes(cond.left) + semanticIndexes(cond.right)
-    is Cond.Tolerance -> semanticIndexes(cond.left) + semanticIndexes(cond.right)
-    is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap(::semanticIndexes)
-    is Cond.And -> semanticIndexes(cond.left) + semanticIndexes(cond.right)
-    is Cond.Or -> semanticIndexes(cond.left) + semanticIndexes(cond.right)
-    is Cond.Not -> semanticIndexes(cond.c)
-    is Cond.Pred -> cond.args.flatMap(::semanticIndexes)
-    is Cond.Pattern -> semanticIndexes(cond.value) + semanticIndexes(cond.pattern)
+internal fun semanticIndexes(cond: Cond): List<Expr.SemanticIndex> =
+    semanticIndexSpecs(cond, includeFilterBodies = true).mapNotNull { spec ->
+        when (val key = spec.semanticIndex) {
+            null -> null
+            is Expr.EntityIndex.Literal -> Expr.SemanticIndex(spec.source.path, indexValue = key.value,
+                outer = spec.source.outer)
+            is Expr.EntityIndex.Field -> Expr.SemanticIndex(spec.source.path, indexFieldPath = key.path,
+                outer = spec.source.outer, indexFieldOuter = key.outer)
+        }
+    }
+
+/** Retain the selected source's wildcard boundary for iteration planning; error/message planning also walks
+ * filter bodies. Using the existing entity spec keeps source, key and correlation together (SPEC-2026-10-10-03). */
+internal fun semanticIndexSpecs(cond: Cond, includeFilterBodies: Boolean): List<Expr.EntitySpec> = when (cond) {
+    is Cond.Cmp -> semanticIndexSpecs(cond.left, includeFilterBodies) + semanticIndexSpecs(cond.right, includeFilterBodies)
+    is Cond.Tolerance -> semanticIndexSpecs(cond.left, includeFilterBodies) + semanticIndexSpecs(cond.right, includeFilterBodies)
+    is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap { semanticIndexSpecs(it, includeFilterBodies) }
+    is Cond.And -> semanticIndexSpecs(cond.left, includeFilterBodies) + semanticIndexSpecs(cond.right, includeFilterBodies)
+    is Cond.Or -> semanticIndexSpecs(cond.left, includeFilterBodies) + semanticIndexSpecs(cond.right, includeFilterBodies)
+    is Cond.Not -> semanticIndexSpecs(cond.c, includeFilterBodies)
+    is Cond.Pred -> cond.args.flatMap { semanticIndexSpecs(it, includeFilterBodies) }
+    is Cond.Pattern -> semanticIndexSpecs(cond.value, includeFilterBodies) + semanticIndexSpecs(cond.pattern, includeFilterBodies)
     is Cond.Custom -> emptyList()
 }
 
-private fun semanticIndexes(expr: Expr): List<Expr.SemanticIndex> = when (expr) {
-    is Expr.SemanticIndex -> listOf(expr)
-    is Expr.Star -> expr.having?.let(::semanticIndexes).orEmpty()
-    is Expr.Func -> expr.args.flatMap(::semanticIndexes)
-    is Expr.Arith -> semanticIndexes(expr.left) + semanticIndexes(expr.right)
-    is Expr.EntitySpec -> {
-        val source = expr.source as? Expr.Field
-        val indexed = source?.let { field ->
-            when (val index = expr.semanticIndex) {
-                null -> null
-                is Expr.EntityIndex.Literal -> Expr.SemanticIndex(
-                    field.path,
-                    indexValue = index.value,
-                    outer = field.outer,
-                )
-                is Expr.EntityIndex.Field -> Expr.SemanticIndex(
-                    field.path,
-                    indexFieldPath = index.path,
-                    outer = field.outer,
-                    indexFieldOuter = index.outer,
-                )
-            }
-        }
-        listOfNotNull(indexed) + semanticIndexes(expr.source)
-    }
-    is Expr.Field, is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit, is Expr.Const, is Expr.EnumCategory ->
-        emptyList()
+private fun semanticIndexSpecs(expr: Expr, includeFilterBodies: Boolean): List<Expr.EntitySpec> = when (expr) {
+    is Expr.SemanticIndex -> listOf(Expr.EntitySpec(Expr.Field(expr.path, expr.outer), semanticIndex = when {
+        expr.indexValue != null -> Expr.EntityIndex.Literal(expr.indexValue)
+        expr.indexFieldPath != null -> Expr.EntityIndex.Field(expr.indexFieldPath, expr.indexFieldOuter)
+        else -> null
+    }))
+    is Expr.Star -> if (includeFilterBodies) expr.having?.let { semanticIndexSpecs(it, true) }.orEmpty() else emptyList()
+    is Expr.Func -> expr.args.flatMap { semanticIndexSpecs(it, includeFilterBodies) }
+    is Expr.Arith -> semanticIndexSpecs(expr.left, includeFilterBodies) + semanticIndexSpecs(expr.right, includeFilterBodies)
+    is Expr.EntitySpec -> listOfNotNull(expr.takeIf { it.semanticIndex != null }) +
+        semanticIndexSpecs(expr.source, includeFilterBodies)
+    is Expr.Field, is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit, is Expr.Const, is Expr.EnumCategory -> emptyList()
 }
 
 internal fun condRefsOrEmpty(cond: Cond?): List<String> = cond?.let { nonStarredRefs(it) } ?: emptyList()

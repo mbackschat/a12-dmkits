@@ -9519,6 +9519,97 @@
           }
         }
       }
+    },
+    "kf429": {
+      "sha256": "37ce05c3d8a70d6dd5c5d4505e909d96c2b6d09a724baca8390d8154c17dbeb8",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "selected field/group ancestor and key scope"
+        ],
+        "dmkits": [
+          "composed selected source authoring"
+        ],
+        "interpreter": [
+          "selected iteration and error re-anchoring"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "packaged selected-list evaluation"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "selected runtime scope"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies retain the independent active parent and exact selected error pointer across field/group and lower-star carriers.",
+          "evidence": {
+            "selected field/group ancestor and key scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedAuthoredScopeDiffTest.kt#selectedPayloadAndIndependentKeyEachRetainTheirOrdinaryAncestor",
+              "witness": "Both kernel strategies retain the independent active parent and exact selected error pointer across field/group and lower-star carriers."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Existing typed authoring preserves the selected source and key without a new public shape.",
+          "evidence": {
+            "composed selected source authoring": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedAuthoredScopeDiffTest.kt#selectedPayloadAndIndependentKeyEachRetainTheirOrdinaryAncestor",
+              "witness": "Existing typed authoring preserves the selected source and key without a new public shape."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The public interpreter matches complete kernel message signatures; JVM/Node mirrors retain ancestor and independent key rows.",
+          "evidence": {
+            "selected iteration and error re-anchoring": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedAuthoredScopeDiffTest.kt#selectedPayloadAndIndependentKeyEachRetainTheirOrdinaryAncestor",
+              "witness": "The public interpreter matches complete kernel message signatures; JVM/Node mirrors retain ancestor and independent key rows."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Static authored membership and per-level admission are covered by the separate KF488 review; this extension changes runtime traversal only.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Packaged model eval matches the kernel message and reports the selected lower list in the second ordinary parent.",
+          "evidence": {
+            "packaged selected-list evaluation": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedSelectedListKeepsItsOuterRowAndSelectedErrorPointer",
+              "witness": "Packaged model eval matches the kernel message and reports the selected lower list in the second ordinary parent."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime iteration consumes existing DocumentModel declarations; no imported keyword or synthesized-rule change. Index carriage remains separately tracked.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No exported keyword or rule-carriage change in this runtime correction. Index carriage remains separately tracked.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "The peer owns SPEC-2026-10-10-03 verification and acceptance.",
+          "evidence": {
+            "selected runtime scope": {
+              "reference": "a12-kernel-lean@f2343f50c874f9835242a18423a72570b6255b9e:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-03",
+              "witness": "Reconcile ordinary ancestors and field-key scope separately from authored static membership."
+            }
+          }
+        }
+      }
     }
   }
 }
