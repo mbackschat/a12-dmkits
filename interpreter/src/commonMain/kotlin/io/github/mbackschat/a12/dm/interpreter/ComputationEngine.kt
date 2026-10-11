@@ -703,10 +703,8 @@ internal class ComputationEngine(
             // A12 keeps a calculated field's ancestor groups in the computation's data (CalculationCommand,
             // source-read; measured by FilterCacheScopeDiffTest's target-only row), so their rows count too.
             ancestors += ancestorGroups(comp.targetPath)
-            // A target below a repeatable group puts every uncomputed field that group contains, at any depth, under
-            // the compute report's formal and over-limit checks, though no computation reads them; a root target puts
-            // none (KERNEL-FINDINGS KF538, ComputeFormalScopeDiffTest).
-            ancestorGroups(comp.targetPath).filter { it in model.repeatable }.maxByOrNull { it.count { c -> c == '/' } }
+            // KF538's authored-guard controls bound this expansion to the inserted implicit guard.
+            plans.implicitGuardGroup(comp)
                 ?.let { group -> model.kinds.keys.filterTo(fields) { it.startsWith("$group/") && it !in computedTargets } }
             dependencies.filterTo(fields) { it in model.kinds && it !in computedTargets }
             dependencies.filterTo(indexes) { it in model.indexFields }

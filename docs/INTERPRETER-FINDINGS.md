@@ -4548,11 +4548,13 @@ Enforcement: `SelectedMessageReferenceDiffTest.aDuplicatedKeysPointerIsTheKernel
 
 Enforcement: `FilterCacheScopeDiffTest`. `allThreeEnginesAgreeOnEveryDocument` covers the target-only model, and `computingOneFieldMatchesTheWholeComputation` checks `computeField` against `compute` on every model and document.
 
-### IF378: the compute report's formal scope includes every uncomputed field of a computed target's repeatable group (2026-10-09) <a id="if378"></a>
+### IF378: a computation's inserted implicit guard adds its repeatable target subtree to formal inputs (2026-10-09; qualified 2026-10-11) <a id="if378"></a>
 
-[KF538](KERNEL-FINDINGS.md#kf538). `ComputationEngine.operandSelection` held the fields computations read and the index fields they select. A computation targeting a field below a repeatable group also brings that group's other uncomputed fields into A12's compute-time formal and over-limit checks. The interpreter reported neither an invalid value nor an over-limit cell of such a field. The selection now adds those fields for each such target. *Corrected 2026-10-09:* this said the walk scope ([IF377](#if377)) was unchanged, since the group was already a target ancestor; but the added fields bring that group's nested groups into the walk too, which `ComputeTargetSubgroupScopeDiffTest` then measured to be A12's behaviour ([KF528](KERNEL-FINDINGS.md#kf528)'s extension).
+[KF538](KERNEL-FINDINGS.md#kf538). `ComputationEngine.operandSelection` originally retained only fields computations read and index fields they select. The first correction added every uncomputed field below each target's nearest repeatable group. SPEC-2026-10-10-01 exposed the missing qualifier: an authored positive guard on that row or a narrower containing group replaces the implicit row guard. A narrower guard therefore excludes outer siblings; an explicit row guard still reads them. `ComputationDependencies.implicitGuardGroup` now determines the inserted guard per authored computation before scheduling profiles combine writers, and `ComputationEngine` uses it for subtree expansion. Common and alternative guards, two narrower writers, and narrower/implicit writers in both orders are locked against both kernels.
 
-Enforcement: `ComputeFormalScopeDiffTest.allThreeEnginesAgreeOnEveryDocument`, `ComputeTargetSubgroupScopeDiffTest.allThreeEnginesAgreeOnEveryDocument`.
+The operand inventory still belongs to the whole programme ([IF377](#if377)); it is distinct from scheduling dependencies. Added operand fields can bring nested groups into that inventory, as the original unguarded `ComputeTargetSubgroupScopeDiffTest` measured ([KF528](KERNEL-FINDINGS.md#kf528)). No new sparse, partial-validation or guarded-cache traversal claim follows from the formal-input matrix.
+
+Enforcement: `ComputeAuthoredGuardScopeDiffTest.authoredGuardsDetermineFormalInputsBeforeWriterProfilesAreCombined`, `ComputeFormalScopeDiffTest.allThreeEnginesAgreeOnEveryDocument`, `ComputeTargetSubgroupScopeDiffTest.allThreeEnginesAgreeOnEveryDocument`; portable `ComputeAuthoredGuardScopeTest` on JVM and Node.
 
 ### IF379: an unquoted number is read as A12's node text, so a String field stores `1E+3` for `1e3` (2026-10-09) <a id="if379"></a>
 

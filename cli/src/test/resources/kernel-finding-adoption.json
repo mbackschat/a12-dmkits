@@ -585,17 +585,19 @@
       }
     },
     "kf538": {
-      "sha256": "45e843a60fee6a16987181d3e1a02b532e67cdafae137732257040265d042d78",
+      "sha256": "3b78c93581ceb3776f917cdb3e91b06bd1a233f23727674da8b7e379aa0034d7",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "compute formal scope",
-          "nested repeatable target scope"
+          "nested repeatable target scope",
+          "authored guard formal scope"
         ],
         "dmkits": [],
         "interpreter": [
           "compute formal scope",
-          "nested repeatable target scope"
+          "nested repeatable target scope",
+          "authored guard formal scope"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -603,13 +605,14 @@
         "json-schema-export": [],
         "a12-kernel-lean": [
           "compute formal scope",
-          "nested repeatable target scope"
+          "nested repeatable target scope",
+          "authored guard formal scope"
         ]
       },
       "consumers": {
         "adapter": {
           "state": "APPLIED",
-          "basis": "Both kernel strategies are measured on four models and four documents through the adapter's differential.",
+          "basis": "Both kernel strategies measured on the original scope matrices and the authored guard/writer controls.",
           "evidence": {
             "compute formal scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeFormalScopeDiffTest.kt#theComputeReportChecksTheCellsTheProgrammeKeeps",
@@ -618,6 +621,10 @@
             "nested repeatable target scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeTargetSubgroupScopeDiffTest.kt#aTargetsGroupScopeAgainstItsNestedRepeatableGroup",
               "witness": "A Returns/Tag target checks the nested Marks; a Marks/Grade target checks Marks but not Returns/Qty, declared in Marks or in Returns."
+            },
+            "authored guard formal scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeAuthoredGuardScopeDiffTest.kt#authoredGuardsDetermineFormalInputsBeforeWriterProfilesAreCombined",
+              "witness": "Eight authored guard/writer profiles and four documents; narrow guards exclude outer Qty, an implicit writer restores it in either order; both kernels agree."
             }
           }
         },
@@ -628,7 +635,7 @@
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "The compute operand inventory now adds every uncomputed field of a computed target's repeatable group.",
+          "basis": "The compute operand inventory expands only the inserted implicit guard subtree, selected per authored computation before writer profiles combine.",
           "evidence": {
             "compute formal scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeFormalScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
@@ -637,6 +644,10 @@
             "nested repeatable target scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeTargetSubgroupScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
               "witness": "All three engines agree on five models and three documents."
+            },
+            "authored guard formal scope": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputeAuthoredGuardScopeDiffTest.kt#authoredGuardsDetermineFormalInputsBeforeWriterProfilesAreCombined",
+              "witness": "Eight authored guard/writer profiles and four documents; narrow guards exclude outer Qty, an implicit writer restores it in either order; both kernels agree."
             }
           }
         },
@@ -647,7 +658,7 @@
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
-          "basis": "dmtool computes through the interpreter assessed here.",
+          "basis": "The corrected formalErrorsInOperands channel is not part of dmtool model compute output; computed outcomes are compared unchanged.",
           "evidence": {}
         },
         "json-schema-import": {
@@ -662,7 +673,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Accepted under SPEC-2026-10-09-10 at 2d57eca2 and adopted in spec/07 and spec/09; the peer's target-formal-scope obligation (SG16) and H10-R6 own the executable reconciliation of the formal and cache halves.",
+          "basis": "Historical SPEC-2026-10-09-10 receipt retained; SPEC-2026-10-10-01 reconciled here for peer verification. Guarded cache traversal remains outside this formal-input measurement.",
           "evidence": {
             "compute formal scope": {
               "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/sources/inbound-handbacks.md#src-inbound-2026-10-09a",
@@ -671,6 +682,10 @@
             "nested repeatable target scope": {
               "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/sources/inbound-handbacks.md#src-inbound-2026-10-09a",
               "witness": "Nested repeatable groups below a target's innermost repeatable group contribute to filter extents even when no computation names them (ComputeTargetSubgroupScopeDiffTest; KF538)."
+            },
+            "authored guard formal scope": {
+              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-01",
+              "witness": "Pending SPEC-2026-10-10-01 requests per-authored guard preprocessing and explicit/narrower guard reconciliation; verification and acceptance remain with the peer."
             }
           }
         }
@@ -6711,7 +6726,7 @@
       }
     },
     "kf528": {
-      "sha256": "5248e11e1d4f0a2ddf203e4ea8a4ff3c524ae6bed66fc9048ed58bcd89e6ef86",
+      "sha256": "3eef2171bd664f5da475fa637f561096fa65d6f71bbb84b021fc6a71ad463b19",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [

@@ -15,7 +15,7 @@ internal class ComputationDependencies(
         model.computations.groupBy { it.targetPath }.mapValues { (target, computations) ->
             val conditions = computations.flatMap { comp ->
                 val body = parsed(comp)
-                val implicit = model.repeatable.filter { target.startsWith("$it/") }.maxByOrNull { it.length }
+                val implicit = implicitGuardGroup(comp)
                 body.alternatives.mapNotNull { alt ->
                     val present = listOfNotNull(body.commonPrecondition, alt.precondition)
                     if (present.isEmpty() && implicit == null) null
@@ -24,6 +24,18 @@ internal class ComputationDependencies(
             }
             conditions.reduceOrNull { left, right -> left intersect right }.orEmpty()
         }
+    }
+
+    /** Guard preprocessing precedes writer-profile merging (SPEC-2026-10-10-01, ComputeAuthoredGuardScopeDiffTest). */
+    fun implicitGuardGroup(comp: ComputationDef): String? {
+        val target = comp.targetPath
+        val nearest = model.repeatable.filter { target.startsWith("$it/") }.maxByOrNull { it.length } ?: return null
+        val body = parsed(comp)
+        val authored = body.alternatives.map { alternative ->
+            listOfNotNull(body.commonPrecondition, alternative.precondition)
+                .flatMap { protectedGroups(it, target) }.toSet()
+        }.reduceOrNull { left, right -> left intersect right }.orEmpty()
+        return nearest.takeUnless { it in authored }
     }
 
     fun reads(comp: ComputationDef): List<String> {

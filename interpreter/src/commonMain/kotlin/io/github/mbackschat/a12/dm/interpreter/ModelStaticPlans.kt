@@ -268,6 +268,8 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
      */
     private val schedulingDependencies by lazy { ComputationDependencies(model, ::computation) }
 
+    fun implicitGuardGroup(comp: ComputationDef): String? = schedulingDependencies.implicitGuardGroup(comp)
+
     private fun orderedFrom(roots: List<String>): List<ComputationDef> {
         val byTarget: Map<String, List<ComputationDef>> = model.computations.groupBy { it.targetPath }
         val ordered = mutableListOf<ComputationDef>()
