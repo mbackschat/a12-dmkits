@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -17,6 +18,35 @@ import kotlin.test.assertEquals
  * and scan each field's rows before advancing to the next declaration.
  */
 class FirstFilledValueGroupOrderTest {
+
+    @Test
+    fun nestedMissingPrefixesRetainOmissionAcrossValueKinds() {
+        for ((kind, raw) in listOf(Kind.STRING to "\"ready\"", Kind.NUMBER to "7", Kind.BOOLEAN to "true")) {
+            val literal = if (kind == Kind.BOOLEAN) "True" else raw
+            val operations = listOf("Breakdown/Payouts*/Parts*/Value", "Breakdown", "Breakdown/Payouts*/Parts*")
+            val model = ModelDef(
+                fields = listOf(FieldDef("/Claim/Ref", Kind.STRING),
+                    FieldDef("/Claim/Breakdown/Payouts/Parts/Value", kind)),
+                rules = operations.mapIndexed { i, operand ->
+                    RuleDef("/Claim/Read$i", "/Claim", "FieldFilled(Ref) And FirstFilledValue($operand) == $literal", "R$i", "../Ref")
+                },
+                declaredReps = mapOf("/Claim/Breakdown/Payouts" to 2, "/Claim/Breakdown/Payouts/Parts" to 2),
+                groupPaths = setOf("/Claim", "/Claim/Breakdown", "/Claim/Breakdown/Payouts", "/Claim/Breakdown/Payouts/Parts"),
+            )
+            val filled = """{"Parts":[{"Value":$raw}]}"""
+            for ((rows, expected) in listOf(
+                "[{},$filled]" to MsgType.OMISSION,
+                "[{\"Parts\":[]},$filled]" to MsgType.OMISSION,
+                "[{\"Parts\":[{}]},$filled]" to MsgType.OMISSION,
+                "[$filled,{}]" to MsgType.VALUE,
+            )) {
+                val document = model.readDocumentJson("""{"Claim":{"Ref":"C","Breakdown":{"Payouts":$rows}}}""")
+                val messages = DmInterpreter(model).validateFull(document).filter { it.code.startsWith("R") }
+                assertEquals(3, messages.size, "$kind $rows")
+                assertEquals(listOf(expected, expected, expected), messages.map { it.type }, "$kind $rows")
+            }
+        }
+    }
 
     private companion object {
         const val REF = "/Return/Reference"

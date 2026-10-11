@@ -28,7 +28,15 @@ internal class OverlayContext(
     // NEVER cached — the overlay for that column changes as the cascade lands, so it is rebuilt fresh every read.
     private val views: OverlayViews,
     private val selfTarget: String,
-) : EvalContext by d, GroupListEnvironmentProvider, DeclaredStarRowProvider, FilterWalkRowProvider {
+) : EvalContext by d, GroupListEnvironmentProvider, DeclaredStarRowProvider, FilterWalkRowProvider, FirstFilledScanProvider {
+
+    override fun firstFilledRows(groupPath: String, bindDepth: Int): Sequence<EvalContext> =
+        d.firstFilledRows(groupPath, bindDepth).map {
+            OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget)
+        }
+
+    override fun firstFilledContainedCells(groupPath: String): Sequence<ScanCell> =
+        d.firstFilledContainedCells(groupPath).map(::overlaidScanCell)
     /**
      * What the cascade says about ONE cell, resolved with a single lookup and no allocation.
      *

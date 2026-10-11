@@ -6888,6 +6888,10 @@
       "meaning": "The first specified value across owner entity selectors in authored order. Selectors may be direct or wildcard fields, enum categories, semantic-indexed fields, or plain, wildcard, or semantic-indexed groups; groups and categories expand in model order, repetition lists scan in row order, and unspecified cells are skipped (a feldListenOp sibling of Sum).",
       "gotchas": [
         {
+          "text": "in full validation, an omitted or empty inner group under an earlier parent still counts as an empty prefix: a later matching first value fires as OMISSION, while moving that empty branch after the selected value preserves VALUE. Measured for STRING, NUMBER and BOOLEAN nested field/group stars and keyed group forms; locked by FirstFilledNestedPrefixDiffTest (KF126).",
+          "kind": "SURPRISE"
+        },
+        {
           "text": "each operand's Having filter is encountered immediately before that operand is scanned: an encountered filter makes a fired comparison OMISSION, but a filter on a later operand is invisible once an earlier operand supplied the first value",
           "kind": "SURPRISE"
         },

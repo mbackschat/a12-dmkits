@@ -485,3 +485,17 @@ internal interface DeclaredStarRowProvider {
 internal fun EvalContext.declaredStarRows(fieldPath: String, bindDepth: Int): Sequence<EvalContext> =
     (this as? DeclaredStarRowProvider)?.declaredStarRows(fieldPath, bindDepth)
         ?: rowContexts(fieldPath.substringBeforeLast('/'), bindDepth).asSequence()
+
+/** First-filled retains implicit empty descendants before a later value (SPEC-2026-10-10-14). */
+internal interface FirstFilledScanProvider {
+    fun firstFilledRows(groupPath: String, bindDepth: Int): Sequence<EvalContext>
+    fun firstFilledContainedCells(groupPath: String): Sequence<ScanCell>
+}
+
+internal fun EvalContext.firstFilledRows(groupPath: String, bindDepth: Int): Sequence<EvalContext> =
+    (this as? FirstFilledScanProvider)?.firstFilledRows(groupPath, bindDepth)
+        ?: rowContexts(groupPath, bindDepth).asSequence()
+
+internal fun EvalContext.firstFilledContainedCells(groupPath: String): Sequence<ScanCell> =
+    (this as? FirstFilledScanProvider)?.firstFilledContainedCells(groupPath)
+        ?: containedFieldCells(groupPath, declaredRange = false)

@@ -2137,7 +2137,8 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
     is Expr.Field -> {
         val c = ctxOf(operand)
         if (c.declaredKind(operand.path) == null) {
-            firstFilledContainedCells(c, c.containedFieldCells(operand.path, declaredRange = false), walk)
+            firstFilledContainedCells(c, if (cellRelevant == null) c.firstFilledContainedCells(operand.path)
+                else c.containedFieldCells(operand.path, declaredRange = false), walk)
         } else if (outsideCoverage(operand.path, c.repsOf(operand.path))) {
             FirstFilledStep.Stop(Val.Unknown)
         } else if (!c.filled(operand.path)) {
@@ -2174,7 +2175,8 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
             when (val selection = keyedGroupSelection(operand)) {
                 is KeyedGroupSelection.Row -> firstFilledContainedCells(
                     selection.ctx,
-                    selection.ctx.containedFieldCells(operand.path, declaredRange = false),
+                    if (cellRelevant == null) selection.ctx.firstFilledContainedCells(operand.path)
+                    else selection.ctx.containedFieldCells(operand.path, declaredRange = false),
                     walk,
                 )
                 // every cell of a row no key selects is empty, so the walk passes it only if the coverage
@@ -2303,7 +2305,7 @@ private fun Interpreter.firstFilledStar(
     val kept = when {
         having != null -> keptRowsWithSuccessorLookahead(filterCandidates(operandContext, group, operand.bindDepth), having)
         cellRelevant != null -> operandContext.declaredStarRows(operand.path, operand.bindDepth)
-        else -> operandContext.rowContexts(group, operand.bindDepth).asSequence()
+        else -> operandContext.firstFilledRows(group, operand.bindDepth)
     }
     var visitedRow = false
     for (row in kept) {

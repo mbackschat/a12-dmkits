@@ -506,3 +506,39 @@ dmtool -m examples/models/tariff-parallel.dm.json model eval --instance /tmp/rt-
   "occurrences": 1
 }
 ```
+
+## A missing nested prefix still affects message type
+
+The [claim model](models/claim-first-payout.dm.json) compares the first filled payout amount with `7`. Both documents below select that value. An earlier payout without any parts leaves an empty prefix, so the firing is OMISSION; moving the empty payout after the selected value preserves VALUE.
+
+```bash
+cat > /tmp/rt-claim-prefix.json <<'JSON'
+{"Claim":{"Ref":"C","Payouts":[{},{"Parts":[{"Amount":7}]}]}}
+JSON
+cat > /tmp/rt-claim-suffix.json <<'JSON'
+{"Claim":{"Ref":"C","Payouts":[{"Parts":[{"Amount":7}]},{}]}}
+JSON
+for position in prefix suffix; do
+  dmtool -m examples/models/claim-first-payout.dm.json model eval --instance "/tmp/rt-claim-$position.json" \
+    | jq '{fired: .data.fired, types: [.data.messages[].type]}'
+done
+```
+
+```output
+{
+  "fired": [
+    "FIRST"
+  ],
+  "types": [
+    "OMISSION_ERROR"
+  ]
+}
+{
+  "fired": [
+    "FIRST"
+  ],
+  "types": [
+    "VALUE_ERROR"
+  ]
+}
+```

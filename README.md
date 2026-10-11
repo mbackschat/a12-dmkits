@@ -453,6 +453,8 @@ This is the empirical check a static "is it valid?" can't give — it's how you 
 
 `model eval` preserves message occurrences: a numeric parallel join may visit the same matched rows twice when its index declarations render one value differently (`5` versus `5.00`). `data.messages` retains both occurrences; `data.fired` lists distinct codes. The [runtime tour](examples/cli-runtime.md) demonstrates this distinction.
 
+`FirstFilledValue` retains missing nested prefixes: an omitted inner group before the selected value can make a firing an OMISSION error, while the same empty branch after it preserves VALUE. The [runtime tour](examples/cli-runtime.md) shows both documents.
+
 **Models that use custom constructs** still run: a `CustomFieldType` whose format is declarative is validated with `--predefined-types <file>`; for the *imperative* tail — a `CustomCondition`, or a checksum custom type — point `dmtool` at the project's own JS with `--custom-conditions-js` / `--custom-field-types-js` (run through a persistent Node worker); and anything still unhandled is **surfaced** under `data.unsupported` rather than silently passed, with `--strict-custom` turning that into a failure. `model compute` accepts the same custom type registries and checks reached computed targets; `--strict-custom` also refuses missing target handlers while retaining the result data. Walkthrough: [`examples/cli-custom-types.md`](examples/cli-custom-types.md).
 
 > **The interpreter is kernel-exact *and* fast** — clean-room, no kernel code, verified rule-for-rule against the real kernel. The full story (library use on JVM + JS, the verification estate, the measured performance): [the interpreter section](#the-interpreter--kernel-free-runtime-evaluation) below.

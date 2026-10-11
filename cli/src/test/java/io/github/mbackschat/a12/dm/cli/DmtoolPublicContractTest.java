@@ -313,6 +313,47 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void packagedFirstFilledRetainsNestedPrefixPolarity(@TempDir Path dir) throws Exception {
+        String base = DocumentModelDraft.named("claim-first-payout-cli").locale("en_US")
+                .rootGroup("Claim", claim -> claim.stringField("Ref", f -> { })
+                        .group("Payouts", payouts -> payouts.repeatable(2)
+                                .group("Parts", parts -> parts.repeatable(2)
+                                        .numberField("Amount", field -> field.fractionDigits(0)))))
+                .build().toJson();
+        var edit = EditSession.read(base);
+        var claim = edit.group("/Claim");
+        var ref = claim.str("Ref");
+        var first = Dsl.firstFilledNumber(claim.flatten("Payouts*/Parts*/Amount").firstFilledOperand());
+        claim.addRule(rule -> rule.name("FirstPayout").code("FIRST").errorField(ref)
+                .when(ref.filled().and(first.eq(7))).message(Dsl.en("Review the first payout.")).build());
+        String json = edit.toJson();
+        Path model = dir.resolve("claim.dm.json");
+        Files.writeString(model, json);
+        var dmtool = new PackagedDmtool(dir);
+        for (boolean prefix : List.of(true, false)) {
+            String filled = "{\"Parts\":[{\"Amount\":7}]}";
+            String rows = prefix ? "{}," + filled : filled + ",{}";
+            String input = "{\"Claim\":{\"Ref\":\"C\",\"Payouts\":[" + rows + "]}}";
+            Path document = dir.resolve("claim.json");
+            Files.writeString(document, input);
+            String[] args = {"-m", model.toString(), "model", "eval", "--instance", document.toString()};
+            var evaluated = dmtool.run(args);
+            var oracle = CliTestSupport.runKernel(args);
+            assertEquals(0, evaluated.code(), evaluated::out);
+            assertEquals(0, oracle.code(), oracle::out);
+            for (JsonNode envelope : List.of(MAPPER.readTree(evaluated.out()), MAPPER.readTree(oracle.out()))) {
+                JsonNode data = envelope.path("data");
+                assertEquals(MAPPER.valueToTree(List.of("FIRST")), data.path("fired"), envelope::toString);
+                assertEquals(1, data.path("messages").size(), envelope::toString);
+                assertEquals(prefix ? "OMISSION_ERROR" : "VALUE_ERROR", data.path("messages").get(0).path("type").asText());
+                assertEquals("Claim/Ref", data.path("messages").get(0).path("field").asText());
+            }
+            assertEquals(input, Files.readString(document));
+            assertEquals(json, Files.readString(model));
+        }
+    }
+
+    @Test
     void packagedNumericParallelValidationRetainsRenderedTokenMultiplicity(@TempDir Path dir) throws Exception {
         var dmtool = new PackagedDmtool(dir);
         for (var scales : List.of(List.of(0, 0), List.of(0, 2), List.of(2, 2))) {

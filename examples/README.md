@@ -15,6 +15,8 @@ The demos use the bare `dmtool` and read their sample models from [`models/`](mo
 
 The [tariff parallel-join fixture](models/tariff-parallel.dm.json) demonstrates rendered numeric index tokens and message occurrence counts in the [runtime tour](cli-runtime.md).
 
+The [claim first-payout fixture](models/claim-first-payout.dm.json) demonstrates missing nested prefixes and directional message polarity in the [runtime tour](cli-runtime.md).
+
 The [`profiles/`](profiles/) directory carries the three approved domain-blind performance-calibration artifacts used by the profile-driven synthesis and interpreter scalability workflow. They are current-format `profile′` outputs from own-domain synthesized models, not copies or profiles of private source models.
 
 **What a green `verify-demos.sh` proves, and what it does not.** The gate proves every documented command still

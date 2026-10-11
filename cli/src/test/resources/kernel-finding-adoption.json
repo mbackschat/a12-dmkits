@@ -8520,6 +8520,94 @@
           "evidence": {}
         }
       }
+    },
+    "kf126": {
+      "sha256": "0598af964fd1563b093f5f66d28d87a1e21cee776239965af65eb2076561db1e",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "nested first-filled missing-prefix polarity",
+          "unchanged historical claims outside this amendment"
+        ],
+        "dmkits": [
+          "nested first-filled missing-prefix polarity"
+        ],
+        "interpreter": [
+          "nested first-filled missing-prefix polarity",
+          "unchanged historical claims outside this amendment"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "nested first-filled missing-prefix polarity"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "nested first-filled missing-prefix polarity"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "OPEN",
+          "basis": "The nested-prefix amendment is locked; historical aggregate claims remain under F-USE-BACKLOG.",
+          "evidence": {
+            "nested first-filled missing-prefix polarity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledNestedPrefixDiffTest.kt#keyedNestedScopesPreservePrefixPolarityAndUnavailableSelection",
+              "witness": "STRING/NUMBER/BOOLEAN by ordinary/starred/keyed field/group/starred-group, empty prefix/suffix, matching/nonmatching/all-empty and absent/duplicate key controls; both strategies and interpreter compare complete signatures."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "The FirstFilledValue catalog exposes the measured nested-prefix trap; authoring syntax is unchanged.",
+          "evidence": {
+            "nested first-filled missing-prefix polarity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledNestedPrefixDiffTest.kt#absentEmptyAndPresentEmptyPrefixesAgreeAcrossKindsAndGroupCarriers",
+              "witness": "Typed authoring and both-strategy runtime controls settle the catalog claim."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "The nested-prefix amendment is locked; historical aggregate claims remain under F-USE-BACKLOG.",
+          "evidence": {
+            "nested first-filled missing-prefix polarity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledNestedPrefixDiffTest.kt#keyedNestedScopesPreservePrefixPolarityAndUnavailableSelection",
+              "witness": "STRING/NUMBER/BOOLEAN by ordinary/starred/keyed field/group/starred-group, empty prefix/suffix, matching/nonmatching/all-empty and absent/duplicate key controls; both strategies and interpreter compare complete signatures."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This finding concerns runtime behavior, not static admission.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Packaged runtime retains omission/value message type for nested prefixes and suffixes.",
+          "evidence": {
+            "nested first-filled missing-prefix polarity": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedFirstFilledRetainsNestedPrefixPolarity",
+              "witness": "Same selected numeric value with a missing branch before/after yields OMISSION/VALUE; message type/pointer comparison against kernel and input preservation."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These DSL/runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-10-14 remains pending peer verification of this implementation.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

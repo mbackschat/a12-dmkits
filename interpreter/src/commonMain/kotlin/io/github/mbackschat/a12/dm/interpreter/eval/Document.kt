@@ -252,6 +252,7 @@ class Document(internal val config: DocumentConfig) {
         // cross-level star aggregates evaluated per row (the kernel's IndexFieldCache / row-index analog).
         // Space is O(rows × depth) (depth ≤ ~4), built only for the groups actually star-resolved.
         val prefixRowsByGroup: MutableMap<String, Map<List<Int>, List<List<Int>>>> = HashMap()
+        val firstFilledPrefixRowsByGroup: MutableMap<String, Map<List<Int>, List<List<Int>>>> = HashMap()
         // `GroupFilled(nonRepeatableGroup)` support: per (groupPath, iteration-group), the attach-depth →
         // prefix-set of valued DESCENDANTS of groupPath — the GroupFillCache analog for the non-repeatable
         // branch. Mirrors [attachByGroup] but filtered to groupPath's subtree, so `groupFilled` is O(1) per
@@ -308,6 +309,7 @@ class Document(internal val config: DocumentConfig) {
                 idx.storedContextsByGroup.size +
                 idx.iterationRowsByGroup.size +
                 idx.prefixRowsByGroup.size +
+                idx.firstFilledPrefixRowsByGroup.size +
                 idx.nonRepFilledByGroup.size +
                 idx.indexRowsByValue.size +
                 idx.indexColumnByScope.size +
@@ -1067,7 +1069,7 @@ class Document(internal val config: DocumentConfig) {
         private val group: String,
         private val rowReps: List<Int>,
         override val evaluated: Boolean,
-    ) : EvalContext, GroupListEnvironmentProvider, DeclaredStarRowProvider, FilterWalkRowProvider {
+    ) : EvalContext, GroupListEnvironmentProvider, DeclaredStarRowProvider, FilterWalkRowProvider, FirstFilledScanProvider {
 
         /**
          * Resolve a referenced field to its placement (or null) ONCE per path, cached for this row context —
@@ -1503,6 +1505,25 @@ class Document(internal val config: DocumentConfig) {
             }
         }
 
+        override fun firstFilledRows(groupPath: String, bindDepth: Int): Sequence<EvalContext> =
+            firstFilledRowsWithPrefix(groupPath, groupScopePrefix(groupPath, bindDepth))
+                .asSequence().map { RowContext(groupPath, it, evaluated = true) }
+
+        override fun firstFilledContainedCells(groupPath: String): Sequence<ScanCell> = sequence {
+            val scopeDepth = partsOf(groupPath).size
+            for (field in containedFields(groupPath)) {
+                val fieldParts = partsOf(field)
+                val common = minOf(commonPrefixLen(fieldParts, partsOf(group)), scopeDepth)
+                val repeated = (common until fieldParts.size - 1).any {
+                    "/" + fieldParts.take(it + 1).joinToString("/") in declaredReps
+                }
+                val rows = if (repeated) firstFilledRowsWithPrefix(parentGroup(field), rowReps.take(common))
+                    else emptyList()
+                if (rows.isEmpty()) yield(scanCell(field, reps(field)))
+                else for (row in rows) yield(scanCell(field, row + 1))
+            }
+        }
+
         private fun scanCell(path: String, reps: List<Int>): ScanCell {
             val raw = valueAt(path, reps)?.value
             val state = when {
@@ -1794,11 +1815,25 @@ class Document(internal val config: DocumentConfig) {
      */
     private fun rowsWithPrefix(repGroup: String, prefix: List<Int>): List<List<Int>> {
         val byPrefix = index().prefixRowsByGroup.getOrPut(repGroup) {
-            val m = HashMap<List<Int>, MutableList<List<Int>>>()
-            for (row in rowsOf(repGroup)) for (k in 0..row.size) m.getOrPut(row.take(k)) { ArrayList() }.add(row)
-            m
+            indexRowPrefixes(rowsOf(repGroup))
         }
         return byPrefix[prefix] ?: emptyList()
+    }
+
+    private fun firstFilledRowsWithPrefix(groupPath: String, prefix: List<Int>): List<List<Int>> =
+        index().firstFilledPrefixRowsByGroup.getOrPut(groupPath) {
+            val groups = partsOf(groupPath).indices.map { "/" + partsOf(groupPath).take(it + 1).joinToString("/") }
+            indexRowPrefixes(iterationRowsOf(groupPath).filter { row ->
+                groups.indices.none { level ->
+                    effectiveGroupRepetitionMaximums[groups[level]]?.let { row[level] > it } == true
+                }
+            })
+        }[prefix] ?: emptyList()
+
+    private fun indexRowPrefixes(rows: List<List<Int>>): Map<List<Int>, List<List<Int>>> {
+        val byPrefix = HashMap<List<Int>, MutableList<List<Int>>>()
+        for (row in rows) for (size in 0..row.size) byPrefix.getOrPut(row.take(size)) { ArrayList() }.add(row)
+        return byPrefix
     }
 
     /**
