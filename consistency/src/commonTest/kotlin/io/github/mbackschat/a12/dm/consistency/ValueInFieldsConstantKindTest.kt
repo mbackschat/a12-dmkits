@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
  */
 class ValueInFieldsConstantKindTest {
 
-    private fun codes(condition: String): List<String> = checkRead(
+    private fun codes(condition: String, token: String = "WEB"): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},
@@ -42,7 +42,8 @@ class ValueInFieldsConstantKindTest {
                   "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
               ]}}
              ]}}}
-            """.trimIndent().replace("CONDITION_HERE", condition),
+            """.trimIndent().replace("CONDITION_HERE", condition)
+                .replace("{\"value\":\"WEB\"}", "{\"value\":${kotlinx.serialization.json.JsonPrimitive(token)}}"),
         ),
     ).findings.map { it.code }
 
@@ -211,5 +212,11 @@ class ValueInFieldsConstantKindTest {
         assertEquals("/Order/Probe", finding.at)
         assertEquals(true, finding.explain.contains("/Order/GiftNote"), finding.explain)
         assertEquals(true, finding.explain.contains("False"), finding.explain)
+    }
+
+    @Test
+    fun aQuoteBearingEnumConstantLetsTheTypeWalkReachTheNextField() {
+        val condition = "FieldFilled(Reference) And NumberOfValueInFields(\\\"A\\\"\\\"B\\\" In Channel, Quantity) > 0"
+        assertEquals(listOf("MVK_NO_STRING_OR_ENUM"), codes(condition, "A\"B"))
     }
 }

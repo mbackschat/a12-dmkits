@@ -735,6 +735,7 @@ class DmtoolPublicContractTest {
                 .rootGroup("Dispatch", g -> g.stringField("Note", f -> f.lineBreaks())
                         .stringField("PairCopy", f -> f.lineBreaks())
                         .stringField("RepeatedCopy", f -> f.lineBreaks())
+                        .stringField("QuoteCopy", f -> { })
                         .group("Bins", b -> b.repeatable(2).indexField("Code")
                                 .stringField("Code", f -> f.lineBreaks()).numberField("Stock", f -> f.fractionDigits(0))))
                 .build().toJson();
@@ -750,7 +751,7 @@ class DmtoolPublicContractTest {
         edit.addRule(m -> m.rule(group).name("SelectBin").code("SELECTED").errorField(note)
                 .when(note.filled().and(stock.forIndex("A\r\nB").eq(11)))
                 .message(Dsl.en("Review stock.")).build());
-        for (var literal : Map.of("PairCopy", "A\r\nB", "RepeatedCopy", "A\r\r\nB").entrySet()) {
+        for (var literal : Map.of("PairCopy", "A\r\nB", "RepeatedCopy", "A\r\r\nB", "QuoteCopy", "A\"B").entrySet()) {
             var target = bound.str("/Dispatch/" + literal.getKey());
             edit.addComputation(m -> m.computation(target).name("Write" + literal.getKey())
                     .calc(new io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral(literal.getValue()))
@@ -781,7 +782,7 @@ class DmtoolPublicContractTest {
             assertEquals("value", cell.path("outcome").asText(), computed::out);
             values.put(cell.path("field").asText(), cell.path("value").asText());
         }
-        assertEquals(Map.of("Dispatch/PairCopy", "A\nB", "Dispatch/RepeatedCopy", "A\r\nB"), values, computed::out);
+        assertEquals(Map.of("Dispatch/PairCopy", "A\nB", "Dispatch/RepeatedCopy", "A\r\nB", "Dispatch/QuoteCopy", "A\"B"), values, computed::out);
         assertEquals(input, Files.readString(document));
     }
 

@@ -174,4 +174,19 @@ class ConditionTokenizerTest {
         assertEquals(listOf(TokenKind.UNTERMINATED_QUOTED_NAME), kinds("''"), "the empty name")
         assertEquals(listOf(TokenKind.UNTERMINATED_QUOTED_NAME), kinds("'1City'"), "a digit-leading name")
     }
+
+    @Test
+    fun decodedLiteralsLeaveOriginalUtf16OffsetsIntact() {
+        val text = "\"A\r\r\nB\"\"C\" And FieldFilled(Missing)"
+        val tokens = tokenize(text)
+        val literal = tokens.first()
+        assertEquals(TokenKind.STRING, literal.kind)
+        assertEquals("\"A\r\r\nB\"\"C\"", literal.text)
+        assertEquals(0, literal.start)
+        assertEquals(10, literal.end)
+        val missing = tokens.single { it.text == "Missing" }
+        assertEquals(27, missing.start)
+        assertEquals(34, missing.end)
+        assertEquals("Missing", text.substring(missing.start, missing.end))
+    }
 }

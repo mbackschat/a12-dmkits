@@ -8,6 +8,10 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-10-12 - literal-decoding allocation growth <a id="literal-decoding-memory-2026-10-12"></a>
+
+The isolated `:adapter:checkerMemoryPerfTest` passed at 200/800 programs with five interleaved pairs: retained snapshot bytes 28,906,968/115,481,960 (3.995x), allocated bytes per check 334,739,600/1,337,871,048 (3.997x). The unchanged growth ceilings hold after consolidating authored-literal decoding. Timing was not measured: the preflight observed load average 12.28 and sustained Spotlight work, so the allocation-based route follows [run discipline](AGENT-RUN-DISCIPLINE.md#performance-measurement--isolation-is-part-of-the-observation). This establishes growth, not a latency comparison. The complete checker JVM/Node and kernel-agreement lanes also passed.
+
 ## 2026-10-12 - declaration-name check-path gate <a id="declaration-name-check-2026-10-12"></a>
 
 The isolated `:adapter:checkerPreparedNodePerfTest` invocation passed after narrowing the shared reserved-name predicate. Node v24.18.0, 51 pairs and 200/800 programs yielded medians 643.46/2591.76 ms and paired growth 4.05x; report size stayed 5395 characters. The unchanged fixture and estimator check growth, not a certified latency target. [KF160](KERNEL-FINDINGS.md#kf160) records the declaration controls.

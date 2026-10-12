@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.NOW_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TODAY_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TRUE_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
+import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
@@ -52,7 +53,7 @@ internal fun TrackedFactBase.writtenConstantOf(side: String): WrittenConstant? {
     numberLiteralScale(tokens)?.let { return WrittenConstant.Number(it) }
     val single = tokens.singleOrNull() ?: return null
     if (single.kind == TokenKind.STRING) {
-        val value = single.text.removeSurrounding("\"").replace("\"\"", "\"")
+        val value = single.text.decodeAuthoredStringLiteral()
         return acceptedDateConstantFormat(value)
             ?.let { WrittenConstant.Temporal(componentsOf(it), keyword = false) }
             ?: WrittenConstant.Text(value)

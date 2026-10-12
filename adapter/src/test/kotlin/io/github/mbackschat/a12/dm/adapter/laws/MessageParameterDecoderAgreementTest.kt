@@ -215,4 +215,72 @@ class MessageParameterDecoderAgreementTest {
     private companion object {
         const val REVIEWS = "/Library/Reviews"
     }
+
+    @Test
+    fun messageLineBreakRefusalPrecedesLiteralPairing() {
+        val base = DocumentModelDraft.named("library-message-literal-keys").locale("en_US")
+            .rootGroup("Library") { library -> library.stringField("Branch") { }
+                .group("Reviews") { reviews -> reviews.repeatable(10).indexField("Code")
+                    .stringField("Code") { }.numberField("Stars") { it.fractionDigits(0) } } }
+            .build().toJson()
+        val keys = listOf("lf" to "A\nB", "crlf" to "A\r\nB", "repeated-cr" to "A\r\r\nB")
+        val rows = keys.flatMap { (conditionId, conditionKey) ->
+            keys.map { (messageId, messageKey) ->
+                val messageLiteral = "\"${messageKey.replace("\"", "\"\"")}\""
+                val model = rule(base, "/Library", "Branch", Dsl.en("Check \$Reviews/Stars For $messageLiteral\$.")) { edit ->
+                    val library = edit.group("/Library")
+                    library.str("Branch").filled().and(library.num("Reviews/Stars").forIndex(conditionKey).gt(0))
+                }
+                "$conditionId-$messageId" to model
+            }
+        }
+        assertEquals(9, rows.size)
+        assertEquals(rows.size, rows.map { it.first }.toSet().size)
+        for ((id, model) in rows) {
+            val errors = io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle()
+                .checkConsistency(model, io.github.mbackschat.a12.dm.core.ReferenceResolvers.selfContained())
+                .filter { it.severity() == io.github.mbackschat.a12.dm.core.Severity.ERROR }
+            assertEquals(listOf("Rule with path '/Library/CheckMessageParameter': Only values without line breaks are allowed.",
+                "Rule with path '/Library/CheckMessageParameter': The rule '/Library/CheckMessageParameter' specifies an incorrect error text for the language English. The error text contains a line break which is not valid. [INVALID_LINEBREAK]"),
+                errors.map { it.message() }, id)
+        }
+    }
+
+    @Test
+    fun aLegalQuoteBearingEnumTokenIsDecodedBeforeBothListGates() {
+        val host = DocumentModelDraft.named("library-quoted-enum-token").locale("en_US")
+            .rootGroup("Library") { library -> library.stringField("Branch") { }
+                .enumField("Verdict") { it.value("A\"B").value("OTHER") }
+                .numberField("Stars") { it.fractionDigits(0) } }
+            .build().toJson()
+        assertEquals(emptySet<String>(), kernelModelClasses(host), "declaration admission precedes decoder claims")
+        val edit = EditSession.read(host)
+        val library = edit.group("/Library")
+        val branch = library.str("Branch")
+        val verdict = library.field("Verdict")
+        val stars = library.field("Stars")
+        val conditions = listOf(
+            "value-list" to (Dsl.atLeastOneFieldValueIncludedInValueList(listOf("A\"B"), verdict) to emptyList<String>()),
+            "constant-kind" to (Dsl.numberOfValueInFields("A\"B", verdict, stars).gt(0) to listOf("MVK_NO_STRING_OR_ENUM")),
+            "predefined-name-quote" to (Dsl.validType(branch.field(), "\"") to emptyList<String>()),
+        )
+        val validator = io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator()
+        val rows = conditions.map { (id, probe) ->
+            val draft = library.rule { it.name("LiteralProbe").errorField(branch)
+                .`when`(branch.filled().and(probe.first)).code("LITERAL_PROBE")
+                .message(Dsl.en("Check the branch verdict.")).build() }.draft()
+            Row(id, validator.inject(host, draft), probe.second)
+        } + run {
+            val draft = library.rule { it.name("LiteralProbe").errorField(branch)
+                .`when`(branch.filled().and(Dsl.validType(branch.field(), "Probe"))).code("LITERAL_PROBE")
+                .message(Dsl.en("Check the branch verdict.")).build() }.draft()
+            // CustomTypeValidity refuses an empty name before rendering; this kernel-refusal control bypasses
+            // that measured builder gate (ValidityConditionOperandLawsTest), keeping the rest typed.
+            val raw = draft.withErrorCondition(draft.errorCondition().replace("\"Probe\"", "\"\""))
+            Row("predefined-name-empty", validator.inject(host, raw), listOf("MVK_NO_EMPTY"))
+        }
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel quoted token controls")
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) },
+            "portable quoted token controls")
+    }
 }

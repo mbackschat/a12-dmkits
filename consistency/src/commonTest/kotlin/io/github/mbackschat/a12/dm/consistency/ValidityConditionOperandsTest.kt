@@ -130,4 +130,10 @@ class ValidityConditionOperandsTest {
         expected["the negated spelling, same question"] = onlyConstants
         assertEquals(expected, actual, "what the date arm demands of its construction")
     }
+
+    @Test
+    fun aDoubledQuoteIsANonemptyPredefinedTypeName() {
+        assertEquals(emptyName, valid("Valid(Code, \\\"\\\")"), "empty name control")
+        assertEquals(emptyList(), valid("Valid(Code, \\\"\\\"\\\"\\\")"), "one decoded quote")
+    }
 }

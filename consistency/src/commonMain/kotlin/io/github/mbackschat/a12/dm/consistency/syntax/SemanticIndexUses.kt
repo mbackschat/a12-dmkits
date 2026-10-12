@@ -10,7 +10,7 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * @param valuePath the indexed reference, normalized and with any repetition wildcard kept; absent when the
  *     run before the keyword named nothing this reader could reduce.
  * @param keyPath the entity key, same reduction — absent for a literal key.
- * @param keyLiteral the string key with its quotes stripped and A12's doubled `""` collapsed — absent for
+ * @param keyLiteral the string key decoded once at the authored-token boundary — absent for
  *     an entity key. Exactly one of the two is present on a well-formed index.
  * @param keyCategory the name behind a `->` on the key, which is a value CATEGORY rather than an entity.
  * @param nested whether this index sits inside another's key, which is what the second `For` of
@@ -130,7 +130,7 @@ private fun List<Token>.pathEndingBefore(at: Int, keywords: Map<String, KeywordK
 private fun List<Token>.keyStartingAfter(at: Int, keywords: Map<String, KeywordKind>, filter: String?): KeyRun {
     val first = getOrNull(at + 1) ?: return KeyRun(null, null, null, -1, at + 1)
     if (first.kind == TokenKind.STRING) {
-        val literal = first.text.removeSurrounding("\"").replace("\"\"", "\"")
+        val literal = first.text.decodeAuthoredStringLiteral()
         val category = categoryAt(at + 2)
         return KeyRun(null, literal, category, at + 1, if (category == null) at + 2 else at + 4)
     }

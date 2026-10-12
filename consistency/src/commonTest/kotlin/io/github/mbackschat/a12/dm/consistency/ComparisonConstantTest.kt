@@ -2,6 +2,9 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * The checker's half of a comparison against a written-out constant, typed as A12 types the constant.
@@ -72,9 +75,35 @@ class ComparisonConstantTest {
          ]}}}
     """.trimIndent()
 
-    private fun quoted(text: String): String = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    private fun quoted(text: String): String = kotlinx.serialization.json.JsonPrimitive(text).toString()
 
     private companion object {
         const val DATE = "MVK_INVALID_COMPARE_TO_DATE"
+    }
+
+    @Test
+    fun aWrittenTextConstantCarriesTheOnceDecodedValue() {
+        val fixture = Json.parseToJsonElement(SyntaxFixtureData.messageParameters.first()).jsonObject
+        val source = ModelSource(fixture.getValue("model").jsonPrimitive.content)
+        val facts = TrackedFactBase(prepare(admit(source) as Admission.Admitted), ReadTranscript())
+        val rows = listOf(
+            "crlf" to ("\"A\r\nB\"" to "A\nB"),
+            "repeated-cr" to ("\"A\r\r\nB\"" to "A\r\nB"),
+        )
+        for ((id, pair) in rows) {
+            assertEquals(WrittenConstant.Text(pair.second), facts.writtenConstantOf(pair.first), id)
+        }
+    }
+
+    @Test
+    fun aFindingAfterADecodedLiteralStillPointsIntoTheOriginalMember() {
+        val condition = "[Label] == \"A\r\r\nB\"\"C\" And FieldFilled(Missing)"
+        val member = "FieldFilled(Label) And $condition"
+        val finding = checkRead(ModelSource(model(condition))).findings.single { it.code == "MVK_INVALID_ENTITY" }
+        val span = checkNotNull(finding.span)
+        assertEquals("errorCondition", span.member)
+        assertEquals(member.indexOf("Missing"), span.start)
+        assertEquals(member.indexOf("Missing") + 7, span.end)
+        assertEquals("Missing", member.substring(span.start, span.end))
     }
 }

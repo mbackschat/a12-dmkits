@@ -13,7 +13,7 @@ import java.util.Optional
 
 class AuthoredStringNewlineDiffTest {
     private enum class Break(val text: String) {
-        CR("A\rB"), LF("A\nB"), CRLF("A\r\nB"), REPEATED_CR("A\r\r\nB")
+        CR("A\rB"), LF("A\nB"), CRLF("A\r\nB"), REPEATED_CR("A\r\r\nB"), QUOTE("A\"B")
     }
 
     private val factory = object : ICustomFieldTypeFactory {
@@ -87,6 +87,7 @@ class AuthoredStringNewlineDiffTest {
                         Break.CR -> listOf("CR")
                         Break.LF, Break.CRLF -> listOf("CRLF", "LF")
                         Break.REPEATED_CR -> listOf("REPEATED_CR")
+                        Break.QUOTE -> listOf("QUOTE")
                     }
                     assertEquals(matches, wantMessages.map { it.code }.sorted(), "$custom/$raw/$strategy positive control")
                     val expected = if (strategy == 0) dynamic.computeResults(instance, null, Locale.US, factory)
@@ -131,23 +132,23 @@ class AuthoredStringNewlineDiffTest {
         val base = DocumentModelDraft.named("dispatch-bin-keys").locale("en_US")
             .rootGroup("Dispatch") { group ->
                 group.stringField("Reference") { }
-                group.group("Bins") { bins -> bins.repeatable(3).indexField("Code")
+                group.group("Bins") { bins -> bins.repeatable(4).indexField("Code")
                     .stringField("Code") { it.lineBreaks() }.numberField("Stock") { it.fractionDigits(0) } }
             }.build().toJson()
         val bound = BoundModel.ofJson(base)
         val reference = bound.str("/Dispatch/Reference")
         val stock = bound.num("/Dispatch/Bins/Stock")
         var json = base
-        for ((literal, expected) in listOf(Break.CR to 33, Break.LF to 11, Break.CRLF to 11, Break.REPEATED_CR to 22)) {
+        for ((literal, expected) in listOf(Break.CR to 33, Break.LF to 11, Break.CRLF to 11, Break.REPEATED_CR to 22, Break.QUOTE to 44)) {
             json = TypedRules.inject(json, bound.rule(bound.group("/Dispatch")).name("Select${literal.name}")
                 .errorField(reference.field()).`when`(reference.filled().and(stock.forIndex(literal.text).eq(expected.toLong())))
                 .code(literal.name).message(Dsl.en("Review bin stock.")).build())
         }
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(json))
         val input = ObjectMapper().writeValueAsString(mapOf("Dispatch" to mapOf("Reference" to "D", "Bins" to
-            listOf(Break.LF to 11, Break.REPEATED_CR to 22, Break.CR to 33).map { (key, stock) -> mapOf("Code" to key.text, "Stock" to stock) })))
+            listOf(Break.LF to 11, Break.REPEATED_CR to 22, Break.CR to 33, Break.QUOTE to 44).map { (key, stock) -> mapOf("Code" to key.text, "Stock" to stock) })))
         val kernel = DocumentDifferential.kernel(json, input, dynamic = true)
         assertEquals(Break.entries.map { it.name }.sorted(), kernel.messages.map { it.code }.sorted())
-        DocumentDifferential.assertAgree(json, mapOf("three distinct normalized keys" to input))
+        DocumentDifferential.assertAgree(json, mapOf("four distinct decoded keys" to input))
     }
 }

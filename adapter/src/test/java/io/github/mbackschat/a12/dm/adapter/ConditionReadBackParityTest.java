@@ -21,6 +21,13 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
+import io.github.mbackschat.a12.dm.rulekit.spi.ReadBackends;
+import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.schemakit.JsonSchemaExporter;
+import io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
@@ -245,5 +252,79 @@ class ConditionReadBackParityTest {
                 .map(Map.Entry::getValue).findFirst().orElseThrow();
         return RENDER.render(assertInstanceOf(ReadResult.Converted.class, r,
                 () -> ruleName + " did not convert: " + r).condition());
+    }
+
+    private record LiteralCase(String id, String authored, String decoded) { }
+
+    private static List<LiteralCase> literalCases() {
+        return List.of(
+                new LiteralCase("crlf", "A\r\nB", "A\nB"),
+                new LiteralCase("repeated-cr", "A\r\r\nB", "A\r\nB"),
+                new LiteralCase("doubled-quote", "A\"B", "A\"B"),
+                new LiteralCase("backslash", "A\\nB", "A\\nB"));
+    }
+
+    @Test
+    void bothProvidersReturnIndependentlyExpectedDecodedLiteralValues() {
+        var edit = EditSession.read(ORDER_JSON);
+        var order = edit.group("/Order");
+        var reference = order.str("Reference");
+        var cases = literalCases();
+        assertEquals(4, cases.size());
+        assertEquals(cases.size(), cases.stream().map(LiteralCase::id).distinct().count());
+        for (int i = 0; i < cases.size(); i++) {
+            var row = cases.get(i);
+            var literal = assertInstanceOf(ComparisonCondition.class, reference.eq(row.authored()));
+            assertEquals(row.authored(), assertInstanceOf(StringLiteral.class, literal.right()).value(), row.id());
+            var rule = order.rule(b -> b.name("LiteralProbe").errorField(reference)
+                    .when(literal).code("LITERAL").message(en("Check the reference.")).build());
+            String json = BoundModel.ofJson(ORDER_JSON).add(rule).toJson();
+            for (ConditionReadBack provider : List.of(new KernelConditionReadBack(), new InterpreterConditionReadBack())) {
+                var results = read(provider, json);
+                var readLiteral = assertInstanceOf(ReadResult.Converted.class, results.get("/Order/LiteralProbe"));
+                var comparison = assertInstanceOf(ComparisonCondition.class, readLiteral.condition());
+                assertEquals(row.decoded(), assertInstanceOf(StringLiteral.class, comparison.right()).value(),
+                        row.id() + ": " + provider.getClass().getSimpleName());
+            }
+        }
+    }
+
+    @Test
+    void schemaProjectsDecodedRulePatternsWhilePreservingAuthoredCarriageAndDeclarations() throws Exception {
+        var mapper = new ObjectMapper();
+        var cases = literalCases();
+        assertEquals(4, cases.size());
+        String declaredPattern = "A\\nB";
+        for (var row : cases) {
+            String structure = DocumentModelDraft.named("dispatch-schema-literals").locale("en_US")
+                    .rootGroup("Root", dispatch -> dispatch.stringField("Reference", f -> { })
+                            .stringField("RoutingCode", f -> f.pattern(declaredPattern, "Check the routing format.")))
+                    .build().toJson();
+            var edit = EditSession.read(structure);
+            var dispatch = edit.group("/Root");
+            var reference = dispatch.str("Reference");
+            var rule = dispatch.rule(b -> b.name("ReferenceFormat").errorField(reference)
+                    .when(reference.violates(row.authored())).code("REFERENCE_FORMAT")
+                    .message(en("Check the reference format.")).build());
+            String json = BoundModel.ofJson(structure).add(rule).toJson();
+            String authoredCondition = mapper.readTree(json).findValue("errorCondition").asText();
+            for (ConditionReadBack provider : List.of(new KernelConditionReadBack(), new InterpreterConditionReadBack())) {
+                try {
+                    ReadBackends.override(provider);
+                    var exported = new JsonSchemaExporter().export(json);
+                    var schema = mapper.readTree(exported.jsonSchema());
+                    String context = row.id() + ": " + provider.getClass().getSimpleName();
+                    assertEquals(row.decoded(), schema.path("properties").path("Reference").path("pattern").asText(), context);
+                    assertEquals(declaredPattern, schema.path("properties").path("RoutingCode").path("pattern").asText(), context);
+                    assertEquals(authoredCondition, schema.path("x-a12-rule").get(0).path("element")
+                            .path("Rule").path("errorCondition").asText(), context);
+                    var imported = mapper.readTree(new JsonSchemaImporter().importSchema(exported.jsonSchema()).dmJson());
+                    assertEquals(authoredCondition, imported.findValue("errorCondition").asText(), context);
+                    assertEquals(declaredPattern, imported.at("/content/modelRoot/rootGroups/0/Group/elements/1/Field/fieldType/StringType/pattern").asText(), context);
+                } finally {
+                    ReadBackends.reset();
+                }
+            }
+        }
     }
 }

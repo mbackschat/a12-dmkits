@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -39,6 +40,53 @@ internal object IndexKeyNormalizationPopulation {
                 val condition = rule.errorCondition() + " And Sum(${case.name}/Amount For \"$key\") > 0"
                 ConditionCase("${case.name}-$index", validator.inject(host, rule.withErrorCondition(condition)),
                     if (case.admitted[index]) "MVK_PARAMSIZE_INVALIDN" else "MVK_INDEX_VALUE_INVALID")
+            }
+        }
+    }
+
+    fun literalDecodingRows(custom: Boolean = false): List<ConditionCase> {
+        val declarations = listOf(
+            Triple("Unbounded", 0, 0), Triple("MinimumFour", 4, 0),
+            Triple("MaximumThree", 0, 3), Triple("MaximumFour", 0, 4),
+        )
+        val keys = listOf(
+            "plain" to "AB", "lone-cr" to "A\rB", "lf" to "A\nB",
+            "crlf" to "A\r\nB", "repeated-cr" to "A\r\r\nB",
+            "empty" to "", "quote" to "\"", "doubled-quote" to "A\"B", "backslash" to "A\\nB",
+        )
+        val admitted = listOf(
+            listOf(true, true, true, true, true, false, true, true, true),
+            listOf(false, false, false, false, true, false, false, false, true),
+            listOf(true, true, true, true, false, false, true, true, false),
+            listOf(true, true, true, true, true, false, true, true, true),
+        )
+        val host = DocumentModelDraft.named("policy-authored-index-literals").locale("en_US")
+            .rootGroup("Policy") { policy ->
+                policy.stringField("Reference") { }
+                for ((name, min, max) in declarations) policy.group(name) { group ->
+                    group.repeatable(5).indexField("Code")
+                    if (custom) group.customField("Code") { field ->
+                        field.type("PolicyCode")
+                        if (min > 0) field.minLength(min)
+                        if (max > 0) field.maxLength(max)
+                    } else group.stringField("Code") { field ->
+                        if (min > 0) field.minLength(min)
+                        if (max > 0) field.maxLength(max)
+                    }
+                    group.numberField("Amount") { it.fractionDigits(2) }
+                }
+            }.build().toJson()
+        val edit = EditSession.read(host)
+        val policy = edit.group("/Policy")
+        val reference = policy.str("Reference")
+        return declarations.flatMapIndexed { declarationAt, (name, _, _) ->
+            val amount = policy.num("$name/Amount")
+            keys.mapIndexed { keyAt, (id, key) ->
+                val rule = policy.rule { it.name("LiteralProbe").errorField(reference)
+                    .`when`(reference.filled().and(amount.forIndex(key).gt(0)))
+                    .code("LITERAL_PROBE").message(Dsl.en("Check the selected policy amount.")).build() }
+                ConditionCase("$name-$id", RuleValidator().inject(host, rule.draft()),
+                    if (admitted[declarationAt][keyAt]) null else "MVK_INDEX_VALUE_INVALID")
             }
         }
     }

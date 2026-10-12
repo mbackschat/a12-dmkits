@@ -1,11 +1,11 @@
 package io.github.mbackschat.a12.dm.consistency
 
-
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.DATE_EXTRACT_OPERATIONS
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
+import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
 import io.github.mbackschat.a12.dm.consistency.syntax.inAFilterBody
 import io.github.mbackschat.a12.dm.consistency.syntax.isName
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
@@ -332,7 +332,7 @@ private fun TrackedFactBase.armIn(
 private fun armOf(operand: List<Token>, extractOps: Map<String, String>): SlotArm {
     val head = operand.firstOrNull() ?: return SlotArm.Unjudged
     if (operand.size == 1 && head.kind == TokenKind.STRING) {
-        return SlotArm.Constant(head.text.trim('"').replace("\"\"", "\""))
+        return SlotArm.Constant(head.text.decodeAuthoredStringLiteral())
     }
     if (head.kind == TokenKind.NAME && operand.getOrNull(1)?.text == "(") {
         extractOps[head.text]?.let { return SlotArm.Extract(it) }

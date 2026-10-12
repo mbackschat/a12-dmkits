@@ -139,8 +139,7 @@ private class MessageParameterReader(
     }
 
     private fun key(): MessageKey {
-        if (peek()?.kind == TokenKind.STRING) return MessageKey(literal = consume().text
-            .removeSurrounding("\"").replace("\"\"", "\"").replace("\r\n", "\n"))
+        if (peek()?.kind == TokenKind.STRING) return MessageKey(literal = consume().text.decodeAuthoredStringLiteral())
         predictEntity(checkFollower = false)
         val entity = entity(indexPosition = false)
         if (word(peek()) == Word.FOR) {

@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORD
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonArray
@@ -262,7 +263,7 @@ private fun TrackedFactBase.constantDomainFinding(
     listed.forEach { entry ->
         domain += entry.contributedValues() ?: return null
     }
-    val offending = opposite.map { it.trim().removeSurrounding("\"") }
+    val offending = opposite.map { it.trim().decodeAuthoredStringLiteral() }
         .firstOrNull { it !in domain } ?: return null
     return Finding(
         FindingCategory.A12_CONSTRAINT,

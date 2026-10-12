@@ -14,7 +14,7 @@ import kotlin.test.assertEquals
  */
 class ValueListConditionGatesTest {
 
-    private fun codes(condition: String): List<String> = checkRead(
+    private fun codes(condition: String, token: String = "WEB"): List<String> = checkRead(
         ModelSource(
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},
@@ -60,7 +60,8 @@ class ValueListConditionGatesTest {
                   "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
               ]}}
              ]}}}
-            """.trimIndent().replace("CONDITION_HERE", condition),
+            """.trimIndent().replace("CONDITION_HERE", condition)
+                .replace("{\"value\":\"WEB\"}", "{\"value\":${kotlinx.serialization.json.JsonPrimitive(token)}}"),
         ),
     ).findings.map { it.code }
 
@@ -305,5 +306,12 @@ class ValueListConditionGatesTest {
 
         /** The kernel's own spelling, typo included. */
         private const val CATEGORY_UNKNOWN = "MVK_CATEGORY_UNKOWN"
+    }
+
+    @Test
+    fun aWrittenEnumDomainValueDecodesItsDoubledQuote() {
+        val condition = "FieldFilled(Reference) And AtLeastOneFieldValueIncludedInValueList(Channel In \\\"A\\\"\\\"B\\\")"
+        assertEquals(emptyList(), codes(condition, "A\"B"))
+        assertEquals(listOf("MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY"), codes(condition))
     }
 }

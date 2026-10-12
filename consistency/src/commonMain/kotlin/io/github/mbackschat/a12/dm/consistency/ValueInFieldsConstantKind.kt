@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
 import io.github.mbackschat.a12.dm.consistency.syntax.TODAY_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TRUE_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
+import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
@@ -335,5 +336,5 @@ private fun ConditionCall.constantSlotIn(member: String): TextSpan = operands.fi
 
 private fun stringConstantOf(constantText: String): String? {
     val token = tokenize(constantText).singleOrNull()?.takeIf { it.kind == TokenKind.STRING } ?: return null
-    return token.text.removeSurrounding("\"").replace("\"\"", "\"")
+    return token.text.decodeAuthoredStringLiteral()
 }

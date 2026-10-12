@@ -8329,13 +8329,17 @@
       }
     },
     "kf542": {
-      "sha256": "76548b00c5d1e2e46f9b26f3fdc968f9aa6d94c811117c54771410e3bf716d95",
+      "sha256": "9d69ab42cf1b8a3ebd3659bdded6f24ecbba95ac546e2f04d3e4b826c0ae8c8a",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
-        "checker": [],
+        "checker": [
+          "literal decoding"
+        ],
         "json-schema-import": [],
-        "json-schema-export": [],
+        "json-schema-export": [
+          "decoded projection and authored carriage"
+        ],
         "adapter": [
           "literal value and selected-key decoding"
         ],
@@ -8354,19 +8358,29 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "Static literal admission is a separate decoder consumer, assigned its own finite differential slice before the batch handback.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "A separate static kernel matrix confirms once-decoded String keys; the CUSTOM and comparison sibling methods measure those carriers independently.",
+          "evidence": {
+            "literal decoding": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIndexKeyConstantAgreementTest.kt#stringKeyLengthIsMeasuredAfterExactlyOneLiteralDecodingPass",
+              "witness": "Repeated-CR min4/max3 controls reject both omitted and repeated normalization."
+            }
+          }
         },
         "json-schema-import": {
           "state": "OPEN",
-          "basis": "No import claim is made by this runtime matrix; declaration-pattern and synthesized-rule boundaries are assigned a separate session verification slice.",
+          "basis": "Textual carriage survives on the Root carrier. Import root-identity and projected-pattern applicability are separate measured/source-exposed session gaps; this slice does not claim a valid lossless import for them.",
           "evidence": {}
         },
         "json-schema-export": {
-          "state": "OPEN",
-          "basis": "No projection claim is made by this runtime matrix; kernel-backed readback and lossless authored carriage are assigned a separate session verification slice.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Both explicit readback providers project decoded rule patterns while preserving original authored carriage and a declaration-owned backslash pattern.",
+          "evidence": {
+            "decoded projection and authored carriage": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/ConditionReadBackParityTest.java#schemaProjectsDecodedRulePatternsWhilePreservingAuthoredCarriageAndDeclarations",
+              "witness": "CRLF, repeated-CR, doubled quotes and literal backslash have independent expected projected values."
+            }
+          }
         },
         "adapter": {
           "state": "APPLIED",
@@ -8374,7 +8388,7 @@
           "evidence": {
             "literal value and selected-key decoding": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/AuthoredStringNewlineDiffTest.kt#semanticIndexLiteralsDecodeOnceBeforeSelectingStoredKeys",
-              "witness": "Lone CR, LF, CRLF and repeated-CR literals select independently identified rows; both strategies agree with the interpreter."
+              "witness": "Lone CR, LF, CRLF, repeated-CR and doubled-quote literals select independently identified rows; both strategies agree with the interpreter."
             }
           }
         },
@@ -8384,7 +8398,7 @@
           "evidence": {
             "literal value and selected-key decoding": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/AuthoredStringNewlineDiffTest.kt#semanticIndexLiteralsDecodeOnceBeforeSelectingStoredKeys",
-              "witness": "Lone CR, LF, CRLF and repeated-CR literals select independently identified rows; both strategies agree with the interpreter."
+              "witness": "Lone CR, LF, CRLF, repeated-CR and doubled-quote literals select independently identified rows; both strategies agree with the interpreter."
             }
           }
         },
@@ -8394,7 +8408,7 @@
           "evidence": {
             "literal value and selected-key decoding": {
               "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedLiteralDecodingPreservesOnePassAndSelectedKeys",
-              "witness": "Repeated-CR versus CRLF comparison, CRLF semantic-index selection and both literal computation values through the packaged launcher."
+              "witness": "Repeated-CR versus CRLF comparison, selected-key read and newline/quote literal computation values through the packaged launcher."
             }
           }
         },

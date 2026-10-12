@@ -2,10 +2,13 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
+import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -205,5 +208,39 @@ class CheckerComparisonConstantAgreementTest {
 
         /** The rows where the checker answers otherwise, with what it answers. */
         val OURS: Map<String, Set<String>> = mapOf()
+    }
+
+    @Test
+    fun stringComparisonAdmissionDoesNotInferTheIndexKeysLengthGate() {
+        val host = DocumentModelDraft.named("dispatch-literal-comparison-bounds").locale("en_US")
+            .rootGroup("Dispatch") { dispatch ->
+                dispatch.stringField("Unbounded") { }
+                    .stringField("MinimumFour") { it.minLength(4) }
+                    .stringField("MaximumThree") { it.maxLength(3) }
+                    .stringField("MaximumFour") { it.maxLength(4) }
+            }.build().toJson()
+        val edit = EditSession.read(host)
+        val dispatch = edit.group("/Dispatch")
+        val literals = listOf(
+            "plain" to "AB", "lone-cr" to "A\rB", "lf" to "A\nB", "crlf" to "A\r\nB",
+            "repeated-cr" to "A\r\r\nB",
+        )
+        val rows = listOf("Unbounded", "MinimumFour", "MaximumThree", "MaximumFour").flatMap { name ->
+            val field = dispatch.str(name)
+            literals.flatMap { (id, literal) ->
+                listOf(false, true).map { unequal ->
+                    val condition = if (unequal) field.ne(literal) else field.eq(literal)
+                    val rule = dispatch.rule { it.name("LiteralProbe").errorField(field).`when`(condition)
+                        .code("LITERAL_PROBE").message(Dsl.en("Check the dispatch reference.")).build() }
+                    ConditionCase("$name-$id-$unequal", validator.inject(host, rule.draft()), null)
+                }
+            }
+        }
+        assertEquals(40, rows.size)
+        assertEquals(rows.size, rows.map { it.id }.toSet().size)
+        val expected = rows.map { it.id to emptySet<String>() }
+        assertEquals(expected, rows.map { it.id to kernelModelClasses(it.model) }, "kernel comparison admission control")
+        assertEquals(expected, rows.map { row -> row.id to check(ModelSource(row.model)).findings
+            .filter { it.justifiesRejection }.map { it.code }.toSet() }, "portable comparison admission control")
     }
 }

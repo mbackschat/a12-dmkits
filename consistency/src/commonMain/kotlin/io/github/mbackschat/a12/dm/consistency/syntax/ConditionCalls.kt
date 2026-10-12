@@ -66,7 +66,7 @@ data class ConditionCall(
  *     one still says which element it is about. Equal to [path] on a clause-free operand, and absent on the
  *     same shapes [path] is absent for.
  * @param clauses what the spec carries, in authored order — empty on a bare operand.
- * @param literal the STRING constant it is, quotes stripped and A12's doubled `""` collapsed — absent unless
+ * @param literal the STRING constant it is, decoded once at the authored-token boundary — absent unless
  *     the operand is exactly one string token, by the same reduction rule [path] follows. An operand is never
  *     both this and [path]: a law about a value list's constants reads this and skips what it cannot reduce.
  * @param text the operand's authored text, verbatim between its first and last token. A law whose operator
@@ -310,13 +310,12 @@ internal fun rulesOwnReadsIn(text: String, language: ConditionLanguage): String 
 /**
  * The string constant this run is, or null when it is anything else.
  *
- * A12 writes an embedded quote as a doubled one, and the tokenizer keeps the literal verbatim, so the two
- * unwrappings happen here rather than at each consumer — a law comparing a constant against a declared
- * domain compares the VALUE, and `"A""B"` names `A"B`.
+ * The tokenizer keeps the literal verbatim so every consumer receives the decoded value without changing
+ * the source spans. A law comparing a constant against a declared domain compares that VALUE.
  */
 private fun List<Token>.asLiteral(): String? {
     val token = singleOrNull()?.takeIf { it.kind == TokenKind.STRING } ?: return null
-    return token.text.removeSurrounding("\"").replace("\"\"", "\"")
+    return token.text.decodeAuthoredStringLiteral()
 }
 
 /**

@@ -207,4 +207,30 @@ class CheckerIndexKeyConstantAgreementTest {
         }
 
     }
+
+    @Test
+    fun stringKeyLengthIsMeasuredAfterExactlyOneLiteralDecodingPass() {
+        val rows = IndexKeyNormalizationPopulation.literalDecodingRows()
+        assertEquals(36, rows.size)
+        assertEquals(rows.size, rows.map { it.id }.toSet().size)
+        val expected = rows.map { it.id to setOfNotNull(it.expected) }
+        assertEquals(expected, rows.map { it.id to kernelModelClasses(it.model) }, "kernel literal length control")
+        assertEquals(expected, rows.map { row -> row.id to check(ModelSource(row.model)).findings
+            .filter { it.justifiesRejection }.map { it.code }.toSet() }, "portable literal length control")
+    }
+
+    @Test
+    fun customKeyBoundsAreMeasuredSeparatelyAndCrBearingValuesRemainUnjudged() {
+        val rows = IndexKeyNormalizationPopulation.literalDecodingRows(custom = true)
+        assertEquals(36, rows.size)
+        assertEquals(rows.size, rows.map { it.id }.toSet().size)
+        val kernelExpected = rows.map { it.id to setOfNotNull(it.expected) }
+        assertEquals(kernelExpected, rows.map { it.id to kernelModelClasses(it.model) }, "kernel CUSTOM literal length control")
+        val portableExpected = rows.map { row ->
+            row.id to if (row.id.endsWith("-lone-cr") || row.id.endsWith("-repeated-cr")) emptySet()
+                else setOfNotNull(row.expected)
+        }
+        assertEquals(portableExpected, rows.map { row -> row.id to check(ModelSource(row.model)).findings
+            .filter { it.justifiesRejection }.map { it.code }.toSet() }, "portable CUSTOM bounds and retained CR decline")
+    }
 }

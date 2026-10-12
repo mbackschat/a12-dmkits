@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.DATE_CONSTRUCTION
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
+import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
 import io.github.mbackschat.a12.dm.consistency.syntax.isName
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 
@@ -158,7 +159,7 @@ private fun TrackedFactBase.predefinedTypeArmDefect(
                 "kind of its own",
         )
     }
-    return if (name.text.trim('"').replace("\"\"", "\"").isEmpty()) {
+    return if (name.text.decodeAuthoredStringLiteral().isEmpty()) {
         ValidityDefect(
             "MVK_NO_EMPTY", field.path,
             "is judged against a predefined type whose name is empty — name the registered type, which " +

@@ -248,4 +248,46 @@ class ConditionCallTest {
                 .map { call -> call.operator to call.operands.map { it.path } },
         )
     }
+
+    @Test
+    fun authoredStringOperandsDecodeOnceWithoutChangingTheirText() {
+        val rows = listOf(
+            "lone-cr" to ("\"A\rB\"" to "A\rB"),
+            "lf" to ("\"A\nB\"" to "A\nB"),
+            "crlf" to ("\"A\r\nB\"" to "A\nB"),
+            "repeated-cr" to ("\"A\r\r\nB\"" to "A\r\nB"),
+            "two-crlf" to ("\"A\r\nB\r\nC\"" to "A\nB\nC"),
+            "empty" to ("\"\"" to ""),
+            "four-quotes" to ("\"\"\"\"" to "\""),
+            "doubled-quote" to ("\"A\"\"B\"" to "A\"B"),
+            "backslash" to ("\"A\\nB\"" to "A\\nB"),
+        )
+        assertEquals(9, rows.size)
+        assertEquals(rows.size, rows.map { it.first }.toSet().size)
+        for ((id, pair) in rows) {
+            val (authored, expected) = pair
+            val operand = operandOf(tokenize(authored), ConditionLanguage.EN, authored)
+            assertEquals(expected, operand.literal, id)
+            assertEquals(authored, operand.text, "$id: source text")
+            val message = readMessageParameter("Shipments/Weight For $authored", ConditionLanguage.EN,
+                object : MessageParameterActions {}) as MessageParameterRead.Parsed
+            assertEquals(expected, (message.parameter as MessageParameter.Field).key?.literal, "$id: message reader")
+        }
+    }
+
+    @Test
+    fun semanticIndexKeysUseTheSameDecodedValuesAsOperands() {
+        val rows = listOf(
+            "crlf" to ("\"A\r\nB\"" to "A\nB"),
+            "repeated-cr" to ("\"A\r\r\nB\"" to "A\r\nB"),
+            "four-quotes" to ("\"\"\"\"" to "\""),
+        )
+        for ((id, pair) in rows) {
+            val (authored, expected) = pair
+            val text = "[Shipments/Weight For $authored] > 0"
+            val use = semanticIndexUsesIn(text, ConditionLanguage.EN, "For").single()
+            assertEquals(expected, use.keyLiteral, id)
+            assertEquals(authored, text.substring(use.start, use.end), "$id: source span")
+        }
+    }
 }

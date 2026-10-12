@@ -6,8 +6,8 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 
 /**
- * Whether A12's value validation of this index field admits the non-empty [constant], or null where this reader
- * cannot say.
+ * Whether A12's value validation of this index field admits the non-empty, already-decoded [constant], or
+ * null where this reader cannot say.
  *
  * A12 runs the index field type's `isValueApplicable` over a constant key (`CheckSemanticIndexImpl`). A
  * Boolean's custom values do not count here: a Boolean declaring `J`/`N` still admits exactly `true` and
@@ -19,8 +19,8 @@ import kotlinx.serialization.json.intOrNull
  * Unjudged, and therefore safe to under-report: a constant meeting its length bounds beside a declared String
  * pattern outside [KeyPattern]'s represented Java-to-JS domain; a table-backed enumeration, whose values a model does
  * not carry; a non-String or ambiguous type definition, an unspecified field, and a constant
- * holding a CR on another type. String keys normalize CRLF to LF before both length and pattern checks
- * (DG102-E2 kernel population); a lone CR is preserved.
+ * holding a CR on another type. The authored-token boundary decodes the key before length and pattern
+ * checks (DG102-E2 kernel population); this validator must not normalize that value a second time.
  */
 internal fun TrackedFactBase.admitsIndexConstant(field: TrackedDeclaration, constant: String): Boolean? {
     val fieldType = field.declaredFieldType() ?: return null
@@ -40,7 +40,7 @@ internal fun TrackedFactBase.admitsIndexConstant(field: TrackedDeclaration, cons
         return null
     }
     return when (type) {
-        FieldType.STRING -> typeBody?.stringAdmits(constant.replace("\r\n", "\n"))
+        FieldType.STRING -> typeBody?.stringAdmits(constant)
         FieldType.NUMBER -> numberShapeAdmits(
             minFraction = maxOf(typeBody?.declaredInt("minFractionalDigits") ?: 0, 0),
             maxFraction = typeBody?.declaredInt("maxFractionalDigits") ?: 0,

@@ -521,14 +521,17 @@ private class ConditionParser(
     private fun readString(): Expr.StrLit {
         expect('"')
         val start = pos
-        while (peek() != '"') {
+        while (true) {
             require(pos < src.length) { "parser: unterminated string in \"$src\"" }
-            next()
+            if (peek() == '"') {
+                if (src.getOrNull(pos + 1) != '"') break
+                pos += 2
+            } else next()
         }
         val s = src.substring(start, pos)
         expect('"')
         // AuthoredStringNewlineDiffTest separates literal decoding from Document ingestion.
-        return Expr.StrLit(s.replace("\r\n", "\n"))
+        return Expr.StrLit(s.replace("\"\"", "\"").replace("\r\n", "\n"))
     }
 
     private fun readIdent(): String {

@@ -26,8 +26,11 @@ class DateConstructionSlotsTest {
      * `errorCondition` string, the source never parses, and every row expecting silence then passes on a
      * model that was never checked. [component] carries raw JSON and is deliberately not escaped.
      */
-    private fun codes(target: String, construction: String, component: String = ""): List<String> {
-        val quoted = construction.replace("\"", "\\\"")
+    private fun codes(target: String, construction: String, component: String = ""): List<String> =
+        findings(target, construction, component).map { it.code }
+
+    private fun findings(target: String, construction: String, component: String = ""): List<Finding> {
+        val quoted = kotlinx.serialization.json.JsonPrimitive(construction).toString().removeSurrounding("\"")
         return checkRead(
             ModelSource(
                 """
@@ -48,7 +51,7 @@ class DateConstructionSlotsTest {
              ]}}}
                 """.trimIndent(),
             ),
-        ).findings.map { it.code }
+        ).findings
     }
 
     private fun date(construction: String) = codes("TravelDate", construction)
@@ -471,4 +474,16 @@ class DateConstructionSlotsTest {
 
     /** A component of a type outside the judged three — refused by A12, silent here. */
     private fun timeField() = part(braces(""""type":"TimeType","TimeType":{"format":"HH:mm:ss"}"""))
+
+    @Test
+    fun aDateSlotExplainsItsDecodedConstantWithoutTrimmingEmbeddedQuotes() {
+        val rows = listOf(
+            "four-quotes" to ("\"\"\"\"" to "\""),
+            "repeated-cr" to ("\"0\r\r\n1\"" to "0\r\n1"),
+        )
+        for ((id, pair) in rows) {
+            val finding = findings("Departure", "Time(${pair.first})").single { it.code == wrongFormat }
+            assertEquals(true, finding.explain.contains("written as `\"${pair.second}\"`"), "$id: ${finding.explain}")
+        }
+    }
 }
