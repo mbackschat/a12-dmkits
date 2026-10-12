@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +29,7 @@ import java.util.Map;
  */
 final class Carriage {
 
+    static final String X_ROOT_GROUP_NAME = "x-a12-root-group-name";
     static final String X_INDEX_FIELD_NAME = "x-a12-index-field-name";
     static final String X_RULE = "x-a12-rule";
     static final String X_COMPUTATION = "x-a12-computation";
@@ -35,6 +37,33 @@ final class Carriage {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private Carriage() {}
+
+    static JsonNode groupObject(JsonNode carrier) {
+        return "array".equals(carrier.path("type").asText()) ? carrier.path("items") : carrier;
+    }
+
+    private static String rootName(JsonNode carrier) {
+        JsonNode object = groupObject(carrier);
+        JsonNode name = object.path(X_ROOT_GROUP_NAME);
+        return "object".equals(object.path("type").asText()) && name.isTextual() && !name.asText().isEmpty()
+                ? name.asText() : null;
+    }
+
+    /** Only explicitly marked root objects distinguish an A12 root wrapper from a foreign object (§4). */
+    static Map<String, JsonNode> rootCarriers(JsonNode schema) {
+        Map<String, JsonNode> roots = new LinkedHashMap<>();
+        String single = rootName(schema);
+        if (single != null) {
+            roots.put(single, schema);
+        } else if ("object".equals(schema.path("type").asText()) && schema.path("properties").isObject()) {
+            for (var it = schema.path("properties").fields(); it.hasNext(); ) {
+                var entry = it.next();
+                if (!entry.getKey().equals(rootName(entry.getValue()))) return Map.of();
+                roots.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return roots;
+    }
 
     /** Lift every {@code Rule}/{@code Computation} element from the model's groups onto the schema as {@code x-a12-*}. */
     static void collect(JsonNode dmTree, List<String> groupPaths, ObjectNode schema, TranscodeReport.Builder report) {

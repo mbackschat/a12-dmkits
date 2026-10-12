@@ -111,7 +111,7 @@ public final class JsonSchemaImporter {
     private record Ctx(JsonNode root, Dialect dialect, JsonNode defs, Deque<String> inlining,
                        TranscodeReport.Builder report, List<RuleSynthesis.Need> ruleNeeds, MappingProfile profile,
                        boolean bundle, Set<String> includes, String modelId, Set<String> breakEdges,
-                       Map<String, String> indexFields) {
+                       Map<String, String> indexFields, Set<String> rootPaths) {
 
         /** Would mounting {@code targetId} from this model close an include cycle (break it by inlining instead)? */
         boolean isCycleEdge(String targetId) {
@@ -248,6 +248,20 @@ public final class JsonSchemaImporter {
         }
     }
 
+    private static void reportRootFallback(JsonNode schema, TranscodeReport.Builder report) {
+        if (Carriage.groupObject(schema).has(Carriage.X_ROOT_GROUP_NAME)) {
+            report.omit("/" + Carriage.X_ROOT_GROUP_NAME,
+                    "malformed root annotation — fallback to the ordinary Root group preserves the structure");
+        }
+        for (var fields = schema.path("properties").fields(); fields.hasNext();) {
+            var field = fields.next();
+            if (Carriage.groupObject(field.getValue()).has(Carriage.X_ROOT_GROUP_NAME)) {
+                report.omit("/properties/" + field.getKey() + "/" + Carriage.X_ROOT_GROUP_NAME,
+                        "mixed or malformed root annotations — fallback to the ordinary Root group preserves the structure");
+            }
+        }
+    }
+
     /** A model's STRUCTURE (DM-JSON) before rule synthesis, plus the rule needs to synthesize onto it. Splitting
      *  this out lets a bundle build a sibling's skeleton on demand to resolve a mount (see {@link #importBundle}). */
     private record Structure(String dmJson, List<RuleSynthesis.Need> ruleNeeds) {}
@@ -257,24 +271,46 @@ public final class JsonSchemaImporter {
     private static Structure buildStructure(JsonNode root, JsonNode rootSchema, String modelId, Dialect dialect,
                                             MappingProfile profile, TranscodeReport.Builder report, boolean bundle,
                                             Set<String> breakEdges) {
+        Map<String, JsonNode> roots = Carriage.rootCarriers(rootSchema);
+        if (roots.isEmpty()) reportRootFallback(rootSchema, report);
         boolean rootUnion = isObjectUnion(rootSchema);   // a top-level oneOf/anyOf of objects → a root superset
-        if (!rootUnion && !"object".equals(rootSchema.path("type").asText(""))) {
+        if (roots.isEmpty() && !rootUnion && !"object".equals(rootSchema.path("type").asText(""))) {
             String type = rootSchema.path("type").asText("");
             throw new IllegalArgumentException("import supports a top-level object or oneOf/anyOf-of-objects schema; "
                     + "got type=" + (type.isEmpty() ? "<none>" : type));
         }
         JsonNode defsPool = dialect.isOpenApi() ? root.path("components").path("schemas") : root.path("$defs");
         Ctx ctx = new Ctx(root, dialect, defsPool, new ArrayDeque<>(), report, new ArrayList<>(), profile,
-                bundle, new LinkedHashSet<>(), modelId, breakEdges, new LinkedHashMap<>());
+                bundle, new LinkedHashSet<>(), modelId, breakEdges, new LinkedHashMap<>(), new LinkedHashSet<>());
         DocumentModelDraft.Builder b = DocumentModelDraft.named(modelId).locale(LOCALE);
         declareLeafTypedefs(b, ctx);
-        b.rootGroup(ROOT_GROUP, g -> {
-            if (rootUnion) {
-                buildRootSuperset(g, unionVariants(rootSchema), "/" + ROOT_GROUP, ctx, explicitDiscriminator(rootSchema, ctx));
-            } else {
-                populate(g, rootSchema, "/" + ROOT_GROUP, ctx);
-            }
-        });
+        if (roots.isEmpty()) {
+            ctx.rootPaths().add("/" + ROOT_GROUP);
+            b.rootGroup(ROOT_GROUP, g -> {
+                if (rootUnion) {
+                    buildRootSuperset(g, unionVariants(rootSchema), "/" + ROOT_GROUP, ctx, explicitDiscriminator(rootSchema, ctx));
+                } else {
+                    populate(g, rootSchema, "/" + ROOT_GROUP, ctx);
+                }
+            });
+        } else {
+            roots.keySet().forEach(name -> ctx.rootPaths().add("/" + name));
+            roots.forEach((name, carrier) -> {
+                String path = "/" + name;
+                int max = "array".equals(carrier.path("type").asText())
+                        ? resolvedCap(carrier.get("maxItems"), name, "maxItems", ctx) : 0;
+                if (max < 0) {
+                    report.omit(path, "root array has no repeatability cap — set maxItems or --default-repeat-cap");
+                    ctx.rootPaths().remove(path);
+                    return;
+                }
+                b.rootGroup(name, g -> {
+                    if (max > 0) g.repeatable(max);
+                    populate(g, Carriage.groupObject(carrier), path, ctx);
+                });
+                report.mapped(path + "/" + Carriage.X_ROOT_GROUP_NAME, path, TranscodeReport.Tier.CARRIED);
+            });
+        }
         ctx.includes().forEach(refId -> b.include(refId, refId));   // header includes for the mounts emitted above
         String dmJson = b.build().toJson();
         if (!ctx.indexFields().isEmpty()) {
@@ -654,7 +690,7 @@ public final class JsonSchemaImporter {
                 }
             }
             case "array" -> addArray(g, name, schema, path,
-                    required && groupPath.equals("/" + ROOT_GROUP), ctx);
+                    required && ctx.rootPaths().contains(groupPath), ctx);
             default -> addScalar(g, name, schema, required, path, ctx);
         }
     }
@@ -976,12 +1012,29 @@ public final class JsonSchemaImporter {
         build.accept(max);
     }
 
+    private enum EmptyStringAdmission { ALLOWED, EXCLUDED, UNRESOLVED }
+
+    private static EmptyStringAdmission emptyStringAdmission(JsonNode items) {
+        if (!"string".equals(items.path("type").asText())) return EmptyStringAdmission.EXCLUDED;
+        if (items.path("minLength").asInt(0) >= 1
+                || (hasEnum(items) && java.util.Arrays.stream(enumArrayValues(items)).noneMatch(String::isEmpty))
+                || (items.has("const") && !items.path("const").asText().isEmpty())) return EmptyStringAdmission.EXCLUDED;
+        if ((items.has("pattern") && !items.path("pattern").asText().isEmpty()) || items.has("format")) {
+            return EmptyStringAdmission.UNRESOLVED;
+        }
+        return EmptyStringAdmission.ALLOWED;
+    }
+
     /** MULTI_SELECT → an a12 multi-select group of closed enum choices; needs {@code items.enum}. */
     private static void asMultiSelect(DocumentModelDraft.GroupBuilder g, String name, JsonNode items,
                                       int max, String path, Ctx ctx) {
         if (!hasEnum(items)) {
             ctx.report().omit(path, "array '" + name + "' under MULTI_SELECT needs a closed item set (items.enum) "
                     + "— omitted. TO DO: add items.enum, or choose the VALUE_LIST / REPEATABLE_SINGLE strategy");
+            return;
+        }
+        if (emptyStringAdmission(items) != EmptyStringAdmission.EXCLUDED) {
+            ctx.report().omit(path, "MULTI_SELECT cannot preserve or establish empty string item admission with its required value field — choose REPEATABLE_SINGLE for explicit empty-admitting items or retain source-schema validation");
             return;
         }
         String[] values = enumArrayValues(items);
@@ -995,6 +1048,10 @@ public final class JsonSchemaImporter {
         if (!"string".equals(items.path("type").asText(""))) {
             ctx.report().omit(path, "array '" + name + "' under VALUE_LIST needs string items — omitted. "
                     + "TO DO: choose the REPEATABLE_SINGLE strategy for non-string scalars");
+            return;
+        }
+        if (emptyStringAdmission(items) != EmptyStringAdmission.EXCLUDED) {
+            ctx.report().omit(path, "VALUE_LIST cannot preserve or establish empty string item admission with its required value field — choose REPEATABLE_SINGLE for explicit empty-admitting items or retain source-schema validation");
             return;
         }
         g.multiSelectGroup(name, m -> m.stringField(ROW_FIELD).maxRows(max));
@@ -1011,9 +1068,14 @@ public final class JsonSchemaImporter {
                     + "invalid). TO DO: set the numberScale strategy for number items, or add the field by hand");
             return;
         }
+        EmptyStringAdmission empty = emptyStringAdmission(items);
+        if (empty == EmptyStringAdmission.UNRESOLVED) {
+            ctx.report().omit(path, "scalar string item empty admission is not established for its pattern/format — retain source-schema validation");
+            return;
+        }
         g.group(name, sub -> {
             sub.repeatable(max);
-            addScalar(sub, ROW_FIELD, items, true, path + "/" + ROW_FIELD, ctx);
+            addScalar(sub, ROW_FIELD, items, empty == EmptyStringAdmission.EXCLUDED, path + "/" + ROW_FIELD, ctx);
         });
         ctx.report().structure(path, "repeatable single-field group (max " + max + ")");
     }
@@ -1415,7 +1477,7 @@ public final class JsonSchemaImporter {
                 s.maxLength(maxLength);
             }
             if (pattern != null) {
-                s.pattern(pattern, pattern.isEmpty() ? null : "must match " + pattern); // Empty declarations are inactive (SPEC-2026-10-10-13).
+                s.pattern(pattern, pattern.isEmpty() ? null : "must match the specified pattern"); // Empty declarations are inactive (SPEC-2026-10-10-13).
             }
             if (isRequired) {
                 s.required();
@@ -1641,7 +1703,7 @@ public final class JsonSchemaImporter {
             return DEFAULT_MODEL_ID;
         }
         String trimmed = title.trim();
-        return trimmed.matches("[A-Za-z][A-Za-z0-9_]*") ? trimmed : DEFAULT_MODEL_ID;
+        return trimmed.matches("[A-Za-z0-9_.-]+") ? trimmed : DEFAULT_MODEL_ID;
     }
 
     /** Parse the input as JSON first (exact behavior for JSON documents), then YAML (a JSON superset) so

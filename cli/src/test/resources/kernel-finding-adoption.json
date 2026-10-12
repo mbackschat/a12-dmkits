@@ -8344,7 +8344,7 @@
       }
     },
     "kf542": {
-      "sha256": "9d69ab42cf1b8a3ebd3659bdded6f24ecbba95ac546e2f04d3e4b826c0ae8c8a",
+      "sha256": "9303fd3b4181f1f5c693899162ce74e6e6d95adb9a917d5afef21f51db51c888",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -8353,7 +8353,7 @@
         ],
         "json-schema-import": [],
         "json-schema-export": [
-          "decoded projection and authored carriage"
+          "literal carriage and imported admission"
         ],
         "adapter": [
           "literal value and selected-key decoding"
@@ -8389,11 +8389,11 @@
         },
         "json-schema-export": {
           "state": "APPLIED",
-          "basis": "Both explicit readback providers project decoded rule patterns while preserving original authored carriage and a declaration-owned backslash pattern.",
+          "basis": "Both explicit readback providers preserve authored rule carriage and a declaration-owned backslash pattern without introducing a native rule-pattern declaration; imported models pass the kernel gate.",
           "evidence": {
-            "decoded projection and authored carriage": {
-              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/ConditionReadBackParityTest.java#schemaProjectsDecodedRulePatternsWhilePreservingAuthoredCarriageAndDeclarations",
-              "witness": "CRLF, repeated-CR, doubled quotes and literal backslash have independent expected projected values."
+            "literal carriage and imported admission": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/ConditionReadBackParityTest.java#schemaCarriesRulePatternsWhilePreservingAuthoredDeclarationsAndKernelAdmission",
+              "witness": "CRLF, repeated-CR, doubled quotes and literal backslash retain authored rule bytes and an independent declared pattern through admitted import."
             }
           }
         },

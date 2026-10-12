@@ -76,6 +76,11 @@ final class SchemaTestSupport {
         }
     }
 
+    /** Foreign object imports acquire the documented default root identity on export (SCHEMAKIT-SPEC §4). */
+    static JsonNode withDefaultRoot(String json) {
+        return ((ObjectNode) normalize(json)).put(Carriage.X_ROOT_GROUP_NAME, "Root");
+    }
+
     private static void sortRequired(JsonNode node) {
         if (node.isObject()) {
             ObjectNode obj = (ObjectNode) node;

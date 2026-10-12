@@ -72,7 +72,7 @@ class FieldConstraintsShapeTest {
         var imported = new JsonSchemaImporter().importSchema(schema);
         assertKernelAccepts(imported.dmJson());
         var exported = new JsonSchemaExporter().export(imported.dmJson());
-        assertEquals(normalize(schema), normalize(exported.jsonSchema()));
+        assertEquals(SchemaTestSupport.withDefaultRoot(schema), normalize(exported.jsonSchema()));
     }
 
     @Test
@@ -94,7 +94,7 @@ class FieldConstraintsShapeTest {
         JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(CONSTRAINED);
         JsonSchemaExporter.ExportResult exported = new JsonSchemaExporter().export(imported.dmJson());
 
-        assertEquals(normalize(CONSTRAINED), normalize(exported.jsonSchema()),
+        assertEquals(SchemaTestSupport.withDefaultRoot(CONSTRAINED), normalize(exported.jsonSchema()),
                 "minLength/maxLength/pattern + minimum/maximum must round-trip through field config");
     }
 }

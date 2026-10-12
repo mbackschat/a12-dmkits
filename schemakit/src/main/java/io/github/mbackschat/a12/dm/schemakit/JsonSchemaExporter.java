@@ -22,8 +22,8 @@ import java.util.TreeSet;
 /**
  * Document Model → JSON Schema, the export direction (SCHEMAKIT-SPEC §6) — the mirror of
  * {@link JsonSchemaImporter}. It reads structure through modelkit's kernel-free {@link ModelDocument} (no
- * kernel, no {@code :adapter}): the single root group → the top-level object, nested groups → object
- * properties, repeatable groups → {@code array} properties, and an a12 typeDefinition → a {@code $defs}
+ * kernel, no {@code :adapter}): one root → its object/array carrier, multiple roots → named properties,
+ * nested groups → object properties, repeatable groups → arrays, and an a12 typeDefinition → a {@code $defs}
  * entry referenced by {@code $ref}. {@code required} is emitted sorted so the round-trip is order-insensitive.
  */
 public final class JsonSchemaExporter {
@@ -61,7 +61,15 @@ public final class JsonSchemaExporter {
         }
         String refPrefix = wrapOpenApi ? "#/components/schemas/" : "#/$defs/";
         Ctx ctx = new Ctx(doc, fieldTypedefMap(doc), new TreeSet<>(), TranscodeReport.builder(), refPrefix);
-        ObjectNode schema = exportGroup(groupPaths.get(0), ctx);   // root group → top-level object
+        List<String> roots = groupPaths.stream().filter(p -> p.lastIndexOf('/') == 0).toList();
+        ObjectNode schema;
+        if (roots.size() == 1) {
+            schema = exportRoot(roots.getFirst(), ctx);
+        } else {
+            schema = JSON.createObjectNode().put("type", "object");
+            ObjectNode properties = schema.putObject("properties");
+            roots.forEach(path -> properties.set(lastSegment(path), exportRoot(path, ctx)));
+        }
         Carriage.collect(parse(dmJson), doc.groupPaths(), schema, ctx.report());  // rules/computations → x-a12-* (Tier B/C)
         TierAProjection.project(dmJson, schema, ctx.report());                    // recognized rules → native keywords (Tier A)
         if (wrapOpenApi) {
@@ -90,6 +98,17 @@ public final class JsonSchemaExporter {
             writeLeaf(schemas.putObject(id), leafOfTypeDef(ctx.doc(), id, ctx.report()));
         }
         return root;
+    }
+
+    private ObjectNode exportRoot(String path, Ctx ctx) {
+        ObjectNode object = exportGroup(path, ctx);
+        object.put(Carriage.X_ROOT_GROUP_NAME, lastSegment(path));
+        ctx.report().mapped(path, Carriage.X_ROOT_GROUP_NAME, TranscodeReport.Tier.CARRIED);
+        if (!ctx.doc().isRepeating(path)) return object;
+        ObjectNode array = JSON.createObjectNode().put("type", "array");
+        array.set("items", object);
+        array.put("maxItems", ctx.doc().maxRepetitions(path));
+        return array;
     }
 
     /** Build {@code {type:object, properties, required}} from a group's direct field + sub-group children. */

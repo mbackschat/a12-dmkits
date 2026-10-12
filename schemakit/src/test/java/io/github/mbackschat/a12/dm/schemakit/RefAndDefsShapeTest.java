@@ -44,7 +44,7 @@ class RefAndDefsShapeTest {
         assertKernelAccepts(imported.dmJson());
 
         JsonSchemaExporter.ExportResult exported = new JsonSchemaExporter().export(imported.dmJson());
-        assertEquals(normalize(LEAF_TYPEDEF_SCHEMA), normalize(exported.jsonSchema()),
+        assertEquals(SchemaTestSupport.withDefaultRoot(LEAF_TYPEDEF_SCHEMA), normalize(exported.jsonSchema()),
                 "a leaf $def must round-trip as $defs + $ref (reuse preserved)");
     }
 

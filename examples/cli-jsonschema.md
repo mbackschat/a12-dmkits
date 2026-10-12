@@ -258,19 +258,22 @@ dmtool -m examples/models/order-ruled.dm.json model export-jsonschema 2>/dev/nul
 {"type":"object","fields":13,"carried_rules":3,"item_index":"Sku"}
 ```
 
-The item object also carries its unchanged `Sku` index-field reference as `x-a12-index-field-name`, so import can restore indexed rules. This annotation adds no native JSON Schema constraint.
+The root object carries its unchanged `Order` name as `x-a12-root-group-name`. The item object also carries its unchanged `Sku` index-field reference as `x-a12-index-field-name`, so import can restore indexed rules. This annotation adds no native JSON Schema constraint.
 
-The report on stderr names every lossy disposition — here, the three field kinds with no native JSON Schema form:
+The report on stderr names every lossy disposition — here, three field-kind fallbacks and the rule pattern that remains carried:
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json model export-jsonschema 2>&1 1>/dev/null
 ```
 
 ```output
-transcoding report: 23 mapped, 0 omitted, 3 note(s)
+transcoding report: 23 mapped, 0 omitted, 4 note(s)
   - kind 'CONFIRM' at '/Order/TermsConfirmed' is not mapped yet — string placeholder
   - kind 'DATE' at '/Order/OrderDate' is not mapped yet — string placeholder
   - kind 'DATE' at '/Order/DeliveryDate' is not mapped yet — string placeholder
+  - rule '/Order/BillingAddress/PostalCodeFormat' has a pattern that remains carried — the
+    single native pattern does not preserve the whole predicate and present empty-string
+    applicability
 ```
 
 For an OpenAPI consumer, `--wrap-openapi` wraps the export as a `components/schemas` fragment ready to paste into an API document:

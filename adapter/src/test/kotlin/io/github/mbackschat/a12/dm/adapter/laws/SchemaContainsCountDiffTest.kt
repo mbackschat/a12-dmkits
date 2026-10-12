@@ -1,7 +1,15 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.networknt.schema.JsonSchemaFactory
+import com.networknt.schema.SpecVersion
+import com.networknt.schema.resource.DisallowSchemaLoader
+import io.github.mbackschat.a12.dm.edit.EditSession
+import io.github.mbackschat.a12.dm.schemakit.JsonSchemaExporter
+import io.github.mbackschat.a12.dm.schemakit.TranscodeReport
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.modelkit.Requiredness
+import io.github.mbackschat.a12.dm.schemakit.MappingProfile
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter
@@ -10,6 +18,108 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class SchemaContainsCountDiffTest {
+    @org.junit.jupiter.api.BeforeEach
+    fun selectKernelReadBack() = io.github.mbackschat.a12.dm.rulekit.spi.ReadBackends.override(
+        io.github.mbackschat.a12.dm.adapter.KernelConditionReadBack())
+
+    @org.junit.jupiter.api.AfterEach
+    fun resetReadBack() = io.github.mbackschat.a12.dm.rulekit.spi.ReadBackends.reset()
+
+    private val schemas = JsonSchemaFactory.builder(JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012))
+        .schemaLoaders { it.values { loaders -> loaders.clear() }.add(DisallowSchemaLoader.getInstance()) }.build()
+
+    @Test
+    fun rulePatternsRemainCarriedWhenANativeScalarWouldLoseApplicabilityOrConjunction() {
+        for (guarded in listOf(false, true)) for (multiple in listOf(false, true)) {
+            val structure = DocumentModelDraft.named("parcel-export").locale("en_US")
+                .rootGroup("Parcel") { it.stringField("Reference") { }.stringField("Mode") { } }.build().toJson()
+            val session = EditSession.read(structure)
+            val parcel = session.group("/Parcel")
+            val reference = parcel.str("Reference")
+            val mode = parcel.str("Mode")
+            val violation = reference.filled().and(reference.violates("[A-Z]+"))
+            parcel.addRule { it.name("ReferenceFormat").errorField(reference)
+                .`when`(if (guarded) violation.and(mode.eq("active")) else violation)
+                .code("REFERENCE_FORMAT").message(Dsl.en("Check the reference format.")).build() }
+            if (multiple) parcel.addRule { it.name("ReferenceDigits").errorField(reference)
+                .`when`(reference.filled().and(reference.violates("[0-9]+")))
+                .code("REFERENCE_DIGITS").message(Dsl.en("Check the reference digits.")).build() }
+            val model = session.toJson()
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model))
+            val exported = JsonSchemaExporter().export(model)
+            val validator = schemas.getSchema(exported.jsonSchema())
+            val mapper = ObjectMapper()
+            val expectedRules = if (multiple) 2 else 1
+            val carried = mapper.readTree(exported.jsonSchema()).path("x-a12-rule")
+            assertEquals(expectedRules, carried.size())
+            val imported = JsonSchemaImporter().importSchema(exported.jsonSchema()).dmJson()
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(imported))
+            for ((value, modeValue) in listOf("" to "active", "ABC" to "active", "123" to "active", "bad" to "idle")) {
+                val body = mapper.writeValueAsString(mapOf("Reference" to value, "Mode" to modeValue))
+                val document = "{\"Parcel\":$body}"
+                val dynamic = DocumentDifferential.kernel(model, document, dynamic = true)
+                assertEquals(dynamic, DocumentDifferential.kernel(model, document, dynamic = false), "$guarded/$multiple/$body static")
+                assertEquals(dynamic, DocumentDifferential.interpreter(model, document), "$guarded/$multiple/$body interpreter")
+                assertEquals(dynamic, DocumentDifferential.kernel(imported, document, dynamic = true), "$guarded/$multiple/$body restored")
+                val expectedCodes = buildList {
+                    if (value.isNotEmpty() && !value.matches(Regex("[A-Z]+")) && (!guarded || modeValue == "active")) add("REFERENCE_FORMAT")
+                    if (multiple && value.isNotEmpty() && !value.matches(Regex("[0-9]+"))) add("REFERENCE_DIGITS")
+                }.sorted()
+                assertEquals(expectedCodes, dynamic.messages.map { it.code }.sorted(), "$guarded/$multiple/$body")
+                assertTrue(validator.validate(mapper.readTree(body)).isEmpty(),
+                    "the unsupported native projection remains carriage-only: $guarded/$multiple/$body")
+            }
+            assertTrue(mapper.readTree(exported.jsonSchema()).path("properties").path("Reference").path("pattern").isMissingNode)
+            assertTrue(exported.report().diagnostics().any { it.contains("pattern") && it.contains("carried") })
+            assertEquals(expectedRules, exported.report().dispositions().count { it.tier() == TranscodeReport.Tier.CARRIED && it.target() == "x-a12-rule" })
+        }
+    }
+
+    @Test
+    fun nativeMinimumsUseTheWholePredicateRequireTheirRootArrayAndIntersectIndependentRules() {
+        val mapper = ObjectMapper()
+        for (guarded in listOf(false, true)) for (reversed in listOf(false, true)) {
+            val structure = DocumentModelDraft.named("parcel-count-export").locale("en_US")
+                .rootGroup("Parcel") { root -> root.stringField("Mode") { }.group("Legs") { legs ->
+                    legs.repeatable(4).stringField("Label") { }
+                } }.build().toJson()
+            val session = EditSession.read(structure)
+            val parcel = session.group("/Parcel")
+            val legs = parcel.group("Legs")
+            val label = parcel.str("Legs/Label")
+            val mode = parcel.str("Mode")
+            for (bound in if (reversed) listOf(2, 1) else listOf(1, 2)) {
+                val count = Dsl.numberOfFilledGroups(legs).lt(bound.toLong())
+                parcel.addRule { it.name("MinLegs$bound").errorField(label)
+                    .`when`(if (guarded) count.and(mode.eq("active")) else count)
+                    .code("MIN_LEGS_$bound").message(Dsl.en("Check the number of delivery legs.")).build() }
+            }
+            val model = session.toJson()
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model))
+            val exported = JsonSchemaExporter().export(model)
+            val schema = mapper.readTree(exported.jsonSchema())
+            val validator = schemas.getSchema(exported.jsonSchema())
+            for (size in listOf<Int?>(null, 0, 1, 2)) for (modeValue in listOf("active", "idle")) {
+                val body = linkedMapOf<String, Any>("Mode" to modeValue)
+                if (size != null) body["Legs"] = List(size) { emptyMap<String, String>() }
+                val tree = mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(body)
+                val document = mapper.writeValueAsString(mapOf("Parcel" to body))
+                val dynamic = DocumentDifferential.kernel(model, document, dynamic = true)
+                assertEquals(dynamic, DocumentDifferential.kernel(model, document, dynamic = false), "$guarded/$reversed/$body static")
+                assertEquals(dynamic, DocumentDifferential.interpreter(model, document), "$guarded/$reversed/$body interpreter")
+                val expected = if (!guarded || modeValue == "active") (1..2).filter { (size ?: 0) < it }.map { "MIN_LEGS_$it" } else emptyList()
+                assertEquals(expected, dynamic.messages.map { it.code }.sorted(), "$guarded/$reversed/$body")
+                assertEquals(if (guarded) true else expected.isEmpty(), validator.validate(tree).isEmpty(), "$guarded/$reversed/$body native")
+            }
+            assertEquals(if (guarded) null else 2, schema.path("properties").path("Legs").get("minItems")?.asInt())
+            assertEquals(!guarded, schema.path("required").any { it.asText() == "Legs" })
+            if (guarded) assertTrue(exported.report().diagnostics().any { it.contains("whole") && it.contains("carried") })
+            val imported = JsonSchemaImporter().importSchema(exported.jsonSchema()).dmJson()
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(imported))
+            assertEquals(schema.path("x-a12-rule"), mapper.readTree(JsonSchemaExporter().export(imported).jsonSchema()).path("x-a12-rule"))
+        }
+    }
+
     @Test
     fun activeStringPredicatesConflateAbsentAndEmptyWithPopulatedControls() {
         val base = DocumentModelDraft.named("parcel-presence").locale("en_US")
@@ -70,4 +180,110 @@ class SchemaContainsCountDiffTest {
             assertEquals(dynamic, DocumentDifferential.interpreter(model, document), "case $i interpreter")
         }
     }
+
+    @Test
+    fun scalarCarrierAdmissionAndEmptyItemRuntimeAreMeasuredBeforeContains() {
+        val mapper = ObjectMapper()
+        for (template in listOf(false, true)) for (enumeration in listOf(false, true)) {
+            val builder = DocumentModelDraft.named("parcel-scalar-carrier").locale("en_US")
+                .rootGroup("Parcel") { root ->
+                    if (template) root.multiSelectGroup("Tags") {
+                        if (enumeration) it.enumField("value", "", "express", "ground").maxRows(4)
+                        else it.stringField("value").maxRows(4)
+                    } else root.group("Tags") { tags ->
+                        tags.repeatable(4)
+                        if (enumeration) tags.enumField("value") { it.value("").value("express").value("ground") }
+                        else tags.stringField("value") { }
+                    }
+                }
+            val model = builder.build().toJson()
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model), "$template/$enumeration source")
+            val edit = EditSession.read(model)
+            edit.field("/Parcel/Tags/value").setRequiredness(Requiredness.OPTIONAL)
+            val notifications = RuntimeLaws.consistencyMessages(edit.toJson())
+            if (template) {
+                assertEquals(1, notifications.size, notifications.toString())
+                assertTrue(notifications.single().startsWith("ERROR:") && notifications.single().contains("must be marked as required"), notifications.toString())
+            } else assertEquals(emptyList<String>(), notifications)
+            for (values in listOf<List<String>?>(null, emptyList(), listOf(""), listOf("express"))) {
+                val body = linkedMapOf<String, Any>()
+                if (values != null) body["Tags"] = values.map { mapOf("value" to it) }
+                val document = mapper.writeValueAsString(mapOf("Parcel" to body))
+                val dynamic = DocumentDifferential.kernel(model, document, dynamic = true)
+                assertEquals(dynamic, DocumentDifferential.kernel(model, document, dynamic = false), "$template/$enumeration/$values static")
+                assertEquals(dynamic, DocumentDifferential.interpreter(model, document), "$template/$enumeration/$values interpreter")
+                println("scalar carrier template=$template enum=$enumeration values=$values observation=$dynamic")
+                val expected = template && values == listOf("")
+                assertEquals(if (expected) listOf("mandatoryField") else emptyList(), dynamic.messages.map { it.code }, "$template/$enumeration/$values")
+                if (expected) {
+                    assertEquals("OMISSION_ERROR", dynamic.messages.single().type)
+                    assertEquals("/Parcel[1]/Tags[1]/value", dynamic.messages.single().pointer)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun scalarStringContainsCountsPresentEmptyItemsAcrossThresholdsAndBothKernelStrategies() {
+        val mapper = ObjectMapper()
+        for ((predicate, matches) in listOf("""{"const":""}""" to 1,
+                """{"enum":["","express"]}""" to 2, """{"pattern":""}""" to 3,
+                """{"const":"express"}""" to 1)) {
+            for (bound in listOf(matches - 1, matches, matches + 1)) for (enumeration in listOf(false, true)) {
+                val domain = if (enumeration) ",\"enum\":[\"\",\"express\",\"ground\"]" else ""
+                val schema = """
+                    {"type":"object","required":["tags"],"properties":{"tags":{"type":"array","maxItems":4,
+                     "items":{"type":"string"$domain},"contains":$predicate,"minContains":$bound,"maxContains":$bound}}}
+                """.trimIndent()
+                val imported = JsonSchemaImporter().importSchema(schema)
+                assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(imported.dmJson()))
+                assertTrue(imported.report().dispositions().none { it.tier() == TranscodeReport.Tier.OMITTED }, imported.report().toString())
+                val body = mapper.writeValueAsString(mapOf("Root" to mapOf("tags" to listOf("", "express", "ground").map { mapOf("value" to it) })))
+                val dynamic = DocumentDifferential.kernel(imported.dmJson(), body, dynamic = true)
+                assertEquals(dynamic, DocumentDifferential.kernel(imported.dmJson(), body, dynamic = false), "$predicate/$bound static")
+                assertEquals(dynamic, DocumentDifferential.interpreter(imported.dmJson(), body), "$predicate/$bound interpreter")
+                val expected = when {
+                    bound < matches -> listOf("MAX_CONTAINS_TAGS_VALUE")
+                    bound > matches -> listOf("MIN_CONTAINS_TAGS_VALUE")
+                    else -> emptyList()
+                }
+                assertEquals(expected, dynamic.messages.map { it.code }, "$predicate/$bound")
+            }
+        }
+    }
+
+    @Test
+    fun objectEnumContainsRetainsPropertyVacuityAndEmptyMembershipAcrossThresholds() {
+        val mapper = ObjectMapper()
+        val rows = listOf(mapOf("marker" to "absent"), mapOf("kind" to ""),
+            mapOf("kind" to "express"), mapOf("kind" to "ground"))
+        val nativeBody = mapper.writeValueAsString(mapOf("legs" to rows))
+        val document = mapper.writeValueAsString(mapOf("Root" to mapOf("legs" to rows)))
+        for ((predicate, matches) in listOf("""{"const":""}""" to 2,
+                """{"enum":["","express"]}""" to 3)) {
+            for (bound in listOf(matches - 1, matches, matches + 1)) {
+                val source = """
+                    {"type":"object","required":["legs"],"properties":{"legs":{"type":"array","maxItems":4,
+                     "items":{"type":"object","properties":{"marker":{"type":"string"},
+                       "kind":{"type":"string","enum":["","express","ground"]}}},
+                     "contains":{"properties":{"kind":$predicate}},"minContains":$bound,"maxContains":$bound}}}
+                """.trimIndent()
+                val imported = JsonSchemaImporter().importSchema(source)
+                assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(imported.dmJson()), "$predicate/$bound admission")
+                assertTrue(imported.report().dispositions().none { it.tier() == TranscodeReport.Tier.OMITTED }, imported.report().toString())
+                assertEquals(bound == matches, schemas.getSchema(source).validate(mapper.readTree(nativeBody)).isEmpty(), "$predicate/$bound native")
+                val dynamic = DocumentDifferential.kernel(imported.dmJson(), document, dynamic = true)
+                assertEquals(dynamic, DocumentDifferential.kernel(imported.dmJson(), document, dynamic = false), "$predicate/$bound static")
+                assertEquals(dynamic, DocumentDifferential.interpreter(imported.dmJson(), document), "$predicate/$bound interpreter")
+                val expected = when {
+                    bound < matches -> listOf("MAX_CONTAINS_LEGS_KIND")
+                    bound > matches -> listOf("MIN_CONTAINS_LEGS_KIND")
+                    else -> emptyList()
+                }
+                assertEquals(expected, dynamic.messages.map { it.code }, "$predicate/$bound")
+            }
+        }
+    }
+
+
 }

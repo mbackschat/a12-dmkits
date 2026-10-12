@@ -59,7 +59,7 @@ class FlatObjectRoundTripTest {
         JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(FLAT_SCHEMA);
         JsonSchemaExporter.ExportResult exported = new JsonSchemaExporter().export(imported.dmJson());
 
-        assertEquals(normalize(FLAT_SCHEMA), normalize(exported.jsonSchema()),
+        assertEquals(SchemaTestSupport.withDefaultRoot(FLAT_SCHEMA), normalize(exported.jsonSchema()),
                 "import → export must reproduce {type, properties, required}");
     }
 

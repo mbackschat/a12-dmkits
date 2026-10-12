@@ -18,6 +18,26 @@ import static org.junit.jupiter.api.Assertions.fail;
 class BundleShapeTest {
 
     @Test
+    void componentNamesRetainIdentityAcrossSelectionAndBundleReferences() {
+        String source = """
+                {"openapi":"3.1.0","components":{"schemas":{
+                  "parcel-type":{"type":"object","properties":{"code":{"type":"string"}}},
+                  "archive.v2":{"type":"object","properties":{"parcel":{"$ref":"#/components/schemas/parcel-type"}}},
+                  "3rdModel":{"type":"object","properties":{"code":{"type":"string"}}}
+                }}}
+                """;
+        var importer = new JsonSchemaImporter();
+        var bundle = importer.importBundle(source, MappingProfile.defaults(), Dialect.AUTO);
+        assertEquals(java.util.Set.of("parcel-type", "archive.v2", "3rdModel"), bundle.models().keySet());
+        assertKernelAcceptsBundle(bundle);
+        for (String id : bundle.models().keySet()) {
+            var selected = importer.importSchema(source, MappingProfile.defaults(), Dialect.AUTO, id);
+            SchemaTestSupport.assertKernelAccepts(selected.dmJson());
+            assertEquals(id, io.github.mbackschat.a12.dm.modelkit.ModelDocument.read(selected.dmJson()).id());
+        }
+    }
+
+    @Test
     void bundleImportsEachComponentAndWiresObjectRefsAsMounts() {
         JsonSchemaImporter.BundleResult bundle = new JsonSchemaImporter().importBundle("""
                 { "openapi": "3.1.0", "info": { "title": "X", "version": "1" },

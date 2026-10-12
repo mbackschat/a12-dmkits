@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.schemakit;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -21,14 +22,15 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeSet;
 
 /**
  * Tier-A projection (SCHEMAKIT-SPEC §4; JSON-SCHEMA-PROPOSAL §6) — the small subset of a12 rules that have
  * a native JSON Schema home are *also* emitted as native keywords, **for foreign readers**. It is additive:
  * the full rule is still carried via {@code x-a12-rule} (Tier B) for a12-fidelity, so the a12 round-trip is
  * driven by carriage and the native keyword is the foreign-facing projection. This demonstrates the
- * project-or-carry split with one representative shape — a string pattern rule
- * ({@code FieldFilled(F) And [F] PatternViolated "regex"}) → {@code properties[…F…].pattern = "regex"}.
+ * project-or-carry split for whole unguarded root-array lower bounds. Rule patterns remain carried because
+ * a single native pattern does not preserve their whole predicate and empty-string applicability.
  *
  * <p>Reuse-first (§1): the stored rule is read into a typed rulekit {@link Condition} through the
  * {@link ConditionReadBack} port (kernel-decoupling stage 3) — the kernel backend provides the parse; no
@@ -44,18 +46,14 @@ final class TierAProjection {
             if (!(entry.getValue() instanceof ReadResult.Converted converted)) {
                 continue;   // an Opaque (unmodeled) rule stays carriage-only — never silently lost
             }
-            findPatternConstraint(converted.condition()).ifPresent(hit -> {
-                ObjectNode field = navigateToField(schema, hit.fieldPath());
-                if (field == null) {
-                    report.diagnostic("rule '" + entry.getKey() + "' would project a pattern onto '"
-                            + hit.fieldPath() + "', but that field is not in the exported structure");
+            findPatternConstraint(converted.condition()).ifPresent(hit -> report.diagnostic(
+                    "rule '" + entry.getKey() + "' has a pattern that remains carried — the single native pattern "
+                            + "does not preserve the whole predicate and present empty-string applicability"));
+            findMinItemsConstraint(converted.condition()).ifPresent(hit -> {
+                if (!(converted.condition() instanceof ComparisonCondition)) {
+                    report.diagnostic("rule '" + entry.getKey() + "' remains carried — minItems cannot represent its whole predicate");
                     return;
                 }
-                field.put("pattern", hit.regex());
-                report.mapped(entry.getKey(), "properties/" + hit.fieldPath() + ".pattern",
-                        TranscodeReport.Tier.TIER_A);
-            });
-            findMinItemsConstraint(converted.condition()).ifPresent(hit -> {
                 if (hit.bound().stripTrailingZeros().scale() > 0) {
                     // a JSON Schema minItems is an integer row count; a non-integer bound has no minItems form —
                     // skip the projection (never crash on intValueExact) and report it, the rule stays carried
@@ -70,7 +68,23 @@ final class TierAProjection {
                             + "', but that array is not in the exported structure");
                     return;
                 }
-                array.put("minItems", hit.bound().intValueExact());
+                String groupPath = hit.groupPath();
+                int slash = groupPath.lastIndexOf('/');
+                String parentPath = groupPath.substring(0, slash);
+                String ownerPath = entry.getKey().substring(0, entry.getKey().lastIndexOf('/'));
+                JsonNode root = slash > 0 ? Carriage.rootCarriers(schema).get(parentPath.substring(1)) : null;
+                if (!parentPath.equals(ownerPath) || root == null || !"object".equals(root.path("type").asText())) {
+                    report.diagnostic("rule '" + entry.getKey() + "' remains carried — minItems needs a fixed declaring root array property");
+                    return;
+                }
+                BigInteger minimum = hit.bound().toBigIntegerExact();
+                if (minimum.signum() <= 0) return;
+                array.put("minItems", minimum.max(array.path("minItems").bigIntegerValue()));
+                TreeSet<String> names = new TreeSet<>();
+                root.path("required").forEach(n -> names.add(n.asText()));
+                names.add(groupPath.substring(slash + 1));
+                var required = ((ObjectNode) root).putArray("required");
+                names.forEach(required::add);
                 report.mapped(entry.getKey(), "properties/" + hit.groupPath() + ".minItems",
                         TranscodeReport.Tier.TIER_A);
             });
@@ -102,7 +116,7 @@ final class TierAProjection {
         return Optional.empty();
     }
 
-    /** A field must MATCH a regex iff a rule ERRORS on {@code PatternViolated} — find that anywhere in an AND chain. */
+    /** Locate the formerly projected candidate so the unsupported native projection is explicitly reported. */
     private static Optional<PatternHit> findPatternConstraint(Condition condition) {
         // SCHEMAKIT-SPEC §4f: a row selected by `For` cannot become a constraint on every array item.
         if (condition instanceof PatternCondition p && !p.matched() && !p.regex().isEmpty() && p.field() instanceof FieldRef field) {
@@ -115,12 +129,21 @@ final class TierAProjection {
         return Optional.empty();
     }
 
-    /** Walk the schema's nested {@code properties}/{@code items} to the field at a (relative or /Root/…) path. */
+    /** Root annotations settle the absolute path before nested {@code properties}/{@code items} traversal. */
     private static ObjectNode navigateToField(ObjectNode schema, String fieldPath) {
         boolean absolute = fieldPath.startsWith("/");
         String[] segments = (absolute ? fieldPath.substring(1) : fieldPath).split("/");
-        int start = absolute ? 1 : 0;   // an absolute path leads with the root group name — skip it
+        int start = absolute ? 1 : 0;
         JsonNode cursor = schema;
+        if (absolute) {
+            Map<String, JsonNode> roots = Carriage.rootCarriers(schema);
+            if (!roots.isEmpty()) {
+                JsonNode carrier = roots.get(segments[0]);
+                if (carrier == null) return null;
+                if (segments.length == 1) return carrier instanceof ObjectNode object ? object : null;
+                cursor = Carriage.groupObject(carrier);
+            }
+        }
         for (int i = start; i < segments.length - 1; i++) {
             JsonNode child = cursor.path("properties").path(segments[i]);
             cursor = "array".equals(child.path("type").asText()) ? child.path("items") : child;

@@ -86,7 +86,7 @@ class NestedAndArrayShapeTest {
         assertKernelAccepts(imported.dmJson());
         JsonSchemaExporter.ExportResult exported = new JsonSchemaExporter().export(imported.dmJson());
 
-        assertEquals(normalize(NESTED_SCHEMA), normalize(exported.jsonSchema()),
+        assertEquals(SchemaTestSupport.withDefaultRoot(NESTED_SCHEMA), normalize(exported.jsonSchema()),
                 "nested object + array-of-object must round-trip");
     }
 

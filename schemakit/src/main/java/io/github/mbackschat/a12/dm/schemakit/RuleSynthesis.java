@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -68,6 +69,15 @@ final class RuleSynthesis {
         }
         static ValueConstraint ofEnum(List<String> values) {
             return new ValueConstraint(ConstraintKind.ENUM, null, List.copyOf(values));
+        }
+        // KF335 and FieldConstraintFormalDiffTest: source literals are operands, not A12 message parameters.
+        String messageRequirement(String field) {
+            return switch (kind) {
+                case CONST -> field + " must equal its specified value";
+                case ENUM -> field + " must be one of its specified values";
+                case PATTERN -> field + " must match its specified pattern";
+                case MINIMUM, MAXIMUM, EXCLUSIVE_MIN, EXCLUSIVE_MAX -> requirement(field);
+            };
         }
         String requirement(String field) {
             return field + switch (kind) {
@@ -207,7 +217,7 @@ final class RuleSynthesis {
             case ConstValue c -> {
                 String field = lastSegment(c.fieldPath());
                 String code = "CONST_" + field.toUpperCase(Locale.ROOT);
-                String message = field + " must equal " + c.value() + ".";
+                String message = field + " must equal its specified value.";
                 yield switch (doc.fieldKind(c.fieldPath()).orElse("")) {
                     case "STRING" -> {
                         StringRef r = m.str(c.fieldPath());
@@ -252,7 +262,6 @@ final class RuleSynthesis {
                 FieldRef required = m.field(dr.groupPath() + "/" + dr.requiredField());
                 String tag = sanitize(dr.value());
                 String is = dr.whenEquals() ? "Is" : "IsNot";
-                String isText = dr.whenEquals() ? " is " : " is not ";
                 String codePrefix = dr.whenEquals() ? "DISCRIMINATED_REQUIRED_" : "ELSE_REQUIRED_";
                 yield Optional.of(m.rule(m.group(dr.groupPath()))
                         .name(dr.requiredField() + "RequiredWhen" + capitalize(dr.discriminator()) + is + tag)
@@ -260,8 +269,7 @@ final class RuleSynthesis {
                         .when(cond.get().and(Dsl.fieldNotFilled(required)))
                         .code(codePrefix + dr.requiredField().toUpperCase(Locale.ROOT)
                                 + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
-                        .message(Dsl.en(dr.requiredField() + " is required when " + dr.discriminator()
-                                + isText + dr.value() + ".")).build());
+                        .message(Dsl.en(dr.requiredField() + " is required when its specified condition holds.")).build());
             }
             case MultiConditionalRequired mc -> {
                 List<Condition> conds = new ArrayList<>();
@@ -281,14 +289,12 @@ final class RuleSynthesis {
                 FieldRef required = m.field(mc.groupPath() + "/" + mc.requiredField());
                 String tag = mc.conditions().stream()
                         .map(fv -> capitalize(fv.field()) + sanitize(fv.value())).collect(Collectors.joining());
-                String when = mc.conditions().stream()
-                        .map(fv -> fv.field() + " is " + fv.value()).collect(Collectors.joining(" and "));
                 yield Optional.of(m.rule(m.group(mc.groupPath()))
                         .name(mc.requiredField() + "RequiredWhen" + tag).errorField(required)
                         .when(all.and(Dsl.fieldNotFilled(required)))
                         .code("CONDITIONAL_REQUIRED_" + mc.requiredField().toUpperCase(Locale.ROOT)
                                 + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
-                        .message(Dsl.en(mc.requiredField() + " is required when " + when + ".")).build());
+                        .message(Dsl.en(mc.requiredField() + " is required when all specified conditions hold.")).build());
             }
             case ForbiddenPattern f -> {
                 if (f.regex().isEmpty()) {
@@ -304,7 +310,7 @@ final class RuleSynthesis {
                 yield Optional.of(m.rule(m.group(parentGroup(f.fieldPath()))).name(field + "NotPattern").errorField(r)
                         .when(r.filled().and(r.matches(f.regex())))
                         .code("FORBIDDEN_PATTERN_" + field.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
-                        .message(Dsl.en(field + " must not match the pattern " + f.regex() + ".")).build());
+                        .message(Dsl.en(field + " must not match its forbidden pattern.")).build());
             }
             case ForbiddenBound f -> {
                 String field = lastSegment(f.fieldPath());
@@ -346,14 +352,12 @@ final class RuleSynthesis {
                 FieldRef errorField = m.field(targetPath);
                 String tag = tc.conditions().stream()
                         .map(fv -> capitalize(fv.field()) + sanitize(fv.value())).collect(Collectors.joining());
-                String when = tc.conditions().stream()
-                        .map(fv -> fv.field() + " is " + fv.value()).collect(Collectors.joining(" and "));
                 yield Optional.of(m.rule(m.group(tc.groupPath()))
                         .name(tc.targetField() + "ConstrainedWhen" + tag).errorField(errorField)
                         .when(all.and(violation.get()))
                         .code("THEN_CONSTRAINT_" + tc.targetField().toUpperCase(Locale.ROOT)
                                 + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
-                        .message(Dsl.en(tc.constraint().requirement(tc.targetField()) + " when " + when + ".")).build());
+                        .message(Dsl.en(tc.constraint().messageRequirement(tc.targetField()) + " when all specified conditions hold.")).build());
             }
             case ForbiddenLength f -> {
                 String field = lastSegment(f.fieldPath());
@@ -401,14 +405,14 @@ final class RuleSynthesis {
                         yield Optional.of(m.rule(m.group(parentGroup(f.fieldPath()))).name(field + "NotConst")
                                 .errorField(r).when(r.filled().and(r.eq(f.value())))
                                 .code(code).severity(Severity.ERROR)
-                                .message(Dsl.en(field + " must not equal " + f.value() + ".")).build());
+                                .message(Dsl.en(field + " must not equal its forbidden value.")).build());
                     }
                     case "NUMBER" -> {
                         NumberRef r = m.num(f.fieldPath());
                         yield Optional.of(m.rule(m.group(parentGroup(f.fieldPath()))).name(field + "NotConst")
                                 .errorField(r).when(r.filled().and(r.eq(f.value())))
                                 .code(code).severity(Severity.ERROR)
-                                .message(Dsl.en(field + " must not equal " + f.value() + ".")).build());
+                                .message(Dsl.en(field + " must not equal its forbidden value.")).build());
                     }
                     default -> {
                         report.diagnostic("'not const' on '" + field + "' skipped — only string/number fields supported");
@@ -427,7 +431,7 @@ final class RuleSynthesis {
                 yield Optional.of(m.rule(m.group(parentGroup(f.fieldPath()))).name(field + "NotInList").errorField(r)
                         .when(r.filled().and(r.in(f.values().get(0), rest)))
                         .code("FORBIDDEN_VALUES_" + field.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
-                        .message(Dsl.en(field + " must not be one of " + f.values() + ".")).build());
+                        .message(Dsl.en(field + " must not be one of its forbidden values.")).build());
             }
             case ElseConstrained ec -> {
                 List<Condition> negs = new ArrayList<>();
@@ -452,16 +456,18 @@ final class RuleSynthesis {
                 FieldRef errorField = m.field(targetPath);
                 String tag = ec.conditions().stream()
                         .map(fv -> capitalize(fv.field()) + sanitize(fv.value())).collect(Collectors.joining());
-                String when = ec.conditions().stream()
-                        .map(fv -> fv.field() + " is not " + fv.value()).collect(Collectors.joining(" or "));
                 yield Optional.of(m.rule(m.group(ec.groupPath()))
                         .name(ec.targetField() + "ConstrainedWhenNot" + tag).errorField(errorField)
                         .when(negated.and(violation.get()))
                         .code("ELSE_CONSTRAINT_" + ec.targetField().toUpperCase(Locale.ROOT)
                                 + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
-                        .message(Dsl.en(ec.constraint().requirement(ec.targetField()) + " when " + when + ".")).build());
+                        .message(Dsl.en(ec.constraint().messageRequirement(ec.targetField()) + " when the specified conditions do not all hold.")).build());
             }
             case ContainsCount cc -> {
+                if (!doc.isRepeating(cc.groupPath())) {
+                    report.omit(source(cc), "contains omitted — its scalar or object array did not import; retain source-schema validation");
+                    yield Optional.empty();
+                }
                 List<Clause> active = cc.clauses().stream().filter(cl -> !isUniversal(cl.constraint())).toList();
                 Optional<NumberExpr> count = matchingRows(m, doc, cc, active, report);
                 if (count.isEmpty()) yield Optional.empty();
@@ -477,7 +483,7 @@ final class RuleSynthesis {
                 Condition violation = cc.min() ? count.get().lt(cc.bound()) : count.get().gt(cc.bound());
                 String tag = cc.clauses().stream().map(cl -> fieldTag(cl.field())).collect(Collectors.joining());
                 String desc = cc.clauses().stream()
-                        .map(cl -> cl.constraint().requirement(cl.field())).collect(Collectors.joining(" and "));
+                        .map(cl -> cl.constraint().messageRequirement(cl.field())).collect(Collectors.joining(" and "));
                 yield Optional.of(m.rule(m.group(parentGroup(cc.groupPath())))
                         .name(row + (cc.min() ? "MinContains" : "MaxContains") + tag)
                         .errorField(m.field(anchorPath.get()))
@@ -544,6 +550,19 @@ final class RuleSynthesis {
         return switch (need.subject()) {
             case SCALAR_VALUE -> {
                 Clause clause = active.getFirst();
+                String path = need.groupPath() + "/" + clause.field();
+                ValueConstraint constraint = clause.constraint();
+                boolean acceptsEmpty = switch (constraint.kind()) {
+                    case CONST -> constraint.value().isEmpty();
+                    case ENUM -> constraint.values().contains("");
+                    default -> false;
+                };
+                if (acceptsEmpty && Set.of("STRING", "ENUMERATION").contains(doc.fieldKind(path).orElse(""))) {
+                    Optional<ClauseTruth> truth = objectClauseTruth(model, doc, path, constraint, report);
+                    if (truth.isEmpty()) yield Optional.empty();
+                    yield Optional.of(total.minus(Dsl.numberOfFilledFields(model.flatten(need.groupPath() + "*/" + clause.field())
+                            .having(truth.get().violated()))));
+                }
                 Optional<Condition> match = matchCondition(model, doc, need.groupPath() + "/" + clause.field(), clause.constraint(), report);
                 if (match.isEmpty()) {
                     report.omit(source(need), "contains omitted — the imported scalar cannot carry its predicate; retain source-schema validation");
@@ -574,22 +593,12 @@ final class RuleSynthesis {
 
     private static Optional<ClauseTruth> objectClauseTruth(BoundModel model, ModelDocument doc, String path,
                                                            ValueConstraint constraint, TranscodeReport.Builder report) {
-        return switch (doc.fieldKind(path).orElse("")) {
-            case "STRING" -> {
-                StringRef field = model.str(path);
-                Optional<List<String>> choices = switch (constraint.kind()) {
-                    case CONST -> constraint.value().isEmpty() ? Optional.of(List.of()) : Optional.empty();
-                    case ENUM -> constraint.values().contains("")
-                            ? Optional.of(constraint.values().stream().filter(v -> !v.isEmpty()).toList()) : Optional.empty();
-                    case PATTERN, MINIMUM, MAXIMUM, EXCLUSIVE_MIN, EXCLUSIVE_MAX -> Optional.empty();
-                };
-                if (choices.isEmpty()) yield Optional.empty();
-                List<String> nonemptyValues = choices.get();
-                if (nonemptyValues.isEmpty()) yield Optional.of(new ClauseTruth(field.notFilled(), field.filled()));
-                String[] rest = nonemptyValues.subList(1, nonemptyValues.size()).toArray(new String[0]);
-                yield Optional.of(new ClauseTruth(field.notFilled().or(field.in(nonemptyValues.getFirst(), rest)),
-                        field.filled().and(field.notIn(nonemptyValues.getFirst(), rest))));
-            }
+        String kind = doc.fieldKind(path).orElse("");
+        if (Set.of("STRING", "ENUMERATION").contains(kind)) {
+            Optional<ClauseTruth> emptyTruth = emptyAdmittingTruth(model, doc, path, constraint, report);
+            if (emptyTruth.isPresent() || "STRING".equals(kind)) return emptyTruth;
+        }
+        return switch (kind) {
             case "NUMBER", "ENUMERATION" -> {
                 Optional<Condition> match = matchCondition(model, doc, path, constraint, report);
                 Optional<Condition> violation = violationCondition(model, doc, path, constraint, report);
@@ -599,6 +608,25 @@ final class RuleSynthesis {
             }
             default -> Optional.empty();
         };
+    }
+
+    private static Optional<ClauseTruth> emptyAdmittingTruth(BoundModel model, ModelDocument doc, String path,
+                                                            ValueConstraint constraint, TranscodeReport.Builder report) {
+        Optional<List<String>> choices = switch (constraint.kind()) {
+            case CONST -> constraint.value().isEmpty() ? Optional.of(List.of()) : Optional.empty();
+            case ENUM -> constraint.values().contains("")
+                    ? Optional.of(constraint.values().stream().filter(v -> !v.isEmpty()).toList()) : Optional.empty();
+            case PATTERN, MINIMUM, MAXIMUM, EXCLUSIVE_MIN, EXCLUSIVE_MAX -> Optional.empty();
+        };
+        if (choices.isEmpty()) return Optional.empty();
+        FieldRef field = model.field(path);
+        if (choices.get().isEmpty()) return Optional.of(new ClauseTruth(field.notFilled(), field.filled()));
+        ValueConstraint nonempty = ValueConstraint.ofEnum(choices.get());
+        Optional<Condition> match = matchCondition(model, doc, path, nonempty, report);
+        Optional<Condition> violation = violationCondition(model, doc, path, nonempty, report);
+        return match.isPresent() && violation.isPresent()
+                ? Optional.of(new ClauseTruth(field.notFilled().or(match.get()), violation.get()))
+                : Optional.empty();
     }
 
     /** The {@code [field] == value} condition for a string, enum, or number field (else empty — no other kind

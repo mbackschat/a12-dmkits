@@ -15,6 +15,7 @@ import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.bridge.InterpreterConditionReadBack;
+import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -290,7 +291,7 @@ class ConditionReadBackParityTest {
     }
 
     @Test
-    void schemaProjectsDecodedRulePatternsWhilePreservingAuthoredCarriageAndDeclarations() throws Exception {
+    void schemaCarriesRulePatternsWhilePreservingAuthoredDeclarationsAndKernelAdmission() throws Exception {
         var mapper = new ObjectMapper();
         var cases = literalCases();
         assertEquals(4, cases.size());
@@ -314,11 +315,14 @@ class ConditionReadBackParityTest {
                     var exported = new JsonSchemaExporter().export(json);
                     var schema = mapper.readTree(exported.jsonSchema());
                     String context = row.id() + ": " + provider.getClass().getSimpleName();
-                    assertEquals(row.decoded(), schema.path("properties").path("Reference").path("pattern").asText(), context);
+                    String importedJson = new JsonSchemaImporter().importSchema(exported.jsonSchema()).dmJson();
+                    ModelLoader.loadSelfContained(importedJson);
+                    assertTrue(schema.path("properties").path("Reference").path("pattern").isMissingNode(), context);
+                    assertTrue(exported.report().diagnostics().stream().anyMatch(d -> d.contains("pattern") && d.contains("carried")), context);
                     assertEquals(declaredPattern, schema.path("properties").path("RoutingCode").path("pattern").asText(), context);
                     assertEquals(authoredCondition, schema.path("x-a12-rule").get(0).path("element")
                             .path("Rule").path("errorCondition").asText(), context);
-                    var imported = mapper.readTree(new JsonSchemaImporter().importSchema(exported.jsonSchema()).dmJson());
+                    var imported = mapper.readTree(importedJson);
                     assertEquals(authoredCondition, imported.findValue("errorCondition").asText(), context);
                     assertEquals(declaredPattern, imported.at("/content/modelRoot/rootGroups/0/Group/elements/1/Field/fieldType/StringType/pattern").asText(), context);
                 } finally {

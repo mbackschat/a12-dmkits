@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import java.util.List;
 import java.util.Optional;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -22,10 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Shape 4b (SCHEMAKIT-SPEC §6; proposal §6 Tier A) — the project-or-carry split. A string pattern
- * rule is BOTH projected to a native JSON Schema {@code pattern} keyword (for a foreign reader) AND carried
- * as {@code x-a12-rule} (for a12 fidelity); the rule read is reused from {@code :adapter}. A rule with no
- * native home (a cross-field rule) is carried only.
+ * SCHEMAKIT-SPEC §4: native whole-root minimums complement authoritative rule carriage.
+ * Rule-pattern applicability remains carried; independently declared field patterns remain native.
  */
 class TierAProjectionShapeTest {
 
@@ -234,19 +234,60 @@ class TierAProjectionShapeTest {
     }
 
     @Test
-    void patternRuleIsProjectedToNativeKeywordAndAlsoCarried() throws Exception {
+    void aRuleProjectionCannotOverwriteADifferentDeclaredPatternOnTheSameField() throws Exception {
+        String structure = DocumentModelDraft.named("Order").locale("en_US")
+                .rootGroup("Root", g -> g.stringField("PostalCode", f -> f.pattern("AA", "Check the declared format.")))
+                .build().toJson();
+        var session = EditSession.read(structure);
+        var root = session.group("/Root");
+        var postal = root.str("PostalCode");
+        root.addRule(r -> r.name("Digits").errorField(postal).when(postal.violates("[0-9]+"))
+                .code("DIGITS").message(Dsl.en("Check the digits.")).build());
+        String dm = session.toJson();
+        SchemaTestSupport.assertKernelAccepts(dm);
+        var exported = new JsonSchemaExporter().export(dm);
+        assertEquals("AA", MAPPER.readTree(exported.jsonSchema()).path("properties").path("PostalCode").path("pattern").asText());
+        var imported = new JsonSchemaImporter().importSchema(exported.jsonSchema());
+        SchemaTestSupport.assertKernelAccepts(imported.dmJson());
+        assertEquals(Optional.of("AA"), ModelDocument.read(imported.dmJson()).fieldPattern("/Root/PostalCode"));
+        assertEquals(MAPPER.readTree(dm).findValue("errorCondition"), MAPPER.readTree(imported.dmJson()).findValue("errorCondition"));
+    }
+
+    @Test
+    void aRulePatternIsCarriedWithAnExplicitNativeProjectionDiagnostic() throws Exception {
         JsonSchemaExporter.ExportResult exported = new JsonSchemaExporter().export(modelWithPatternRule());
         JsonNode schema = MAPPER.readTree(exported.jsonSchema());
 
-        // projected for a foreign reader: a native `pattern` keyword on the field
-        assertEquals(PATTERN, schema.path("properties").path("PostalCode").path("pattern").asText(),
-                "the pattern rule must project to a native JSON Schema pattern keyword");
-        // and still carried for a12 fidelity
-        assertTrue(exported.jsonSchema().contains(Carriage.X_RULE), "the rule is also carried as x-a12-rule");
-        // the report records the Tier-A projection
-        assertTrue(exported.report().dispositions().stream()
-                        .anyMatch(d -> d.tier() == TranscodeReport.Tier.TIER_A),
-                "the projection is recorded as a Tier-A disposition");
+        assertFalse(schema.path("properties").path("PostalCode").has("pattern"));
+        assertTrue(exported.jsonSchema().contains(Carriage.X_RULE));
+        assertTrue(exported.report().diagnostics().stream().anyMatch(d -> d.contains("pattern") && d.contains("carried")));
+        assertFalse(exported.report().dispositions().stream().anyMatch(d -> d.tier() == TranscodeReport.Tier.TIER_A));
+    }
+
+    @Test
+    void aWholeMinimumAboveIntRangeRemainsExactAndIntersectsIndependentBounds() throws Exception {
+        for (boolean reversed : List.of(false, true)) {
+            String structure = DocumentModelDraft.named("Order").locale("en_US")
+                    .rootGroup("Root", g -> g.group("Items", i -> i.repeatable(5).field("Label", FieldKind.STRING)))
+                    .build().toJson();
+            var session = EditSession.read(structure);
+            var root = session.group("/Root");
+            var items = root.group("Items");
+            var label = root.str("Items/Label");
+            for (String bound : reversed ? List.of("2147483648", "2147483647") : List.of("2147483647", "2147483648")) {
+                root.addRule(r -> r.name("MinItems" + bound).errorField(label)
+                        .when(Dsl.numberOfFilledGroups(items).lt(bound)).code("MIN_ITEMS_" + bound)
+                        .message(Dsl.en("Check the number of items.")).build());
+            }
+            SchemaTestSupport.assertKernelAccepts(session.toJson());
+            var exported = new JsonSchemaExporter().export(session.toJson());
+            assertEquals(new java.math.BigInteger("2147483648"), MAPPER.readTree(exported.jsonSchema())
+                    .path("properties").path("Items").path("minItems").bigIntegerValue());
+            var imported = new JsonSchemaImporter().importSchema(exported.jsonSchema());
+            SchemaTestSupport.assertKernelAccepts(imported.dmJson());
+            assertEquals(SchemaTestSupport.normalize(exported.jsonSchema()), SchemaTestSupport.normalize(
+                    new JsonSchemaExporter().export(imported.dmJson()).jsonSchema()));
+        }
     }
 
     @Test
@@ -282,10 +323,8 @@ class TierAProjectionShapeTest {
         SchemaTestSupport.assertKernelAccepts(back.dmJson());
         JsonSchemaExporter.ExportResult second = new JsonSchemaExporter().export(back.dmJson());
 
-        // the native pattern keyword is re-derived deterministically and the carried rule survives →
-        // schema → DM → schema is lossless even with the additive Tier-A projection
         assertEquals(SchemaTestSupport.normalize(first.jsonSchema()),
                 SchemaTestSupport.normalize(second.jsonSchema()),
-                "the additive Tier-A projection must round-trip (pattern re-derived; rule carried)");
+                "the unprojected rule must round-trip through authoritative carriage");
     }
 }

@@ -46,6 +46,7 @@ dependencies {
     // requirement), and a consumer supplies a ConditionReadBack backend at runtime just like for the other
     // kits. dmtool is unaffected — :cli depends on :adapter directly, so the provider is on its classpath.
     testImplementation project(':adapter')
+    testImplementation project(':edit')
 
     // The Kernel-free gate (PORTABLE-CONSISTENCY-PROPOSAL §7 F3-b), TEST scope for the same reason :adapter is:
     // it arms the differential, never the published artifact. Every model this suite imports is put through

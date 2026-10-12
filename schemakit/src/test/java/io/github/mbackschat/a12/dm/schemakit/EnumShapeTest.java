@@ -37,7 +37,7 @@ class EnumShapeTest {
     void enumRoundTrips() {
         JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(ENUM_SCHEMA);
         JsonSchemaExporter.ExportResult exported = new JsonSchemaExporter().export(imported.dmJson());
-        assertEquals(normalize(ENUM_SCHEMA), normalize(exported.jsonSchema()),
+        assertEquals(SchemaTestSupport.withDefaultRoot(ENUM_SCHEMA), normalize(exported.jsonSchema()),
                 "a string enum must round-trip as {type:string, enum:[…]}");
     }
 }

@@ -86,9 +86,10 @@ class ArrayOfScalarShapeTest {
     }
 
     @Test
-    void valueListImportsAStringArrayAsAStringMultiSelect() {
+    void valueListImportsANonemptyStringArrayAsAStringMultiSelect() {
         MappingProfile p = MappingProfile.defaults().withArrayOfScalar(MappingProfile.ArrayOfScalar.VALUE_LIST);
-        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema(STRING_ARRAY, p);
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema(
+                STRING_ARRAY.replace("\"type\": \"string\"", "\"type\": \"string\", \"minLength\": 1"), p);
 
         assertKernelAccepts(r.dmJson());
         ModelDocument doc = ModelDocument.read(r.dmJson());
@@ -135,4 +136,22 @@ class ArrayOfScalarShapeTest {
         return r.report().dispositions().stream()
                 .anyMatch(d -> d.source().equals(source) && d.tier() == TranscodeReport.Tier.OMITTED);
     }
+    @Test
+    void unresolvedEmptyAdmissionIsOmittedAndExplicitExclusionRetainsTheCarrier() {
+        for (String constraint : java.util.List.of("\"pattern\":\"^$\"", "\"format\":\"date\"")) {
+            String schema = "{\"type\":\"object\",\"required\":[\"tags\"],\"properties\":{\"tags\":{\"type\":\"array\",\"maxItems\":4,"
+                    + "\"items\":{\"type\":\"string\"," + constraint + "},\"contains\":{\"pattern\":\"\"}}}}";
+            var imported = new JsonSchemaImporter().importSchema(schema);
+            assertKernelAccepts(imported.dmJson());
+            assertTrue(ModelDocument.read(imported.dmJson()).fieldPaths().isEmpty());
+            assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains("empty admission")));
+            assertTrue(imported.report().dispositions().stream().noneMatch(d -> d.tier() == TranscodeReport.Tier.TIER_A_PLUS));
+        }
+        var excluded = new JsonSchemaImporter().importSchema("{\"type\":\"object\",\"properties\":{\"tags\":{\"type\":\"array\",\"maxItems\":4,"
+                + "\"items\":{\"type\":\"string\",\"pattern\":\"^$\",\"minLength\":1}}}}");
+        assertKernelAccepts(excluded.dmJson());
+        assertEquals(java.util.List.of("/Root/tags/value"), ModelDocument.read(excluded.dmJson()).fieldPaths());
+        assertTrue(excluded.report().dispositions().stream().noneMatch(d -> d.tier() == TranscodeReport.Tier.OMITTED));
+    }
+
 }
