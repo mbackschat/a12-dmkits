@@ -42,6 +42,17 @@ class RuleAuthoringTest {
     }
 
     @Test
+    void malformedReservedNamesRemainDelegatedToTheKernel() {
+        for (String name : java.util.List.of("vk_vk.Bad", "vk_vk" + "x".repeat(96))) {
+            var fee = m.num("/Subscription/Addons/MonthlyFee");
+            var built = m.rule(m.group("/Subscription/Addons")).name(name)
+                    .errorField(fee).when(fee.filled()).code("FORMAL_NAME")
+                    .message(en("x"), de("x")).build();
+            assertEquals(name, built.name());
+        }
+    }
+
+    @Test
     void buildsARuleWithAnInterpolatedMessageTheKernelAccepts() {
         // F2a: a $Field.value$ placeholder in the message — typed via Dsl.fieldValue (no-asterisk by
         // construction); the field is referenced in the condition (the kernel's other requirement).

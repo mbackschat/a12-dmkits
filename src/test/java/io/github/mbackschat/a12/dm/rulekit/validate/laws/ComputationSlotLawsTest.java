@@ -60,6 +60,16 @@ class ComputationSlotLawsTest {
     }
 
     @Test
+    void reservedNamesOutsideTheFormalDomainHaveNoReservedNameClass() {
+        for (String name : List.of("vk_vk.Bad", "vk_vk" + "x".repeat(95), "vk_vk" + "x".repeat(96))) {
+            String verdict = KernelLaws.verdictOf(withProbeComputation(name, List.of(en("x"), de("x"))));
+            org.junit.jupiter.api.Assertions.assertEquals(
+                    name.length() == 100 ? "MVK_RULE_NAME_INVALID" : KernelLaws.REFUSED_CODELESS,
+                    verdict, name);
+        }
+    }
+
+    @Test
     void theProbeShapeItselfIsAccepted() {
         // negative control: the slot shape every row below varies is accepted when name + messages are legal
         assertNotNull(BoundModel.ofJson(withProbeComputation("ProbeShapeControl", List.of(en("x"), de("x")))));

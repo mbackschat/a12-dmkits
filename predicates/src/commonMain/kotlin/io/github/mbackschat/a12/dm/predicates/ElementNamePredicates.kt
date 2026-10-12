@@ -9,8 +9,9 @@ package io.github.mbackschat.a12.dm.predicates
 private const val RESERVED_NAME_PREFIX = "vk_vk"
 
 /**
- * Whether [name] sits in A12's reserved element namespace, which the Kernel refuses with
- * `MVK_RULE_NAME_INVALID`.
+ * Whether [name] draws A12's reserved-name rejection `MVK_RULE_NAME_INVALID`.
+ * Formal name admission precedes this named law: dotted or overlong names have only a codeless refusal
+ * (SPEC-2026-10-11-02; `RuleSlotLawsTest` and `ComputationSlotLawsTest`).
  *
  * **The match is case-INSENSITIVE**, unlike the element-name uniqueness law on the same member, which is
  * case-sensitive. The two are easy to conflate precisely because they judge the same string.
@@ -22,4 +23,5 @@ private const val RESERVED_NAME_PREFIX = "vk_vk"
  * law. That miss is the argument for this function existing rather than for a fourth copy of the comparison.
  */
 fun isReservedElementName(name: String): Boolean =
-    name.regionMatches(0, RESERVED_NAME_PREFIX, 0, RESERVED_NAME_PREFIX.length, ignoreCase = true)
+    name.regionMatches(0, RESERVED_NAME_PREFIX, 0, RESERVED_NAME_PREFIX.length, ignoreCase = true) &&
+        name.length <= 100 && name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it == '_' }

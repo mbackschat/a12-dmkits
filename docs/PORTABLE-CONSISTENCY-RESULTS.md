@@ -8,6 +8,10 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-10-12 - declaration-name check-path gate <a id="declaration-name-check-2026-10-12"></a>
+
+The isolated `:adapter:checkerPreparedNodePerfTest` invocation passed after narrowing the shared reserved-name predicate. Node v24.18.0, 51 pairs and 200/800 programs yielded medians 643.46/2591.76 ms and paired growth 4.05x; report size stayed 5395 characters. The unchanged fixture and estimator check growth, not a certified latency target. [KF160](KERNEL-FINDINGS.md#kf160) records the declaration controls.
+
 ## 2026-10-12 - indexed-message check-path gate <a id="indexed-message-check-2026-10-12"></a>
 
 `./build.sh :adapter:checkerPreparedNodePerfTest` passed for the indexed-message admission changes. One warm Node v24.18.0 process measured 51 pairs at 200 and 800 programs: medians 638.50 and 2581.70 ms, paired growth 4.03x. Report size remained 5395 characters at both scales. The isolated invocation used the unchanged fixture and estimator; timings are informative, not a controlled attribution against the earlier run. The correctness controls are recorded in [KF546](KERNEL-FINDINGS.md#kf546).

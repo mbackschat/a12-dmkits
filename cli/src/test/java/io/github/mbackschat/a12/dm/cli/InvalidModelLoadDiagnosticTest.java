@@ -13,6 +13,16 @@ import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Optional;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -26,6 +36,130 @@ import org.junit.jupiter.api.io.TempDir;
 class InvalidModelLoadDiagnosticTest {
 
     private static final ObjectMapper M = new ObjectMapper();
+
+    private record Notice(Optional<String> code, String severity, String source, JsonNode where) {}
+    private record DeclarationCase(String id, String name, String rawCode, int exit,
+                                   Boolean valid, List<Notice> notices) {}
+
+    private static Notice kernelNotice(String code, String name) {
+        ObjectNode where = M.createObjectNode();
+        if (name != null) where.put("rule", "/Form/" + name);
+        return new Notice(Optional.ofNullable(code), "ERROR", "KERNEL", where);
+    }
+
+    private static Map<Notice, Long> multiset(List<Notice> notices) {
+        return notices.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+    }
+
+    private static List<Notice> notices(JsonNode envelope) {
+        JsonNode diagnostics = envelope.path("diagnostics");
+        assertTrue(diagnostics.isArray(), envelope::toString);
+        List<Notice> out = new ArrayList<>();
+        for (JsonNode diagnostic : diagnostics) {
+            Optional<String> code = Optional.empty();
+            if (diagnostic.has("code")) {
+                assertTrue(diagnostic.path("code").isTextual(), diagnostic::toString);
+                code = Optional.of(diagnostic.path("code").textValue());
+            }
+            assertTrue(diagnostic.path("severity").isTextual(), diagnostic::toString);
+            assertTrue(diagnostic.path("source").isTextual(), diagnostic::toString);
+            assertTrue(diagnostic.path("where").isObject(), diagnostic::toString);
+            out.add(new Notice(code, diagnostic.path("severity").textValue(),
+                    diagnostic.path("source").textValue(), diagnostic.path("where").deepCopy()));
+        }
+        return out;
+    }
+
+    private static String declarationControl() {
+        var session = EditSession.read(DocumentModelDraft.named("declaration-admission")
+                .locale("en_US")
+                .rootGroup("Form", form -> form.stringField("Value", f -> {}))
+                .build().toJson());
+        var form = session.group("/Form");
+        var value = form.str("Value");
+        form.addRule(r -> r.name("Ordinary").code("CODE").severity(Severity.ERROR)
+                .errorField(value).when(value.filled())
+                .message(Dsl.en("Check the value.")).build());
+        return session.toJson();
+    }
+
+    // The legal typed rule owns every other slot; only name/errorCode need byte surgery.
+    private static String declarationCandidate(String control, DeclarationCase row) throws Exception {
+        ObjectNode root = (ObjectNode) M.readTree(control);
+        ObjectNode rule = null;
+        for (JsonNode element : root.path("content").path("modelRoot").path("rootGroups")
+                .path(0).path("Group").path("elements")) {
+            if ("Rule".equals(element.path("type").asText())
+                    && "Ordinary".equals(element.path("name").asText())) {
+                assertEquals(null, rule, "the typed control must contain exactly one probe rule");
+                rule = (ObjectNode) element;
+            }
+        }
+        assertTrue(rule != null, "the typed probe rule must exist");
+        rule.put("name", row.name());
+        ObjectNode body = (ObjectNode) rule.path("Rule");
+        assertTrue(body.has("errorCode"), "the legal writer must emit the control's code");
+        if (row.rawCode() == null) body.remove("errorCode");
+        else body.set("errorCode", M.readTree(row.rawCode()));
+        return root.toString();
+    }
+
+    @Test
+    void declarationAdmissionPreservesEveryNotificationAndItsLocation(@TempDir Path dir) throws Exception {
+        String control = declarationControl();
+        String missing = "MVK_ERROR_CODE_MISSING";
+        String reserved = "MVK_RULE_NAME_INVALID";
+        List<DeclarationCase> rows = List.of(
+                new DeclarationCase("control", "Ordinary", "\"CODE\"", 0, true, List.of()),
+                new DeclarationCase("reserved-blank", "vk_vkProbe", "\"\"", 1, false,
+                        List.of(kernelNotice(missing, "vk_vkProbe"),
+                                kernelNotice(reserved, "vk_vkProbe"), kernelNotice(null, null))),
+                new DeclarationCase("dotted-blank", "Bad.Name", "\"\"", 1, false,
+                        List.of(kernelNotice(null, "Bad.Name"),
+                                kernelNotice(missing, "Bad.Name"), kernelNotice(null, null))),
+                new DeclarationCase("reserved-dotted", "vk_vk.Bad", "\"CODE\"", 1, false,
+                        List.of(kernelNotice(null, "vk_vk.Bad"))),
+                new DeclarationCase("null-reserved", "vk_vkProbe", "null", 2, null, List.of()),
+                new DeclarationCase("empty-blank", "", "\"\"", 1, false,
+                        List.of(kernelNotice(null, null))),
+                new DeclarationCase("underscore", "_Rule", "\"CODE\"", 1, false,
+                        List.of(kernelNotice(null, "_Rule"))),
+                new DeclarationCase("hyphen-code", "Ordinary", "\"A-B\"", 1, false,
+                        List.of(kernelNotice(null, "Ordinary"))),
+                new DeclarationCase("space-code", "Ordinary", "\"   \"", 1, false,
+                        List.of(kernelNotice(missing, "Ordinary"))),
+                new DeclarationCase("vt-code", "Ordinary", "\"\\u000b\"", 1, false,
+                        List.of(kernelNotice(missing, "Ordinary"))),
+                new DeclarationCase("nbsp-code", "Ordinary", "\"\\u00a0\"", 1, false,
+                        List.of(kernelNotice(null, "Ordinary"))),
+                new DeclarationCase("absent-code", "Ordinary", null, 1, false,
+                        List.of(kernelNotice(missing, "Ordinary"), kernelNotice(null, null))));
+        assertEquals(12, rows.size());
+        for (DeclarationCase row : rows) {
+            Path model = dir.resolve(row.id() + ".dm.json");
+            Files.writeString(model, declarationCandidate(control, row));
+            var result = CliTestSupport.run("-m", model.toString(), "model", "check");
+            assertNoStackTrace(result);
+            assertEquals(row.exit(), result.code(), row.id() + ": " + result.out() + result.err());
+            JsonNode envelope = M.readTree(result.out());
+            assertTrue(envelope.path("ok").isBoolean(), envelope::toString);
+            assertEquals(row.valid() != null, envelope.path("ok").booleanValue(), row.id());
+            List<Notice> expected = row.notices();
+            if (row.valid() == null) {
+                assertFalse(envelope.has("valid"), envelope::toString);
+                expected = List.of(new Notice(Optional.of("RK_MODEL_INPUT_INVALID"), "ERROR", "PRECHECK",
+                        M.createObjectNode().put("arg", model.toString())));
+            } else {
+                assertTrue(envelope.path("valid").isBoolean(), envelope::toString);
+                assertEquals(row.valid().booleanValue(), envelope.path("valid").booleanValue(), row.id());
+            }
+            assertEquals(multiset(expected), multiset(notices(envelope)), row.id() + ": " + result.out());
+            for (JsonNode diagnostic : envelope.path("diagnostics")) {
+                assertEquals("empty-blank".equals(row.id()), diagnostic.path("summary").asText()
+                        .startsWith("the kernel could not build this model:"), result::out);
+            }
+        }
+    }
 
     private record StrictLoadCase(String name, List<String> args) {
         private StrictLoadCase(String name, String... args) {

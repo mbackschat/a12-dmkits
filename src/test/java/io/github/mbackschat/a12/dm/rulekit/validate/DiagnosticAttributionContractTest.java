@@ -29,8 +29,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * <p>The two halves are deliberately opposite failure directions, and each is the other's control:
  *
  * <ul>
- *   <li>a {@code KERNEL} source may carry <b>no code</b> — the deserialize/expand tier refuses before
- *       {@code checkConsistency} can classify, so codelessness is the tell for which kernel tier ran;</li>
+ *   <li>a {@code KERNEL} source may carry <b>no code</b> at either a build refusal or a judged notification;
+ *       `InvalidModelLoadDiagnosticTest` locks the judged declaration cases (SPEC-2026-10-11-02);</li>
  *   <li>an {@code MVK_*} code may ride a <b>{@code PRECHECK}</b> source — so a kernel basis is the PAIR,
  *       never either field read on its own.</li>
  * </ul>
@@ -41,8 +41,8 @@ class DiagnosticAttributionContractTest {
 
     /**
      * The gate ran and refused, but before any notification existed. {@code source} is derived from which
-     * gate ran, so it is honestly {@code KERNEL} — and the absent code is the only thing separating this
-     * tier from a {@code checkConsistency} verdict.
+     * gate ran, so it is honestly {@code KERNEL}. Code absence alone cannot distinguish this refusal from
+     * a codeless notification reported by {@code checkConsistency}.
      */
     @Test
     void aKernelSourcedDiagnosticMayCarryNoCodeAtAll() {

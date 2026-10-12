@@ -77,6 +77,18 @@ class DeclarationSlotTest {
     private fun TrackedFactBase.slotAndPresenceFindings() = declarationSlotFindings() + errorTextPresenceFindings()
 
     @Test
+    fun malformedReservedNamesDoNotInventTheNamedKernelClass() {
+        for (kind in kinds) for ((name, expected) in listOf(
+            "vk_vkProbe" to listOf("MVK_RULE_NAME_INVALID"),
+            "vk_vk.Bad" to emptyList(),
+            ("vk_vk" + "x".repeat(95)) to listOf("MVK_RULE_NAME_INVALID"),
+            ("vk_vk" + "x".repeat(96)) to emptyList(),
+        )) assertEquals(expected, codesFor(kind, name, BOTH), "$kind/$name")
+        assertEquals(listOf("MVK_ERROR_CODE_MISSING"),
+            codesFor("Rule", "vk_vk.Bad", BOTH, slots = "\"errorCode\":\"\""))
+    }
+
+    @Test
     fun eachSlotShapeDrawsTheVerdictTheKernelGivesIt() {
         for (kind in kinds) {
             val actual = mutableMapOf<String, List<String>>()

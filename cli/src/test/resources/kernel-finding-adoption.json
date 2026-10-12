@@ -10262,6 +10262,164 @@
           "evidence": {}
         }
       }
+    },
+    "kf160": {
+      "sha256": "b1ddbfc2a829fe67057224b1629344d4cec968ab611cf8688c853f54b6dd7ee3",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "declaration judgments"
+        ],
+        "dmkits": [
+          "typed name delegation"
+        ],
+        "interpreter": [],
+        "checker": [
+          "reserved name domain"
+        ],
+        "dmtool-cli": [
+          "declaration reporting"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "SPEC11-02"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Independent kernel judgments precede the portable named-code correction.",
+          "evidence": {
+            "declaration judgments": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/RuleSlotLawsTest.java#reservedNamesOutsideTheFormalDomainHaveNoReservedNameClass",
+              "witness": "Dotted,100 and101-character controls run on both Rule and Computation carriers."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "Rule and Computation builders share the narrower reserved-name predicate.",
+          "evidence": {
+            "typed name delegation": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/RuleAuthoringTest.java#malformedReservedNamesRemainDelegatedToTheKernel",
+              "witness": "Dotted and overlong names reach the kernel; the computation authoring sibling covers the same cases."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Declaration admission and notification attribution change no runtime behavior or JSON Schema model mapping.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "DeclarationSlotTest locks both carriers and independent missing-code reporting; codeless notifications are outside the portable named inventory.",
+          "evidence": {
+            "reserved name domain": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/DeclarationSlotTest.kt#malformedReservedNamesDoNotInventTheNamedKernelClass",
+              "witness": "Both carriers distinguish ordinary reserved,dotted,100 and101-character names; dotted+empty code retains the missing-code finding."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Existing reporting preserves judged codeless notifications; the published diagnostic description is corrected.",
+          "evidence": {
+            "declaration reporting": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/InvalidModelLoadDiagnosticTest.java#declarationAdmissionPreservesEveryNotificationAndItsLocation",
+              "witness": "The twelve-row unordered multiset distinguishes judged invalid,model-build failure and unreadable input."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Declaration admission and notification attribution change no runtime behavior or JSON Schema model mapping.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Declaration admission and notification attribution change no runtime behavior or JSON Schema model mapping.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-11-02 awaits peer verification.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf291": {
+      "sha256": "7e3ec4931a2026521a6434290eb3a282695b770447e454d0800424c739539cea",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "notification multiset"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [
+          "declaration reporting"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "SPEC11-02"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Independent kernel judgments precede the portable named-code correction.",
+          "evidence": {
+            "notification multiset": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/InvalidModelLoadDiagnosticTest.java#declarationAdmissionPreservesEveryNotificationAndItsLocation",
+              "witness": "Twelve kernel-backed model checks preserve every code-or-absence,severity,source and location."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The existing named missing-code authoring policy is unchanged; full stored-model notifications are carried by the kernel/CLI route.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Declaration admission and notification attribution change no runtime behavior or JSON Schema model mapping.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "DeclarationSlotTest locks both carriers and independent missing-code reporting; codeless notifications are outside the portable named inventory.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Existing reporting preserves judged codeless notifications; the published diagnostic description is corrected.",
+          "evidence": {
+            "declaration reporting": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/InvalidModelLoadDiagnosticTest.java#declarationAdmissionPreservesEveryNotificationAndItsLocation",
+              "witness": "The twelve-row unordered multiset distinguishes judged invalid,model-build failure and unreadable input."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Declaration admission and notification attribution change no runtime behavior or JSON Schema model mapping.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Declaration admission and notification attribution change no runtime behavior or JSON Schema model mapping.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-11-02 awaits peer verification.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

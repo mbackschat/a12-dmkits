@@ -8,8 +8,8 @@
   "additionalProperties": false,
   "properties": {
     "severity": { "type": "string", "enum": ["ERROR", "WARNING", "INFO"], "description": "ERROR = blocks the result (the envelope's outcome is refused [exit 2] or rejected [exit 1]; nothing written); WARNING = valid-but-suspicious advisory (outcome stays applied/read, exit 0); INFO = a note (e.g. a version skew), exit 0. Rule of thumb: an ERROR-severity diagnostic explains a non-zero exit; WARNING/INFO ride a successful one." },
-    "source": { "type": "string", "enum": ["KERNEL", "PRECHECK", "LINT", "ENVIRONMENT", "INTERNAL"], "description": "KERNEL = the kernel refused, in one of three tiers: a checkConsistency problem (carries the kernel's own MVK_*/error-text code); a deserialize/expand refusal that fails BEFORE checkConsistency can classify it (codeless); or a model the kernel could not BUILD, where checkConsistency threw instead of reporting (codeless, and its summary begins `the kernel could not build this model:`). Codelessness alone therefore does NOT say which tier refused \u2014 the build-failure summary is what separates the last two; PRECHECK = a kit pre-check, including malformed model input (RK_MODEL_INPUT_INVALID, exit 2, with no consistency verdict); LINT = valid-but-suspicious advisory; ENVIRONMENT = toolchain note; INTERNAL = the tool itself failed (an unexpected throwable at the boundary — RK_INTERNAL_ERROR)" },
-    "code": { "type": "string", "description": "the class the reporting engine named: an MVK_* or error-text (INVALID_ENTITY, NO_BASE_YEAR, \u2026) code, or an RK_* code from rulekit/structure; absent when the reporting engine classified nothing \u2014 which for a KERNEL source means either that the deserialize/expand tier refused before checkConsistency ran, or that checkConsistency threw on a model the kernel could not build (see `source` for how the two are told apart). An MVK_* code does NOT by itself mean the kernel decided: rulekit's typed builders deliberately mint MVK_* codes at source PRECHECK to name the kernel class they anticipate, so a kernel basis is the PAIR source=KERNEL plus an MVK_* code, never the code alone. Look up an RK_* code's meaning + fix with `dmtool diagnostics <CODE>`, which also serves the MVK_* codes carrying a structural/placement corrective; an operator-specific MVK_* code is explained by `operators`/`explain` instead." },
+    "source": {"type": "string", "enum": ["KERNEL", "PRECHECK", "LINT", "ENVIRONMENT", "INTERNAL"], "description": "KERNEL = the kernel refused: checkConsistency may report named or codeless notifications; deserialize/expand may refuse before judgment; or checkConsistency may throw while building the model, in which case the codeless summary begins `the kernel could not build this model:`. Code absence alone does not identify the tier. PRECHECK = a kit pre-check, including malformed model input (RK_MODEL_INPUT_INVALID, exit 2, with no consistency verdict); LINT = valid-but-suspicious advisory; ENVIRONMENT = toolchain note; INTERNAL = an unexpected tool failure."},
+    "code": {"type": "string", "description": "Stable identifier when present. KERNEL notifications can be codeless even after checkConsistency judges the model; code absence also occurs on deserialization and model-build refusals. An MVK_* code alone does not attribute the decision: typed builders also emit these codes at source PRECHECK. Use source to identify the producer and the build-failure summary to distinguish a failed model build. Look up RK_* codes and structural MVK_* correctives with `dmtool diagnostics <CODE>`; operator-specific MVK_* codes are explained by `operators`/`explain`."},
     "summary": { "type": "string", "description": "human-readable description (the `what`)" },
     "where": {
       "type": "object",
@@ -27,6 +27,11 @@
     "explain": { "type": "string", "description": "the operator meaning / rationale (the `why`), when helpful" }
   },
   "examples": [
+    {
+      "severity": "ERROR", "source": "KERNEL",
+      "summary": "The error code is only allowed to contain letters, digits, blanks and underscores.",
+      "where": { "rule": "/Form/Ordinary" }
+    },
     {
       "severity": "ERROR", "source": "PRECHECK", "code": "RK_MODEL_INPUT_INVALID",
       "summary": "missing required errorEntityRelPath on element 'Order/Guard'",

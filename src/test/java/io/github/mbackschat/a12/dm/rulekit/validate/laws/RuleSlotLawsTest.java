@@ -45,6 +45,16 @@ class RuleSlotLawsTest {
                 () -> "expected " + code + ", kernel said: " + ex.getMessage());
     }
 
+    @Test
+    void reservedNamesOutsideTheFormalDomainHaveNoReservedNameClass() {
+        for (String name : List.of("vk_vk.Bad", "vk_vk" + "x".repeat(95), "vk_vk" + "x".repeat(96))) {
+            String verdict = KernelLaws.verdictOf(withProbeRule(name, List.of(en("x"), de("x"))));
+            org.junit.jupiter.api.Assertions.assertEquals(
+                    name.length() == 100 ? "MVK_RULE_NAME_INVALID" : KernelLaws.REFUSED_CODELESS,
+                    verdict, name);
+        }
+    }
+
     /**
      * An {@code errorMessage} member that is ABSENT and one that is an empty array are both refused.
      *

@@ -46,6 +46,16 @@ class ComputationAuthoringTest {
     }
 
     @Test
+    void malformedReservedNamesRemainDelegatedToTheKernel() {
+        for (String name : java.util.List.of("vk_vk.Bad", "vk_vk" + "x".repeat(96))) {
+            var built = m.computation(m.num("/Subscription/Billing/EffectiveFee")).name(name)
+                    .calc(m.num("/Subscription/Billing/BaseFee").value())
+                    .message(en("x"), de("x")).build();
+            assertEquals(name, built.name());
+        }
+    }
+
+    @Test
     void buildFailureCarriesAStructuredDiagnostic() {
         // DG2b — parity with Rule.Builder: a build() precheck throws a structured PrecheckException
         // carrying a coded Diagnostic, not a bare IllegalStateException.

@@ -15,6 +15,16 @@ import kotlin.test.assertEquals
 class ElementNamePredicatesTest {
 
     @Test
+    fun reservedClassificationRequiresAFormallyAdmittedName() {
+        for ((name, expected) in listOf(
+            "vk_vkProbe" to true,
+            "vk_vk.Bad" to false,
+            ("vk_vk" + "x".repeat(95)) to true,
+            ("vk_vk" + "x".repeat(96)) to false,
+        )) assertEquals(expected, isReservedElementName(name), name)
+    }
+
+    @Test
     fun whichNamesSitInA12sReservedNamespace() {
         val actual = mutableMapOf<String, Boolean>()
         actual["vk_vkPrice_req — a generated name"] = isReservedElementName("vk_vkPrice_req")
