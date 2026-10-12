@@ -596,7 +596,7 @@ final class RuleSynthesis {
         String kind = doc.fieldKind(path).orElse("");
         if (Set.of("STRING", "ENUMERATION").contains(kind)) {
             Optional<ClauseTruth> emptyTruth = emptyAdmittingTruth(model, doc, path, constraint, report);
-            if (emptyTruth.isPresent() || "STRING".equals(kind)) return emptyTruth;
+            if (emptyTruth.isPresent() || "STRING".equals(kind) || doc.enumValues(path).contains("")) return emptyTruth;
         }
         return switch (kind) {
             case "NUMBER", "ENUMERATION" -> {

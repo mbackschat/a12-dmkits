@@ -13,6 +13,8 @@ import com.mgmtp.a12.kernel.md.model.api.IGroup;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 
 /**
  * The <b>Multi-Select</b> group template (FEATURE-GAPS). A {@code usageType: "multi-select"} group
@@ -51,6 +53,22 @@ class MultiSelectTemplateTest {
                         .multiSelectGroup("Tags", m -> m.stringField("Tag").maxRows(5)))
                 .build().toJson();
         assertEquals("multi-select", load(json).group("/Product/Tags").getUsageType().orElse(null));
+    }
+
+    @Test
+    void aConfiguredStringMultiSelectPreservesItsFieldConfigurationAndTemplateRequiredness() throws Exception {
+        String json = DocumentModelDraft.named("catalog").locale("en_US")
+                .rootGroup("Product", p -> p.multiSelectGroup("Tags", m -> m
+                        .stringField("Tag", s -> s.minLength(2).maxLength(8).pattern("^[a-z]+$", "Check tag format.").label("en_US", "Tag"))
+                        .maxRows(5)))
+                .build().toJson();
+        assertEquals("multi-select", load(json).group("/Product/Tags").getUsageType().orElse(null));
+        ModelDocument model = ModelDocument.read(json);
+        assertEquals(java.util.OptionalInt.of(2), model.fieldMinLength("/Product/Tags/Tag"));
+        assertEquals(java.util.OptionalInt.of(8), model.fieldMaxLength("/Product/Tags/Tag"));
+        assertEquals(java.util.Optional.of("^[a-z]+$"), model.fieldPattern("/Product/Tags/Tag"));
+        assertEquals(java.util.Optional.of(Requiredness.REQUIRED), model.requiredness("/Product/Tags/Tag"));
+        assertEquals(java.util.Optional.of(java.util.Map.of("en_US", "Tag")), model.labels("/Product/Tags/Tag"));
     }
 
     @Test

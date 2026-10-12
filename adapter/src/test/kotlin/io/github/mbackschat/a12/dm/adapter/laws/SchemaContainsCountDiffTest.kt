@@ -182,6 +182,71 @@ class SchemaContainsCountDiffTest {
     }
 
     @Test
+    fun enumOnlyScalarItemsPreserveEmptyAdmissionAcrossBothKernelStrategies() {
+        val mapper = ObjectMapper()
+        for (typed in listOf(false, true)) for (emptyAllowed in listOf(false, true)) {
+            val items = linkedMapOf<String, Any>("enum" to
+                if (emptyAllowed) listOf("", "express", "ground") else listOf("express", "ground"))
+            if (typed) items["type"] = "string"
+            val source = mapper.writeValueAsString(mapOf("type" to "object", "properties" to mapOf(
+                "tags" to mapOf("type" to "array", "maxItems" to 4, "items" to items))))
+            val imported = JsonSchemaImporter().importSchema(source)
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(imported.dmJson()))
+            assertTrue(imported.report().dispositions().none { it.tier() == TranscodeReport.Tier.OMITTED })
+            val validator = schemas.getSchema(source)
+            for (value in listOf("", "express", "air")) {
+                val expected = value == "express" || emptyAllowed && value.isEmpty()
+                val cell = "$typed/$emptyAllowed/$value"
+                val nativeBody = mapper.writeValueAsString(mapOf("tags" to listOf(value)))
+                assertEquals(expected, validator.validate(mapper.readTree(nativeBody)).isEmpty(), "$cell source")
+                val document = mapper.writeValueAsString(mapOf("Root" to mapOf("tags" to listOf(mapOf("value" to value)))))
+                val dynamic = DocumentDifferential.kernel(imported.dmJson(), document, dynamic = true)
+                assertEquals(expected, dynamic.messages.isEmpty(), "$cell dynamic")
+                assertEquals(dynamic, DocumentDifferential.kernel(imported.dmJson(), document, dynamic = false), "$cell static")
+                assertEquals(dynamic, DocumentDifferential.interpreter(imported.dmJson(), document), "$cell interpreter")
+            }
+        }
+    }
+
+    @Test
+    fun valueListPreservesLengthAndMakesClosedEnumLossExplicit() {
+        val mapper = ObjectMapper()
+        val lengthSource = """
+            {"type":"object","properties":{"tags":{"type":"array","maxItems":4,
+             "items":{"type":"string","minLength":2}}}}
+        """.trimIndent()
+        val enumSource = """
+            {"type":"object","properties":{"tags":{"type":"array","maxItems":4,
+             "items":{"type":"string","enum":["express","ground"]}}}}
+        """.trimIndent()
+        val cases = listOf(
+            Triple(lengthSource, MappingProfile.ArrayOfScalar.VALUE_LIST, listOf("x" to false, "xx" to true)),
+            Triple(enumSource, MappingProfile.ArrayOfScalar.MULTI_SELECT, listOf("air" to false, "express" to true, "ground" to true)),
+        )
+        for ((source, strategy, values) in cases) {
+            val imported = JsonSchemaImporter().importSchema(source, MappingProfile.defaults().withArrayOfScalar(strategy))
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(imported.dmJson()))
+            assertTrue(imported.report().dispositions().none { it.tier() == TranscodeReport.Tier.OMITTED })
+            val validator = schemas.getSchema(source)
+            for ((value, expected) in values) {
+                val nativeBody = mapper.writeValueAsString(mapOf("tags" to listOf(value)))
+                assertEquals(expected, validator.validate(mapper.readTree(nativeBody)).isEmpty(), "$strategy/$value source")
+                val document = mapper.writeValueAsString(mapOf("Root" to mapOf("tags" to listOf(mapOf("value" to value)))))
+                val dynamic = DocumentDifferential.kernel(imported.dmJson(), document, dynamic = true)
+                assertEquals(expected, dynamic.messages.isEmpty(), "$strategy/$value dynamic")
+                assertEquals(dynamic, DocumentDifferential.kernel(imported.dmJson(), document, dynamic = false), "$strategy/$value static")
+                assertEquals(dynamic, DocumentDifferential.interpreter(imported.dmJson(), document), "$strategy/$value interpreter")
+            }
+        }
+        val omitted = JsonSchemaImporter().importSchema(enumSource,
+            MappingProfile.defaults().withArrayOfScalar(MappingProfile.ArrayOfScalar.VALUE_LIST))
+        assertTrue(omitted.report().dispositions().any { it.source() == "/Root/tags" && it.tier() == TranscodeReport.Tier.OMITTED })
+        assertTrue(omitted.report().diagnostics().any { it.contains("enum") && it.contains("MULTI_SELECT") })
+        assertEquals(emptyList<String>(), io.github.mbackschat.a12.dm.modelkit.ModelDocument.read(omitted.dmJson()).fieldPaths())
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(omitted.dmJson()))
+    }
+
+    @Test
     fun scalarCarrierAdmissionAndEmptyItemRuntimeAreMeasuredBeforeContains() {
         val mapper = ObjectMapper()
         for (template in listOf(false, true)) for (enumeration in listOf(false, true)) {
@@ -285,5 +350,37 @@ class SchemaContainsCountDiffTest {
         }
     }
 
+
+    @Test
+    fun objectEnumEmptyDomainsReportUnsupportedNonemptyContainsPredicates() {
+        val mapper = ObjectMapper()
+        val checks = mutableListOf<org.junit.jupiter.api.function.Executable>()
+        for (predicate in listOf("""{"const":"express"}""", """{"enum":["express"]}""")) {
+            val source = """
+                {"type":"object","required":["legs"],"properties":{"legs":{"type":"array","maxItems":4,
+                 "items":{"type":"object","properties":{"marker":{"type":"string"},
+                   "kind":{"type":"string","enum":["","express","ground"]}}},
+                 "contains":{"properties":{"kind":$predicate}},"minContains":0,"maxContains":0}}}
+            """.trimIndent()
+            val imported = JsonSchemaImporter().importSchema(source)
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(imported.dmJson()), "$predicate admission")
+            assertTrue(imported.report().dispositions().any { it.tier() == TranscodeReport.Tier.OMITTED && it.source() == "/Root/legs" })
+            assertTrue(imported.report().diagnostics().any { it.contains("absent/empty") })
+            val validator = schemas.getSchema(source)
+            for (value in listOf<String?>(null, "", "express", "ground")) checks.add(org.junit.jupiter.api.function.Executable {
+                val row = linkedMapOf("marker" to "kept")
+                if (value != null) row["kind"] = value
+                val body = mapOf("legs" to listOf(row))
+                val native = validator.validate(mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(body)).isEmpty()
+                assertEquals(value != null && value != "express", native, "$predicate/$value native discriminator")
+                val document = mapper.writeValueAsString(mapOf("Root" to body))
+                val dynamic = DocumentDifferential.kernel(imported.dmJson(), document, dynamic = true)
+                assertEquals(dynamic, DocumentDifferential.kernel(imported.dmJson(), document, dynamic = false), "$predicate/$value static")
+                assertEquals(dynamic, DocumentDifferential.interpreter(imported.dmJson(), document), "$predicate/$value interpreter")
+                assertEquals(emptyList<String>(), dynamic.messages.map { it.code }, "$predicate/$value omitted translator")
+            })
+        }
+        org.junit.jupiter.api.Assertions.assertAll(checks)
+    }
 
 }

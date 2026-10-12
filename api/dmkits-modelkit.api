@@ -117,6 +117,7 @@ public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraf
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder required()
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder requiredIfParentPresent()
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder stringField(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder stringField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder>)
 
 public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder extends io.github.mbackschat.a12.dm.modelkit.ElementMeta<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder>
   public TypeDefBuilder()

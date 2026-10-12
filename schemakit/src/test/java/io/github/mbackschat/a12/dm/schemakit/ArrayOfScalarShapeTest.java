@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.schemakit;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -130,6 +131,53 @@ class ArrayOfScalarShapeTest {
                 "no maxItems and --default-repeat-cap 0 — an a12 repeatable group needs a bounded max, so it is omitted");
         assertTrue(omitted(r, "/Root/tags"));
         assertKernelAccepts(r.dmJson());
+    }
+
+    @Test
+    void enumOnlyItemsHaveTheSameEmptyAdmissionAsExplicitStringItems() {
+        for (boolean typed : List.of(false, true)) {
+            for (boolean emptyAllowed : List.of(false, true)) {
+                String items = "{" + (typed ? "\"type\":\"string\"," : "")
+                        + "\"enum\":[" + (emptyAllowed ? "\"\"," : "") + "\"express\",\"ground\"]}";
+                String schema = "{\"type\":\"object\",\"properties\":{\"tags\":{\"type\":\"array\",\"maxItems\":4,\"items\":" + items + "}}}";
+                for (var strategy : List.of(MappingProfile.ArrayOfScalar.REPEATABLE_SINGLE,
+                        MappingProfile.ArrayOfScalar.MULTI_SELECT)) {
+                    var imported = new JsonSchemaImporter().importSchema(schema,
+                            MappingProfile.defaults().withArrayOfScalar(strategy));
+                    ModelDocument model = ModelDocument.read(imported.dmJson());
+                    String cell = typed + "/" + emptyAllowed + "/" + strategy;
+                    assertKernelAccepts(imported.dmJson());
+                    boolean isOmitted = emptyAllowed && strategy == MappingProfile.ArrayOfScalar.MULTI_SELECT;
+                    assertEquals(isOmitted, omitted(imported, "/Root/tags"), cell);
+                    assertEquals(!isOmitted, model.groupPaths().contains("/Root/tags"), cell);
+                    if (!isOmitted) {
+                        assertEquals(Optional.of(emptyAllowed ? Requiredness.OPTIONAL : Requiredness.REQUIRED),
+                                model.requiredness("/Root/tags/value"), cell);
+                        assertEquals(emptyAllowed ? List.of("", "express", "ground") : List.of("express", "ground"),
+                                model.enumValues("/Root/tags/value"), cell);
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void valueListPreservesStringLengthAndReportsAClosedDomainInsteadOfErasingIt() {
+        var profile = MappingProfile.defaults().withArrayOfScalar(MappingProfile.ArrayOfScalar.VALUE_LIST);
+        for (int minimum : List.of(1, 2)) {
+            var imported = new JsonSchemaImporter().importSchema(
+                    STRING_ARRAY.replace("\"type\": \"string\"", "\"type\": \"string\", \"minLength\": " + minimum), profile);
+            assertKernelAccepts(imported.dmJson());
+            var model = ModelDocument.read(imported.dmJson());
+            assertEquals(java.util.OptionalInt.of(minimum), model.fieldMinLength("/Root/tags/value"));
+            assertFalse(omitted(imported, "/Root/tags"));
+        }
+        var domain = new JsonSchemaImporter().importSchema(
+                STRING_ARRAY.replace("\"type\": \"string\"", "\"type\": \"string\", \"enum\": [\"express\", \"ground\"]"), profile);
+        assertKernelAccepts(domain.dmJson());
+        assertFalse(ModelDocument.read(domain.dmJson()).groupPaths().contains("/Root/tags"));
+        assertTrue(omitted(domain, "/Root/tags"));
+        assertTrue(domain.report().diagnostics().stream().anyMatch(d -> d.contains("enum") && d.contains("MULTI_SELECT")));
     }
 
     private static boolean omitted(JsonSchemaImporter.ImportResult r, String source) {

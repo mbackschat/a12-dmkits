@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.core.Verification;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
+import io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -1015,7 +1016,8 @@ public final class JsonSchemaImporter {
     private enum EmptyStringAdmission { ALLOWED, EXCLUDED, UNRESOLVED }
 
     private static EmptyStringAdmission emptyStringAdmission(JsonNode items) {
-        if (!"string".equals(items.path("type").asText())) return EmptyStringAdmission.EXCLUDED;
+        String type = items.path("type").asText("");
+        if (!"string".equals(type) && !(type.isEmpty() && hasEnum(items))) return EmptyStringAdmission.EXCLUDED;
         if (items.path("minLength").asInt(0) >= 1
                 || (hasEnum(items) && java.util.Arrays.stream(enumArrayValues(items)).noneMatch(String::isEmpty))
                 || (items.has("const") && !items.path("const").asText().isEmpty())) return EmptyStringAdmission.EXCLUDED;
@@ -1054,8 +1056,25 @@ public final class JsonSchemaImporter {
             ctx.report().omit(path, "VALUE_LIST cannot preserve or establish empty string item admission with its required value field — choose REPEATABLE_SINGLE for explicit empty-admitting items or retain source-schema validation");
             return;
         }
-        g.multiSelectGroup(name, m -> m.stringField(ROW_FIELD).maxRows(max));
+        String unsupported = unsupportedValueListAssertion(items);
+        if (unsupported != null) {
+            ctx.report().omit(path, "VALUE_LIST does not map item assertion '" + unsupported
+                    + "' onto its STRING target — choose MULTI_SELECT for a closed enum or REPEATABLE_SINGLE, or retain source-schema validation");
+            return;
+        }
+        g.multiSelectGroup(name, m -> m.stringField(ROW_FIELD, s -> configureStringField(s, items, true)).maxRows(max));
         ctx.report().structure(path, "value-list (string multi-select, max " + max + ")");
+    }
+
+    private static String unsupportedValueListAssertion(JsonNode items) {
+        for (Iterator<String> names = items.fieldNames(); names.hasNext();) {
+            String name = names.next();
+            switch (name) {
+                case "type", "minLength", "maxLength", "pattern" -> { }
+                default -> { if (!ANNOTATION_KEYWORDS.contains(name)) return name; }
+            }
+        }
+        return null;
     }
 
     /** REPEATABLE_SINGLE → a plain repeatable group with one field of the item's kind (the general form). */
@@ -1469,20 +1488,17 @@ public final class JsonSchemaImporter {
             g.field(name, FieldKind.STRING, isRequired ? Requiredness.REQUIRED : Requiredness.OPTIONAL);
             return;
         }
-        g.stringField(name, s -> {
-            if (minLength != null) {
-                s.minLength(minLength);
-            }
-            if (maxLength != null) {
-                s.maxLength(maxLength);
-            }
-            if (pattern != null) {
-                s.pattern(pattern, pattern.isEmpty() ? null : "must match the specified pattern"); // Empty declarations are inactive (SPEC-2026-10-10-13).
-            }
-            if (isRequired) {
-                s.required();
-            }
-        });
+        g.stringField(name, s -> configureStringField(s, schema, isRequired));
+    }
+
+    private static void configureStringField(StringFieldBuilder s, JsonNode schema, boolean isRequired) {
+        if (schema.has("minLength")) s.minLength(schema.get("minLength").asInt());
+        if (schema.has("maxLength")) s.maxLength(schema.get("maxLength").asInt());
+        if (schema.path("pattern").isTextual()) {
+            String pattern = schema.get("pattern").asText();
+            s.pattern(pattern, pattern.isEmpty() ? null : "must match the specified pattern"); // Empty declarations are inactive (SPEC-2026-10-10-13).
+        }
+        if (isRequired) s.required();
     }
 
     /**

@@ -1221,6 +1221,7 @@ public final class DocumentModelDraft {
 
         private String fieldName;
         private FieldTypeSpec fieldType;
+        private FieldMeta fieldMeta = FieldMeta.none();
         private int maxRows = -1;
         private Requiredness requiredness = Requiredness.REQUIRED;
         private final List<ElementDraft.Annotation> annotations = new ArrayList<>();
@@ -1233,13 +1234,25 @@ public final class DocumentModelDraft {
             }
             this.fieldName = name;
             this.fieldType = new FieldTypeSpec.EnumSpec(enumValues, List.of());
+            this.fieldMeta = FieldMeta.none();
             return this;
         }
 
         /** The single selectable field: a free-text string. */
         public MultiSelectBuilder stringField(String name) {
-            this.fieldName = name;
-            this.fieldType = new FieldTypeSpec.StringSpec(null, null, null, null);
+            return stringField(name, s -> {});
+        }
+
+        /** Configure the String field without discarding its constraints or metadata; the template defaults to required. */
+        public MultiSelectBuilder stringField(String name, Consumer<StringFieldBuilder> body) {
+            StringFieldBuilder builder = new StringFieldBuilder();
+            builder.requiredness = requiredness;
+            body.accept(builder);
+            ElementDraft.Field field = builder.toField(name);
+            this.fieldName = field.name();
+            this.fieldType = field.type();
+            this.fieldMeta = field.meta();
+            this.requiredness = field.requiredness();
             return this;
         }
 
@@ -1277,7 +1290,7 @@ public final class DocumentModelDraft {
                         "a multi-select needs maxRows > 1 (the kernel requires a repeatable group); was " + maxRows);
             }
             ElementDraft.Field field =
-                    new ElementDraft.Field(fieldName, fieldType, requiredness);
+                    new ElementDraft.Field(fieldName, fieldType, requiredness, fieldMeta);
             return new ElementDraft.Group(groupName, maxRows, null, List.of(field), "multi-select",
                     GroupMeta.builder().annotations(annotations).build());
         }
