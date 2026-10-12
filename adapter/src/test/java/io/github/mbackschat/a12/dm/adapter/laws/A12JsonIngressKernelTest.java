@@ -28,9 +28,8 @@ import org.junit.jupiter.api.Test;
  * {@code NumberRenderChannelKernelTest}, together with the measurement that every other evaluation channel reads
  * this same one text.
  *
- * <p>Distinct from every other oracle in this package: those build a V1 instance from raw <em>strings</em>,
- * which {@code ValidationData.getValue} returns unchanged — a regime where no conversion happens at all. The
- * interpreter's side of this ingress is {@code A12JsonIngressDiffTest}.
+ * <p>The explicit V1/String oracle helpers instead retain raw strings, which {@code ValidationData.getValue}
+ * returns unchanged. The interpreter's side of this serializer ingress is {@code A12JsonIngressDiffTest}.
  */
 class A12JsonIngressKernelTest {
 
@@ -73,8 +72,7 @@ class A12JsonIngressKernelTest {
             // `zahlNullEnthaeltVorzeichen` have no reachable precondition here at all — while `"-5"` keeps its
             // sign, so the predicate is (plus) or (minus on a zero magnitude), not "the sign is dropped".
             // a12-kernel-lean reached the same conclusion from 278 observations on their own carrier and asked
-            // which route ours takes; the direct-cell route every other oracle in this package uses is what
-            // reaches those two classes (KF253).
+            // which route ours takes; the explicit direct-cell V1/String route reaches those two classes (KF253).
             row("Quantity", "-0.0", "0.0"),
             row("Quantity", "\"-0.0\"", "0.0"),
             row("Quantity", "-0", "0"),

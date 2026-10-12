@@ -7,6 +7,9 @@ import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
 import io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind
 import io.github.mbackschat.a12.dm.interpreter.conformance.RelevantPointer
+import io.github.mbackschat.a12.dm.interpreter.conformance.InterpreterReplay
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -60,16 +63,6 @@ class CorpusCaptureTest {
         assertEquals(case, CaseJson.parse(CaseJson.write(case)))
     }
 
-    /**
-     * The kernel reports compute outcomes at CHANGE granularity — a TYPED-value equality against the input
-     * document. On a placement-built input the cell values are raw strings, so the equality can hold only for a
-     * STRING-kind target (KERNEL-FINDINGS "compute reporting granularity"); the comparison projects the
-     * interpreter's report-all outcome accordingly via
-     * [io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity]. Two capture guards:
-     * a seed-equal STRING cell is a kernel non-change (absent from the anchor) and must not block capture as a
-     * phantom interpreter divergence; a seed-equal NUMBER cell IS kernel-reported (String seed vs BigDecimal
-     * computed value) and must NOT be dropped from the interpreter side.
-     */
     @Test
     fun capturesASeedEqualStringCellAtKernelGranularity() {
         val model = RuntimeLaws.withComputation(order, "/Order", "NameComp", "../CustomerName", "[ProductCode] + \"-X\"")
@@ -89,26 +82,37 @@ class CorpusCaptureTest {
     }
 
     @Test
-    fun capturesASeedEqualNumberCellAsAKernelChange() {
-        val model = RuntimeLaws.withComputation(order, "/Order/Items", "StockComp", "../StockQty", "[Count] * 10")
-        val placements = listOf(
-            Placement(PlacementKind.GROUP, "/Order", listOf(1)),
-            Placement(PlacementKind.GROUP, "/Order/Items", listOf(1, 1)),
-            Placement(PlacementKind.FIELD, "/Order/Items/Sku", listOf(1, 1, 1), "A"),
-            Placement(PlacementKind.FIELD, "/Order/Items/Count", listOf(1, 1, 1), "2"),
-            Placement(PlacementKind.FIELD, "/Order/Items/StockQty", listOf(1, 1, 1), "20"),
-            Placement(PlacementKind.GROUP, "/Order/Items", listOf(1, 2)),
-            Placement(PlacementKind.FIELD, "/Order/Items/Sku", listOf(1, 2, 1), "B"),
-            Placement(PlacementKind.FIELD, "/Order/Items/Count", listOf(1, 2, 1), "3"),
-        )
-        val meta = CaseMeta("stock-seed-equal", "pending", CaseSource.CURATED, listOf("§2"), tags = listOf("compute"))
-        val case = CorpusCapture.capture(meta, "order-stock-compute", model, placements, Op.Compute)
-
-        assertEquals(
-            listOf("/Order[1]/Items[1]/StockQty|VALUE|20", "/Order[1]/Items[2]/StockQty|VALUE|30"),
-            case.computeExpected,
-            "a number cell's typed value never equals the raw seed string — the kernel reports row 1 too, and the projection keeps it",
-        )
+    fun captureUsesCanonicalNumberIdentityAndExplicitV1KeepsItsStringProfile() {
+        val bound = BoundModel.ofJson(order)
+        val items = bound.groupAt("/Order/Items").orElseThrow()
+        val count = items.num("Count")
+        val stock = items.num("StockQty")
+        val sku = items.str("Sku")
+        val model = bound.add(bound.computation(stock).name("StockComp")
+            .calc(count.times(10).expression()).message(Dsl.en("Stock is derived.")).build()).toJson()
+        val legacy = listOf("/Order[1]/Items[1]/StockQty|VALUE|20", "/Order[1]/Items[2]/StockQty|VALUE|30")
+        for (seed in listOf("20", "20.0")) {
+            val placements = listOf(
+                Placement(PlacementKind.GROUP, "/Order", listOf(1)),
+                Placement(PlacementKind.GROUP, items.path(), listOf(1, 1)),
+                Placement(PlacementKind.FIELD, sku.field().path().value(), listOf(1, 1, 1), "A"),
+                Placement(PlacementKind.FIELD, count.field().path().value(), listOf(1, 1, 1), "2"),
+                Placement(PlacementKind.FIELD, stock.field().path().value(), listOf(1, 1, 1), seed),
+                Placement(PlacementKind.GROUP, items.path(), listOf(1, 2)),
+                Placement(PlacementKind.FIELD, sku.field().path().value(), listOf(1, 2, 1), "B"),
+                Placement(PlacementKind.FIELD, count.field().path().value(), listOf(1, 2, 1), "3"),
+            )
+            assertEquals(legacy, CorpusEngines.groovyDynamic(model, placements, Op.Compute), "explicit V1 dynamic seed $seed")
+            assertEquals(legacy, CorpusEngines.javaStatic(model, placements, Op.Compute), "explicit V1 static seed $seed")
+            val meta = CaseMeta("stock-seed-equal", "pending", CaseSource.CURATED, listOf("§2"), tags = listOf("compute"))
+            val case = CorpusCapture.capture(meta, "order-stock-compute", model, placements, Op.Compute)
+            val expected = if (seed == "20") legacy.drop(1) else legacy
+            assertEquals(expected, case.computeExpected, "canonical Number source scale is part of identity")
+            assertEquals(case, CaseJson.parse(CaseJson.write(case)))
+            for ((engine, result) in CorpusReplay.replay(case, model)) {
+                assertEquals(InterpreterReplay.Verdict.PASS, result.verdict, "$engine / seed $seed: ${result.detail}")
+            }
+        }
     }
 
     @Test

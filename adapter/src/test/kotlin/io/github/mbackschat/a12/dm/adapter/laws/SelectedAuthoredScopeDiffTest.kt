@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
-import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
+import io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -190,9 +190,9 @@ class SelectedAuthoredScopeDiffTest {
             val report = prepared.createInterpreter().validateFull(prepared.documents.readDocument(document))
             assertEquals(emptyList<Any>(), report.unsupported)
             val messages = report.findings.map {
-                MessageSignature(it.code, "${it.type.name}_ERROR", formatPointer(it.errorPath.fullName, it.errorPath.repetitionIndexes),
-                    it.referenced.map { p -> formatPointer(p.fullName, p.repetitionIndexes) }.sorted(),
-                    it.fillToFix.map { p -> formatPointer(p.fullName, p.repetitionIndexes) }.sorted())
+                MessageSignature(it.code, "${it.type.name}_ERROR", pointerComparisonKey(it.errorPath.fullName, it.errorPath.repetitionIndexes),
+                    it.referenced.map { p -> pointerComparisonKey(p.fullName, p.repetitionIndexes) }.sorted(),
+                    it.fillToFix.map { p -> pointerComparisonKey(p.fullName, p.repetitionIndexes) }.sorted())
             }.sorted()
             assertEquals(DocumentDifferential.kernel(model, document, true).messages, messages, "$label public interpreter")
         }

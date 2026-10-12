@@ -1704,10 +1704,6 @@ final class ConditionConverter {
         return hasSemanticIndex(entity) ? indexedGroup(entity, starPath, origin) : groupScopeOf(entity, starPath);
     }
 
-    /**
-     * {@code Group For key}. A {@code $} marker on the indexed group has no slot in {@link IndexedGroupValue},
-     * so it stays verbatim rather than being dropped, which is also how the kernel-free bridge treats it.
-     */
     private IndexedGroupValue indexedGroup(IEntityId entity, String starPath, Object origin) {
         if (entity.isOuter()) {
             throw unsupported("a $-marked group with a semantic index", origin);

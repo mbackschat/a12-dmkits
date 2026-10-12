@@ -3,9 +3,11 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.interpreter.model.Severity
 import io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
+import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
 
 /**
  * Feeds ONE typed rulekit [Rule] / [Computation] to BOTH differential engines — the **kernel** (injected into
@@ -28,16 +30,14 @@ object TypedRules {
     private fun cond(rule: Rule): String = rule.render()
 
     /** Inject the typed [rule] into [json] — the kernel side of the differential. */
-    fun inject(json: String, rule: Rule): String =
-        RuntimeLaws.withRule(
-            json, rule.group().path().value(), rule.name(), rule.errorEntityRelPath(), rule.code(), cond(rule),
-        )
+    fun inject(json: String, rule: Rule): String = ModelWriter.addRule(json, rule)
 
     /** The interpreter [RuleDef] for the typed [rule] — the interpreter side. */
     fun def(rule: Rule): RuleDef =
         RuleDef(
             "${rule.group().path().value()}/${rule.name()}", rule.group().path().value(),
             cond(rule), rule.code(), rule.errorEntityRelPath(),
+            Severity.valueOf(rule.severity().name), rule.messages().associate { it.locale() to it.text() },
         )
 
     /**

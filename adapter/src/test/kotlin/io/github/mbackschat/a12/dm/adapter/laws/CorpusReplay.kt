@@ -3,8 +3,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.interpreter.conformance.ConformanceCase
 import io.github.mbackschat.a12.dm.interpreter.conformance.InterpreterReplay
 import io.github.mbackschat.a12.dm.interpreter.conformance.overrideFor
-import io.github.mbackschat.a12.dm.interpreter.conformance.placementsForKernelLeg
-import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 
 /**
  * The JVM conformance **replay runner** (CONFORMANCE-CORPUS-SPEC §12) — replays a committed [ConformanceCase]
@@ -25,19 +23,14 @@ object CorpusReplay {
     /** Replay [case] (its model resolved to [modelJson]) three ways; keys are [CorpusEngines.INTERPRETER] / [CorpusEngines.GROOVY_DYNAMIC] / [CorpusEngines.JAVA_STATIC]. */
     fun replay(case: ConformanceCase, modelJson: String): Map<String, InterpreterReplay.Result> {
         val anchor = InterpreterReplay.anchorOf(case)
-        // The kernel legs build their own document from placement records; the INTERPRETER leg reads the case's
-        // canonical Document JSON through the public reader (IF230). Step 5 moves the kernel legs onto A12's own
-        // deserializeV2 so both sides share one ingress regime.
-        val kernelPlacements = case.placementsForKernelLeg(ModelLoader.load(modelJson))
-
         val interp = InterpreterReplay.replay(case, modelJson)
 
         val groovy = InterpreterReplay.compare(
-            CorpusEngines.groovyDynamic(modelJson, kernelPlacements, case.op, case.clock), anchor)
+            CorpusEngines.groovyDynamic(modelJson, case.document, case.op, case.clock), anchor)
 
         val javaExpected = case.overrideFor(CorpusEngines.JAVA_STATIC) ?: anchor
         val java = InterpreterReplay.compare(
-            CorpusEngines.javaStatic(modelJson, kernelPlacements, case.op, case.clock), javaExpected)
+            CorpusEngines.javaStatic(modelJson, case.document, case.op, case.clock), javaExpected)
 
         return mapOf(
             CorpusEngines.INTERPRETER to interp,

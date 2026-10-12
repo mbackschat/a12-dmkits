@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldValidator
 import io.github.mbackschat.a12.dm.interpreter.*
+import io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.*
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -68,8 +69,9 @@ class AuthoredStringNewlineDiffTest {
                 val input = ObjectMapper().writeValueAsString(mapOf("Dispatch" to mapOf("Note" to raw.text)))
                 val snapshot = prepared.documents.readDocument(input)
                 val gotMessages = interpreter.validateFull(snapshot).findings.map {
-                    MessageSignature(it.code, "${it.type}_ERROR", it.errorPath.toString(),
-                        it.referenced.map { p -> p.toString() }.sorted(), it.fillToFix.map { p -> p.toString() }.sorted())
+                    MessageSignature(it.code, "${it.type}_ERROR", pointerComparisonKey(it.errorPath.fullName, it.errorPath.repetitionIndexes),
+                        it.referenced.map { p -> pointerComparisonKey(p.fullName, p.repetitionIndexes) }.sorted(),
+                        it.fillToFix.map { p -> pointerComparisonKey(p.fullName, p.repetitionIndexes) }.sorted())
                 }.sorted()
                 val computed = interpreter.compute(snapshot)
                 val gotValues = computed.results.filter { it.outcome != ComputationOutcome.CLEARED }.map { "${it.pointer.path}|${it.outcome}|${it.value}" }.sorted()
@@ -78,7 +80,7 @@ class AuthoredStringNewlineDiffTest {
                     val messages = if (strategy == 0) dynamic.validationMessages(instance, null, Locale.US, factory)
                         else static.validationMessages(instance, null, Locale.US, factory)
                     fun pointer(p: com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer) =
-                        A12PartiallyKnownMultiPointer.of(p.fullName(), p.repetitionIndexes()).toString()
+                        pointerComparisonKey(p.fullName(), p.repetitionIndexes())
                     val wantMessages = messages.map {
                         MessageSignature(it.errorCode, it.messageType.name, pointer(it.errorFieldPointer),
                             it.referencedFieldsPointers.map(::pointer).sorted(), it.refOmissionErrorResponsiblePointers.map(::pointer).sorted())

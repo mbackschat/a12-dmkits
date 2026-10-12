@@ -43,6 +43,6 @@ public record EntityListPredicate(Quantifier quantifier, List<AggregateOperand> 
 
     /** True when any member is a group scope — the shape whose extent belongs to the kernel's expansion. */
     public boolean hasGroupScope() {
-        return operands.stream().anyMatch(GroupListRef.class::isInstance);
+        return operands.stream().anyMatch(GroupScope.class::isInstance);
     }
 }

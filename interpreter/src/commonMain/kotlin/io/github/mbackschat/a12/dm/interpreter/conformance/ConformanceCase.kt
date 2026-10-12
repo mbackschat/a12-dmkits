@@ -145,13 +145,8 @@ fun documentJsonOf(placements: List<Placement>, model: ModelDef): String =
     model.newDocument().also { placements.replayInto(it.asSink()) }.toDocumentJson(model)
 
 /**
- * A committed case's document as placement records — the form the **kernel legs** of the corpus differential
- * still take (they build a kernel document from it).
- *
- * The interpreter leg does NOT use this: it reads [ConformanceCase.document] through the public A12 Document JSON
- * reader, which is the point of storing the canonical shape (IF230). This is a harness translation for the oracle
- * side only. Moving the kernel legs onto A12's own `IDocumentV2Serializer.deserializeV2` — so both sides share one
- * ingress regime — is step 5 of the shape consolidation, not a residual of this one.
+ * Legacy conversion for callers intentionally comparing the V1/String placement profile.
+ * Canonical corpus replay instead feeds [ConformanceCase.document] independently to each engine's reader (§13).
  */
 fun ConformanceCase.placementsForKernelLeg(model: ModelDef): List<Placement> =
     model.readDocumentJson(document).placementsSnapshot().map { cell ->

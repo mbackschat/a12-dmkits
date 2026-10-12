@@ -295,8 +295,9 @@ data class FieldDef(
 
 /**
  * One rule: an *error* condition (it FIRES when the condition holds — the polarity law) evaluated once
- * per row of its iteration scope [group]. [errorEntityRelPath] is the offending field, relative to the
- * group (e.g. `../DeliveryDate`). [messages] maps locale → template (for rendered text).
+ * per row of its iteration scope [group]. [errorEntityRelPath] addresses the offending field relative to the
+ * rule element: `../DeliveryDate` names a field in the containing group ([io.github.mbackschat.a12.dm.interpreter.resolveErrorPath]).
+ * [messages] maps locale → template (for rendered text).
  */
 data class RuleDef(
     val path: String,

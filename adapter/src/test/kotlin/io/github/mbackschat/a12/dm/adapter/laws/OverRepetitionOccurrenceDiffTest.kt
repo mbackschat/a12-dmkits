@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.RelevantCoordinate
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.function.Executable
 import org.junit.jupiter.api.Test
@@ -23,6 +24,58 @@ class OverRepetitionOccurrenceDiffTest {
                         .group("Detail") { it.numberField("Quantity") { field -> field.fractionDigits(0) } }
                 }.group("Notes") { it.repeatable(2).stringField("Memo") { } }
         }.build().toJson()
+
+    @Test
+    fun sharedMessageSignaturesPreserveReadableOrderingForPrefixFieldNames() {
+        val readable = listOf("/Root[1]/A", "/Root[1]/AB")
+        val keys = readable.map { "$it[1]" }.sorted()
+        val actual = MessageSignature("PREFIX", "ERROR", "/Root[1]/A[1]", keys, keys)
+        assertEquals(readable, actual.referenced)
+        assertEquals(readable, actual.fillToFix)
+        assertEquals(actual, MessageSignature.fields("PREFIX", "ERROR", "/Root[1]/A", readable, readable))
+    }
+
+    @Test
+    fun sharedMessageSignaturesRejectAWrongTerminalGroupCoordinateAndKeepReadablePins() {
+        val editor = EditSession.read(model).group("/Parcel")
+        val rows = editor.group("Rows").path().value()
+        val marker = editor.str("Marker").field().path().value()
+        val json = """{"Parcel":{"Rows":[{},{},{}]}}"""
+        val field = io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer.of(marker, listOf(1, 1))
+        val fieldKey = DocumentDifferential.pointer(field)
+        for (dynamic in listOf(true, false)) {
+            val messages = if (dynamic) {
+                val engine = RuntimeLaws.kernelEngine(model)
+                engine.validationMessages(engine.instance(json), null, Locale.US)
+            } else {
+                val engine = RuntimeLaws.kernelJavaEngine(model)
+                engine.validationMessages(engine.instance(json), null, Locale.US)
+            }
+            val source = messages.single { it.errorFieldPointer.fullName() == rows }.errorFieldPointer
+            val original = io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer.of(
+                source.fullName(), source.repetitionIndexes())
+            val wrong = io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer.of(
+                original.fullName, original.repetitionIndexes.dropLast(1) + (original.repetitionIndexes.last() + 1))
+            val actual = DocumentDifferential.pointer(source)
+            val incorrect = DocumentDifferential.pointer(wrong)
+            assertEquals(actual, DocumentDifferential.pointer(original), "both shared helper variants retain the same content")
+            assertNotEquals(actual, incorrect, "changing only the terminal group coordinate must be detectable")
+            for (role in listOf("error", "reference", "fill")) {
+                fun signature(key: String) = MessageSignature("PointerProbe", "VALUE_ERROR",
+                    if (role == "error") key else fieldKey,
+                    if (role == "reference") listOf(key) else emptyList(),
+                    if (role == "fill") listOf(key) else emptyList())
+                val observed = signature(actual)
+                val mutated = signature(incorrect)
+                assertNotEquals(observed, mutated, "$role must reject the deliberately wrong result")
+                assertNotEquals(0, observed.compareTo(mutated), "$role has a lossless sort tie-break")
+                assertEquals(observed.brief, mutated.brief, "readable briefs deliberately omit terminal coordinates")
+                val display = if (role == "error") original else field
+                val readable = io.github.mbackschat.a12.dm.interpreter.eval.formatPointer(display.fullName, display.repetitionIndexes)
+                assertEquals("PointerProbe|VALUE_ERROR|$readable", observed.brief)
+            }
+        }
+    }
 
     @Test
     fun structuralDiagnosticsRetainEmptyFieldOccurrencesOutsidePartialSelection() {

@@ -23,8 +23,8 @@ import io.github.mbackschat.a12.dm.interpreter.gen.asSink
  * `DmInterpreter.compute` deliberately reports **every** computed instance — report-all is the more useful
  * library contract, and result-envelope granularity is not behavior-parity territory (the compute-granularity
  * ruling — KERNEL-FINDINGS "compute reporting granularity", CONFORMANCE-CORPUS-SPEC §7) — so
- * every comparison surface that diffs the interpreter against a kernel-granularity multiset projects through
- * this function first, diffing the interpreter's outcomes against the document's supplied cells.
+ * explicit V1 comparison surfaces project through this function first, diffing the interpreter's outcomes
+ * against raw supplied cells. Canonical cases use [kernelCanonicalComputeGranularity] instead.
  *
  * This projection deliberately serves the conformance harness's **V1/String placement profile**. On such an
  * input the cell values are raw strings, so the kernel's V2-object change equality can hold only for a
@@ -75,3 +75,18 @@ fun kernelComputeGranularity(signatures: List<String>, document: Document, model
 /** Capture-side overload: project against a placement scenario, before a committed case (and its document) exists. */
 fun kernelComputeGranularity(signatures: List<String>, placements: List<Placement>, model: ModelDef): List<String> =
     kernelComputeGranularity(signatures, model.newDocument().also { placements.replayInto(it.asSink()) }, model)
+
+/** Canonical cases compare source identity retained by the public reader, as ComputationReport actions do. */
+fun kernelCanonicalComputeGranularity(signatures: List<String>, document: Document): List<String> {
+    val inputs = document.placementsSnapshot().filterNot { it.isGroup }
+        .associateBy { formatPointer(it.path, it.reps) }
+    return signatures.filterNot { signature ->
+        val input = inputs[signature.substringBefore('|')]
+        when {
+            "|VALUE|" in signature -> input != null &&
+                document.computedValueEquals(input.path, input.reps, signature.substringAfter("|VALUE|"))
+            signature.endsWith("|CLEARED") -> input == null || !document.filledAt(input.path, input.reps)
+            else -> false
+        }
+    }
+}

@@ -48,7 +48,14 @@ public final class OperatorUsage {
             case RuleGroupPresenceCondition ignored -> { /* operatorId (GroupFilled/GroupNotFilled) already added */ }
             case IndexedPresenceCondition p -> ops.add(p.index().operatorId());   // the SemanticIndex operator
             case IndexedGroupPresenceCondition ignored -> ops.add("SemanticIndex");
-            case GroupListPredicate ignored -> { }
+            case GroupListPredicate predicate -> predicate.operands().forEach(operand -> {
+                switch (operand) {
+                    case FieldRef ignored -> { }
+                    case GroupListRef ignored -> { }
+                    case IndexedFieldValue indexed -> collectOperand(indexed, ops);
+                    case IndexedGroupValue indexed -> collectOperand(indexed, ops);
+                }
+            });
             case PatternCondition p -> collectOperand(p.field(), ops);
             case ValueListCondition v -> {
                 collectOperand(v.field(), ops);
@@ -196,11 +203,12 @@ public final class OperatorUsage {
         operand.semanticIndex().ifPresent(ignored -> ops.add("SemanticIndex"));
     }
 
-    /** An entity-list aggregate operand. A group scope contributes no operator of its own: it carries
-     *  neither a category projection nor a {@code Having} filter (the kernel rejects one on a group). */
+    /** An entity-list operand retains its semantic-index operator even when the selected entity is a group. */
     private static void collectAggregateOperand(AggregateOperand operand, Set<String> ops) {
-        if (operand instanceof FieldOperand field) {
-            collectOperand(field, ops);
+        switch (operand) {
+            case FieldOperand field -> collectOperand(field, ops);
+            case GroupListRef ignored -> { }
+            case IndexedGroupValue indexed -> collectOperand(indexed, ops);
         }
     }
 

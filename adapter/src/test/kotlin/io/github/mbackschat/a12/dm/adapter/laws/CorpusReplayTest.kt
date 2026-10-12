@@ -1,6 +1,16 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.interpreter.conformance.CaseMeta
+import io.github.mbackschat.a12.dm.interpreter.conformance.CaseSource
+import io.github.mbackschat.a12.dm.interpreter.conformance.ConformanceCase
 import io.github.mbackschat.a12.dm.interpreter.conformance.InterpreterReplay
+import io.github.mbackschat.a12.dm.interpreter.conformance.Op
+import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
+import io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind
+import io.github.mbackschat.a12.dm.interpreter.conformance.RelevantPointer
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
@@ -19,6 +29,31 @@ import org.junit.jupiter.api.TestFactory
  * Runs in the dedicated `corpusReplayTest` Gradle task with the corpus files as declared inputs (no false green).
  */
 class CorpusReplayTest {
+
+    @Test
+    fun canonicalFullAndPartialCasesUseIndependentKernelJsonIngress() {
+        val model = BoundModel.ofJson(
+            DocumentModelDraft.named("parcel-corpus-ingress").locale("en_US")
+                .rootGroup("Parcel") { it.numberField("Qty") { field -> field.fractionDigits(0) } }
+                .build().toJson(),
+        )
+        val quantity = model.groupAt("/Parcel").orElseThrow().num("Qty")
+        val modelJson = model.toJson()
+        val placements = listOf(Placement(PlacementKind.FIELD, quantity.field().path().value(), listOf(1, 1), "250.00"))
+        for (op in listOf(Op.ValidateFull, Op.ValidatePart(listOf(RelevantPointer(quantity.field().path().value(), listOf(1, 1)))))) {
+            val case = ConformanceCase(
+                CaseMeta("decimal-ingress", CorpusEngines.KERNEL_VERSION, CaseSource.CURATED, listOf("§7")),
+                "models/parcel-corpus-ingress.json", """{"Parcel":{"Qty":250.00}}""", op,
+                expected = emptyList(),
+            )
+            for ((engine, result) in CorpusReplay.replay(case, modelJson)) {
+                assertEquals(InterpreterReplay.Verdict.PASS, result.verdict, "$engine / ${op.kind}: ${result.detail}")
+            }
+            val legacy = listOf("zahlHatDezimalTrenner|VALUE_ERROR|/Parcel[1]/Qty")
+            assertEquals(legacy, CorpusEngines.groovyDynamic(modelJson, placements, op), "explicit V1 dynamic ingress")
+            assertEquals(legacy, CorpusEngines.javaStatic(modelJson, placements, op), "explicit V1 static ingress")
+        }
+    }
 
     @Test
     fun corpusIsPopulated() {

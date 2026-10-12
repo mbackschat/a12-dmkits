@@ -172,7 +172,7 @@ class ParallelValidationDispatchDiffTest {
         "/Warehouse[1]/Stock[1]/Quantity",
     ).sorted()
 
-    private fun parallelAssociationMessage(code: String, row: Int) = MessageSignature(
+    private fun parallelAssociationMessage(code: String, row: Int) = MessageSignature.fields(
         code, "VALUE_ERROR", "/Warehouse[1]/Orders[$row]/Quantity",
         parallelAssociationReferences(row), emptyList(),
     )
@@ -210,7 +210,7 @@ class ParallelValidationDispatchDiffTest {
             val duplicate = id == "full" || id == "partial-both"
             val expectedUnique = if (duplicate) (1..2).map { row ->
                 val pointer = "/Warehouse[1]/Orders[$row]/Code"
-                MessageSignature("uniqueIndex", "VALUE_ERROR", pointer, listOf(pointer), emptyList())
+                MessageSignature.fields("uniqueIndex", "VALUE_ERROR", pointer, listOf(pointer), emptyList())
             }.sorted() else emptyList()
             val expectedCodes = if (duplicate) listOf("Either", "GroupOr") else
                 listOf("Ancestor", "Both", "Either", "GroupOr", "Groups")

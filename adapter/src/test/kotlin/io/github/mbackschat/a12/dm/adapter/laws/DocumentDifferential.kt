@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.RelevantCoordinate
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
+import io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey
 import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -19,22 +20,51 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * One message as an engine reports it: code, type (`VALUE_ERROR`/`OMISSION_ERROR`), the error field's pointer, and
- * the referenced and fill-to-fix pointers, each sorted. [brief] is the first three alone, for a pin that names only
- * where a message fired.
+ * Lossless comparison keys retain every message coordinate (IG145); readable properties and [brief] preserve
+ * the existing field-pointer pins. Terminal group coordinates remain visible in the diagnostic key suffix.
  */
 internal data class MessageSignature(
     val code: String,
     val type: String,
-    val pointer: String,
-    val referenced: List<String>,
-    val fillToFix: List<String>,
+    val pointerKey: String,
+    val referencedKeys: List<String>,
+    val fillToFixKeys: List<String>,
 ) : Comparable<MessageSignature> {
+    val pointer: String get() = displayPointer(pointerKey)
+    val referenced: List<String> get() = referencedKeys.map(::displayPointer).sorted()
+    val fillToFix: List<String> get() = fillToFixKeys.map(::displayPointer).sorted()
     val brief: String get() = "$code|$type|$pointer"
+    private val readable: String get() = "$brief|ref=$referenced|fill=$fillToFix"
 
-    override fun compareTo(other: MessageSignature): Int = toString().compareTo(other.toString())
+    override fun compareTo(other: MessageSignature): Int {
+        // SelectedAuthoredScopeDiffTest pins the readable ordering; IG145 requires a lossless tie-break.
+        val displayOrder = readable.compareTo(other.readable)
+        if (displayOrder != 0) return displayOrder
+        val addressOrder = compareValuesBy(this, other, MessageSignature::code, MessageSignature::type,
+            MessageSignature::pointerKey)
+        if (addressOrder != 0) return addressOrder
+        val referencesOrder = compareKeys(referencedKeys, other.referencedKeys)
+        return if (referencesOrder != 0) referencesOrder else compareKeys(fillToFixKeys, other.fillToFixKeys)
+    }
 
-    override fun toString(): String = "$brief|ref=$referenced|fill=$fillToFix"
+    override fun toString(): String = "$readable|keys=$pointerKey;ref=$referencedKeys;fill=$fillToFixKeys"
+
+    companion object {
+        /** Field expectation pins declare terminal 1; message-sentinel expectations use full keys (Pointer.kt / IG145). */
+        fun fields(code: String, type: String, pointer: String, referenced: List<String>, fillToFix: List<String>) =
+            MessageSignature(code, type, "$pointer[1]", referenced.map { "$it[1]" }.sorted(), fillToFix.map { "$it[1]" }.sorted())
+    }
+}
+
+private fun displayPointer(key: String): String =
+    if (key.endsWith(']')) key.substringBeforeLast('[') else key
+
+private fun compareKeys(left: List<String>, right: List<String>): Int {
+    for (index in 0 until minOf(left.size, right.size)) {
+        val order = left[index].compareTo(right[index])
+        if (order != 0) return order
+    }
+    return left.size.compareTo(right.size)
 }
 
 /**
@@ -57,14 +87,14 @@ internal object DocumentDifferential {
         val dynamic = RuntimeLaws.kernelEngine(model).let { it.validationMessages(it.instance(json), null, Locale.US) }
         val generated = RuntimeLaws.kernelJavaEngine(model).let { it.validationMessages(it.instance(json), null, Locale.US) }
         fun texts(messages: List<IMessage>) = messages.filter { it.errorCode == code }
-            .map { pointer(it.errorFieldPointer) to it.errorText }.sortedBy { it.first }
+            .map { displayPointer(pointer(it.errorFieldPointer)) to it.errorText }.sortedBy { it.first }
         assertEquals(expected, texts(dynamic), "dynamic kernel text for $json")
         assertEquals(expected, texts(generated), "static kernel text for $json")
         val prepared = PreparedModel.loadExpandedJson(model)
         val report = prepared.createInterpreter().validateFull(prepared.documents.readDocument(json))
         assertEquals(emptyList<Any>(), report.unsupported)
         assertEquals(expected, report.findings.filter { it.code == code }
-            .map { pointer(it.errorPath) to it.text }.sortedBy { it.first }, "interpreter text for $json")
+            .map { displayPointer(pointer(it.errorPath)) to it.text }.sortedBy { it.first }, "interpreter text for $json")
     }
 
     fun kernelMessages(model: String, json: String, dynamic: Boolean,
@@ -183,9 +213,9 @@ internal object DocumentDifferential {
 
     private fun typeName(interpreterType: String) = if (interpreterType == "VALUE") "VALUE_ERROR" else "OMISSION_ERROR"
 
-    private fun pointer(p: PartiallyKnownDocumentMultiPointer): String = formatPointer(p.fullName(), p.repetitionIndexes())
+    internal fun pointer(p: PartiallyKnownDocumentMultiPointer): String = pointerComparisonKey(p.fullName(), p.repetitionIndexes())
 
-    private fun pointer(p: A12PartiallyKnownMultiPointer): String = formatPointer(p.fullName, p.repetitionIndexes)
+    internal fun pointer(p: A12PartiallyKnownMultiPointer): String = pointerComparisonKey(p.fullName, p.repetitionIndexes)
 
     private fun kernelSignature(m: IMessage): MessageSignature = MessageSignature(m.errorCode, m.messageType.name,
         pointer(m.errorFieldPointer), m.referencedFieldsPointers.map(::pointer).sorted(),

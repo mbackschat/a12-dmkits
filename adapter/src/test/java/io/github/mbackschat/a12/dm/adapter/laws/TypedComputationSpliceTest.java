@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -12,6 +13,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader;
 
 /**
  * The typed computation splice: a {@link Computation} in, the model JSON the String form produces out.
@@ -48,6 +52,23 @@ class TypedComputationSpliceTest {
     private static Computation.Builder computation(String name) {
         return M.computation(TOTAL).name(name)
                 .message(new LocalizedText("en_US", "x"), new LocalizedText("de_DE", "x"));
+    }
+
+    @Test
+    void theTypedRuleHelperCarriesMessagesAndEverySeverityToBothLegs() {
+        var messages = Map.of("en_US", "Review the quantity.", "de_DE", "Menge pruefen.");
+        for (Severity severity : Severity.values()) {
+            Rule rule = M.rule(M.group(GROUP)).name("QuantityRule").code("QUANTITY")
+                    .errorField(QUANTITY).when(QUANTITY.gt(0)).severity(severity)
+                    .message(new LocalizedText("en_US", messages.get("en_US")),
+                            new LocalizedText("de_DE", messages.get("de_DE"))).build();
+            String json = TypedRules.INSTANCE.inject(ORDER, rule);
+            var written = ModelLoader.load(json).getRules().get(0);
+            assertEquals(severity.name(), written.getSeverity().name());
+            assertEquals(messages, written.getMessages());
+            assertEquals(written, TypedRules.INSTANCE.def(rule));
+            assertEquals(List.of(), RuntimeLaws.consistencyMessages(json));
+        }
     }
 
     @Test

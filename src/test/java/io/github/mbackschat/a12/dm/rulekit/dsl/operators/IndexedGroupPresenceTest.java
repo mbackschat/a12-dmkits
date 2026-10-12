@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionPolarity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.EntityListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.OperatorUsage;
 
@@ -47,6 +50,19 @@ class IndexedGroupPresenceTest {
     void theComplementFlipsThePresence() {
         assertEquals(Optional.of(items.forIndex("SKU-1").notFilled()),
                 ConditionPolarity.complement(items.forIndex("SKU-1").filled()));
+    }
+
+    @Test
+    void everySelectedGroupCarrierReportsTheSemanticIndexOperator() {
+        for (var selected : List.of(items.forIndex("SKU-1"), items.forIndex(ORDER.field("/Order/ProductCode")))) {
+            for (var condition : List.of(Dsl.atLeastOneFieldFilled(selected),
+                    Dsl.atLeastOneGroupFilled(selected), Dsl.numberOfFilledFields(selected).gt(0))) {
+                assertTrue(OperatorUsage.of(condition).contains("SemanticIndex"), condition.toString());
+            }
+            assertTrue(((EntityListPredicate) Dsl.atLeastOneFieldFilled(selected)).hasGroupScope());
+        }
+        var selectedField = ORDER.num("/Order/Items/Count").semanticIndex("SKU-1").index();
+        assertTrue(OperatorUsage.of(Dsl.atLeastOneGroupFilled(selectedField)).contains("SemanticIndex"));
     }
 
     /** The row's presence reports the semantic index it reads through, as a keyed cell's presence does. */

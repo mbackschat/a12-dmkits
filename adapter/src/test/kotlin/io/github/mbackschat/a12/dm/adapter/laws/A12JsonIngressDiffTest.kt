@@ -15,10 +15,9 @@ import org.junit.jupiter.api.Test
  * **re-written JSON** and the **formal outcome** are compared. `A12JsonIngressKernelTest` owns the kernel-side
  * measurement (and the matrix); this class is what proves our reimplementation of it.
  *
- * The ingress is the only place the interpreter can normalize, because it is the only place A12 does: A12
- * stores a typed value and re-renders from it, while every *other* kernel oracle in this package builds a V1
- * instance from raw strings, which `ValidationData.getValue` returns unchanged. So this differential covers a
- * regime none of the others reach.
+ * A12's Document JSON reader stores typed values and re-renders from them. The explicit V1/String helpers
+ * preserve raw input instead; both ingress regimes remain distinct in [RuntimeLaws]. This matrix locks the
+ * serializer's rewrite as well as the formal validation result, beyond the runtime channels [DocumentDifferential] compares.
  *
  * [KNOWN_DIVERGENCES] is the exhaustive, characterized residual — a new disagreement fails here, and so does a
  * fixed one. Each entry names why it is left standing (INTERPRETER-GAPS / IF227).

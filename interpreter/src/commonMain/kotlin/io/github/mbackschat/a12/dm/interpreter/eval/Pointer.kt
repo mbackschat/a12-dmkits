@@ -26,8 +26,8 @@ fun formatPointer(path: String, reps: List<Int>): String {
  * <b>Why it exists (INTERPRETER-GAPS `IG145`).</b> [formatPointer] omits the terminal coordinate. On a FIELD
  * pointer that coordinate is the constant 1 and nothing is lost; on a pointer whose last segment is a
  * repeatable **group** it is a real row index, so the kernel's three distinct `[1,3,1]`, `[1,3,2]`, `[1,3,3]`
- * findings at `/Billing/Invoices/Periods` all render as one string. Every `adapter/laws` differential compares
- * that rendering, so an engine attributing such a finding to the wrong row would compare EQUAL — the loss is
+ * findings at `/Billing/Invoices/Periods` all render as one string. A differential comparing that rendering
+ * would treat an engine's attribution to the wrong terminal group row as EQUAL — the loss is
  * in the instrument, not in any output. Here the same three become `…/Periods[1]`, `[2]`, `[3]`.
  *
  * A field pointer therefore gains a trailing `[1]`, which is noise for a reader and exactly right for a key:

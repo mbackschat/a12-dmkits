@@ -503,7 +503,7 @@
   },
   "reviews": {
     "kf1": {
-      "sha256": "ccd60f13230bb1a49d4beca8e4094b6bb127fb8bd0644b45ac4ee0353a0bd050",
+      "sha256": "f946625fc486bcea2dbd93d86b7e3e97cea2929fdb91b894a25f57933239c21b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -8435,7 +8435,7 @@
       }
     },
     "kf543": {
-      "sha256": "99448ee566fd488a062c0c37574a5c0b06900739e58cc1d9f89da150a00eec27",
+      "sha256": "45a61a694bf03d974fdfe73e422d3e9d874972e5f47ab62b003c23bd33273335",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [

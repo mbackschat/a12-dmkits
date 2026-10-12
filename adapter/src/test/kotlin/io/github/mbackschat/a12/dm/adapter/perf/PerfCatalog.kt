@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.gen.ValueStrategy
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.modelkit.DateTimeFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -63,8 +64,25 @@ object PerfCatalog {
     // ([EditSession] → [GroupEditor]): a session on the model hands out group editors that yield typed refs by
     // RELATIVE child name (no full paths re-typed; fail-fast on a bad name/kind; flatten() for star aggregates),
     // and a rule is a [Rule] whose error field + condition are refs and whose kernel-relative error path +
-    // canonical text are DERIVED. [TypedRules] feeds one such typed object to BOTH engines — no hand-written
+    // canonical text are DERIVED. [inject]/[def] preserve the reviewed benchmark projection for BOTH engines — no hand-written
     // "../…" error paths, no condition/operation strings. (Eat your own dogfood: the benchmark consumes the kits.)
+    /**
+     * Reviewed performance identities hash raw kernel JSON and RuleDef messages (ScenarioFingerprint.compute).
+     * Keep their historical rule ordering/placeholder payload; ordinary laws use the faithful TypedRules helper.
+     * PerformanceScenarioFixtureGuardTest locks the committed authoring bytes.
+     */
+    private fun inject(json: String, rule: Rule): String = RuntimeLaws.withRule(
+        json, rule.group().path().value(), rule.name(), rule.errorEntityRelPath(), rule.code(), rule.render(),
+    )
+
+    private fun def(rule: Rule): RuleDef = RuleDef(
+        "${rule.group().path().value()}/${rule.name()}", rule.group().path().value(),
+        rule.render(), rule.code(), rule.errorEntityRelPath(),
+    )
+
+    private fun inject(json: String, computation: Computation): String = TypedRules.inject(json, computation)
+    private fun def(computation: Computation) = TypedRules.def(computation)
+
     private val perf = EditSession.read(perfJson)
     private val perfRoot = perf.group("/Perf")            // anchor for the /Perf-level star aggregates
     private val lines = perf.group(LINES)                 // editor on the repeatable Lines group
@@ -102,9 +120,9 @@ object PerfCatalog {
 
     /** Build a single-rule validate scenario for BOTH engines from ONE typed [Rule] — no drift, no strings. */
     private fun scenario(name: String, rule: Rule, rows: (Int) -> RowsFn): PerfScenario {
-        val kernelModel = TypedRules.inject(perfJson, rule)
+        val kernelModel = inject(perfJson, rule)
         val interpModel = ModelDef(
-            fields, listOf(TypedRules.def(rule)),
+            fields, listOf(def(rule)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -148,9 +166,9 @@ object PerfCatalog {
      *  Line's Amount is unique (the row index). */
     fun fieldValuesNotUniqueStar(): PerfScenario {
         val rule = perfRoot.errorRule("FVNU", amount.field(), Dsl.fieldValuesNotUnique(perfRoot.flatten("Lines*/Amount")))
-        val kernelModel = TypedRules.inject(perfJson, rule)
+        val kernelModel = inject(perfJson, rule)
         val interpModel = ModelDef(
-            fields, listOf(TypedRules.def(rule)),
+            fields, listOf(def(rule)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX), indexFields = setOf(LINE_KEY, SUB_KEY),
         )
@@ -182,9 +200,9 @@ object PerfCatalog {
             perfRoot.errorRule("RNU", amount.field(), Dsl.repetitionNotUnique(amount.field())),
             perfRoot.errorRule("STAR", qty.field(), Dsl.sum(perfRoot.flatten("Lines*/Amount")).gt(1_000_000L)),
         )
-        val kernelModel = rules.fold(perfJson) { json, r -> TypedRules.inject(json, r) }
+        val kernelModel = rules.fold(perfJson) { json, r -> inject(json, r) }
         val interpModel = ModelDef(
-            fields, rules.map { TypedRules.def(it) },
+            fields, rules.map { def(it) },
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -206,9 +224,9 @@ object PerfCatalog {
      *  row index) so the distinct set grows to N — the worst case that exposes the quadratic. */
     fun numDifferentValues(): PerfScenario {
         val rule = perfRoot.errorRule("NDV", amount.field(), Dsl.numberOfDifferentValues(perfRoot.flatten("Lines*/Amount")).gt(999999))
-        val kernelModel = TypedRules.inject(perfJson, rule)
+        val kernelModel = inject(perfJson, rule)
         val interpModel = ModelDef(
-            fields, listOf(TypedRules.def(rule)),
+            fields, listOf(def(rule)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX), indexFields = setOf(LINE_KEY, SUB_KEY),
         )
@@ -253,9 +271,9 @@ object PerfCatalog {
     fun multiStarCorrelation(): PerfScenario {
         val rule = subs.errorRule("MSC", cost.field(), cost.filled().and(
             Dsl.moreThanOneFieldFilled(perfRoot.flatten("Lines*/Subs*/Cost").having(cost.eq(cost.outer())))))
-        val kernelModel = TypedRules.inject(perfJson, rule)
+        val kernelModel = inject(perfJson, rule)
         val interpModel = ModelDef(
-            fields, listOf(TypedRules.def(rule)),
+            fields, listOf(def(rule)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX), indexFields = setOf(LINE_KEY, SUB_KEY),
         )
@@ -298,9 +316,9 @@ object PerfCatalog {
      *  #31 re-parse cost is retired). */
     fun b6(): PerfScenario {
         val rules = b6Rules()
-        val kernelModel = rules.fold(perfJson) { json, r -> TypedRules.inject(json, r) }
+        val kernelModel = rules.fold(perfJson) { json, r -> inject(json, r) }
         val interpModel = ModelDef(
-            fields, rules.map { TypedRules.def(it) },
+            fields, rules.map { def(it) },
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -327,9 +345,9 @@ object PerfCatalog {
                 else -> perfRoot.errorRule(code, amount.field(), Dsl.sum(perfRoot.flatten("Lines*/Amount")).gt(1000L + i))
             }
         }
-        val kernelModel = rules.fold(perfJson) { json, r -> TypedRules.inject(json, r) }
+        val kernelModel = rules.fold(perfJson) { json, r -> inject(json, r) }
         val interpModel = ModelDef(
-            fields, rules.map { TypedRules.def(it) },
+            fields, rules.map { def(it) },
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -375,13 +393,13 @@ object PerfCatalog {
             val f = distLines.num("F$i")
             distLines.errorRule("R%04d".format(i), f.field(), f.filled().and(f.gt(50L + i)))
         }
-        val kernelModel = rules.fold(distJson) { json, r -> TypedRules.inject(json, r) }
+        val kernelModel = rules.fold(distJson) { json, r -> inject(json, r) }
         val distFields = buildList {
             add(FieldDef(LINE_KEY, Kind.STRING))
             for (i in 0 until count) add(FieldDef("/Perf/Lines/F$i", Kind.NUMBER))
         }
         val interpModel = ModelDef(
-            distFields, rules.map { TypedRules.def(it) },
+            distFields, rules.map { def(it) },
             repeatableGroups = setOf(LINES), declaredReps = mapOf(LINES to DECLARED_MAX), indexFields = setOf(LINE_KEY),
         )
         val gen = SeedGenerator(interpModel)
@@ -488,9 +506,9 @@ object PerfCatalog {
      */
     fun deepRich(firing: Boolean = false): PerfScenario {
         val rules = deepRules()
-        val kernelModel = rules.fold(deepJson) { json, r -> TypedRules.inject(json, r) }
+        val kernelModel = rules.fold(deepJson) { json, r -> inject(json, r) }
         val interpModel = ModelDef(
-            deepFields, rules.map { TypedRules.def(it) },
+            deepFields, rules.map { def(it) },
             repeatableGroups = setOf(VENDOR, PRODUCT, OFFER, TIER),
             declaredReps = mapOf(VENDOR to DECLARED_MAX, PRODUCT to DECLARED_MAX, OFFER to DECLARED_MAX, TIER to DECLARED_MAX),
             indexFields = setOf("$VENDOR/VKey", "$PRODUCT/PKey", "$OFFER/OKey", "$TIER/TKey"),
@@ -535,13 +553,13 @@ object PerfCatalog {
             val v = g.num("V$i")
             g.errorRule("R$i", v.field(), v.filled().and(v.gt(1000)))
         }
-        val kernelModel = rules.fold(wideJson) { json, r -> TypedRules.inject(json, r) }
+        val kernelModel = rules.fold(wideJson) { json, r -> inject(json, r) }
         val fields = buildList {
             for (i in 0 until numGroups) { add(FieldDef("/Wide/G$i/K$i", Kind.STRING)); add(FieldDef("/Wide/G$i/V$i", Kind.NUMBER, scale = 0)) }
         }
         val groups = (0 until numGroups).map { "/Wide/G$it" }.toSet()
         val interpModel = ModelDef(
-            fields, rules.map { TypedRules.def(it) },
+            fields, rules.map { def(it) },
             repeatableGroups = groups, declaredReps = groups.associateWith { DECLARED_MAX },
             indexFields = (0 until numGroups).map { "/Wide/G$it/K$it" }.toSet(),
         )
@@ -614,10 +632,10 @@ object PerfCatalog {
         val comp = lines.computation(amount) {
             it.name("AmountComp").calc(Dsl.sum(lines.flatten("Subs*/Cost")).expression()).message(Dsl.en("x")).build()
         }
-        val kernelModel = TypedRules.inject(perfJson, comp)
+        val kernelModel = inject(perfJson, comp)
         val interpModel = ModelDef(
             fields, emptyList(),
-            computations = listOf(TypedRules.def(comp)),
+            computations = listOf(def(comp)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -667,11 +685,11 @@ object PerfCatalog {
         computation: Computation,
         values: ValueStrategy,
     ): PerfScenario {
-        val kernelModel = TypedRules.inject(perfJson, computation)
+        val kernelModel = inject(perfJson, computation)
         val interpModel = ModelDef(
             fields,
             emptyList(),
-            computations = listOf(TypedRules.def(computation)),
+            computations = listOf(def(computation)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -700,10 +718,10 @@ object PerfCatalog {
                 .`when`(qty.ge(100)).calc(NumberLiteral.of("0"))      // [Qty] >= 100 → 0
                 .message(Dsl.en("x")).build()
         }
-        val kernelModel = TypedRules.inject(perfJson, comp)
+        val kernelModel = inject(perfJson, comp)
         val interpModel = ModelDef(
             fields, emptyList(),
-            computations = listOf(TypedRules.def(comp)),
+            computations = listOf(def(comp)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -779,9 +797,9 @@ object PerfCatalog {
 
     private fun ovlScenario(name: String, rowEd: GroupEditor, reader: Computation): PerfScenario {
         val comps = listOf(ovlActivator(rowEd), reader)
-        val kernelModel = comps.fold(ovlJson) { json, c -> TypedRules.inject(json, c) }
+        val kernelModel = comps.fold(ovlJson) { json, c -> inject(json, c) }
         val interpModel = ModelDef(
-            ovlFields, emptyList(), computations = comps.map { TypedRules.def(it) },
+            ovlFields, emptyList(), computations = comps.map { def(it) },
             repeatableGroups = setOf(OVL_ROW), declaredReps = mapOf(OVL_ROW to DECLARED_MAX), indexFields = setOf(OVL_KEY),
         )
         val gen = SeedGenerator(interpModel)
@@ -874,9 +892,9 @@ object PerfCatalog {
         val va = parallelSession.group(PA).field("Va")
         val vb = parallelSession.group(PB).field("Vb")
         val rule = parallelSession.group("/Plan").errorRule("PI", va, Dsl.fieldsNotCollectivelyFilled(va, vb))
-        val kernelModel = TypedRules.inject(parallelJson, rule)
+        val kernelModel = inject(parallelJson, rule)
         val interpModel = ModelDef(
-            parallelFields, listOf(TypedRules.def(rule)),
+            parallelFields, listOf(def(rule)),
             repeatableGroups = setOf(PA, PB),
             declaredReps = mapOf(PA to DECLARED_MAX, PB to DECLARED_MAX),
             indexFields = setOf("$PA/Dept", "$PB/Dept"),
@@ -938,10 +956,10 @@ object PerfCatalog {
         val rule = numberIndexSession.group(NI_ROOT).errorRule(
             "NIV", aValue.field(), Dsl.fieldsNotCollectivelyFilled(aValue.field(), bValue.field()),
         )
-        val kernelModel = TypedRules.inject(numberIndexJson, rule)
+        val kernelModel = inject(numberIndexJson, rule)
         val interpModel = ModelDef(
             numberIndexFields,
-            listOf(TypedRules.def(rule)),
+            listOf(def(rule)),
             repeatableGroups = setOf(NI_A, NI_B),
             declaredReps = mapOf(NI_A to DECLARED_MAX, NI_B to DECLARED_MAX),
             indexFields = setOf(NI_A_KEY, NI_B_KEY),
@@ -974,11 +992,11 @@ object PerfCatalog {
         val computation = bGroup.computation(bGroup.num("Value")) {
             it.name("NumberIndexCopy").calc(aValue.value()).message(Dsl.en("x")).build()
         }
-        val kernelModel = TypedRules.inject(numberIndexJson, computation)
+        val kernelModel = inject(numberIndexJson, computation)
         val interpModel = ModelDef(
             numberIndexFields,
             emptyList(),
-            computations = listOf(TypedRules.def(computation)),
+            computations = listOf(def(computation)),
             repeatableGroups = setOf(NI_A, NI_B),
             declaredReps = mapOf(NI_A to DECLARED_MAX, NI_B to DECLARED_MAX),
             indexFields = setOf(NI_A_KEY, NI_B_KEY),
@@ -1045,9 +1063,9 @@ object PerfCatalog {
         val bVb = framedSession.group(FB).num("Vb")
         val rule = framedSession.group("/Plan").errorRule("PF", xaVa.field(),
             xaVa.filled().and(bVb.filled()).and(xaVa.gt(bVb)))
-        val kernelModel = TypedRules.inject(framedJson, rule)
+        val kernelModel = inject(framedJson, rule)
         val interpModel = ModelDef(
-            framedFields, listOf(TypedRules.def(rule)),
+            framedFields, listOf(def(rule)),
             repeatableGroups = setOf(FX, FXA, FB),
             declaredReps = mapOf(FX to DECLARED_MAX, FXA to DECLARED_MAX, FB to DECLARED_MAX),
             indexFields = setOf("$FXA/Dept", "$FB/Dept"),
@@ -1111,14 +1129,14 @@ object PerfCatalog {
         val sa = g.dateTime("StartedAt")
         val ca = g.dateTime("EndedAt")
         val rule = g.errorRule("DTH", sa.field(), sa.filled().and(Dsl.differenceInHours(sa, ca).gt(0)))
-        val kernelModel = TypedRules.inject(json, rule)
+        val kernelModel = inject(json, rule)
         val fields = listOf(
             FieldDef(DT_KEY, Kind.STRING),
             FieldDef(DT_SA, Kind.DATE_TIME, format = DT_FMT),
             FieldDef(DT_CA, Kind.DATE_TIME, format = DT_FMT),
         )
         val interpModel = ModelDef(
-            fields, listOf(TypedRules.def(rule)),
+            fields, listOf(def(rule)),
             repeatableGroups = setOf(DT_RUNS), declaredReps = mapOf(DT_RUNS to DECLARED_MAX),
             indexFields = setOf(DT_KEY), timeZone = zone,
         )
@@ -1195,7 +1213,7 @@ object PerfCatalog {
             Dsl.differenceInMinutes(Dsl.addDays(started, days.asNumber()), anchor).eq(expected.asNumber()),
         )
         val rule = runs.errorRule("ADH", started.field(), condition)
-        val kernelModel = TypedRules.inject(addDaysJson, rule)
+        val kernelModel = inject(addDaysJson, rule)
         val fields = listOf(
             FieldDef(AD_KEY, Kind.STRING),
             FieldDef(AD_START, Kind.DATE_TIME, format = DT_FMT),
@@ -1205,7 +1223,7 @@ object PerfCatalog {
         )
         val interpModel = ModelDef(
             fields,
-            listOf(TypedRules.def(rule)),
+            listOf(def(rule)),
             repeatableGroups = setOf(AD_RUNS),
             declaredReps = mapOf(AD_RUNS to DECLARED_MAX),
             indexFields = setOf(AD_KEY),
@@ -1368,9 +1386,9 @@ object PerfCatalog {
      */
     fun fuzz(): PerfScenario {
         val rules = fuzzRuleSpecs()
-        val kernelModel = rules.fold(fuzzJson) { json, r -> TypedRules.inject(json, r) }
+        val kernelModel = rules.fold(fuzzJson) { json, r -> inject(json, r) }
         val interpModel = ModelDef(
-            fuzzFields, rules.map { TypedRules.def(it) },
+            fuzzFields, rules.map { def(it) },
             repeatableGroups = setOf(FZ_LINES, FZ_PARTS),
             declaredReps = mapOf(FZ_LINES to 1000, FZ_PARTS to 1000),
             indexFields = setOf("/Cart/Lines/ItemId", "/Cart/Lines/Parts/PartId"),

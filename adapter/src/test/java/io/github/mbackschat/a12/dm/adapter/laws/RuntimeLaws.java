@@ -635,9 +635,8 @@ public final class RuntimeLaws {
 
     /**
      * Deserialize {@code documentJson} with the kernel's own {@link IDocumentV2Serializer}, write it back, and
-     * validate it — the ingress the interpreter's public {@code readDocument} boundary reimplements. Distinct
-     * from every other oracle here, which builds a V1 instance from raw STRINGS and therefore never exercises
-     * A12's value conversion at all.
+     * validate it — the ingress the interpreter's public {@code readDocument} boundary reimplements. Unlike
+     * the explicit V1/String helpers, this route exercises A12's value conversion before validation.
      */
     static JsonIngress jsonIngress(String modelJson, String documentJson) {
         KernelEngine engine = sharedKernelEngine(modelJson);
@@ -1515,7 +1514,7 @@ public final class RuntimeLaws {
         return new KernelEngine(modelJson, codeCache);
     }
 
-    private static KernelEngine sharedKernelEngine(String modelJson) {
+    static KernelEngine sharedKernelEngine(String modelJson) {
         return SHARED_KERNEL_ENGINES.getOrCompute(modelJson, json -> {
             SHARED_KERNEL_ENGINE_BUILDS.incrementAndGet();
             return new KernelEngine(json);

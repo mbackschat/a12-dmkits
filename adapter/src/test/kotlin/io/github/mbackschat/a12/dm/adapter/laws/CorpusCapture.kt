@@ -5,7 +5,8 @@ import io.github.mbackschat.a12.dm.interpreter.conformance.ConformanceCase
 import io.github.mbackschat.a12.dm.interpreter.conformance.Divergence
 import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
-import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
+import io.github.mbackschat.a12.dm.interpreter.conformance.kernelCanonicalComputeGranularity
+import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.conformance.documentJsonOf
 
@@ -41,17 +42,19 @@ object CorpusCapture {
      * committable). [meta]'s `kernelVersion` is overwritten with the pinned version.
      */
     fun capture(meta: CaseMeta, modelName: String, modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): ConformanceCase {
-        val anchor = CorpusEngines.groovyDynamic(modelJson, placements, op, clock)
+        val def = ModelLoader.load(modelJson)
+        val documentJson = documentJsonOf(placements, def)
+        val anchor = CorpusEngines.groovyDynamic(modelJson, documentJson, op, clock)
         // The interpreter reports EVERY computed instance; the kernel corpus anchor captures only its
         // three-channel change projection (the full result has five channels — KERNEL-FINDINGS §11) — so
         // project the interpreter's compute outcome to that granularity before comparing (SPEC §7).
-        val interpAll = CorpusEngines.interpret(modelJson, placements, op, clock)
+        val interpAll = CorpusEngines.interpret(modelJson, documentJson, op, clock)
         val interp =
-            if (op is Op.Compute) kernelComputeGranularity(interpAll, placements, ModelLoader.load(modelJson))
+            if (op is Op.Compute) kernelCanonicalComputeGranularity(interpAll, def.readDocumentJson(documentJson))
             else interpAll
         if (interp != anchor) throw InterpreterDivergence(meta.id, anchor, interp)
 
-        val java = CorpusEngines.javaStatic(modelJson, placements, op, clock)
+        val java = CorpusEngines.javaStatic(modelJson, documentJson, op, clock)
         val isCompute = op is Op.Compute
         val divergences = if (java == anchor) emptyList() else listOf(
             if (isCompute) Divergence(CorpusEngines.JAVA_STATIC, computeExpected = java)
@@ -60,7 +63,7 @@ object CorpusCapture {
         return ConformanceCase(
             meta = meta.copy(kernelVersion = CorpusEngines.KERNEL_VERSION),
             modelRef = modelRefOf(modelName),
-            document = documentJsonOf(placements, ModelLoader.load(modelJson)),
+            document = documentJson,
             op = op,
             clock = clock,
             expected = if (isCompute) null else anchor,

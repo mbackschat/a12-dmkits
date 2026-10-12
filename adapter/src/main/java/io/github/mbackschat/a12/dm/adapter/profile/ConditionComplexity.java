@@ -153,19 +153,27 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                     constructs.add(Construct.SEMANTIC_INDEX);
                     yield 2;
                 }
-                case IndexedGroupPresenceCondition ignored -> {
-                    op("SemanticIndex");
+                case IndexedGroupPresenceCondition presence -> {
+                    indexedGroupMetadata(presence.group());
                     constructs.add(Construct.GROUP_FILL);
-                    constructs.add(Construct.SEMANTIC_INDEX);
                     yield 2;
                 }
                 case GroupListPredicate predicate -> {
                     constructs.add(Construct.QUANTIFIER);
                     predicate.operands().forEach(operand -> {
-                        // a checked-field entity is a scalar read; only repeatable group scopes scan a collection
-                        if (operand instanceof GroupListRef scope
-                                && (!scope.flattened().isEmpty() || scope.group().repeating())) {
-                            collectionPaths.add(scope.path() + "/");
+                        switch (operand) {
+                            case FieldRef ignored -> { }
+                            case IndexedFieldValue indexed -> {
+                                op(indexed.operatorId());
+                                constructs.add(Construct.SEMANTIC_INDEX);
+                            }
+                            case GroupListRef scope -> {
+                                groupScopeMetadata(scope);
+                                if (scope.flattened().isEmpty() && scope.group().repeating()) {
+                                    collectionPaths.add(scope.path() + "/");
+                                }
+                            }
+                            case IndexedGroupValue indexed -> indexedGroupMetadata(indexed);
                         }
                     });
                     yield 1;
@@ -356,6 +364,14 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
          *  list also carries a Having condition subtree. Accepts the wider {@link ValueListOperand}. */
         private int operandDepth(ValueListOperand operand) {
             nodeCount++;
+            if (operand instanceof IndexedGroupValue indexed) {
+                indexedGroupMetadata(indexed);
+                return 1;
+            }
+            if (operand instanceof GroupListRef group) {
+                groupScopeMetadata(group);
+                return 1;
+            }
             if (operand instanceof IndexedFieldValue index) {
                 op(index.operatorId());
                 constructs.add(Construct.SEMANTIC_INDEX);
@@ -394,8 +410,14 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
             for (AggregateOperand o : operands) {
                 max = Math.max(max, switch (o) {
                     case FieldOperand field -> operandDepth(field);
-                    case GroupListRef ignored -> 0;
-                    case IndexedGroupValue ignored -> 0;
+                    case GroupListRef group -> {
+                        groupScopeMetadata(group);
+                        yield 0;
+                    }
+                    case IndexedGroupValue indexed -> {
+                        indexedGroupMetadata(indexed);
+                        yield 0;
+                    }
                 });
             }
             return max;
@@ -422,9 +444,8 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 max = Math.max(max, switch (o) {
                     case FieldOperand field -> operandDepth(field);
                     case GroupListRef group -> groupScopeDepth(group);   // no filter here: MVK_NO_GROUPS_ALLOWED
-                    case IndexedGroupValue ignored -> {
-                        // Never starred (an index and a wildcard can't address the same group), so no
-                        // collectionPaths/maxStarSegments contribution — just the one node.
+                    case IndexedGroupValue indexed -> {
+                        indexedGroupMetadata(indexed);
                         nodeCount++;
                         yield 1;
                     }
@@ -442,9 +463,19 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
          */
         private int groupScopeDepth(GroupListRef scope) {
             nodeCount++;
+            groupScopeMetadata(scope);
+            return 1;
+        }
+
+        private void groupScopeMetadata(GroupListRef scope) {
             scope.flattened().forEach(starred -> collectionPaths.add(starred.path().value() + "/"));
             maxStarSegments = Math.max(maxStarSegments, scope.flattened().size());
-            return 1;
+        }
+
+        private void indexedGroupMetadata(IndexedGroupValue indexed) {
+            op("SemanticIndex");
+            constructs.add(Construct.SEMANTIC_INDEX);
+            groupScopeMetadata(indexed.group());
         }
 
         private int maxFirstFilledOperandDepth(List<? extends FirstFilledOperand> operands) {

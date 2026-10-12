@@ -48,6 +48,8 @@ The compact format keeps three independent bounded quantities for each rule and 
 
 `scannedScopeCapacity` is the scope distribution restricted to programs with a non-trivial list scan. `parallelIteration` and `outerCorrelation` retain the two cross-list signals from the PR.
 
+A selected group contributes `SemanticIndex` to operator usage and construct counts; its lower stars remain collection operands. Star counts measure written wildcards, so selecting an unstarred group adds no star. `ConditionComplexityCountOperandTest` and `IndexedGroupPresenceTest` lock these metadata carriers.
+
 Extraction records unbounded repeatable groups. Synthesis refuses a profile whose `unboundedCount` is non-zero instead of inventing a finite workload.
 
 ## Input validation

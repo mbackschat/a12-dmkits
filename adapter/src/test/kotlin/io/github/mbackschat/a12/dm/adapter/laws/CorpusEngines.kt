@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import com.mgmtp.a12.kernel.md.rt.api.IMessage
+import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.conformance.InterpreterReplay
 import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
@@ -11,7 +13,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * The **conformance corpus engine core** — runs a case's `(model, placements, op, clock?)` through each of the
+ * The **conformance corpus engine core** — runs canonical Document JSON cases and explicit V1 placement scenarios through each of the
  * three JVM engines and renders the outcome to the corpus signature form (CONFORMANCE-CORPUS-SPEC §6/§7). Shared
  * by both [CorpusCapture] (authoring: tri-verify + fill `expected`) and the JVM replay runner (verify a committed
  * case), so a single place owns the modern-`DocumentV2` + clock-pinned kernel path (§9).
@@ -73,6 +75,36 @@ object CorpusEngines {
         }
     }
 
+    /** Canonical capture uses the same public Document JSON reader as committed interpreter replay (§13). */
+    fun interpret(modelJson: String, documentJson: String, op: Op, clock: String? = null): List<String> =
+        InterpreterReplay.run(modelJson, documentJson, op, clock).signatures
+
+    /** The canonical case reaches A12's own reader independently of the interpreter's reader (§13). */
+    fun groovyDynamic(modelJson: String, documentJson: String, op: Op, clock: String? = null,
+                      locale: Locale = Locale.US): List<String> {
+        val engine = RuntimeLaws.sharedKernelEngine(modelJson)
+        val doc = engine.instance(documentJson)
+        val cd = clockDate(clock)
+        return when (op) {
+            is Op.ValidateFull -> engine.validationMessages(doc, cd, locale).map(::sigOf).sorted()
+            is Op.ValidatePart -> engine.partialValidationMessages(doc, relevants(op), cd, locale).map(::sigOf).sorted()
+            is Op.Compute -> engine.computation(doc, cd, locale).outcomes().map(::sigOf).sorted()
+        }
+    }
+
+    /** Static-JAVA independently reads the canonical case through A12's serializer (§13). */
+    fun javaStatic(modelJson: String, documentJson: String, op: Op, clock: String? = null,
+                   locale: Locale = Locale.US): List<String> {
+        val engine = javaEngine(modelJson)
+        val doc = engine.instance(documentJson)
+        val cd = clockDate(clock)
+        return when (op) {
+            is Op.ValidateFull -> engine.validationMessages(doc, cd, locale).map(::sigOf).sorted()
+            is Op.ValidatePart -> engine.partialValidationMessages(doc, relevants(op), cd, locale).map(::sigOf).sorted()
+            is Op.Compute -> engine.computation(doc, cd, locale).outcomes().map(::sigOf).sorted()
+        }
+    }
+
     // ---- kernel signature rendering (the interpreter's is InterpreterReplay's, so capture == replay) ----------
 
     private fun sigOf(m: RuntimeLaws.Msg): String = "${m.code()}|${m.type().name}|${m.field()}"
@@ -81,6 +113,18 @@ object CorpusEngines {
         c.cleared() -> "${c.pointer()}|CLEARED"
         c.errored() -> "${c.pointer()}|ERRORED"
         else -> "${c.pointer()}|VALUE|${c.value().orElse("")}"
+    }
+
+    private fun sigOf(m: IMessage): String =
+        "${m.errorCode}|${m.messageType.name}|${formatPointer(m.errorFieldPointer.fullName(), m.errorFieldPointer.repetitionIndexes())}"
+
+    private fun sigOf(c: RuntimeLaws.ComputedInstance): String {
+        val pointer = formatPointer(c.pointer().fullName(), c.pointer().repetitionIndexes())
+        return when {
+            c.cleared() -> "$pointer|CLEARED"
+            c.errored() -> "$pointer|ERRORED"
+            else -> "$pointer|VALUE|${c.value().orElse("")}"
+        }
     }
 
     // ---- kernel instance building + clock --------------------------------------------------------------------

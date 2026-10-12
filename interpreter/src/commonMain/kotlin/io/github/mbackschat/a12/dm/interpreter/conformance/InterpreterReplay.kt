@@ -45,19 +45,22 @@ object InterpreterReplay {
     data class Outcome(val signatures: List<String>, val unsupported: List<String>)
 
     /** Replay [case] (its model already resolved to [modelJson]) on the interpreter and render its [Outcome]. */
-    fun run(case: ConformanceCase, modelJson: String): Outcome {
+    fun run(case: ConformanceCase, modelJson: String): Outcome =
+        run(modelJson, case.document, case.op, case.clock)
+
+    /** Canonical capture shares the committed-case reader without constructing a provisional case (§13). */
+    fun run(modelJson: String, documentJson: String, op: Op, clock: String? = null): Outcome {
         val def = ModelLoader.load(modelJson)
-        return run(def, def.readDocumentJson(case.document), case.op, case.clock)
+        return run(def, def.readDocumentJson(documentJson), op, clock)
     }
 
-    /** Replay a raw scenario (used by capture, before a [ConformanceCase] exists) and render its [Outcome]. */
+    /** Replay an explicit V1/String placement scenario and render its report-all [Outcome]. */
     fun run(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): Outcome {
         val def = ModelLoader.load(modelJson)
         return run(def, def.newDocument().also { placements.replayInto(it.asSink()) }, op, clock)
     }
 
-    /** The shared engine step, once a document exists — reached from A12 Document JSON (a committed case) or from
-     *  a capture-time placement scenario (before a case exists). */
+    /** The shared engine step for canonical cases/capture and explicit V1 placement scenarios. */
     private fun run(def: ModelDef, doc: Document, op: Op, clock: String?): Outcome {
         val engine = DmInterpreter(def, evalClock(clock))
         return when (op) {
@@ -70,16 +73,15 @@ object InterpreterReplay {
     }
 
     /** The interpreter's PASS/FAIL/SKIP [Result] for [case] (model resolved to [modelJson]) against its anchor (§12).
-     *  A compute outcome is projected to the kernel's reporting granularity first ([kernelComputeGranularity]) —
+     *  A compute outcome is projected to canonical source identity first ([kernelCanonicalComputeGranularity]) —
      *  the anchor is kernel-captured, so a report-all engine must drop its non-changes before comparing (§7). */
     fun replay(case: ConformanceCase, modelJson: String): Result {
-        val outcome = run(case, modelJson)
+        val def = ModelLoader.load(modelJson)
+        val document = def.readDocumentJson(case.document)
+        val outcome = run(def, document, case.op, case.clock)
         if (outcome.unsupported.isNotEmpty()) return Result(Verdict.SKIP, outcome.unsupported.joinToString("; "))
         val actual =
-            if (case.op is Op.Compute) {
-                val def = ModelLoader.load(modelJson)
-                kernelComputeGranularity(outcome.signatures, def.readDocumentJson(case.document), def)
-            }
+            if (case.op is Op.Compute) kernelCanonicalComputeGranularity(outcome.signatures, document)
             else outcome.signatures
         return compare(actual, anchorOf(case))
     }

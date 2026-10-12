@@ -296,7 +296,7 @@ class SelectedMessageReferenceDiffTest {
             "RefUnreachedGroup" to listOf("$bin/Shelf[1]/Aisle", "$bin/Shelf[1]/Level"),
             "RefUnreachedStar" to listOf("$bin/Slots[0]/Qty"),
         ).map { (code, payloads) ->
-            MessageSignature(code, "VALUE_ERROR", "$depot/Note", (common + payloads).sorted(), emptyList())
+            MessageSignature.fields(code, "VALUE_ERROR", "$depot/Note", (common + payloads).sorted(), emptyList())
         }.sorted()
     }
 
@@ -311,8 +311,8 @@ class SelectedMessageReferenceDiffTest {
             if (message.code !in cacheUnreachedCodes) message else {
                 fun pointer(original: String): String = prefixes.firstOrNull(original::startsWith)
                     ?.let { first + original.removePrefix(it) } ?: original
-                message.copy(pointer = pointer(message.pointer), referenced = message.referenced.map(::pointer).sorted(),
-                    fillToFix = message.fillToFix.map(::pointer).sorted())
+                message.copy(pointerKey = pointer(message.pointerKey), referencedKeys = message.referencedKeys.map(::pointer).sorted(),
+                    fillToFixKeys = message.fillToFixKeys.map(::pointer).sorted())
             }
         }.sorted()
     }
@@ -381,7 +381,7 @@ class SelectedMessageReferenceDiffTest {
         val index = "/Store[1]/Depots[1]/Bins[-5]/BinCode"
         val stock = "/Store[1]/Depots[1]/Bins[-5]/Stock"
         val note = "/Store[1]/Depots[1]/Note"
-        val expected = MessageSignature("RefLiteral", "OMISSION_ERROR", note,
+        val expected = MessageSignature.fields("RefLiteral", "OMISSION_ERROR", note,
             listOf(index, stock, note).sorted(), listOf(index, stock).sorted())
         for (relevant in listOf(null, setOf(RelevantEntity.anyRep("/Store")))) {
             val dynamic = DocumentDifferential.kernelMessages(model, input, true, relevant)
@@ -525,11 +525,11 @@ class SelectedMessageReferenceDiffTest {
                     val depot = "/Store[1]/Depots[1]"
                     val expected = cacheExpectedReferences(1, selected).let { messages ->
                         if (selectedError) messages.filter { it.code == "RefUnreached" }
-                            .map { it.copy(pointer = "$depot/Bins[$selected]/Stock") }
+                            .map { it.copy(pointerKey = "$depot/Bins[$selected]/Stock[1]") }
                         else messages.map { message ->
-                            val references = (message.referenced + "$depot/Anchor").sorted()
-                            message.copy(type = "OMISSION_ERROR", referenced = references,
-                                fillToFix = references.filterNot { it == "$depot/Note" })
+                            val references = (message.referencedKeys + "$depot/Anchor[1]").sorted()
+                            message.copy(type = "OMISSION_ERROR", referencedKeys = references,
+                                fillToFixKeys = references.filterNot { it == "$depot/Note[1]" })
                         }
                     }
                     assertEquals(expected, projected.filter { it.code in cacheUnreachedCodes })
