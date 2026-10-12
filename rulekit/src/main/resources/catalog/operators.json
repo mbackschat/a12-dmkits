@@ -2983,6 +2983,10 @@
         {
           "text": "the temporal gate reads the declared FORMAT STRING, not the field kind, so 'all operands the same kind' is neither necessary nor sufficient: a Date declared yyyy beside a DateFragment declared yyyy is ADMITTED across two kinds, while two Date fields differing only in declared format are rejected MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED — including 'yyyy-MM-dd' beside 'dd.MM.yyyy', which denote the SAME components. That is ONE of two places this operator disagrees with MaxValue/MinValue/NumberOfDifferentValues, whose gate is the component SET and admits that pair; no Base Year lifts this one. The other is datePrecision: a partially known Date is ADMITTED here and refused there, under a code those operators carry rather than this one (see `operators MaxValue`), because this operator compares stored text and they compare a decoded date — same root, opposite outcome, so do not read either disagreement as the only one",
           "kind": "AUTHORING"
+        },
+        {
+          "text": "Filtered uniqueness stays dense above 100 cache-bounded candidates. In full validation and computation, a duplicate stops the scan after one kept successor: a failure while finding that successor is reached, but later filters and authored operands remain unread. Number and partially known Date lists are calibrated in KF528.",
+          "kind": "SURPRISE"
         }
       ],
       "validExample": {
@@ -3135,6 +3139,10 @@
       "gotchas": [
         {
           "text": "a Number list with no specified value yields 0 and that identity is fillable in both directions, even though a nonempty incomplete MaxValue is grow-only (KERNEL-SEMANTICS §9/§12)",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "For filtered Number and DateTime field lists over two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection; an explicitly blank row remains occupied. This is measured in full validation and computation; declared capacity alone does not determine the threshold (KF528).",
           "kind": "SURPRISE"
         }
       ],
@@ -3295,6 +3303,10 @@
       "gotchas": [
         {
           "text": "a Number list with no specified value yields 0 and that identity is fillable in both directions, even though a nonempty incomplete MinValue is shrink-only (KERNEL-SEMANTICS §9/§12)",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "For filtered Number and DateTime field lists over two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection; an explicitly blank row remains occupied. This is measured in full validation and computation; declared capacity alone does not determine the threshold (KF528).",
           "kind": "SURPRISE"
         }
       ],
@@ -4186,6 +4198,10 @@
           "seeAlso": [
             "FieldValuesNotUnique"
           ]
+        },
+        {
+          "text": "For filtered Number, String and DateTime field lists over two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection; an explicitly blank row remains occupied. This is measured in full validation and computation; declared capacity alone does not determine the threshold (KF528).",
+          "kind": "SURPRISE"
         }
       ],
       "seeAlso": [

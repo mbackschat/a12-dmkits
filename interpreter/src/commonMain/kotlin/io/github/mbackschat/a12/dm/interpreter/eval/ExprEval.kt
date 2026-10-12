@@ -941,9 +941,9 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     }
     // starred aggregates: empties are SKIPPED (Sum substitutes 0 = same result; Max/distinct ignore)
     FunctionOp.SUM -> combine(starVals(f, FilterTraversal.SPARSE), Aggregates::sum)
-    FunctionOp.MAX_VALUE -> combine(starVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
-    FunctionOp.MIN_VALUE -> combine(starVals(f)) { Aggregates.min(it, minMaxEmpty(f)) }
-    FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f), Aggregates::numberOfDifferentValues)
+    FunctionOp.MAX_VALUE -> combine(starVals(f, FilterTraversal.SPARSE)) { Aggregates.max(it, minMaxEmpty(f)) }
+    FunctionOp.MIN_VALUE -> combine(starVals(f, FilterTraversal.SPARSE)) { Aggregates.min(it, minMaxEmpty(f)) }
+    FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f, FilterTraversal.SPARSE), Aggregates::numberOfDifferentValues)
     // DifferenceInDays(a, b) = b − a as signed MODEL-ZONE CALENDAR STEPS. The earlier legacy-calendar
     // operand advances by whole days until its next landing would pass the later operand, so time-of-day still
     // matters (23:00 → 01:00 next day is 0), while a Berlin special-hour landing can differ from naive

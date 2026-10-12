@@ -1476,9 +1476,8 @@ class Interpreter(
      * where no field is declared, and the starred arm because [filteredStarCells] does not expand. Locked by
      * `adapter.laws.FieldValuesNotUniqueGroupOperandDiffTest`.
      *
-     * The expansion is deliberately **not** pushed into [filteredStarCells]: its other caller is the date-range
-     * overlap operator, whose behaviour over a group operand is unmeasured, and widening a shared path past its
-     * measured basis is the defect class CLAUDE.md's "never broader than its measured basis" rule names.
+     * Expansion stays with each operator: uniqueness admits groups (KF173), while overlap's two forms differ
+     * in group admission (KF187). Their shared field reader must not choose that operator-specific contract.
      */
     private fun comparedCells(a: Expr): Sequence<Val> {
         if (a.isIndexedStar()) return withIndexedStar(a as Expr.EntitySpec, sequenceOf(Val.Unknown)) { comparedCells(it) }
@@ -1508,6 +1507,13 @@ class Interpreter(
         // filtered row dropped both operands, found no duplicate, and the enclosing sum never cleared its bar.
         if (a is Expr.Star) {
             val c = ctxOf(a)
+            // A duplicate hides later filters, after one kept successor (DenseUniquenessPrefixDiffTest).
+            // Partial validation retains its separately measured row selection.
+            if (!computeMode && a.having != null && cellRelevant == null) {
+                return filteredRows(c, a, FilterTraversal.DENSE, listFilter(a)).mapNotNull { rc ->
+                    if (rc.filled(a.path)) comparedValue(rc, a.path, rc.field(a.path)) else null
+                }
+            }
             if (c.datePrecisionOf(a.path) !in PARTIAL_PRECISIONS) return filteredStarCells(a)
             if (computeMode) return computeStarReads(a, listFilter(a)).mapNotNull { cell ->
                 cell?.value?.let { resolved -> if (resolved is Val.Unknown) wellFormedPartialText(c, a.path, cell.raw) ?: resolved else resolved }

@@ -8879,6 +8879,70 @@
           "id": "adapter.laws.SparseOverlapPolicyDiffTest.scalarOverlapUsesSparseSelectionWhilePairOverlapAndValueCountsStayDense"
         }
       ]
+    },
+    {
+      "operator": "FieldValuesNotUnique",
+      "lane": "GOTCHA",
+      "ordinal": 3,
+      "digest": "sha256:d96a462c0d00525a3f1874a3d5b2ed22b92886576e4ca7be09469b2614ddc0cc",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.DenseUniquenessPrefixDiffTest.denseDuplicateSearchStopsAfterOneKeptSuccessor"
+        }
+      ]
+    },
+    {
+      "operator": "MaxValue",
+      "lane": "GOTCHA",
+      "ordinal": 1,
+      "digest": "sha256:6fd136452c9f77dd9909f02183a29f4b639abe50526a22fabdf50b8a826809aa",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredAggregateDiffTest.extremaAndDistinctUseSparseTraversalOnEachMeasuredCarrier"
+        }
+      ]
+    },
+    {
+      "operator": "MinValue",
+      "lane": "GOTCHA",
+      "ordinal": 1,
+      "digest": "sha256:6fd136452c9f77dd9909f02183a29f4b639abe50526a22fabdf50b8a826809aa",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredAggregateDiffTest.extremaAndDistinctUseSparseTraversalOnEachMeasuredCarrier"
+        }
+      ]
+    },
+    {
+      "operator": "NumberOfDifferentValues",
+      "lane": "GOTCHA",
+      "ordinal": 3,
+      "digest": "sha256:392ea9e3cef23c88c45414afc62b9440f1e324cc8d53da71957fc8c7f8bc9765",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SparseFilteredAggregateDiffTest.extremaAndDistinctUseSparseTraversalOnEachMeasuredCarrier"
+        }
+      ]
     }
   ],
   "claims": [

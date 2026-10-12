@@ -6744,7 +6744,7 @@
       }
     },
     "kf528": {
-      "sha256": "955f14f1f4456e58302e1cc77e541f01610ada49b1be535c30ecc258ba308c32",
+      "sha256": "aa4b0dba52cf6d91a1ccae36a8e3923cf539a7b169e6ad45459094049321e681",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -6752,7 +6752,9 @@
           "computation walk scope",
           "target-group nested walk",
           "sparse aggregate traversal",
-          "overlap traversal policies"
+          "overlap traversal policies",
+          "extrema and distinct traversal",
+          "uniqueness deciding prefix"
         ],
         "dmkits": [],
         "interpreter": [
@@ -6760,7 +6762,9 @@
           "computation walk scope",
           "target-group nested walk",
           "sparse aggregate traversal",
-          "overlap traversal policies"
+          "overlap traversal policies",
+          "extrema and distinct traversal",
+          "uniqueness deciding prefix"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -6796,6 +6800,14 @@
             "overlap traversal policies": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseOverlapPolicyDiffTest.kt#scalarOverlapUsesSparseSelectionWhilePairOverlapAndValueCountsStayDense",
               "witness": "Four ordinary two-level Documents separate scalar exact/yearless sparse overlap from dense any-pair overlap and Number/String counts at cache products 2/100/102 and explicit blank occupancy; both kernels and interpreter agree."
+            },
+            "extrema and distinct traversal": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseFilteredAggregateDiffTest.kt#extremaAndDistinctUseSparseTraversalOnEachMeasuredCarrier",
+              "witness": "Four Documents independently pin seven Number/String/DateTime consumer outcomes and validation types across cache products 2/100/102 and explicit blank occupancy; both kernels and interpreter agree."
+            },
+            "uniqueness deciding prefix": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DenseUniquenessPrefixDiffTest.kt#denseDuplicateSearchStopsAfterOneKeptSuccessor",
+              "witness": "Six Number/partial-Date Documents pin dense traversal, successor-before-duplicate and authored operand ordering; full signatures and seeded target/dependent poison channels agree across both kernels and interpreter."
             }
           }
         },
@@ -6806,7 +6818,7 @@
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "Filtered consumers share a cache-bounded candidate domain. Sum, filled count and scalar-to-list overlap select occupied prefixes above 100 candidates; any-pair overlap and value counts retain dense selection. Other consumer policies remain separate.",
+          "basis": "Consumer-specific policies share the cache-bounded scanner: Sum, filled count, extrema/distinct and scalar overlap select occupied prefixes; uniqueness stays dense and its full-validation reader stops at the duplicate after one kept successor. Each cited matrix bounds the exercised carriers.",
           "evidence": {
             "filter walk extent": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FilterMissingSlotDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
@@ -6827,6 +6839,14 @@
             "overlap traversal policies": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseOverlapPolicyDiffTest.kt#scalarOverlapUsesSparseSelectionWhilePairOverlapAndValueCountsStayDense",
               "witness": "Four ordinary two-level Documents separate scalar exact/yearless sparse overlap from dense any-pair overlap and Number/String counts at cache products 2/100/102 and explicit blank occupancy; both kernels and interpreter agree."
+            },
+            "extrema and distinct traversal": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SparseFilteredAggregateDiffTest.kt#extremaAndDistinctUseSparseTraversalOnEachMeasuredCarrier",
+              "witness": "Four Documents independently pin seven Number/String/DateTime consumer outcomes and validation types across cache products 2/100/102 and explicit blank occupancy; both kernels and interpreter agree."
+            },
+            "uniqueness deciding prefix": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DenseUniquenessPrefixDiffTest.kt#denseDuplicateSearchStopsAfterOneKeptSuccessor",
+              "witness": "Six Number/partial-Date Documents pin dense traversal, successor-before-duplicate and authored operand ordering; full signatures and seeded target/dependent poison channels agree across both kernels and interpreter."
             }
           }
         },

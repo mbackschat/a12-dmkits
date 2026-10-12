@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.adapter.laws.DocumentDifferential.underUtc
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -13,18 +15,20 @@ import org.junit.jupiter.api.TestInstance
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SparseFilteredAggregateDiffTest {
     private enum class Foreign { UNREAD, READ, DEEP }
-    private val models = Foreign.entries.associateWith(::model)
+    private val models = Foreign.entries.associateWith { model(it) }
+    private val consumerTargets = listOf("Minimum", "Maximum", "DistinctCharges", "DistinctLabels", "Earliest", "Latest", "DistinctTimes")
 
-    private fun model(foreign: Foreign): String = underUtc {
+    private fun model(foreign: Foreign, consumerGrid: Boolean = false): String = underUtc {
         val draft = DocumentModelDraft.named("dispatch-sparse-filter").locale("en_US")
             .rootGroup("Dispatch") { root ->
-                for (name in listOf("Total", "Filled", "Strict", "First", "ForeignCount"))
+                for (name in listOf("Total", "Filled", "Strict", "First", "ForeignCount") +
+                    if (consumerGrid) consumerTargets + "Anchor" else emptyList())
                     root.numberField(name) { it.fractionDigits(0) }
                 root.group("Runs") { runs ->
                     runs.repeatable(2).numberField("Subtotal") { it.fractionDigits(0) }
                         .group("Parcels") { parcels ->
                             parcels.repeatable(51).numberField("Permit") { it.fractionDigits(0) }
-                                .numberField("Charge") { it.fractionDigits(0) }
+                                .numberField("Charge") { it.fractionDigits(0) }.stringField("Label") { }
                                 .dateTimeField("RecordedAt") { it.format("yyyy-MM-dd'T'HH:mm:ss") }
                         }
                 }
@@ -57,6 +61,27 @@ class SparseFilteredAggregateDiffTest {
             it.name("SubtotalComp").calc(Dsl.sum(runs.flatten("Parcels*/Charge").having(presence)))
                 .message(Dsl.en("Check this run.")).build()
         })
+        if (consumerGrid) {
+            val selected = values.having(presence)
+            val labels = root.flatten("Runs*/Parcels*/Label").having(presence)
+            val times = root.flatten("Runs*/Parcels*/RecordedAt").having(presence)
+            val timestamp = Dsl.dateTimeValue("31.03.2024T01:30:00")
+            val conditions: Map<String, Condition> = linkedMapOf(
+                "Minimum" to Dsl.minValue(selected).eq(5),
+                "Maximum" to Dsl.maxValue(selected).eq(5),
+                "DistinctCharges" to Dsl.numberOfDifferentValues(selected).eq(1),
+                "DistinctLabels" to Dsl.numberOfDifferentValues(labels).eq(1),
+                "Earliest" to Dsl.earliestDateTimeOf(times).eq(timestamp),
+                "Latest" to Dsl.latestDateTimeOf(times).eq(timestamp),
+                "DistinctTimes" to Dsl.numberOfDifferentValues(times).eq(1),
+            )
+            for ((name, condition) in conditions) {
+                json = TypedRules.inject(json, root.rule { it.name(name + "Rule").code(name).errorField(root.num("Anchor"))
+                    .`when`(root.num("Anchor").filled().and(condition)).message(Dsl.en("Check dispatch aggregates.")).build() })
+                json = TypedRules.inject(json, root.computation(root.num(name)) { it.name(name + "Comp")
+                    .commonPrecondition(condition).calc(NumberLiteral.of("1")).message(Dsl.en("Check dispatch aggregates.")).build() })
+            }
+        }
         if (foreign != Foreign.UNREAD) json = TypedRules.inject(json, root.computation(root.num("ForeignCount")) {
             val path = when (foreign) {
                 Foreign.READ -> "Returns*/Labels*/Note"
@@ -70,18 +95,19 @@ class SparseFilteredAggregateDiffTest {
     }
 
     private fun parcel(permit: Int = 1, charge: Int? = null) =
-        """{"Permit":$permit,"RecordedAt":"2024-03-31T01:30:00"${charge?.let { ",\"Charge\":$it" } ?: ""}}"""
+        """{"Permit":$permit,"RecordedAt":"2024-03-31T01:30:00"${charge?.let { ",\"Charge\":$it,\"Label\":\"parcel\"" } ?: ""}}"""
 
     private fun document(width: Int = 51, permit: Int = 1, firstPermit: Int = 1,
                          blank: Boolean = false, foreign: Boolean = false, deep: Boolean = false,
-                         early: Boolean = false, poisonSuccessor: Boolean = false): String {
+                         early: Boolean = false, poisonSuccessor: Boolean = false, consumerGrid: Boolean = false): String {
         val first = List(width) { n ->
             if (poisonSuccessor && n == 1) "{}" else parcel(firstPermit, if (early && n == 0) 5 else null)
         }
         val tail = listOf(parcel(permit, 5)) + if (blank) listOf("{}") else emptyList()
         val labels = """"Labels":[{"Note":"A"},{"Note":"B"}]"""
         val returns = if (foreign) """, "Returns":[{}, {${if (deep) "\"Box\":{$labels}" else labels}}]""" else ""
-        return """{"Dispatch":{"Total":99,"Filled":99,"Strict":99,"First":99,"ForeignCount":99,
+        val extra = if (consumerGrid) consumerTargets.joinToString(",", postfix = ",\"Anchor\":1,") { "\"$it\":99" } else ""
+        return """{"Dispatch":{$extra"Total":99,"Filled":99,"Strict":99,"First":99,"ForeignCount":99,
             "Runs":[{"Subtotal":99,"Parcels":[${first.joinToString(",")}]},
                     {"Subtotal":99,"Parcels":[${tail.joinToString(",")}]}]$returns}}"""
     }
@@ -122,4 +148,25 @@ class SparseFilteredAggregateDiffTest {
         }
         assertEquals(emptyList<String>(), mismatches)
     }
+    @Test
+    fun extremaAndDistinctUseSparseTraversalOnEachMeasuredCarrier() = underUtc {
+        val model = model(Foreign.UNREAD, consumerGrid = true)
+        val mismatches = mutableListOf<String>()
+        for ((case, width) in listOf(1, 50, 51, 51).withIndex()) {
+            val json = document(width, blank = case == 3, consumerGrid = true)
+            val kernel = DocumentDifferential.kernel(model, json, dynamic = true)
+            val succeeds = case == 0 || case == 2
+            for (name in consumerTargets) {
+                assertEquals(if (succeeds) "VALUE|1" else "CLEARED", kernel.outcomes[name], "$case/$name computation")
+                assertEquals(listOf(if (succeeds) "OMISSION_ERROR" else "VALUE_ERROR"),
+                    kernel.messages.filter { it.code == name }.map { it.type }, "$case/$name validation")
+                assertEquals(!succeeds, kernel.operandErrors.any { it.code == "berechnungsWertFehler" && it.pointer.endsWith("/$name") }, "$case/$name poison")
+            }
+            assertEquals(kernel, DocumentDifferential.kernel(model, json, dynamic = false), "case=$case strategies")
+            val actual = DocumentDifferential.interpreter(model, json)
+            if (actual != kernel) mismatches += "case=$case: expected=$kernel actual=$actual"
+        }
+        assertEquals(emptyList<String>(), mismatches)
+    }
+
 }
