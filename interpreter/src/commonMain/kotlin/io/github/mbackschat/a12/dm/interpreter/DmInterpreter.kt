@@ -831,7 +831,8 @@ class DmInterpreter private constructor(
                     indexIdentityAdmitted,
                     relevance.groupExtents?.gate { path, reps -> groupPresence.state(path, reps) },
                 ) { path, reps -> groupPresence.state(path, reps) },
-                formalResults, { formallyIncorrect }, relevance.parallelSelection)
+                formalResults, { formallyIncorrect }, relevance.parallelSelection,
+                { checks.messageIndexDefaults(call, formalResults::admitsIdentityAt) })
             for (rule in model.rules) {
                 try {
                     // RepetitionNotUnique now flows through the ordinary rule path as a 3VL leaf (IF149) — no
@@ -1009,6 +1010,7 @@ class DmInterpreter private constructor(
             validationConfig(relevance, formalResults::admitsIdentityAt, null) { path, reps -> groupPresence.state(path, reps) },
             formalResults,
             { formallyIncorrect },
+            messageIndexDefaults = { checks.messageIndexDefaults(call, formalResults::admitsIdentityAt) },
         )
         val rows = rowOutcomes(rule, pass)
         rows.firstNotNullOfOrNull { it as? RowOutcome.Fired }?.let {
@@ -1111,6 +1113,20 @@ class DmInterpreter private constructor(
         // group/asterisk key, a too-deep scope) — the caller's per-rule tolerance reports it unsupported.
         val rnuCache = rnuEval.outcomes(prepared.repetitionNotUnique, pass)
         val directMessageRefs = prepared.messageReferences
+        val selectedErrorReference = prepared.semanticErrorIndex?.let {
+            directMessageRefs.filterIsInstance<MessageReference.Selected>().first { it.path == errorPath }
+        }
+        fun errorPointer(ctx: EvalContext): A12PartiallyKnownMultiPointer {
+            val repetitions = pass.doc.messageRepetitions(errorPath, ctx)
+            val reference = selectedErrorReference ?: return pass.doc.messagePointer(errorPath, repetitions)
+            val level = paths.groupsThrough(errorPath).indexOf(parentGroup(checkNotNull(reference.indexField)))
+            val selected = selectedMessageRepetitions(reference, pass, ctx)?.get(level)
+                ?: A12PartiallyKnownMultiPointer.UNKNOWN
+            // KF545: selecting an error address must not make a duplicate or invalid value readable.
+            return pass.doc.messagePointer(errorPath, repetitions.mapIndexed { index, repetition ->
+                if (index == level) selected else repetition
+            })
+        }
         val directRefsOutsideRnuKeys = rnuCache?.let { cache ->
             val rnuKeys = cache.keys.toSet()
             directMessageRefs.filterNot { it.path in rnuKeys }
@@ -1224,7 +1240,7 @@ class DmInterpreter private constructor(
                         .map { messagePointer(it, pass, ctx) }.distinct(), rnuPointers)
                 } else emptyList()
                 return RowOutcome.Fired(Message(rule.errorCode, rule.path,
-                    pass.doc.messagePointer(errorPath, ctx.repsOf(errorPath)), rule.severity, type, text, referenced,
+                    errorPointer(ctx), rule.severity, type, text, referenced,
                     fillToFix))
             }
             // Not fired: a formally-invalid operand means the rule was NOT cleanly evaluated → SUPPRESSED
@@ -1242,7 +1258,7 @@ class DmInterpreter private constructor(
             } catch (failure: RuntimeEvaluationFailure) {
                 val first = iterationContexts.first()
                 outcomes += RowOutcome.Fired(Message(rule.errorCode, rule.path,
-                    pass.doc.messagePointer(errorPath, first.repsOf(errorPath)), rule.severity, MsgType.VALUE,
+                    errorPointer(first), rule.severity, MsgType.VALUE,
                     "An error occurred while evaluating the data check: ${failure.message}"))
                 break
             }
@@ -1254,13 +1270,13 @@ class DmInterpreter private constructor(
      *  belong only to the rich message channel; iteration/suppression deliberately continue to use the
      *  star-free reference view. */
     private fun messagePointer(reference: MessageReference, pass: ValidationPass, ctx: EvalContext) = when (reference) {
-        is MessageReference.Ordinary -> pass.doc.messagePointer(reference.path, ctx.repsOf(reference.path))
+        is MessageReference.Ordinary -> pass.doc.messagePointer(reference.path, pass.doc.messageRepetitions(reference.path, ctx))
         is MessageReference.Selected -> selectedPointer(reference, pass, ctx)
         is MessageReference.Wildcard -> {
             val prefixes = paths.groupsThrough(reference.path)
             val bindDepth = if (reference.bindDepth >= 0) minOf(reference.bindDepth, prefixes.size)
             else prefixes.size - if (model.kinds[reference.path] == null) 1 else 2
-            val repetitions = ctx.repsOf(reference.path).mapIndexed { level, repetition ->
+            val repetitions = pass.doc.messageRepetitions(reference.path, ctx).mapIndexed { level, repetition ->
                 if (level >= bindDepth && prefixes[level] in model.repeatable) A12PartiallyKnownMultiPointer.WILDCARD
                 else repetition
             }
@@ -1277,14 +1293,8 @@ class DmInterpreter private constructor(
         val indexField = checkNotNull(reference.indexField) { "a selected reference is expanded before it is resolved" }
         val levels = paths.groupsThrough(reference.path)
         val indexLevel = levels.indexOf(parentGroup(indexField))
-        val key = when (val written = reference.key) {
-            is SelectedKey.Literal -> written.value
-            is SelectedKey.Field -> ctx.displayValue(written.path)
-        }?.takeIf { it.isNotEmpty() }
-        val selected = key?.let {
-            ctx.indexPointerRepetitions(reference.path, indexField, it, pass.config.indexIdentityAdmitted)
-        }
-        val repetitions = ctx.repsOf(reference.path).mapIndexed { level, repetition ->
+        val selected = selectedMessageRepetitions(reference, pass, ctx)
+        val repetitions = pass.doc.messageRepetitions(reference.path, ctx).mapIndexed { level, repetition ->
             when {
                 level < indexLevel -> repetition
                 level == indexLevel -> selected?.get(level) ?: A12PartiallyKnownMultiPointer.UNKNOWN
@@ -1293,6 +1303,16 @@ class DmInterpreter private constructor(
             }
         }
         pass.doc.messagePointer(reference.path, repetitions)
+    }
+
+    private fun selectedMessageRepetitions(
+        reference: MessageReference.Selected, pass: ValidationPass, ctx: EvalContext,
+    ): List<Int>? {
+        val key = when (val written = reference.key) {
+            is SelectedKey.Literal -> written.value
+            is SelectedKey.Field -> ctx.displayValue(written.path)
+        }?.takeIf { it.isNotEmpty() } ?: return null
+        return pass.selectedMessageRepetitions(ctx, reference.path, checkNotNull(reference.indexField), key)
     }
 
     /**

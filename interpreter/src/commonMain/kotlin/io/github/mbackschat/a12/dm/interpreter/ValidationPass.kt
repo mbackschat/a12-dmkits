@@ -47,7 +47,19 @@ internal class ValidationPass(
     /** Lazy, call-local complete external formal-invalid addresses for a reached CustomCondition. */
     private val formallyIncorrect: () -> Set<CustomConditionFieldPointer> = { emptySet() },
     val parallelSelection: ParallelRuleSelection? = null,
+    messageIndexDefaults: () -> Map<Triple<String, List<Int>, String>, List<Int>> = { emptyMap() },
 ) {
+    private val messageDefaults by lazy(LazyThreadSafetyMode.NONE, messageIndexDefaults)
+
+    /** Message identity is separate from value availability; an invalid singleton remains unreadable. */
+    fun selectedMessageRepetitions(ctx: EvalContext, target: String, indexField: String, key: String): List<Int>? {
+        ctx.indexPointerRepetitions(target, indexField, key, config.indexIdentityAdmitted)?.let { return it }
+        if (partial) return null
+        val parent = ctx.repsOf(indexField).dropLast(2)
+        val selected = messageDefaults[Triple(indexField, parent, key)] ?: return null
+        return selected.dropLast(1) + ctx.repsOf(target).drop(parent.size + 1)
+    }
+
     val partial: Boolean = config.cellRelevant != null
     private val aggregateMemo = HashMap<AggregateMemoKey, Val>()
 

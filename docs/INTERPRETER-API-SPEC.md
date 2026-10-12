@@ -242,6 +242,9 @@ Audited 2026-07-31 against Kernel 30.8.1's Java `IDocumentRtService`/`IDocumentC
 
 Validation returns detached `ValidationFinding` records with code, rule path, a typed error address, severity, value/omission type, rendered text, typed referenced addresses, and typed fill-to-fix addresses. `noErrorOccurred` depends on error severity, while `fullySupported` is independent and is false whenever an admitted program could not be evaluated. The three address channels carry `A12PartiallyKnownMultiPointer` values, not strings; the exact owner mapping and the only supported rendering path are specified below.
 
+A concrete message address does not guarantee a readable value: duplicate keys and full-call invalid singleton defaults can retain an association while evaluation remains unavailable. Duplicate selected and parallel message addresses follow the documented [first-admitted policy](INTERPRETER-FINDINGS.md#if376), separately from generated uniqueness diagnostics. Enforcement and dual-kernel/JVM/Node controls are recorded in [IF388](INTERPRETER-FINDINGS.md#if388).
+
+
 ### The two pointer types
 
 **A12 has two addressing types on this boundary, and so do we; conflating them is a defect, not a simplification.** The distinction decides which values are legal, so it is part of the contract rather than an implementation note.

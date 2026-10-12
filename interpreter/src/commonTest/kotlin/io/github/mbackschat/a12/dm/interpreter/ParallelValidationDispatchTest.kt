@@ -58,4 +58,23 @@ class ParallelValidationDispatchTest {
             assertEquals(full, partial)
         }
     }
+    @Test
+    fun duplicateJoinMessagesRetainRelevantPhysicalAssociations() {
+        val model = model(repeated = false)
+        val doc = model.readDocumentJson("""{"Warehouse":{"Orders":[{"Code":1,"Quantity":2},{"Code":1,"Quantity":3}],"Stock":[{"Code":1,"Quantity":1}]}}""")
+        val interpreter = DmInterpreter(model)
+        for (row in listOf(0, 1, 2)) {
+            val relevant = setOf(RelevantEntity.anyRep("/Warehouse/Orders/Quantity"),
+                RelevantEntity("/Warehouse/Orders/Code", listOf(0, row, 0)), RelevantEntity.anyRep("/Warehouse/Stock"))
+            val result = if (row == 0) interpreter.validate(doc) else interpreter.validatePart(doc, relevant)
+            assertEquals(emptyList(), result.unsupported)
+            assertEquals(if (row == 0) 2 else 0, result.messages.count { it.code == "uniqueIndex" })
+            val selected = if (row == 0) 1 else row
+            val message = result.messages.single { it.code == "Check" }
+            assertEquals("/Warehouse[1]/Orders[$selected]/Quantity", message.errorPath)
+            assertEquals(listOf("/Warehouse[1]/Orders[$selected]/Code", "/Warehouse[1]/Orders[$selected]/Quantity",
+                "/Warehouse[1]/Stock[1]/Code", "/Warehouse[1]/Stock[1]/Quantity"), message.referenced.sorted())
+        }
+    }
+
 }

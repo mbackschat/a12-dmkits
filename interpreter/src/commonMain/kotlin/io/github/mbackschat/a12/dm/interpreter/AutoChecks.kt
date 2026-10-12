@@ -218,6 +218,23 @@ internal class AutoChecks(
         return out
     }
 
+    /** Full-call message associations may use a singleton default even when its stored value is invalid.
+     *  Unlike [eligibleIndexDefaults], these never replace evaluation input (SPEC-2026-10-10-09). */
+    fun messageIndexDefaults(doc: Document, admitted: (String, List<Int>, String) -> Boolean): Map<Triple<String, List<Int>, String>, List<Int>> {
+        val defaults = LinkedHashMap<Triple<String, List<Int>, String>, List<Int>>()
+        for ((field, value) in model.indexDefaults) {
+            doc.instantiatedContextsFor(parentGroup(field)).groupBy { it.repsOf(field).dropLast(2) }
+                .forEach { (parent, rows) ->
+                    val row = rows.singleOrNull() ?: return@forEach
+                    val reps = row.repsOf(field)
+                    if (paths.overLimitLevel(field, reps) != null) return@forEach
+                    val raw = row.displayValue(field)
+                    if (raw.isNullOrEmpty() || !admitted(field, reps, raw)) defaults[Triple(field, parent, value)] = reps
+                }
+        }
+        return defaults
+    }
+
     /**
      * The EMPTY index cells the kernel's preliminary index mandatory rule invalidates on the COMPUTE path
      * (SPEC-2026-07-23-15; `CalculationCommand.preliminaryValidationOfIndexFields` →

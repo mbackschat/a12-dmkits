@@ -61,6 +61,17 @@ class PartialValidationCliTest {
                     "--instance", document.toString(), "--no-computations", "--relevant", relevant));
             assertEquals(second ? 3 : 0, messages(result, "ALLOCATION"));
         }
+        Path duplicate = document(dir, """
+                {"Warehouse":[{"Orders":[{"Code":1,"Quantity":2},{"Code":1,"Quantity":3}],
+                "Stock":[{"Code":1,"Quantity":1}]}]}
+                """);
+        JsonNode result = data(CliTestSupport.run("-m", model.toString(), "model", "eval",
+                "--instance", duplicate.toString(), "--no-computations"));
+        assertEquals(2, messages(result, "uniqueIndex"));
+        JsonNode allocation = StreamSupport.stream(result.path("messages").spliterator(), false)
+                .filter(message -> "ALLOCATION".equals(message.path("code").asText())).findFirst().orElseThrow();
+        assertEquals("Warehouse/Orders/Quantity", allocation.path("field").asText());
+        assertEquals("Check allocation.", allocation.path("message").asText());
     }
 
     @Test

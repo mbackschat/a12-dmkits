@@ -1,5 +1,8 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.interpreter.PreparedModel
+import io.github.mbackschat.a12.dm.interpreter.RelevantCoordinate
+import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
@@ -116,4 +119,274 @@ class SelectedMessageReferenceDiffTest {
         }
         assertEquals(expected, observed, "the duplicated key's pointer row, on both strategies")
     }
+
+    private val cacheDepot = "/Store/Depots"
+    private val cachePayloads = listOf("Note", "Wanted", "Bins/Stock", "Bins/Shelf/Aisle", "Bins/Shelf/Level", "Bins/Slots/Qty")
+        .map { RelevantEntity.anyRep("$cacheDepot/$it") }.toSet()
+    private val cacheUnreachedCodes = setOf("RefUnreached", "RefUnreachedGroup", "RefUnreachedStar")
+
+    private data class CacheSelectionCase(
+        val id: String,
+        val relevant: Set<RelevantEntity>?,
+        val selectedRow: Int,
+        val duplicate: Boolean = false,
+    )
+
+    private fun cacheIndexRows(vararg rows: Int): Set<RelevantEntity> =
+        rows.map { RelevantEntity("$cacheDepot/Bins/BinCode", listOf(1, 1, it, 1)) }.toSet()
+
+    private fun cacheExpectedReferences(parent: Int, selected: Int): List<MessageSignature> {
+        val depot = "/Store[1]/Depots[$parent]"
+        val bin = "$depot/Bins[$selected]"
+        val common = listOf("$depot/Note", "$depot/Wanted", "$bin/BinCode")
+        return listOf(
+            "RefUnreached" to listOf("$bin/Stock"),
+            "RefUnreachedGroup" to listOf("$bin/Shelf[1]/Aisle", "$bin/Shelf[1]/Level"),
+            "RefUnreachedStar" to listOf("$bin/Slots[0]/Qty"),
+        ).map { (code, payloads) ->
+            MessageSignature(code, "VALUE_ERROR", "$depot/Note", (common + payloads).sorted(), emptyList())
+        }.sorted()
+    }
+
+    /** IF376 permits only the chosen duplicate row to differ; generated diagnostics and unknown/wildcard coordinates remain exact. */
+    private fun cacheFirstAdmittedBoundary(messages: List<MessageSignature>, parent: Int, rows: List<Int>): List<MessageSignature> {
+        val prefixes = rows.map { "/Store[1]/Depots[$parent]/Bins[$it]/" }
+        val first = prefixes.first()
+        val selected = messages.filter { it.code in cacheUnreachedCodes }.flatMap { listOf(it.pointer) + it.referenced + it.fillToFix }
+            .mapNotNull { original -> prefixes.firstOrNull(original::startsWith) }.distinct()
+        assertEquals(1, selected.size, "every member of one queried association uses the same admitted duplicate row")
+        return messages.map { message ->
+            if (message.code !in cacheUnreachedCodes) message else {
+                fun pointer(original: String): String = prefixes.firstOrNull(original::startsWith)
+                    ?.let { first + original.removePrefix(it) } ?: original
+                message.copy(pointer = pointer(message.pointer), referenced = message.referenced.map(::pointer).sorted(),
+                    fillToFix = message.fillToFix.map(::pointer).sorted())
+            }
+        }.sorted()
+    }
+
+    @Test
+    fun selectedMessageAssociationsAdmitOnlyRelevantIndexRows() {
+        val input = store(depot("b", "n", bin("a", "1"), bin("b", "2"), bin("b", "3")))
+        val cases = listOf(
+            CacheSelectionCase("full-duplicate", null, 2, duplicate = true),
+            CacheSelectionCase("partial-both", cachePayloads + cacheIndexRows(2, 3), 2, duplicate = true),
+            CacheSelectionCase("partial-first", cachePayloads + cacheIndexRows(2), 2),
+            CacheSelectionCase("partial-second", cachePayloads + cacheIndexRows(3), 3),
+            CacheSelectionCase("partial-no-index", cachePayloads, -5),
+        )
+        assertEquals(cases.size, cases.map { it.id }.toSet().size)
+        for (case in cases) {
+            val kernel = listOf(true, false).map { dynamic ->
+                DocumentDifferential.kernelMessages(model, input, dynamic, case.relevant)
+            }
+            for ((strategy, observed) in kernel.withIndex()) {
+                val projected = if (case.duplicate) cacheFirstAdmittedBoundary(observed, 1, listOf(2, 3)) else observed
+                assertEquals(cacheExpectedReferences(1, case.selectedRow),
+                    projected.filter { it.code in cacheUnreachedCodes }, "${case.id}/kernel-$strategy references")
+                if (case.duplicate) {
+                    val rows = observed.filter { it.code == "RefUnreached" }.flatMap { it.referenced }
+                        .filter { it.endsWith("/Stock") }
+                    println("${case.id}/kernel-$strategy raw duplicate selection: $rows")
+                    assertEquals(2, observed.count { it.code == "uniqueIndex" }, "${case.id}/kernel-$strategy duplicate owners")
+                    assertEquals(listOf(
+                        "/Store[1]/Depots[1]/Bins[2]/BinCode", "/Store[1]/Depots[1]/Bins[3]/BinCode",
+                    ), observed.filter { it.code == "uniqueIndex" }.map { it.pointer }.sorted())
+                }
+            }
+            val dynamic = if (case.duplicate) cacheFirstAdmittedBoundary(kernel[0], 1, listOf(2, 3)) else kernel[0]
+            val static = if (case.duplicate) cacheFirstAdmittedBoundary(kernel[1], 1, listOf(2, 3)) else kernel[1]
+            assertEquals(dynamic, static, "${case.id}/kernel metadata apart from IF376")
+            val interpreted = DocumentDifferential.interpreterMessages(model, input, case.relevant)
+            assertEquals(cacheExpectedReferences(1, case.selectedRow), interpreted.filter { it.code in cacheUnreachedCodes },
+                "${case.id}/first-admitted interpreter policy")
+            assertEquals(dynamic, interpreted, "${case.id}/complete metadata apart from IF376")
+        }
+        val none = emptySet<RelevantEntity>()
+        assertEquals(emptyList<MessageSignature>(), DocumentDifferential.kernelMessages(model, input, true, none))
+        assertEquals(emptyList<MessageSignature>(), DocumentDifferential.kernelMessages(model, input, false, none))
+        assertEquals(emptyList<MessageSignature>(), DocumentDifferential.interpreterMessages(model, input, none))
+    }
+
+    @Test
+    fun selectedMessageQueriesKeepTheirOwnKeyAndParent() {
+        val input = store(
+            depot("c", "n", bin("a", "1"), bin("a", "2"), bin("c", "3")),
+            depot("c", "n", bin("c", "4"), bin("d", "5")),
+        )
+        for (relevant in listOf(null, setOf(RelevantEntity.anyRep("/Store")))) {
+            val dynamic = DocumentDifferential.kernelMessages(model, input, true, relevant)
+            assertEquals((cacheExpectedReferences(1, 3) + cacheExpectedReferences(2, 1)).sorted(),
+                dynamic.filter { it.code in cacheUnreachedCodes }.sorted(), "unique key survives another key's duplicate")
+            assertEquals(dynamic, DocumentDifferential.kernelMessages(model, input, false, relevant))
+            assertEquals(dynamic, DocumentDifferential.interpreterMessages(model, input, relevant))
+        }
+    }
+
+    @Test
+    fun absentSelectedReferencesRetainUnknownRowsAndExactFillToFix() {
+        val input = store(depot("b", "n", bin("a", "1")))
+        val index = "/Store[1]/Depots[1]/Bins[-5]/BinCode"
+        val stock = "/Store[1]/Depots[1]/Bins[-5]/Stock"
+        val note = "/Store[1]/Depots[1]/Note"
+        val expected = MessageSignature("RefLiteral", "OMISSION_ERROR", note,
+            listOf(index, stock, note).sorted(), listOf(index, stock).sorted())
+        for (relevant in listOf(null, setOf(RelevantEntity.anyRep("/Store")))) {
+            val dynamic = DocumentDifferential.kernelMessages(model, input, true, relevant)
+            assertEquals(expected, dynamic.single { it.code == "RefLiteral" }, "literal missing-key omission")
+            assertEquals(dynamic, DocumentDifferential.kernelMessages(model, input, false, relevant))
+            assertEquals(dynamic, DocumentDifferential.interpreterMessages(model, input, relevant))
+        }
+    }
+
+    private fun cacheDefaultModel(required: Boolean = false, selectedError: Boolean = false, omission: Boolean = false): String {
+        val draft = DocumentModelDraft.named("store-bin-default-references").locale("en_US")
+            .rootGroup("Store") { store -> store.stringField("Ref") { }
+                .group("Depots") { depots -> depots.repeatable(2)
+                    .enumField("Wanted") { it.value("a").value("b") }.stringField("Note") { }
+                    .numberField("Anchor") { it.fractionDigits(0) }
+                    .group("Bins") { bins -> bins.repeatable(4).indexField("BinCode")
+                        .enumField("BinCode") {
+                            it.value("a").value("b").sValue("b")
+                            if (required) it.required()
+                        }.numberField("Stock") { it.fractionDigits(0) }
+                        .group("Shelf") { shelf -> shelf.numberField("Aisle") { it.fractionDigits(0) }
+                            .numberField("Level") { it.fractionDigits(0) } }
+                        .group("Slots") { slots -> slots.repeatable(3).numberField("Qty") { it.fractionDigits(0) } }
+                    }
+                }
+            }.build().toJson()
+        val edit = EditSession.read(draft)
+        val depot = edit.group(cacheDepot)
+        val note = depot.str("Note")
+        val wanted = depot.field("Wanted")
+        val selectedStock = depot.num("Bins/Stock").forIndex(wanted)
+        val shelf = depot.flattenGroup("Bins/Shelf").forIndex(wanted)
+        val slots = depot.flatten("Bins/Slots*/Qty").forIndex(wanted)
+        val independent = if (omission) note.filled().and(depot.num("Anchor").eq(0)) else note.filled()
+        val conditions = listOf(
+            "RefDynamic" to note.filled().and(selectedStock.ge(0).or(selectedStock.lt(0))),
+            "RefUnreached" to independent.or(selectedStock.gt(0)),
+            "RefUnreachedGroup" to independent.or(Dsl.sum(shelf).gt(0)),
+            "RefUnreachedStar" to independent.or(Dsl.sum(slots).gt(0)),
+        )
+        for ((code, condition) in conditions.filter { !selectedError || it.first in setOf("RefDynamic", "RefUnreached") }) depot.addRule {
+            it.name(code).code(code).errorField(if (selectedError) depot.field("Bins/Stock") else note.field()).`when`(condition)
+                .message(Dsl.en("Check the depot.")).build()
+        }
+        return edit.toJson()
+    }
+
+    private data class CacheDefaultCase(val id: String, val bins: List<String>, val fullRow: Int, val readType: String?)
+
+    @Test
+    fun defaultMessageAssociationsRemainSeparateFromAuthoredReadAvailability() {
+        val json = cacheDefaultModel()
+        val mismatches = mutableListOf<String>()
+        assertEquals(emptyList<String>(), MessageParameterProbes.kernel(json))
+        val absent = """{"Stock":"2","Shelf":{"Aisle":"1","Level":"2"},"Slots":[{"Qty":"3"}]}"""
+        val cases = listOf(
+            CacheDefaultCase("absent", listOf(absent), 1, "VALUE_ERROR"),
+            CacheDefaultCase("empty", listOf(bin("", "2")), 1, "VALUE_ERROR"),
+            CacheDefaultCase("explicit", listOf(bin("b", "2")), 1, "VALUE_ERROR"),
+            CacheDefaultCase("invalid", listOf(bin("invalid", "2")), 1, null),
+            CacheDefaultCase("zero", emptyList(), -5, "OMISSION_ERROR"),
+            CacheDefaultCase("two-empty", listOf(absent, absent), -5, null),
+        )
+        assertEquals(cases.size, cases.map { it.id }.toSet().size)
+        for (case in cases) {
+            val input = store(depot("b", "n", *case.bins.toTypedArray()))
+            for (partial in listOf(false, true)) {
+                val relevant = if (partial) setOf(RelevantEntity.anyRep("/Store")) else null
+                val selected = if (partial && case.id != "explicit") -5 else case.fullRow
+                val readType = if (partial && case.id in setOf("absent", "empty", "invalid", "two-empty")) null else case.readType
+                val dynamic = DocumentDifferential.kernelMessages(json, input, true, relevant)
+                assertEquals(cacheExpectedReferences(1, selected), dynamic.filter { it.code in cacheUnreachedCodes },
+                    "${case.id}/partial=$partial cache pointers")
+                assertEquals(listOfNotNull(readType), dynamic.filter { it.code == "RefDynamic" }.map { it.type },
+                    "${case.id}/partial=$partial definite read or UNKNOWN")
+                if (case.id == "invalid") assertEquals(1, dynamic.count {
+                    it.pointer == "/Store[1]/Depots[1]/Bins[1]/BinCode" && it.code !in cacheUnreachedCodes
+                }, "${case.id}/partial=$partial invalid stored index remains reported")
+                assertEquals(dynamic, DocumentDifferential.kernelMessages(json, input, false, relevant))
+                val actual = DocumentDifferential.interpreterMessages(json, input, relevant)
+                if (dynamic != actual) mismatches += "${case.id}/partial=$partial expected=$dynamic actual=$actual"
+            }
+        }
+        val mandatory = cacheDefaultModel(required = true)
+        assertEquals(emptyList<String>(), MessageParameterProbes.kernel(mandatory))
+        val input = store(depot("b", "n", bin("invalid", "2")))
+        for (relevant in listOf(null, setOf(RelevantEntity.anyRep("/Store")))) {
+            val dynamic = DocumentDifferential.kernelMessages(mandatory, input, true, relevant)
+            assertEquals(cacheExpectedReferences(1, -5), dynamic.filter { it.code in cacheUnreachedCodes }, "mandatory invalid index gets no default")
+            assertEquals(emptyList<String>(), dynamic.filter { it.code == "RefDynamic" }.map { it.type })
+            assertEquals(dynamic, DocumentDifferential.kernelMessages(mandatory, input, false, relevant))
+            assertEquals(dynamic, DocumentDifferential.interpreterMessages(mandatory, input, relevant))
+        }
+        assertEquals(emptyList<String>(), mismatches)
+    }
+
+    @Test
+    fun selectedMessageAssociationsDoNotLeakBetweenCallsOrMutateTheDocument() {
+        val input = store(depot("b", "n", bin("a", "1"), bin("b", "2"), bin("b", "3")))
+        val prepared = PreparedModel.loadExpandedJson(cacheDefaultModel())
+        val interpreter = prepared.createInterpreter()
+        val snapshot = prepared.documents.readDocument(input)
+        val original = prepared.documents.encodeDocument(snapshot)
+        val relevant = (cachePayloads + cacheIndexRows(3)).map { entity ->
+            prepared.model.relevantPointer(entity.path, entity.indices.map {
+                if (it == 0) RelevantCoordinate.all() else RelevantCoordinate.exact(it)
+            })
+        }
+        val selected = listOf(
+            interpreter.validateFull(snapshot), interpreter.validatePart(snapshot, relevant), interpreter.validateFull(snapshot),
+        ).map { report ->
+            assertEquals(emptyList<Any>(), report.unsupported)
+            report.findings.filter { it.code in cacheUnreachedCodes }.forEach { finding ->
+                assertEquals("Check the depot.", finding.text)
+                assertEquals("ERROR", finding.severity.toString())
+            }
+            report.findings.single { it.code == "RefUnreached" }.referenced
+                .single { it.fullName == "$cacheDepot/Bins/Stock" }.repetitionIndexes[2]
+        }
+        assertEquals(listOf(2, 3, 2), selected)
+        assertEquals(original, prepared.documents.encodeDocument(snapshot))
+    }
+
+    @Test
+    fun associatedPointersRetainOmissionMetadataAndSelectedErrorTargets() {
+        val failures = mutableListOf<String>()
+        for (selectedError in listOf(false, true)) {
+            val json = cacheDefaultModel(selectedError = selectedError, omission = !selectedError)
+            val admission = MessageParameterProbes.kernel(json)
+            assertEquals(emptyList<String>(), admission)
+            for ((label, bins) in listOf("invalid" to listOf(bin("invalid", "2")),
+                "duplicate" to listOf(bin("b", "2"), bin("b", "3")))) {
+                val input = store(depot("b", "n", *bins.toTypedArray()))
+                for (partial in listOf(false, true)) {
+                    val relevant = if (partial) setOf(RelevantEntity.anyRep("/Store")) else null
+                    val dynamic = DocumentDifferential.kernelMessages(json, input, true, relevant)
+                    val static = DocumentDifferential.kernelMessages(json, input, false, relevant)
+                    assertEquals(dynamic, static)
+                    val projected = if (label == "duplicate") cacheFirstAdmittedBoundary(dynamic, 1, listOf(1, 2)) else dynamic
+                    val selected = if (label == "invalid" && partial) -5 else 1
+                    val depot = "/Store[1]/Depots[1]"
+                    val expected = cacheExpectedReferences(1, selected).let { messages ->
+                        if (selectedError) messages.filter { it.code == "RefUnreached" }
+                            .map { it.copy(pointer = "$depot/Bins[$selected]/Stock") }
+                        else messages.map { message ->
+                            val references = (message.referenced + "$depot/Anchor").sorted()
+                            message.copy(type = "OMISSION_ERROR", referenced = references,
+                                fillToFix = references.filterNot { it == "$depot/Note" })
+                        }
+                    }
+                    assertEquals(expected, projected.filter { it.code in cacheUnreachedCodes })
+                    val actual = DocumentDifferential.interpreterMessages(json, input, relevant)
+                    if (projected != actual) failures += "selectedError=$selectedError/$label/partial=$partial expected=$projected actual=$actual"
+                }
+            }
+        }
+        assertEquals(emptyList<String>(), failures)
+    }
+
 }

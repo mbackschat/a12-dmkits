@@ -33,6 +33,7 @@ class ParallelValidationDispatchDiffTest {
         ) else linkedMapOf(
             "Both" to l.filled().and(r.filled()),
             "Either" to l.filled().or(r.filled()),
+            "Less" to l.lt(r),
             "GroupOr" to Dsl.groupFilled(left.ref()).or(r.filled()),
             "Groups" to Dsl.groupFilled(left.ref()).and(Dsl.groupFilled(right.ref())),
             "Absent" to Dsl.groupNotFilled(left.ref()).and(r.filled()),
@@ -102,6 +103,8 @@ class ParallelValidationDispatchDiffTest {
             for ((label, selection) in listOf("first" to selection(listOf(1)), "two" to selection(listOf(1, 2)),
                 "wildcard" to selection(listOf(0)), "concrete-indices" to selection(listOf(0), listOf(1, 2)))) {
                 observe("$repeated/$rootRules/$label", model, document, selection) { messages ->
+                    assertEquals(if (label == "wildcard") 1 else 0, messages.count { it.code == "Less" },
+                        "$repeated/$label unmatched numeric read")
                     val either = messages.filter { it.code == "Either" }
                     assertEquals(if (label == "first") { if (repeated) 0 else 2 } else 3, either.size, "$repeated/$label dispatch")
                     assertEquals(if (repeated && label == "first") 0 else 3, messages.count { it.code == "GroupOr" }, "$repeated/$label group dispatch")
@@ -152,4 +155,84 @@ class ParallelValidationDispatchDiffTest {
         }
         assertEquals(emptyList<String>(), mismatches)
     }
+
+    private fun parallelAssociationReferences(row: Int): List<String> = listOf(
+        "/Warehouse[1]/Orders[$row]/Code",
+        "/Warehouse[1]/Orders[$row]/Quantity",
+        "/Warehouse[1]/Stock[1]/Code",
+        "/Warehouse[1]/Stock[1]/Quantity",
+    ).sorted()
+
+    private fun parallelAssociationMessage(code: String, row: Int) = MessageSignature(
+        code, "VALUE_ERROR", "/Warehouse[1]/Orders[$row]/Quantity",
+        parallelAssociationReferences(row), emptyList(),
+    )
+
+    /** IF376 keeps first-admitted message identity; duplicate value reads retain their separate unavailable state. */
+    private fun projectParallelDuplicateWinner(messages: List<MessageSignature>, label: String): List<MessageSignature> {
+        val associationCodes = setOf("Either", "GroupOr")
+        val selected = messages.filter { it.code in associationCodes }.map { message ->
+            val row = (1..2).singleOrNull { message.pointer == "/Warehouse[1]/Orders[$it]/Quantity" }
+            checkNotNull(row) { "$label has no admitted duplicate owner: $message" }
+            assertEquals(parallelAssociationMessage(message.code, row), message,
+                "$label changes only one coherent duplicate association, with exact type/ref/fill")
+            row
+        }
+        assertEquals(2, selected.size, "$label retains both independently firing rules")
+        assertEquals(1, selected.distinct().size, "$label uses one association for the queried key")
+        return messages.map { message ->
+            if (message.code in associationCodes) parallelAssociationMessage(message.code, 1) else message
+        }.sorted()
+    }
+
+    @Test
+    fun parallelMessageIdentityDoesNotMakeDuplicateValuesAvailable() {
+        val failures = mutableListOf<String>()
+        val model = model(repeated = false)
+        val document = doc(false, row(1, 2) + "," + row(1, 3), row(1, 1))
+        val cases = listOf(
+            Triple("full", null, 1),
+            Triple("partial-both", selection(listOf(0), listOf(1, 2)), 1),
+            Triple("partial-first", selection(listOf(0), listOf(1)), 1),
+            Triple("partial-second", selection(listOf(0), listOf(2)), 2),
+        )
+        assertEquals(cases.size, cases.map { it.first }.toSet().size)
+        for ((id, relevant, selectedRow) in cases) {
+            val duplicate = id == "full" || id == "partial-both"
+            val expectedUnique = if (duplicate) (1..2).map { row ->
+                val pointer = "/Warehouse[1]/Orders[$row]/Code"
+                MessageSignature("uniqueIndex", "VALUE_ERROR", pointer, listOf(pointer), emptyList())
+            }.sorted() else emptyList()
+            val expectedCodes = if (duplicate) listOf("Either", "GroupOr") else
+                listOf("Ancestor", "Both", "Either", "GroupOr", "Groups")
+            val kernel = listOf(true, false).map { dynamic ->
+                val strategy = if (dynamic) "groovy" else "java"
+                val observed = DocumentDifferential.kernelMessages(model, document, dynamic, relevant)
+                assertEquals(expectedUnique, observed.filter { it.code == "uniqueIndex" }, "$id/$strategy physical duplicate owners")
+                assertEquals(expectedCodes, observed.filter { it.code != "uniqueIndex" }.map { it.code }.sorted(),
+                    "$id/$strategy duplicate value availability")
+                assertEquals(if (duplicate) 0 else 1, observed.count { it.code == "Both" },
+                    "$id/$strategy association identity cannot admit duplicate values")
+                if (duplicate) {
+                    println("$id/$strategy raw parallel duplicate owners: ${observed.filter { it.code in setOf("Either", "GroupOr") }}")
+                    projectParallelDuplicateWinner(observed, "$id/$strategy")
+                } else {
+                    assertEquals(parallelAssociationMessage("Either", selectedRow), observed.single { it.code == "Either" },
+                        "$id/$strategy admits only the selected index row")
+                    observed
+                }
+            }
+            assertEquals(kernel[0], kernel[1], "$id/kernel metadata apart from IF376")
+            try {
+                val interpreted = DocumentDifferential.interpreterMessages(model, document, relevant)
+                assertEquals(parallelAssociationMessage("Either", selectedRow), interpreted.single { it.code == "Either" },
+                    "$id/explicit first-admitted interpreter policy")
+                assertEquals(expectedUnique, interpreted.filter { it.code == "uniqueIndex" }, "$id/interpreter physical duplicate owners")
+                assertEquals(if (duplicate) 0 else 1, interpreted.count { it.code == "Both" }, "$id/interpreter duplicate value availability")
+                assertEquals(kernel[0], interpreted, "$id/complete metadata apart from IF376")
+            } catch (failure: AssertionError) { failures += "$id: ${failure.message}" }
+        }
+        assertEquals(emptyList<String>(), failures)
+    }
+
 }

@@ -399,6 +399,10 @@ class Document(internal val config: DocumentConfig) {
     /** Instantiated rows of one group, without constructing evaluation contexts or scanning document content. */
     internal fun instantiatedRows(groupPath: String): List<List<Int>> = rowsOf(groupPath)
 
+    /** Duplicate join values remain unavailable while a fired message retains its admitted row association. */
+    internal fun messageRepetitions(path: String, context: EvalContext): List<Int> =
+        (context as? ParallelRowContext)?.messageRepetitions(path) ?: context.repsOf(path)
+
     /**
      * <b>The one place a message address is built</b> — A12's `PartiallyKnownDocumentMultiPointer` for the cell
      * or row at `(path, reps)`, retained with the immutable document index and discarded on mutation
@@ -824,7 +828,7 @@ class Document(internal val config: DocumentConfig) {
             val cleanInvalid = HashSet<String>()
             val cleanMaps = groups.filter { it != frameGroup }
                 .associateWith {
-                    indexMap(it, indexFieldName, cReps, cleanInvalid, cellRelevant, indexIdentityAdmitted)
+                    indexMap(it, indexFieldName, cReps, cleanInvalid, cellRelevant, indexIdentityAdmitted, validation)
                 }
             // An over-limit FRAME row is outside the kernel's cache, so the join never runs inside it (the same
             // exclusion as the joined groups below and the star domain, SPEC-2026-07-23-13 / IF220).
@@ -844,21 +848,26 @@ class Document(internal val config: DocumentConfig) {
                         invalid,
                         cellRelevant,
                         indexIdentityAdmitted,
+                        validation,
                     ))
                 // Validation enumerates rendered tokens but resolves each by numeric identity (SPEC-2026-10-10-04).
                 val values = LinkedHashSet<String>().apply {
                     for (group in groups) {
                         val indexPath = "$group/$indexFieldName"
-                        for (key in perGroup.getValue(group).keys) add(
+                        for (key in perGroup.getValue(group).values.keys) add(
                             if (validation && kinds[indexPath] == Kind.NUMBER)
                                 A12DocumentJson.runtimeNumberForm(key, fieldConstraints[indexPath]?.minFractionalDigits ?: 0)
                             else key,
                         )
                     }
                 }
+                val separateMessages = validation && perGroup.values.any { it.messages !== it.values }
                 for (v in if (validation) values.sorted() else values) {
                     out += ParallelRowContext(commonParent, cReps, groups, parentReps,
-                        groups.associateWith { perGroup.getValue(it)[indexKeyOf(v, kinds["$it/$indexFieldName"])] }, invalid,
+                        groups.associateWith { perGroup.getValue(it).values[indexKeyOf(v, kinds["$it/$indexFieldName"])] },
+                        if (separateMessages) groups.associateWith {
+                            perGroup.getValue(it).messages[indexKeyOf(v, kinds["$it/$indexFieldName"])]
+                        } else null, invalid,
                         indexFieldName, cellRelevant)
                 }
             }
@@ -873,6 +882,8 @@ class Document(internal val config: DocumentConfig) {
         rowsOf(commonParent).filter { it !in overLimitRows(commonParent) }.ifEmpty {
             if (commonParent in declaredReps) emptyList() else listOf(List(parts(commonParent).size) { 1 })
         }
+
+    private data class ParallelIndexRows(val values: Map<String, List<Int>>, val messages: Map<String, List<Int>>)
 
     /** [group]'s `indexValue → matching-row reps` map under parent context [ctxReps]; adds [group] to
      *  [invalidOut] if its index has a duplicate value or an empty cell here. An OVER-LIMIT row is EXCLUDED from
@@ -892,7 +903,8 @@ class Document(internal val config: DocumentConfig) {
      *  and match across groups. */
     private fun indexMap(group: String, indexFieldName: String, ctxReps: List<Int>, invalidOut: MutableSet<String>,
             cellRelevant: ((String, List<Int>) -> Boolean)?,
-            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?): Map<String, List<Int>> {
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+            validation: Boolean): ParallelIndexRows {
         val idxPath = "$group/$indexFieldName"
         val overLimit = overLimitRows(group)
         val candidates = ArrayList<IndexIdentityCandidate<String>>()
@@ -935,7 +947,15 @@ class Document(internal val config: DocumentConfig) {
         }
         val resolved = resolveIndexIdentity(candidates)
         if (resolved.compromised) invalidOut += group
-        return resolved.uniqueRowsByKey
+        val messages = if (validation && resolved.duplicatedKeys.isNotEmpty()) {
+            LinkedHashMap<String, List<Int>>().apply {
+                for (candidate in candidates) {
+                    val key = candidate.key ?: continue
+                    if (key !in this) put(key, candidate.repetitions)
+                }
+            }
+        } else resolved.uniqueRowsByKey
+        return ParallelIndexRows(resolved.uniqueRowsByKey, messages)
     }
 
     /**
@@ -1694,6 +1714,7 @@ class Document(internal val config: DocumentConfig) {
         private val groups: List<String>,
         private val parentReps: Map<String, List<Int>>,
         private val matches: Map<String, List<Int>?>,
+        private val messageMatches: Map<String, List<Int>?>?,
         private val invalidIndexGroups: Set<String>,
         private val indexFieldName: String,
         private val cellRelevant: ((String, List<Int>) -> Boolean)?,
@@ -1734,11 +1755,14 @@ class Document(internal val config: DocumentConfig) {
 
         override fun repsOf(path: String): List<Int> = repsCache.getOrPut(path) { computeReps(path) }
 
-        private fun computeReps(path: String): List<Int> {
+        fun messageRepetitions(path: String): List<Int> =
+            if (messageMatches == null || messageMatches == matches) repsOf(path) else computeReps(path, messageMatches)
+
+        private fun computeReps(path: String, rows: Map<String, List<Int>?> = matches): List<Int> {
             val g = groupOf(path) ?: return repsFor(path, commonParent, cReps)
             val gDepth = groupDepths.getValue(g)
             val parent = parentReps.getValue(g)   // the group's join parent: a frame row, else the common parent
-            val matched = matches[g]
+            val matched = rows[g]
             val segs = partsOf(path)
             return List(segs.size) { i ->
                 when {

@@ -9972,6 +9972,107 @@
           "evidence": {}
         }
       }
+    },
+    "kf545": {
+      "sha256": "14e31e8f37a5ceae64014661212197f3e17818f217b091b9d6eb2f327bc7e351",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "message association separation",
+          "duplicate parallel association",
+          "selected error and omission associations"
+        ],
+        "dmkits": [
+          "enum default authoring"
+        ],
+        "interpreter": [
+          "message association separation",
+          "duplicate parallel association"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "duplicate message address"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "SPEC05/06/08/09/10"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both strategies pin relevant-row selection, invalid singleton defaults and duplicate parallel addresses.",
+          "evidence": {
+            "message association separation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#defaultMessageAssociationsRemainSeparateFromAuthoredReadAvailability",
+              "witness": "Both strategies pin relevant-row selection, invalid singleton defaults and duplicate parallel addresses."
+            },
+            "duplicate parallel association": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelValidationDispatchDiffTest.kt#parallelMessageIdentityDoesNotMakeDuplicateValuesAvailable",
+              "witness": "Full/both and one-row partial retain exact physical uniqueness addresses and distinct value availability."
+            },
+            "selected error and omission associations": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#associatedPointersRetainOmissionMetadataAndSelectedErrorTargets",
+              "witness": "Both strategies retain coherent error/ref/fill pointers across invalid singleton and duplicate full/partial calls; dependent reads remain unavailable."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Existing typed enum defaults and group/field refs express the complete owned model.",
+          "evidence": {
+            "enum default authoring": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#defaultMessageAssociationsRemainSeparateFromAuthoredReadAvailability",
+              "witness": "Existing typed enum defaults and group/field refs express the complete owned model."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Message projection retains identity without making invalid or duplicate values readable.",
+          "evidence": {
+            "message association separation": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/IndexDefaultStagingMultiplatformTest.kt#invalidSingletonDefaultResolvesOnlyFullMessagePointers",
+              "witness": "Message projection retains identity without making invalid or duplicate values readable."
+            },
+            "duplicate parallel association": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/ParallelValidationDispatchTest.kt#duplicateJoinMessagesRetainRelevantPhysicalAssociations",
+              "witness": "JVM/Node keep first-admitted full identity and second-row partial identity."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime association correction changes no syntax or model-admission rule.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Existing eval output retains the concrete address and generated physical diagnostics.",
+          "evidence": {
+            "duplicate message address": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/PartialValidationCliTest.java#parallelDispatchCompressesSelectorsWithoutChangingTheirInputSyntax",
+              "witness": "Existing eval output retains the concrete address and generated physical diagnostics."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No keyword, field declaration or model transport changes; runtime index association is not an import constraint.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Native constraints and lossless authored-rule carriage are unchanged; the runtime address policy is documented separately.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Lean owns verification; IF376 remains an explicit compatibility difference, and malformed-JSON rows await SPEC07.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

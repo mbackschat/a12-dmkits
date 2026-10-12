@@ -453,7 +453,7 @@ This is the empirical check a static "is it valid?" can't give — it's how you 
 
 `model eval` preserves message occurrences: a numeric parallel join may visit the same matched rows twice when its index declarations render one value differently (`5` versus `5.00`). `data.messages` retains both occurrences; `data.fired` lists distinct codes. The [runtime tour](examples/cli-runtime.md) demonstrates this distinction.
 
-Partial parallel validation separates rule dispatch from operand relevance: combining error-field selectors can admit a join while unselected inputs remain unknown. See the [partial-validation contract](docs/CLI-SPEC.md) and its [kernel controls](docs/KERNEL-FINDINGS.md#kf544).
+Partial parallel validation separates rule dispatch from operand relevance: combining error-field selectors can admit a join while unselected inputs remain unknown. See the [partial-validation contract](docs/CLI-SPEC.md) and its [kernel controls](docs/KERNEL-FINDINGS.md#kf544). Message addresses preserve index associations independently of readable values; the [compatibility contract](docs/INTERPRETER-FINDINGS.md#if388) covers duplicate keys and invalid singleton defaults.
 
 `FirstFilledValue` retains missing nested prefixes: an omitted inner group before the selected value can make a firing an OMISSION error, while the same empty branch after it preserves VALUE. The [runtime tour](examples/cli-runtime.md) shows both documents.
 

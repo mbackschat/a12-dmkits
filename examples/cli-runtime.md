@@ -477,7 +477,7 @@ dmtool -m examples/models/subscription-computed.dm.json \
 
 → with `--no-computations` the stored `EffectiveFee` is empty (an empty number reads as `0`), so `0 > 0` is false and nothing fired. Same instance, same rule — the only difference is whether computations ran first. **Use the default to validate as the app will; `--no-computations` to validate stored values as-is.**
 
-For partial parallel joins, combining error-field selectors can admit a rule without making unselected operands relevant. Ordinary outer/frame coordinates and joined coordinates have different dispatch roles; see the [partial-validation contract](../docs/CLI-SPEC.md) and [kernel controls](../docs/KERNEL-FINDINGS.md#kf544).
+For partial parallel joins, combining error-field selectors can admit a rule without making unselected operands relevant. Ordinary outer/frame coordinates and joined coordinates have different dispatch roles; see the [partial-validation contract](../docs/CLI-SPEC.md) and [kernel controls](../docs/KERNEL-FINDINGS.md#kf544). A concrete error address can survive an unavailable duplicate index value. The interpreter uses its [first-admitted message association](../docs/INTERPRETER-FINDINGS.md#if376), while generated uniqueness errors keep both physical rows.
 
 ## Parallel joins can emit the same message twice
 

@@ -176,4 +176,29 @@ class IndexDefaultStagingMultiplatformTest {
 
         assertEquals(listOf("SL_STD"), codes(out), "an admitted explicit value evaluates normally in partial")
     }
+    @Test
+    fun invalidSingletonDefaultResolvesOnlyFullMessagePointers() {
+        for (error in listOf("../Note", "../Lines/Qty")) {
+            val selected = RuleDef("$ORDER/Selected", ORDER,
+                "FieldFilled(Note) Or [Lines/Qty For \"STD\"] > 0", "SELECTED", error)
+            val def = model(rules = listOf(dependentRule, selected))
+            val doc = def.newDocument().group(ORDER, 1).field(NOTE, "review", 1, 1)
+                .field(QTY, "5", 1, 1, 1).field(SERVICE_LEVEL, "OVERNIGHT", 1, 1, 1)
+            val interpreter = DmInterpreter(def)
+            val outcomes = listOf(interpreter.validate(doc),
+                interpreter.validatePart(doc, setOf(RelevantEntity.anyRep(ORDER))), interpreter.validate(doc))
+            for ((i, outcome) in outcomes.withIndex()) {
+                assertEquals(emptyList(), outcome.unsupported)
+                assertEquals(listOf("SELECTED", "stringFalschesMuster"), codes(outcome))
+                val row = if (i == 1) -5 else 1
+                val message = outcome.messages.single { it.code == "SELECTED" }
+                assertEquals(listOf("/Order[1]/Lines[$row]/Qty", "/Order[1]/Lines[$row]/ServiceLevel", "/Order[1]/Note"),
+                    message.referenced.sorted())
+                assertEquals(if (error == "../Note") "/Order[1]/Note" else "/Order[1]/Lines[$row]/Qty", message.errorPath)
+                assertEquals(emptyList(), message.fillToFix)
+            }
+            assertEquals("OVERNIGHT", doc.contextsFor(LINES).single().displayValue(SERVICE_LEVEL))
+        }
+    }
+
 }

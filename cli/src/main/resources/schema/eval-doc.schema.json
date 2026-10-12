@@ -20,7 +20,7 @@
     "messages": {
       "type": "array",
       "items": { "$ref": "#/$defs/message" },
-      "description": "every message occurrence the evaluation raised, in evaluation order; occurrences are not deduplicated even when numeric parallel iteration renders two tokens for the same matched rows. Evaluated by the dm interpreter — the envelope's `engine` names who produced these"
+      "description": "every message occurrence the evaluation raised, in evaluation order; occurrences are not deduplicated even when numeric parallel iteration renders two tokens for the same matched rows. A concrete address does not imply a readable value: duplicate keys and full-call invalid singleton defaults can retain message associations. Duplicate selected/parallel associations use the interpreter's first admitted row; generated uniqueness diagnostics retain their physical cells. Evaluated by the dm interpreter — the envelope's `engine` names who produced these"
     },
     "rule": {
       "type": "object",
