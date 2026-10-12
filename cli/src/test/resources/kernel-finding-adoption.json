@@ -8234,7 +8234,7 @@
       }
     },
     "kf541": {
-      "sha256": "95d10a4bc560427b5d9e4d8823b76f430d613bc5350d4c076ef65cd2d6622e48",
+      "sha256": "0f20f573e027622303903823f488715e3ce7171049c841765b52182d38b012dc",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -8338,7 +8338,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "SPEC-2026-10-10-11/12 await the peer verification and receipt for this committed batch.",
+          "basis": "Lean d23d8c86 accepted SPEC-2026-10-10-11 and the modern-route/mode observations for SPEC-2026-10-10-12; the latter awaits peer disposition of the clarified ExtMP/H-DV profile boundary.",
           "evidence": {}
         }
       }
