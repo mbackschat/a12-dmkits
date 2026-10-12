@@ -8234,7 +8234,7 @@
       }
     },
     "kf541": {
-      "sha256": "82e954d2fd2ccc6ea6399958c29a334e12e79f7aab405d003378fbfb0f1d516a",
+      "sha256": "95d10a4bc560427b5d9e4d8823b76f430d613bc5350d4c076ef65cd2d6622e48",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -8243,15 +8243,18 @@
         "json-schema-export": [],
         "adapter": [
           "raw callback input and reserved report admission",
-          "computed target and dependent read"
+          "computed target and dependent read",
+          "computation assembly boundary"
         ],
         "interpreter": [
           "raw callback input and reserved report admission",
-          "computed target and dependent read"
+          "computed target and dependent read",
+          "computation assembly boundary"
         ],
         "dmtool-cli": [
           "raw callback input and reserved report admission",
-          "computed target and dependent read"
+          "computed target and dependent read",
+          "computation assembly boundary"
         ],
         "a12-kernel-lean": [
           "raw callback input and reserved report admission",
@@ -8290,6 +8293,10 @@
             "computed target and dependent read": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTestRangeLawsTest.kt#publicInterpreterSeparatesStoredAdmissionFromComputedTargetErrors",
               "witness": "Source/target result combinations compare both kernel strategies with the public interpreter across attempted values, target errors, dependent reads, application and callback lifecycle."
+            },
+            "computation assembly boundary": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationDiagnosticAssemblyLawsTest.kt#bothStrategiesCompleteTheSevenControlsBeforePublicAssemblyIsCompared",
+              "witness": "Same full diagnostic pointer fails after independent callbacks; distinct rows remain valid, unused indexes are not validated, validation retains its separate inventory."
             }
           }
         },
@@ -8304,6 +8311,10 @@
             "computed target and dependent read": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTestRangeLawsTest.kt#publicInterpreterSeparatesStoredAdmissionFromComputedTargetErrors",
               "witness": "Accept, ordinary rejection and exact reserved result; CR input, empty/absent and excluded cells; source/target combinations and callback lifecycle."
+            },
+            "computation assembly boundary": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationDiagnosticAssemblyLawsTest.kt#bothStrategiesCompleteTheSevenControlsBeforePublicAssemblyIsCompared",
+              "witness": "Same full diagnostic pointer fails after independent callbacks; distinct rows remain valid, unused indexes are not validated, validation retains its separate inventory."
             }
           }
         },
@@ -8318,6 +8329,10 @@
             "computed target and dependent read": {
               "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/ComputeDocVerbTest.java#customCallbacksRetainRawInputReservedCascadeAndSingleInvocation",
               "witness": "The 3×3 source/target callback result grid locks original source input, computed target input, dependent results and one callback per reached cell."
+            },
+            "computation assembly boundary": {
+              "reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/ComputationDiagnosticAssemblyCliTest.kt#computeAndApplyBeforeEvalFailAfterTheIndependentCallbackWhileValidationStillReportsBoth",
+              "witness": "Compute and compute-before-eval fail after the independent callback with no stdout payload or input-file changes; validation-only retains both findings at both rows."
             }
           }
         },

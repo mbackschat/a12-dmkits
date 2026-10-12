@@ -347,7 +347,7 @@ class CustomTestRangeLawsTest {
             val interpreter = prepared.createInterpreter(InterpreterConfiguration.builder().customFieldTypes(registry).build())
             val snapshot = prepared.documents.readDocument(input)
             val findings = interpreter.validateFull(snapshot).findings
-            val computed = interpreter.compute(snapshot)
+            val computedAttempt = runCatching { interpreter.compute(snapshot) }
             for (strategy in 0..1) {
                 val recorder = Recorder(answer)
                 val instance = if (strategy == 0) dynamic.instance(input) else static.instance(input)
@@ -363,12 +363,12 @@ class CustomTestRangeLawsTest {
                     val cause = generateSequence(attempt.exceptionOrNull()) { it.cause }.last()
                     assertEquals(IllegalStateException::class.java, cause.javaClass)
                     org.junit.jupiter.api.Assertions.assertTrue(cause.message!!.startsWith("Duplicate key "))
-                    assertEquals(emptyList<ComputationResult>(), computed.results.filter { it.outcome == ComputationOutcome.VALUE })
-                    assertEquals(listOf("testIDNummer", "testIDNummer", "uniqueIndex", "uniqueIndex"),
-                        computed.formalErrorsInOperands.map { it.code }.sorted())
+                    org.junit.jupiter.api.Assertions.assertTrue(computedAttempt.exceptionOrNull() is IllegalStateException,
+                        "the public compute result must fail assembly at a duplicate error pointer")
                     continue
                 }
                 val changes = attempt.getOrThrow()
+                val computed = computedAttempt.getOrThrow()
                 assertEquals(changes.outcomes().map { "${address(A12PartiallyKnownMultiPointer.of(it.pointer().fullName(), it.pointer().repetitionIndexes()))}|${it.errored()}|${it.value().orElse(null)}" }.sorted(),
                     computed.actions.map { "${address(A12PartiallyKnownMultiPointer.of(it.pointer.path, it.pointer.coordinates))}|${it.outcome == ComputationOutcome.ERRORED}|${it.value}" }.sorted(),
                     "$answer/$second/$strategy/actions")

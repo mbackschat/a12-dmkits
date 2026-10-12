@@ -38,7 +38,22 @@ internal class ComputationEngineRun(
     val formalErrorsInOperands: List<Message>,
     val computedErrors: Map<Pair<String, List<Int>>, Message>,
     val unsupported: List<UnsupportedRule>,
-)
+) {
+    init {
+        // The cascade must finish before this boundary; the callback control in
+        // ComputationDiagnosticAssemblyLawsTest distinguishes result assembly from an eager refusal.
+        if (formalErrorsInOperands.size + computedErrors.size > 1) {
+            val byPointer = HashMap<A12PartiallyKnownMultiPointer, Message>()
+            for (diagnostic in formalErrorsInOperands.asSequence() + computedErrors.values.asSequence()) {
+                val previous = byPointer.put(diagnostic.errorPointer, diagnostic)
+                if (previous != null) throw ComputationDiagnosticAssemblyFailure(previous, diagnostic)
+            }
+        }
+    }
+}
+
+private class ComputationDiagnosticAssemblyFailure(first: Message, second: Message) :
+    IllegalStateException("Duplicate computation diagnostic at ${second.errorPointer}: ${first.code} and ${second.code}")
 
 /**
  * The computation engine — the cascade (overlay / poison / cleared), the parallel join-by-key iteration,
@@ -180,16 +195,16 @@ internal class ComputationEngine(
         // Once per compute call, on the document every gate below reads (IG127.1).
         val gateNeeded = checks.overRepetitionGateNeeded(doc)
         val valueAdmissions = ValueAdmissionCache(checks, locale, doc, gateNeeded)
-        val dup = checks.duplicateIndexCells(doc, valueAdmissions)
+        val operands = programmeOperands
+        val selectedIndexRelevant: Relevance = { path, _ -> path in operands.indexFields }
+        val dup = checks.duplicateIndexCells(doc, valueAdmissions, selectedIndexRelevant)
         val emptyIndexCells = checks.preliminaryEmptyIndexCells(doc)
         val formalResults = FormalResultCache(checks, locale, dup, valueAdmissions = valueAdmissions)
         val invalidOperand: (EvalContext, String) -> Boolean = { reading, path ->
             if (operandNotCheckRelevant(path, reading, formalResults, emptyIndexCells)) throw PoisonedReadException(path)
             else false
         }
-        val operands = programmeOperands
         val operandRelevant: Relevance = { path, _ -> path in operands.fields }
-        val selectedIndexRelevant: Relevance = { path, _ -> path in operands.indexFields }
         // Over-repetition is the one formal check that speaks about GROUP paths as well as field paths: its
         // second walk reports the over-limit group (serial at the root, row below it). `operandRelevant` holds
         // operand FIELD paths, so testing a group against it was a category error rather than a filter — the row
