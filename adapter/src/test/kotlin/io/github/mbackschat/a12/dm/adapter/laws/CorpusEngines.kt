@@ -140,7 +140,7 @@ object CorpusEngines {
     }
 
     /** The kernel clock ([Date]) — the local wall-clock instant, no zone (§9); null when absent. */
-    private fun clockDate(clock: String?): Date? =
+    internal fun clockDate(clock: String?): Date? =
         clock?.let { Date.from(LocalDateTime.parse(it).atZone(ZoneId.systemDefault()).toInstant()) }
 
     private fun relevants(op: Op.ValidatePart): Set<RuntimeLaws.Relevant> =

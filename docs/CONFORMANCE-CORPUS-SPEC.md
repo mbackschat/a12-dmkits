@@ -132,6 +132,8 @@ Excluded by design: **message text** (license + locale, §1) and **severity** (d
 
 **Comparison rule:** the runner renders every fired message as a signature, sorts the list by UTF-16 code-unit order (the native string order of Java, Kotlin, and JS — identical across replay targets, and equal to code-point order for the BMP-only names models use), and compares for **list equality against `expected`**. Duplicates are significant (a multiset, not a set). No filtering, no tolerance.
 
+The JVM corpus guard additionally compares live error, reference and fill-to-fix pointers losslessly between the interpreter and both kernel strategies for validation cases. `CorpusReplayTest.everyCaseReplaysThreeWays` preserves the case clock and partial selection; `corpusRichAgreementRejectsWrongTerminalCoordinatesInEveryRole` challenges the actual comparator with wrong terminal coordinates. This supplements the consumed signatures without rewriting them. A declared static divergence remains replayable under §11, but requires a separately measured rich-channel disposition before satisfying this stronger equality guard.
+
 ## 7. Compute expectations
 
 Each `computeExpected` entry is one computed-field outcome:

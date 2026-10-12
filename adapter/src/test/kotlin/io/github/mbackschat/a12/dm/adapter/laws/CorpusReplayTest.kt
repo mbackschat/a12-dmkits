@@ -66,6 +66,20 @@ class CorpusReplayTest {
     @TestFactory
     fun everyCaseReplaysThreeWays(): List<DynamicTest> = CorpusFiles.all().map { cf ->
         DynamicTest.dynamicTest("${cf.path.parent.fileName}/${cf.case.meta.id}") {
+            if (cf.case.op !is Op.Compute) {
+                val relevant = (cf.case.op as? Op.ValidatePart)?.relevant?.mapTo(HashSet()) {
+                    io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity(it.path, it.reps)
+                }
+                val clock = cf.case.clock?.let {
+                    io.github.mbackschat.a12.dm.interpreter.model.EvalClock(it.substringBefore('T'), it)
+                }
+                val dynamic = DocumentDifferential.kernelMessages(cf.modelJson, cf.case.document, true, relevant,
+                    CorpusEngines.clockDate(cf.case.clock), sharedEngine = true)
+                assertRichMessages(dynamic, DocumentDifferential.kernelMessages(cf.modelJson, cf.case.document, false,
+                    relevant, CorpusEngines.clockDate(cf.case.clock), sharedEngine = true), "${cf.case.meta.id}/static")
+                assertRichMessages(dynamic, DocumentDifferential.interpreterMessages(cf.modelJson, cf.case.document,
+                    relevant, clock), "${cf.case.meta.id}/interpreter")
+            }
             val results = CorpusReplay.replay(cf.case, cf.modelJson)
             val bad = results.filterValues { it.verdict != InterpreterReplay.Verdict.PASS }
             assertTrue(bad.isEmpty()) {
@@ -73,6 +87,38 @@ class CorpusReplayTest {
                     bad.entries.joinToString("\n") { "  ${it.key}: ${it.value.verdict} — ${it.value.detail}" }
             }
         }
+    }
+
+    @Test
+    fun corpusRichAgreementRejectsWrongTerminalCoordinatesInEveryRole() {
+        val model = DocumentModelDraft.named("corpus-pointer").locale("en_US")
+            .rootGroup("Parcel") { root -> root.group("Rows") { it.repeatable(2).stringField("Code") {} } }
+            .build().toJson()
+        val json = """{"Parcel":{"Rows":[{},{},{}]}}"""
+        val engine = RuntimeLaws.kernelEngine(model)
+        val source = engine.validationMessages(engine.instance(json), null, java.util.Locale.US).single().errorFieldPointer
+        val changed = io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer.of(source.fullName(),
+            source.repetitionIndexes().dropLast(1) + (source.repetitionIndexes().last() + 1))
+        val key = DocumentDifferential.pointer(source)
+        val wrong = DocumentDifferential.pointer(changed)
+        val checks = listOf("error", "reference", "fill").map { role -> org.junit.jupiter.api.function.Executable {
+            fun signature(pointer: String) = MessageSignature("CORPUS_POINTER", "VALUE_ERROR",
+                if (role == "error") pointer else key,
+                if (role == "reference") listOf(pointer) else emptyList(),
+                if (role == "fill") listOf(pointer) else emptyList())
+            val expected = listOf(signature(key))
+            val incorrect = listOf(signature(wrong))
+            assertEquals(expected.single().brief, incorrect.single().brief)
+            assertRichMessages(expected, expected, "$role positive control")
+            org.junit.jupiter.api.Assertions.assertThrows(AssertionError::class.java) {
+                assertRichMessages(expected, incorrect, role)
+            }
+        } }
+        org.junit.jupiter.api.Assertions.assertAll(checks)
+    }
+
+    private fun assertRichMessages(expected: List<MessageSignature>, actual: List<MessageSignature>, label: String) {
+        assertEquals(expected, actual, label)
     }
 
     private companion object {

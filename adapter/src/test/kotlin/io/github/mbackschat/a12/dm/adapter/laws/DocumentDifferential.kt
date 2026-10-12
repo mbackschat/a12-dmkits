@@ -98,21 +98,34 @@ internal object DocumentDifferential {
     }
 
     fun kernelMessages(model: String, json: String, dynamic: Boolean,
-                       relevant: Set<RelevantEntity>? = null): List<MessageSignature> {
+                       relevant: Set<RelevantEntity>? = null, clock: Date? = null,
+                       sharedEngine: Boolean = false): List<MessageSignature> {
         val selection = relevant?.map { RuntimeLaws.Relevant.of(it.path, *it.indices.toIntArray()) }?.toSet()
         val messages = if (dynamic) {
-            val engine = RuntimeLaws.kernelEngine(model)
-            if (selection == null) engine.validationMessages(engine.instance(json), null, Locale.US)
-            else engine.partialValidationMessages(engine.instance(json), selection, null, Locale.US)
+            val engine = if (sharedEngine) RuntimeLaws.sharedKernelEngine(model) else RuntimeLaws.kernelEngine(model)
+            if (selection == null) engine.validationMessages(engine.instance(json), clock, Locale.US)
+            else engine.partialValidationMessages(engine.instance(json), selection, clock, Locale.US)
         } else {
-            val engine = RuntimeLaws.kernelJavaEngine(model)
-            if (selection == null) engine.validationMessages(engine.instance(json), null, Locale.US)
-            else engine.partialValidationMessages(engine.instance(json), selection, null, Locale.US)
+            val engine = if (sharedEngine) RuntimeLaws.sharedKernelJavaEngine(model) else RuntimeLaws.kernelJavaEngine(model)
+            if (selection == null) engine.validationMessages(engine.instance(json), clock, Locale.US)
+            else engine.partialValidationMessages(engine.instance(json), selection, clock, Locale.US)
         }
         return messages.map(::kernelSignature).sorted()
     }
 
-    fun interpreterMessages(model: String, json: String, relevant: Set<RelevantEntity>? = null): List<MessageSignature> {
+    fun interpreterMessages(model: String, json: String, relevant: Set<RelevantEntity>? = null,
+                            clock: EvalClock? = null): List<MessageSignature> {
+        if (clock != null) {
+            val def = ModelLoader.load(model)
+            val engine = DmInterpreter(def, clock)
+            val document = def.readDocumentJson(json)
+            val report = if (relevant == null) engine.validate(document) else engine.validatePart(document, relevant)
+            assertEquals(emptyList<Any>(), report.unsupported, "every clocked construct must be evaluable")
+            return report.messages.map {
+                MessageSignature(it.code, typeName(it.type.name), pointer(it.errorPointer),
+                    it.referencedPointers.map(::pointer).sorted(), it.fillToFixPointers.map(::pointer).sorted())
+            }.sorted()
+        }
         val prepared = PreparedModel.loadExpandedJson(model)
         val interpreter = prepared.createInterpreter()
         val document = prepared.documents.readDocument(json)
