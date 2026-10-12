@@ -120,6 +120,158 @@ class SelectedMessageReferenceDiffTest {
         assertEquals(expected, observed, "the duplicated key's pointer row, on both strategies")
     }
 
+    @Test
+    fun indexedMessageAdmissionUsesAuthoredAncestryAndPositiveKeyedPresence() {
+        val edit = EditSession.read(model)
+        val depot = edit.group("/Store/Depots")
+        depot.addGroup("Signals") { it.addField("Ready", io.github.mbackschat.a12.dm.modelkit.FieldKind.STRING) }
+        val base = edit.toJson()
+        val note = depot.str("Note")
+        val stock = depot.num("Bins/Stock")
+        val selected = stock.field().semanticIndex("b")
+        val bins = depot.flattenGroup("Bins").forIndex("b")
+        val off = depot.flattenGroup("Signals")
+        val comparison = stock.forIndex("b").gt(0)
+        data class Row(val id: String, val condition: Condition, val expected: List<String>, val ancestry: Boolean = false)
+        val invalidGroup = listOf("INVALID_GROUP")
+        val invalidPresence = listOf("INVALID_USE_OF_SEMANTIC_INDEX")
+        val rows = listOf(
+            Row("ancestry-parent", depot.ref().filled(), listOf("ITER_PARAM_WITH_STARREFERENCE"), true),
+            Row("ancestry-field", stock.filled(), emptyList(), true),
+            Row("ancestry-star", Dsl.atLeastOneFieldFilled(depot.flatten("Bins*/Stock")),
+                listOf("ITER_PARAM_WITH_STARREFERENCE"), true),
+            Row("ancestry-key", selected.filled(), invalidGroup, true),
+            Row("key-field-presence", selected.filled(), emptyList()),
+            Row("key-group-presence", bins.filled(), emptyList()),
+            Row("key-comparison", comparison, invalidPresence),
+            Row("key-negative", selected.notFilled(), invalidPresence),
+            Row("key-and", selected.filled().and(comparison), emptyList()),
+            Row("key-or-unrelated", selected.filled().or(note.filled()), invalidPresence),
+            Row("key-or-covered", selected.filled().or(bins.filled()), emptyList()),
+            Row("key-all-fields", Dsl.allFieldsFilled(selected.index(), note.field()), emptyList()),
+            Row("key-all-groups", Dsl.allGroupsFilled(bins, off), emptyList()),
+            Row("key-any-fields", Dsl.atLeastOneFieldFilled(selected.index(), note.field()), invalidPresence),
+            Row("key-many-fields", Dsl.moreThanOneFieldFilled(selected.index(), note.field()), invalidPresence),
+            Row("key-any-groups", Dsl.atLeastOneGroupFilled(bins, off), invalidPresence),
+        )
+        assertEquals(rows.size, rows.map { it.id }.toSet().size)
+        val authored = rows.map { row ->
+            val condition = if (row.ancestry) row.condition else note.filled().and(row.condition)
+            val token = if (row.ancestry) Dsl.repetitionIndex(depot.group("Bins")) else Dsl.repetitionIndex(bins)
+            row.id to io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.addRule(base, depot.rule {
+                it.name("MessageProbe").code("MESSAGE_PROBE")
+                    .errorField(if (row.ancestry) stock.field() else note.field()).`when`(condition)
+                    .message(Dsl.en("Bin " + token)).build()
+            })
+        }
+        val kernel = authored.map { (id, json) -> id to MessageParameterProbes.kernel(json) }
+        MessageParameterProbes.replay("indexed-group", authored.mapIndexed { i, (id, json) ->
+            Triple(id, json, rows[i].expected) })
+        assertEquals(rows.map { it.id to it.expected }, kernel, "independent kernel admission")
+        assertEquals(kernel, authored.map { (id, json) -> id to MessageParameterProbes.portable(json) },
+            "portable admission uses the same authored conditions")
+    }
+
+    @Test
+    fun indexMessageAdmissionTracksTheIndexedGroupsOwnLevel() {
+        val edit = EditSession.read(model)
+        val depot = edit.group("/Store/Depots")
+        val stock = depot.num("Bins/Stock")
+        val code = depot.field("Bins/BinCode")
+        val rows = listOf(
+            "parent" to depot.ref().filled(),
+            "owner-star" to Dsl.atLeastOneFieldFilled(depot.flatten("Bins*/Stock")),
+            "owner-key" to stock.field().semanticIndex("b").filled(),
+            "lower-star" to Dsl.atLeastOneFieldFilled(depot.flatten("Bins/Slots*/Qty")),
+        )
+        val authored = rows.map { (id, condition) -> id to io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.addRule(model,
+            depot.rule { it.name("MessageProbe").code("MESSAGE_PROBE").errorField(stock)
+                .`when`(stock.filled().and(condition)).message(Dsl.en(Dsl.indexValue(code))).build() }) }
+        val expected = rows.map { (id, _) -> id to if (id != "lower-star")
+            listOf("INVALID_INDEX_FIELD_REP_ITER") else emptyList() }
+        assertEquals(expected, authored.map { (id, json) -> id to MessageParameterProbes.kernel(json) })
+        MessageParameterProbes.replay("indexed-ancestry", authored.mapIndexed { i, (id, json) ->
+            Triple(id, json, expected[i].second) })
+        assertEquals(expected, authored.map { (id, json) -> id to MessageParameterProbes.portable(json) })
+    }
+
+    @Test
+    fun portableMessageReplaysHaveIndependentKernelTextControls() {
+        val mapper = com.fasterxml.jackson.databind.ObjectMapper()
+        val rows = HarvestedModels.index(mapper.readTree(checkNotNull(javaClass.getResource(
+            "/checker-near-miss/message-parameter-decoder.json")).readText()))
+        val document = """{"Store":{"Depots":[{"Note":"n","Bins":[{"BinCode":"a"},{"BinCode":"b","Stock":1,"Slots":[{},{},{"Qty":2}]}]}]}}"""
+        for ((id, path, text) in listOf(
+            Triple("indexed-group:key-field-presence", "/Store[1]/Depots[1]/Note", "Bin 2"),
+            Triple("indexed-ancestry:lower-star", "/Store[1]/Depots[1]/Bins[2]/Stock", "b"),
+        )) DocumentDifferential.assertMessageTexts(rows.getValue(id)["model"].asText(), document, "MESSAGE_PROBE", listOf(path to text))
+    }
+
+    @Test
+    fun keyedGroupMessageUsesItsSelectedRowUnderEachParent() {
+        val edit = EditSession.read(model)
+        val depot = edit.group("/Store/Depots")
+        val note = depot.str("Note")
+        val stock = depot.field("Bins/Stock")
+        val wanted = depot.field("Wanted")
+        val literal = depot.flattenGroup("Bins").forIndex("b")
+        val dynamic = depot.flattenGroup("Bins").forIndex(wanted)
+        val cases = listOf(
+            Triple("literal", false, store(depot("b", "n", bin("a", "1"), bin("b", "2")))),
+            Triple("field", true, store(depot("b", "n", bin("a", "1"), bin("b", "2")))),
+            Triple("missing", false, store(depot("b", "n", bin("a", "1")))),
+            Triple("duplicate", false, store(depot("b", "n", bin("b", "1"), bin("b", "2")))),
+            Triple("parents", true, store(depot("b", "n", bin("a", "1"), bin("b", "2")),
+                depot("b", "n", bin("b", "3"), bin("a", "4")))),
+        )
+        org.junit.jupiter.api.Assertions.assertAll(cases.map { (id, fieldKey, json) -> org.junit.jupiter.api.function.Executable {
+            val selected = if (fieldKey) stock.semanticIndex(wanted) else stock.semanticIndex("b")
+            val authored = io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.addRule(model, depot.rule {
+                it.name("MessageProbe").code("MESSAGE_PROBE").errorField(note)
+                    .`when`(note.filled().and(selected.filled()))
+                    .message(Dsl.en("Bin [" + Dsl.repetitionIndex(if (fieldKey) dynamic else literal) + "]")).build()
+            })
+            assertEquals(emptyList<String>(), MessageParameterProbes.kernel(authored), id)
+            val expected = when (id) {
+                "missing", "duplicate" -> emptyList()
+                "parents" -> listOf("/Store[1]/Depots[1]/Note" to "Bin [2]", "/Store[1]/Depots[2]/Note" to "Bin [1]")
+                else -> listOf("/Store[1]/Depots[1]/Note" to "Bin [2]")
+            }
+            DocumentDifferential.assertMessageTexts(authored, json, "MESSAGE_PROBE", expected)
+        } })
+    }
+
+    @Test
+    fun indexValueMessageUsesTheErrorFieldsIndexedAncestor() {
+        val edit = EditSession.read(model)
+        val depot = edit.group("/Store/Depots")
+        val stock = depot.num("Bins/Stock")
+        val quantity = depot.num("Bins/Slots/Qty")
+        val code = depot.field("Bins/BinCode")
+        val rows = listOf(
+            Triple("filled", false, store(depot(null, "n", bin("b", "2")))),
+            Triple("absent", false, store(depot(null, "n", """{"Stock":2}"""))),
+            Triple("deeper", true, store(depot(null, "n", bin("a", "1"),
+                """{"BinCode":"b","Slots":[{},{},{"Qty":2}]}"""))),
+        )
+        org.junit.jupiter.api.Assertions.assertAll(rows.map { (id, deeper, json) -> org.junit.jupiter.api.function.Executable {
+            val target = if (deeper) quantity else stock
+            val authored = io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.addRule(model, depot.rule {
+                it.name("MessageProbe").code("MESSAGE_PROBE").errorField(target)
+                    .`when`(target.filled())
+                    .message(Dsl.en("Code [" + Dsl.indexValue(code) + "]")).build()
+            })
+            assertEquals(emptyList<String>(), MessageParameterProbes.kernel(authored), id)
+            val expected = when (id) {
+                "absent" -> listOf("/Store[1]/Depots[1]/Bins[1]/Stock" to "Code []")
+                "deeper" -> listOf("/Store[1]/Depots[1]/Bins[1]/Slots[1]/Qty" to "Code [a]",
+                    "/Store[1]/Depots[1]/Bins[2]/Slots[3]/Qty" to "Code [b]")
+                else -> listOf("/Store[1]/Depots[1]/Bins[1]/Stock" to "Code [b]")
+            }
+            DocumentDifferential.assertMessageTexts(authored, json, "MESSAGE_PROBE", expected)
+        } })
+    }
+
     private val cacheDepot = "/Store/Depots"
     private val cachePayloads = listOf("Note", "Wanted", "Bins/Stock", "Bins/Shelf/Aisle", "Bins/Shelf/Level", "Bins/Slots/Qty")
         .map { RelevantEntity.anyRep("$cacheDepot/$it") }.toSet()

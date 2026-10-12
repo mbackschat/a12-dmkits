@@ -3863,7 +3863,8 @@ if (!performanceForkCountProperty.isPresent()) {
 // The adapter authors and kernel-checks these models; common tests replay their exact retained observations.
 def specSyncFixtures = [
     fill: rootProject.file('adapter/src/test/resources/filtered-fill-decisions.json'),
-    groups: rootProject.file('adapter/src/test/resources/checker-near-miss/containing-group-profiles.json')
+    groups: rootProject.file('adapter/src/test/resources/checker-near-miss/containing-group-profiles.json'),
+    messages: rootProject.file('adapter/src/test/resources/checker-near-miss/message-parameter-decoder.json')
 ]
 def specSyncDir = layout.buildDirectory.dir('generated/specSync/commonTest/kotlin').get().asFile
 def specSyncSource = new File(specSyncDir, 'io/github/mbackschat/a12/dm/interpreter/SpecSyncFixtureData.kt')

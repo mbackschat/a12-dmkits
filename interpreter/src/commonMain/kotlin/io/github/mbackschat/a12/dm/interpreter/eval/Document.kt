@@ -399,6 +399,10 @@ class Document(internal val config: DocumentConfig) {
     /** Instantiated rows of one group, without constructing evaluation contexts or scanning document content. */
     internal fun instantiatedRows(groupPath: String): List<List<Int>> = rowsOf(groupPath)
 
+    /** A parallel message uses the joined index token even when this group has no matching row (SPEC11-01). */
+    internal fun messageIndexValue(path: String, context: EvalContext): String? =
+        (context as? ParallelRowContext)?.messageIndexValue(path) ?: context.displayValue(path)
+
     /** Duplicate join values remain unavailable while a fired message retains its admitted row association. */
     internal fun messageRepetitions(path: String, context: EvalContext): List<Int> =
         (context as? ParallelRowContext)?.messageRepetitions(path) ?: context.repsOf(path)
@@ -868,7 +872,7 @@ class Document(internal val config: DocumentConfig) {
                         if (separateMessages) groups.associateWith {
                             perGroup.getValue(it).messages[indexKeyOf(v, kinds["$it/$indexFieldName"])]
                         } else null, invalid,
-                        indexFieldName, cellRelevant)
+                        indexFieldName, v, cellRelevant)
                 }
             }
         }
@@ -1717,6 +1721,7 @@ class Document(internal val config: DocumentConfig) {
         private val messageMatches: Map<String, List<Int>?>?,
         private val invalidIndexGroups: Set<String>,
         private val indexFieldName: String,
+        private val indexToken: String,
         private val cellRelevant: ((String, List<Int>) -> Boolean)?,
     ) : EvalContext {
 
@@ -1754,6 +1759,9 @@ class Document(internal val config: DocumentConfig) {
         private fun unmatched(path: String): Boolean = groupOf(path)?.let { matches[it] == null } ?: false
 
         override fun repsOf(path: String): List<Int> = repsCache.getOrPut(path) { computeReps(path) }
+
+        fun messageIndexValue(path: String): String? =
+            if (groups.any { path == "$it/$indexFieldName" }) indexToken else resolved(path)
 
         fun messageRepetitions(path: String): List<Int> =
             if (messageMatches == null || messageMatches == matches) repsOf(path) else computeReps(path, messageMatches)

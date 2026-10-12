@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
+import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameter
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
-import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 
 /**
  * What an error message's `$#…$` group position may name: an ancestor or a group reached by the condition.
@@ -30,12 +30,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
  * in name positions. MessageGroupEventAgreementTest distinguishes each reading on both languages,
  * including a real group whose name collides with the root keyword (KF214).
  *
- * **Two gates sit behind the wildcard one and are NOT reported, with the reason beside them.** A group that
- * is a PARALLEL ITERATION, or a parameter carrying a semantic index, hands the decision to
- * `RuleErrorTextIterationParamVisitor` walking the PARSED condition — so `INVALID_USE_OF_ITERATION_PARAM`
- * and `INVALID_USE_OF_SEMANTIC_INDEX` need that visitor's acceptance reproduced, not another reading of the
- * model (source-read 30.8.1: `checkSemanticIndexAndParallelIteration` returns true immediately for every
- * other shape, which is why the two gates are invisible on an ordinary parameter).
+ * Keyed parameters require a matching field/group presence proof: one AND arm, every OR arm, or an
+ * all-filled quantifier. The owned SPEC11-01 grid separates this from mere reference membership.
+ * The parallel-iteration presence visitor remains outside this measured subset.
  *
  * **`RootGroup` is chain-relative**, naming the root of the rule's OWN ancestor chain rather than the model's
  * first declared root — measured from a rule under a second root, where the first root's name is refused.
@@ -53,8 +50,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
  * The message grammar reports faults in the order it reaches them: a parent-walk check can precede
  * a child syntax fault, and the completed argument's lookup and availability precede a trailing token.
  * A later lexer fault cannot override an earlier parser or semantic refusal (KF214). Keyed group syntax
- * is measured by MessageParameterDecoderAgreementTest; membership/iteration on a keyed condition and
- * the broader dotted-name grammar remain outside this evidence. The dotted-name reader
+ * is measured by MessageParameterDecoderAgreementTest; the keyed-presence extension is locked by
+ * SelectedMessageReferenceDiffTest. The broader dotted-name grammar remains outside this evidence. The dotted-name reader
  * declines unquoted reserved suffixes; MessageGroupDottedBoundaryAgreementTest locks that boundary.
  *
  * **Rules only**, every measured row being a rule's message. The computation carrier was reported to us for
@@ -82,17 +79,30 @@ internal fun TrackedFactBase.completedGroupDefect(
     val key = (parameter as? MessageParameter.Group)?.key
     if (key != null) {
         if (key.entity?.ruleGroup == true) return MessageCompletion.Refused("MVK_INTERNAL_ERROR")
-        // KF501's keyed-group witnesses carry no keyed condition reads. A keyed condition needs the
-        // separate iteration visitor, which this bounded group gate deliberately leaves unjudged.
-        val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return MessageCompletion.Declined
-        val keyedReads = element.body?.let { conditionTexts(element.kind, it) }.orEmpty()
-            .any { (_, text) -> semanticIndexUsesIn(text, conditionLanguage, keyword).isNotEmpty() }
-        return if (keyedReads) MessageCompletion.Declined else MessageCompletion.Refused(GROUP)
+        return keyedMessageGroupDefect(named, key, element)
     }
-    val available = ruleGroup == named || ruleGroup.startsWith("$named/") || entitiesReadBy(element).reachesGroup(named)
+    val references = ordinaryMessageGroupReferences(element) ?: return MessageCompletion.Declined
+    val paths = references.mapNotNull { written ->
+        (resolveEntity(ruleGroup, written.replace("*", ""), element.origin) as? Reference.Resolved)?.path
+    }
+
+    val available = ruleGroup == named || ruleGroup.startsWith("$named/") || paths.flatMap { messageReferenceFootprint(it) }.any { it == named || it.startsWith("$named/") }
     if (!available) return MessageCompletion.Refused(GROUP)
-    return if (conditionRidesUnstarred(named, ruleGroup, element)) MessageCompletion.Accepted
+    return if (conditionRidesUnstarred(named, ruleGroup, element, references)) MessageCompletion.Accepted
         else MessageCompletion.Refused(STARRED_ITERATION)
+}
+
+/** Index/group metadata follows authored unkeyed paths, not fields expanded from a group (SPEC11-01). */
+private fun TrackedFactBase.ordinaryMessageGroupReferences(element: TrackedDeclaration): List<String>? {
+    if (element.kind != "Rule") return messageConditionReferences(element)
+    val body = element.body ?: return emptyList()
+    val group = element.path.substringBeforeLast('/')
+    return conditionTexts(element.kind, body).flatMap { (member, text) ->
+        val syntax = ConditionRecognizer(text, conditionLanguage).recognize(syntaxEntryOf(member))
+        if (syntax.failure != null) return null
+        syntax.entities.filter { !it.indexed }.map { normalizedPath(it.path) } +
+            if (namesRuleContext(text, conditionLanguage)) listOf(group) else emptyList()
+    }
 }
 
 internal fun turningPointIsWrong(path: String, ruleGroup: String): Boolean {
@@ -119,14 +129,21 @@ private fun TrackedFactBase.conditionRidesUnstarred(
     group: String,
     ruleGroup: String,
     element: TrackedDeclaration,
+    references: List<String>,
 ): Boolean {
     if (element.body == null) return true
     fun resolves(written: String): String? =
         (resolveEntity(ruleGroup, written, element.origin) as? Reference.Resolved)?.path
-    return messageConditionReferences(element).any { written ->
+    return references.any { written ->
         val resolved = resolves(written.replace("*", "")) ?: return@any false
-        if (messageReferenceFootprint(resolved).none { it == group || it.startsWith("$group/") }) {
-            return@any false
+        if (resolved != group && !resolved.startsWith("$group/")) {
+            if (!group.startsWith("$resolved/") || declarationAt(resolved)?.declaredKind != DeclaredKind.GROUP)
+                return@any false
+            var descendant = group
+            while (descendant != resolved) {
+                if (declarationAt(descendant)?.isRepeatable != false) return@any false
+                descendant = descendant.substringBeforeLast('/')
+            }
         }
         if ('*' !in written) return@any true
         val segments = written.split('/')

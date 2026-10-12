@@ -161,7 +161,7 @@ class MessageParameterDecoderAgreementTest {
     }
 
     @Test
-    fun aDeclinedKeyedMembershipStopsBeforeLaterTokens() {
+    fun keyedMembershipAndPresenceStopBeforeLaterTokens() {
         val base = DocumentModelDraft.named("library-keyed-group-boundary").locale("en_US")
             .rootGroup("Library") { library -> library.stringField("Branch") { }
                 .group("Reviews") { reviews -> reviews.repeatable(10).indexField("Code")
@@ -176,12 +176,10 @@ class MessageParameterDecoderAgreementTest {
                 Row("$key$tail", model, codes)
             }
         }
-        MessageParameterProbes.replay("keyed-decline", rows.map { Triple(it.id, it.model, it.classes) }, rows.associate {
-            it.id to "Group membership on a condition with indexed reads requires the unimplemented iteration visitor."
-        })
+        MessageParameterProbes.replay("keyed-decline", rows.map { Triple(it.id, it.model, it.classes) })
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel keyed completion boundary")
-        assertEquals(rows.map { it.id to emptyList<String>() }, rows.map { it.id to MessageParameterProbes.portable(it.model) },
-            "a declined membership cannot license a later token refusal")
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) },
+            "membership and presence precede later token refusals")
     }
 
     @Test

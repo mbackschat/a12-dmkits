@@ -33,6 +33,27 @@ class SpecSyncRuntimeTest {
     }
 
     @Test
+    fun indexedMessagesReplayTypedKernelModelsOnThisHost() {
+        val expected = mapOf("indexed-group:key-field-presence" to "Bin 2", "indexed-ancestry:lower-star" to "b")
+        val document = """{"Store":{"Depots":[{"Note":"n","Bins":[{"BinCode":"a"},{"BinCode":"b","Stock":1,"Slots":[{},{},{"Qty":2}]}]}]}}"""
+        val observed = mutableMapOf<String, String>()
+        for (value in Json.parseToJsonElement(SpecSyncFixtureData.messages).jsonObject.getValue("groups").jsonArray) {
+            val group = value.jsonObject
+            for (entry in group.getValue("rows").jsonArray) {
+                val row = entry.jsonObject
+                val id = row.getValue("id").jsonPrimitive.content
+                if (id !in expected) continue
+                val prepared = PreparedModel.loadExpandedJson(group.getValue("prefix").jsonPrimitive.content +
+                    row.getValue("modelMiddle").jsonPrimitive.content + group.getValue("suffix").jsonPrimitive.content)
+                val report = prepared.createInterpreter().validateFull(prepared.documents.readDocument(document))
+                assertEquals(emptyList<Any>(), report.unsupported)
+                observed[id] = report.findings.single { it.code == "MESSAGE_PROBE" }.text
+            }
+        }
+        assertEquals(expected, observed)
+    }
+
+    @Test
     fun containingGroupDependenciesReplayOnThisHost() {
         val fixture = Json.parseToJsonElement(SpecSyncFixtureData.groups).jsonObject
         val identities = mutableSetOf<String>()

@@ -16,10 +16,11 @@ internal data class MessageTerminals(
     val value: String,
     val ruleGroup: String,
     val rootGroup: String,
+    val semanticFor: String,
 ) {
     internal companion object {
-        val EN = MessageTerminals("BaseYear", "value", "RuleGroup", "RootGroup")
-        val DE = MessageTerminals("Referenzjahr", "Wert", "RegelKontext", "LfdNr")
+        val EN = MessageTerminals("BaseYear", "value", "RuleGroup", "RootGroup", "For")
+        val DE = MessageTerminals("Referenzjahr", "Wert", "RegelKontext", "LfdNr", "Fuer")
 
         fun of(language: ConditionLanguage): MessageTerminals =
             if (language == ConditionLanguage.DE) DE else EN
@@ -42,6 +43,9 @@ internal data class MessageTerminals(
  *  - `$#<group-path>$`, `$#RuleGroup$`, `$#RootGroup$` → the firing row's 1-based repetition index at the named
  *    group's level, via [groupIndexOf]; the two shorthands are spelled per [terminals]. An
  *    absolute or declaring-group-relative path is resolved by the callback ([KF245]).
+ *  - `$#<group> For <key>$` → the selected row number through the group callback; `For` follows [terminals].
+ *  - `$index(<shortName>).value$` / `$index(<shortName>)->Category$` → the error ancestry's index token/category
+ *    through the model-aware overload (SPEC11-01); this is separate from ordinary field label presentation.
  *  - `$<relpath>$` → the already-resolved display name via [labelOf].
  *
  * A name colliding with a terminal is written in the grammar's single-quote escape (`$'For'$`) and the quotes
@@ -87,12 +91,15 @@ internal fun renderMessage(
     enumCategoryOf: (String, String, String) -> String?,
     baseYearOf: (Int) -> String?,
     groupIndexOf: (String) -> String?,
+    indexTextOf: (String, String?) -> String? = { _, _ -> null },
 ): String = tokenPattern(terminals).replace(template) { token ->
     val name = unquoted(token.groupValues[NAME])
-    val group = unquoted(token.groupValues[GROUP])
+    val group = token.groupValues[GROUP]
+    val index = unquoted(token.groupValues[INDEX])
     when {
         token.value == "\$\$" -> "\$"
-        group.isNotEmpty() -> groupIndexOf(group) ?: token.value
+        group.isNotEmpty() -> groupIndexOf(if (group.any { it.isWhitespace() }) group else unquoted(group)) ?: token.value
+        index.isNotEmpty() -> indexTextOf(index, unquoted(token.groupValues[INDEX_CATEGORY]).takeIf { it.isNotEmpty() }) ?: token.value
         name.isEmpty() -> baseYearOf(offsetOf(token.groupValues[OFFSET])) ?: token.value
         else -> {
             val path = "$base/$name"
@@ -113,6 +120,8 @@ private const val GROUP = 2
 private const val NAME = 3
 private const val VALUE_SUFFIX = 4
 private const val CATEGORY = 5
+private const val INDEX = 6
+private const val INDEX_CATEGORY = 7
 
 /**
  * The base-year alternative comes FIRST so its terminal is never read as a field name — which is exactly the
@@ -122,8 +131,9 @@ private const val CATEGORY = 5
 private fun tokenPattern(terminals: MessageTerminals) = Regex(
     "\\\$\\\$" +
         "|\\\$" + terminals.baseYear + "([+-]\\d+)?\\\$" +
-        "|\\\$#([\\w/.']+)\\\$" +
-        "|\\\$([\\w/']+)(?:\\.(" + terminals.value + ")|->(\\w+))?\\\$",
+        "|\\\$#([\\w/.']+(?:\\s+" + terminals.semanticFor + "\\s+(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?)\\\$" +
+        "|\\\$([\\w/']+)(?:\\.(" + terminals.value + ")|->(\\w+))?\\\$" +
+        "|\\\$index\\(([\\w']+)\\)(?:\\." + terminals.value + "|->([\\w']+))\\\$",
 )
 
 /**

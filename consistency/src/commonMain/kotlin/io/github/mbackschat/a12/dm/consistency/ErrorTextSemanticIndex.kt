@@ -6,6 +6,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageKey
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 
 /** A key binds the condition's field/key pair and its index field, not every sibling (KF412). */
 internal fun TrackedFactBase.messageKeyDefect(path: String, key: MessageKey, element: TrackedDeclaration): MessageCompletion {
@@ -23,8 +25,43 @@ internal fun TrackedFactBase.messageKeyDefect(path: String, key: MessageKey, ele
         else MessageCompletion.Refused("MVK_INDEX_FOR_ERROR_TEXT_INVALID")
 }
 
+/** Matching a keyed group is membership; firing its row token separately requires positive presence. */
+internal fun TrackedFactBase.keyedMessageGroupDefect(
+    named: String,
+    key: MessageKey,
+    element: TrackedDeclaration,
+): MessageCompletion {
+    if (element.kind != "Rule") return MessageCompletion.Declined
+    val text = element.body?.string("errorCondition") ?: return MessageCompletion.Declined
+    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
+        ?: return MessageCompletion.Declined
+    val uses = semanticIndexUsesIn(text, conditionLanguage, keyword)
+    if (uses.isEmpty()) return MessageCompletion.Refused("INVALID_GROUP")
+    val group = element.path.substringBeforeLast('/')
+    val spec = key.literal?.let { "\"$it\"" } ?: key.entity?.let {
+        (resolveMessageEntity(group, it.written.replace("'", ""), element.origin) as? Reference.Resolved)?.path
+    } ?: return MessageCompletion.Declined
+    fun matches(pair: BoundPair) = pair.keySpec == spec &&
+        (pair.valuePath == named || pair.valuePath.startsWith("$named/"))
+    val pairs = uses.map { boundPair(it, group, element) ?: return MessageCompletion.Declined }
+    if (pairs.none(::matches)) return MessageCompletion.Refused("INVALID_GROUP")
+    val positive = setOf("FieldFilled", "GroupFilled", "AllFieldsFilled", "AllGroupsFilled")
+        .mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
+    val syntax = ConditionRecognizer(text, conditionLanguage) { call ->
+        call.operator in positive && call.operands.any { tokens ->
+            val operand = call.source.substring(tokens.first().start, tokens.last().end)
+            semanticIndexUsesIn(operand, conditionLanguage, keyword).any { use ->
+                boundPair(use, group, element)?.let(::matches) == true
+            }
+        }
+    }.recognize(SyntaxEntry.CONDITION)
+    if (syntax.failure != null) return MessageCompletion.Declined
+    return if (syntax.conditionProof == true) MessageCompletion.Accepted
+        else MessageCompletion.Refused("INVALID_USE_OF_SEMANTIC_INDEX")
+}
+
 /** An indexed read reduced to what `tryGetFor` keys on: the resolved value path and the key's SPEC. */
-private data class BoundPair(val valuePath: String, val keySpec: String)
+internal data class BoundPair(val valuePath: String, val keySpec: String)
 
 /**
  * The pair this use asks for, or null where either half is a shape this family may not reduce.
@@ -32,7 +69,7 @@ private data class BoundPair(val valuePath: String, val keySpec: String)
  * A NESTED index, a category-projected key and a key this reader cannot resolve all return null, because
  * each carries a structural class of its own that answers before this membership question is asked.
  */
-private fun TrackedFactBase.boundPair(
+internal fun TrackedFactBase.boundPair(
     use: SemanticIndexUse,
     declaringGroup: String,
     element: TrackedDeclaration,

@@ -2210,7 +2210,7 @@
           "classes": [
             "INVALID_USE_OF_SEMANTIC_INDEX"
           ],
-          "decline": "Group membership on a condition with indexed reads requires the unimplemented iteration visitor.",
+          "decline": null,
           "modelMiddle": "chosen\\\"",
           "modelSha256": "2adf0d467eee0f996056eb95a01beaeed18d6cb9b639c2e58fad45d42574f9da"
         },
@@ -2221,7 +2221,7 @@
           "classes": [
             "INVALID_USE_OF_SEMANTIC_INDEX"
           ],
-          "decline": "Group membership on a condition with indexed reads requires the unimplemented iteration visitor.",
+          "decline": null,
           "modelMiddle": "chosen\\\" x",
           "modelSha256": "7792b09590f35373fc15d841d60bee90bce1d1e93a3d539a42b77f1269c4c212"
         },
@@ -2232,7 +2232,7 @@
           "classes": [
             "INVALID_GROUP"
           ],
-          "decline": "Group membership on a condition with indexed reads requires the unimplemented iteration visitor.",
+          "decline": null,
           "modelMiddle": "unmatched\\\"",
           "modelSha256": "c08a50c4c834ab8a43efc5a9ed57597abaa380e8ae6923600ac59ffd6c5796d5"
         },
@@ -2243,7 +2243,7 @@
           "classes": [
             "INVALID_GROUP"
           ],
-          "decline": "Group membership on a condition with indexed reads requires the unimplemented iteration visitor.",
+          "decline": null,
           "modelMiddle": "unmatched\\\" x",
           "modelSha256": "f1591d9ac200fb175bae52e7009a4af3a408afaa4321c2a12279732af543a2d5"
         }
@@ -2420,6 +2420,222 @@
           "decline": null,
           "modelMiddle": "nam",
           "modelSha256": "4178f9d87b835acf401e6a1f45b39cad9861a80641825e4287984bd55a464477"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"store-selected-references\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"store-selected-references\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Store\",\n        \"name\" : \"Store\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Store/Ref\",\n            \"name\" : \"Ref\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Store/Depots\",\n            \"name\" : \"Depots\",\n            \"Group\" : {\n              \"repeatability\" : 2,\n              \"elements\" : [ {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefUnreachedStar\",\n                \"name\" : \"RefUnreachedStar\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefUnreachedStar\",\n                  \"errorCondition\" : \"FieldFilled(Note) Or Sum(Bins/Slots*/Qty For Wanted) > 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefUnreachedGroup\",\n                \"name\" : \"RefUnreachedGroup\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefUnreachedGroup\",\n                  \"errorCondition\" : \"FieldFilled(Note) Or Sum(Bins/Shelf For Wanted) > 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefUnreached\",\n                \"name\" : \"RefUnreached\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefUnreached\",\n                  \"errorCondition\" : \"FieldFilled(Note) Or [Bins/Stock For Wanted] > 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefGroup\",\n                \"name\" : \"RefGroup\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefGroup\",\n                  \"errorCondition\" : \"FieldFilled(Note) And Sum(Bins/Shelf For Wanted) >= 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefLiteral\",\n                \"name\" : \"RefLiteral\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefLiteral\",\n                  \"errorCondition\" : \"FieldFilled(Note) And [Bins/Stock For \\\"b\\\"] >= 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefDynamic\",\n                \"name\" : \"RefDynamic\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefDynamic\",\n                  \"errorCondition\" : \"FieldFilled(Note) And [Bins/Stock For Wanted] >= 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Store/Depots/Wanted\",\n                \"name\" : \"Wanted\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Store/Depots/Note\",\n                \"name\" : \"Note\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Store/Depots/Bins\",\n                \"name\" : \"Bins\",\n                \"Group\" : {\n                  \"repeatability\" : 4,\n                  \"indexFieldName\" : \"BinCode\",\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Store/Depots/Bins/BinCode\",\n                    \"name\" : \"BinCode\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Store/Depots/Bins/Stock\",\n                    \"name\" : \"Stock\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"NumberType\",\n                        \"NumberType\" : {\n                          \"maxFractionalDigits\" : 0\n                        }\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Group\",\n                    \"id\" : \"/Store/Depots/Bins/Shelf\",\n                    \"name\" : \"Shelf\",\n                    \"Group\" : {\n                      \"repeatability\" : 1,\n                      \"elements\" : [ {\n                        \"type\" : \"Field\",\n                        \"id\" : \"/Store/Depots/Bins/Shelf/Aisle\",\n                        \"name\" : \"Aisle\",\n                        \"Field\" : {\n                          \"fieldType\" : {\n                            \"type\" : \"NumberType\",\n                            \"NumberType\" : {\n                              \"maxFractionalDigits\" : 0\n                            }\n                          }\n                        }\n                      }, {\n                        \"type\" : \"Field\",\n                        \"id\" : \"/Store/Depots/Bins/Shelf/Level\",\n                        \"name\" : \"Level\",\n                        \"Field\" : {\n                          \"fieldType\" : {\n                            \"type\" : \"NumberType\",\n                            \"NumberType\" : {\n                              \"maxFractionalDigits\" : 0\n                            }\n                          }\n                        }\n                      } ]\n                    }\n                  }, {\n                    \"type\" : \"Group\",\n                    \"id\" : \"/Store/Depots/Bins/Slots\",\n                    \"name\" : \"Slots\",\n                    \"Group\" : {\n                      \"repeatability\" : 3,\n                      \"elements\" : [ {\n                        \"type\" : \"Field\",\n                        \"id\" : \"/Store/Depots/Bins/Slots/Qty\",\n                        \"name\" : \"Qty\",\n                        \"Field\" : {\n                          \"fieldType\" : {\n                            \"type\" : \"NumberType\",\n                            \"NumberType\" : {\n                              \"maxFractionalDigits\" : 0\n                            }\n                          }\n                        }\n                      } ]\n                    }\n                  } ]\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Store/Depots/Signals\",\n                \"name\" : \"Signals\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Store/Depots/Signals/Ready\",\n                    \"name\" : \"Ready\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/MessageProbe\",\n                \"name\" : \"MessageProbe\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../",
+      "suffix": "$\"\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "indexed-group:ancestry-parent",
+          "grid": "indexed-group",
+          "ordinal": 0,
+          "classes": [
+            "ITER_PARAM_WITH_STARREFERENCE"
+          ],
+          "decline": null,
+          "modelMiddle": "Bins/Stock\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"GroupFilled(/Store/Depots)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins",
+          "modelSha256": "5abd67d17c55570b7f3cc3121e488b7a68759532cea6ebc9ec0ef813aa6fabff"
+        },
+        {
+          "id": "indexed-group:ancestry-field",
+          "grid": "indexed-group",
+          "ordinal": 1,
+          "classes": [],
+          "decline": null,
+          "modelMiddle": "Bins/Stock\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Bins/Stock)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins",
+          "modelSha256": "349cde9507465274652b027ae253e1231d4d7c6b288074cb760b280266c4b37c"
+        },
+        {
+          "id": "indexed-group:ancestry-star",
+          "grid": "indexed-group",
+          "ordinal": 2,
+          "classes": [
+            "ITER_PARAM_WITH_STARREFERENCE"
+          ],
+          "decline": null,
+          "modelMiddle": "Bins/Stock\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"AtLeastOneFieldFilled(Bins*/Stock)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins",
+          "modelSha256": "98bc53cba1096e3139155a761647faefdd4b69e4e66355d301b011cd94c87b2a"
+        },
+        {
+          "id": "indexed-group:ancestry-key",
+          "grid": "indexed-group",
+          "ordinal": 3,
+          "classes": [
+            "INVALID_GROUP"
+          ],
+          "decline": null,
+          "modelMiddle": "Bins/Stock\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Bins/Stock For \\\"b\\\")\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins",
+          "modelSha256": "507b365b101d33dd8b70c9e8e2a952a003b3baba2ab33c7d812e8bd7e0c60a25"
+        },
+        {
+          "id": "indexed-group:key-field-presence",
+          "grid": "indexed-group",
+          "ordinal": 4,
+          "classes": [],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And FieldFilled(Bins/Stock For \\\"b\\\")\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "45e82f12882107e361ebc42e8438bb9fa704785943c60f64986fc86fd26afde4"
+        },
+        {
+          "id": "indexed-group:key-group-presence",
+          "grid": "indexed-group",
+          "ordinal": 5,
+          "classes": [],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And GroupFilled(Bins For \\\"b\\\")\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "8097c966a1abb3a912b69c8ac3eec5e110acd9bdec8b9603edababae70dec436"
+        },
+        {
+          "id": "indexed-group:key-comparison",
+          "grid": "indexed-group",
+          "ordinal": 6,
+          "classes": [
+            "INVALID_USE_OF_SEMANTIC_INDEX"
+          ],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And [Bins/Stock For \\\"b\\\"] > 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "eefd875cac15dc446336c7051fff29a5796cfc2c6349bff41d9e18941826f759"
+        },
+        {
+          "id": "indexed-group:key-negative",
+          "grid": "indexed-group",
+          "ordinal": 7,
+          "classes": [
+            "INVALID_USE_OF_SEMANTIC_INDEX"
+          ],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And FieldNotFilled(Bins/Stock For \\\"b\\\")\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "cb0b2665a3aa47405daf9d01e2d288d90c85d49503c9062090d77341e3cbc26e"
+        },
+        {
+          "id": "indexed-group:key-and",
+          "grid": "indexed-group",
+          "ordinal": 8,
+          "classes": [],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And FieldFilled(Bins/Stock For \\\"b\\\") And [Bins/Stock For \\\"b\\\"] > 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "f3a615710487403110cec1d4362fdb6cc0239fc1bd57187e5f056769b6c9039e"
+        },
+        {
+          "id": "indexed-group:key-or-unrelated",
+          "grid": "indexed-group",
+          "ordinal": 9,
+          "classes": [
+            "INVALID_USE_OF_SEMANTIC_INDEX"
+          ],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And (FieldFilled(Bins/Stock For \\\"b\\\") Or FieldFilled(Note))\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "a18f695e74cbd89d4b551bb938f9357b369e9621c94c4f77ebe2ded6b18c5e9c"
+        },
+        {
+          "id": "indexed-group:key-or-covered",
+          "grid": "indexed-group",
+          "ordinal": 10,
+          "classes": [],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And (FieldFilled(Bins/Stock For \\\"b\\\") Or GroupFilled(Bins For \\\"b\\\"))\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "284ccc1c9021387614fe28011896b57def0f160fb81e2622c82f453c0e5f788b"
+        },
+        {
+          "id": "indexed-group:key-all-fields",
+          "grid": "indexed-group",
+          "ordinal": 11,
+          "classes": [],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And AllFieldsFilled(Bins/Stock For \\\"b\\\", Note)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "30f19a55442a3cb16ccef06886f971086dfc97333d4662a26a72580843e0124c"
+        },
+        {
+          "id": "indexed-group:key-all-groups",
+          "grid": "indexed-group",
+          "ordinal": 12,
+          "classes": [],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And AllGroupsFilled(Bins For \\\"b\\\", Signals)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "abf0bec8f359a27e10f5ebb28f38304f08f8bc8efeefc61e20e0672d8db837bc"
+        },
+        {
+          "id": "indexed-group:key-any-fields",
+          "grid": "indexed-group",
+          "ordinal": 13,
+          "classes": [
+            "INVALID_USE_OF_SEMANTIC_INDEX"
+          ],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And AtLeastOneFieldFilled(Bins/Stock For \\\"b\\\", Note)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "a1d3cc3eceb63a194842d7323b5bbe49116457c9820c3b1fd16e0ce97b155760"
+        },
+        {
+          "id": "indexed-group:key-many-fields",
+          "grid": "indexed-group",
+          "ordinal": 14,
+          "classes": [
+            "INVALID_USE_OF_SEMANTIC_INDEX"
+          ],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And MoreThanOneFieldFilled(Bins/Stock For \\\"b\\\", Note)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "3edc47e8c16cc029b9f2ff7ac4c5dfc95ae9e22824dcc2534b42107992d6e807"
+        },
+        {
+          "id": "indexed-group:key-any-groups",
+          "grid": "indexed-group",
+          "ordinal": 15,
+          "classes": [
+            "INVALID_USE_OF_SEMANTIC_INDEX"
+          ],
+          "decline": null,
+          "modelMiddle": "Note\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Note) And AtLeastOneGroupFilled(Bins For \\\"b\\\", Signals)\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"Bin $#/Store/Depots/Bins For \\\"b\\\"",
+          "modelSha256": "3caf7ffc5c2af4f9dd89ea824f6c1c1be19ba6f3df1725f3ba11a0ee43e31840"
+        }
+      ]
+    },
+    {
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"store-selected-references\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"store-selected-references\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Store\",\n        \"name\" : \"Store\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Store/Ref\",\n            \"name\" : \"Ref\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"StringType\"\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Store/Depots\",\n            \"name\" : \"Depots\",\n            \"Group\" : {\n              \"repeatability\" : 2,\n              \"elements\" : [ {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefUnreachedStar\",\n                \"name\" : \"RefUnreachedStar\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefUnreachedStar\",\n                  \"errorCondition\" : \"FieldFilled(Note) Or Sum(Bins/Slots*/Qty For Wanted) > 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefUnreachedGroup\",\n                \"name\" : \"RefUnreachedGroup\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefUnreachedGroup\",\n                  \"errorCondition\" : \"FieldFilled(Note) Or Sum(Bins/Shelf For Wanted) > 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefUnreached\",\n                \"name\" : \"RefUnreached\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefUnreached\",\n                  \"errorCondition\" : \"FieldFilled(Note) Or [Bins/Stock For Wanted] > 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefGroup\",\n                \"name\" : \"RefGroup\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefGroup\",\n                  \"errorCondition\" : \"FieldFilled(Note) And Sum(Bins/Shelf For Wanted) >= 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefLiteral\",\n                \"name\" : \"RefLiteral\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefLiteral\",\n                  \"errorCondition\" : \"FieldFilled(Note) And [Bins/Stock For \\\"b\\\"] >= 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/RefDynamic\",\n                \"name\" : \"RefDynamic\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Note\",\n                  \"errorCode\" : \"RefDynamic\",\n                  \"errorCondition\" : \"FieldFilled(Note) And [Bins/Stock For Wanted] >= 0\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"x\"\n                  }, {\n                    \"locale\" : \"de_DE\",\n                    \"text\" : \"x\"\n                  } ]\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Store/Depots/Wanted\",\n                \"name\" : \"Wanted\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Field\",\n                \"id\" : \"/Store/Depots/Note\",\n                \"name\" : \"Note\",\n                \"Field\" : {\n                  \"fieldType\" : {\n                    \"type\" : \"StringType\"\n                  }\n                }\n              }, {\n                \"type\" : \"Group\",\n                \"id\" : \"/Store/Depots/Bins\",\n                \"name\" : \"Bins\",\n                \"Group\" : {\n                  \"repeatability\" : 4,\n                  \"indexFieldName\" : \"BinCode\",\n                  \"elements\" : [ {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Store/Depots/Bins/BinCode\",\n                    \"name\" : \"BinCode\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"StringType\"\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Store/Depots/Bins/Stock\",\n                    \"name\" : \"Stock\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"NumberType\",\n                        \"NumberType\" : {\n                          \"maxFractionalDigits\" : 0\n                        }\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Group\",\n                    \"id\" : \"/Store/Depots/Bins/Shelf\",\n                    \"name\" : \"Shelf\",\n                    \"Group\" : {\n                      \"repeatability\" : 1,\n                      \"elements\" : [ {\n                        \"type\" : \"Field\",\n                        \"id\" : \"/Store/Depots/Bins/Shelf/Aisle\",\n                        \"name\" : \"Aisle\",\n                        \"Field\" : {\n                          \"fieldType\" : {\n                            \"type\" : \"NumberType\",\n                            \"NumberType\" : {\n                              \"maxFractionalDigits\" : 0\n                            }\n                          }\n                        }\n                      }, {\n                        \"type\" : \"Field\",\n                        \"id\" : \"/Store/Depots/Bins/Shelf/Level\",\n                        \"name\" : \"Level\",\n                        \"Field\" : {\n                          \"fieldType\" : {\n                            \"type\" : \"NumberType\",\n                            \"NumberType\" : {\n                              \"maxFractionalDigits\" : 0\n                            }\n                          }\n                        }\n                      } ]\n                    }\n                  }, {\n                    \"type\" : \"Group\",\n                    \"id\" : \"/Store/Depots/Bins/Slots\",\n                    \"name\" : \"Slots\",\n                    \"Group\" : {\n                      \"repeatability\" : 3,\n                      \"elements\" : [ {\n                        \"type\" : \"Field\",\n                        \"id\" : \"/Store/Depots/Bins/Slots/Qty\",\n                        \"name\" : \"Qty\",\n                        \"Field\" : {\n                          \"fieldType\" : {\n                            \"type\" : \"NumberType\",\n                            \"NumberType\" : {\n                              \"maxFractionalDigits\" : 0\n                            }\n                          }\n                        }\n                      } ]\n                    }\n                  } ]\n                }\n              }, {\n                \"type\" : \"Rule\",\n                \"id\" : \"/Store/Depots/MessageProbe\",\n                \"name\" : \"MessageProbe\",\n                \"Rule\" : {\n                  \"errorEntityRelPath\" : \"../Bins/Stock\",\n                  \"errorCode\" : \"MESSAGE_PROBE\",\n                  \"errorCondition\" : \"FieldFilled(Bins/Stock) And ",
+      "suffix": ")\",\n                  \"severity\" : \"ERROR\",\n                  \"errorMessage\" : [ {\n                    \"locale\" : \"en_US\",\n                    \"text\" : \"$index('BinCode').value$\"\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
+      "rows": [
+        {
+          "id": "indexed-ancestry:parent",
+          "grid": "indexed-ancestry",
+          "ordinal": 0,
+          "classes": [
+            "INVALID_INDEX_FIELD_REP_ITER"
+          ],
+          "decline": null,
+          "modelMiddle": "GroupFilled(/Store/Depots",
+          "modelSha256": "b1c92e7906a13092f16edf8b48e9d57c0f8b9840b1653d95a194d3d8a49d6b8d"
+        },
+        {
+          "id": "indexed-ancestry:owner-star",
+          "grid": "indexed-ancestry",
+          "ordinal": 1,
+          "classes": [
+            "INVALID_INDEX_FIELD_REP_ITER"
+          ],
+          "decline": null,
+          "modelMiddle": "AtLeastOneFieldFilled(Bins*/Stock",
+          "modelSha256": "f7eee8544d988185b10185cdeeb959d7eb988c425f4f36a47b3c40fde7a521c4"
+        },
+        {
+          "id": "indexed-ancestry:owner-key",
+          "grid": "indexed-ancestry",
+          "ordinal": 2,
+          "classes": [
+            "INVALID_INDEX_FIELD_REP_ITER"
+          ],
+          "decline": null,
+          "modelMiddle": "FieldFilled(Bins/Stock For \\\"b\\\"",
+          "modelSha256": "383e88d9724977391988fe86a3ba11d17b55aefe31ea919d099a8ce35e7c9bf9"
+        },
+        {
+          "id": "indexed-ancestry:lower-star",
+          "grid": "indexed-ancestry",
+          "ordinal": 3,
+          "classes": [],
+          "decline": null,
+          "modelMiddle": "AtLeastOneFieldFilled(Bins/Slots*/Qty",
+          "modelSha256": "e0f7c63ede1cb44dadb359b86cb78de85cae6e393b70b37270a89933f31cbfbd"
         }
       ]
     }

@@ -2387,6 +2387,27 @@ public final class Dsl {
         return "$#" + group.path() + "$";
     }
 
+    /**
+     * A keyed group's row-number message token, using the same typed key and English rendering as the
+     * condition operand. Kernel consistency checks the matching reference and positive presence guard.
+     */
+    public static String repetitionIndex(IndexedGroupValue group) {
+        return "$#" + new DslRenderer().render(group) + "$";
+    }
+
+    /**
+     * The firing context's index value, addressed by the field's short name (KF280).
+     * Quoted message names keep a terminal-named field in the name grammar.
+     */
+    public static String indexValue(FieldRef indexField) {
+        return "$index('" + indexField.path().segments().getLast() + "').value$";
+    }
+
+    /** The firing context's enum index category, with admission left to kernel consistency (KF280). */
+    public static String indexCategory(CategoryRef category) {
+        return "$index('" + category.field().path().segments().getLast() + "')->'" + category.name() + "'$";
+    }
+
     /** Sugar for the common {@code en_US} — only valid if the model declares it. */
     public static LocalizedText en(String text) {
         return new LocalizedText("en_US", text);

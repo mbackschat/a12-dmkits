@@ -354,6 +354,8 @@ static List<Rule> nonNegativeMoneyRules(BoundModel m) {
 
 This is the bulk-authoring payoff: a *rule template* is a function `BoundModel → List<Rule>`; an LLM (or CI) applies it to any model.
 
+For indexed messages, `Dsl.repetitionIndex(depot.flattenGroup("Bins").forIndex("b"))` renders the selected group’s row token. Pair it with a matching positive presence condition. `Dsl.indexValue(depot.field("Bins/BinCode"))` and `Dsl.indexCategory(depot.enumOf("Bins/BinCode").category("Band"))` render the index terminal’s short-name value/category forms. These helpers use English condition-language tokens independently of the message locale; kernel consistency checks ancestry, index membership and presence. Authoring locks: `MessageInterpolationTest`; admission and rendered-text locks: `SelectedMessageReferenceDiffTest` and `RuleMessageParameterRenderingDiffTest` ([KF546](KERNEL-FINDINGS.md#kf546)).
+
 ### 3.4a Authoring-time reuse over a multi-field structure — `sameAddress`
 
 When you author **many rules in Java that compare the same multi-field structure** (e.g. a seven-field address), a fragment removes the boilerplate — ordinary F5 combinator reuse, two levels deep. (Note: this is a convenience in the *authoring code*, not a transformation of the stored rule — the kernel DSL is flat, so the rendered `errorCondition` is the same string either way; what improves is the Java you write, not the persisted text.)

@@ -52,6 +52,21 @@ internal data class DifferentialClock(val kernel: Date, val interpreter: EvalClo
 
 internal object DocumentDifferential {
 
+    /** Exact localized text and address, without collapsing repeated findings by code. */
+    fun assertMessageTexts(model: String, json: String, code: String, expected: List<Pair<String, String>>) {
+        val dynamic = RuntimeLaws.kernelEngine(model).let { it.validationMessages(it.instance(json), null, Locale.US) }
+        val generated = RuntimeLaws.kernelJavaEngine(model).let { it.validationMessages(it.instance(json), null, Locale.US) }
+        fun texts(messages: List<IMessage>) = messages.filter { it.errorCode == code }
+            .map { pointer(it.errorFieldPointer) to it.errorText }.sortedBy { it.first }
+        assertEquals(expected, texts(dynamic), "dynamic kernel text for $json")
+        assertEquals(expected, texts(generated), "static kernel text for $json")
+        val prepared = PreparedModel.loadExpandedJson(model)
+        val report = prepared.createInterpreter().validateFull(prepared.documents.readDocument(json))
+        assertEquals(emptyList<Any>(), report.unsupported)
+        assertEquals(expected, report.findings.filter { it.code == code }
+            .map { pointer(it.errorPath) to it.text }.sortedBy { it.first }, "interpreter text for $json")
+    }
+
     fun kernelMessages(model: String, json: String, dynamic: Boolean,
                        relevant: Set<RelevantEntity>? = null): List<MessageSignature> {
         val selection = relevant?.map { RuntimeLaws.Relevant.of(it.path, *it.indices.toIntArray()) }?.toSet()

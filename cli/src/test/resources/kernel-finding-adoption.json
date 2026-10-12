@@ -3381,7 +3381,7 @@
       }
     },
     "kf275": {
-      "sha256": "f9fb299ed58f6e8b7953cdbe7d6505c91867f31d57cd7cbca033b719b0f4f39d",
+      "sha256": "417fe585f6599a7446e6411206608a6b1a517570d0b4f43ce5e3948be6e636cb",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -3422,7 +3422,7 @@
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "The shared parameter reader supplies ordered semantic callbacks; complete kernel class lists are asserted by the typed adapter grids and their exact-byte JVM/Node replay. Dotted-tail grammar, keyed group-condition membership and index-terminal cross-field/category judgments retain their measured exclusions.",
+          "basis": "The shared parameter reader supplies ordered semantic callbacks and retains measured exclusions for dotted tails and index-terminal cross-field/category judgments. KF546 separately extends keyed group membership and positive-presence proof.",
           "evidence": {
             "index suffix language": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageParameterDecoderTest.kt#messageParametersReplayTheirKernelClassesAndExplicitDeclines",
@@ -10088,6 +10088,177 @@
         "a12-kernel-lean": {
           "state": "OPEN",
           "basis": "Lean owns verification; IF376 remains an explicit compatibility difference, and malformed-JSON rows await SPEC07.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf546": {
+      "sha256": "4c0813a764dff1cf871b6f2d18b1b21942c2afe3fb7bb102af4edb4948de0c50",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "indexed admission",
+          "index owner iteration",
+          "runtime message text"
+        ],
+        "dmkits": [
+          "typed message helpers"
+        ],
+        "interpreter": [
+          "portable message rendering"
+        ],
+        "checker": [
+          "admission replay"
+        ],
+        "dmtool-cli": [
+          "packaged rendering"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "SPEC11-01"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Owned typed models compare complete admission classes and exact runtime pointer/text lists against both kernel strategies.",
+          "evidence": {
+            "indexed admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#indexedMessageAdmissionUsesAuthoredAncestryAndPositiveKeyedPresence",
+              "witness": "Sixteen rows distinguish group ancestry, key identity and positive presence."
+            },
+            "index owner iteration": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#indexMessageAdmissionTracksTheIndexedGroupsOwnLevel",
+              "witness": "Four rows separate parent expansion, owner star/key and lower star with a shared ordinary conjunct."
+            },
+            "runtime message text": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#portableMessageReplaysHaveIndependentKernelTextControls",
+              "witness": "Both kernels independently pin the exact models replayed on portable hosts; sibling runtime controls cover enum, nested and parallel cases."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "Helpers reuse existing typed operands and kernel syntax without imposing another admission rule.",
+          "evidence": {
+            "typed message helpers": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MessageInterpolationTest.java#indexedMessageHelpersReuseTypedKeysAndIndexFieldNames",
+              "witness": "Exact escaping and short-name tokens are asserted on typed fields, categories and keyed groups."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Message projection resolves selected rows and index tokens through existing document associations.",
+          "evidence": {
+            "portable message rendering": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/SpecSyncRuntimeTest.kt#indexedMessagesReplayTypedKernelModelsOnThisHost",
+              "witness": "JVM and Node render the exact kernel-controlled selected-row and index-value models."
+            }
+          }
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "Shared recognition carries positive-presence proof; parameter checks distinguish reference availability and owner iteration.",
+          "evidence": {
+            "admission replay": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageParameterDecoderTest.kt#messageParametersReplayTheirKernelClassesAndExplicitDeclines",
+              "witness": "Twenty added retained typed models replay complete kernel verdicts on JVM and Node alongside prior controls."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "Existing model/rule eval commands expose corrected message text without changing their result envelope.",
+          "evidence": {
+            "packaged rendering": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedRuntimeRendersIndexedMessageTokens",
+              "witness": "Packaged model and stored-rule evaluation assert selected-row and index-value text."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message strings retain their existing owner-content carriage; no JSON Schema keyword, model shape or conversion changes.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message strings retain their existing owner-content carriage; no JSON Schema keyword, model shape or conversion changes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "SPEC-2026-10-11-01 awaits Lean verification of this revision.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf280": {
+      "sha256": "c537906ed15e885d6a56bc156882ff2f6691faf262d7506ba1f4f474ce4c5db8",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "historical index terminal profile"
+        ],
+        "dmkits": [
+          "historical index terminal profile"
+        ],
+        "interpreter": [
+          "historical index terminal profile"
+        ],
+        "checker": [
+          "historical index terminal profile"
+        ],
+        "dmtool-cli": [
+          "historical index terminal profile"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "historical index terminal profile"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "OPEN",
+          "basis": "Historical admission obligations remain in F-USE-BACKLOG; the added runtime cross-reference is assessed in KF546.",
+          "evidence": {}
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "Historical admission obligations remain in F-USE-BACKLOG; the added runtime cross-reference is assessed in KF546.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "Historical admission obligations remain in F-USE-BACKLOG; the added runtime cross-reference is assessed in KF546.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "Historical admission obligations remain in F-USE-BACKLOG; the added runtime cross-reference is assessed in KF546.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "Historical admission obligations remain in F-USE-BACKLOG; the added runtime cross-reference is assessed in KF546.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This entry concerns message admission and runtime rendering; owner-content message carriage is unchanged.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This entry concerns message admission and runtime rendering; owner-content message carriage is unchanged.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Historical admission obligations remain in F-USE-BACKLOG; the added runtime cross-reference is assessed in KF546.",
           "evidence": {}
         }
       }

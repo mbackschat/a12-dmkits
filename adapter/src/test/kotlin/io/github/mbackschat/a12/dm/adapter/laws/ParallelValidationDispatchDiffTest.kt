@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test
 
 /** SPEC05/10: method dispatch, joined availability and ordinary frames are separate validation stages. */
 class ParallelValidationDispatchDiffTest {
-    private fun model(repeated: Boolean = true, frame: Int? = null, rootRules: Boolean = false): String {
+    private fun model(repeated: Boolean = true, frame: Int? = null, rootRules: Boolean = false, indexedMessage: Boolean = false): String {
         val draft = DocumentModelDraft.named("warehouse-join").locale("en_US").rootGroup("Warehouse") { root ->
             if (repeated) root.repeatable(2)
             fun rows(parent: DocumentModelDraft.GroupBuilder, name: String) {
@@ -42,10 +42,19 @@ class ParallelValidationDispatchDiffTest {
         var json = edit.toJson()
         for ((code, condition) in conditions) {
             val owner = if (rootRules) root else left
-            json = TypedRules.inject(json, owner.rule { it.name(code + "Rule").code(code).errorField(l)
-                .`when`(condition).message(Dsl.en("Check warehouse allocation.")).build() })
+            json = io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.addRule(json, owner.rule { it.name(code + "Rule").code(code).errorField(l)
+                .`when`(condition).message(Dsl.en(if (indexedMessage) "Code [" + Dsl.indexValue(left.field("Code")) + "]"
+                    else "Check warehouse allocation.")).build() })
         }
         return json
+    }
+
+    @Test
+    fun indexMessageKeepsTheParallelTokenWithoutAnErrorSideRow() {
+        val model = model(repeated = false, indexedMessage = true)
+        assertEquals(emptyList<String>(), MessageParameterProbes.kernel(model))
+        DocumentDifferential.assertMessageTexts(model, doc(false, row(1), row(3)), "Either",
+            listOf("/Warehouse[1]/Orders[-5]/Quantity" to "Code [3]", "/Warehouse[1]/Orders[1]/Quantity" to "Code [1]"))
     }
 
     private fun row(code: Int, quantity: Int? = 1) = """{"Code":$code${quantity?.let { ",\"Quantity\":$it" } ?: ""}}"""

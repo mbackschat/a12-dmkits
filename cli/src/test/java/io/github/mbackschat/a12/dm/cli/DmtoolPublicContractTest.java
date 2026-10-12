@@ -37,6 +37,42 @@ class DmtoolPublicContractTest {
     private static final Set<String> RUNTIME = Set.of("model eval", "model compute", "rule eval");
 
     @Test
+    void packagedRuntimeRendersIndexedMessageTokens(@TempDir Path dir) throws Exception {
+        String base = DocumentModelDraft.named("warehouse-message-tokens").locale("en_US")
+                .rootGroup("Warehouse", w -> w.stringField("Wanted", f -> { })
+                        .group("Bins", b -> b.repeatable(3).indexField("Code")
+                                .stringField("Code", f -> { }).numberField("Stock", f -> f.fractionDigits(0))))
+                .build().toJson();
+        var edit = EditSession.read(base);
+        var warehouse = edit.group("/Warehouse");
+        var bins = edit.group(warehouse.group("Bins").path().toString());
+        var wanted = warehouse.str("Wanted");
+        var stock = bins.num("Stock");
+        warehouse.addRule(r -> r.name("Selected").code("SELECTED").errorField(wanted)
+                .when(wanted.filled().and(stock.field().semanticIndex(wanted.field()).filled()))
+                .message(Dsl.en("row=" + Dsl.repetitionIndex(warehouse.flattenGroup("Bins").forIndex(wanted.field())))).build());
+        bins.addRule(r -> r.name("IndexText").code("INDEX_TEXT").errorField(stock).when(stock.filled())
+                .message(Dsl.en("key=" + Dsl.indexValue(bins.field("Code")))).build());
+        edit.validate();
+        Path model = dir.resolve("warehouse.dm.json");
+        Path document = dir.resolve("warehouse.json");
+        Files.writeString(model, edit.toJson());
+        Files.writeString(document, """
+                {"Warehouse":{"Wanted":"b","Bins":[{"Code":"a"},{"Code":"b","Stock":2}]}}""");
+        var dmtool = new PackagedDmtool(dir);
+        var result = dmtool.run("-m", model.toString(), "model", "eval", "--instance", document.toString());
+        assertEquals(0, result.code(), () -> result.out() + result.err());
+        var messages = MAPPER.readTree(result.out()).path("data").path("messages");
+        assertEquals(2, messages.size(), result::out);
+        var texts = new java.util.TreeSet<String>();
+        messages.forEach(m -> texts.add(m.path("message").asText()));
+        assertEquals(Set.of("row=2", "key=b"), texts, result::out);
+        var rule = dmtool.run("-m", model.toString(), "rule", "eval", "/Warehouse/Selected", "--instance", document.toString());
+        assertEquals(0, rule.code(), () -> rule.out() + rule.err());
+        assertEquals("row=2", MAPPER.readTree(rule.out()).path("data").path("message").asText(), rule::out);
+    }
+
+    @Test
     void packagedRuntimeVerbsShareCanonicalJsonSurvivorCoordinates(@TempDir Path dir) throws Exception {
         String base = DocumentModelDraft.named("parcel-json-ingress").locale("en_US")
                 .rootGroup("Parcel", p -> p.group("Lines", g -> g.repeatable(3)

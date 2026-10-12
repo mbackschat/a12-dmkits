@@ -87,30 +87,32 @@ private fun TrackedFactBase.declaresASingleValuedEnumeration(fieldPath: String):
     return body.declaredEnumValues()?.size == 1 && !body.string("sValue").isNullOrEmpty()
 }
 
-/**
- * Whether the declaration's own condition reaches the index field by a form that is not an iteration.
- *
- * A repetition wildcard and a semantic-index key are the two measured ones; every other form this reader
- * cannot tell apart from a plain read is left to iterate, which is the direction that under-reports.
- *
- * A star ANYWHERE in the reference counts here, while A12 reads only the index field's own level
- * (`checkIndexFieldRefRepeatability4repeatableGroup`, source-read 30.8.1). The two differ only where the star
- * sits on another level or on the field, and each such reference is refused during the parse, so the report
- * withholds this verdict behind it ([KERNEL-FINDINGS KF338]).
- */
+/** Authored ancestor coordinates and expanded descendants retain separate iteration modes (SPEC11-01). */
 private fun TrackedFactBase.conditionRidesItWithoutIterating(
     fieldPath: String,
     element: TrackedDeclaration,
 ): Boolean {
     val body = element.body ?: return false
-    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    val declaring = element.path.substringBeforeLast('/')
+    val owner = fieldPath.substringBeforeLast('/')
+    fun resolve(written: String): String? =
+        (resolveEntity(declaring, written.replace("*", ""), element.origin) as? Reference.Resolved)?.path
+    if (messageConditionReferences(element).any { written ->
+        val path = resolve(written) ?: return@any false
+        declarationAt(path)?.declaredKind == DeclaredKind.GROUP && owner.startsWith("$path/")
+    }) return true
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
-    fun resolves(written: String?): Boolean = written != null &&
-        (resolveEntity(group, written.replace("*", ""), element.origin) as? Reference.Resolved)?.path == fieldPath
     return conditionTexts(element.kind, body).any { (_, text) ->
-        val starred = referencesIn(text, conditionLanguage).any { written -> '*' in written && resolves(written) }
-        val keyed = keyword != null &&
-            semanticIndexUsesIn(text, conditionLanguage, keyword).any { use -> resolves(use.valuePath) }
+        val starred = referencesIn(text, conditionLanguage).any { written ->
+            val path = resolve(written) ?: return@any false
+            if (path != owner && !path.startsWith("$owner/")) return@any false
+            val segments = written.split('/')
+            segments.indices.any { at -> '*' in segments[at] &&
+                resolve(segments.take(at + 1).joinToString("/")) == owner }
+        }
+        val keyed = keyword != null && semanticIndexUsesIn(text, conditionLanguage, keyword).any { use ->
+            use.valuePath?.let(::resolve)?.let(::indexGroupOf) == owner
+        }
         starred || keyed
     }
 }

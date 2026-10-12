@@ -709,8 +709,11 @@ An error message can splice in the **runtime value**, the **label**, or the **ro
 | `fieldValue(ref)` | `$/Order/Items/Count.value$` | the field's runtime **value** |
 | `fieldLabel(ref)` | `$/Order/Items/Count$` | the field's localized **label** |
 | `repetitionIndex(groupRef)` | `$#/Order/Items$` | the repeatable group's 1-based **row number** |
+| `repetitionIndex(indexedGroup)` | `$#/Order/Items For "b"$` | the selected row number; requires a matching positive presence guard |
+| `indexValue(indexField)` | `$index('Sku').value$` | the index value on the error field’s ancestry or current parallel token |
+| `indexCategory(category)` | `$index('Sku')->'Band'$` | its mapped Enumeration category token |
 
-The group token is the one with a placement rule: the named group must **contain** the rule — its own group or any ancestor. A descendant, a sibling, or a group under another root is rejected `INVALID_GROUP`. Take the `GroupRef` from the bound model (`m.group("/Order/Items")`, which refuses a path that does not resolve) and you are on the absolute spelling the position requires.
+The group token names the rule’s own group, an ancestor, or a group reached by its condition; absolute and relative spellings are supported. An unavailable group draws `INVALID_GROUP`. A repeatable descendant needs its own ordinary iteration; expanding a parent group’s contents does not create that iteration. Take refs from the bound model to check existence, then validate the rule’s message against its condition ([message controls](docs/KERNEL-FINDINGS.md#kf546)).
 
 ```java
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;   // en, de, fieldValue, fieldLabel, repetitionIndex

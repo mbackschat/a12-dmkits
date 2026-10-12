@@ -108,6 +108,33 @@ class RuleMessageParameterRenderingDiffTest {
         }.toJson()
     }
 
+    @Test
+    fun enumIndexMessagesRenderTokensAndCategoriesAndRejectInvalidStoredTokens() {
+        val draft = DocumentModelDraft.named("store-index-messages").locale("en_US")
+            .rootGroup("Store") { s -> s.stringField("Note") { }.group("Bins") { b ->
+                b.repeatable(4).indexField("BinCode")
+                    .enumField("BinCode") { e -> e.value("a") { it.label("en_US", "Foreign") }.value("b") { it.label("en_US", "Standard") }
+                        .category("Band", "FOREIGN", "DOMESTIC") }
+                    .numberField("Stock") { it.fractionDigits(0) }
+            } }.build().toJson()
+        val edit = EditSession.read(draft)
+        val store = edit.group("/Store")
+        val stock = store.num("Bins/Stock")
+        val code = store.enumOf("Bins/BinCode")
+        edit.addRule { store.rule { it.name("IndexMessage").code("INDEX_MESSAGE").errorField(stock)
+            .`when`(stock.filled())
+            .message(Dsl.en("value=[" + Dsl.indexValue(code.field()) + "] cat=[" +
+                Dsl.indexCategory(code.category("Band")) + "]")).build() } }
+        edit.validate()
+        val authored = edit.toJson()
+        org.junit.jupiter.api.Assertions.assertAll(listOf("b" to "value=[b] cat=[DOMESTIC]",
+            "bad" to "value=[] cat=[]").map { (token, expected) -> org.junit.jupiter.api.function.Executable {
+            DocumentDifferential.assertMessageTexts(authored,
+                """{"Store":{"Note":"n","Bins":[{"BinCode":"$token","Stock":1}]}}""",
+                "INDEX_MESSAGE", listOf("/Store[1]/Bins[1]/Stock" to expected))
+        } })
+    }
+
     private val definition = ModelLoader.load(model)
 
     /** One document mirrored across the kernel [RuntimeLaws.Doc] and the interpreter document. */

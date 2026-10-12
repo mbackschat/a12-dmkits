@@ -1221,7 +1221,8 @@ class DmInterpreter private constructor(
                         // `$#group$` renders the FIRING ROW's own 1-based index at that group's level, and 1 for
                         // a non-repeatable group — the same coordinate `CurrentRepetition` reads, which is why
                         // both go through `repsOf(path).last()` rather than through two derivations (KF245).
-                        groupIndexOf = { argument -> groupParameterIndex(argument, rule.group, ctx) },
+                        groupIndexOf = { argument -> groupParameterIndex(argument, rule.group, pass, ctx) },
+                        indexTextOf = { name, category -> indexParameterText(name, category, errorPath, pass, ctx) },
                     )
                 } ?: ""
                 val matchingRnuOutcome = rnuCache?.rows?.get(ctx.repsOf(errorPath))?.takeIf { it.type == type }
@@ -1324,7 +1325,17 @@ class DmInterpreter private constructor(
      * KF214's old ancestor-only admission claim did not cover their reference footprint.
      * A `null` return preserves the token when the address names no declared group.
      */
-    private fun groupParameterIndex(argument: String, ruleGroup: String, ctx: EvalContext): String? {
+    private fun groupParameterIndex(written: String, ruleGroup: String, pass: ValidationPass, ctx: EvalContext): String? {
+        if (written.any { it.isWhitespace() }) {
+            val selected = io.github.mbackschat.a12.dm.interpreter.parse.parseExpression(written, ruleGroup, model.conditionLanguage)
+                as? Expr.SemanticIndex ?: return null
+            val indexField = nearestIndexFieldOf(model.indexFields, selected.path) ?: return null
+            val key = selected.indexValue?.let(SelectedKey::Literal)
+                ?: selected.indexFieldPath?.let(SelectedKey::Field) ?: return null
+            return selectedMessageRepetitions(MessageReference.Selected(selected.path, key, indexField), pass, ctx)
+                ?.lastOrNull()?.toString() ?: "?"
+        }
+        val argument = written.replace("'", "")
         val path = when (argument) {
             messageTerminals.ruleGroup -> ruleGroup
             messageTerminals.rootGroup -> ruleGroup.split('/').take(2).joinToString("/")
@@ -1336,6 +1347,17 @@ class DmInterpreter private constructor(
         // rather than survive as its own token — a wrong VALUE where the kernel gives a refusal.
         if (path !in model.groupPaths) return null
         return ctx.repsOf(path).lastOrNull()?.toString()
+    }
+
+    private fun indexParameterText(
+        name: String, category: String?, errorPath: String, pass: ValidationPass, ctx: EvalContext,
+    ): String? {
+        val field = model.indexFields.singleOrNull { it.substringAfterLast('/') == name &&
+            errorPath.startsWith(it.substringBeforeLast('/') + "/") } ?: return null
+        val value = pass.doc.messageIndexValue(field, ctx) ?: return ""
+        val repetitions = ctx.repsOf(field)
+        if (repetitions.all { it > 0 } && !pass.admitsIndexIdentity(field, repetitions, value)) return ""
+        return if (category == null) value else model.enumCategoryTokenOf(field, value, category) ?: ""
     }
 
     private fun relativeMessageGroup(argument: String, ruleGroup: String): String? {
