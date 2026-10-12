@@ -55,4 +55,47 @@ class PartialStarredGroupCoverageTest {
             }
         }
     }
+    @Test
+    fun fixedGroupSuffixTwoCannotProveAbsenceButStillAllowsPositivePresence() {
+        val root = "/Shipment"
+        val assessment = "$root/Assessment"
+        val packages = "$assessment/Packages"
+        val items = "$packages/Items"
+        val detail = "$items/Detail"
+        val reference = "$root/Reference"
+        val quantity = "$detail/Quantity"
+        val model = ModelDef(
+            fields = listOf(FieldDef(reference, Kind.STRING), FieldDef(quantity, Kind.NUMBER, scale = 0)),
+            rules = listOf("PRESENT" to "GroupFilled", "ABSENT" to "GroupNotFilled").map { (code, operator) ->
+                RuleDef("$root/$code", root, "FieldFilled(Reference) And $operator(Assessment)", code, "../Reference")
+            },
+            repeatableGroups = setOf(packages, items), declaredReps = mapOf(packages to 2, items to 2),
+            groupPaths = setOf(root, assessment, packages, items, detail),
+        )
+        val selectors = listOf(
+            "fixed-one" to listOf(0, 0, 0, 0, 1, 0),
+            "fixed-two" to listOf(0, 0, 0, 0, 2, 0),
+            "terminal-two" to listOf(0, 0, 0, 0, 0, 2),
+        )
+        val interpreter = DmInterpreter(model)
+        for (present in listOf(false, true)) {
+            val content = if (present) """, "Assessment":{"Packages":[{"Items":[{"Detail":{"Quantity":1}}]}]}""" else ""
+            val document = model.readDocumentJson("""{"Shipment":{"Reference":"dispatch"$content}}""")
+            for ((selector, coordinates) in selectors) {
+                val result = interpreter.validatePart(document, setOf(
+                    RelevantEntity.anyRep(reference), RelevantEntity(quantity, coordinates),
+                ))
+                val expected = when {
+                    present -> listOf("PRESENT|VALUE|$reference|[1, 1]")
+                    selector == "fixed-two" -> emptyList()
+                    else -> listOf("ABSENT|OMISSION|$reference|[1, 1]")
+                }
+                assertEquals(emptyList(), result.unsupported, "present=$present/$selector")
+                assertEquals(expected, result.messages.map {
+                    "${it.code}|${it.type}|${it.errorPointer.fullName}|${it.errorPointer.repetitionIndexes}"
+                }.sorted(), "present=$present/$selector")
+            }
+        }
+    }
+
 }

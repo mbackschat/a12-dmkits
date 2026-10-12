@@ -635,7 +635,7 @@ internal class AutoChecks(
                     type.messageText(locale))
             }
         }
-        for (group in model.effectiveGroupRepetitionMaximums.keys) {
+        for (group in model.groupPaths + model.repeatable) {
             val ownLevel = paths.levelOf(group)
             for (row in doc.instantiatedRows(group)) {
                 val exceeded = paths.exceededBound(group, row) ?: continue

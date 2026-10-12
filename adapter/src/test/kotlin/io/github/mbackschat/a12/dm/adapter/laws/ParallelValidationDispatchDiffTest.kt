@@ -244,4 +244,35 @@ class ParallelValidationDispatchDiffTest {
         assertEquals(emptyList<String>(), failures)
     }
 
+
+    @Test
+    fun anUnrelatedFixedErrorBranchRefusesTheFramedOperandBeforeRuntime() {
+        val session = EditSession.read(DocumentModelDraft.named("warehouse-unrelated-report").locale("en_US")
+            .rootGroup("Warehouse") { warehouse ->
+                fun rows(parent: DocumentModelDraft.GroupBuilder, name: String) {
+                    parent.group(name) { it.repeatable(2).indexField("Code")
+                        .numberField("Code") { field -> field.fractionDigits(0) }
+                        .numberField("Quantity") { field -> field.fractionDigits(0) } }
+                }
+                warehouse.group("Batches") { batches -> batches.repeatable(2); rows(batches, "Orders") }
+                    .group("Report") { it.stringField("Notice") { } }
+                rows(warehouse, "Stock")
+            }.build().toJson())
+        val warehouse = session.group("/Warehouse")
+        val left = warehouse.num("Batches/Orders/Quantity")
+        val right = warehouse.num("Stock/Quantity")
+        val notice = warehouse.str("Report/Notice")
+        val condition = Dsl.groupFilled(warehouse.ref()).and(left.filled()).and(right.filled())
+        warehouse.addRule { it.name("Joined").code("Joined").errorField(left.field()).`when`(condition)
+            .message(Dsl.en("Check warehouse allocation.")).build() }
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(session.toJson()))
+        val refusal = org.junit.jupiter.api.Assertions.assertThrows(
+            io.github.mbackschat.a12.dm.core.ModelConsistencyException::class.java,
+        ) {
+            warehouse.addRule { it.name("Unrelated").code("Unrelated").errorField(notice.field()).`when`(condition)
+                .message(Dsl.en("Check warehouse allocation.")).build() }
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(refusal.message.orEmpty().contains("MVK_NO_WILDCARD"), refusal.message)
+    }
+
 }

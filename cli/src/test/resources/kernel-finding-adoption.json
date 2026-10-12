@@ -8730,17 +8730,19 @@
       }
     },
     "kf58": {
-      "sha256": "518a6e96827cdcd534390994e5025256152a6dfb85b80ef95eca5964ab6ab5b9",
+      "sha256": "c3927062329add9a1d3dcd79c37189bd6505f4732c4cbe647614d21591405ee9",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "ancestor structural error cache",
-          "structural field occurrence and partial scope"
+          "structural field occurrence and partial scope",
+          "unbounded descendant finite prefix"
         ],
         "dmkits": [],
         "interpreter": [
           "ancestor structural error cache",
-          "structural field occurrence and partial scope"
+          "structural field occurrence and partial scope",
+          "unbounded descendant finite prefix"
         ],
         "checker": [],
         "dmtool-cli": [
@@ -8766,6 +8768,10 @@
             "structural field occurrence and partial scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionOccurrenceDiffTest.kt#structuralDiagnosticsRetainEmptyFieldOccurrencesOutsidePartialSelection",
               "witness": "Both strategies compare fifty partial rows; computation separately retains operand scope and present empty occurrences."
+            },
+            "unbounded descendant finite prefix": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionOccurrenceDiffTest.kt#directUnboundedDescendantRetainsFinitePrefixStructuralDiagnostics",
+              "witness": "Direct unbounded Detail retains ancestor overflow diagnostics on the held finite prefix; finite kernel caps two and three agree."
             }
           }
         },
@@ -8785,6 +8791,10 @@
             "structural field occurrence and partial scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionOccurrenceDiffTest.kt#structuralDiagnosticsRetainEmptyFieldOccurrencesOutsidePartialSelection",
               "witness": "Both strategies compare fifty partial rows; computation separately retains operand scope and present empty occurrences."
+            },
+            "unbounded descendant finite prefix": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionOccurrenceDiffTest.kt#directUnboundedDescendantRetainsFinitePrefixStructuralDiagnostics",
+              "witness": "Direct unbounded Detail retains ancestor overflow diagnostics on the held finite prefix; finite kernel caps two and three agree."
             }
           }
         },
@@ -9086,15 +9096,17 @@
       }
     },
     "kf120": {
-      "sha256": "010196cc4152f2c682b501bca3f1552ffc741a89bad4f02bfe844baaa32415a0",
+      "sha256": "93a23921c7462802d1668b0b2b3aab063d9bbb7cb406a41c6a5db874ac2510b1",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "finite descendant coverage of parent groups"
+          "finite descendant coverage of parent groups",
+          "fixed descendant selector suffix"
         ],
         "dmkits": [],
         "interpreter": [
-          "finite descendant coverage of parent groups"
+          "finite descendant coverage of parent groups",
+          "fixed descendant selector suffix"
         ],
         "checker": [],
         "dmtool-cli": [
@@ -9114,6 +9126,10 @@
             "finite descendant coverage of parent groups": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialParentGroupCoverageDiffTest.kt#descendantCoverageUsesTheWholeDeclaredProduct",
               "witness": "Complete products versus diagonal, duplicate, missing-field and out-of-capacity controls agree on both kernel strategies."
+            },
+            "fixed descendant selector suffix": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialParentGroupCoverageDiffTest.kt#fixedSuffixCoordinatesAreMeasuredWithoutWideningConcreteCellRelevance",
+              "witness": "Fixed-group coordinate two cannot prove absence; terminal two and positive presence remain independent across ten dual-kernel observations."
             }
           }
         },
@@ -9129,6 +9145,10 @@
             "finite descendant coverage of parent groups": {
               "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/GroupPresenceLeafProjectionTest.kt#descendantCoverageMatchesEveryConcreteTuple",
               "witness": "The shared coverage gate matches an independent four-tuple oracle on JVM and Node."
+            },
+            "fixed descendant selector suffix": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialParentGroupCoverageDiffTest.kt#fixedSuffixCoordinatesAreMeasuredWithoutWideningConcreteCellRelevance",
+              "witness": "Fixed-group coordinate two cannot prove absence; terminal two and positive presence remain independent across ten dual-kernel observations."
             }
           }
         },

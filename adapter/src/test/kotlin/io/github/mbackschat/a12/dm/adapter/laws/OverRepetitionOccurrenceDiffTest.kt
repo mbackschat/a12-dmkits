@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
+import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.RelevantCoordinate
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -117,4 +118,91 @@ class OverRepetitionOccurrenceDiffTest {
         }
         assertAll(checks)
     }
+
+    @Test
+    fun directUnboundedDescendantRetainsFinitePrefixStructuralDiagnostics() {
+        fun fixture(capacity: Int) = DocumentModelDraft.named("parcel-unbounded-prefix").locale("en_US")
+            .rootGroup("Parcel") { parcel ->
+                parcel.stringField("Marker") { }.group("Rows") { rows ->
+                    rows.repeatable(2).group("Detail") { detail ->
+                        detail.repeatable(capacity).numberField("Quantity") { it.fractionDigits(0) }
+                    }
+                }
+            }.build().toJson()
+        val json = fixture(2)
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(json))
+        val editor = EditSession.read(json).group("/Parcel")
+        val marker = editor.str("Marker").field().path().value()
+        val detail = editor.group("Rows/Detail").path().value()
+        val bounded = io.github.mbackschat.a12.dm.interpreter.load.ModelLoader.load(json)
+        org.junit.jupiter.api.Assertions.assertTrue(detail in bounded.repeatableGroups)
+        val unbounded = bounded.copy(declaredReps = bounded.declaredReps - detail)
+        val dynamic = RuntimeLaws.kernelEngine(json)
+        val static = RuntimeLaws.kernelJavaEngine(json)
+        fun signature(message: com.mgmtp.a12.kernel.md.rt.api.IMessage) = MessageSignature(
+            message.errorCode, message.messageType.name,
+            io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey(message.errorFieldPointer.fullName(), message.errorFieldPointer.repetitionIndexes()),
+            message.referencedFieldsPointers.map { io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey(it.fullName(), it.repetitionIndexes()) }.sorted(),
+            message.refOmissionErrorResponsiblePointers.map { io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey(it.fullName(), it.repetitionIndexes()) }.sorted(),
+        )
+        fun interpreted(definition: io.github.mbackschat.a12.dm.interpreter.model.ModelDef, document: String,
+                        relevant: Set<io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity>?): List<MessageSignature> {
+            val interpreter = io.github.mbackschat.a12.dm.interpreter.DmInterpreter(definition)
+            val input = definition.readDocumentJson(document)
+            val messages = if (relevant == null) interpreter.validateFull(input) else {
+                val report = interpreter.validatePart(input, relevant)
+                assertEquals(emptyList<Any>(), report.unsupported)
+                report.messages
+            }
+            return messages.map { message ->
+                MessageSignature(message.code, "${message.type.name}_ERROR",
+                    io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey(message.errorPointer.fullName, message.errorPointer.repetitionIndexes),
+                    message.referencedPointers.map { io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey(it.fullName, it.repetitionIndexes) }.sorted(),
+                    message.fillToFixPointers.map { io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey(it.fullName, it.repetitionIndexes) }.sorted())
+            }.sorted()
+        }
+        val routes = listOf(
+            "full" to null,
+            "nonempty-partial" to setOf(io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity(marker, listOf(0, 0))),
+            "empty-partial" to emptySet(),
+        )
+        val checks = mutableListOf<Executable>()
+        for (outer in listOf(2, 3)) for (present in listOf(false, true)) {
+            val row = if (present) """{"Detail":[{"Quantity":1}]}""" else """{"Detail":[{}]}"""
+            val document = """{"Parcel":{"Marker":"ready","Rows":[${(List(outer - 1) { "{}" } + row).joinToString(",")}]}}"""
+            for ((route, relevant) in routes) {
+                val id = "ancestor-row=$outer/field-present=$present/$route"
+                val selection = relevant?.map { RuntimeLaws.Relevant.of(it.path, *it.indices.toIntArray()) }?.toSet()
+                val groovy = (if (selection == null) dynamic.validationMessages(dynamic.instance(document), null, Locale.US)
+                    else dynamic.partialValidationMessages(dynamic.instance(document), selection, null, Locale.US)).map(::signature).sorted()
+                val java = (if (selection == null) static.validationMessages(static.instance(document), null, Locale.US)
+                    else static.partialValidationMessages(static.instance(document), selection, null, Locale.US)).map(::signature).sorted()
+                val finite = interpreted(bounded, document, relevant)
+                val open = interpreted(unbounded, document, relevant)
+                println("unbounded-prefix/$id|groovy=$groovy|java=$java|bounded=$finite|unbounded=$open")
+                checks += Executable {
+                    assertEquals(if (outer == 3 && route != "empty-partial") 2 + (if (present) 1 else 0) else 0,
+                        groovy.size, "$id kernel structural occurrence liveness")
+                    assertEquals(groovy, java, "$id kernel strategies")
+                    assertEquals(groovy, finite, "$id finite ModelDef control")
+                    assertEquals(groovy, open, "$id direct unbounded ModelDef finite prefix")
+                }
+                if (outer == 3 && !present && route == "full") {
+                    val wider = fixture(3)
+                    assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(wider))
+                    val widerDynamic = RuntimeLaws.kernelEngine(wider)
+                    val widerStatic = RuntimeLaws.kernelJavaEngine(wider)
+                    val widerGroovy = widerDynamic.validationMessages(widerDynamic.instance(document), null, Locale.US).map(::signature).sorted()
+                    val widerJava = widerStatic.validationMessages(widerStatic.instance(document), null, Locale.US).map(::signature).sorted()
+                    println("unbounded-prefix/$id/descendant-bound=3|groovy=$widerGroovy|java=$widerJava")
+                    checks += Executable {
+                        assertEquals(groovy, widerGroovy, "$id inactive descendant-bound control")
+                        assertEquals(groovy, widerJava, "$id inactive descendant-bound control, Java")
+                    }
+                }
+            }
+        }
+        assertAll("twelve finite-prefix routes plus one inactive-bound control", checks)
+    }
+
 }

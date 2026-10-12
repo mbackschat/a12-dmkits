@@ -112,4 +112,59 @@ class PartialParentGroupCoverageDiffTest {
         }
         assertEquals(emptyList<String>(), mismatches)
     }
+
+    @Test
+    fun fixedSuffixCoordinatesAreMeasuredWithoutWideningConcreteCellRelevance() {
+        val session = EditSession.read(DocumentModelDraft.named("shipment-fixed-suffix-coverage").locale("en_US")
+            .rootGroup("Shipment") { shipment ->
+                shipment.stringField("Reference") { }.group("Assessment") { assessment ->
+                    assessment.group("Packages") { packages -> packages.repeatable(2).group("Items") { items ->
+                        items.repeatable(2).group("Detail") { detail ->
+                            detail.numberField("Quantity") { it.fractionDigits(0) }
+                        }
+                    } }
+                }
+            }.build().toJson())
+        val shipment = session.group("/Shipment")
+        val reference = shipment.str("Reference")
+        val assessment = shipment.group("Assessment")
+        val quantity = shipment.num("Assessment/Packages/Items/Detail/Quantity").field().path().value()
+        for ((code, condition) in listOf("PRESENT" to assessment.filled(), "ABSENT" to assessment.notFilled())) {
+            shipment.addRule { it.name(code).code(code).errorField(reference)
+                .`when`(reference.filled().and(condition)).message(Dsl.en("Check shipment assessment.")).build() }
+        }
+        val model = session.toJson()
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model))
+        val selectors = listOf(
+            "all" to listOf(0, 0, 0, 0, 0, 0),
+            "fixed-group-one" to listOf(0, 0, 0, 0, 1, 0),
+            "fixed-group-two" to listOf(0, 0, 0, 0, 2, 0),
+            "terminal-one" to listOf(0, 0, 0, 0, 0, 1),
+            "terminal-two" to listOf(0, 0, 0, 0, 0, 2),
+        )
+        val documents = listOf(
+            "absent" to """{"Shipment":{"Reference":"dispatch"}}""",
+            "present" to """{"Shipment":{"Reference":"dispatch","Assessment":{"Packages":[{"Items":[{"Detail":{"Quantity":1}}]}]}}}""",
+        )
+        val checks = mutableListOf<org.junit.jupiter.api.function.Executable>()
+        for ((content, document) in documents) for ((selector, coordinates) in selectors) {
+            val id = "$content/$selector"
+            val relevant = setOf(
+                io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity(reference.field().path().value(), listOf(0, 0)),
+                io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity(quantity, coordinates),
+            )
+            val groovy = DocumentDifferential.kernelMessages(model, document, true, relevant)
+            val java = DocumentDifferential.kernelMessages(model, document, false, relevant)
+            val actual = DocumentDifferential.interpreterMessages(model, document, relevant)
+            println("fixed-suffix/$id|groovy=$groovy|java=$java|interpreter=$actual")
+            checks += org.junit.jupiter.api.function.Executable {
+                if (selector == "all") assertEquals(listOf(if (content == "absent") "ABSENT" else "PRESENT"),
+                    groovy.map { it.code }, "$id kernel liveness")
+                assertEquals(groovy, java, "$id kernel strategies")
+                assertEquals(groovy, actual, "$id complete partial metadata")
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertAll("ten controlled fixed-suffix observations", checks)
+    }
+
 }

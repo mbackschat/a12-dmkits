@@ -1418,7 +1418,14 @@ class DmInterpreter private constructor(
      */
     private fun groupRelevanceOf(relevant: Set<RelevantEntity>): (String, List<Int>) -> GroupRelevance {
         val effective = relevant + model.globalFields.map(RelevantEntity::anyRep)
-        val coversField = starExtentKnownOf(effective)
+        // PartialParentGroupCoverageDiffTest: fixed-group coordinates above one cannot prove absence;
+        // terminal field coordinates do not narrow that coverage, and partial presence stays independent.
+        val coverage = wellFormed(effective).filterTo(HashSet()) { entity ->
+            entity.path in model.entityPaths && paths.groupsThrough(entity.path).withIndex().all { (level, path) ->
+                path in model.kinds || path in model.repeatable || entity.indices[level] in 0..1
+            }
+        }
+        val coversField = starExtentKnownOf(coverage)
         val fieldsByAncestor = HashMap<String, MutableList<String>>()
         for (field in model.fields) {
             val parts = pathParts(field.path)

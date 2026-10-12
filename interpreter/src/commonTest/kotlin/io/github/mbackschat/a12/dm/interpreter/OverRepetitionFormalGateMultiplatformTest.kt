@@ -151,6 +151,25 @@ class OverRepetitionFormalGateMultiplatformTest {
         assertTrue("SUM_TEN" in codes, "the over-limit Application[2] amount is outside the cross-root Sum")
     }
 
+    @Test
+    fun anUnboundedDescendantReportsItsBoundedAncestorsExcessAddress() {
+        val detail = "$ITEMS/Detail"
+        val model = ModelDef(
+            fields = listOf(FieldDef("$detail/Qty", Kind.NUMBER)), rules = emptyList(),
+            repeatableGroups = setOf(ITEMS, detail), declaredReps = mapOf(ITEMS to 2),
+            groupPaths = setOf(ORD, ITEMS, detail),
+        )
+        val document = model.newDocument().group(ORD, 1)
+            .group(ITEMS, 1, 3).group(detail, 1, 3, 1)
+        val messages = DmInterpreter(model).validateFull(document)
+        assertEquals(listOf(
+            "$OVER_REPETITION_CONTEXT|VALUE|$detail|[1, 3, 1]",
+            "$OVER_REPETITION_ROW|VALUE|$ITEMS|[1, 3]",
+        ).sorted(), messages.map {
+            "${it.code}|${it.type}|${it.errorPointer.fullName}|${it.errorPointer.repetitionIndexes}"
+        }.sorted())
+    }
+
     private companion object {
         const val REG = "/Registry"
         const val PLANS = "/Registry/Plans"
