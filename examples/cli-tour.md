@@ -160,7 +160,7 @@ dmtool -m examples/models/order-ruled.dm.json rule explain /Order/DeliveryNotBef
       "kind": "PREDICATE",
       "meaning": "In validation, true iff every declared slot is known filled; a known empty, unavailable, or declared-but-uninstantiated slot prevents firing.",
       "gotchas": [
-        "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first empty slot decides, a reached invalid slot poisons, and a suffix after the decision is unread"
+        "in validation, an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first empty slot decides, a reached invalid slot poisons, and a suffix after the decision is unread. For a Having-filtered list in full validation or computation, the all-filled pass scans selected declared coordinates densely and stops at the first non-filled or unavailable payload. Each pass reads one kept successor ahead; a reached filter failure matters, while later suffixes remain unread"
       ]
     },
     {

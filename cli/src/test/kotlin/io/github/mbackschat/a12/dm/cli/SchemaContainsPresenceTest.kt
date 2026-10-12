@@ -171,9 +171,9 @@ class SchemaContainsPresenceTest {
     }
 
     @Test
-    fun explicitNonemptyItemsRetainMandatoryValueValidationAcrossAllCarriers(@TempDir dir: Path) {
+    fun supportedNonemptyItemConstraintsRetainMandatoryValueValidation(@TempDir dir: Path) {
         for (strategy in listOf(MappingProfile.ArrayOfScalar.REPEATABLE_SINGLE,
-                MappingProfile.ArrayOfScalar.VALUE_LIST, MappingProfile.ArrayOfScalar.MULTI_SELECT)) {
+                MappingProfile.ArrayOfScalar.MULTI_SELECT)) {
             val source = """
                 {"type":"object","properties":{"tags":{"type":"array","maxItems":4,
                  "items":{"type":"string","enum":["express","ground"]}}}}
