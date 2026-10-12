@@ -16,6 +16,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 
 /**
  * The CLI computation write/modify verbs: {@code add} a computation from a computation-spec and
@@ -57,6 +59,35 @@ class ComputationCliTest {
         JsonNode data = MAPPER.readTree(read.out()).path("data");
         assertTrue(data.path("computations").path("/Subscription/Billing/EffectiveFeeComp").path("converted").asBoolean(),
                 () -> "the added computation reads as Converted: " + read.out());
+    }
+
+    @Test
+    void addsAndReadsCustomTextConcatenationsAtBothTextTargets(@TempDir Path dir) throws Exception {
+        String structure = DocumentModelDraft.named("parcel-derived-text").locale("en_US")
+                .rootGroup("Parcel", p -> p.customField("Identifier", f -> f.type("ParcelIdentifier"))
+                        .stringField("Label", f -> {})
+                        .customField("Copy", f -> f.type("CopiedIdentifier")))
+                .build().toJson();
+        var bound = BoundModel.ofJson(structure);
+        var source = bound.custom("/Parcel/Identifier");
+        Path model = write(dir, "parcel.dm.json", structure);
+        for (var target : java.util.List.of(bound.str("/Parcel/Label"), bound.custom("/Parcel/Copy"))) {
+            var computation = bound.computation(target).name("Derive" + target.field().path().segments().getLast())
+                    .calc(source.asString().plus("-verified").expression())
+                    .message(Dsl.en("Derived parcel text.")).build();
+            var spec = MAPPER.createObjectNode().put("computedField", target.field().path().value())
+                    .put("name", computation.name());
+            spec.putArray("alternatives").addObject()
+                    .put("operation", computation.draft().alternatives().getFirst().operation());
+            spec.set("messages", MAPPER.valueToTree(computation.messages()));
+            var added = CliTestSupport.run("-m", model.toString(), "computation", "add",
+                    write(dir, "computation.json", spec.toString()).toString());
+            assertEquals(0, added.code(), added::out);
+            var read = CliTestSupport.run("-m", model.toString(), "model", "read");
+            assertEquals(0, read.code(), read::out);
+            assertTrue(MAPPER.readTree(read.out()).path("data").path("computations")
+                    .path(computation.groupPath() + "/" + computation.name()).path("converted").asBoolean(), read::out);
+        }
     }
 
     @Test

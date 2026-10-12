@@ -146,6 +146,8 @@ Arithmetic, temporal extrema and the seven comparison families share one per-dec
 
 The grouped producer retains all nine public `CheckFamily` assignments. Its tracked model reads govern incremental reuse: changing a referenced scale invalidates the operation cell, while an unrelated field edit preserves it. `OperationContractTest` locks those controls against a full check, operation completion structure, the 53 captured numeric-law targets and the retired grids' ordered-list assertions on JVM/JS. `CheckFamilyWiringTest` locks ownership. The two retained diagnostic methods in `BooleanComparisonAgreementTest` and `ComparisonOperatorOperandsTest` lock their corrective wording and declaration location.
 
+CUSTOM reads have the text base type for `==` and `!=`: numeric direct reads and constants produce `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` on either side, before custom display-domain delegation. `OperationComparisons.comparisonFinding` enforces that ordering; `TextComputationAdmissionReadTest` measures ordinary rules and joined computation assignments against the kernel, and `ComparisonArmOrderTest` locks both portable targets. Composite enumeration assignments retain the separately documented delegation in `EnumComputationSource`.
+
 The fixed operation population in `CheckerNearMissSweepTest`, paired with `A12ParseTraceTest`, checks child-result typing and completion boundaries against A12. Existing joined-computation, field-copy, keyed-reference and filter differentials cover their respective carriers; those measurements do not establish types for every unmodeled call.
 
 ### Element paths and names

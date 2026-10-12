@@ -41,8 +41,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
  * ({@code MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD}, or
  * {@code MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD} when that self-read carries a semantic
  * index or an enum category — the kernel's own separate class, which pre-empts the plain one);
- * each operation's value kind must match the
- * computed field's kind, except the kernel-defined numeric role of polymorphic {@code BaseYear}
+ * each operation's value kind must be assignment-compatible with the computed field:
+ * STRING and CUSTOM share text assignments, alongside the kernel-defined numeric role of polymorphic {@code BaseYear}
  * (e.g. a string operation into a number field —
  * {@code MVK_INVALID_COMPARE_TO_ENUM_OR_STRING}); error text is required
  * ({@code MVK_ERROR_MESSAGE_MISSING}); a non-{@code EXACT} {@link RoundingMode} needs a tolerance band on every
@@ -457,14 +457,17 @@ public record Computation(
                 // directions are measured (KF222, `adapter.laws.ConstantTargetFormatLawsTest`).
                 return wanted == target;
             }
-            return operation.kind() == computedField.kind();
+            return switch (computedField.kind()) {
+                case STRING, CUSTOM -> operation.kind() == ValueKind.STRING || operation.kind() == ValueKind.CUSTOM;
+                default -> operation.kind() == computedField.kind();
+            };
         }
 
         /**
          * The family the computed field actually accepts: its declared temporal FORMAT's, falling back to its
          * kind's default when it declares none — the case where kind and format say the same thing anyway.
-         * Null when the field's kind is outside the governed set, which keeps plain kind equality in charge
-         * there instead of silently widening it.
+         * Null when the field's kind is outside the governed set, leaving the non-temporal assignment
+         * checks in charge.
          */
         private TemporalFormatFamily temporalTargetFamily() {
             TemporalFormatFamily declared = TemporalFormatFamily.of(computedFieldFormat);
@@ -487,7 +490,7 @@ public record Computation(
                         + " FORMAT, never the field's kind";
             }
             return "the operation '" + rendered + "' yields " + operation.kind() + " but the computed field "
-                    + computedPath + " is " + computedField.kind() + " — kinds must match";
+                    + computedPath + " is " + computedField.kind() + " — these value kinds are not assignment-compatible";
         }
 
         private static boolean isFalseConstant(Calculation operation) {

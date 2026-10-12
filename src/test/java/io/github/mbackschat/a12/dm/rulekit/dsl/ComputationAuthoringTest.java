@@ -27,7 +27,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * (MVK_ERROR_EMPTY_PRECONDITION), no reference to the computed field in preconditions/operations
  * (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD for a plain self-read,
  * MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD for a projected one — the last family below),
- * operation kind matches the computed field, message required. Notably this killed the study's original
+ * operation values are assignment-compatible with the computed field, message required. Notably this killed the study's original
  * {@code .otherwise(...)} sketch — it was kernel-illegal.
  */
 class ComputationAuthoringTest {
@@ -219,7 +219,7 @@ class ComputationAuthoringTest {
                 .calc(m.str("/Subscription/Billing/InvoiceEmail").field().value())
                 .message(en("nope"), de("nein"));
         IllegalStateException ex = assertThrows(IllegalStateException.class, builder::build);
-        assertTrue(ex.getMessage().contains("kinds must match"), ex::getMessage);
+        assertTrue(ex.getMessage().contains("not assignment-compatible"), ex::getMessage);
     }
 
     @Test

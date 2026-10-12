@@ -8,6 +8,10 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-10-12 - custom numeric comparison check-path gate <a id="custom-numeric-check-2026-10-12"></a>
+
+`:adapter:checkerMemoryPerfTest` passed after numeric/CUSTOM comparisons were moved ahead of custom display delegation. Five interleaved pairs at 200/800 programs measured retained snapshot bytes 28,907,144/115,495,472 (3.995x) and allocated bytes per check 334,650,152/1,337,513,248 (3.997x), under the unchanged growth ceilings. The preflight observed active Spotlight and file-provider work; the documented [allocation alternative](AGENT-RUN-DISCIPLINE.md#performance-measurement--isolation-is-part-of-the-observation) supplies growth evidence without a timing claim. Kernel comparison controls and checker JVM/Node mirrors passed.
+
 ## 2026-10-12 - literal-decoding allocation growth <a id="literal-decoding-memory-2026-10-12"></a>
 
 The isolated `:adapter:checkerMemoryPerfTest` passed at 200/800 programs with five interleaved pairs: retained snapshot bytes 28,906,968/115,481,960 (3.995x), allocated bytes per check 334,739,600/1,337,871,048 (3.997x). The unchanged growth ceilings hold after consolidating authored-literal decoding. Timing was not measured: the preflight observed load average 12.28 and sustained Spotlight work, so the allocation-based route follows [run discipline](AGENT-RUN-DISCIPLINE.md#performance-measurement--isolation-is-part-of-the-observation). This establishes growth, not a latency comparison. The complete checker JVM/Node and kernel-agreement lanes also passed.

@@ -129,11 +129,12 @@ private fun OperationAnalysis.comparisonFinding(
         return if (partner is OperationType.Range && range.components == partner.components) null
             else problem("MVK_INVALID_COMPARE_TO_DATE_RANGE", "a date range compares only to a date range declaring the same components")
     }
-    if (!equality || customField) return null
+    if (!equality) return null
     val textual = setOf(OperationType.Text, OperationType.Enumeration)
     if (left.type in textual && right.numeric != null || right.type in textual && left.numeric != null)
         return problem("MVK_INVALID_COMPARE_TO_ENUM_OR_STRING",
             "one side of `${comparison.left}` / `${comparison.right}` is text or an enumeration and the other is a number — compare a number against a number")
+    if (customField) return null
     for ((enumeration, partner) in listOf(left to right, right to left)) {
         val field = enumeration.typedBy?.takeIf { enumeration.type == OperationType.Enumeration } ?: continue
         val constant = (partner.domainConstant as? WrittenConstant.Text)?.value ?: continue

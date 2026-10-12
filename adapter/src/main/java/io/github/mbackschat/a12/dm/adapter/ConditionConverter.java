@@ -2110,10 +2110,8 @@ final class ConditionConverter {
             return Dsl.text(constant.getValue());
         }
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            return indexedCell(field, origin).map(StringExpr::new).orElseGet(() -> {
-                StringRef text = model.str(field.getField().getFullName());
-                return (field.getField().isOuter() ? text.outer() : text).asString();
-            });
+            return indexedCell(field, origin).map(StringExpr::new).orElseGet(() ->
+                    new StringExpr(fieldValueCalculation(field.getField(), field.getField().isOuter())));
         }
         if (isStringCoercion(op)) {
             return stringCoercion((IFieldIdOperation) op);
@@ -3105,9 +3103,9 @@ final class ConditionConverter {
 
     /**
      * Convert a computation's value-expression (the kernel's {@link IOperation}) to a rulekit
-     * {@link Calculation}, reusing the comparison-operand machinery ({@link #numericExpr}). rulekit's
-     * computation surface is numeric, so a non-NUMBER computed field, or an operation {@code numericExpr}
-     * doesn't recognise, raises the strict signal (→ a tolerant {@link ReadComputation.Opaque}).
+     * {@link Calculation}, reusing the operand converter for the target's value family. An unmodeled
+     * operation raises the strict signal so the adapter retains a tolerant {@link ReadComputation.Opaque}
+     * instead of changing the calculation.
      */
     Calculation convertOperation(IOperation op, ValueKind computedKind) {
         // The kernel wraps each computation alternative's value-expression with its assignment operator
@@ -3137,7 +3135,7 @@ final class ConditionConverter {
         }
         // A value-expression, dispatched by the computed field's kind — reusing the same operand
         // converters the comparison side uses (arithmetic/concat, aggregates, coercions, date math, …).
-        if (computedKind == ValueKind.STRING) {
+        if (computedKind == ValueKind.STRING || computedKind == ValueKind.CUSTOM) {
             return stringOperand(op, op).expression();
         }
         if (computedKind == ValueKind.NUMBER) {

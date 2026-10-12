@@ -30,6 +30,8 @@ class ComparisonArmOrderTest {
                   "type":"DateRangeType","DateRangeType":{"format":"dd.MM.yyyy","rangeSeparator":"-"}}}},
                 {"type":"Field","id":"f6","name":"Insured","Field":{"fieldType":{"type":"BooleanType"}}},
                 {"type":"Field","id":"f7","name":"Signed","Field":{"fieldType":{"type":"ConfirmType"}}},
+                {"type":"Field","id":"f8","name":"Identifier","Field":{"fieldType":{"type":"CustomFieldType",
+                  "CustomFieldType":{"name":"ParcelIdentifier"}}}},
                 {"type":"Rule","id":"r0","name":"Probe","Rule":{
                   "errorCondition":"FieldFilled(Reference) And CONDITION_HERE","errorEntityRelPath":"../Reference",
                   "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
@@ -38,6 +40,20 @@ class ComparisonArmOrderTest {
             """.trimIndent().replace("CONDITION_HERE", condition),
         ),
     ).findings.map { it.code }.sorted()
+
+    @Test
+    fun customTextNumericMismatchPrecedesCustomDisplayDelegation() {
+        for (operator in listOf("==", "!=")) for (numeric in listOf("[Weight]", "1")) {
+            for (condition in listOf("[Identifier] $operator $numeric", "$numeric $operator [Identifier]")) {
+                assertEquals(listOf("MVK_INVALID_COMPARE_TO_ENUM_OR_STRING"), codes(condition), condition)
+            }
+        }
+        for (operator in listOf("==", "!=")) {
+            for (condition in listOf("[Identifier] $operator [Carrier]", "[Carrier] $operator [Identifier]")) {
+                assertEquals(emptyList(), codes(condition), condition)
+            }
+        }
+    }
 
     @Test
     fun theArmAskedFirstIsTheOneThatAnswers() {
