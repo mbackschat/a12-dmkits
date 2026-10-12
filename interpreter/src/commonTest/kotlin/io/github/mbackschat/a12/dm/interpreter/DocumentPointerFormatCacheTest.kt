@@ -2,6 +2,10 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.footprint.FootprintScenarios
+import io.github.mbackschat.a12.dm.interpreter.footprint.FootprintScenario
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
@@ -42,6 +46,40 @@ class DocumentPointerFormatCacheTest {
         assertEquals("/Order[1]/Lines[7]/Amount", document.formattedPointer(path, listOf(1, 7, 1)))
         assertEquals(messagePointerHouseForm(pointer), document.formattedPointer(path, listOf(1, 7, 1)))
         assertEquals(entriesAfterPointer, document.cacheEntries(), "the projection adds no cache entry")
+    }
+
+    @Test
+    fun successfulInputSupportChecksDoNotMaterializeDiagnosticPointers() {
+        for (custom in listOf(false, true)) {
+            val fixture = FootprintScenarios.fixture(FootprintScenario.SIMPLE_VALIDATION, 2)
+            val model = fixture.model.copy(rules = emptyList(), fields = fixture.model.fields.map {
+                if (custom) it.copy(customType = CustomFieldTypeDeclaration("AcceptedText")) else it
+            })
+            val result = DmInterpreter(model, customFieldTypes = mapOf("AcceptedText" to CustomFieldType { _, _ -> null }))
+                .validate(fixture.document)
+            assertEquals(emptyList(), result.messages)
+            assertEquals(emptyList(), result.unsupported)
+            val before = fixture.document.cacheEntries()
+            for (field in model.fields) for (row in 1..2) {
+                fixture.document.messagePointer(field.path, listOf(1, row, 1))
+            }
+            assertEquals(2 * model.fields.size, fixture.document.cacheEntries() - before,
+                "diagnostic pointers must remain absent for supported input cells (custom=$custom)")
+        }
+    }
+
+    @Test
+    fun successfulComputationSupportChecksDoNotMaterializeDiagnosticPointers() {
+        val fixture = FootprintScenarios.fixture(FootprintScenario.COMPUTE_OVERLAY, 2)
+        val result = fixture.evaluate(DmInterpreter(fixture.model))
+        assertEquals(true, result.supported)
+        assertEquals(6, result.cardinality)
+        val before = fixture.document.cacheEntries()
+        for (field in fixture.model.fields) for (row in 1..2) {
+            fixture.document.messagePointer(field.path, listOf(1, row, 1))
+        }
+        assertEquals(2 * fixture.model.fields.size, fixture.document.cacheEntries() - before,
+            "ordinary inputs and computed targets must not retain unused diagnostic pointers")
     }
 
     private fun Document.cacheEntries(): Int {

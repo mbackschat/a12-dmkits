@@ -37,7 +37,21 @@ internal class CascadeOverlay(private val repeatableGroups: Set<String>) {
     /** What the cascade says about one cell. A closed set, so every reader dispatches exhaustively. */
     internal sealed interface Entry {
         /** The cascade computed a value for this cell; dependents read it instead of the stored one. */
-        data class Overlaid(val value: Val) : Entry
+        data class Overlaid(val value: Val) : Entry {
+            // IF391: the 2026-10-12 compute-overlay allocation profile repeats numeric rendering across formal,
+            // value, and scan reads. Entry replacement invalidates this memo; one precision bounds its storage.
+            private var cachedNumericDisplay: String? = null
+            private var cachedMinFractionalDigits: Int = 0
+
+            fun numberDisplay(minFractionalDigits: Int): String {
+                val cached = cachedNumericDisplay
+                if (cached != null && cachedMinFractionalDigits == minFractionalDigits) return cached
+                return (value as Val.Num).v.display(minFractionalDigits).also {
+                    cachedMinFractionalDigits = minFractionalDigits
+                    cachedNumericDisplay = it
+                }
+            }
+        }
 
         /** A prior computation CLEARED this cell — dependents must read EMPTY, never the stale stored seed. */
         data object Cleared : Entry

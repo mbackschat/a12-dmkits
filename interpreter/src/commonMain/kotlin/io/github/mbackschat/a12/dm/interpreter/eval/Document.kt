@@ -199,6 +199,8 @@ class Document(internal val config: DocumentConfig) {
         cachedIndex = null                 // the lazily-built lookup index
         rowContextsCache.clear()           // a `Having` filter's per-row contexts
         filterWalkCache.clear()            // the same, with the missing coordinates a filter's walk visits
+        filterWalkSelector = null
+        filterWalkGroups = null
         correlationBucketCache.clear()     // a `$` equality-correlation's hash buckets
         orderedCorrelationCache.clear()    // a comparator-only `$` correlation's ordered prefix tallies
     }
@@ -237,10 +239,10 @@ class Document(internal val config: DocumentConfig) {
         // domain above because it can visit declared slots that no stored row holds.
         val fullValidationContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
         // Depth → parent coordinate prefix → the child coordinates some instantiated row of ANY group sets there.
-        var occupiedChildren: Map<Int, Map<List<Int>, Set<Int>>>? = null
+        var occupiedChildren: Map<Int, Map<List<Int>, IntArray>>? = null
         // Per counted-group predicate (null = every group): the highest repetition stored at each depth.
-        val highestRepetitionsByCount: MutableMap<Any?, IntArray> = HashMap()
-        val filterPrefixesByCount: MutableMap<Any?, Set<List<Int>>> = HashMap()
+        val highestRepetitionsByCount: MutableMap<Set<String>, IntArray> = HashMap()
+        val filterPrefixesByCount: MutableMap<Set<String>, Set<List<Int>>> = HashMap()
         // Computation iterates only stored V2 rows, unlike validation's implicit nested-child domain (IF277).
         val storedContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
         // The runtime iteration tree, distinct from stored V2 rows: below every existing repeatable parent, a
@@ -306,6 +308,8 @@ class Document(internal val config: DocumentConfig) {
                 idx.attachByGroup.size +
                 idx.validationContextsByGroup.size +
                 idx.fullValidationContextsByGroup.size +
+                idx.highestRepetitionsByCount.size +
+                idx.filterPrefixesByCount.size +
                 idx.filterPrefixesByCount.values.sumOf { it.size } +
                 (idx.occupiedChildren?.values?.sumOf { it.size } ?: 0) +
                 idx.storedContextsByGroup.size +
@@ -320,10 +324,12 @@ class Document(internal val config: DocumentConfig) {
                 idx.containedFieldsByGroup.size +
                 idx.messagePointersByPath.values.sumOf { it.size }
         } ?: 0
+        val selectionEntries = filterWalkGroups?.size ?: 0
         observer.cacheEntries(
             this,
             CacheOwnerKind.DOCUMENT,
-            indexEntries + rowContextsCache.size + correlationBucketCache.size + orderedCorrelationCache.size,
+            indexEntries + rowContextsCache.size + filterWalkCache.size + selectionEntries +
+                correlationBucketCache.size + orderedCorrelationCache.size,
         )
     }
 
@@ -603,11 +609,12 @@ class Document(internal val config: DocumentConfig) {
             val capacity = capacities[depth - 1]
             frontier = frontier.flatMap { prefix ->
                 if (dense) (1..capacity).map { prefix + it }
-                else (sequenceOf(1) + (occupied[depth]?.get(prefix).orEmpty().asSequence().filter { it in 2..capacity }.sorted()))
+                else (sequenceOf(1) + (occupied[depth]?.get(prefix)?.asSequence() ?: emptySequence()).filter { it in 2..capacity })
                     .map { prefix + it }.toList()
             }
         }
-        return frontier
+        val storedRows = rowsOf(groupPath).associateBy { it }
+        return frontier.map { storedRows[it] ?: it }
     }
 
     /** The root's instances the document holds: any stored row or valued cell at or below [root], ascending. */
@@ -622,11 +629,12 @@ class Document(internal val config: DocumentConfig) {
 
     /** The highest repetition any row of a group [counts] admits stores at each depth, index 0 the root's; a blank
      *  row object counts as stored. Every group when [counts] is null. */
-    private fun highestRepetitions(counts: ((String) -> Boolean)?): IntArray =
-        index().highestRepetitionsByCount.getOrPut(counts) {
+    private fun highestRepetitions(counts: ((String) -> Boolean)?): IntArray {
+        val groups = selectedFilterGroups(counts)
+        return index().highestRepetitionsByCount.getOrPut(groups) {
             var highest = IntArray(0)
             for ((group, rows) in index().rowsByGroup) {
-                if (counts != null && !counts(group)) continue
+                if (group !in groups) continue
                 for (reps in rows) {
                     if (reps.size > highest.size) highest = highest.copyOf(reps.size)
                     for (depth in reps.indices) if (reps[depth] > highest[depth]) highest[depth] = reps[depth]
@@ -634,6 +642,7 @@ class Document(internal val config: DocumentConfig) {
             }
             highest
         }
+    }
 
     /** The coordinates of [groupPath] below [scope] a `Having` filter's walk visits ([FilterWalkRowProvider]). */
     private fun filterWalkCoordinates(groupPath: String, scope: List<Int>, counts: ((String) -> Boolean)?): List<List<Int>> {
@@ -654,34 +663,54 @@ class Document(internal val config: DocumentConfig) {
     private fun sparseFilterPrefixes(groupPath: String, scope: List<Int>, counts: ((String) -> Boolean)?): Set<List<Int>>? {
         val product = filterWalkWidths(groupPath, scope.size, counts).fold(1L) { size, width -> minOf(101L, size * width) }
         if (product <= 100) return null
-        return index().filterPrefixesByCount.getOrPut(counts) {
+        val groups = selectedFilterGroups(counts)
+        return index().filterPrefixesByCount.getOrPut(groups) {
             buildSet {
                 for ((group, rows) in index().rowsByGroup) {
-                    if (counts != null && !counts(group)) continue
+                    if (group !in groups) continue
                     for (row in rows) for (depth in 1..row.size) add(row.take(depth))
                 }
             }
         }
     }
 
-    private val filterWalkCache = HashMap<Triple<String, List<Int>, Any?>, List<EvalContext>>()
+    private val filterWalkCache = HashMap<Triple<String, List<Int>, Set<String>>, List<EvalContext>>()
+    private var filterWalkSelector: ((String) -> Boolean)? = null
+    private var filterWalkGroups: Set<String>? = null
+
+    // IF391: fresh call-owned predicates must not retain one candidate graph each. The stable membership set
+    // reuses equivalent walks without keeping historical callback identities (DocumentIterationRetentionTest).
+    private fun selectedFilterGroups(counts: ((String) -> Boolean)?): Set<String> {
+        val previous = filterWalkGroups
+        if (counts === filterWalkSelector && previous != null) return previous
+        val groups = index().rowsByGroup.keys.filterTo(HashSet()) { counts?.invoke(it) != false }
+        filterWalkSelector = counts
+        if (previous != null && groups == previous) return previous
+        filterWalkCache.clear()
+        index().highestRepetitionsByCount.clear()
+        index().filterPrefixesByCount.clear()
+        filterWalkGroups = groups
+        return groups
+    }
 
     /** The stored rows of [groupPath] in [scope] merged in coordinate order with the missing ones the walk visits. */
     private fun filterWalkRowsScoped(groupPath: String, scope: List<Int>, counts: ((String) -> Boolean)?): List<EvalContext> =
-        filterWalkCache.getOrPut(Triple(groupPath, scope, counts)) {
-            val stored = rowContextsScoped(groupPath, scope).associateBy { it.repsOf(groupPath) }
+        filterWalkCache.getOrPut(Triple(groupPath, scope, selectedFilterGroups(counts))) {
+            val stored = rowContextsScoped(groupPath, scope).associateBy { it.coordinates() }
             val missing = filterWalkCoordinates(groupPath, scope, counts).filter { it !in stored }
             if (missing.isEmpty()) stored.values.toList()
             else (stored.keys + missing).sortedWith(COORDINATE_ORDER)
                 .map { reps -> stored[reps] ?: RowContext(groupPath, reps, evaluated = true) }
         }
 
-    private fun occupiedChildren(): Map<Int, Map<List<Int>, Set<Int>>> = index().occupiedChildren ?: run {
+    private fun occupiedChildren(): Map<Int, Map<List<Int>, IntArray>> = index().occupiedChildren ?: run {
         val byDepth = HashMap<Int, HashMap<List<Int>, HashSet<Int>>>()
         for (rows in index().rowsByGroup.values) for (reps in rows) for (depth in 2..reps.size) {
             byDepth.getOrPut(depth) { HashMap() }.getOrPut(reps.take(depth - 1)) { HashSet() }.add(reps[depth - 1])
         }
-        byDepth.also { index().occupiedChildren = it }
+        byDepth.mapValues { (_, parents) ->
+            parents.mapValues { (_, children) -> children.toIntArray().apply { sort() } }
+        }.also { index().occupiedChildren = it }
     }
 
     /** One already-selected concrete row context. Index resolution owns selection; this reconstructs the normal
@@ -1026,9 +1055,9 @@ class Document(internal val config: DocumentConfig) {
     // `Having` over G* once PER outer row, all sharing G's PARENT scope, so without this every outer row rebuilt
     // the SAME N RowContexts → O(N²) allocation. Cached, that is O(N) once. (The reused RowContexts also keep
     // their warm per-row value caches across outer rows — a further constant win. Bounded by distinct scopes.)
-    private val rowContextsCache = HashMap<Pair<String, List<Int>>, List<EvalContext>>()
+    private val rowContextsCache = HashMap<Pair<String, List<Int>>, List<RowContext>>()
 
-    private fun rowContextsScoped(groupPath: String, scopeReps: List<Int>): List<EvalContext> =
+    private fun rowContextsScoped(groupPath: String, scopeReps: List<Int>): List<RowContext> =
         rowContextsCache.getOrPut(groupPath to scopeReps) {
             val attach = attachByDepth(groupPath)   // memoized per group — no O(valued) rescan per nested row
             val overLimit = overLimitRows(groupPath)   // over-limit rows are outside the star/quantifier domain (SPEC-2026-07-23-13)
@@ -1119,6 +1148,8 @@ class Document(internal val config: DocumentConfig) {
         override val evaluated: Boolean,
     ) : EvalContext, GroupListEnvironmentProvider, DeclaredStarRowProvider, FilterWalkRowProvider, FirstFilledScanProvider {
 
+        fun coordinates(): List<Int> = rowReps
+
         /**
          * Resolve a referenced field to its placement (or null) ONCE per path, cached for this row context —
          * the kernel's single-resolution `vergleiche`/`feldWertAlsZahl` analog. `field`, `filled`, and
@@ -1148,11 +1179,13 @@ class Document(internal val config: DocumentConfig) {
         // The resolved [Val] per path, cached for this row context — `field` is called once per operand per
         // RULE, so many rules referencing the same field on the same row re-resolved (`resolveValue`, a `Val`
         // allocation) independently. The value is stable (immutable document), so cache it once per row.
-        private val valCache = HashMap<String, Val>()
-        override fun field(path: String): Val = valCache.getOrPut(path) {
-            val v = placeOf(path)?.value
-            if (v != null) resolveValue(path, v) else emptyValue(kindOf(path))
-        }
+        // Presence-only rules never resolve a Val; the Node heap probe found an empty map per row (IF391).
+        private var valCache: MutableMap<String, Val>? = null
+        override fun field(path: String): Val =
+            (valCache ?: HashMap<String, Val>().also { valCache = it }).getOrPut(path) {
+                val v = placeOf(path)?.value
+                if (v != null) resolveValue(path, v) else emptyValue(kindOf(path))
+            }
 
         override fun filled(path: String): Boolean = placeOf(path)?.value != null
 

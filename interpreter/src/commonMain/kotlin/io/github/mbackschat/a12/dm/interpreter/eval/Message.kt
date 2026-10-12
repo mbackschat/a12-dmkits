@@ -18,6 +18,8 @@ internal data class MessageTerminals(
     val rootGroup: String,
     val semanticFor: String,
 ) {
+    val tokenPattern: Regex by lazy { tokenPattern(this) }
+
     internal companion object {
         val EN = MessageTerminals("BaseYear", "value", "RuleGroup", "RootGroup", "For")
         val DE = MessageTerminals("Referenzjahr", "Wert", "RegelKontext", "LfdNr", "Fuer")
@@ -92,7 +94,7 @@ internal fun renderMessage(
     baseYearOf: (Int) -> String?,
     groupIndexOf: (String) -> String?,
     indexTextOf: (String, String?) -> String? = { _, _ -> null },
-): String = tokenPattern(terminals).replace(template) { token ->
+): String = if ('$' !in template) template else terminals.tokenPattern.replace(template) { token ->
     val name = unquoted(token.groupValues[NAME])
     val group = token.groupValues[GROUP]
     val index = unquoted(token.groupValues[INDEX])

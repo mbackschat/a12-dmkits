@@ -99,26 +99,25 @@ class Interpreter(
 
     private var customFormallyIncorrect: (() -> Set<CustomConditionFieldPointer>)? = null
 
-    // The config bundle destructured into the fields the walk reads — keeps every internal reference and its
-    // direct-field read speed unchanged while the constructor stays small ([EvalConfig]); the config object
-    // itself is allocated once per call and reused by [havingInterp], not per row.
-    internal val clock = config.clock
-    internal val baseYear = config.baseYear
-    internal val timeZone = config.timeZone
-    internal val indexFields = config.indexFields
-    private val predefinedTypes = config.predefinedTypes
-    private val customConditions = config.customConditions
-    private val customFieldTypes = config.customFieldTypes
-    internal val cellRelevant = config.cellRelevant
-    internal val starRelevant = config.starRelevant
-    internal val starExtentKnown = config.starExtentKnown
-    internal val starFullyEnumerated = config.starFullyEnumerated
-    internal val groupCountGate = config.groupCountGate
-    private val absentGroupsCovered = config.absentGroupsCovered
-    private val customRelevant = config.customRelevant
-    private val computeScanState = config.computeScanState
-    internal val computeMode = config.computeMode
-    internal val filterWalkGroups = config.filterWalkGroups
+    // A Having creates a row interpreter per filter read. Keep immutable call settings on EvalConfig:
+    // the V8 allocation profile identified their repeated construction as material overhead (IF391).
+    internal val clock get() = config.clock
+    internal val baseYear get() = config.baseYear
+    internal val timeZone get() = config.timeZone
+    internal val indexFields get() = config.indexFields
+    private val predefinedTypes get() = config.predefinedTypes
+    private val customConditions get() = config.customConditions
+    private val customFieldTypes get() = config.customFieldTypes
+    internal val cellRelevant get() = config.cellRelevant
+    internal val starRelevant get() = config.starRelevant
+    internal val starExtentKnown get() = config.starExtentKnown
+    internal val starFullyEnumerated get() = config.starFullyEnumerated
+    internal val groupCountGate get() = config.groupCountGate
+    private val absentGroupsCovered get() = config.absentGroupsCovered
+    private val customRelevant get() = config.customRelevant
+    private val computeScanState get() = config.computeScanState
+    internal val computeMode get() = config.computeMode
+    internal val filterWalkGroups get() = config.filterWalkGroups
 
     /** Validation-call-local aggregate results, installed only by [ValidationPass]. A direct low-level
      * [Interpreter] and every compute interpreter deliberately keep this null, so reusing an [EvalConfig] across
@@ -1052,25 +1051,22 @@ class Interpreter(
         // missing coordinate is an empty cell, adding to `f` and `n` alike. A filtered list reaches this tally only
         // for the operators that read `t` or `f == n`; the ones reading `t == n` or `f >= 1` take the declared fill
         // scope ([DECLARED_FILL_OPERATORS]). So the verdicts agree.
-        return when (val plan = correlationPlan(star, group)) {
+        return when (val plan = correlationPlan(star)) {
             is KeyedCorrelationPlan -> hashJoinTally(star, group, plan)
             is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan)
             null -> naiveStarQuantTally(star, group)
         }
     }
 
-    /** Whether [star] binds ABOVE its leaf group's parent — a multi-star operand (`A* / B* / F`, IF94). */
-    private fun isMultiStar(star: Expr.Star): Boolean =
-        star.bindDepth >= 0 && star.bindDepth < star.path.trim('/').split('/').size - 2
-
     /**
      * Runtime-qualified correlation plan. A multi-star self-exclusion stays general because it excludes every row
      * sharing the outer leaf index, not one physical row. Ordered plans are limited to kinds whose runtime order is
      * exactly [ValCompare.language]; non-UTC DATE_TIME needs instant ordering and therefore stays on the fallback.
      */
-    private fun correlationPlan(star: Expr.Star, group: String): CorrelationPlan? {
-        val plan = star.having?.let { CorrelationJoin.parse(it, group) } ?: return null
-        if (isMultiStar(star) && plan.selfExcluded) return null
+    private fun correlationPlan(star: Expr.Star): CorrelationPlan? {
+        val shape = config.correlationShape(star)
+        val plan = shape.plan ?: return null
+        if (shape.multiStar && plan.selfExcluded) return null
         if (plan is OrderedCorrelationPlan && !orderedCorrelationSupported(plan)) return null
         return plan
     }
@@ -1088,8 +1084,7 @@ class Interpreter(
 
     /** Deterministic shape-dispatch seam for the plan/fallback lock. */
     internal fun correlationStrategy(star: Expr.Star): CorrelationStrategy {
-        val group = star.path.substringBeforeLast('/')
-        return when (correlationPlan(star, group)) {
+        return when (correlationPlan(star)) {
             is KeyedCorrelationPlan -> CorrelationStrategy.KEYED
             is OrderedCorrelationPlan -> CorrelationStrategy.ORDERED
             null -> CorrelationStrategy.NESTED
@@ -1148,7 +1143,7 @@ class Interpreter(
      */
     internal fun correlationTallyBothWays(star: Expr.Star): Pair<Triple<Int, Int, Int>, Triple<Int, Int, Int>>? {
         val group = star.path.substringBeforeLast('/')
-        val fast = when (val plan = correlationPlan(star, group)) {
+        val fast = when (val plan = correlationPlan(star)) {
             is KeyedCorrelationPlan -> hashJoinTally(star, group, plan)
             is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan)
             null -> return null

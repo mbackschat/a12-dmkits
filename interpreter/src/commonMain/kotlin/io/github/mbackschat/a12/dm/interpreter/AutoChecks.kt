@@ -591,14 +591,14 @@ internal class AutoChecks(
      *  the value leniently as a plain string, so the rest of the document can still be validated / test-run). */
     fun customTypeUnsupported(doc: Document, isRelevant: Relevance): List<UnsupportedRule> =
         doc.valuedFields().filter { isRelevant(it.path, it.reps) }.mapNotNull { vf ->
-            customTypeUnsupportedAt(vf.path, doc.formattedPointer(vf.path, vf.reps))
+            customTypeUnsupportedAt(doc, vf.path, vf.reps)
         }
 
-    fun customTypeUnsupportedAt(path: String, pointer: String): UnsupportedRule? {
+    fun customTypeUnsupportedAt(doc: Document, path: String, reps: List<Int>): UnsupportedRule? {
         val declaration = model.customTypeOf(path) ?: return null
         return if (declaration.name in predefinedTypes || declaration.name in customFieldTypes) null
             else UnsupportedRule(
-                pointer,
+                doc.formattedPointer(path, reps),
                 "custom field type '${declaration.name}' has no registered validator",
                 UnsupportedSubject.CELL,
             )

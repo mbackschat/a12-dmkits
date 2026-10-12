@@ -91,7 +91,9 @@ class PerfComputeGranularityTest {
             sink.group(ROOT, 1)
         }
         val instance = InterpreterPerfEngine.buildWithSupport(scenario).instance(1)
-        assertTrue(instance.outcome().unsupported.isNotEmpty(), "the support route retains missing custom-type support")
+        assertEquals(listOf(io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule(
+            "/Case[1]/Status", "custom field type 'StatusType' has no registered validator",
+            io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject.CELL)), instance.outcome().unsupported)
         assertThrows(IllegalStateException::class.java) { instance.run() }
     }
 

@@ -4,6 +4,9 @@ import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 
+/** Immutable recognition only; field kinds and time zone are qualified by the current interpreter. */
+internal data class PreparedCorrelationShape(val plan: CorrelationPlan?, val multiStar: Boolean)
+
 /** A recognized, indexable `$` self-correlation shape. */
 internal sealed interface CorrelationPlan {
     val selfExcluded: Boolean

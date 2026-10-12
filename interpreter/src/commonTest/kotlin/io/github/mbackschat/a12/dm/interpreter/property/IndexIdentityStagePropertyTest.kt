@@ -17,6 +17,7 @@ class IndexIdentityStagePropertyTest {
             Atom("non-relevant", key = null, compromises = true),
             Atom("A", key = "A", compromises = false),
             Atom("B", key = "B", compromises = false),
+            Atom("compromised-key", key = "A", compromises = true),
         )
 
         for (size in 0..3) {

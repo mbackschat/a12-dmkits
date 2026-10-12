@@ -1237,7 +1237,8 @@ class DmInterpreter private constructor(
                 // refOmissionErrorResponsible: the referenced operands that can cause an omission, filled or not,
                 // fixed per rule ([omissionReferences]); the RNU cluster stays in. Empty for a VALUE error.
                 val fillToFix = if (type == MsgType.OMISSION) {
-                    joinedList(directRefs.filter { it in prepared.omissionReferences }
+                    if (directRefs.all { it in prepared.omissionReferences }) referenced
+                    else joinedList(directRefs.filter { it in prepared.omissionReferences }
                         .map { messagePointer(it, pass, ctx) }.distinct(), rnuPointers)
                 } else emptyList()
                 return RowOutcome.Fired(Message(rule.errorCode, rule.path,

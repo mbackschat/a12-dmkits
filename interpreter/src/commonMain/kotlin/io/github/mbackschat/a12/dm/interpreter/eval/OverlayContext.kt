@@ -77,7 +77,7 @@ internal class OverlayContext(
         // format — a `yyyy` target holds `2024`, which its year-component and formal reads expect, not the
         // evaluation's `2024-01-01` (SPEC-2026-10-04-01, `adapter.laws.CalendarTargetCompletionDiffTest`).
         is CascadeOverlay.Entry.Overlaid -> when (val value = entry.value) {
-            is Val.Num -> value.v.display(minFracOf(path))
+            is Val.Num -> entry.numberDisplay(minFracOf(path))
             is Val.Txt -> if (d.declaredKind(path) == Kind.DATE)
                 d.dateFormatOf(path)?.let { renderDateToFormat(value.v, it) } ?: value.v else value.v
             is Val.Bool -> value.v.toString()
@@ -213,14 +213,14 @@ internal class OverlayContext(
             CascadeOverlay.Entry.Poisoned -> cell.copy(raw = null, baseState = CellState.INVALID, value = Val.Unknown)
             CascadeOverlay.Entry.Cleared -> cell.copy(raw = null, baseState = CellState.EMPTY, value = null)
             is CascadeOverlay.Entry.Overlaid -> cell.copy(
-                raw = renderOverlayValue(cell.path, entry.value),
+                raw = renderOverlayValue(cell.path, entry),
                 baseState = CellState.FILLED,
                 value = entry.value,
             )
         }
 
-    private fun renderOverlayValue(path: String, value: Val): String? = when (value) {
-        is Val.Num -> value.v.display(minFracOf(path))
+    private fun renderOverlayValue(path: String, entry: CascadeOverlay.Entry.Overlaid): String? = when (val value = entry.value) {
+        is Val.Num -> entry.numberDisplay(minFracOf(path))
         is Val.Txt -> value.v
         is Val.Bool -> value.v.toString()
         is Val.Range -> "${value.start}/${value.end}"

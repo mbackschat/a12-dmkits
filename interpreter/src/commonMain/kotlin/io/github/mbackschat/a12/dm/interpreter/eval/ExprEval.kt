@@ -2070,10 +2070,13 @@ internal fun Interpreter.keptRowsWithSuccessorLookahead(
     keeps: ((EvalContext) -> Boolean)? = null,
     eligible: (EvalContext?, EvalContext) -> Boolean = { _, _ -> true },
 ): Sequence<EvalContext> = sequence {
-    var lastKept: EvalContext? = null
-    yieldAll(keptRowsWithSuccessorLookahead(rows) { row ->
-        (eligible(lastKept, row) && (keeps?.invoke(row) ?: havingInterp(row).keeps(having))).also { if (it) lastKept = row }
-    })
+    var pending: EvalContext? = null
+    for (row in rows) {
+        if (!eligible(pending, row) || !(keeps?.invoke(row) ?: havingInterp(row).keeps(having))) continue
+        pending?.let { yield(it) }
+        pending = row
+    }
+    pending?.let { yield(it) }
 }
 
 /** A filtered list's candidate rows as A12's filter walk visits them, missing coordinates included
@@ -2106,20 +2109,6 @@ internal fun Interpreter.filteredRows(
         val changed = if (last == null) -1 else coordinates.indices.firstOrNull { coordinates[it] != last[it] } ?: -1
         changed < 0 || coordinates.take(changed + 1) in occupied
     }
-}
-
-/** Callback form of [keptRowsWithSuccessorLookahead]; the caller supplies its filter binding. */
-internal fun keptRowsWithSuccessorLookahead(
-    rows: List<EvalContext>,
-    keeps: (EvalContext) -> Boolean,
-): Sequence<EvalContext> = sequence {
-    var pending: EvalContext? = null
-    for (row in rows) {
-        if (!keeps(row)) continue
-        pending?.let { yield(it) }
-        pending = row
-    }
-    pending?.let { yield(it) }
 }
 
 /**
@@ -2343,7 +2332,7 @@ private fun Interpreter.firstFilledStar(
     for (row in kept) {
         visitedRow = true
         val reps = row.repsOf(operand.path)
-        if (cellRelevant != null && !cellRelevant.invoke(operand.path, reps)) {
+        if (cellRelevant?.invoke(operand.path, reps) == false) {
             return FirstFilledStep.Stop(Val.Unknown)
         }
         if (computeMode) {

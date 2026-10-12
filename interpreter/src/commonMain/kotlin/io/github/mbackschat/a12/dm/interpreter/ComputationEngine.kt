@@ -321,7 +321,7 @@ internal class ComputationEngine(
                         toComputed(comp, v, targetKey.second, doc, locale).also { attempt ->
                             val c = attempt.result
                             if (!c.value.isNullOrEmpty()) checks.customTypeUnsupportedAt(
-                                comp.targetPath, doc.formattedPointer(comp.targetPath, targetKey.second),
+                                doc, comp.targetPath, targetKey.second,
                             )?.let { if (it !in unsupported) unsupported += it }
                             if (c.outcome == ComputeOutcome.VALUE || attempt.computedError?.code == CUSTOM_TEST_RANGE) {
                                 c.value?.let { valueAdmissions.admitComputedCustomValue(c.path, c.indices, it) }

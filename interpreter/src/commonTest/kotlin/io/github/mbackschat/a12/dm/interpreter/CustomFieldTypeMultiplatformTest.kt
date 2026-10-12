@@ -94,7 +94,9 @@ class CustomFieldTypeMultiplatformTest {
     fun unregisteredReportsUnsupportedAndEvaluatesLeniently() {
         val out = unregistered("ab")   // no validator registered for "Code"
         assertTrue(out.messages.none { it.code == CUSTOM_TYPE_INVALID }, "no validator → no custom formal error")
-        assertTrue(out.unsupported.any { "Code" in it.reason }, "the cell is reported unsupported (the kernel would throw)")
+        assertEquals(listOf(io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule(
+            "/Order[1]/Code", "custom field type 'Code' has no registered validator", UnsupportedSubject.CELL)),
+            out.unsupported.filter { it.subject == UnsupportedSubject.CELL })
         assertTrue(out.messages.any { it.code == "R" }, "validation continues leniently — the value is a plain string, rule fires")
     }
 

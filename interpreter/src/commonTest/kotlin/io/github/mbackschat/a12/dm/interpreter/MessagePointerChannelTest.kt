@@ -6,6 +6,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.Severity
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
+import io.github.mbackschat.a12.dm.interpreter.footprint.FootprintScenarios
+import io.github.mbackschat.a12.dm.interpreter.footprint.FootprintScenario
 import kotlin.test.assertTrue
 
 /**
@@ -22,6 +25,18 @@ import kotlin.test.assertTrue
  * be reconstructed.
  */
 class MessagePointerChannelTest {
+
+    @Test
+    fun identicalOmissionChannelsShareTheirPointerProjection() {
+        val fixture = FootprintScenarios.fixture(FootprintScenario.EQUALITY_CORRELATION, 4)
+        val result = DmInterpreter(fixture.model).validate(fixture.document)
+        assertEquals(4, result.messages.size)
+        for (message in result.messages) {
+            assertEquals(MsgType.OMISSION, message.type)
+            assertTrue(message.referencedPointers.isNotEmpty())
+            assertSame(message.referencedPointers, message.fillToFixPointers)
+        }
+    }
 
     private fun preparedPermit(): PreparedModel {
         val caseId = "self-contained"

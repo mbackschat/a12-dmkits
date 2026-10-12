@@ -27,6 +27,14 @@ internal data class IndexIdentityResolution<K : Any>(
 internal fun <K : Any> resolveIndexIdentity(
     candidates: Iterable<IndexIdentityCandidate<K>>,
 ): IndexIdentityResolution<K> {
+    // Point lookups commonly classify one candidate; they need no collision buckets (IF391).
+    if (candidates is Collection<IndexIdentityCandidate<K>> && candidates.size <= 1) {
+        val candidate = candidates.firstOrNull()
+        return IndexIdentityResolution(
+            candidate?.key?.let { mapOf(it to candidate.repetitions) } ?: emptyMap(),
+            emptySet(), emptySet(), candidate?.compromises ?: false,
+        )
+    }
     val rowsByKey = LinkedHashMap<K, MutableList<List<Int>>>()
     var compromised = false
     for (candidate in candidates) {

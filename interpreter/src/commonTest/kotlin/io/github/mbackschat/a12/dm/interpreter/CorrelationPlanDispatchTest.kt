@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertSame
 
 /** Multiplatform lock for the closed keyed/ordered/general `$` correlation dispatch boundary. */
 class CorrelationPlanDispatchTest {
@@ -113,6 +114,23 @@ class CorrelationPlanDispatchTest {
             "[Groups/Items/Count] > [\$Groups/Items/Count])"
         assertEquals(CorrelationStrategy.NESTED,
             Interpreter(context, EvalConfig()).correlationStrategy(star(text)))
+    }
+
+    @Test
+    fun sharedRecognitionRetainsRuntimeKindQualificationAndNegativeResults() {
+        val config = EvalConfig()
+        val ordered = star(having("[Items/Count] > [\$Items/Count]"))
+        val numeric = numericModel.newDocument().field(COUNT, "1", 1, 1, 1).contextsFor(ITEMS).single()
+        val booleanModel = numericModel.copy(fields = listOf(FieldDef(COUNT, Kind.BOOLEAN)))
+        val boolean = booleanModel.newDocument().field(COUNT, "true", 1, 1, 1).contextsFor(ITEMS).single()
+        assertEquals(CorrelationStrategy.ORDERED, Interpreter(numeric, config).correlationStrategy(ordered))
+        val recognized = config.correlationShape(ordered)
+        assertEquals(CorrelationStrategy.NESTED, Interpreter(boolean, config).correlationStrategy(ordered))
+        assertSame(recognized, config.correlationShape(ordered))
+        val nested = star(having("[Items/Count] > [\$Items/Count] And FieldFilled(Items/Count)"))
+        val rejected = config.correlationShape(nested)
+        assertEquals(null, rejected.plan)
+        assertSame(rejected, config.correlationShape(nested))
     }
 
     private fun strategy(model: ModelDef, text: String, value: String = "1"): CorrelationStrategy {

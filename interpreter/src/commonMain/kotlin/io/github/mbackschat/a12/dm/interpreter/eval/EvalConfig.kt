@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
@@ -128,4 +129,18 @@ class EvalConfig(
      * its `Having` and overlap sub-evaluations. Internal, so it stays out of the published ABI.
      */
     internal var work: WorkLedger? = null
+
+    private var correlationShapes: MutableMap<Expr.Star, PreparedCorrelationShape>? = null
+
+    /** SPEC-2026-10-10-02's dispatch and tally inspect the same immutable star across rows; recognition is call-owned. */
+    internal fun correlationShape(star: Expr.Star): PreparedCorrelationShape {
+        val shapes = correlationShapes ?: mutableMapOf<Expr.Star, PreparedCorrelationShape>()
+            .also { correlationShapes = it }
+        return shapes.getOrPut(star) {
+            PreparedCorrelationShape(
+                star.having?.let { CorrelationJoin.parse(it, star.path.substringBeforeLast('/')) },
+                star.bindDepth >= 0 && star.bindDepth < star.path.trim('/').split('/').size - 2,
+            )
+        }
+    }
 }
