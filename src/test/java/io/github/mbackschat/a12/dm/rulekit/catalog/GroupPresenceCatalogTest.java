@@ -41,7 +41,7 @@ class GroupPresenceCatalogTest {
     void distinguishesPlainUnavailableCountFromStructuralStarredCount() {
         String count = textOf("NumberOfFilledGroups");
 
-        assertTrue(count.contains("plain multi-group") && count.contains("entire count unavailable"));
+        assertTrue(count.contains("plain multi-group") && count.contains("whole count unavailable"));
         assertTrue(count.contains("starred single-group") && count.contains("structural"));
         assertTrue(count.contains("instantiated repeat") && count.contains("formally invalid"));
     }

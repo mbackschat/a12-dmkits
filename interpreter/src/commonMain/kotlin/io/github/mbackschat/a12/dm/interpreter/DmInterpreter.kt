@@ -341,7 +341,7 @@ class DmInterpreter private constructor(
             groupRelevance = groupRelevanceOf(relevant),
             relevantWithin = queries::isRelevantWithin,
             groupExtents = PartialGroupExtents(relevant),
-            parallelSelection = ParallelRuleSelection(model, relevant),
+            parallelSelection = ParallelRuleSelection(model, relevant, paths),
         ))
     }
 
