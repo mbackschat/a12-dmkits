@@ -3541,7 +3541,7 @@ if (!footprintForkCountProperty.isPresent()) {
     def jsTarget = kotlin.targets.getByName('js')
     (1..forkCount).each { fork ->
         def runName = "footprintNodeFork${fork}"
-        jsTarget.testRuns.create(runName)
+        jsTarget.nodejs.testRuns.create(runName)
         def output = rawReportDir.get().file("node-${fork}.json").asFile
         workerTasks << tasks.named(
             "jsNode${runName.capitalize()}Test",
@@ -3754,7 +3754,7 @@ if (!performanceForkCountProperty.isPresent()) {
     def performanceJsTarget = kotlin.targets.getByName('js')
     (1..performanceForks).each { fork ->
         def runName = "performanceNodeFirstFork${fork}"
-        performanceJsTarget.testRuns.create(runName)
+        performanceJsTarget.nodejs.testRuns.create(runName)
         def output = performanceRawDir.get().file("node-first-${fork}.json").asFile
         performanceWorkers << tasks.named(
             "jsNode${runName.capitalize()}Test",
@@ -3781,7 +3781,7 @@ if (!performanceForkCountProperty.isPresent()) {
     ].eachWithIndex { scenario, index ->
         (1..performanceForks).each { fork ->
             def runName = "performanceNodeThroughput${index + 1}Fork${fork}"
-            performanceJsTarget.testRuns.create(runName)
+            performanceJsTarget.nodejs.testRuns.create(runName)
             def output = performanceRawDir.get().file("node-throughput-${index + 1}-${fork}.json").asFile
             performanceWorkers << tasks.named(
                 "jsNode${runName.capitalize()}Test",
