@@ -110,7 +110,8 @@ public final class JsonSchemaImporter {
      *  (recursion detection), the report, the Tier-A+ rule-synthesis needs, and the customization profile. */
     private record Ctx(JsonNode root, Dialect dialect, JsonNode defs, Deque<String> inlining,
                        TranscodeReport.Builder report, List<RuleSynthesis.Need> ruleNeeds, MappingProfile profile,
-                       boolean bundle, Set<String> includes, String modelId, Set<String> breakEdges) {
+                       boolean bundle, Set<String> includes, String modelId, Set<String> breakEdges,
+                       Map<String, String> indexFields) {
 
         /** Would mounting {@code targetId} from this model close an include cycle (break it by inlining instead)? */
         boolean isCycleEdge(String targetId) {
@@ -264,7 +265,7 @@ public final class JsonSchemaImporter {
         }
         JsonNode defsPool = dialect.isOpenApi() ? root.path("components").path("schemas") : root.path("$defs");
         Ctx ctx = new Ctx(root, dialect, defsPool, new ArrayDeque<>(), report, new ArrayList<>(), profile,
-                bundle, new LinkedHashSet<>(), modelId, breakEdges);
+                bundle, new LinkedHashSet<>(), modelId, breakEdges, new LinkedHashMap<>());
         DocumentModelDraft.Builder b = DocumentModelDraft.named(modelId).locale(LOCALE);
         declareLeafTypedefs(b, ctx);
         b.rootGroup(ROOT_GROUP, g -> {
@@ -275,7 +276,13 @@ public final class JsonSchemaImporter {
             }
         });
         ctx.includes().forEach(refId -> b.include(refId, refId));   // header includes for the mounts emitted above
-        return new Structure(b.build().toJson(), ctx.ruleNeeds());
+        String dmJson = b.build().toJson();
+        if (!ctx.indexFields().isEmpty()) {
+            ObjectNode tree = (ObjectNode) parse(dmJson);
+            Carriage.restoreIndexFields(tree, ctx.indexFields(), report);
+            dmJson = tree.toString();
+        }
+        return new Structure(dmJson, ctx.ruleNeeds());
     }
 
     /** Build one full model from {@code rootSchema}: structure, then synthesized rules (Tier A+), then carried
@@ -374,6 +381,16 @@ public final class JsonSchemaImporter {
      */
     private static void populate(DocumentModelDraft.GroupBuilder g, JsonNode objectSchema,
                                  String groupPath, Ctx ctx) {
+        JsonNode indexField = objectSchema.get(Carriage.X_INDEX_FIELD_NAME);
+        if (indexField != null) {
+            if (indexField.isTextual()) {
+                ctx.indexFields().put(groupPath, indexField.textValue());
+            } else {
+                ctx.report().omit(groupPath + "/" + Carriage.X_INDEX_FIELD_NAME,
+                        Carriage.X_INDEX_FIELD_NAME + " at '" + groupPath + "' must be a string — omitted. "
+                                + "Restore the group's relative index-field reference by hand");
+            }
+        }
         List<JsonNode> allOf = allOfObjectSubschemas(objectSchema, ctx);
         Set<String> required = new LinkedHashSet<>(requiredNames(objectSchema));
         allOf.forEach(sub -> required.addAll(requiredNames(sub)));

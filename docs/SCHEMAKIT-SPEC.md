@@ -179,6 +179,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | a12 construct | JSON Schema export | Fidelity |
 |---|---|---|
 | group; repeatable group | `object`; `array` + `maxItems` | exact |
+| group `indexFieldName` | scalar `x-a12-index-field-name` on the group object, including an array’s `items` object | carriage |
 | STRING (+ `minLength`/`maxLength`/`pattern`) | `string` (+ constraints) | exact |
 | NUMBER scale 0 / scale > 0 (+ `min`/`max`) | `integer` / `number` (+ `minimum`/`maximum`) | exact |
 | BOOLEAN · ENUMERATION | `boolean` · `enum` | exact |
@@ -188,6 +189,8 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | Computation | `x-a12-computation` (a12↔a12 round-trip) | carriage |
 | DATE / DATE_TIME / TIME / DATE_RANGE / DATE_FRAGMENT | `string` placeholder + diagnostic | **lossy** (no `format` emitted yet) |
 | CONFIRM · CUSTOM | `string` placeholder + diagnostic | **lossy** |
+
+A group's `x-a12-index-field-name` carries A12's unchanged relative `Group.indexFieldName` string, including a spelling such as `../Sku`; it is not a stock uniqueness constraint. Import restores the scalar before rule synthesis, records a `CARRIED` disposition, and leaves semantic admission to the existing consistency gate. Annotation absence leaves the index unset; a nontextual annotation is omitted with a corrective and an `OMITTED` disposition while the structural group survives. Export emits the annotation only for an indexed group, records `CARRIED`, and uses the same group-object placement in bare JSON Schema and wrapped OpenAPI. Enforcement is `JsonSchemaExporter.exportGroup`, `JsonSchemaImporter.populate`/`buildStructure` and `Carriage.restoreIndexFields`; `TierAProjectionShapeTest` locks placement, exact relative spelling, absence/nontextual controls, carried-rule identity, normalized re-export, kernel/portable admission and the wrapped `OPENAPI_31` component. This guarantee uses the existing `/Root` carriage convention and does not add root rebasing or `allOf` conflict reconciliation.
 
 The **mismatch in one line:** import turns rules/strategies/temporal-formats into native a12 constructs; export only round-trips the Tier-A subset natively and carries the rest as `x-a12-*` (or, for temporal/custom *fields*, falls back to `string`). That export-side temporal/custom loss is the main asymmetry — the inverse of the import `format`→kind mapping (§4b).
 
@@ -329,7 +332,7 @@ The differential is **round-trip + kernel-accept** (the kernel-accept gate rides
 
 1. **Kernel-accept** — every imported model loads clean: `ModelLoader.loadSelfContained` does not throw `ModelConsistencyException`.
 1a. **Portable agreement** — the same models, through `dmkits-consistency-gate` with no kernel involved, must not be REFUSED. Only that direction fails: A12 has just accepted the model, so a portable ERROR is the Kernel-free checker refusing what A12 admits — invisible to a consumer, because the kernel is never asked. Its silence is never evidence of the converse, since that checker completes only the families it implements and reports no VALID verdict at all. It rides the one `assertKernelAccepts` seam every shape test already calls, so the arm covers the whole import corpus rather than hand-picked fixtures; `PortableAcceptanceGateTest` supplies its positive controls, without which an arm that fires only on a disagreement would be green whether armed or not. **Measured 2026-09-16: no disagreement across the 135-test corpus.**
-2. **Round-trip** — `import(schema) → DM → export → schema'` is structurally equal on `{type, properties, required, $defs}`; and `DM → export → import → DM'` preserves structure + (a12↔a12) rules/computations via `x-a12-*`.
+2. **Round-trip** — `import(schema) → DM → export → schema'` is structurally equal on `{type, properties, required, $defs}`; and `DM → export → import → DM'` preserves structure + (a12↔a12) rules/computations via `x-a12-*`, plus the unchanged group `indexFieldName` scalar through `x-a12-index-field-name` on its object.
 3. **Valid JSON Schema** — exports validate against the JSON-Schema meta-schema.
 4. **Report accuracy** — the transcoding report states every disposition; it is asserted against (it doubles as the suite's evidence, proposal §11).
 5. **Two-tier boundary** *(shape 5)* — exported Tier-A keywords feed a stock validator; a cross-field rule that the stock tier cannot enforce remains present in `x-a12-rule`. Live `interpreter.validateFull` wiring is deferred in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3.

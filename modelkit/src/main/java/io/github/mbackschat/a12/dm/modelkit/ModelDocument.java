@@ -1193,14 +1193,16 @@ public final class ModelDocument {
     }
 
     /**
-     * Designate an existing direct-child field as the group's index field. Non-repeatable groups may
-     * also declare one (KERNEL-FINDINGS KF280); {@code validate()} remains the authoritative gate.
+     * Preserve the group's relative index-field reference, whose short name must name a direct child.
+     * Non-repeatable groups may also declare one. Resolution is delegated to {@code validate()}; the
+     * admitted outside-landing spelling is locked by {@code GroupIndexAndSortReferenceLawsTest}.
      */
     public ModelDocument setIndexField(String groupPath, String fieldName) {
         ObjectNode body = groupBody(groupPath);
+        String shortName = fieldName.substring(fieldName.lastIndexOf('/') + 1);
         boolean childField = false;
         for (JsonNode e : body.path(DmKeys.ELEMENTS)) {
-            if (DmNodes.is(ElementType.FIELD, e) && fieldName.equals(e.path(DmKeys.NAME).asText())) {
+            if (DmNodes.is(ElementType.FIELD, e) && shortName.equals(e.path(DmKeys.NAME).asText())) {
                 childField = true;
                 break;
             }

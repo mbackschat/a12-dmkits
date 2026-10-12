@@ -96,6 +96,11 @@ public final class JsonSchemaExporter {
     private ObjectNode exportGroup(String groupPath, Ctx ctx) {
         ObjectNode node = JSON.createObjectNode();
         node.put("type", "object");
+        ctx.doc().indexField(groupPath).ifPresent(reference -> {
+            node.put(Carriage.X_INDEX_FIELD_NAME, reference);
+            ctx.report().mapped(groupPath + "/indexFieldName", Carriage.X_INDEX_FIELD_NAME,
+                    TranscodeReport.Tier.CARRIED);
+        });
         ObjectNode properties = node.putObject("properties");
         TreeSet<String> required = new TreeSet<>();
 

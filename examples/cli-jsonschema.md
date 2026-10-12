@@ -250,12 +250,15 @@ But export is **best-effort**, and a real model exposes the limits. Exporting th
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json model export-jsonschema 2>/dev/null \
-  | jq -c '{type, fields: (.properties|length), carried_rules: (.["x-a12-rule"]|length)}'
+  | jq -c '{type, fields: (.properties|length), carried_rules: (.["x-a12-rule"]|length),
+           item_index: .properties.Items.items["x-a12-index-field-name"]}'
 ```
 
 ```output
-{"type":"object","fields":13,"carried_rules":3}
+{"type":"object","fields":13,"carried_rules":3,"item_index":"Sku"}
 ```
+
+The item object also carries its unchanged `Sku` index-field reference as `x-a12-index-field-name`, so import can restore indexed rules. This annotation adds no native JSON Schema constraint.
 
 The report on stderr names every lossy disposition — here, the three field kinds with no native JSON Schema form:
 
@@ -264,7 +267,7 @@ dmtool -m examples/models/order-ruled.dm.json model export-jsonschema 2>&1 1>/de
 ```
 
 ```output
-transcoding report: 22 mapped, 0 omitted, 3 note(s)
+transcoding report: 23 mapped, 0 omitted, 3 note(s)
   - kind 'CONFIRM' at '/Order/TermsConfirmed' is not mapped yet — string placeholder
   - kind 'DATE' at '/Order/OrderDate' is not mapped yet — string placeholder
   - kind 'DATE' at '/Order/DeliveryDate' is not mapped yet — string placeholder

@@ -994,8 +994,9 @@ public final class DocumentModelDraft {
         }
 
         /**
-         * Declare this group's index field ({@code indexFieldName}). The named field must be a direct
-         * child. Non-repeatable groups may also declare an index field (KERNEL-FINDINGS KF280).
+         * Preserve this group's relative index-field reference ({@code indexFieldName}). Its short name
+         * must name a direct child; the model's consistency gate decides whether the reference resolves.
+         * Non-repeatable groups may also declare one ({@code IndexFieldTest}).
          */
         public GroupBuilder indexField(String fieldName) {
             this.indexFieldName = fieldName;
@@ -1176,8 +1177,10 @@ public final class DocumentModelDraft {
                 }
             }
             if (indexFieldName != null) {
+                // A12 checks the resolved short name, not the landing's parent (GroupIndexAndSortReferenceLawsTest).
+                String shortName = indexFieldName.substring(indexFieldName.lastIndexOf('/') + 1);
                 boolean present = elements.stream()
-                        .anyMatch(e -> e instanceof ElementDraft.Field f && f.name().equals(indexFieldName));
+                        .anyMatch(e -> e instanceof ElementDraft.Field f && f.name().equals(shortName));
                 if (!present) {
                     throw new IllegalStateException("group '" + name + "' index field '" + indexFieldName
                             + "' is not a direct child field");

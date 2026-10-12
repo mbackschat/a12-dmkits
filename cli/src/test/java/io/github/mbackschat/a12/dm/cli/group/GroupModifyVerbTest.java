@@ -128,6 +128,21 @@ class GroupModifyVerbTest {
     }
 
     @Test
+    void preservesAnAdmittedRelativeIndexField(@TempDir Path dir) throws Exception {
+        var draft = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("parcel-index").locale("en_US")
+                .rootGroup("Parcel", root -> root.stringField("Code", field -> { })
+                        .group("Items", items -> items.repeatable(5).stringField("Code", field -> { }))).build();
+        Path model = dir.resolve("parcel.dm.json");
+        Files.writeString(model, draft.toJson());
+        var modified = CliTestSupport.run("-m", model.toString(), "group", "modify", "/Parcel/Items",
+                "--index-field", "../Code");
+        assertEquals(0, modified.code(), modified::out);
+        var read = CliTestSupport.run("-m", model.toString(), "group", "read", "/Parcel/Items");
+        assertEquals(0, read.code(), read::out);
+        assertEquals("../Code", M.readTree(read.out()).path("data").path("indexField").asText());
+    }
+
+    @Test
     void clearsAGroupIndexField(@TempDir Path dir) throws Exception {
         Path m = subscription(dir);
         CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Addons", "--index-field", "Name");

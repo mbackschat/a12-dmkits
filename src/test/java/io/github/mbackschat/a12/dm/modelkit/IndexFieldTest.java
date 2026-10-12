@@ -4,6 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 
 
 import org.junit.jupiter.api.Test;
@@ -32,6 +37,52 @@ class IndexFieldTest {
                 .build();
     }
 
+    private static String withIndexReference(String dm, String reference) throws Exception {
+        ObjectNode tree = (ObjectNode) new ObjectMapper().readTree(dm);
+        for (JsonNode element : tree.path("content").path("modelRoot").path("rootGroups").path(0)
+                .path("Group").path("elements")) {
+            if ("Lines".equals(element.path("name").asText())) {
+                ((ObjectNode) element.path("Group")).put("indexFieldName", reference);
+                return tree.toString();
+            }
+        }
+        throw new IllegalStateException("the typed shipment must contain Lines");
+    }
+
+    @Test
+    void aKernelAdmittedRelativeIndexReferenceSurvivesBothTypedWritePaths() throws Exception {
+        var session = EditSession.read(shipment().toJson());
+        session.group("/Shipment").addField("LineRef", FieldKind.STRING);
+        var lineEditor = session.group("/Shipment/Lines");
+        String groupPath = lineEditor.ref().path().value();
+        String control = session.toJson();
+        assertEquals(Verification.KERNEL_CONFIRMED, ModelLoader.loadSelfContained(control));
+        String relative = withIndexReference(control, "../LineRef");
+        assertEquals(Verification.KERNEL_CONFIRMED, ModelLoader.loadSelfContained(relative));
+        assertAll(
+                () -> {
+                    var doc = ModelDocument.read(control).setIndexField(groupPath, "../LineRef");
+                    assertEquals("../LineRef", doc.indexField(groupPath).orElseThrow());
+                    assertEquals(Verification.KERNEL_CONFIRMED, ModelLoader.loadSelfContained(doc.toJson()));
+                },
+                () -> {
+                    lineEditor.setIndexField("../LineRef");
+                    session.validate();
+                    assertEquals("../LineRef", ModelDocument.read(session.toJson())
+                            .indexField(groupPath).orElseThrow());
+                },
+                () -> {
+                    var draft = DocumentModelDraft.named("shipment").locale("en_US")
+                            .rootGroup("Shipment", root -> root.field("LineRef", FieldKind.STRING)
+                                    .group("Lines", lines -> lines.repeatable(50).indexField("../LineRef")
+                                            .field("LineRef", FieldKind.STRING)))
+                            .build();
+                    assertEquals("../LineRef", ModelDocument.read(draft.toJson())
+                            .indexField(groupPath).orElseThrow());
+                    assertEquals(Verification.KERNEL_CONFIRMED, ModelLoader.loadSelfContained(draft.toJson()));
+                });
+    }
+
     private static ModelIndex index(DocumentModelDraft draft) {
         try {
             assertEquals(Verification.KERNEL_CONFIRMED, ModelLoader.loadSelfContained(draft.toJson()));
@@ -53,7 +104,11 @@ class IndexFieldTest {
     }
 
     @Test
-    void theIndexFieldMustNameADirectChildField() {
+    void theIndexFieldMustNameADirectChildField() throws Exception {
+        String missing = withIndexReference(shipment().toJson(), "NotHere");
+        assertThrows(ModelConsistencyException.class, () -> ModelLoader.loadSelfContained(missing));
+        assertThrows(IllegalArgumentException.class,
+                () -> ModelDocument.read(shipment().toJson()).setIndexField("/Shipment/Lines", "NotHere"));
         // referential integrity, caught fail-fast before the kernel
         assertThrows(IllegalStateException.class, () -> DocumentModelDraft.named("m").locale("en_US")
                 .rootGroup("G", g -> g.group("Rows", r -> r

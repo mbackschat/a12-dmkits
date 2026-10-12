@@ -225,6 +225,7 @@ dmtool -m order.dm.json model export-jsonschema \
 ```
 
 - **`--dialect`** (`AUTO` · `JSON_SCHEMA` · `OPENAPI_30` · `OPENAPI_31`) reads/writes the right encoding — OpenAPI 3.0's `nullable:true` and boolean exclusive bounds, `components/schemas` `$ref`s, the explicit `discriminator`. `AUTO` detects it from the `openapi:` version field.
+- Group index references round-trip as `x-a12-index-field-name` on the group object; see the [schema mapping contract](docs/SCHEMAKIT-SPEC.md).
 - **`--component`** picks the OpenAPI bundle's entry-point schema on import; **`--out-dir`** imports the *whole* bundle (one model per component, object cross-refs wired as mounts); **`--wrap-openapi`** emits the OpenAPI envelope on export.
 - Import is **best-effort by default** — it maps as much as possible (even unbounded arrays and recursive `$ref`s, so nested structure isn't lost) and *flags every guess* in the stderr report; nothing is silent or blocked. `--strict` flips to omit-everything-uncertain; per-decision flags (`--array-of-scalar`, `--union`, `--number-scale`, …) tune each choice.
 - Constraints with no field-config home become real a12 **rules** — `required`/`enum`/`pattern`, exclusive bounds, `multipleOf`, `const`, `dependentRequired`, `uniqueItems`, `oneOf`/`anyOf` discriminators, `if`/`then`/`else` (incl. multi-property), `not`, and `contains`/`minContains` — each kernel-checked (the full table is in the spec).

@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Tier-B / Tier-C <em>carriage</em> (SCHEMAKIT-SPEC §4; JSON-SCHEMA-PROPOSAL §6): a rule or computation
@@ -27,6 +28,7 @@ import java.util.List;
  */
 final class Carriage {
 
+    static final String X_INDEX_FIELD_NAME = "x-a12-index-field-name";
     static final String X_RULE = "x-a12-rule";
     static final String X_COMPUTATION = "x-a12-computation";
 
@@ -92,36 +94,43 @@ final class Carriage {
         }
     }
 
-    /** The {@code elements} array of the group at the absolute {@code groupPath}, or {@code null} (the
-     *  schemakit-private traversal replica — see the class Javadoc). */
-    private static ArrayNode groupElements(JsonNode root, String groupPath) {
-        return elementsOf(root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS), groupPath);
-    }
-
-    private static ArrayNode elementsOf(JsonNode groups, String groupPath) {
-        if (!groups.isArray()) {
-            return null;
-        }
-        for (JsonNode node : groups) {
-            if (!ElementType.GROUP.wireName().equals(node.path(DmKeys.TYPE).asText())) {
+    /** Preserve the owner's relative scalar before rule synthesis binds the structure (SCHEMAKIT-SPEC §4). */
+    static void restoreIndexFields(ObjectNode dmTree, Map<String, String> indexFields,
+                                   TranscodeReport.Builder report) {
+        for (var entry : indexFields.entrySet()) {
+            String groupPath = entry.getKey();
+            ObjectNode body = groupBody(dmTree, groupPath);
+            if (body == null) {
+                report.omit(groupPath + "/" + X_INDEX_FIELD_NAME,
+                        "carried index field targets missing group '" + groupPath + "' — restore it by hand");
                 continue;
             }
-            JsonNode elements = node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS);
-            if (groupPath.equals(node.path(DmKeys.ID).asText())) {
-                if (elements.isArray()) {
-                    return (ArrayNode) elements;
-                }
-                // a childless group may serialize WITHOUT its (empty) `elements` array — the kernel omits it;
-                // treat the id-match as an empty container and materialize the array so callers can append.
-                if (node.path(ElementType.GROUP.wireName()) instanceof ObjectNode group) {
-                    return group.putArray(DmKeys.ELEMENTS);
-                }
-                return null;
-            }
-            ArrayNode nested = elementsOf(elements, groupPath);
-            if (nested != null) {
-                return nested;
-            }
+            body.put(DmKeys.INDEX_FIELD_NAME, entry.getValue());
+            report.mapped(groupPath + "/" + X_INDEX_FIELD_NAME, groupPath + "/indexFieldName",
+                    TranscodeReport.Tier.CARRIED);
+        }
+    }
+
+    /** The group's element list, materialized for the existing verbatim element-carriage contract. */
+    private static ArrayNode groupElements(JsonNode root, String groupPath) {
+        ObjectNode body = groupBody(root, groupPath);
+        if (body == null) return null;
+        JsonNode elements = body.path(DmKeys.ELEMENTS);
+        return elements instanceof ArrayNode array ? array : body.putArray(DmKeys.ELEMENTS);
+    }
+
+    private static ObjectNode groupBody(JsonNode root, String groupPath) {
+        return bodyOf(root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS), groupPath);
+    }
+
+    private static ObjectNode bodyOf(JsonNode groups, String groupPath) {
+        if (!groups.isArray()) return null;
+        for (JsonNode node : groups) {
+            if (!ElementType.GROUP.wireName().equals(node.path(DmKeys.TYPE).asText())) continue;
+            if (!(node.path(ElementType.GROUP.wireName()) instanceof ObjectNode body)) continue;
+            if (groupPath.equals(node.path(DmKeys.ID).asText())) return body;
+            ObjectNode nested = bodyOf(body.path(DmKeys.ELEMENTS), groupPath);
+            if (nested != null) return nested;
         }
         return null;
     }

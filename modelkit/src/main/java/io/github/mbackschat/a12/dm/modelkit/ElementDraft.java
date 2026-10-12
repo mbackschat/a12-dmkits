@@ -52,9 +52,9 @@ public sealed interface ElementDraft
     }
 
     /**
-     * A group; {@code repeatability == 1} is single, {@code > 1} a repeatable list. A repeatable group
-     * may carry an {@code indexFieldName} — the direct child field whose value identifies a row (so two
-     * lists can be iterated in lockstep); {@code null} when unset. {@code usageType} is the kernel's
+     * A group; {@code repeatability == 1} is single, {@code > 1} a repeatable list. A group may carry an
+     * {@code indexFieldName} — A12's relative field reference, retained unchanged; its short name identifies
+     * a direct child field, and the consistency gate decides resolution. It is {@code null} when unset. {@code usageType} is the kernel's
      * group-template marker ({@code "attachment"} / {@code "multi-select"}, FEATURE-GAPS); {@code null}
      * for a plain group. Its non-structural {@link GroupMeta metadata} (labels, annotations, descriptions)
      * is grouped into one cohesive value so a group stays a compact record instead of a long positional

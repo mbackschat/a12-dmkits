@@ -30,8 +30,8 @@ import picocli.CommandLine.Parameters;
  * {@code dmtool group modify <groupPath>} — change an existing group's <b>repeatability</b> and/or its
  * <b>index field</b> in place and write the model back (in place; {@code -o} redirects, {@code --dry-run}
  * previews). {@code --repeatable <max>} (≥2) makes a single group a repetition list, {@code --non-repeatable}
- * collapses a list back to one; {@code --index-field <fieldName>} designates a direct-child field as the
- * index field (on either a repeatable or a non-repeatable group),
+ * collapses a list back to one; {@code --index-field <fieldName>} preserves a relative index-field reference whose short name
+ * names a direct child (on either a repeatable or a non-repeatable group),
  * {@code --clear-index-field} removes it; {@code --sort-field <child>[:asc|desc]} (repeatable) declares the
  * row display sort, {@code --clear-sort-fields} removes it. Common metadata is edited through the canonical
  * {@code meta <ref>} route (G45). At least one directive is required. The change is re-bound through the kernel
@@ -61,8 +61,8 @@ final class GroupModifyCommand extends BaseCommand {
     boolean nonRepeatable;
 
     @Option(names = "--index-field", paramLabel = "<fieldName>",
-            description = "designate a direct-child field as the index field (also allowed on a non-repeatable "
-                    + "group; a repeating group's key arms RepetitionNotUnique + parallel iteration)")
+            description = "set the relative index-field reference; its short name must name a direct child "
+                    + "(also allowed on a non-repeatable group; consistency checks resolution)")
     String indexField;
 
     @Option(names = "--clear-index-field", description = "remove the group's index field")

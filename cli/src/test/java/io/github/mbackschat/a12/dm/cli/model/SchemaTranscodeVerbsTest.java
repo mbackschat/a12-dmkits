@@ -194,6 +194,24 @@ class SchemaTranscodeVerbsTest {
     }
 
     @Test
+    void groupIndexSurvivesBothTranscodeVerbs(@TempDir Path dir) throws Exception {
+        var draft = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("indexed-parcels").locale("en_US")
+                .rootGroup("Root", root -> root.group("Parcels", parcels -> parcels.repeatable(5)
+                        .indexField("Code").stringField("Code", field -> { }))).build();
+        Path model = dir.resolve("indexed.dm.json");
+        Files.writeString(model, draft.toJson());
+        var exported = CliTestSupport.run("-m", model.toString(), "model", "export-jsonschema");
+        assertEquals(0, exported.code(), exported::err);
+        assertEquals("Code", M.readTree(exported.out()).at("/properties/Parcels/items/x-a12-index-field-name").asText());
+        Path schema = dir.resolve("indexed.schema.json");
+        Files.writeString(schema, exported.out());
+        var imported = CliTestSupport.run("model", "import-jsonschema", "--schema", schema.toString());
+        assertEquals(0, imported.code(), imported::err);
+        assertEquals("Code", io.github.mbackschat.a12.dm.modelkit.ModelDocument.read(imported.out())
+                .indexField("/Root/Parcels").orElseThrow());
+    }
+
+    @Test
     void bundleImportSuccessAndLaterFailureExposeTheDeclaredPartialPersistence(@TempDir Path dir)
             throws Exception {
         Path schema = dir.resolve("bundle.openapi.json");
