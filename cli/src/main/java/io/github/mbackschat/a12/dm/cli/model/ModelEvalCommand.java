@@ -87,8 +87,9 @@ final class ModelEvalCommand extends BaseCommand {
     String localeTag;
 
     @Option(names = "--relevant", paramLabel = "<json>",
-            description = "PARTIAL validation: JSON array of current-page field/group instance paths. Omitted "
-                    + "indices or [*] mean every repetition (ALL_SEMANTIC); [n] selects one row, e.g. "
+            description = "PARTIAL validation: JSON array of current-page field/group instance paths. "
+                    + "[*] or [0] means every repetition (ALL_SEMANTIC); [n] selects one row. "
+                    + "Indices on repeatable segments must be explicit, e.g. "
                     + "'[\"/Order/Name\",\"/Order/Lines[2]/Quantity\"]'. Global fields are auto-relevant.")
     String relevant;
 

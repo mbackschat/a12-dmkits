@@ -9871,6 +9871,107 @@
           "evidence": {}
         }
       }
+    },
+    "kf544": {
+      "sha256": "ec11cb26677d0596ae15c50bf002da6272c5834b7920d669e28f6135b1f0e243",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": [
+          "parallel validation matrix",
+          "joined availability",
+          "ordinary frames"
+        ],
+        "dmkits": [
+          "typed parallel conditions"
+        ],
+        "interpreter": [
+          "parallel dispatch",
+          "ordinary frames"
+        ],
+        "checker": [],
+        "dmtool-cli": [
+          "partial parallel selection"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": [
+          "SPEC05 and SPEC10"
+        ]
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both strategies pin joined availability, partial dispatch and the one-frame threshold.",
+          "evidence": {
+            "parallel validation matrix": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelValidationDispatchDiffTest.kt#compressedDispatchDoesNotWidenOperandRelevance",
+              "witness": "Repeated/fixed roots and distinct error selectors distinguish compressed dispatch from original operand relevance."
+            },
+            "joined availability": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelValidationDispatchDiffTest.kt#groupContentAndIndexAvailabilityPrecedeGroupAbsence",
+              "witness": "Empty payloads, missing rows, invalid indices and separate parents retain distinct full signatures."
+            },
+            "ordinary frames": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelValidationDispatchDiffTest.kt#ordinaryFrameDomainIsSharedByFullAndPartialValidation",
+              "witness": "Capacity3/6, reset-first and frame1 selection distinguish declared from physical traversal."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Existing typed group and field refs preserve the measured declarations.",
+          "evidence": {
+            "typed parallel conditions": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelValidationDispatchDiffTest.kt#groupContentAndIndexAvailabilityPrecedeGroupAbsence",
+              "witness": "Existing typed group and field refs preserve the measured declarations."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Public validation uses separate method selection and original operand relevance.",
+          "evidence": {
+            "ordinary frames": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/ParallelValidationDispatchTest.kt#smallFramesVisitUninstantiatedSlotsOnBothValidationRoutes",
+              "witness": "JVM/Node distinguish capacity3/6 on full and partial validation."
+            },
+            "parallel dispatch": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/ParallelValidationDispatchTest.kt#dispatchCompressesErrorSelectorsWithoutRestrictingFixedRootKeys",
+              "witness": "Public validation uses separate method selection and original operand relevance."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The correction evaluates already admitted rules; it changes no consistency gate.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "The existing model eval route exposes compressed dispatch with unchanged input syntax.",
+          "evidence": {
+            "partial parallel selection": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/PartialValidationCliTest.java#parallelDispatchCompressesSelectorsWithoutChangingTheirInputSyntax",
+              "witness": "The existing model eval route exposes compressed dispatch with unchanged input syntax."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime relevance and frame traversal introduce no imported keyword or authored model shape.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime selection changes neither native keyword projection nor lossless rule carriage.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Peer verification owns acceptance; duplicate-index message ownership is a separate obligation.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

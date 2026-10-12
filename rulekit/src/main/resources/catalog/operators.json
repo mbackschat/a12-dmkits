@@ -1345,7 +1345,8 @@
         {
           "text": "inside a Having filter a group leaf obeys the same scope gate as a field one, marked or not: alone it draws MVK_NO_ITERATION_FOR_WILDCARD in BOTH spellings, and beside an in-scope conjunct both are admitted — so a refusal of GroupFilled($G) alone is about the missing in-scope reference, not about the $",
           "kind": "AUTHORING"
-        }
+        },
+        {"text": "In a parallel join, a matching group row counts as filled even with an empty payload. Invalid indices make unmatched reads unavailable; partial validation also needs wildcard index coverage to establish unmatched absence. Concrete selections of every held index row are insufficient (KF544).", "kind": "SURPRISE"}
       ],
       "validExample": {
         "dsl": "GroupFilled(ShippingAddress)",
@@ -1390,7 +1391,8 @@
         {
           "text": "a negative condition combined with repeatable groups is rejected (MVK_NEG_CONDITION_IN_ITERATION) unless guarded, e.g. GroupFilled(K) And AtLeastOneFieldFilled(K/F)",
           "kind": "SURPRISE"
-        }
+        },
+        {"text": "In a parallel join, a matching group row counts as filled even with an empty payload. Invalid indices make unmatched reads unavailable; partial validation also needs wildcard index coverage to establish unmatched absence. Concrete selections of every held index row are insufficient (KF544).", "kind": "SURPRISE"}
       ],
       "validExample": {
         "dsl": "GroupNotFilled(ShippingAddress)",

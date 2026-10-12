@@ -8943,6 +8943,48 @@
           "id": "adapter.laws.SparseFilteredAggregateDiffTest.extremaAndDistinctUseSparseTraversalOnEachMeasuredCarrier"
         }
       ]
+    },
+    {
+      "operator": "GroupFilled",
+      "lane": "GOTCHA",
+      "ordinal": 4,
+      "digest": "sha256:f0f88b435912288973b04229e1c258e249bbb1710f6de2605a24341394df220d",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.ParallelValidationDispatchDiffTest.compressedDispatchDoesNotWidenOperandRelevance"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.ParallelValidationDispatchDiffTest.groupContentAndIndexAvailabilityPrecedeGroupAbsence"
+        }
+      ]
+    },
+    {
+      "operator": "GroupNotFilled",
+      "lane": "GOTCHA",
+      "ordinal": 2,
+      "digest": "sha256:f0f88b435912288973b04229e1c258e249bbb1710f6de2605a24341394df220d",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.ParallelValidationDispatchDiffTest.compressedDispatchDoesNotWidenOperandRelevance"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.ParallelValidationDispatchDiffTest.groupContentAndIndexAvailabilityPrecedeGroupAbsence"
+        }
+      ]
     }
   ],
   "claims": [

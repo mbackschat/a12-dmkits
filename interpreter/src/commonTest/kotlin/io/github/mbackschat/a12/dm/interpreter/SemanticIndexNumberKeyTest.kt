@@ -39,7 +39,9 @@ class SemanticIndexNumberKeyTest {
                         .field("$group/Deductible", key + if (fractional) ".25" else if (scale == 2) ".00" else "", 1, i + 1, 1)
                         .field("$group/Premium", "p", 1, i + 1, 1)
                 }
-                val visits = document.validationParallelContexts(groups, "Deductible", "/Tariff", null, null, null, null)
+                val visits = document.validationParallelContexts(groups, "Deductible", "/Tariff", null, null, null, null) {
+                    model.declaredReps[it] ?: 1
+                }
                 val expected = listOf(3, 2, 1).flatMap { row ->
                     List(if (leftScale != rightScale && !fractional) 2 else 1) { row }
                 }

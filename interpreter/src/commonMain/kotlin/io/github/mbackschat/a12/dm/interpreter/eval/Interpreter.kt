@@ -172,7 +172,8 @@ class Interpreter(
 
     /** Formal-aware group state for validation; low-level/compute consumers retain structural Boolean presence. */
     internal fun groupPresence(c: EvalContext, path: String): GroupPresenceState =
-        config.groupPresence?.invoke(path, c.repsOf(path)) ?: GroupPresenceState(c.groupFilled(path), erroneous = false)
+        if (c.presenceUnknown(path)) GroupPresenceState(false, false, GroupRelevance.NONE)
+        else config.groupPresence?.invoke(path, c.repsOf(path)) ?: GroupPresenceState(c.groupFilled(path), erroneous = false)
 
     /** The presence of a keyed group no row carries, asked at its unbound coordinate [repetitions]: empty, and
      *  decidably empty only where the validation coverage reaches that coordinate. Outside partial validation

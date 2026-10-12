@@ -4,6 +4,7 @@ import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer
 import com.mgmtp.a12.kernel.md.rt.api.IMessage
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.RelevantCoordinate
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
@@ -11,6 +12,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
+import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import org.junit.jupiter.api.Assertions.assertEquals
 import java.util.Date
 import java.util.Locale
@@ -49,6 +51,37 @@ internal data class DocumentObservation(
 internal data class DifferentialClock(val kernel: Date, val interpreter: EvalClock)
 
 internal object DocumentDifferential {
+
+    fun kernelMessages(model: String, json: String, dynamic: Boolean,
+                       relevant: Set<RelevantEntity>? = null): List<MessageSignature> {
+        val selection = relevant?.map { RuntimeLaws.Relevant.of(it.path, *it.indices.toIntArray()) }?.toSet()
+        val messages = if (dynamic) {
+            val engine = RuntimeLaws.kernelEngine(model)
+            if (selection == null) engine.validationMessages(engine.instance(json), null, Locale.US)
+            else engine.partialValidationMessages(engine.instance(json), selection, null, Locale.US)
+        } else {
+            val engine = RuntimeLaws.kernelJavaEngine(model)
+            if (selection == null) engine.validationMessages(engine.instance(json), null, Locale.US)
+            else engine.partialValidationMessages(engine.instance(json), selection, null, Locale.US)
+        }
+        return messages.map(::kernelSignature).sorted()
+    }
+
+    fun interpreterMessages(model: String, json: String, relevant: Set<RelevantEntity>? = null): List<MessageSignature> {
+        val prepared = PreparedModel.loadExpandedJson(model)
+        val interpreter = prepared.createInterpreter()
+        val document = prepared.documents.readDocument(json)
+        val report = if (relevant == null) interpreter.validateFull(document) else interpreter.validatePart(document,
+            relevant.map { entity -> prepared.model.relevantPointer(entity.path, entity.indices.map {
+                if (it == 0) RelevantCoordinate.all()
+                else RelevantCoordinate.exact(it)
+            }) })
+        assertEquals(emptyList<Any>(), report.unsupported, "every construct must be evaluable")
+        return report.findings.map {
+            MessageSignature(it.code, typeName(it.type.name), pointer(it.errorPath),
+                it.referenced.map(::pointer).sorted(), it.fillToFix.map(::pointer).sorted())
+        }.sorted()
+    }
 
     fun kernel(model: String, json: String, dynamic: Boolean, clock: DifferentialClock? = null): DocumentObservation {
         val (messages, computation) = if (dynamic) {

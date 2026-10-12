@@ -477,6 +477,8 @@ dmtool -m examples/models/subscription-computed.dm.json \
 
 → with `--no-computations` the stored `EffectiveFee` is empty (an empty number reads as `0`), so `0 > 0` is false and nothing fired. Same instance, same rule — the only difference is whether computations ran first. **Use the default to validate as the app will; `--no-computations` to validate stored values as-is.**
 
+For partial parallel joins, combining error-field selectors can admit a rule without making unselected operands relevant. Ordinary outer/frame coordinates and joined coordinates have different dispatch roles; see the [partial-validation contract](../docs/CLI-SPEC.md) and [kernel controls](../docs/KERNEL-FINDINGS.md#kf544).
+
 ## Parallel joins can emit the same message twice
 
 The [tariff model](models/tariff-parallel.dm.json) joins offered and quoted premiums by numeric deductible. Its index declarations require zero and two minimum fractional digits respectively. Validation visits both rendered tokens, `5` and `5.00`, although each resolves to the same matched rows. `messages` retains both occurrences; `fired` lists the code once. Changing both values to `5.25` aligns the tokens and produces one occurrence.

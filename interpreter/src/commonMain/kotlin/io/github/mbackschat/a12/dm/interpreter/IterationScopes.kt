@@ -65,11 +65,11 @@ internal class IterationScopes(private val model: ModelDef) {
             return if (starAnchor != null) IterationPlan.Rows(starAnchor)
             else rootGroupOf(resolveErrorPath(rule)).let { root -> IterationPlan.Once(root, isGlobal(root, ast)) }
         }
-        val parallelGroups = (refs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } } + semanticAnchors)
+        val parallelGroups = (refs.flatMap(::repeatableLevels) + semanticAnchors)
             .distinct().filter { it != scope && !scope.startsWith("$it/") }
         if (parallelGroups.isNotEmpty()) {
             val plan = prepareParallel(scope, parallelGroups)
-            requireParallelDocumentSupport(ast, plan.joined)
+            requireParallelDocumentSupport(ast, plan.joined, plan.commonParent)
             return plan
         }
         return IterationPlan.Rows(scope)
@@ -101,6 +101,7 @@ internal class IterationScopes(private val model: ModelDef) {
             plan.deepestFrame,
             cellRelevant,
             indexIdentityAdmitted,
+            ::capacityOf,
         ) else doc.parallelContexts(
             plan.joined,
             plan.indexName,
@@ -214,11 +215,11 @@ internal class IterationScopes(private val model: ModelDef) {
      * This lives on the preparation boundary used by execution, so value-independent declines cannot hide behind
      * a branch or an empty document and cannot drift from a separate support-only AST recognizer.
      */
-    private fun requireParallelDocumentSupport(ast: Cond, joined: List<String>) {
+    private fun requireParallelDocumentSupport(ast: Cond, joined: List<String>, commonParent: String) {
         if (starRefs(ast).isNotEmpty()) {
             throw UnsupportedConstructException("an aggregate/filter inside a parallel iteration is not modeled")
         }
-        parallelGroupReads(ast).firstOrNull { it !in joined }?.let { group ->
+        parallelGroupReads(ast).firstOrNull { it !in joined && it != commonParent }?.let { group ->
             throw UnsupportedConstructException(
                 "group-filled on a non-parallel group ($group) inside a parallel iteration is not modeled")
         }
@@ -283,15 +284,12 @@ internal class IterationScopes(private val model: ModelDef) {
 
     /** The deepest repeatable group ancestor-or-self of any [refs] path, or null when none is repeatable. */
     private fun deepestRepeatableAnchor(refs: List<String>): String? =
-        refs.flatMap { ref ->
-            // ancestor-or-SELF: a bare GROUP reference (a group-scope quantifier arg — legal un-starred on an
-            // indexed repeatable group) is itself an iteration anchor: the kernel iterates the rule PER ROW of
-            // the referenced repeatable group and judges each row's cells (the bare-group
-            // FieldsNotCollectivelyFilled idiom — kernel-pinned per-row fire set + pointers, IF106). The error
-            // entity is NOT an anchor (the kernel-captured corpus cases pin that), only the references are.
-            (ancestorGroups(ref) + listOfNotNull(ref.takeIf { model.kinds[ref] == null }))
-                .filter { it in model.repeatable }
-        }.maxByOrNull { it.count { c -> c == '/' } }
+        refs.flatMap(::repeatableLevels).maxByOrNull { it.count { c -> c == '/' } }
+
+    // A referenced group owns its level in both ordinary scope and join detection (SPEC05).
+    private fun repeatableLevels(ref: String): List<String> =
+        (ancestorGroups(ref) + listOfNotNull(ref.takeIf { model.kinds[ref] == null }))
+            .filter { it in model.repeatable }
 
     /** Selection replaces only the indexed level. Ordinary ancestors still iterate; a lower star collapses
      * its own suffix (SelectedAuthoredScopeDiffTest, SPEC-2026-10-10-03). */

@@ -571,7 +571,8 @@ class Document(internal val config: DocumentConfig) {
      * level visits its first coordinate and every later one whose coordinate prefix some instantiated row of any
      * group sets at that depth, again never past the capacity. The kernel's threshold is
      * `IterationLimitCreatorBase`'s, its occupancy `GesetzteWiederholungen`'s (source-read; the differential
-     * settles the behavior). Partial validation and uniqueness keep [contextsFor], computation its stored rows.
+     * settles the behavior). Ordinary partial row plans and uniqueness keep [contextsFor], computation its
+     * stored rows. Validation's parallel frames reuse this domain on both full and partial calls (SPEC10).
      *
      * [capacityOf] comes from the MODEL, which owns declared capacities: a document built without the model's group
      * configuration must still iterate the model's domain.
@@ -801,16 +802,21 @@ class Document(internal val config: DocumentConfig) {
     internal fun validationParallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
             frameGroup: String?, deepestFrame: String?,
             cellRelevant: ((String, List<Int>) -> Boolean)?,
-            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?): List<EvalContext> =
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+            capacityOf: (String) -> Int): List<EvalContext> =
         parallelContexts(groups, indexFieldName, commonParent, frameGroup, deepestFrame,
-            cellRelevant, indexIdentityAdmitted, validation = true)
+            cellRelevant, indexIdentityAdmitted, validation = true, capacityOf)
 
     private fun parallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
             frameGroup: String?, deepestFrame: String?,
             cellRelevant: ((String, List<Int>) -> Boolean)?,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
-            validation: Boolean): List<EvalContext> {
+            validation: Boolean, capacityOf: ((String) -> Int)? = null): List<EvalContext> {
         val out = ArrayList<EvalContext>()
+        val parentDepth = parts(commonParent).size
+        val frameDomain = if (deepestFrame != null && capacityOf != null)
+            fullValidationRowsOf(deepestFrame, capacityOf).groupBy { it.take(parentDepth) }
+        else null
         for (cReps in parentRowsOf(commonParent)) {
             // The NON-framed (clean) groups are shared across every frame row — build their value maps + invalid
             // flags ONCE per common-parent row, NOT per frame row (else a clean group of M rows is rescanned per
@@ -823,7 +829,8 @@ class Document(internal val config: DocumentConfig) {
             // An over-limit FRAME row is outside the kernel's cache, so the join never runs inside it (the same
             // exclusion as the joined groups below and the star domain, SPEC-2026-07-23-13 / IF220).
             val frameRows = if (deepestFrame != null)
-                rowsWithPrefix(deepestFrame, cReps).filter { it !in overLimitRows(deepestFrame) }
+                if (frameDomain != null) frameDomain[cReps].orEmpty()
+                else rowsWithPrefix(deepestFrame, cReps).filter { it !in overLimitRows(deepestFrame) }
             else listOf(cReps)
             for (fr in frameRows) {
                 // each group's parent context: the framed group is scoped to the current frame row, others to cReps
@@ -851,7 +858,8 @@ class Document(internal val config: DocumentConfig) {
                 }
                 for (v in if (validation) values.sorted() else values) {
                     out += ParallelRowContext(commonParent, cReps, groups, parentReps,
-                        groups.associateWith { perGroup.getValue(it)[indexKeyOf(v, kinds["$it/$indexFieldName"])] }, invalid)
+                        groups.associateWith { perGroup.getValue(it)[indexKeyOf(v, kinds["$it/$indexFieldName"])] }, invalid,
+                        indexFieldName, cellRelevant)
                 }
             }
         }
@@ -1687,6 +1695,8 @@ class Document(internal val config: DocumentConfig) {
         private val parentReps: Map<String, List<Int>>,
         private val matches: Map<String, List<Int>?>,
         private val invalidIndexGroups: Set<String>,
+        private val indexFieldName: String,
+        private val cellRelevant: ((String, List<Int>) -> Boolean)?,
     ) : EvalContext {
 
         // A row over a present index value is always evaluated (the value exists in at least one group).
@@ -1743,12 +1753,8 @@ class Document(internal val config: DocumentConfig) {
             }
         }
 
-        // The join binds each participating group's own level, so a path inside a MATCHED group is bound down
-        // to that group's depth; anything else is bound only by the shared common-parent ancestry. An UNMATCHED
-        // group has no row for this value, so its own level was never chosen — [repsOf] reports the kernel's
-        // UNKNOWN repetition there, and the gate must not ask the relevant set to name a repetition that does
-        // not exist. Same principle as [IF268] one step further: what the iteration did not choose is not
-        // compared, whether because the level sits below it or because the join found nothing.
+        // Matched joins bind their group; unmatched joins retain only their ordinary parent prefix.
+        // Parallel partial dispatch uses its separate compressed selector (ParallelRuleSelection, SPEC10).
         override fun boundLevelsOf(path: String): Int {
             val g = groupOf(path) ?: return commonPrefixLen(partsOf(path), partsOf(commonParent))
             val bound = if (matches[g] == null) parentReps.getValue(g).size else groupDepths.getValue(g)
@@ -1774,13 +1780,18 @@ class Document(internal val config: DocumentConfig) {
         // invalid-index behavior (KERNEL-FINDINGS §9), routed through [presenceUnknown] for presence predicates
         // and Val.Unknown here for value comparisons. A valid group's unmatched ref is the kind's empty value.
         override fun field(path: String): Val = when {
-            unmatched(path) -> if (groupOf(path) in invalidIndexGroups) Val.Unknown else emptyValue(kindOf(path))
+            unmatched(path) -> if (presenceUnknown(path)) Val.Unknown else emptyValue(kindOf(path))
             else -> resolved(path)?.let { resolveValue(path, it) } ?: emptyValue(kindOf(path))
         }
 
         override fun filled(path: String): Boolean = resolved(path) != null
 
-        override fun presenceUnknown(path: String): Boolean = unmatched(path) && groupOf(path) in invalidIndexGroups
+        override fun presenceUnknown(path: String): Boolean {
+            val group = groupOf(path) ?: return false
+            if (!unmatched(path)) return false
+            val index = "$group/$indexFieldName"
+            return group in invalidIndexGroups || cellRelevant?.invoke(index, repsOf(index)) == false
+        }
 
         override fun displayValue(path: String): String? = resolved(path)
 
@@ -1798,6 +1809,7 @@ class Document(internal val config: DocumentConfig) {
         // A parallel group is "filled" for this iteration iff it has a matching row.
         override fun groupFilled(groupPath: String): Boolean =
             if (groupPath in groups) matches[groupPath] != null
+            else if (groupPath == commonParent) contextFor(commonParent, cReps).groupFilled(groupPath)
             else throw UnsupportedConstructException(
                 "group-filled on a non-parallel group ($groupPath) inside a parallel iteration is not modeled")
 

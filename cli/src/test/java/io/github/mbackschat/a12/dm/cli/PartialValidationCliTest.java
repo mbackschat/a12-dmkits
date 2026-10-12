@@ -32,6 +32,38 @@ class PartialValidationCliTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
+    void parallelDispatchCompressesSelectorsWithoutChangingTheirInputSyntax(@TempDir Path dir) throws Exception {
+        var session = EditSession.read(DocumentModelDraft.named("warehouse-partial-cli").locale("en_US")
+                .rootGroup("Warehouse", root -> {
+                    root.repeatable(2);
+                    for (String name : List.of("Orders", "Stock")) {
+                        root.group(name, group -> group.repeatable(5).indexField("Code")
+                                .numberField("Code", field -> field.fractionDigits(0))
+                                .numberField("Quantity", field -> field.fractionDigits(0)));
+                    }
+                }).build().toJson());
+        var orders = session.group("/Warehouse/Orders");
+        var stock = session.group("/Warehouse/Stock");
+        orders.addRule(rule -> rule.name("Allocation").code("ALLOCATION").errorField(orders.num("Quantity"))
+                .when(Dsl.groupFilled(orders.ref()).or(stock.num("Quantity").filled()))
+                .message(Dsl.en("Check allocation.")).build());
+        Path model = dir.resolve("warehouse.dm.json");
+        Files.writeString(model, session.toJson());
+        Path document = document(dir, """
+                {"Warehouse":[{"Orders":[{"Code":1,"Quantity":1},{"Code":2,"Quantity":1}],
+                "Stock":[{"Code":1,"Quantity":1},{"Code":3,"Quantity":1}]}]}
+                """);
+        for (boolean second : List.of(false, true)) {
+            String relevant = "[\"/Warehouse[*]/Orders[*]/Code\",\"/Warehouse[*]/Stock[*]\","
+                    + "\"/Warehouse[1]/Orders[1]/Quantity\""
+                    + (second ? ",\"/Warehouse[1]/Orders[2]/Quantity\"" : "") + "]";
+            JsonNode result = data(CliTestSupport.run("-m", model.toString(), "model", "eval",
+                    "--instance", document.toString(), "--no-computations", "--relevant", relevant));
+            assertEquals(second ? 3 : 0, messages(result, "ALLOCATION"));
+        }
+    }
+
+    @Test
     void completeConcreteSelectionsUseDeclaredCapacity(@TempDir Path dir) throws Exception {
         Path doc = document(dir, """
                 {"Delivery":{"Reference":"dispatch","Labels":[{"Code":"north"},{"Code":"south"}]}}

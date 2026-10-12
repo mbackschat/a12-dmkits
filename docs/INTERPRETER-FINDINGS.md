@@ -2969,7 +2969,9 @@ The extent gate ([IF264](#if264)) answers *"do I know every row?"*. It does not 
 
 *Locked by:* `laws/PartialValueListCellRelevanceDiffTest`.
 
-### IF268: the rule-run gate compares only the levels the rule's ITERATION bound (FIXED 2026-08-08, graduated from IG113) <a id="if268"></a>
+### IF268: the ordinary rule-run gate compares only the levels the rule's ITERATION bound (FIXED 2026-08-08, graduated from IG113) <a id="if268"></a>
+
+**Parallel correction, 2026-10-12:** the bound-level gate below remains the ordinary-rule contract. Parallel rules use compressed method dispatch, independently of operand relevance; [IF387](#if387) replaces this finding's earlier generalization to that arm. The historical fourteen-shape control remains useful but does not distinguish the selector-compression cases.
 
 The kernel runs a rule only where its error field is relevant — the interpreter's long-standing gate, and correct. What it got wrong is WHICH repetition it compares. The comparison is over the levels the rule's iteration actually BOUND. Below them no coordinate was ever chosen: the kernel defaults it to the first repetition for the message POINTER, and does not require the relevant set to name that repetition. The interpreter compared the full resolved instance, so a rule whose error field lives in a repeatable group *deeper* than its own iteration was silently skipped.
 
@@ -3053,6 +3055,8 @@ An **empty** index cell was already exact — it never entered the map — which
 ### IF271: a non-relevant index cell INVALIDATES the parallel-join column, not just its key (FIXED 2026-08-08) <a id="if271"></a>
 
 **Claim.** Under partial validation, a row whose index cell is outside the relevant set is "not given" to the relevance-scoped `IndexFieldCache` — so it contributes no join key ([IF269]) **and** marks the group's index invalid for that parent, exactly as an EMPTY index cell does ([KERNEL-FINDINGS](KERNEL-FINDINGS.md) §9). One such cell compromises the whole column. Every unmatched reference into that group then reads 3VL **UNKNOWN** instead of a definite empty, which suppresses a negative operator over it.
+
+**Extended 2026-10-12:** even if every held index cell is relevant, an unmatched read needs wildcard coverage at the unresolved joined coordinate. Concrete held-row coverage alone does not establish absence ([IF387](#if387)).
 
 **Why it hid.** [IF269] implemented only the key half, and its fourteen-shape law test could not see the difference: it measures `FieldFilled(Demand/Headcount) Or FieldFilled(Supply/Headcount)`, a positive operator that is TRUE whenever the far side is filled — identical whether the near side is UNKNOWN or definitely empty. The blind spot is the operator's truth function, not the number of shapes.
 
@@ -4643,3 +4647,10 @@ The differential also exposed a fixture transport defect: `RuntimeLaws` escaped 
 [KF543](KERNEL-FINDINGS.md#kf543). `Interpreter.evalPattern` reads the operand, then raises `EmptyPatternFailure` before the unavailable-value branch. `RuntimeEvaluationFailure` shares the established rule/computation handler boundary with invalid temporal labels; `ModelStaticPlans` detects both failure sources for the two-pass rule path. This preserves earlier formal-read poison and short circuit, and prevents later Boolean operands from swallowing a reached failure. `EmptyAuthoredPatternDiffTest` compares both kernel strategies; `EmptyAuthoredPatternTest` locks the portable execution behavior on JVM and JS, and `DmtoolPublicContractTest.packagedEmptyPatternFailsOnlyWhenReached` checks the packaged launcher against the kernel.
 
 Empty declared field patterns remain inactive in formal validation and seed generation. Typed model authoring and the portable checker require an error message only for a nonempty declared pattern. JSON Schema field import preserves an empty declared pattern without inventing a message (`FieldConstraintsShapeTest.anEmptyPatternRoundTripsWithoutInventingAPatternMessage`). Export retains an authored empty-pattern rule only through lossless carriage (`TierAProjectionShapeTest.emptyAuthoredPatternIsCarriedWithoutClaimingAUniversalNativeConstraint`).
+
+
+### IF387: parallel validation keeps dispatch, input relevance and frame traversal separate (2026-10-12) <a id="if387"></a>
+
+[KF544](KERNEL-FINDINGS.md#kf544). `IterationScopes.repeatableLevels` includes a group reference's own level in both ordinary anchoring and join discovery, so group-only conditions use the same join as field operands. The support check admits direct common-parent presence alongside joined groups. `ParallelRowContext.presenceUnknown` combines invalid-index state with original index relevance; `Interpreter.groupPresence` respects that availability before consulting the group-content cache.
+
+Call-local `ParallelRuleSelection` compresses error selectors for method and ordinary-frame dispatch; it never changes the original operand relevance index. Validation frames reuse `Document.fullValidationRowsOf` on full and partial routes, grouped once by common-parent prefix; computations retain their existing physical frame rows. `ParallelValidationDispatchDiffTest` compares both kernels and the public interpreter, `ParallelValidationDispatchTest` supplies JVM/Node controls, and `PartialValidationCliTest.parallelDispatchCompressesSelectorsWithoutChangingTheirInputSyntax` locks CLI routing. Duplicate-index message-pointer ownership is outside this finding's measured contract.

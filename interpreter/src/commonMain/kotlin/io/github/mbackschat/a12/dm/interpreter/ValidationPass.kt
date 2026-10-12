@@ -46,6 +46,7 @@ internal class ValidationPass(
     private val formalResults: FormalResultCache,
     /** Lazy, call-local complete external formal-invalid addresses for a reached CustomCondition. */
     private val formallyIncorrect: () -> Set<CustomConditionFieldPointer> = { emptySet() },
+    val parallelSelection: ParallelRuleSelection? = null,
 ) {
     val partial: Boolean = config.cellRelevant != null
     private val aggregateMemo = HashMap<AggregateMemoKey, Val>()
