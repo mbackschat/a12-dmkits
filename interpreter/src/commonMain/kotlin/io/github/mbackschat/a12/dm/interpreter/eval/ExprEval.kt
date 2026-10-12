@@ -2104,10 +2104,12 @@ internal fun Interpreter.filteredRows(
     val having = requireNotNull(star.having)
     if (occupied == null) return keptRowsWithSuccessorLookahead(rows, having, keeps)
     return keptRowsWithSuccessorLookahead(rows, having, keeps) { previous, row ->
-        val coordinates = row.repsOf(group)
-        val last = previous?.repsOf(group)
-        val changed = if (last == null) -1 else coordinates.indices.firstOrNull { coordinates[it] != last[it] } ?: -1
-        changed < 0 || coordinates.take(changed + 1) in occupied
+        if (previous == null) true else {
+            val coordinates = row.repsOf(group)
+            val last = previous.repsOf(group)
+            val changed = coordinates.indices.firstOrNull { coordinates[it] != last[it] } ?: -1
+            changed < 0 || (if (changed == coordinates.lastIndex) coordinates else coordinates.take(changed + 1)) in occupied
+        }
     }
 }
 
