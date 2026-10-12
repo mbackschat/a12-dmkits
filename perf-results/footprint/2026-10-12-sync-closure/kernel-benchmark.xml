@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.mbackschat.a12.dm.adapter.perf.PerfBenchTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-12T11:52:49.952Z" hostname="mac-mini-m1" time="121.371">
+  <properties/>
+  <testcase name="supportComputationBeatsBothKernelsAtBothScales()" classname="io.github.mbackschat.a12.dm.adapter.perf.PerfBenchTest" time="11.344"/>
+  <testcase name="gatesEveryInventoryScenario()" classname="io.github.mbackschat.a12.dm.adapter.perf.PerfBenchTest" time="85.573"/>
+  <testcase name="repeatedEvalOverVaryingDocuments()" classname="io.github.mbackschat.a12.dm.adapter.perf.PerfBenchTest" time="24.452"/>
+  <system-out><![CDATA[computeWithSupport [perf] diagnostic/B7-compute@1 fingerprint=7e204321bc206e0065cde485ad129a9b892a3b86c397f130a60c0f45632d0021 N=150 firings=150  interp=1.23ms (min 1.02ms)  groovy=15.67ms  ratioG=0.08  java=13.93ms  ratioJava=0.09  groovyTax=1.12×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+computeWithSupport [perf] diagnostic/B7-compute@1 fingerprint=4dcb1af771ede8a058366d38505be6af1f89686358b51d663e3e2fa20d1d644f N=600 firings=600  interp=4.89ms (min 4.31ms)  groovy=63.84ms  ratioG=0.08  java=62.50ms  ratioJava=0.08  groovyTax=1.02×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate B1-per-row@3 fingerprint=43606d1d51dde4e230613ece52ae1113860222a99aa29b383835e0f81e713238 @N=3000 …
+[perf] gate B1-per-row@3 fingerprint=43606d1d51dde4e230613ece52ae1113860222a99aa29b383835e0f81e713238 @N=3000 — done in 5.1s
+[perf] B1-per-row@3 fingerprint=43606d1d51dde4e230613ece52ae1113860222a99aa29b383835e0f81e713238 N=3000 firings=1470  interp=5.57ms (min 5.38ms)  groovy=98.06ms  ratioG=0.06  java=91.21ms  ratioJava=0.06  groovyTax=1.08×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate B2-star-aggregate@3 fingerprint=28dbef17497f599f9c7284361b8cfa0be8fa7f55cfc3f0b69ad36026cc630f97 @N=3000 …
+[perf] gate B2-star-aggregate@3 fingerprint=28dbef17497f599f9c7284361b8cfa0be8fa7f55cfc3f0b69ad36026cc630f97 @N=3000 — done in 4.3s
+[perf] B2-star-aggregate@3 fingerprint=28dbef17497f599f9c7284361b8cfa0be8fa7f55cfc3f0b69ad36026cc630f97 N=3000 firings=1  interp=2.72ms (min 2.66ms)  groovy=91.20ms  ratioG=0.03  java=85.39ms  ratioJava=0.03  groovyTax=1.07×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate B3-nested-per-sub@3 fingerprint=fc5ab780b443cfd18fb4d6ab80e8d22311f529751d291bb16dd8942d19956cf0 @N=600 …
+[perf] gate B3-nested-per-sub@3 fingerprint=fc5ab780b443cfd18fb4d6ab80e8d22311f529751d291bb16dd8942d19956cf0 @N=600 — done in 2.6s
+[perf] B3-nested-per-sub@3 fingerprint=fc5ab780b443cfd18fb4d6ab80e8d22311f529751d291bb16dd8942d19956cf0 N=600 firings=1434  interp=4.10ms (min 3.27ms)  groovy=52.90ms  ratioG=0.08  java=47.98ms  ratioJava=0.09  groovyTax=1.10×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate B4-cross-level-ref@3 fingerprint=e0a2f524997174c0675415aa3a62ce8d5df7fc592d16e68bd7ef402b5f11988f @N=600 …
+[perf] gate B4-cross-level-ref@3 fingerprint=e0a2f524997174c0675415aa3a62ce8d5df7fc592d16e68bd7ef402b5f11988f @N=600 — done in 2.6s
+[perf] B4-cross-level-ref@3 fingerprint=e0a2f524997174c0675415aa3a62ce8d5df7fc592d16e68bd7ef402b5f11988f N=600 firings=1152  interp=3.62ms (min 3.23ms)  groovy=53.12ms  ratioG=0.07  java=48.31ms  ratioJava=0.07  groovyTax=1.10×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate B5-deep-nested-star@3 fingerprint=cdd477f5a86e7bcd976b9e1593973d72c408d983841902380d740b7325d5d356 @N=600 …
+[perf] gate B5-deep-nested-star@3 fingerprint=cdd477f5a86e7bcd976b9e1593973d72c408d983841902380d740b7325d5d356 @N=600 — done in 2.3s
+[perf] B5-deep-nested-star@3 fingerprint=cdd477f5a86e7bcd976b9e1593973d72c408d983841902380d740b7325d5d356 N=600 firings=1  interp=3.20ms (min 2.82ms)  groovy=49.38ms  ratioG=0.06  java=42.47ms  ratioJava=0.08  groovyTax=1.16×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate B6-many-rules@3 fingerprint=dfb1dfc64f402544cf71d0d0878015358bdcfdda46892bb6eebaabd026e993a0 @N=600 …
+[perf] gate B6-many-rules@3 fingerprint=dfb1dfc64f402544cf71d0d0878015358bdcfdda46892bb6eebaabd026e993a0 @N=600 — done in 3.6s
+[perf] B6-many-rules@3 fingerprint=dfb1dfc64f402544cf71d0d0878015358bdcfdda46892bb6eebaabd026e993a0 N=600 firings=3548  interp=8.94ms (min 8.43ms)  groovy=73.31ms  ratioG=0.12  java=64.65ms  ratioJava=0.14  groovyTax=1.13×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate B6-many-rules-low-firing@3 fingerprint=35c377289af245f644d487f864d10e987deb257e4d15569d08dca5f30373addf @N=600 …
+[perf] gate B6-many-rules-low-firing@3 fingerprint=35c377289af245f644d487f864d10e987deb257e4d15569d08dca5f30373addf @N=600 — done in 2.6s
+[perf] B6-many-rules-low-firing@3 fingerprint=35c377289af245f644d487f864d10e987deb257e4d15569d08dca5f30373addf N=600 firings=0  interp=3.95ms (min 3.72ms)  groovy=55.98ms  ratioG=0.07  java=46.46ms  ratioJava=0.08  groovyTax=1.20×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate B7-compute@3 fingerprint=3acca0bbfe66714bd987a4c7bca9c80dd6fe04163f043c68ab4e15e95a2abc06 @N=600 …
+[perf] gate B7-compute@3 fingerprint=3acca0bbfe66714bd987a4c7bca9c80dd6fe04163f043c68ab4e15e95a2abc06 @N=600 — done in 3.1s
+[perf] B7-compute@3 fingerprint=3acca0bbfe66714bd987a4c7bca9c80dd6fe04163f043c68ab4e15e95a2abc06 N=600 firings=600  interp=5.24ms (min 5.03ms)  groovy=66.06ms  ratioG=0.08  java=62.18ms  ratioJava=0.08  groovyTax=1.06×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate compute-cleared@3 fingerprint=bfc7ade120c92f84da69ab9d4470e9e434e1c7be87621b786ded3ec190da8d2e @N=1000 …
+[perf] gate compute-cleared@3 fingerprint=bfc7ade120c92f84da69ab9d4470e9e434e1c7be87621b786ded3ec190da8d2e @N=1000 — done in 1.3s
+[perf] compute-cleared@3 fingerprint=bfc7ade120c92f84da69ab9d4470e9e434e1c7be87621b786ded3ec190da8d2e N=1000 firings=1000  interp=3.05ms (min 3.01ms)  groovy=25.13ms  ratioG=0.12  java=22.92ms  ratioJava=0.13  groovyTax=1.10×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate compute-errored@3 fingerprint=6689e07fc2280ed3da0a046eff8df9c11fc81a169400e8feb7491fe86217c27f @N=1000 …
+[perf] gate compute-errored@3 fingerprint=6689e07fc2280ed3da0a046eff8df9c11fc81a169400e8feb7491fe86217c27f @N=1000 — done in 2.2s
+[perf] compute-errored@3 fingerprint=6689e07fc2280ed3da0a046eff8df9c11fc81a169400e8feb7491fe86217c27f N=1000 firings=1000  interp=2.90ms (min 2.71ms)  groovy=46.30ms  ratioG=0.06  java=38.78ms  ratioJava=0.07  groovyTax=1.19×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate B8-combined@3 fingerprint=76711f31971be52b702e3a0af0745cd268be65e09f1711a60960c488a9dc5a4a @N=500 …
+[perf] gate B8-combined@3 fingerprint=76711f31971be52b702e3a0af0745cd268be65e09f1711a60960c488a9dc5a4a @N=500 — done in 29.1s
+[perf] B8-combined@3 fingerprint=76711f31971be52b702e3a0af0745cd268be65e09f1711a60960c488a9dc5a4a N=500 firings=0  interp=80.14ms (min 72.40ms)  groovy=436.01ms  ratioG=0.18  java=368.48ms  ratioJava=0.22  groovyTax=1.18×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate B9-berlin-datetime@3 fingerprint=37d614222600c1f0a21383ab56037d4fe671d1b5ca07b3f8c99e727bcd3d851f @N=3000 …
+[perf] gate B9-berlin-datetime@3 fingerprint=37d614222600c1f0a21383ab56037d4fe671d1b5ca07b3f8c99e727bcd3d851f @N=3000 — done in 7.7s
+[perf] B9-berlin-datetime@3 fingerprint=37d614222600c1f0a21383ab56037d4fe671d1b5ca07b3f8c99e727bcd3d851f N=3000 firings=3000  interp=23.67ms (min 21.37ms)  groovy=151.78ms  ratioG=0.16  java=143.42ms  ratioJava=0.17  groovyTax=1.06×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate B9-utc-control@3 fingerprint=47ac263702541dc8889841ff7d6a1b0208696c67fd6b6f74d8b41208d2ef0e66 @N=3000 …
+[perf] gate B9-utc-control@3 fingerprint=47ac263702541dc8889841ff7d6a1b0208696c67fd6b6f74d8b41208d2ef0e66 @N=3000 — done in 6.8s
+[perf] B9-utc-control@3 fingerprint=47ac263702541dc8889841ff7d6a1b0208696c67fd6b6f74d8b41208d2ef0e66 N=3000 firings=3000  interp=17.54ms (min 16.96ms)  groovy=148.63ms  ratioG=0.12  java=142.32ms  ratioJava=0.12  groovyTax=1.04×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate tiered-compute@3 fingerprint=a5fae87edb589803025f6d972dddec05b753207f648db95aa14f0018e288d125 @N=3000 …
+[perf] gate tiered-compute@3 fingerprint=a5fae87edb589803025f6d972dddec05b753207f648db95aa14f0018e288d125 @N=3000 — done in 5.7s
+[perf] tiered-compute@3 fingerprint=a5fae87edb589803025f6d972dddec05b753207f648db95aa14f0018e288d125 N=3000 firings=3000  interp=8.18ms (min 7.15ms)  groovy=128.77ms  ratioG=0.06  java=119.47ms  ratioJava=0.07  groovyTax=1.08×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] gate parallel-iteration@3 fingerprint=5d9388ecbc73f2a0b585fd877f081d6ea594f891ec2c598f7df69238d1db4245 @N=2000 …
+[perf] gate parallel-iteration@3 fingerprint=5d9388ecbc73f2a0b585fd877f081d6ea594f891ec2c598f7df69238d1db4245 @N=2000 — done in 5.5s
+[perf] parallel-iteration@3 fingerprint=5d9388ecbc73f2a0b585fd877f081d6ea594f891ec2c598f7df69238d1db4245 N=2000 firings=1000  interp=7.99ms (min 6.77ms)  groovy=119.62ms  ratioG=0.07  java=118.32ms  ratioJava=0.07  groovyTax=1.01×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] B9-berlin-datetime@3 fingerprint=37d614222600c1f0a21383ab56037d4fe671d1b5ca07b3f8c99e727bcd3d851f | B9-utc-control@3 fingerprint=47ac263702541dc8889841ff7d6a1b0208696c67fd6b6f74d8b41208d2ef0e66 Berlin/UTC offset overhead: 1.35×
+[perf] diagnostic/B1-per-row@1 fingerprint=eb6186157a8d394b0501f7cf3b1954f29c34f9f84e94470f13e4aa9d7e9ab774 REPEATED N=1500 ×20 variants (per-eval)  interp=1.36ms (min 1.35ms)  groovy=35.52ms  ratioG=0.04  java=33.64ms  ratioJava=0.04  groovyTax=1.06×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+[perf] diagnostic/B3-nested-per-sub@1 fingerprint=03186fb4ba1b620da54087961c577322c084d5c14432b3df737d7395d7c8797d REPEATED N=300 ×20 variants (per-eval)  interp=1.68ms (min 1.45ms)  groovy=25.82ms  ratioG=0.07  java=24.57ms  ratioJava=0.07  groovyTax=1.05×  (NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)
+]]></system-out>
+  <system-err><![CDATA[SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+]]></system-err>
+</testsuite>
