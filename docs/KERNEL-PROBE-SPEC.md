@@ -137,7 +137,7 @@ Present on each engine block exactly when the request asked for `computeResults`
 }
 ```
 
-**`withoutErrors` is a strict superset of what `computations` can show, and that difference is the whole point.** `getComputedFieldInstancesWithChanges()` is by the kernel's own javadoc a subset of `getComputedFieldInstancesWithoutErrors()` — the instances whose computed value *differs* from the document's — and `outcomes[]` is built from `WithChanges ∪ WithErrors ∪ Cleared`. So **a computation that successfully recomputed a value the document already held appears in no `computations` channel at all**, and only this block sees it. *(Measured on kernel 30.8.1, both strategies: a document seeding `LineTotal: 10.00` for a computation that yields `10.00` produces an empty `outcomes[]` for that field and a `withoutErrors` entry carrying `10.00`.)*
+**`withoutErrors` includes unchanged successes as well as changed successes; it excludes errored and cleared instances.** `getComputedFieldInstancesWithChanges()` is by the kernel's own javadoc a subset of `getComputedFieldInstancesWithoutErrors()` — the instances whose computed value *differs* from the document's — and `outcomes[]` is built from `WithChanges ∪ WithErrors ∪ Cleared`. So **a computation that successfully recomputed a value the document already held appears in no `computations` channel at all**, and only this block sees it. *(Measured on kernel 30.8.1, both strategies: a document seeding `LineTotal: 10.00` for a computation that yields `10.00` produces an empty `outcomes[]` for that field and a `withoutErrors` entry carrying `10.00`.)*
 
 **`applied` is the only observable a separate-destination computation has.** The outcome channels report what was *computed*; nothing in them reports what the document then *holds*. This is A12's canonical Document JSON after `IDocumentComputationResult.applyTo(DocumentV2)`, written by the kernel's own `IDocumentV2Serializer` and embedded as an object rather than a quoted string. `applyTo(DocumentV2)` returns an updated copy and leaves the row's instance untouched, so asking for this cannot perturb the row's other channels.
 
@@ -151,11 +151,61 @@ Present on each engine block exactly when the request asked for `computeResults`
 
 It is the kernel's **pre-computation formal validation of operand fields**, and the owner states its scope precisely (`IDocumentRtService.compute`): before any computation runs, *every non-computed field that is an operand of any computation* is formally validated, and **"Regardless of the formal errors found, computations will be performed. Any computations relying directly or indirectly on invalid fields will be skipped."**
 
-So it is an **inventory, not a causal attribution** — emitted whether or not anything was skipped, and naming no edge to the outcome it explains. A consumer that wants the link joins the two channels itself and leans on the kernel's skip guarantee for the join; the edge is not published because the kernel does not publish it. Three consequences, each of which a "cause of a clear" reading gets wrong:
+So it is an **inventory, not a causal attribution** — emitted whether or not anything was skipped, and naming no edge to the outcome it explains. Intersecting a computation's declared operands with this inventory does not prove why its target cleared: an unmet precondition can bypass the malformed operand. Per-target causation is unavailable from these channels; use a [dependent-read discriminator](#distinguishing-cleared-targets) to observe the resulting read behavior. Three consequences, each of which a "cause of a clear" reading gets wrong:
 
 - **It is a filter, not a copy of `messages`.** A field carrying the same formal-error code but which is an operand of *no* computation appears in `messages` and not here — measured on kernel 30.8.1 with two `zahlFalscheAnzahlNachkommastellen` in `messages` and one here. But "operand of" is **not** a runtime read trace: the operand set includes every field *contained by* a referenced group, which no evaluation need touch. The set is the kernel's `CalculationOperandsCollector`, locked by `adapter.laws.ComputationEagerPrepassLawsTest`.
 - **`non-computed` is load-bearing.** A field cleared because the computation it read was itself ERRORED names nothing here — a computed field is outside this channel's scope by the owner's own sentence, and the kernel additionally erases the cause across the dependency edge (`adapter.laws.ComputedDependencyCauseErasureDiffTest`). That clear is reported as a clear, naming nothing, which is the kernel's answer rather than a gap in the exposure. The per-instance `getErrorMessage()` on the ERRORED producer is the channel that carries it, and since 2026-09-22 the `computeResults` block exposes it.
 - **A formal error here does not imply anything was skipped.** In the worked artifact, `Order/ShippingFee`'s error sits in this channel while `Order/LineTotal` — which does not read it — computes normally.
+
+### Distinguishing cleared targets
+
+**Clearing reason and resulting formal state are unavailable in the Kernel result API.** A clean precondition skip and a poisoned computation both report `cleared: true, errored: false`; neither becomes an `errored` result just by requesting `computeResults`. That block carries messages for actual errored results, not silent poisoned clears. `formalErrorsInOperands` is not a per-target reason, and the applied empty value supplies none. The loss occurs inside the Kernel before the adapter: [KF240](KERNEL-FINDINGS.md#kf240) records the source boundary, existing locks and current batch measurement. Revisit exposing state only when the public Kernel result exposes it directly.
+
+For a numeric target, the smallest reliable probe is one dependent numeric copy in the **same computation call**. Seed both targets to make their clears observable. A clean empty source reads as `0`; an invalid source poisons the reader and clears it too. This measures the downstream read state, not a unique cause. An empty target without a dependent is insufficient.
+
+The following commands run from the repository root using the existing CLI authoring surface. They create a scratch model under `/tmp/dmkits-clear-probe` with `Target = [Source]` guarded by `FieldFilled(Gate)`, and `Reader = [Target]`:
+
+```sh
+mkdir -p /tmp/dmkits-clear-probe
+bin/dmtool model new --id ClearProbe_DM --root Probe --locale en_US \
+  -o /tmp/dmkits-clear-probe/ClearProbe_DM.json
+for field in Source Gate Target Reader; do
+  bin/dmtool -m /tmp/dmkits-clear-probe/ClearProbe_DM.json field add \
+    --group /Probe --name "$field" --kind NUMBER
+done
+bin/dmtool -m /tmp/dmkits-clear-probe/ClearProbe_DM.json computation add - <<'JSON'
+{"computedField":"/Probe/Target","commonPrecondition":"FieldFilled(Gate)","alternatives":[{"operation":"[Source]"}],"messages":[{"locale":"en_US","text":"Target computation."}]}
+JSON
+bin/dmtool -m /tmp/dmkits-clear-probe/ClearProbe_DM.json computation add - <<'JSON'
+{"computedField":"/Probe/Reader","alternatives":[{"operation":"[Target]"}],"messages":[{"locale":"en_US","text":"Reader computation."}]}
+JSON
+cat > /tmp/dmkits-clear-probe/request.json <<'JSON'
+{
+  "model": "ClearProbe_DM.json",
+  "observe": ["validateFull", "compute", "computeResults"],
+  "rows": [
+    {"name":"unmet", "documentInline":{"Probe":{"Source":"bad","Target":7,"Reader":7}}},
+    {"name":"met", "documentInline":{"Probe":{"Source":"bad","Gate":1,"Target":7,"Reader":7}}},
+    {"name":"invalid-guard", "documentInline":{"Probe":{"Source":"bad","Gate":"bad","Target":7,"Reader":7}}},
+    {"name":"valid", "documentInline":{"Probe":{"Source":2,"Gate":1,"Target":7,"Reader":7}}}
+  ]
+}
+JSON
+./build.sh :adapter:kernelProbe \
+  -Prequest=/tmp/dmkits-clear-probe/request.json \
+  -Pout=/tmp/dmkits-clear-probe/artifact.json
+jq '.rows[] | {name, enginesAgree, outcomes: .engines[0].computations.outcomes}' \
+  /tmp/dmkits-clear-probe/artifact.json
+```
+
+The first two rows have the same source-error inventory and identical target outcomes. Their reader separates them (abbreviated projection):
+
+```json
+{"name":"unmet","enginesAgree":true,"outcomes":[{"field":"Probe/Reader","cleared":false,"errored":false,"value":"0"},{"field":"Probe/Target","cleared":true,"errored":false}]}
+{"name":"met","enginesAgree":true,"outcomes":[{"field":"Probe/Reader","cleared":true,"errored":false},{"field":"Probe/Target","cleared":true,"errored":false}]}
+```
+
+The malformed-guard row also clears both targets and adds the guard error to the inventory. The valid row computes `2` for both. All four rows run in one request, reusing each strategy's compiled model. `dmtool model compute` uses the interpreter and expresses these results as `outcome: "cleared"` or `"value"`; it is not a Kernel measurement substitute. The example uses the existing observation fields unchanged.
 
 **The `schemaVersion` stayed `1`, deliberately.** A consumer receives `computations` only by asking for it, so no artifact an existing consumer can obtain changes shape and no existing key changes meaning — while bumping would have broken the harder guarantee, that an unchanged request keeps producing bytes an already-pinned SHA-256 matches. **What that costs, stated rather than glossed:** `schemaVersion: 1` no longer determines the artifact's *shape*, only its key meanings, so §6's "an artifact carries its own version header" now means a consumer must also know what it asked for. The schema document itself was edited in place under an unversioned `$id`, so a cached copy and a re-fetched one differ. Both were judged cheaper than breaking a pin.
 

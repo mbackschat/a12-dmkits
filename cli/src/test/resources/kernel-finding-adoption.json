@@ -10469,6 +10469,30 @@
           "evidence": {}
         }
       }
+    },
+    "kf240": {
+      "sha256": "b5c850e3d9aa383d83814ce44d5fd48ebe1e589fb802f4d0aa0250a9f12aee31",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "adapter": ["Kernel clear observation"],
+        "dmkits": [],
+        "interpreter": ["dependency reads"],
+        "checker": [],
+        "dmtool-cli": ["computation output"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": ["SG4 observability"]
+      },
+      "consumers": {
+        "adapter": {"state": "ALREADY_CONFORMS", "basis": "Public result channels do not expose per-clear validity or cause; the batch probe preserves that limit.", "evidence": {"Kernel clear observation": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedDependencyCauseErasureDiffTest.kt#invalidProducerClassesCollapseToOneDependentObservation", "witness": "One document has clean and poisoned clears sharing an input-error inventory but different dependent results on both JVM strategies."}}},
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "No model authoring shape or DSL admission changes.", "evidence": {}},
+        "interpreter": {"state": "ALREADY_CONFORMS", "basis": "Existing dependency state already preserves the runtime distinction.", "evidence": {"dependency reads": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedDependencyCauseErasureDiffTest.kt#invalidProducerClassesCollapseToOneDependentObservation", "witness": "The interpreter matches clean-empty substitution and poisoned-read clearing on the same document."}}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "Computation execution state is outside static model consistency checking.", "evidence": {}},
+        "dmtool-cli": {"state": "ALREADY_CONFORMS", "basis": "The interpreter output reports value/cleared/error, without claiming a Kernel clearing reason.", "evidence": {"computation output": {"reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/ComputeDocVerbTest.java#aGuardedNumberComputationClearsWhereUnguardedComputesZero", "witness": "Guarded clear versus numeric empty substitution; current four-row CLI probe additionally matches both Kernel strategies."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "No JSON Schema model mapping or authored computation changes.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Runtime clear state is not a JSON Schema model projection.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Current measured limitation and correction await peer receipt; no Lean repository edits.", "evidence": {}}
+      }
     }
   }
 }

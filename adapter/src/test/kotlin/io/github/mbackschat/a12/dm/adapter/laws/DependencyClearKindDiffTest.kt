@@ -179,21 +179,10 @@ class DependencyClearKindDiffTest {
     )
 
     /**
-     * **The answer to a12-kernel-lean's instrument request**, which asks whether the probe artifact can separate
-     * the two clear-kinds for a producer with NO dependents — the case where the dependents' outcomes, the only
-     * channel used above, do not exist.
-     *
-     * <p>It can, and not by adding anything: the artifact already publishes `formalErrorsInOperands` beside the
-     * outcomes. A source-invalid producer's own operand appears in that inventory and a precondition-cleared
-     * one's does not, so the discriminator is whether the producer's operand set intersects it. The join is the
-     * consumer's to make, deliberately — the channel is an inventory rather than a causal attribution, so it also
-     * lists operands of computations that succeeded, and it names no edge to the outcome it explains.
-     *
-     * <p><b>The residue is real and is the part worth re-aiming the request at.</b> `Left` on the source-invalid
-     * row is cleared because the COMPUTED field it read was poisoned, and a computed field is outside this
-     * channel's scope by definition — so the inventory names `Base` and says nothing about `Left`. A producer
-     * with no dependents that clears for THAT reason is still indistinguishable, and closing it would mean
-     * publishing the kernel's per-instance computed-error message, which the artifact does not carry today.
+     * The inventory separates these particular documents, whose malformed source differs. It cannot assign
+     * a clear cause: an unmet guard can bypass that same malformed source, as the shared-inventory case in
+     * [ComputedDependencyCauseErasureDiffTest] demonstrates. Computed poison is outside this input inventory,
+     * and the kernel's silent invalid-read catch supplies no per-instance message to recover it either.
      */
     @Test
     fun theEagerOperandInventorySeparatesTheClearKindsThatTheProducerStateCannot() = assertEquals(
