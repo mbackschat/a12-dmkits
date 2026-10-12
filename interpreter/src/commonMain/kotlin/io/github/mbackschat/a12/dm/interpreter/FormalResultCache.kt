@@ -95,7 +95,7 @@ internal class ValueAdmissionCache(
         if (overRepetitionGateNeeded) checks.overRepetitionResultAt(path, reps)?.let { return it }
         val input = if (checks.isCustomAt(path)) {
             // The attempted value supersedes even an explicitly empty stored target (CustomTestRangeLawsTest).
-            if (CellKey(path, reps, raw) in computedAdmissions) return FormalResult.Valid
+            if (computedAdmissions.isNotEmpty() && CellKey(path, reps, raw) in computedAdmissions) return FormalResult.Valid
             document.customValidationInputAt(path, reps) ?: raw
         } else raw
         return if (checks.hasCodeBasedValidatorAt(path)) {

@@ -485,10 +485,11 @@ internal class AutoChecks(
      * is what `CustomFieldTypeMultiplatformTest` measures by counting the calls a stateful validator sees. A
      * declarative [PredefinedType] and an UNREGISTERED custom type are both pure and need no exception.
      */
-    fun isCustomAt(path: String): Boolean = model.customTypeOf(path) != null
+    fun isCustomAt(path: String): Boolean = model.customTypes.isNotEmpty() && model.customTypeOf(path) != null
 
     fun hasCodeBasedValidatorAt(path: String): Boolean =
-        model.customTypeOf(path)?.let { it.name !in predefinedTypes && it.name in customFieldTypes } == true
+        customFieldTypes.isNotEmpty() &&
+            model.customTypeOf(path)?.let { it.name !in predefinedTypes && it.name in customFieldTypes } == true
 
     /**
      * The uncached value-owned admission result for one filled cell, before identity relations are built.
@@ -589,10 +590,12 @@ internal class AutoChecks(
     /** Filled cells whose declared custom field type has NO registered validator — reported [ValidationOutcome.unsupported]
      *  (the kernel throws "Unable to invoke validation" here; the interpreter degrades: it reports the cell and uses
      *  the value leniently as a plain string, so the rest of the document can still be validated / test-run). */
-    fun customTypeUnsupported(doc: Document, isRelevant: Relevance): List<UnsupportedRule> =
-        doc.valuedFields().filter { isRelevant(it.path, it.reps) }.mapNotNull { vf ->
+    fun customTypeUnsupported(doc: Document, isRelevant: Relevance): List<UnsupportedRule> {
+        if (model.customTypes.values.all { it.name in predefinedTypes || it.name in customFieldTypes }) return emptyList()
+        return doc.valuedFields().filter { isRelevant(it.path, it.reps) }.mapNotNull { vf ->
             customTypeUnsupportedAt(doc, vf.path, vf.reps)
         }
+    }
 
     fun customTypeUnsupportedAt(doc: Document, path: String, reps: List<Int>): UnsupportedRule? {
         val declaration = model.customTypeOf(path) ?: return null

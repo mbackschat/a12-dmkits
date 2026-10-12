@@ -77,6 +77,30 @@ class CustomFieldTypeMultiplatformTest {
         }
 
     @Test
+    fun unsupportedCustomTypesFollowRegistryChangesBetweenCalls() {
+        val types = codeType.toMutableMap()
+        val callbacks = mutableMapOf<String, CustomFieldType>()
+        val seen = mutableListOf<String>()
+        val model = indexedDef.copy(rules = emptyList(), indexFields = emptySet())
+        val interpreter = DmInterpreter(model, predefinedTypes = types, customFieldTypes = callbacks)
+        val document = indexedDoc("abcd", "abcd")
+        fun unsupportedCells() = interpreter.validate(document).unsupported.count { it.subject == UnsupportedSubject.CELL }
+        assertEquals(0, unsupportedCells())
+        types.clear()
+        assertEquals(2, unsupportedCells())
+        callbacks["Code"] = CustomFieldType { value, _ -> seen += value; null }
+        assertEquals(0, unsupportedCells())
+        assertEquals(listOf("abcd", "abcd"), seen)
+        types.putAll(codeType)
+        assertEquals(0, unsupportedCells())
+        assertEquals(listOf("abcd", "abcd"), seen)
+        types.clear()
+        callbacks.clear()
+        assertEquals(2, unsupportedCells())
+        assertEquals(listOf("abcd", "abcd"), seen)
+    }
+
+    @Test
     fun registeredAcceptEvaluatesNormally() {
         val out = registered("abcd")   // len 4 — valid
         assertTrue(out.messages.none { it.code == CUSTOM_TYPE_INVALID }, "a valid custom value raises no formal error")

@@ -14,24 +14,13 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
- * Perf guard for the declarative custom-field-type path (`--predefined-types` / `predefinedTypes` registry, G30 /
- * IF26). Validating a `CustomFieldType` cell runs `PredefinedType.accepts(value)` **per valued cell** on the
- * formal-error HOT path — it MUST stay a monomorphic, JIT-inlined call on the concrete `PredefinedType`, NOT a
- * per-cell virtual/megamorphic dispatch or a per-cell allocation. This is the standing
- * [INTERPRETER-PERFORMANCE.md] "the hot path stays a monomorphic concrete call" rule made into a regression
- * gate: IF44's code-based field-type SPI is deliberately additive; a naive "route every field type through one
- * `fun interface`" refactor would deoptimize the declarative path — and this test trips.
+ * Admission-cost guards for declarative custom field types (`predefinedTypes`, IF26).
  *
- * Two guards (the [CharsetPerfTest] sibling pattern — pure engine, no kernel, JVM-only, measured as
- * current-thread CPU time so another Gradle fork's preemption cannot manufacture growth):
- *  1. **Within a factor of plain-string-with-the-same-pattern** — a custom-typed cell and a plain STRING cell
- *     carrying the identical regex do the same regex match; the custom path adds only the registry lookup +
- *     `accepts` dispatch. So it must stay within a small factor. This catches the GROSS deopts a careless SPI
- *     introduction would cause — a **per-cell allocation** (e.g. boxing a result object instead of returning a
- *     primitive), **megamorphic dispatch**, or a per-cell extra pass — not a single inlined-away virtual call
- *     (which is within timing noise and not a real perf concern).
- *  2. **Sub-quadratic in row count** — validating 4× the rows must stay ~linear (≈4×), never ≈16×; catches an
- *     O(N²) regression in the per-cell custom-type machinery.
+ * Each valued cell consults formal admission; identical field values share its call-local result.
+ * This repeated-IBAN fixture therefore measures per-cell cache consultations and one uncached validator
+ * admission per call. It compares that complete path with a plain STRING carrying the same pattern,
+ * then checks sub-quadratic growth in row count using current-thread CPU time. It does not isolate
+ * validator dispatch cost or promise to detect an individual allocation.
  */
 @Tag("perf")
 class CustomTypePerfTest {
@@ -46,7 +35,7 @@ class CustomTypePerfTest {
     private val registry = mapOf("Iban" to PredefinedType(minLength = 15, maxLength = 34, pattern = IBAN))
 
     /**
-     * A document of [n] custom-typed cells, all carrying a valid IBAN (so `accepts` runs the full regex per cell).
+     * A document of [n] custom-typed cells sharing one valid IBAN and one cached admission per call.
      *
      * `/C/S` has TWO parts, so a cell carries two coordinates: the repeatable `/C` row, then the field's own.
      * This used to pass three, which the document accepted and the house pointer renderer then ignored — so all
@@ -79,7 +68,7 @@ class CustomTypePerfTest {
         assertTrue(customMs < stringMs * FACTOR + 50.0,
             "custom-type validation (${customMs}ms CPU) must stay within ${FACTOR}× " +
                 "plain-string-with-the-same-pattern (${stringMs}ms CPU) " +
-                "— a per-cell allocation / megamorphic dispatch on the field-type path regressed (see the monomorphic-hot-path rule)")
+                "— declarative custom admission exceeded the relative cost allowance")
     }
 
     @Test fun customTypeValidationStaysSubQuadratic() {
