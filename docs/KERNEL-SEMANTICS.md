@@ -523,6 +523,8 @@ In full validation and computation, ordinary filtered membership retains each pa
 
 ## 9. Repetition, iteration, and cross-array evaluation
 
+Canonical Document JSON assigns consecutive repetition coordinates to surviving object rows after discarding non-object array entries; `{}` stays a row. This conversion resets under each surviving parent and differs from explicit sparse placement construction. The serializer/runtime evidence and separate fatal-input boundary are recorded in [KF1](KERNEL-FINDINGS.md#kf1).
+
 The repetition model is the kernel's most distinctive — and most easily mis-authored — semantics. A flat rule fires zero or one time; a rule over repeatable data fires *per row*, and several constructs turn it into what is effectively a small query language over arrays.
 
 ### When a rule iterates, and where its error lands

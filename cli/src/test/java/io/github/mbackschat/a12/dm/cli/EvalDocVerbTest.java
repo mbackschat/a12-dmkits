@@ -210,13 +210,12 @@ class EvalDocVerbTest {
     }
 
     @Test
-    void unknownPathInTheDocumentFails(@TempDir Path dir) throws Exception {
+    void unknownPathInTheDocumentIsDiscarded(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
                 { "Order": { "Nope": "x" } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", d.toString());
-        assertNotEquals(0, res.code(), "an unknown path in the document is an error");
-        assertTrue(res.err().contains("/Order/Nope"), () -> "names the bad path: " + res.err());
+        assertEquals(0, res.code(), res::err);
     }
 
     @Test

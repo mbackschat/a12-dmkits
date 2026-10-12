@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
  * Public Document transport contract: the boundary reads and writes **A12's canonical Document JSON** — the
  * nested object tree the Kernel's `IDocumentV2Serializer` produces and consumes (KERNEL-FINDINGS "The canonical
  * Document JSON and `DocumentPointer` string"; CLAUDE.md "NEVER invent a shape A12 already defines"). One shared
- * engine validates the whole text before any document state exists, aggregates model-level defects, fails
+ * engine converts the whole text before any document state exists, discards notification-only nodes, fails
  * resource limits fast, locates every defect by its canonical A12 pointer, and refuses foreign or stale
  * snapshots by owner identity.
  */
@@ -217,30 +217,43 @@ class DocumentTransportTest {
     }
 
     @Test
-    fun readAggregatesEveryModelLevelDefectAndLocatesItByCanonicalPointer() {
+    fun jsonRepetitionsCompactSurvivingObjectsIndependentlyAtEachParent() {
+        val documents = prepared().documents
+        val row = """{"Qty":7}"""
+        val cases = listOf(
+            "object" to row,
+            "single" to "[$row]",
+            "null-prefix" to "[null,$row]",
+            "null-suffix" to "[$row,null]",
+            "mixed" to "[null,7,[],true,\"skip\",$row]",
+            "empty-row" to "[{},$row]",
+            "two-survivors" to "[null,$row,false,$row]",
+            "null-only" to "[null]",
+        )
+        for ((label, items) in cases) {
+            val snapshot = documents.readDocument("""{"Order":{"Items":$items}}""")
+            val expected = when (label) {
+                "empty-row" -> "[{},$row]"
+                "two-survivors" -> "[$row,$row]"
+                "null-only" -> null
+                else -> "[$row]"
+            }
+            assertEquals(if (expected == null) """{"Order":{}}""" else """{"Order":{"Items":$expected}}""",
+                documents.encodeDocument(snapshot), label)
+        }
+        val nested = documents.readDocument("""{"Order":[null,{"Items":[null,$row]},false,{"Items":[null,{},$row]}]}""")
+        assertEquals(StoredCellState.PresentValue("7"), nested.document().cellStateAt("/Order/Items/Qty", listOf(1, 1, 1)))
+        assertEquals(StoredCellState.PresentValue("7"), nested.document().cellStateAt("/Order/Items/Qty", listOf(2, 2, 1)))
+        assertEquals(listOf(listOf(1, 1), listOf(2, 1), listOf(2, 2)), nested.document().instantiatedRows("/Order/Items"))
+    }
+
+    @Test
+    fun notificationOnlyNodesAreDiscardedWithoutLosingValidSiblings() {
+        val documents = prepared().documents
         val json = """
-            {"Order":{"Nowhere":{},"Ref":{"nested":1},"Items":"not-an-array","Shipping":[{},7]}}
+            {"Order":{"Ref":"kept","Nowhere":{},"Express":{"nested":1},"Items":"not-an-array","Shipping":[null,{},7]}}
         """.trimIndent()
-
-        val error = assertFailsWith<DocumentInputError> { prepared().documents.readDocument(json) }
-
-        assertEquals(
-            listOf(
-                Triple(DocumentInputReasonCode.UNKNOWN_MODEL_PATH, "/Order/Nowhere", "Order/Nowhere"),
-                Triple(DocumentInputReasonCode.UNEXPECTED_NODE_TYPE, "/Order/Ref", "Order/Ref"),
-                Triple(DocumentInputReasonCode.UNEXPECTED_NODE_TYPE, "/Order/Items", "Order/Items"),
-                Triple(DocumentInputReasonCode.UNEXPECTED_NODE_TYPE, "/Order/Shipping", "Order/Shipping[2]"),
-            ),
-            error.diagnostics.map { Triple(it.reasonCode, it.modelPath, it.pointer) },
-        )
-        assertEquals(
-            listOf(null, DocumentJsonNodeType.OBJECT, DocumentJsonNodeType.VALUE, DocumentJsonNodeType.VALUE),
-            error.diagnostics.map { it.nodeType },
-        )
-        assertEquals(
-            listOf(null, ModelEntityKind.FIELD, ModelEntityKind.GROUP, ModelEntityKind.GROUP),
-            error.diagnostics.map { it.entityKind },
-        )
+        assertEquals("""{"Order":{"Ref":"kept","Shipping":{}}}""", documents.encodeDocument(documents.readDocument(json)))
     }
 
     @Test

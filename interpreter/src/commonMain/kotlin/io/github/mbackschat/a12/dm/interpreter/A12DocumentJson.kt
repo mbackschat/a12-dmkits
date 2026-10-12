@@ -42,8 +42,8 @@ import kotlinx.serialization.json.JsonUnquotedLiteral
  * state A12's writer has no shape for — a non-repeatable group row above 1 — is refused ([DocumentEncodeError])
  * rather than silently dropped.
  *
- * Every input defect A12 reports as an error-ranked notification is **fatal** here: the Kernel's
- * report-and-continue is a notification policy of its caller, not a difference in the shape.
+ * Read conversion drops unknown or wrong-shaped entities and compacts surviving object rows, as A12's
+ * serializer does (SPEC-2026-10-10-07; `A12JsonIngressDiffTest`). Syntax, root and scalar-id faults remain fatal.
  */
 internal object A12DocumentJson {
 
@@ -303,8 +303,8 @@ internal object A12DocumentJson {
     internal data class Read(val document: Document, val documentId: String?)
 
     /**
-     * Validate the complete Document JSON text against [model] and only then build the document, so a failing
-     * input leaves no partial state. Resource ceilings fail fast; model-level defects aggregate.
+     * Convert the complete Document JSON text against [model] before building the document, so a fatal
+     * input or resource ceiling leaves no partial state. Notification-only nodes are discarded.
      */
     fun read(model: ModelDef, json: String, limits: DocumentDecodeLimits): Read {
         requireWithin(
@@ -349,7 +349,6 @@ internal object A12DocumentJson {
     private class ReadSession(private val model: ModelDef, private val limits: DocumentDecodeLimits) {
         /** Encounter-ordered pending placements — applied in JSON document order, mirroring A12's read order. */
         private val pending = mutableListOf<Pending>()
-        private val diagnostics = mutableListOf<DocumentInputDiagnostic>()
         private var groupRows = 0L
         private var fieldCells = 0L
         private var totalRawCodeUnits = 0L
@@ -377,16 +376,12 @@ internal object A12DocumentJson {
                 when (kind) {
                     ModelEntityKind.FIELD -> readCell(childPath, ownCoordinates, child)
                     ModelEntityKind.GROUP -> readGroup(childPath, coordinates, child)
-                    null -> diagnostics += UnknownModelPathDiagnostic(
-                        modelPath = childPath,
-                        pointer = A12PointerFormat.format(childPath, ownCoordinates),
-                    )
+                    null -> Unit
                 }
             }
         }
 
         fun build(): Read {
-            if (diagnostics.isNotEmpty()) throw DocumentInputError.from(diagnostics)
             val document = model.newDocument()
             for (placement in pending) {
                 val coordinates = placement.coordinates.toIntArray()
@@ -438,37 +433,20 @@ internal object A12DocumentJson {
                     val text = if (node.isString) raw else numberNodeTextOrNull(raw) ?: raw
                     pending += Pending(path, coordinates, model.cellText(path, text), isGroup = false)
                 }
-                else -> diagnostics += UnexpectedNodeTypeDiagnostic(
-                    entityKind = ModelEntityKind.FIELD,
-                    nodeType = node.nodeType(),
-                    modelPath = path,
-                    pointer = pointer(),
-                )
+                else -> Unit
             }
         }
 
         private fun readGroup(path: String, parentCoordinates: List<Int>, node: JsonElement) {
             when (node) {
                 is JsonObject -> readRow(path, parentCoordinates + 1, node)
-                is JsonArray -> node.forEachIndexed { index, element ->
-                    val coordinates = parentCoordinates + (index + 1)
-                    if (element is JsonObject) {
-                        readRow(path, coordinates, element)
-                    } else {
-                        diagnostics += UnexpectedNodeTypeDiagnostic(
-                            entityKind = ModelEntityKind.GROUP,
-                            nodeType = element.nodeType(),
-                            modelPath = path,
-                            pointer = A12PointerFormat.format(path, coordinates),
-                        )
+                is JsonArray -> {
+                    var repetition = 0
+                    for (element in node) if (element is JsonObject) {
+                        readRow(path, parentCoordinates + ++repetition, element)
                     }
                 }
-                else -> diagnostics += UnexpectedNodeTypeDiagnostic(
-                    entityKind = ModelEntityKind.GROUP,
-                    nodeType = node.nodeType(),
-                    modelPath = path,
-                    pointer = A12PointerFormat.format(path, parentCoordinates + 1),
-                )
+                else -> Unit
             }
         }
 
@@ -484,11 +462,13 @@ internal object A12DocumentJson {
         }
 
         /**
-         * A12 accepts a textual id and tolerates a numeric one, writing both back as text; nothing else. A numeric id
+         * A12's scalar-id branch accepts text and, without Java assertions, numbers. Containers follow group
+         * conversion and are discarded here; Boolean/null scalar ids are fatal (`A12JsonIngressDiffTest`). A numeric id
          * is its node's text like any unquoted number, so `1e3` reads `1E+3` (`DocumentJsonAndXmlDeserializationInfoImpl`
          * takes `value.asText()` on the id branch as on a field's).
          */
         private fun readDocumentId(node: JsonElement) {
+            if (node is JsonObject || node is JsonArray) return
             if (node is JsonPrimitive && node !== JsonNull && node.isString) {
                 documentId = node.content
                 return
@@ -498,7 +478,7 @@ internal object A12DocumentJson {
                 documentId = numberText
                 return
             }
-            diagnostics += InvalidDocumentIdDiagnostic(node.nodeType())
+            throw DocumentInputError.from(listOf(InvalidDocumentIdDiagnostic(node.nodeType())))
         }
 
         private fun countCell(pointer: () -> String?) {
@@ -620,26 +600,6 @@ private fun JsonElement.nodeType(): DocumentJsonNodeType = when {
 private data class MalformedJsonDiagnostic(private val detail: String) : DocumentInputDiagnostic {
     override val reasonCode = DocumentInputReasonCode.MALFORMED_JSON
     override val message = "the Document JSON could not be read: $detail"
-}
-
-private data class UnknownModelPathDiagnostic(
-    override val modelPath: String,
-    override val pointer: String,
-) : DocumentInputDiagnostic {
-    override val reasonCode = DocumentInputReasonCode.UNKNOWN_MODEL_PATH
-    override val message = "'$pointer' names unknown model path '$modelPath'"
-}
-
-private data class UnexpectedNodeTypeDiagnostic(
-    override val entityKind: ModelEntityKind,
-    override val nodeType: DocumentJsonNodeType,
-    override val modelPath: String,
-    override val pointer: String,
-) : DocumentInputDiagnostic {
-    override val reasonCode = DocumentInputReasonCode.UNEXPECTED_NODE_TYPE
-    override val message = "'$pointer' is a declared ${entityKind.name.lowercase()} but carries " +
-        "${nodeType.name.lowercase()}; A12 Document JSON writes a group as an object (an array when repeatable) " +
-        "and a field as a value"
 }
 
 private data class InvalidDocumentIdDiagnostic(

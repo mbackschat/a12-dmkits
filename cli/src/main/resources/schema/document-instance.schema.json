@@ -2,12 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/document-instance.schema.json",
   "title": "DocumentInstance",
-  "description": "The `--instance` payload for `model eval` / `model compute` / `rule eval`: a filled document INSTANCE (the data to evaluate), NOT the model. This is A12's own canonical Document JSON — the shape the A12 kernel's document serializer reads and writes — so a document produced by an A12 application, or by `model seed`, is accepted verbatim. There is NO wrapper key: a ROOT GROUP name is a top-level key. The tree mirrors the model — a non-repeating group = a nested object keyed by child name; a repeating group = an ARRAY of row objects whose INDEX is the repetition (an unfilled row is `{}`); a present-but-empty group = `{}`; an omitted group or field = a MISSING key. A field is its value: native JSON for NUMBER and BOOLEAN/CONFIRM (`\"Grams\": 250`, `\"Express\": true`), a model-format string for the date family (DATE `\"2026-01-01\"`, DATE_TIME `\"2026-01-01T09:30:00\"`, TIME `\"09:30:00\"`), the S-value for an ENUMERATION, and `null` for a field that is PRESENT but carries no value (distinct from a missing key). A quoted number or boolean is accepted too and normalized exactly as A12 normalizes it (`\"1e5\"` and `1e5` both store `100000`); a value that cannot be converted to the declared kind is kept verbatim and reported by the formal check, never dropped. A root-level `id` is the document's identity, not a model field, and takes no part in evaluation. JSON comments (`//` and `/* */`) are accepted, because A12's own mappers accept them; a trailing comma is not, because A12's do not. Discover the model's structure with `model describe`.",
+  "description": "The `--instance` payload for `model eval` / `model compute` / `rule eval`: a filled document INSTANCE (the data to evaluate), NOT the model. This is A12's own canonical Document JSON — the shape the A12 kernel's document serializer reads and writes — so a document produced by an A12 application, or by `model seed`, is accepted verbatim. There is NO wrapper key: a ROOT GROUP name is a top-level key. The tree mirrors the model — a non-repeating group = a nested object keyed by child name; a repeating group = an ARRAY of row objects whose INDEX is the repetition (an unfilled row is `{}`); a present-but-empty group = `{}`; an omitted group or field = a MISSING key. A field is its value: native JSON for NUMBER and BOOLEAN/CONFIRM (`\"Grams\": 250`, `\"Express\": true`), a model-format string for the date family (DATE `\"2026-01-01\"`, DATE_TIME `\"2026-01-01T09:30:00\"`, TIME `\"09:30:00\"`), the S-value for an ENUMERATION, and `null` for a field that is PRESENT but carries no value (distinct from a missing key). A quoted number or boolean is accepted too and normalized exactly as A12 normalizes it (`\"1e5\"` and `1e5` both store `100000`); a value that cannot be converted to the declared kind is kept verbatim and reported by the formal check, never dropped. A root-level `id` is the document's identity, not a model field, and takes no part in evaluation. JSON comments (`//` and `/* */`) are accepted, because A12's own mappers accept them; a trailing comma is not, because A12's do not. Discover the model's structure with `model describe`. Reading discards unknown keys and wrong-shaped entities. Non-object array entries are dropped before surviving object rows receive consecutive coordinates; empty objects remain rows. Malformed JSON, a non-object root and Boolean/null scalar ids are fatal. Decode resource limits still apply.",
   "type": "object",
   "properties": {
     "id": {
-      "type": ["string", "number"],
-      "description": "the document's own identity — A12's serializer special case, not a model field; ignored by evaluation"
+      "type": ["string", "number", "object", "array"],
+      "description": "Document identity: scalar string/number values are retained as text; object/array values are discarded through group conversion. Boolean/null scalar IDs are fatal. The identity takes no part in evaluation."
     }
   },
   "additionalProperties": true,
@@ -27,6 +27,13 @@
           { "Sku": "A-100", "Count": 2 },
           { "Sku": "B-200", "Count": 1 }
         ]
+      }
+    },
+    {
+      "id": {},
+      "Order": {
+        "Unexpected": 7,
+        "Items": [null, 7, { "Sku": "A-100", "Count": 2 }]
       }
     }
   ]

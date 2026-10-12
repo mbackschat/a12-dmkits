@@ -503,33 +503,42 @@
   },
   "reviews": {
     "kf1": {
-      "sha256": "f94877c27468b07290483963f6c5471173fed0a0e3d56c84dfd52119348efbca",
+      "sha256": "ccd60f13230bb1a49d4beca8e4094b6bb127fb8bd0644b45ac4ee0353a0bd050",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "native number node text"
+          "native number node text",
+          "notification and fatal conversion"
         ],
         "dmkits": [],
         "interpreter": [
           "native number node text",
-          "numeric document id text"
+          "numeric document id text",
+          "surviving object coordinates"
         ],
         "checker": [],
-        "dmtool-cli": [],
+        "dmtool-cli": [
+          "canonical conversion on runtime verbs"
+        ],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "native number node text"
+          "native number node text",
+          "SPEC07 JSON conversion"
         ]
       },
       "consumers": {
         "adapter": {
           "state": "APPLIED",
-          "basis": "Both the kernel's rewrite and its formal outcome are measured for the new String and Number rows.",
+          "basis": "Both the kernel's rewrite and its formal outcome are measured for the new String and Number rows. Independent expected serializer writeback and public-reader output distinguish discarded shapes from fatal scalar IDs and parse/root failures.",
           "evidence": {
             "native number node text": {
               "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws/A12JsonIngressKernelTest.java#a12RewritesEveryFieldValueFromTheStoredValueAndValidatesThatRenderingNotTheAuthoredText",
               "witness": "Ten exponent, threshold and signed-zero rows on a String field and two on a Number field."
+            },
+            "notification and fatal conversion": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/A12JsonIngressDiffTest.kt#notificationOnlyNodesPreserveSiblingsWhileFatalInputsRefuseTheDocument",
+              "witness": "Independent expected serializer writeback and public-reader output distinguish discarded shapes from fatal scalar IDs and parse/root failures."
             }
           }
         },
@@ -540,7 +549,7 @@
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "The reader renders an unquoted number token as A12's node text before the per-kind conversion.",
+          "basis": "The reader renders an unquoted number token as A12's node text before the per-kind conversion. JVM/Node lock null/mixed prefixes, empty objects, zero/two survivors and per-parent compaction.",
           "evidence": {
             "native number node text": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/A12JsonIngressDiffTest.kt#theInterpretersJsonIngressReproducesA12sRewriteAndItsFormalOutcome",
@@ -548,7 +557,11 @@
             },
             "numeric document id text": {
               "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/DocumentTransportTest.kt#theRootDocumentIdIsReadIgnoredForEvaluationAndWrittenBackAsText",
-              "witness": "A numeric id 1e3 is written back as 1E+3; the basis is source-read, since the kernel's id branch takes value.asText() as its field branch does and asserts against a numeric id under -ea, so no test JVM can measure it."
+              "witness": "The public reader writes numeric IDs as text. The pinned serializer asserts under -ea; the owned SPEC07 serializer run with that class assertions disabled measured 7 → \"7\", retaining the existing production-mode contract."
+            },
+            "surviving object coordinates": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/DocumentTransportTest.kt#jsonRepetitionsCompactSurvivingObjectsIndependentlyAtEachParent",
+              "witness": "JVM/Node lock null/mixed prefixes, empty objects, zero/two survivors and per-parent compaction."
             }
           }
         },
@@ -558,9 +571,14 @@
           "evidence": {}
         },
         "dmtool-cli": {
-          "state": "NOT_APPLICABLE",
-          "basis": "dmtool reads Documents through the interpreter reader assessed here.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "dmtool reads Documents through the interpreter reader assessed here. Packaged model eval/compute and stored/candidate rule eval retain dense survivor addresses without changing the input file.",
+          "evidence": {
+            "canonical conversion on runtime verbs": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java#packagedRuntimeVerbsShareCanonicalJsonSurvivorCoordinates",
+              "witness": "Packaged model eval/compute and stored/candidate rule eval retain dense survivor addresses without changing the input file."
+            }
+          }
         },
         "json-schema-import": {
           "state": "NOT_APPLICABLE",
@@ -574,7 +592,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "SPEC-2026-10-09-11 is answered at 2d57eca2: native decimal semantics corroborated and the inline scale-loss requirement withdrawn as our probe defect. The peer's SG5 keeps the repaired inline route and large scientific String values as an executable audit.",
+          "basis": "SPEC-2026-10-09-11 is answered at 2d57eca2: native decimal semantics corroborated and the inline scale-loss requirement withdrawn as our probe defect. The peer's SG5 keeps the repaired inline route and large scientific String values as an executable audit. SPEC-2026-10-10-07 conversion is reconciled here; Lean owns verification.",
           "evidence": {
             "native number node text": {
               "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-11",

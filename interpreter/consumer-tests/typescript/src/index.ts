@@ -367,13 +367,11 @@ if (canonical !== '{"Permit":{"ApplicationNo":"P-1","RequestedArea":125}}') {
   throw new Error(`Document transport did not round-trip: ${canonical}`);
 }
 
-const unknownKey = prepared.documents.tryReadDocument({
-  Permit: {Unexpected: "P-2"},
-});
-if (unknownKey.ok ||
-    unknownKey.error.diagnostics[0]?.reasonCode !== "unknown-model-path" ||
-    unknownKey.error.diagnostics[0]?.pointer !== "Permit/Unexpected") {
-  throw new Error("unknown Document key did not produce a structured diagnostic");
+const unknownKey = prepared.documents.tryReadDocument(
+  '{"Permit":[null,{"ApplicationNo":"P-2","Unexpected":"discarded"}]}',
+);
+if (!unknownKey.ok || prepared.documents.encodeDocumentJson(unknownKey.value) !== '{"Permit":{"ApplicationNo":"P-2"}}') {
+  throw new Error("unknown Document key was not discarded by canonical conversion");
 }
 
 try {

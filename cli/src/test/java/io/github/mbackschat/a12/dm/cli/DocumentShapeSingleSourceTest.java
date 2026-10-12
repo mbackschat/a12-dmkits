@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
@@ -22,8 +23,8 @@ import org.junit.jupiter.api.io.TempDir;
  * <p>This guard exists because the restatement had already gone wrong, in the way a copy always does — it kept a
  * fact the original had corrected. {@code eval-doc.schema.json} told an agent the instance is "a nested tree under
  * {@code \"fields\"}" long after the wrapper was removed, while {@code document-instance.schema.json}, served by the
- * <em>same</em> {@code schema model eval} call, said "there is NO wrapper key". The tool itself refuses the wrapper
- * — and its refusal diagnostic points the agent at {@code dmtool schema model eval}, i.e. straight back at the
+ * <em>same</em> {@code schema model eval} call, said "there is NO wrapper key". At that time the tool refused the wrapper
+ * and its refusal diagnostic pointed the agent at {@code dmtool schema model eval}, i.e. straight back at the
  * wrong instruction. Three surfaces, two of them right, and nothing compared them.
  *
  * <p>So the assertions are: the wrapper claim appears nowhere, no output schema re-describes the tree, and the
@@ -81,7 +82,7 @@ class DocumentShapeSingleSourceTest {
      * only prove the descriptions agree with each other.
      */
     @Test
-    void theToolAcceptsTheShapeTheSingleSourceDescribesAndRefusesTheWrapper(@TempDir Path dir) throws Exception {
+    void theToolAcceptsTheCanonicalShapeAndDiscardsTheUnknownWrapper(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("order-ruled.dm.json");
         try (InputStream in = getClass().getClassLoader().getResourceAsStream("models/order-ruled.dm.json")) {
             assertTrue(in != null, "fixture present");
@@ -89,7 +90,7 @@ class DocumentShapeSingleSourceTest {
         }
 
         Path unwrapped = dir.resolve("unwrapped.json");
-        Files.writeString(unwrapped, "{\"Order\": {\"CustomerName\": \"Acme\"}}");
+        Files.writeString(unwrapped, "{\"Order\": {\"Quantity\": \"invalid\"}}");
         CliTestSupport.Result ok = CliTestSupport.run(
                 "-m", model.toString(), "model", "eval", "--instance", unwrapped.toString());
         assertEquals(0, ok.code(),
@@ -97,12 +98,18 @@ class DocumentShapeSingleSourceTest {
         assertEquals("read", M.readTree(ok.out()).path("outcome").asText(), ok::out);
 
         Path wrapped = dir.resolve("wrapped.json");
-        Files.writeString(wrapped, "{\"fields\": {\"Order\": {\"CustomerName\": \"Acme\"}}}");
-        CliTestSupport.Result refused = CliTestSupport.run(
+        Files.writeString(wrapped, "{\"fields\": {\"Order\": {\"Quantity\": \"invalid\"}}}");
+        CliTestSupport.Result discarded = CliTestSupport.run(
                 "-m", model.toString(), "model", "eval", "--instance", wrapped.toString());
-        assertFalse(refused.code() == 0,
-                () -> "the wrapper must stay refused — a schema that documents it would then be teaching a form "
-                        + "the tool accepts, which is a worse bug than the one this guard was written for: "
-                        + refused.out());
+        Path empty = dir.resolve("empty.json");
+        Files.writeString(empty, "{}");
+        CliTestSupport.Result emptyResult = CliTestSupport.run(
+                "-m", model.toString(), "model", "eval", "--instance", empty.toString());
+        assertNotEquals(M.readTree(ok.out()).path("data"), M.readTree(emptyResult.out()).path("data"),
+                "the unwrapped malformed value must be observable before testing discard");
+        assertEquals(0, discarded.code(), discarded::err);
+        assertEquals(0, emptyResult.code(), emptyResult::err);
+        assertEquals(M.readTree(emptyResult.out()).path("data"), M.readTree(discarded.out()).path("data"),
+                "the unknown wrapper is discarded, never unwrapped (KF1/IF389)");
     }
 }

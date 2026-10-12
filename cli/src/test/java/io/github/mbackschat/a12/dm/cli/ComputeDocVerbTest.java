@@ -241,13 +241,12 @@ class ComputeDocVerbTest {
     }
 
     @Test
-    void unknownPathInTheDocumentFails(@TempDir Path dir) throws Exception {
+    void unknownPathInTheDocumentIsDiscarded(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
         Path doc = dir.resolve("doc.json");
         Files.writeString(doc, """
                 { "Subscription": { "Nope": "x" } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "compute", "--instance", doc.toString());
-        assertNotEquals(0, res.code(), "an unknown path is an error");
-        assertTrue(res.err().contains("Nope"), () -> "names the bad path: " + res.err());
+        assertEquals(0, res.code(), res::err);
     }
 }

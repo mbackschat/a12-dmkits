@@ -22,6 +22,7 @@ import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -34,6 +35,50 @@ class DmtoolPublicContractTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Set<String> RUNTIME = Set.of("model eval", "model compute", "rule eval");
+
+    @Test
+    void packagedRuntimeVerbsShareCanonicalJsonSurvivorCoordinates(@TempDir Path dir) throws Exception {
+        String base = DocumentModelDraft.named("parcel-json-ingress").locale("en_US")
+                .rootGroup("Parcel", p -> p.group("Lines", g -> g.repeatable(3)
+                        .numberField("Amount", f -> f.fractionDigits(0))
+                        .numberField("Copy", f -> f.fractionDigits(0)))).build().toJson();
+        var edit = EditSession.read(base);
+        var lines = edit.group("/Parcel/Lines");
+        var amount = lines.num("Amount");
+        var copy = lines.num("Copy");
+        lines.addRule(r -> r.name("Positive").code("POSITIVE").errorField(amount)
+                .when(amount.gt(0)).message(Dsl.en("Check amount.")).build());
+        lines.addComputation(copy, c -> c.name("CopyAmount").calc(amount.asNumber()).message(Dsl.en("Check copy.")).build());
+        Path model = dir.resolve("parcel.dm.json");
+        Path document = dir.resolve("parcel.json");
+        Files.writeString(model, edit.toJson());
+        String input = "{\"Parcel\":{\"Unknown\":{},\"Lines\":[null,7,{\"Amount\":7},false]}}";
+        Files.writeString(document, input);
+        var dmtool = new PackagedDmtool(dir);
+        var evaluated = dmtool.run("-m", model.toString(), "model", "eval", "--instance", document.toString());
+        assertEquals(0, evaluated.code(), () -> evaluated.out() + evaluated.err());
+        JsonNode messages = MAPPER.readTree(evaluated.out()).path("data").path("messages");
+        assertEquals(1, messages.size(), evaluated::out);
+        assertEquals("POSITIVE", messages.get(0).path("code").asText(), evaluated::out);
+        assertEquals("Parcel/Lines/Amount", messages.get(0).path("field").asText(), evaluated::out);
+        var computed = dmtool.run("-m", model.toString(), "model", "compute", "--instance", document.toString());
+        assertEquals(0, computed.code(), () -> computed.out() + computed.err());
+        JsonNode cells = MAPPER.readTree(computed.out()).path("data").path("computed");
+        assertEquals(1, cells.size(), computed::out);
+        assertEquals("Parcel/Lines/Copy", cells.get(0).path("field").asText(), computed::out);
+        assertEquals("7", cells.get(0).path("value").asText(), computed::out);
+        var stored = dmtool.run("-m", model.toString(), "rule", "eval", lines.ref().path() + "/Positive",
+                "--instance", document.toString());
+        var candidate = dmtool.run("-m", model.toString(), "rule", "eval", "--condition", new DslRenderer().render(amount.gt(0)),
+                "--field", amount.field().path().toString(), "--code", "POSITIVE", "--instance", document.toString());
+        for (var result : List.of(stored, candidate)) {
+            assertEquals(0, result.code(), () -> result.out() + result.err());
+            JsonNode data = MAPPER.readTree(result.out()).path("data");
+            assertEquals("fired", data.path("verdict").asText(), result::out);
+            assertEquals("Parcel/Lines/Amount", data.path("field").asText(), result::out);
+        }
+        assertEquals(input, Files.readString(document));
+    }
 
     @Test
     void packagedVersionIdentifiesItsBaseRevisionAndDivergence(@TempDir Path dir) throws Exception {

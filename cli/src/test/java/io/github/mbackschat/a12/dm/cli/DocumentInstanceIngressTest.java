@@ -113,7 +113,7 @@ class DocumentInstanceIngressTest {
     }
 
     @Test
-    void theRetiredFieldsWrapperFailsWithTheMigrationCorrective() throws Exception {
+    void anUnknownWrapperIsDiscardedWithoutUnwrappingItsContents() throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path instance = dir.resolve("wrapped.json");
         Files.writeString(instance, "{ \"fields\": { \"Order\": { \"Quantity\": 5 } } }");
@@ -121,15 +121,14 @@ class DocumentInstanceIngressTest {
         CliTestSupport.Result res =
                 CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", instance.toString());
 
-        assertEquals(2, res.code(), () -> "the wrapper is a clean break, not a silent unwrap: " + res.out());
-        assertTrue(res.err().contains("wrapper is gone"), () -> "it corrects the caller: " + res.err());
-        assertTrue(res.err().contains("schema model eval"), () -> "and points at the shape: " + res.err());
+        assertEquals(0, res.code(), () -> res.out() + res.err());
+        Files.writeString(instance, "{}");
+        var empty = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", instance.toString());
+        assertEquals(M.readTree(empty.out()).path("data"), M.readTree(res.out()).path("data"));
     }
 
     @Test
-    void aGroupCarryingAValueIsRefusedInsteadOfSilentlyIgnored() throws Exception {
-        // The old walker had no model to check against, so a scalar at a declared group was quietly dropped and
-        // the document evaluated as if the group were absent. The canonical reader names the position.
+    void aGroupCarryingAValueIsDiscardedAsInA12() throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path instance = dir.resolve("badgroup.json");
         Files.writeString(instance, "{ \"Order\": { \"Items\": \"notanarray\" } }");
@@ -137,9 +136,10 @@ class DocumentInstanceIngressTest {
         CliTestSupport.Result res =
                 CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", instance.toString());
 
-        assertEquals(2, res.code(), () -> "a group cannot carry a value: " + res.out());
-        assertTrue(res.err().contains("Order/Items"), () -> "the A12 pointer locates it: " + res.err());
-        assertTrue(res.err().contains("declared group"), () -> "and names the mismatch: " + res.err());
+        assertEquals(0, res.code(), () -> res.out() + res.err());
+        var kernel = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", instance.toString());
+        assertEquals(0, kernel.code(), kernel::err);
+        assertEquals(M.readTree(kernel.out()).path("data").path("fired"), M.readTree(res.out()).path("data").path("fired"));
     }
 
     @Test

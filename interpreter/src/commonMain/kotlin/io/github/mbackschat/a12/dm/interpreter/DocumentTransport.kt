@@ -272,8 +272,10 @@ class PreparedDocumentApi internal constructor(
     }
 
     /**
-     * Read A12 Document JSON into an immutable, owner-bound snapshot. Resource-limit failures are fail-fast;
-     * model-aware input diagnostics aggregate so a caller sees every defect at once.
+     * Read A12 Document JSON into an immutable, owner-bound snapshot.
+     *
+     * Conversion discards unknown and wrong-shaped entities and compacts surviving object rows (KF1).
+     * Syntax, root, scalar-id and resource-limit failures abort without publishing a partial snapshot.
      */
     @JvmOverloads
     fun readDocument(

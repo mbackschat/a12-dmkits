@@ -24,7 +24,6 @@ import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputDiagnostic;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
-import io.github.mbackschat.a12.dm.interpreter.DocumentInputReasonCode;
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic;
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError;
 import io.github.mbackschat.a12.dm.interpreter.model.UndeclaredReference;
@@ -47,9 +46,6 @@ import picocli.CommandLine.Spec;
 public abstract class BaseCommand implements Callable<Integer> {
 
     private static final ObjectMapper JSON = new ObjectMapper();
-
-    /** The model path an instance still carrying the retired {@code "fields"} wrapper reports as unknown. */
-    private static final String LEGACY_FIELDS_WRAPPER_PATH = "/fields";
 
     @Spec
     protected CommandSpec spec;
@@ -154,22 +150,12 @@ public abstract class BaseCommand implements Callable<Integer> {
      * never an arbitrary reader or renderer exception. Unexpected failures belong to {@link Cli}'s
      * internal-error mapper.
      *
-     * <p>The one enriched case is the retired {@code {"fields": {…}}} wrapper: a document that still carries it
-     * fails as an unknown model path {@code /fields}, which is true but unhelpful, so it also gets the migration
-     * corrective. Clean break plus a corrective error — never a silent unwrap.
      */
     protected int failInvalidInstance(DocumentInputError error) {
-        boolean legacyWrapper = error.getDiagnostics().stream().anyMatch(d ->
-                d.getReasonCode() == DocumentInputReasonCode.UNKNOWN_MODEL_PATH
-                        && LEGACY_FIELDS_WRAPPER_PATH.equals(d.getModelPath()));
         String detail = error.getDiagnostics().stream()
                 .map(DocumentInputDiagnostic::getMessage)
                 .collect(java.util.stream.Collectors.joining("; "));
-        return fail("invalid document: " + detail + (legacyWrapper
-                ? " — the `{\"fields\": {…}}` wrapper is gone; a document instance is now A12's canonical "
-                        + "Document JSON, so a root group name is a top-level key. Unwrap the tree "
-                        + "(`dmtool schema model eval` shows the shape)."
-                : ""));
+        return fail("invalid document: " + detail);
     }
 
     /**

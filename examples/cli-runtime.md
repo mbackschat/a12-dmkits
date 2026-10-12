@@ -9,7 +9,7 @@ The previous tours operated on the **model** — its rules and computations as t
 
 ## The document instance
 
-A model is a *schema*; the runtime needs *data*. The instance below is the smallest order that exercises the date rule — just the two dates the rule turns on, nested under their `Order` group. Dates are written **ISO `yyyy-MM-dd`** (the model is `en_US`-only; that is the format the engine parses). Here the delivery (`2024-05-15`) lands **before** the order (`2024-06-01`) — the violation the stored rule `/Order/DeliveryNotBeforeOrder` is meant to catch.
+A model is a *schema*; the runtime needs *data*. The instance below is the smallest order that exercises the date rule — just the two dates the rule turns on, nested under their `Order` group. Dates are written **ISO `yyyy-MM-dd`** (the model is `en_US`-only; that is the format the engine parses). Here the delivery (`2024-05-15`) lands **before** the order (`2024-06-01`) — the violation the stored rule `/Order/DeliveryNotBeforeOrder` is meant to catch. The shared reader discards unknown keys and wrong-shaped entities, then numbers surviving object rows consecutively; an empty `{}` remains a row. [The input contract](../docs/INTERPRETER-API-SPEC.md#43-conversion-and-fatal-input-errors) distinguishes conversion from fatal errors.
 
 ```bash
 cat > /tmp/rt-order-violation.json <<'JSON'

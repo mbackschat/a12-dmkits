@@ -165,16 +165,11 @@ The measurement is `adapter … A12JsonIngressKernelTest` (the kernel's own ingr
 
 Authored DSL string literals have a separate decode step: each CRLF pair becomes LF once, including literal semantic-index keys. This does not rewrite Document transport text or normalize an admitted value again. The repeated-CR comparison and selection controls are in [KF542](KERNEL-FINDINGS.md#kf542) and `AuthoredStringNewlineDiffTest`.
 
-### 4.3 Strict reading
+### 4.3 Conversion and fatal input errors
 
-`PreparedModel.documents.readDocument` validates the complete text before any document state exists:
+`PreparedModel.documents.readDocument` converts the complete text before any document state exists. Unknown keys and wrong-shaped entities are discarded. Within arrays, only object rows survive and receive consecutive coordinates per parent; `{}` is retained. A field's `null` remains present-empty, and a scalar that fails its field conversion remains raw text.
 
-- applies hard-capped `DocumentDecodeLimits` (document text size first, then group rows, field cells, path length, per-field and total raw text, model nesting depth) before expensive allocation;
-- rejects unparseable JSON and a non-object root;
-- checks that every key names a declared field or group and that its JSON node type can carry that entity;
-- aggregates model-aware diagnostics and performs no partial document mutation when validation fails.
-
-Every input defect A12 reports as an error-ranked notification is **fatal** here; the Kernel's report-and-continue is a notification policy of its caller, not a difference in the shape. `DocumentInputError` diagnostics locate each defect by its canonical A12 `DocumentPointer` string plus the model path, the declared entity kind, and the JSON node type found. `tryReadDocument` returns the same failure through `A12Result` on TypeScript.
+Malformed JSON, a non-object root, and Boolean/null scalar document IDs raise `DocumentInputError`. Object/array IDs are discarded; string and numeric IDs become text. Hard-capped `DocumentDecodeLimits` still apply to text size, retained rows/cells, path length, raw text and nesting depth, and fail before publishing a partial snapshot. `tryReadDocument` returns the same fatal errors through `A12Result` on TypeScript. The kernel serializer observations, coordinate guards and shared enforcement are recorded in [IF389](INTERPRETER-FINDINGS.md#if389).
 
 `encodeDocument` checks owner identity before writing. `isSnapshot` recognizes only authentic snapshots owned by that prepared model.
 

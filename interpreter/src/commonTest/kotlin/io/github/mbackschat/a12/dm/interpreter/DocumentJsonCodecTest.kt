@@ -104,6 +104,16 @@ class DocumentJsonCodecTest {
     }
 
     @Test
+    fun explicitSparsePlacementStillPadsPredecessorsWhileJsonCompactsNonObjects() {
+        val model = ModelLoader.load(ORDER_MODEL)
+        val path = "/Order/Items/Note"
+        val placed = model.newDocument().field(path, "third", 1, 3, 1)
+        assertEquals("""{"Order":{"Items":[{},{},{"Note":"third"}]}}""", placed.toDocumentJson(model))
+        val read = model.readDocumentJson("""{"Order":{"Items":[null,null,{"Note":"third"}]}}""")
+        assertEquals("""{"Order":{"Items":[{"Note":"third"}]}}""", read.toDocumentJson(model))
+    }
+
+    @Test
     fun theRootIdIsValidatedOnReadAndBelongsToTheOwnerBoundSurfaceAlone() {
         val model = ModelLoader.load(ORDER_MODEL)
 
@@ -112,7 +122,8 @@ class DocumentJsonCodecTest {
         val document = model.readDocumentJson("""{"id":"doc-1","Order":{"Ref":"a"}}""")
 
         assertEquals("""{"Order":{"Ref":"a"}}""", document.toDocumentJson(model))
-        assertFailsWith<DocumentInputError> { model.readDocumentJson("""{"id":[1],"Order":{"Ref":"a"}}""") }
+        assertEquals("""{"Order":{"Ref":"a"}}""",
+            model.readDocumentJson("""{"id":[1],"Order":{"Ref":"a"}}""").toDocumentJson(model))
     }
 
     private companion object {
