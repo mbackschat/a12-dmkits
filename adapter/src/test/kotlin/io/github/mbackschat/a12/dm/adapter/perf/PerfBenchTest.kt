@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
@@ -23,6 +24,23 @@ import org.junit.jupiter.api.Test
  */
 @Tag("perf-bench")
 class PerfBenchTest {
+
+    @Test
+    @TimesInterpreterEntryPoint("computeWithSupport", Document::class, String::class)
+    fun supportComputationBeatsBothKernelsAtBothScales() {
+        val scenario = PerfCatalog.b7()
+        assertEquals(1, scenario.interpModel.computations.size)
+        assertTrue(scenario.interpModel.rules.isEmpty())
+        val curve = PerfHarness.pairedScenarioGrowth(
+            scenario, small = 150, large = 600, pairs = 3, warmup = 5, iters = 5,
+            buildInterpreter = InterpreterPerfEngine::buildWithSupport,
+        )
+        listOf(curve.small, curve.large).forEach { row ->
+            assertEquals(row.n, row.firings, "B7 computes one value per Line")
+            PerfHarness.progress("computeWithSupport " + PerfHarness.format(row, CAVEAT))
+            assertTrue(row.interp.medianMs < ABS_CEILING_MS)
+        }
+    }
 
     @Test
     @TimesInterpreterEntryPoint("compute", Document::class, String::class)

@@ -172,7 +172,16 @@ interface PerfEngine {
 /** The interpreter engine: [DmInterpreter] built once, each [ReusableEngine.instance] a general [Document]. */
 object InterpreterPerfEngine : PerfEngine {
     override val label = "interp"
-    override fun build(scenario: PerfScenario): ReusableEngine {
+    private enum class ComputeEntry { COMPUTE, WITH_SUPPORT }
+
+    fun buildWithSupport(scenario: PerfScenario): ReusableEngine {
+        require(scenario.op == PerfOp.COMPUTE)
+        return build(scenario, ComputeEntry.WITH_SUPPORT)
+    }
+
+    override fun build(scenario: PerfScenario): ReusableEngine = build(scenario, ComputeEntry.COMPUTE)
+
+    private fun build(scenario: PerfScenario, entry: ComputeEntry): ReusableEngine {
         val model: ModelDef = scenario.interpModel
         val interp = scenario.interpreterFactory(model)   // built once; rules parsed once + cached at construction (ParsedModel — #31 re-parse retired; per-call cost is the tree-walk)
         return object : ReusableEngine {
@@ -191,11 +200,20 @@ object InterpreterPerfEngine : PerfEngine {
                         PerfOp.VALIDATE -> interp.validate(doc, scenario.locale).let { result ->
                             PerfOutcome(result.messages.map(::validationSignature).sorted(), result.unsupported)
                         }
-                        PerfOp.COMPUTE -> PerfOutcome(
-                            checkNotNull(computeProjection)
-                                .project(interp.compute(doc, scenario.locale).map(::computationSignature))
-                                .sorted(),
-                        )
+                        PerfOp.COMPUTE -> when (entry) {
+                            ComputeEntry.COMPUTE -> PerfOutcome(
+                                checkNotNull(computeProjection)
+                                    .project(interp.compute(doc, scenario.locale).map(::computationSignature))
+                                    .sorted(),
+                            )
+                            ComputeEntry.WITH_SUPPORT -> interp.computeWithSupport(doc, scenario.locale).let { result ->
+                                PerfOutcome(
+                                    checkNotNull(computeProjection)
+                                        .project(result.results.map(::computationSignature)).sorted(),
+                                    result.unsupported,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1257,6 +1275,7 @@ object PerfHarness {
          * attach it to no observation at all. `null` is the honest answer for a caller that records no rows.
          */
         lane: String? = null,
+        buildInterpreter: (PerfScenario) -> ReusableEngine = InterpreterPerfEngine::build,
     ): PairedPerfCurve {
         val started = System.nanoTime()
         require(small > 0) { "small scale must be positive" }
@@ -1267,7 +1286,7 @@ object PerfHarness {
         scenario.requireComparativeBindings()
         preflight(scenario, large)
 
-        val interpreter = InterpreterPerfEngine.build(scenario)
+        val interpreter = buildInterpreter(scenario)
         val groovy = KernelPerfEngine.build(scenario)
         val java = KernelJavaPerfEngine.build(scenario)
         val iSmall = interpreter.instance(small)
