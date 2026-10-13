@@ -23,6 +23,11 @@ public record EnumExpr(Calculation expression) {
         return plus(new StringExpr(new StringLiteral(literal)));
     }
 
+    /** {@code <this> + [text]} — as {@link #plus(StringExpr)}, followed by a text field's value. */
+    public StringExpr plus(StringRef text) {
+        return plus(text.asString());
+    }
+
     /** {@code <this> == "value"} — compared by stored value (the enum domain is the kernel's check). */
     public Condition is(String value) {
         return new ComparisonCondition(expression, CompareOp.EQ, new EnumValueLiteral(value));

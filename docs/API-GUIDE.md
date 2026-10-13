@@ -1114,7 +1114,7 @@ Off a `GroupEditor` the same override reads `editor.addComputation(target, c -> 
 
 **The boolean constants are computation operations too, and CONFIRM is asymmetric.** `BoolLiteral` is an ordinary `Calculation`, so a boolean flag is computed through the same typed surface as any other kind â€” `m.computation(m.bool("/Claim/Escalated")).calc(new BoolLiteral(true))`. A **CONFIRM** target accepts only `True`: a confirm has no false, and the kernel rejects a `False` operation on one with `MVK_INVALID_COMPARE_TO_YES`, so "clear the confirmation" cannot be expressed as a computation. The builder used to refuse *both* constants into a CONFIRM target on plain operation-kind equality, which made the legal model unauthorable; it now permits `True` and refuses `False` carrying the kernel's own code rather than a kind-mismatch message. *Test-backed: `ConfirmComputationSourceKindLawsTest` (the kernel measured through raw operations that bypass the pre-check, plus a BOOLEAN polarity control and the both-directions agreement of the typed builder), `ComputationAuthoringTest`.*
 
-**STRING and CUSTOM share text assignments.** Direct reads, string literals and concatenations can write either target kind. `m.custom(path)` retains the CUSTOM declaration while exposing `StringRef`; `m.str(path)` remains STRING-only. For example, `m.computation(customTarget).calc(source.asString().plus("-verified").expression())` uses the same builder as a STRING target. Typed readback preserves CUSTOM leaves and supports rebuilding the admitted assignment. `TextComputationAdmissionReadTest` locks kernel admission and read/rebuild/write identity; NUMBER-to-text and concatenation-to-Enumeration remain refused.
+**STRING and CUSTOM share text assignments.** Direct reads, string literals and concatenations can write either target kind. `m.custom(path)` retains the CUSTOM declaration while exposing `StringRef`; `m.str(path)` remains STRING-only. For example, `m.computation(customTarget).calc(source.plus("-verified"))` uses the same builder as a STRING target. Typed readback preserves CUSTOM leaves and supports rebuilding the admitted assignment. `TextComputationAdmissionReadTest` locks kernel admission and read/rebuild/write identity; NUMBER-to-text and concatenation-to-Enumeration remain refused.
 
 When the model declares a base year, its numeric role is also a normal numeric operand: `Dsl.baseYearNumber().plus(1)`, `Dsl.roundDown(Dsl.baseYearNumber())`, and `Dsl.abs(Dsl.baseYearNumber())` produce the configured scale-0 year through arithmetic or wrappers. The same constant remains date-valued through `Dsl.baseYear()` in explicitly temporal expressions; a derived numeric component such as `Dsl.yearFromDate(Dsl.baseYear())` can be wrapped in the same way. Omitting the model configuration is rejected as `MVK_NO_BASE_YEAR`. *Test-backed: `BaseYearArithmeticDiffTest`, `TemporalNumericWrapperDiffTest`, `BaseYearComputationTest`, `TemporalNumericWrapperTest`, and `BaseYearArithmeticLawsTest`.*
 
@@ -1543,11 +1543,13 @@ FieldListRef lines = order.flatten("Items*/Qty");  // star aggregate, relative â
 ```java
 var order = s.group("/Order");
 order.addComputation(order.str("CustomerName"), c -> c.name("NameComp")
-    .calc(order.str("ProductCode").asString().plus("-X"))
+    .calc(order.str("ProductCode").plus("-X"))
     .message(Dsl.en("Customer display name.")));
 ```
 
 *(Surfaced by dogfooding the conformance corpus: its string-concat guard case couldn't be authored through the editor while only the `NumberRef` overload existed. Test-backed by `RuleComputationEditorTest.authorsAStringComputationThroughTheEditor`.)*
+
+**A text field concatenates off its `StringRef`, and every concatenation receiver takes one.** `first.plus(" ").plus(last)` renders exactly as `first.asString().plus(" ").plus(last.asString())`, and an enumeration, a category projection or a key-selected cell takes a text field the same way, so a field never leaves its ref to stand in a `+` chain (`StringRefConcatenationTest`).
 
 **An enumeration joins text through `EnumRef.plus` and `StringExpr.plus(EnumRef)`, and another enumeration through `EnumRef.plus(EnumRef)`.** It contributes its stored value, never a label, and an empty one contributes nothing. The read renders braced, `{ [Priority] }`, because A12 refuses an immediate enumeration read in `+` when any label remaps its value and admits the braced one whatever the labels ([KF396](KERNEL-FINDINGS.md#kf396), [KF530](KERNEL-FINDINGS.md#kf530)), so the model-free builder never needs the labels. The enumeration only ever stands inside a concatenation, never alone as text. A text computation takes the result directly, through `calc(StringExpr)`:
 
@@ -1555,7 +1557,7 @@ order.addComputation(order.str("CustomerName"), c -> c.name("NameComp")
 ```java
 // An enumeration joins text through plus. It contributes its STORED value, never a label, and renders
 // braced, which A12 admits whatever the labels (KERNEL-FINDINGS KF396, KF530).
-StringExpr label = m.enumOf("/Order/Priority").plus(" / ").plus(m.str("/Order/ProductCode").asString());
+StringExpr label = m.enumOf("/Order/Priority").plus(" / ").plus(m.str("/Order/ProductCode"));
 Condition staleName = m.str("/Order/CustomerName").ne(label);
 ```
 
@@ -1566,10 +1568,10 @@ Condition staleName = m.str("/Order/CustomerName").ne(label);
 // A key-selected enumeration cell joins text by its stored value, braced like a direct read; a category
 // projection joins by its category value (KERNEL-FINDINGS KF396, KF530).
 StringExpr channel = promo.enumOf("/Shop/Runs/Channel").forIndex(promo.field("/Shop/Season")).plus(" / ")
-        .plus(promo.str("/Shop/Banner").asString());
+        .plus(promo.str("/Shop/Banner"));
 Condition staleBanner = promo.str("/Shop/Banner").ne(channel);
 StringExpr speed = m.enumOf("/Order/Priority").category("SpeedClass").plus("-")
-        .plus(m.str("/Order/ProductCode").asString());
+        .plus(m.str("/Order/ProductCode"));
 Condition staleName = m.str("/Order/CustomerName").ne(speed);
 ```
 

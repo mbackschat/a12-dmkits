@@ -64,6 +64,11 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
         return plus(new StringExpr(new StringLiteral(literal)));
     }
 
+    /** {@code [field -> name] + [text]} — as {@link #plus(StringExpr)}, followed by a text field's value. */
+    public StringExpr plus(StringRef text) {
+        return plus(text.asString());
+    }
+
     /** {@code [field -> name] + [other -> name]} — two category projections joined, each by its category value. */
     public StringExpr plus(CategoryRef other) {
         return StringExpr.joined(access(), other.access());

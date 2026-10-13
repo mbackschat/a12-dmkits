@@ -20,6 +20,11 @@ public record StringExpr(Calculation expression) {
         return plus(new StringExpr(new StringLiteral(literal)));
     }
 
+    /** {@code this + [text]} — append a text field's value. */
+    public StringExpr plus(StringRef text) {
+        return plus(text.asString());
+    }
+
     /** {@code this + { [enumeration] }} — append an enumeration's value; see {@link EnumRef#plus(StringExpr)}. */
     public StringExpr plus(EnumRef enumeration) {
         return joined(expression, enumeration.field().value());

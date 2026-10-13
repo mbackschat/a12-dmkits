@@ -117,12 +117,12 @@ class RuleComputationEditorTest {
         StringRef label = addons.str("Label");
 
         Computation composed = addons.computation(label, c -> c.name("LabelComp")
-                .calc(code.asString().plus("-X").expression())
+                .calc(code.plus("-X"))
                 .message(Dsl.en("x"), Dsl.de("x")).build());
         assertEquals("../Label", composed.computedFieldRelPath(), "the compose peer derives the target relPath");
 
         addons.addComputation(label, c -> c.name("LabelComp")
-                .calc(code.asString().plus("-X").expression())
+                .calc(code.plus("-X"))
                 .message(Dsl.en("x"), Dsl.de("x")).build());
         s.validate();   // the kernel accepts the string-computed target
         assertTrue(s.toJson().contains("LabelComp"), "the editor-authored string computation is written");

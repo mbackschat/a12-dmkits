@@ -92,9 +92,37 @@ public record StringRef(FieldRef field, boolean correlated) {
                 .or(Dsl.noFieldFilled(field, other.field));
     }
 
-    /** This field as a string expression — the entry point for concatenation ({@code asString().plus(…)}). */
+    /** This field as a string expression; concatenation reads straight off the ref ({@link #plus(StringExpr)}). */
     public StringExpr asString() {
         return new StringExpr(field.value());
+    }
+
+    /**
+     * {@code [this] + <text>} — this field joined to text, as {@code asString().plus(text)} renders it. A text field
+     * concatenates off its ref the way a {@code NumberRef} carries its arithmetic (API-FINDINGS AF188). catalog:Concatenation
+     */
+    public StringExpr plus(StringExpr text) {
+        return asString().plus(text);
+    }
+
+    /** {@code [this] + [other]} — two text fields joined. */
+    public StringExpr plus(StringRef other) {
+        return asString().plus(other);
+    }
+
+    /** {@code [this] + "literal"} — append a string literal. */
+    public StringExpr plus(String literal) {
+        return asString().plus(literal);
+    }
+
+    /** {@code [this] + { [enumeration] }} — append an enumeration's stored value; see {@link EnumRef#plus(StringExpr)}. */
+    public StringExpr plus(EnumRef enumeration) {
+        return asString().plus(enumeration);
+    }
+
+    /** {@code [this] + [enumeration -> category]} — append a category projection's value; see {@link CategoryRef#plus}. */
+    public StringExpr plus(CategoryRef category) {
+        return asString().plus(category);
     }
 
     /** {@code [this] == <string expression>}, e.g. against a {@code [First] + " " + [Last]} concatenation. */

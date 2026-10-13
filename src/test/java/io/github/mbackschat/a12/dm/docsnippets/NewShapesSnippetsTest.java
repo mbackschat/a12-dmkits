@@ -471,7 +471,7 @@ class NewShapesSnippetsTest {
         // tag::enum-concatenation[]
         // An enumeration joins text through plus. It contributes its STORED value, never a label, and renders
         // braced, which A12 admits whatever the labels (KERNEL-FINDINGS KF396, KF530).
-        StringExpr label = m.enumOf("/Order/Priority").plus(" / ").plus(m.str("/Order/ProductCode").asString());
+        StringExpr label = m.enumOf("/Order/Priority").plus(" / ").plus(m.str("/Order/ProductCode"));
         Condition staleName = m.str("/Order/CustomerName").ne(label);
         // end::enum-concatenation[]
         assertEquals("[/Order/CustomerName] != { [/Order/Priority] } + \" / \" + [/Order/ProductCode]",
@@ -485,10 +485,10 @@ class NewShapesSnippetsTest {
         // A key-selected enumeration cell joins text by its stored value, braced like a direct read; a category
         // projection joins by its category value (KERNEL-FINDINGS KF396, KF530).
         StringExpr channel = promo.enumOf("/Shop/Runs/Channel").forIndex(promo.field("/Shop/Season")).plus(" / ")
-                .plus(promo.str("/Shop/Banner").asString());
+                .plus(promo.str("/Shop/Banner"));
         Condition staleBanner = promo.str("/Shop/Banner").ne(channel);
         StringExpr speed = m.enumOf("/Order/Priority").category("SpeedClass").plus("-")
-                .plus(m.str("/Order/ProductCode").asString());
+                .plus(m.str("/Order/ProductCode"));
         Condition staleName = m.str("/Order/CustomerName").ne(speed);
         // end::selected-concatenation[]
         assertEquals("[/Shop/Banner] != { [/Shop/Runs/Channel For /Shop/Season] } + \" / \" + [/Shop/Banner]",

@@ -77,6 +77,11 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return plus(new StringExpr(new StringLiteral(literal)));
     }
 
+    /** {@code { [this] } + [text]} — as {@link #plus(StringExpr)}, followed by a text field's value. */
+    public StringExpr plus(StringRef text) {
+        return plus(text.asString());
+    }
+
     /**
      * {@code { [this] } + { [other] }} — two enumerations joined, each read braced, which A12 admits with or without
      * text around them (KERNEL-FINDINGS KF530); each contributes its stored value.
