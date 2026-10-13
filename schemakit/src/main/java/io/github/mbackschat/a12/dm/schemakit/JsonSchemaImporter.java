@@ -1062,7 +1062,7 @@ public final class JsonSchemaImporter {
                     + "' onto its STRING target — choose MULTI_SELECT for a closed enum or REPEATABLE_SINGLE, or retain source-schema validation");
             return;
         }
-        g.multiSelectGroup(name, m -> m.stringField(ROW_FIELD, s -> configureStringField(s, items, true)).maxRows(max));
+        g.multiSelectGroup(name, m -> m.stringField(ROW_FIELD, s -> configureStringField(s, items, true, path, ctx)).maxRows(max));
         ctx.report().structure(path, "value-list (string multi-select, max " + max + ")");
     }
 
@@ -1436,7 +1436,7 @@ public final class JsonSchemaImporter {
                 if (schema.path("format").isTextual()) {
                     addFormattedString(g, name, schema, isRequired, path, ctx);
                 } else {
-                    addStringField(g, name, schema, isRequired);
+                    addStringField(g, name, schema, isRequired, path, ctx);
                     ctx.report().structure(path, "STRING");
                 }
                 if (schema.has("const")) {   // applies to BOTH plain and formatted strings — the format path dropped it
@@ -1480,25 +1480,50 @@ public final class JsonSchemaImporter {
 
     /** A string field; {@code minLength}/{@code maxLength}/{@code pattern} import to string field config. */
     private static void addStringField(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
-                                       boolean isRequired) {
-        Integer minLength = schema.has("minLength") ? schema.get("minLength").asInt() : null;
-        Integer maxLength = schema.has("maxLength") ? schema.get("maxLength").asInt() : null;
+                                       boolean isRequired, String path, Ctx ctx) {
+        boolean bounded = schema.has("minLength") || schema.has("maxLength");
         String pattern = schema.path("pattern").isTextual() ? schema.get("pattern").asText() : null;
-        if (minLength == null && maxLength == null && pattern == null) {
+        if (!bounded && pattern == null) {
             g.field(name, FieldKind.STRING, isRequired ? Requiredness.REQUIRED : Requiredness.OPTIONAL);
             return;
         }
-        g.stringField(name, s -> configureStringField(s, schema, isRequired));
+        g.stringField(name, s -> configureStringField(s, schema, isRequired, path, ctx));
     }
 
-    private static void configureStringField(StringFieldBuilder s, JsonNode schema, boolean isRequired) {
-        if (schema.has("minLength")) s.minLength(schema.get("minLength").asInt());
-        if (schema.has("maxLength")) s.maxLength(schema.get("maxLength").asInt());
+    private static void configureStringField(StringFieldBuilder s, JsonNode schema, boolean isRequired,
+                                             String path, Ctx ctx) {
+        declareLengths(s, schema, path, ctx);
         if (schema.path("pattern").isTextual()) {
             String pattern = schema.get("pattern").asText();
             s.pattern(pattern, pattern.isEmpty() ? null : "must match the specified pattern"); // Empty declarations are inactive (SPEC-2026-10-10-13).
         }
         if (isRequired) s.required();
+    }
+
+    /** A12's technical limit on every stored value, and so the largest length bound it admits as a declaration. */
+    private static final int TECHNICAL_LENGTH_LIMIT = 99_999;
+
+    /**
+     * Declares the schema's {@code minLength}/{@code maxLength} on [s], each only up to A12's technical limit.
+     *
+     * <p>A12 refuses a declared bound above the limit, and its input guard refuses any longer stored value anyway
+     * (KERNEL-FINDINGS KF547, {@code validate.laws.StringLengthDeclarationBoundLawsTest}). So a larger maximum is
+     * left undeclared with the narrower effective bound reported, and a larger minimum, which no stored value can
+     * reach, is reported rather than turned into a model A12 cannot load.
+     */
+    private static void declareLengths(StringFieldBuilder s, JsonNode schema, String path, Ctx ctx) {
+        if (schema.has("minLength")) {
+            int min = schema.get("minLength").asInt();
+            if (min <= TECHNICAL_LENGTH_LIMIT) s.minLength(min);
+            else ctx.report().diagnostic("minLength " + min + " at '" + path + "' exceeds A12's " + TECHNICAL_LENGTH_LIMIT
+                    + "-unit limit on every stored value, so no value can satisfy it — not declared; constrain it by hand");
+        }
+        if (schema.has("maxLength")) {
+            int max = schema.get("maxLength").asInt();
+            if (max <= TECHNICAL_LENGTH_LIMIT) s.maxLength(max);
+            else ctx.report().diagnostic("maxLength " + max + " at '" + path + "' exceeds A12's " + TECHNICAL_LENGTH_LIMIT
+                    + "-unit limit on every stored value — not declared; the effective maximum is " + TECHNICAL_LENGTH_LIMIT);
+        }
     }
 
     /**
@@ -1533,12 +1558,7 @@ public final class JsonSchemaImporter {
             case PATTERN -> standardRegex(format).ifPresentOrElse(
                     regex -> {
                         g.stringField(name, s -> {
-                            if (schema.has("minLength")) {
-                                s.minLength(schema.get("minLength").asInt());
-                            }
-                            if (schema.has("maxLength")) {
-                                s.maxLength(schema.get("maxLength").asInt());
-                            }
+                            declareLengths(s, schema, path, ctx);
                             s.pattern(regex, name + " must be a valid " + format);
                             if (isRequired) {
                                 s.required();
@@ -1547,7 +1567,7 @@ public final class JsonSchemaImporter {
                         ctx.report().structure(path, "STRING + pattern (format " + format + ")");
                     },
                     () -> {
-                        addStringField(g, name, schema, isRequired);
+                        addStringField(g, name, schema, isRequired, path, ctx);
                         ctx.report().structure(path, "STRING");
                         ctx.report().diagnostic("format '" + format + "' at '" + name + "' has no standard regex "
                                 + "— imported as a plain string. TO DO: add a pattern by hand, or set the format "
@@ -1565,7 +1585,7 @@ public final class JsonSchemaImporter {
                         + format + "' — register a validator for it at runtime");
             }
             case IGNORE -> {
-                addStringField(g, name, schema, isRequired);
+                addStringField(g, name, schema, isRequired, path, ctx);
                 ctx.report().structure(path, "STRING (format '" + format + "' ignored)");
             }
         }
