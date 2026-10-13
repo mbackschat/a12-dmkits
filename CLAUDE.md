@@ -209,7 +209,15 @@ Applies hardest to a claim reached by **reasoning rather than execution**: if a 
 
 **The session you are in plans, implements, and verifies.** Use plan mode or a task list for anything multi-step. **Sub-agents are read-only**: they review, search, and report findings. Never delegate implementation to one, and never use one to double-check work you can check yourself. Never let two sessions write the same tree: **one active session per worktree, always** (a read-only reviewer is compatible with that rule; concurrent editing is not).
 
-**Model tiers are symbolic (HIGH, MEDIUM).** Resolve them through the tier table in your global instructions; the maintainer's table is [Model tier mappings](https://github.com/mbackschat/coding-setup/blob/main/CLAUDE.md#model-tier-mappings). Without such a table, run HIGH on your most capable model and MEDIUM on a faster, cheaper one, and say which models you used.
+**Model tiers are symbolic (HIGH, MEDIUM, LOW).** Resolve them through the tier table in your global instructions; the maintainer's table is [Model tier mappings](https://github.com/mbackschat/coding-setup/blob/main/CLAUDE.md#model-tier-mappings). Without such a table, run HIGH on your most capable model, MEDIUM on a faster, cheaper one and LOW on the fastest, and say which models you used. Match the tier to the read-only job, cheapest first:
+
+| Sub-agent job | Tier |
+|---|---|
+| Locating code: file and symbol searches, enumerations, "where is X used" | LOW |
+| A read-only inventory or survey that needs judgement (coverage maps, sibling sweeps, stale-claim hunts) | MEDIUM |
+| A cold adversarial review (see "Cold adversarial review gates") | HIGH |
+
+Escalate only when a cheaper tier's result is visibly insufficient, never by default.
 
 Pick the review checkpoints **while writing the plan**, not while working, and record them as real tasks so they cannot be skipped silently. Planning them is this rule's job; which ones are warranted is "Cold adversarial review gates" below.
 
