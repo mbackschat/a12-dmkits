@@ -142,6 +142,8 @@ An Enumeration declaration's coded findings follow A12's blocks and multiplicity
 
 A String, Custom or Number length outside 1 to 99,999 draws one of A12's three codeless sentences, published as `RK_MEMBER_ABOVE_TECHNICAL_LIMIT`, `RK_MEMBER_NOT_POSITIVE` or `RK_MEMBER_SIGNED`, once per sentence and field. `-1` is "no bound" on String and Custom only, an out-of-range member judges no other length law, and a field deleted from the default variant is not judged. `CheckerLengthLimitAgreementTest` locks the grid against Kernel 30.8.1 ([KF556](KERNEL-FINDINGS.md#kf556)); the same sentences answer other members that this does not cover.
 
+A `sortFields` list is judged per distinct name, wherever the name stands; `MVK_SORT_FIELD_DUPLICATE` reads only the three entries the list holds, and each entry beyond them is published as `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](KERNEL-FINDINGS.md#kf345)). A rule whose target or condition fails keeps its name, code and message-presence classes and withholds its condition and error-text classes ([KF339](KERNEL-FINDINGS.md#kf339)). `CheckerDeclarationWithholdingAgreementTest` compares both with Kernel 30.8.1, multiplicity included.
+
 Only supplied producers participate in selection: disabling a family cannot let its unproduced findings veto a supplied family's output. `FamilyCellReuseTest` exercises this beside the fresh-versus-reused comparison. Raw kernel callback multiplicity is distinct from published report multiplicity; `A12ReportStreamTest` measures both on its declared population. Measured duplicate collapse does not establish a universal equality key for all notifications.
 
 ### Operation results

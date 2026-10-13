@@ -6,14 +6,11 @@ import kotlin.test.assertEquals
 /**
  * The checker's half of "a group reports a defect on BOTH ordering members".
  *
- * Mirrors `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`. Nothing is withheld between the two
- * members, so the rows here are about the class the pairing pass turned up: `MVK_SORT_FIELD_DUPLICATE`, a
- * verdict on the LIST rather than on an entry, which the checker did not emit at all.
- *
- * **One divergence is deliberate and measured.** A12 draws ONE `MVK_SORT_FIELD_NO_VALUE_VALIDATION` however
- * many sort entries are opaque; the checker draws one per entry, which is the count divergence
- * [KERNEL-FINDINGS KF340] already decided to keep — a per-entry finding names the field to fix, and it says
- * nothing A12 did not.
+ * Mirrors `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest` and, for multiplicity,
+ * `adapter.laws.CheckerDeclarationWithholdingAgreementTest`. Nothing is withheld between the two members, so the
+ * rows here are about the list: `MVK_SORT_FIELD_DUPLICATE` once over the three entries the list holds, a name's
+ * own classes once however often it repeats, and one capacity finding per entry beyond the third
+ * ([KERNEL-FINDINGS KF345]).
  */
 class GroupOrderingMultipleDefectTest {
 
@@ -42,17 +39,23 @@ class GroupOrderingMultipleDefectTest {
         // ONE finding whatever repeats and however often: a verdict on the list, not on an entry.
         expected["a field sorted twice, plain"] = listOf(sortDuplicate)
         expected["a field sorted THREE times"] = listOf(sortDuplicate)
-        expected["TWO fields each sorted twice"] = listOf(sortDuplicate)
+        // Four entries: the fourth is beyond the list's capacity, and the repeat within the first three still counts.
+        expected["TWO fields each sorted twice"] = listOf(sortDuplicate, "RK_SORT_LIST_ABOVE_CAPACITY")
         assertEquals(expected, actual, "both ordering members report and a repeated sort field is its own")
     }
 
-    /** …and the duplicate rides beside the type class rather than replacing it. */
+    /** …and the duplicate rides beside the type class rather than replacing it, which the name draws once. */
     @Test
     fun aRepeatedSortFieldAndAnOpaqueOneAreBothReported() {
+        assertEquals(listOf(sortDuplicate, sortType), codes(true, null, listOf("Sku", "Sku")), "the same opaque field sorted twice")
+    }
+
+    /** A repeat the list's capacity does not hold is no duplicate, though the name is still judged. */
+    @Test
+    fun theDuplicateReadsOnlyTheEntriesTheListHolds() {
         assertEquals(
-            listOf(sortDuplicate, sortType, sortType),
-            codes(true, null, listOf("Sku", "Sku")),
-            "the same opaque field sorted twice",
+            listOf(sortType, "RK_SORT_LIST_ABOVE_CAPACITY"),
+            codes(true, null, listOf("Sku", "Qty", "Note", "Sku")).filterNot { it == indexType }.sorted(),
         )
     }
 
@@ -89,7 +92,8 @@ class GroupOrderingMultipleDefectTest {
                 {"type":"Group","id":"g1","name":"Items","Group":{"repeatability":50$indexMember$sortMember,
                   "elements":[
                     {"type":"Field","id":"f0","name":"Sku","Field":{"fieldType":$skuType}},
-                    {"type":"Field","id":"f1","name":"Qty","Field":{"fieldType":{"type":"NumberType"}}}
+                    {"type":"Field","id":"f1","name":"Qty","Field":{"fieldType":{"type":"NumberType"}}},
+                    {"type":"Field","id":"f2","name":"Note","Field":{"fieldType":{"type":"StringType"}}}
                   ]}}
               ]}}
              ]}}}

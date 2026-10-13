@@ -72,16 +72,20 @@ private fun TrackedFactBase.indexFindings(group: TrackedDeclaration, body: JsonO
 
 private fun TrackedFactBase.sortFindings(group: TrackedDeclaration, body: JsonObject?): List<Finding> {
     val entries = body?.get("sortFields") as? JsonArray ?: return emptyList()
-    return group.unsortableCarrier(entries) + group.repeatedSortField(entries) + entries.flatMap { entry ->
+    // Each NAME is judged once, however often the list repeats it, and wherever it stands — beyond the
+    // list's capacity too ([KERNEL-FINDINGS KF345]).
+    val judged = mutableSetOf<String>()
+    return group.unsortableCarrier(entries) + group.repeatedSortField(entries) + group.sortCapacityFindings(entries) +
+        entries.flatMap { entry ->
         // A non-string primitive is COERCED to the String member, as a rule's `errorCode` is, so `5` is the
         // name "5" and resolves like any other — measured, because reporting it as a reader refusal was
         // this family's one emission with no basis. Only a MISSING `name`, or an entry that is not an
         // object, is the refusal.
         val name = (entry as? JsonObject)?.get("name")?.let { (it as? JsonPrimitive)?.contentOrNull }
-        if (name == null) {
-            listOf(unbuildable(group, "a `sortFields` entry here carries no readable `name`"))
-        } else {
-            listOfNotNull(
+        when {
+            name == null -> listOf(unbuildable(group, "a `sortFields` entry here carries no readable `name`"))
+            !judged.add(name) -> emptyList()
+            else -> listOfNotNull(
                 orderingFinding(
                     group, name, "sortFields[].name",
                     "MVK_INVALID_SORT_FIELD", "MVK_SORT_FIELD_NO_VALUE_VALIDATION",
@@ -90,6 +94,27 @@ private fun TrackedFactBase.sortFindings(group: TrackedDeclaration, body: JsonOb
         }
     }
 }
+
+/**
+ * One finding per `sortFields` entry beyond the three A12's metamodel holds, which it refuses with no class:
+ * "The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with 4, but at most 3 is allowed."
+ * The entries beyond it are still judged for their names ([KERNEL-FINDINGS KF345]).
+ */
+private fun TrackedDeclaration.sortCapacityFindings(entries: JsonArray): List<Finding> =
+    (SORT_CAPACITY + 1..entries.size).map { position ->
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "RK_SORT_LIST_ABOVE_CAPACITY",
+            "`sortFields` entry $position is beyond the $SORT_CAPACITY a group may sort by, which A12 refuses " +
+                "with no class: \"The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified " +
+                "with $position, but at most $SORT_CAPACITY is allowed.\"",
+            path,
+        )
+    }
+
+/** The most `sortFields` entries A12's metamodel holds. */
+private const val SORT_CAPACITY = 3
 
 /**
  * The finding a NON-repeatable group carrying sort entries draws: a group with at most one row has no order.
@@ -122,16 +147,17 @@ private fun TrackedDeclaration.unsortableCarrier(entries: JsonArray): List<Findi
 /**
  * The one finding a `sortFields` list repeating a name draws — ONCE, whatever repeats and however often.
  *
- * A12's own multiplicity, measured at the two cells that could have made it larger: a name appearing three
- * times draws one, and two names each appearing twice draw one ([KERNEL-FINDINGS KF345],
- * `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`). So it is a verdict on the LIST rather than on
- * an entry, which is why it is emitted here and not inside the per-entry walk below.
+ * A12's own multiplicity, measured with the notification list at the two cells that could have made it
+ * larger: a name appearing three times draws one, and two names each appearing twice draw one
+ * ([KERNEL-FINDINGS KF345], `adapter.laws.CheckerDeclarationWithholdingAgreementTest`). So it is a verdict on
+ * the LIST rather than on an entry, which is why it is emitted here and not inside the per-entry walk below.
+ * It reads only the entries within the list's capacity: a name repeated at the fourth entry draws nothing.
  *
  * It rides beside whatever the entries themselves draw — the duplicate does not withhold the type class, and
  * the type class does not withhold it.
  */
 private fun TrackedDeclaration.repeatedSortField(entries: JsonArray): List<Finding> {
-    val names = entries.mapNotNull { entry ->
+    val names = entries.take(SORT_CAPACITY).mapNotNull { entry ->
         ((entry as? JsonObject)?.get("name") as? JsonPrimitive)?.contentOrNull
     }
     if (names.size == names.distinct().size) {

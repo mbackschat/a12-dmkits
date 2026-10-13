@@ -10820,6 +10820,54 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no length logic of their own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf339": {
+      "sha256": "bec326806f1336e240c546248b42552043b470961a525e8e11e10245884dd317",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["declaration withholding reach"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["declaration withholding reach"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["declaration withholding reach"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits admit a model through the kernel and report its notifications unchanged.", "evidence": {}},
+        "checker": {"state": "ALREADY_CONFORMS", "basis": "The staged declaration selection already kept name, code and message-presence classes beside a failed target or condition and withheld the rest.", "evidence": {"declaration withholding reach": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationWithholdingAgreementTest.kt#everyRowAgrees", "witness": "Every rule and computation row agreed with A12 on its first run, before any checker change."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no rule.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no rule's report.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the checker are compared on 29 rule rows and three computation rows, with sound-target twins for every withheld class.", "evidence": {"declaration withholding reach": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationWithholdingAgreementTest.kt#theWithholdingAndTheMultiplicityAreObservable", "witness": "A failed target keeps the reserved-name and missing-message classes and drops RULE_HAS_NO_ERRORTEXT, which its sound twin draws."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model-check withholding is not evaluation behaviour.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and select nothing of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reconciled with SPEC-2026-10-13-08 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf345": {
+      "sha256": "cf059a0132f41500340bc19be906868da38f924c2ee6640e2c84b7a6e016d4f7",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["sort list multiplicity"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["sort list multiplicity"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["sort list multiplicity"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits admit a model through the kernel and report its notifications unchanged.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The sort family judges each distinct name once, reads the duplicate over the three held entries and reports each entry beyond them.", "evidence": {"sort list multiplicity": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/GroupOrderingMultipleDefectTest.kt#theDuplicateReadsOnlyTheEntriesTheListHolds", "witness": "A name repeated only at the fourth entry draws its type class once and the capacity class, and no duplicate; the checker had reported a duplicate and the type class per entry."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no sort list.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no sort list.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel's notification list and the checker are compared on 19 sort lists, multiplicity included.", "evidence": {"sort list multiplicity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationWithholdingAgreementTest.kt#everyRowAgrees", "witness": "Two different opaque fields draw the type class twice on both sides, and a fourth entry draws one capacity class."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Sort lists are model-check behaviour; the interpreter checks no declaration.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and count nothing of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reconciled with SPEC-2026-10-13-08 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }

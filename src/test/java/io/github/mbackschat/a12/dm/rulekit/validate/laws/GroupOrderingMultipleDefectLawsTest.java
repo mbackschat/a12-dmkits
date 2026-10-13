@@ -61,12 +61,11 @@ class GroupOrderingMultipleDefectLawsTest {
     }
 
     /**
-     * What the sort LIST draws about itself — a repeat, and how many bad entries it speaks about.
+     * Which classes the sort LIST draws about itself — a repeat, and its opaque entries.
      *
-     * <p>Two findings here are about the list rather than an entry, and both needed their own multiplicity
-     * measured: the duplicate class is drawn ONCE however many names repeat and however often, and the type
-     * class is drawn ONCE however many entries are opaque. The last is why the added-field control exists —
-     * one class for two bad entries is only a stop if the second entry is judged when it is the only bad one.
+     * <p>A verdict here is the set of DISTINCT classes, so these rows say nothing about how often a class is
+     * drawn; `adapter.laws.CheckerDeclarationWithholdingAgreementTest` measures that on the notification list
+     * (two different opaque fields draw the type class twice, KERNEL-FINDINGS KF345).
      */
     @Test
     void theSortListSpeaksOnceAboutARepeatAndOnceAboutItsOpaqueEntries() {
@@ -81,14 +80,11 @@ class GroupOrderingMultipleDefectLawsTest {
         actual.put("two opaque fields and NO ordering member", twoOpaqueFieldsUnordered());
 
         Map<String, String> expected = new LinkedHashMap<>();
-        // One, whatever repeats and however often — a verdict on the LIST, not on an entry.
         expected.put("one field sorted twice — plain", SORT_DUPLICATE);
         expected.put("one field sorted THREE times", SORT_DUPLICATE);
         expected.put("TWO fields each sorted twice", SORT_DUPLICATE);
         // …and it rides beside the type class rather than replacing it.
         expected.put("the opaque field sorted TWICE", SORT_TYPE + "," + SORT_DUPLICATE + "," + OPAQUE_STRING);
-        // ONE type class for TWO opaque entries. The control below is what makes that a stop rather than an
-        // unread field: the added field draws the class when it is the only bad one.
         expected.put("TWO different opaque fields sorted", SORT_TYPE + "," + OPAQUE_STRING);
         expected.put("the ADDED field alone, sorted — the control", SORT_TYPE + "," + OPAQUE_STRING);
         // …and the string-type class is itself once per model, not once per opaque field, which this row

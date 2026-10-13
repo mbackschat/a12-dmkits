@@ -7322,7 +7322,7 @@ Reported by the portable checker as a WITHHOLDING at report assembly: every `MES
 
 **An independent corroboration was already in the estate and had been read the other way.** [KF305](#kf305) measured a rule targeting a field a `variantFilter` removes and recorded `MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD` with the comment "A12 answers with the error-target pair rather than the entity code" — the same law, on a different cause for the target's failure. The checker's MIRROR of that row nevertheless asserted the union of both codes and sat green, because nothing compares a mirror against the laws test it mirrors.
 
-**How far past the DSL members the withholding reaches is NOT settled.** The discriminator tried for it — an illegal rule name, to see whether a non-member defect still reports — makes the model unbuildable and therefore moves two variables, so it is recorded here as a probe that could not decide rather than as a row. The portable checker takes the conservative reading and withholds every finding at such a declaration's path except those A12 gives about the target itself.
+**How far past the DSL members the withholding reaches.** *Corrected 2026-10-13 (a12-kernel-lean `SPEC-2026-10-13-08`, measured here):* this paragraph had left it open because an illegal name made the model unbuildable; a reserved `vk_vk` name stays buildable and settles it. Beside a target naming nothing, and beside a refused condition, the rule's name (`MVK_RULE_NAME_INVALID`), its code (`MVK_ERROR_CODE_MISSING`, with the codeless "The error code is empty." that only ever accompanies it) and its message's presence (`MVK_ERROR_MESSAGE_MISSING`, `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`) all stand, while the condition's class and every error-text class are withheld, `RULE_HAS_NO_ERRORTEXT` included: a rule with no message beside a sound target draws `MVK_ERROR_MESSAGE_MISSING` and `RULE_HAS_NO_ERRORTEXT`, and beside a failed target only the first. `MVK_ERROR_FIELD_NOT_REFERENCED` withholds the error text the same way, and two defects in one condition draw the class of the first in the text, both ways round ([KF342](#kf342)). The portable checker's staged selection already reported exactly this on every row; the withholding is applied where the report is assembled, and members judged independently stand beside it. Locked, with multiplicity, by `adapter.laws.CheckerDeclarationWithholdingAgreementTest`.
 
 **A PATH does not identify a declaration, which bounds what a checker may do with this.** An element's path is its parent plus its NAME with no kind, so a rule and a field sharing a name in one group share a path — a model A12 refuses and a checker reports, so the shape is reachable. A withholding keyed on the path would delete the FIELD's findings, which A12 withheld nothing about, so a shared path is left alone.
 
@@ -7537,17 +7537,17 @@ So neither member withholds the other, which makes this member the field type's 
 |---|---|
 | one field named twice | `MVK_SORT_FIELD_DUPLICATE`, once |
 | the same field named three times | the same, **once** |
-| two fields each named twice | the same, **once** |
-| two DIFFERENT opaque fields sorted | `MVK_SORT_FIELD_NO_VALUE_VALIDATION`, **once** |
-| only the second of them opaque — the control | the same class, so the second entry IS judged |
+| two fields each named twice | the same, **once**, beside the capacity sentence for the fourth entry |
+| two DIFFERENT opaque fields sorted | `MVK_SORT_FIELD_NO_VALUE_VALIDATION`, **twice** |
+| one opaque field named twice or three times | the duplicate class and the type class, each **once** |
 
-The control is what makes the fourth row a stop rather than an unread entry. The duplicate and the type class ride together — the opaque field sorted twice draws both.
+*Corrected 2026-10-13 (a12-kernel-lean `SPEC-2026-10-13-08`, re-measured here):* the fourth row read "once" and was false. The rows were taken through `KernelLaws.verdictOf`, which reports DISTINCT classes and so cannot see multiplicity; re-measured on the notification list, a sort list judges each distinct NAME once, wherever it stands. The duplicate class reads only the three entries the list holds: a name repeated only at the fourth entry draws none. Every entry beyond the third draws a codeless capacity sentence of its own, "The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with 4, but at most 3 is allowed.", and is still judged for its name. A name outside the group draws `MVK_INVALID_SORT_FIELD` and does not stop the next entry in either order.
 
 **An unresolvable ordering name is a different TIER and cannot be paired across.** It stops the model being built, in either member, and no member code survives beside it — so a grid putting an unresolvable name opposite a type defect would be varying buildability rather than the member.
 
-Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` at all. Its per-entry type findings are deliberately kept where A12 gives one: that is the count divergence [KF340](#kf340) already settled, since a finding per entry names the field to fix and says nothing A12 did not.
+Reported by the portable checker with A12's multiplicity: one finding per distinct name, the duplicate over the held entries, and the capacity sentence as `RK_SORT_LIST_ABOVE_CAPACITY`.
 
-*Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
+*Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest` for the classes and `adapter.laws.CheckerDeclarationWithholdingAgreementTest` for their multiplicity, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
 ## §7 supplement — the hint list's four value laws, three of them live, closed on the wrong carrier for two days (source-verified + measured, 2026-09-15) <a id="kf421"></a>
 

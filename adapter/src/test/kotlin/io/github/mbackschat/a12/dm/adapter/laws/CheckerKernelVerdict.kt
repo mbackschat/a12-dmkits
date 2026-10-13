@@ -32,14 +32,16 @@ internal fun Diagnostic.ledgerClass(): String = code().orElse(codelessClass(summ
 /**
  * The checker's name for a codeless A12 sentence, or [UNKEYED_A12_CLASS].
  *
- * Four sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
- * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), and the three a metamodel member outside its range draws are the
- * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556)). Those three name the sentence, not the member, because
+ * Five sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
+ * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), the three a metamodel member outside its range draws are the
+ * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556)), and a `sortFields` entry beyond the list's capacity is
+ * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)). Those three name the sentence, not the member, because
  * A12 answers other members with the same words, so only the 99,999 maximum is matched. Any other codeless
  * diagnostic stays unkeyed, so it shows as a disagreement rather than matching by accident.
  */
 internal fun codelessClass(message: String): String = when {
     A12_REPERTOIRE_REFUSAL in message -> RK_UNSUPPORTED_CHARACTER
+    SORT_CAPACITY_REFUSAL.containsMatchIn(message) -> "RK_SORT_LIST_ABOVE_CAPACITY"
     else -> MEMBER_RANGE_SENTENCES.entries.firstOrNull { message.trim().endsWith(it.key) }?.value ?: UNKEYED_A12_CLASS
 }
 
@@ -48,6 +50,9 @@ internal const val UNKEYED_A12_CLASS = "(no code)"
 
 private const val A12_REPERTOIRE_REFUSAL = "The field contains one or several unsupported signs."
 private const val RK_UNSUPPORTED_CHARACTER = "RK_UNSUPPORTED_CHARACTER"
+
+private val SORT_CAPACITY_REFUSAL =
+    Regex("""The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with \d+, but at most 3 is allowed\.$""")
 
 private val MEMBER_RANGE_SENTENCES = mapOf(
     "Only values without a sign are allowed." to "RK_MEMBER_SIGNED",
