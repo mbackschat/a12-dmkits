@@ -6,7 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.RelevantCoordinate
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
-import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
+import io.github.mbackschat.a12.dm.interpreter.conformance.kernelCanonicalComputeGranularity
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey
 import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
@@ -186,7 +186,9 @@ internal object DocumentDifferential {
                 ComputeOutcome.ERRORED -> "$pointer|ERRORED|${it.value ?: ""}"
             }
         }
-        val outcomes = kernelComputeGranularity(signatures, document, def).associate {
+        // The Document JSON reader keeps typed source identity, so the projection is the canonical one: the
+        // raw-placement profile drops an unchanged value only for a String target (CONFORMANCE-CORPUS-SPEC §7).
+        val outcomes = kernelCanonicalComputeGranularity(signatures, def.readDocumentJson(json)).associate {
             outcomeKey(it.substringBefore('|')) to it.substringAfter('|')
         }.toSortedMap()
         val prepared = PreparedModel.loadExpandedJson(model)

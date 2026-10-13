@@ -68,11 +68,19 @@ internal object MessageParameterProbes {
         org.junit.jupiter.api.Assertions.assertEquals(expected, stored, "$grid: exact portable replay")
     }
 
-    /** The kernel's ERROR classes, in report order; an empty list is admission. */
+    /**
+     * The kernel's ERROR classes, in report order; an empty list is admission. The one codeless sentence a message
+     * can draw, a character outside the BMP (KERNEL-FINDINGS KF489), is named [UNSUPPORTED_SIGNS]; any other
+     * codeless message still fails the probe.
+     */
     fun kernel(model: String): List<String> = oracle.checkConsistency(model, ReferenceResolvers.selfContained())
         .filter { it.severity() == Severity.ERROR }.map {
-            Regex("\\[([A-Z][A-Z0-9_]+)]").find(it.message())?.groupValues?.get(1) ?: error(it.message())
+            Regex("\\[([A-Z][A-Z0-9_]+)]").find(it.message())?.groupValues?.get(1)
+                ?: UNSUPPORTED_SIGNS.takeIf { _ -> it.message().endsWith("The field contains one or several unsupported signs.") }
+                ?: error(it.message())
         }
+
+    const val UNSUPPORTED_SIGNS = "unsupported signs (codeless)"
 
     /** The portable checker's rejection-justifying codes, in report order. */
     fun portable(model: String): List<String> =

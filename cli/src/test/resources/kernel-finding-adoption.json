@@ -10214,7 +10214,7 @@
       }
     },
     "kf280": {
-      "sha256": "0baa96d438f547fc7cb042e86e461c7795575d748323dbce84d0fe19ae43aeda",
+      "sha256": "8b6afb8b6f29ea6381ebde59fd81dee9956e09fcd5b4adcb2ee88f4364b4255d",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -11084,6 +11084,30 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the checker are compared row by row, with A12's own verdicts pinned.", "evidence": {"keyed message membership": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedMessageMembershipAgreementTest.kt#theCheckerAgreesWithA12", "witness": "Twenty-three rows agree, refusals and admissions both."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static message admission is the kernel's and the checker's; the interpreter evaluates admitted models only.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches this law through the kernel and the portable checker it already runs.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-12; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf563": {
+      "sha256": "59bfa7d1e953b45499dc89ea07de13c262bd6a403e66e921b9b8faf8d96741ae",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["computation message carrier"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["computation message carrier", "computation message row"],
+        "interpreter": ["computation message row"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["computation message carrier"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The typed computation builder passes message text through; admission is the kernel's and the checker's.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The rule-group shorthand on a root-group computation is reported with the rule's class; every other measured row already agreed.", "evidence": {"computation message carrier": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ComputationRuleGroupShorthandTest.kt#theShorthandIsRefusedInARootGroupOnly", "witness": "On JVM and Node the shorthand is refused in a root group and admitted in a child group."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no computation messages.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no computation messages.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the checker are compared row by row, and both strategies' rendering is pinned against the interpreter.", "evidence": {"computation message carrier": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationMessageCarrierAgreementTest.kt#theCheckerAgreesWithA12", "witness": "Eighteen rows agree, A12's refusals pinned."}, "computation message row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationMessageRowDiffTest.kt#bothKernelStrategiesRenderTheFiringRow", "witness": "Only the disagreeing line inside its precondition reports, every parameter at that line."}}},
+        "interpreter": {"state": "APPLIED", "basis": "The interpreter already rendered a computation's message at its firing row; the differential now compares it.", "evidence": {"computation message row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationMessageRowDiffTest.kt#theInterpreterRendersTheSameRow", "witness": "The interpreter renders the kernel's text at the same address."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches this law through the kernel, the portable checker and the interpreter it already runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-12; awaits peer review.", "evidence": {}}
       }
     }

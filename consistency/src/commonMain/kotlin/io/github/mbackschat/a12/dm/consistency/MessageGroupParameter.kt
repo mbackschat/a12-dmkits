@@ -54,8 +54,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
  * SelectedMessageReferenceDiffTest. The broader dotted-name grammar remains outside this evidence. The dotted-name reader
  * declines unquoted reserved suffixes; MessageGroupDottedBoundaryAgreementTest locks that boundary.
  *
- * **Rules only**, every measured row being a rule's message. The computation carrier was reported to us for
- * the `RuleGroup` locus by a12-kernel-lean and is not measured here.
+ * **Rules only**, every measured row being a rule's message, with one exception: on a computation the rule-group
+ * shorthand in a root group draws the same class (KERNEL-FINDINGS KF563), and the caller reports that class alone.
  */
 internal fun TrackedFactBase.completedGroupDefect(
     parameter: MessageParameter,

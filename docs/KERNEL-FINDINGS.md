@@ -5505,7 +5505,7 @@ Each refused row's own parameter-free message is admitted, so the condition is l
 
 **Amended 2026-09-15 — three more of the terminal's gates, measured because a checker reproducing this one had to walk them in order.** The non-repeatable arm reads the DECLARATION the parameter named, not the condition: dropping the condition's reference to the two-value Enumeration index field changes nothing, the same `INVALID_INDEX_FIELD_NONREP_ENUM` comes back, and the model whose index field declares one value carrying its own `sValue` admits the parameter. The repeatability gate PRE-EMPTS the missing-suffix one — a starred reference with no suffix draws `INVALID_INDEX_FIELD_REP_ITER`, not `INVALID_INDEX_FIELD_PARAMETER` — which is the order a reproduction needs, since each class had only been measured where the other could not fire. And `INVALID_INDEX_FIELD_REP` is REACHABLE, on the MIXED shape: a repeatable group off the error entity's path declaring an index field of the same SHORT NAME, referenced by the condition, while the error entity's own index field is admitted. Where that own index field is NOT admitted, its own class answers instead, so the two refusals sit on one list and only one of them speaks. *Corrected 2026-10-13: "its own class answers" held only because `Bays` sorts before `Racks`. Renaming the repeatable group to sort first makes `INVALID_INDEX_FIELD_REP` answer instead, so the list answers its first offender in name order ([KF562](#kf562)).*
 
-Runtime rendering is measured separately in [KF546](#kf546). Still unmeasured by this entry: the German suffix on a German-condition model, the computation carrier, the three cross-field consistency classes, and the order among offenders beyond the one pair [KF562](#kf562) measured.
+Runtime rendering is measured separately in [KF546](#kf546). Still unmeasured by this entry: the German suffix on a German-condition model, the computation carrier (beyond the admitted `$index(…).value$` of [KF563](#kf563)), the three cross-field consistency classes, and the order among offenders beyond the one pair [KF562](#kf562) measured.
 
 *(Locked: `rulekit.validate.laws.RuleMessageIndexTerminalLawsTest` — the Enumeration/category table, the condition cross-check table with its per-row controls, the non-repeatable pair, and the composed-index enumeration as a typed-surface assertion; `rulekit.validate.laws.MessageIndexTerminalRepeatabilityLawsTest` — the gate-order grid, the declaration-versus-condition pair with its admitted twin, and the mixed shape on both sides of the error entity's own gate, each with a parameter-free control.)*
 
@@ -13513,4 +13513,31 @@ So a keyed read is a member of a keyed parameter only, and the plain read beside
 The portable checker agrees on every row of the table. It stays silent on the display-label class, since it declines an index name that two groups declare. It leaves a keyed group's deeper fields admitted and a repeatable level the rule's own group sits in plain, both unmeasured, so either can under-report and neither can refuse wrongly.
 
 *(Locked: `adapter.laws.KeyedMessageMembershipAgreementTest` — A12 and the checker row by row, A12's own verdicts pinned, and the checker's silence on the display-label class; `consistency.KeyedMessageMembershipTest` on JVM and Node; `rulekit.validate.laws.ParallelEnumIndexDisplayLawsTest`; `rulekit.validate.laws.MessageIndexTerminalRepeatabilityLawsTest.theFirstOffenderInFullNameOrderAnswers`.)*
+
+## §13 supplement — a computation's message is gated by every member it reads and renders at the row its generated rule fires on (`checkConsistency` + both strategies, 2026-10-13) <a id="kf563"></a>
+
+> Fold: pending — belongs in §13 beside [KF246](#kf246)'s rendering and [KF335](#kf335)'s membership gate.
+
+a12-kernel-lean `SPEC-2026-10-13-12`, its computation rows. An insurance quote computes a root `Premium` with the common precondition `FieldFilled(Agent)`, the alternative `FieldFilled(Discount)` and the operation `[Base] + 1`; a second shape adds the alternative `FieldFilled(Note)` with `[Base] + 2`, a third computes `Sum(Lines*/Amount)`; and the keyed repeatable `Lines` computes `Gross` from `[Amount] * 2`:
+
+| the computation | the parameter | verdict |
+|---|---|---|
+| `Premium` | none; the target, value and label; `Base`, `Discount`, `Agent` | admitted |
+| the same | `$Note$`, read by no member | `INVALID_FIELD` |
+| the same | `$Note$` beside a supplementary character | `INVALID_FIELD` and the codeless "unsupported signs" sentence |
+| the same | `$Nope$` | `INVALID_ENTITY` |
+| the same, declared in the root group | `$#RuleGroup$` / `$#RootGroup$` | `RULEGROUP_IMMEDIATELY_BELOW_ROOT` / admitted |
+| the same | `$Lines/Amount.value For "k1"$` | `MVK_INDEX_FOR_ERROR_TEXT_INVALID` |
+| with the second alternative | `$Note$` and `$Note.value$` | admitted |
+| from `Sum(Lines*/Amount)` | `$Lines/Amount$` / `$Lines/Amount.value$` | admitted / `PARAM_VALUE_WITH_STARREFERENCE` |
+| `Gross`, in `Lines` | both group shorthands, `$index(Ref).value$`, `$Amount.value$`, `$Gross.value$` | admitted |
+| the same | `$/Quote/Base$` | `INVALID_FIELD` |
+
+So the membership a computation's message is judged against is the union of what the target, the operation, the common precondition and every alternative read, and each class answers as it does for a rule ([KF335](#kf335)), the star gate and the root-group shorthand included.
+
+At runtime, `Gross` additionally guarded by `FieldFilled(../Agent) And [Amount] < 5`, on three lines keyed `k0`–`k2` with amounts 2, 3 and 5 and stored gross 4, 7 and 1: only the second line reports, a VALUE error at `Lines[2]/Gross` rendering `row=[2] g=[7] a=[3] i=[k1] up=[Ada] n=[Amount]`. The first line agrees with its computed value, and the third fails its precondition, so neither reports. The stored, not the computed, value renders. Both kernel strategies and the interpreter agree, message signature included.
+
+The portable checker agrees on every row of the table. It reported nothing for a `$#…$` parameter on a computation until this measurement, since [KF214](#kf214) measured that position on rules only. It now reports the root-group shorthand's class there, and still no other group-position class, none being measured on this carrier.
+
+*(Locked: `adapter.laws.ComputationMessageCarrierAgreementTest` — A12 and the checker row by row, A12's refusals pinned; `consistency.ComputationRuleGroupShorthandTest` on JVM and Node; `adapter.laws.ComputationMessageRowDiffTest` — both strategies' text pinned, the interpreter's text and every signature compared.)*
 

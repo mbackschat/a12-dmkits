@@ -54,12 +54,15 @@ internal fun TrackedFactBase.messageParameterFindings(element: TrackedDeclaratio
     }
     var reportedBaseYear = false
     return messageParameterBodies(message.text).mapNotNull { body ->
-        // An empty body is the dollar escape. Group messages are measured only on rule declarations (KF214).
-        if (body.isBlank() || body.trimStart().startsWith('#') && element.declaredKind != DeclaredKind.RULE)
-            return@mapNotNull null
+        // An empty body is the dollar escape.
+        if (body.isBlank()) return@mapNotNull null
         completed = null
         val refusal = readMessageParameter(body, conditionLanguage, actions) as? MessageParameterRead.Refused
             ?: return@mapNotNull null
+        // Group messages are measured on rule declarations (KF214); on a computation only the rule-group shorthand
+        // in a root group is, and it draws the rule's class (KF563). Every other refusal there stays unreported.
+        if (body.trimStart().startsWith('#') && element.declaredKind != DeclaredKind.RULE &&
+            refusal.code != "RULEGROUP_IMMEDIATELY_BELOW_ROOT") return@mapNotNull null
         // The owner composes NO_BASE_YEAR without a parameter argument, so repeated uses share one
         // diagnostic; the decoder's cross-family controls lock this existing message-family boundary.
         if (refusal.code == "NO_BASE_YEAR") {
