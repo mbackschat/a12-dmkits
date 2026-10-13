@@ -85,13 +85,12 @@ internal class IterationScopes(private val model: ModelDef) {
         /** Complete formal-admission gate for a stored index cell. Null is reserved for callers without a
          * validation pass; [Document] then applies its model-derived built-in formal check. */
         indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
-        /** Full validation iterates the kernel's declared/occupied domain ([Document.fullValidationContextsFor]);
-         *  partial validation and computation keep their own. */
-        fullValidation: Boolean = false,
+        /** Validation, full or partial, iterates the kernel's declared/occupied domain
+         *  ([Document.fullValidationContextsFor]); computation keeps its stored rows. */
         validation: Boolean = false,
     ): List<EvalContext> = when (plan) {
         is IterationPlan.Rows ->
-            if (fullValidation) doc.fullValidationContextsFor(plan.group, ::capacityOf) else doc.contextsFor(plan.group)
+            if (validation) doc.fullValidationContextsFor(plan.group, ::capacityOf) else doc.contextsFor(plan.group)
         is IterationPlan.Once -> if (plan.global) doc.globalContextFor(plan.rootGroup) else doc.onceContextFor(plan.rootGroup)
         is IterationPlan.Parallel -> if (validation) doc.validationParallelContexts(
             plan.joined,

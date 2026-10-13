@@ -13288,3 +13288,20 @@ a12-kernel-lean `SPEC-2026-10-13-06`, extending [KF41](#kf41). **Where `mandator
 A reader the known cells decide still fires: two filled rows around the required-empty one settle `MoreThanOneFieldFilled`, `NotExactlyOneFieldFilled` and `FieldValuesNotUnique`, a filled first row settles `FirstFilledValue`, and a missing declared row is an ordinary empty that `NotAllFieldsFilled` fires on. **Computation keeps its asymmetry** ([KF23](#kf23)): a required-empty operand stays an ordinary empty, so a presence guard over it selects the empty tier, while the empty index cell the preliminary index check invalidates poisons a presence guard and a count over its column, filtered or not.
 
 Locked by `adapter.laws.GeneratedRequirednessScopeDiffTest` (nine documents and seven partial selections) and `adapter.laws.RequiredEmptyReadDiffTest` (four documents, five required operands each with an optional twin, and the computation channel), on dynamic Groovy, static Java and the interpreter. Not measured: a sparse model above A12's dense iteration limit, and an aggregate over dates.
+
+## §12 supplement — under partial validation an authored rule runs on every declared slot its selection covers, a slot no row holds included (both strategies, 2026-10-13) <a id="kf553"></a>
+
+> Fold: pending — the rule row domain belongs in §12 beside [KF527](#kf527)'s field-list walk.
+
+Found while measuring [KF552](#kf552). A lease holds a repeatable `Units` of three, each with a `Rent` and a fixed `Inspection` holding a `Score`; `Rent < 100` and `Score < 3` are authored per row, so an empty cell fires as 0. Full validation evaluates a slot the document lacks only for such a rule's content gate, and reports nothing for a lease without units. Partial validation instead runs each rule on every declared slot the selection covers, held or not, and its content gate does not apply:
+
+| document | selection | findings |
+|---|---|---|
+| no units | every unit's `Rent` (wildcard) | `RENT_FLOOR` at `Units[1]`, `[2]`, `[3]` |
+| no units | the second unit's `Rent` | `RENT_FLOOR` at `Units[2]` alone |
+| no units | every `Score` | `SCORE_FLOOR` at each unit's `Inspection[1]` |
+| no units | the lease | both rules on all three slots; `Tenant` alone selects nothing |
+| one unit, rent 50, score 5 | the second unit's `Rent` | `RENT_FLOOR` at `Units[2]` only: the held low rent is unselected |
+| four units at rent 500, the fourth past capacity at 50 | any selection | the [KF58](#kf58) over-repetition pair, plus `SCORE_FLOOR` on the three held units wherever `Score` is covered; the fourth row's rent is never judged |
+
+So the slot domain is [KF517](#kf517)'s full-validation one, every declared slot under a capacity product of 5 and never past a capacity, and partial differs only in dropping the content gate. Generated requiredness does not follow it: [KF552](#kf552) runs per held row on both calls. Locked by `adapter.laws.PartialDeclaredRowDomainDiffTest` (three documents, five selections, dynamic Groovy, static Java and the interpreter). Not measured: a sparse model above A12's dense iteration limit, and a rule iterating two repeatable levels.

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test
  * selected content only. A required-empty field is unavailable to an authored rule reading it.
  *
  * `AMOUNT_CAP` asks for a filled amount first: under partial validation an authored rule also runs on the declared
- * rows the document lacks, a separate mechanism this class keeps out of its denominator.
+ * rows the document lacks (KERNEL-FINDINGS KF553), a separate mechanism this class keeps out of its denominator.
  *
  * Own domain (an insurance policy, its holder, its covers and their terms, and a fleet of vehicles).
  */

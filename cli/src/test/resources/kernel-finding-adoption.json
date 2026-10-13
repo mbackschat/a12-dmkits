@@ -10724,6 +10724,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and add no read of their own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-06 in the 2026-10-13 handback, including the reader sweep and the computation-channel rows; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf553": {
+      "sha256": "d9ecf46a5190420b16b8ae2352ec3130feed4c332d3e221796eb55e92ac33627",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["partial rule row domain"],
+        "interpreter": ["partial rule row domain"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["partial rule row domain"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author rules and evaluate no Document.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "Which rows a rule runs on is runtime behaviour; the portable checker judges models only.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import evaluates no Document.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export evaluates no Document.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are compared with the interpreter under five selections on three documents, including slots no row holds and a row past capacity.", "evidence": {"partial rule row domain": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDeclaredRowDomainDiffTest.kt#partialValidationRunsEveryDeclaredSlotTheSelectionCovers", "witness": "Every selection agrees across the three engines and is pinned, so a missing slot the selection covers carries the rule's finding."}}},
+        "interpreter": {"state": "APPLIED", "basis": "A partial validation iterates the declared slot domain a full one does, and relevance alone decides where its rules run.", "evidence": {"partial rule row domain": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDeclaredRowDomainDiffTest.kt#partialValidationRunsEveryDeclaredSlotTheSelectionCovers", "witness": "Before the change the interpreter reported nothing on a missing slot; it now matches both strategies on every selection."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and choose no rows of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback beside SPEC-2026-10-13-06 as an adjacent measurement; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }

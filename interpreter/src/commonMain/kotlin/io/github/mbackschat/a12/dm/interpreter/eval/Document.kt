@@ -587,15 +587,16 @@ class Document(internal val config: DocumentConfig) {
         index().validationContextsByGroup.getOrPut(groupPath) { computeValidationContextsFor(groupPath) }
 
     /**
-     * One [EvalContext] per row a FULL-validation rule iterates in [groupPath] (SPEC-2026-10-04-03,
-     * `adapter.laws.ValidationIterationDomainDiffTest`). The root level is its physical instances, never past the
+     * One [EvalContext] per row a validation rule iterates in [groupPath], full or partial (SPEC-2026-10-04-03,
+     * `adapter.laws.ValidationIterationDomainDiffTest`; partial: KERNEL-FINDINGS KF553,
+     * `adapter.laws.PartialDeclaredRowDomainDiffTest`). The calls differ only in the content gate: a full call
+     * evaluates a missing slot only for a rule that can fire empty, a partial call wherever relevance reaches it. The root level is its physical instances, never past the
      * declared capacity. Below it, when the product of every level's declared capacity, the root's included, is at
      * most [DENSE_PRODUCT_LIMIT], every declared slot is visited whether or not a row holds it; above that, each
      * level visits its first coordinate and every later one whose coordinate prefix some instantiated row of any
      * group sets at that depth, again never past the capacity. The kernel's threshold is
      * `IterationLimitCreatorBase`'s, its occupancy `GesetzteWiederholungen`'s (source-read; the differential
-     * settles the behavior). Ordinary partial row plans and uniqueness keep [contextsFor], computation its
-     * stored rows. Validation's parallel frames reuse this domain on both full and partial calls (SPEC10).
+     * settles the behavior). Uniqueness keeps [contextsFor], computation its stored rows. Validation's parallel frames reuse this domain on both full and partial calls (SPEC10).
      *
      * [capacityOf] comes from the MODEL, which owns declared capacities: a document built without the model's group
      * configuration must still iterate the model's domain.
