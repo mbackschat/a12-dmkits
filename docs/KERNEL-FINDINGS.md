@@ -13353,3 +13353,18 @@ A12 checks a String, Custom or Number type's `minLength` and `maxLength` against
 | below `-1` | "Only values without a sign are allowed." | same |
 
 Each sentence is reported once per field: zero on both members draws one sentence, and a signed minimum beside a maximum above the limit draws two. An out-of-range member is no bound for the field's other laws: a minimum of 100,000 beside a maximum of 50 draws only the limit sentence, not `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH`, and a zero minimum beside `noValueValidation` draws no `MVK_STRING_TYPE_PARAMS_INCONSISTENT`. The type's other members are still judged, so a pattern beside `noValueValidation` keeps its two classes. Other fields are unaffected, and a field deleted from the default variant draws nothing, neither these sentences nor its ordering class. A12's order among the sentences is not claimed. Locked by `adapter.laws.CheckerLengthLimitAgreementTest` against the portable checker, which reports the three as `RK_MEMBER_ABOVE_TECHNICAL_LIMIT`, `RK_MEMBER_NOT_POSITIVE` and `RK_MEMBER_SIGNED`; the same sentences answer other members too, for instance an integer-digit count, which this finding does not cover.
+
+## §9 supplement — a `RepetitionNotUnique` leaf that does not fire contributes no message reference (both strategies, 2026-10-13) <a id="kf557"></a>
+
+> Fold: pending — belongs in §9's `RepetitionNotUnique` account, beside its duplicate-cluster references.
+
+a12-kernel-lean `SPEC-2026-10-13-09`. A warehouse's repeatable `Aisles` hold repeatable `Bins` with a `Code` and a `Qty`, and a rule in `Aisles` reads `RepetitionNotUnique(Bins/Code) Or [Bins/Qty] > 5` with `Bins/Qty` as its error field:
+
+| Bins of one aisle | message | `referenced` |
+|---|---|---|
+| `A`/1, `B`/9 | at the second bin | its `Qty` alone |
+| `A`/9, a bin with no code | at the first bin | its `Qty` alone |
+| `A`/1, `A`/2 | at both bins | the row's `Qty` and both `Code`s |
+| `A`/9, `A`/1 | at both bins | the same as without the sibling |
+
+So when the sibling branch fires and the leaf does not, the message refers to none of the leaf's keys, not even the current row's, and a firing leaf contributes its duplicate cluster whether or not the sibling fires too; another aisle's duplicate does not reach this aisle's message. Locked by `adapter.laws.RepetitionNotUniqueSiblingReferenceDiffTest` on dynamic Groovy, static Java and the interpreter, which already agreed. Not measured: a leaf firing as an omission beside a sibling that fires as a value.

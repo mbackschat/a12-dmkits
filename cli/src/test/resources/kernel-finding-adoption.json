@@ -10868,6 +10868,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and count nothing of their own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reconciled with SPEC-2026-10-13-08 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf557": {
+      "sha256": "3fc56bca69b340acc76779896ecec4d0134cbb62db4bd3ae4ebfd4f953a7e316",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["non-firing RNU leaf references"],
+        "interpreter": ["non-firing RNU leaf references"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["non-firing RNU leaf references"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author RepetitionNotUnique conditions and evaluate no Document.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "Message references are runtime behaviour; the portable checker judges models only.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import evaluates no Document.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export evaluates no Document.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are compared with the interpreter on seven aisles, with the firing leaf as the control.", "evidence": {"non-firing RNU leaf references": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingReferenceDiffTest.kt#aNonFiringLeafContributesNoReference", "witness": "A message fired by the sibling refers to the row's Qty alone, while a firing leaf adds its duplicate cluster's codes."}}},
+        "interpreter": {"state": "ALREADY_CONFORMS", "basis": "The interpreter's RepetitionNotUnique leaf already contributed references only when it fired.", "evidence": {"non-firing RNU leaf references": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingReferenceDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter agreed with both strategies, references included, on all seven documents before any change."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and add no reference of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-09 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }
