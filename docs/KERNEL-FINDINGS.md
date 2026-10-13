@@ -13305,3 +13305,20 @@ Found while measuring [KF552](#kf552). A lease holds a repeatable `Units` of thr
 | four units at rent 500, the fourth past capacity at 50 | any selection | the [KF58](#kf58) over-repetition pair, plus `SCORE_FLOOR` on the three held units wherever `Score` is covered; the fourth row's rent is never judged |
 
 So the slot domain is [KF517](#kf517)'s full-validation one, every declared slot under a capacity product of 5 and never past a capacity, and partial differs only in dropping the content gate. Generated requiredness does not follow it: [KF552](#kf552) runs per held row on both calls. Locked by `adapter.laws.PartialDeclaredRowDomainDiffTest` (three documents, five selections, dynamic Groovy, static Java and the interpreter). Not measured: a sparse model above A12's dense iteration limit, and a rule iterating two repeatable levels.
+
+## §10 supplement — a key that selects no row leaves a starred `Sum` below it fillable, so a fired comparison over it is an omission (both strategies, 2026-10-13) <a id="kf554"></a>
+
+> Fold: pending — belongs in §10's semantic-index read, beside the absent-key value-list read of [KF475](#kf475).
+
+a12-kernel-lean `SPEC-2026-10-13-07`. A warehouse keys its repeatable `Bins` by `Code`; each bin holds a fixed `Shelf` with a repeatable `Items` of three, and `Total` is computed as `Sum(Bins/Shelf/Items*/Qty For Pick)`. Its generated check `[Total] != Sum(…)` meets a stale stored `99`, and an authored rule compares the same sum with a stored `Expected` of 7:
+
+| `Pick` | generated check | authored rule |
+|---|---|---|
+| `B3`, whose three items hold 1, 2, 4 | VALUE | silent: the sum is 7 |
+| `B1`, two of three items filled (2, 5) | OMISSION: the empty third item could still change the sum | silent |
+| `B2`, a bin with no items | OMISSION | OMISSION |
+| `B9`, which no bin carries | OMISSION | OMISSION |
+| `B1` plus a lone carriage return, `Pick` and `Code` admitting line breaks | OMISSION, as for any unmatched key ([KF542](#kf542): only a CRLF pair normalizes) | OMISSION |
+| empty, or absent | OMISSION | OMISSION |
+
+So a selection that matches no row reads as the all-empty list and keeps its omission potential, exactly as a selected row with an unfilled item does; only a selected row whose starred level is full is closed. Locked by `adapter.laws.UnmatchedKeyAggregatePolarityDiffTest` on dynamic Groovy, static Java and the interpreter, which already agreed. Not measured: `MinValue`, `MaxValue`, `NumberOfDifferentValues` and partial validation, which share the read.

@@ -10748,6 +10748,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and choose no rows of their own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback beside SPEC-2026-10-13-06 as an adjacent measurement; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf554": {
+      "sha256": "2b5735abbf917e95d2805192858cc5361e95b5275baf00563e57c0c4c1f62008",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["unmatched keyed sum polarity"],
+        "interpreter": ["unmatched keyed sum polarity"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["unmatched keyed sum polarity"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author keyed sums and evaluate no Document.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "Message typing is runtime behaviour; the portable checker judges models only.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import evaluates no Document.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export evaluates no Document.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are compared with the interpreter on seven keys, with a full selected bin as the closed control.", "evidence": {"unmatched keyed sum polarity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnmatchedKeyAggregatePolarityDiffTest.kt#anUnmatchedSelectionKeepsTheStarredSumFillable", "witness": "A full selected bin types the stale total VALUE, while every unmatched, empty, absent or carriage-return key types it OMISSION."}}},
+        "interpreter": {"state": "ALREADY_CONFORMS", "basis": "The interpreter's keyed star already read an unmatched selection as the fillable empty list.", "evidence": {"unmatched keyed sum polarity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnmatchedKeyAggregatePolarityDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter agreed with both strategies on all seven documents before any change."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and type no message of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-07 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }
