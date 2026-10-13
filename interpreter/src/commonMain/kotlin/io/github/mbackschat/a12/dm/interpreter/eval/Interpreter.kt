@@ -729,6 +729,7 @@ class Interpreter(
                 for (row in rows) {
                     val state = when {
                         row.presenceUnknown(arg.path) -> Tri.UNKNOWN
+                        unavailableEmpty(row, arg.path) -> Tri.UNKNOWN
                         !row.filled(arg.path) -> Tri.FALSE
                         row.field(arg.path) is Val.Unknown -> Tri.UNKNOWN
                         else -> Tri.TRUE
@@ -806,7 +807,7 @@ class Interpreter(
             })
             a is Expr.Star && a.having == null -> {
                 val c = ctxOf(a)
-                for (cell in c.starScanCells(a.path, a.bindDepth, pass.declared)) yield(filledOrPoison(cell))
+                for (cell in c.starScanCells(a.path, a.bindDepth, pass.declared)) yield(availableFilledOrPoison(c, cell))
             }
             a is Expr.Star -> {
                 // The declared-range scans select among EVERY declared coordinate, a missing one reading empty
@@ -817,7 +818,7 @@ class Interpreter(
                 val rows = if (pass.declared)
                     keptRowsWithSuccessorLookahead(c.declaredStarRows(a.path, a.bindDepth).toList(), a.having!!)
                 else filteredRows(c, a, pass.traversal)
-                for (rc in rows) yield(filledOrPoison(scanCell(a.path, rc)))
+                for (rc in rows) yield(availableFilledOrPoison(c, scanCell(a.path, rc)))
             }
             // A keyed GROUP scans the selected row as the bare group arm below scans its instance (IF340). The
             // selection itself poisons on a compromised key column; a key no row carries has only empty cells,
@@ -833,7 +834,7 @@ class Interpreter(
                 // ordered getAllContainedFields scan (IF147). Was an eager whole-group tally that poisoned on ANY
                 // unknown regardless of a preceding decisive cell (the IF147 over-poison, probe-confirmed).
                 val c = ctxOf(a)
-                for (cell in c.containedFieldCells(a.path, pass.declared)) yield(filledOrPoison(cell))
+                for (cell in c.containedFieldCells(a.path, pass.declared)) yield(availableFilledOrPoison(c, cell))
             }
             else -> yield(
                 when (presenceTri(a)) {
@@ -855,6 +856,18 @@ class Interpreter(
             state,
             if (state == CellState.EMPTY) null else ctx.field(path),
         )
+    }
+
+    /**
+     * [filledOrPoison] for a scanned cell whose emptiness may be unavailable: in a computation only the empty index
+     * cell the preliminary index check invalidates is, and it poisons the quantifier as it poisons the count
+     * (KERNEL-FINDINGS KF552), so only an index cell is asked. A missing declared slot is never unavailable.
+     */
+    private fun availableFilledOrPoison(c: EvalContext, cell: ScanCell): Boolean {
+        if (cell.baseState == CellState.EMPTY && cell.path in indexFields &&
+            unavailableEmpty(c.absentGroupRow(cell.path.substringBeforeLast('/'), cell.reps.dropLast(1)), cell.path))
+            throw PoisonedReadException(cell.path)
+        return filledOrPoison(cell)
     }
 
     internal fun filledOrPoison(cell: ScanCell): Boolean = when (
@@ -1083,7 +1096,22 @@ class Interpreter(
         val plan = shape.plan ?: return null
         if (shape.multiStar && plan.selfExcluded) return null
         if (plan is OrderedCorrelationPlan && !orderedCorrelationSupported(plan)) return null
+        if (columnHoldsUnavailableEmpty(star)) return null
         return plan
+    }
+
+    /**
+     * Whether the star's column holds an [unavailableEmpty] cell in this scope. The indexed tallies count every
+     * empty cell as empty, and a required-empty one is undecided instead (KERNEL-FINDINGS KF552), which only
+     * [naiveStarQuantTally] knows, so such a column takes it. Validation only: a computation's gate throws the
+     * poison itself, and probing it here would read the column ahead of the operator.
+     */
+    private fun columnHoldsUnavailableEmpty(star: Expr.Star): Boolean {
+        if (computeMode) return false
+        val group = star.path.substringBeforeLast('/')
+        return config.unavailableColumn(listOf(star.path, star.bindDepth, ctx.repsOf(group).take(maxOf(star.bindDepth, 0)))) {
+            filterCandidates(ctx, group, star.bindDepth).any { unavailableEmpty(it, star.path) }
+        }
     }
 
     private fun orderedCorrelationSupported(plan: OrderedCorrelationPlan): Boolean {
