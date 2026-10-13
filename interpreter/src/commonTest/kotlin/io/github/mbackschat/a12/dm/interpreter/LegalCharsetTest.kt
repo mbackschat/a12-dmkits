@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 /**
  * The [LegalCharset] customization SPI (IF43) — the interpreter exposes the kernel's project-level restricted
@@ -24,6 +25,14 @@ class LegalCharsetTest {
     @Test fun bmpDefaultAllowsBmpRejectsAstral() {
         assertEquals(false, charsetFires("café™€中", LegalCharset.BMP), "BMP allows é/™/€/CJK")
         assertEquals(true, charsetFires("x😀", LegalCharset.BMP), "BMP rejects a supplementary-plane emoji")
+    }
+
+    /** A charset is its definition: one declaration read twice is one charset, so a document is not re-read for it. */
+    @Test fun oneDefinitionReadTwiceIsOneCharset() {
+        assertEquals(LegalCharset.ofRanges(0x00..0x7F), LegalCharset.ofRanges(0x00..0x7F))
+        assertEquals(LegalCharset.ofRanges(0x00..0x7F).hashCode(), LegalCharset.ofRanges(0x00..0x7F).hashCode())
+        assertNotEquals(LegalCharset.ofRanges(0x00..0x7F), LegalCharset.ofRanges(0x00..0x7E))
+        assertNotEquals(LegalCharset.BMP, LegalCharset.ofRanges(0x0000..0xD7FF, 0xE000..0xFFFF))
     }
 
     @Test fun customAsciiCharsetRejectsBmpChars() {

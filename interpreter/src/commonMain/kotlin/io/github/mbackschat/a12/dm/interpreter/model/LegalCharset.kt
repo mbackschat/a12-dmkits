@@ -71,6 +71,13 @@ class LegalCharset private constructor(
      * without a timing threshold or a per-code-point callback. */
     internal fun matchWork(s: String): Int = scan(s).work
 
+    /** Equal when the definitions are: the same BMP default, ranges and atomic graphemes, in declaration order. */
+    override fun equals(other: Any?): Boolean =
+        this === other ||
+            (other is LegalCharset && isBmp == other.isBmp && ranges == other.ranges && graphemes == other.graphemes)
+
+    override fun hashCode(): Int = (isBmp.hashCode() * 31 + ranges.hashCode()) * 31 + graphemes.hashCode()
+
     /**
      * Deterministic, content-complete definition used by model/scenario fingerprints. Unlike the default object
      * identity string, this changes when any allowed range or atomic grapheme changes and is stable across runs.

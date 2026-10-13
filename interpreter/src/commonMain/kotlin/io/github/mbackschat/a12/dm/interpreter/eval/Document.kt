@@ -580,9 +580,8 @@ class Document(internal val config: DocumentConfig) {
      * document's own formal check must then agree with the call's (KERNEL-FINDINGS KF555).
      */
     internal fun withLegalCharset(charset: LegalCharset): Document {
-        // LegalCharset has no equals; its toString is the content-complete definition, so one declaration parsed
-        // twice still shares a document.
-        if (config.legalCharset === charset || config.legalCharset.toString() == charset.toString()) return this
+        // Value equality, so one declaration parsed twice still shares a document.
+        if (config.legalCharset == charset) return this
         val copy = Document(config.copy(legalCharset = charset))
         for (p in placements) if (p.isGroup) copy.group(p.path, *p.reps.toIntArray()) else copy.copyField(p)
         return copy
