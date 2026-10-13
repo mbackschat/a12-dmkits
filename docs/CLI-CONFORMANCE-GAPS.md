@@ -14,7 +14,7 @@
 
 ## 1. Open
 
-_None open._
+- **CG23 — the rule and computation schemas do not describe the keyed message tokens** (found 2026-10-13, cold review). `rule-add.schema.json`'s `messages[].text` lists `$#Group For key$` but not `$F.value For "k"$`, `$F For "k"$` or `$F->Cat$` ([KF561](KERNEL-FINDINGS.md#kf561), [KF562](KERNEL-FINDINGS.md#kf562)); no computation schema describes message tokens or [KF563](KERNEL-FINDINGS.md#kf563)'s root-group `$#RuleGroup$` refusal; and the enricher has no fix or explain for the codeless sentences published as `RK_MEMBER_*`. Settles with schema descriptions backed by CI-executed examples and an enricher entry per code.
 
 ## 2. Deferred — with re-open triggers
 

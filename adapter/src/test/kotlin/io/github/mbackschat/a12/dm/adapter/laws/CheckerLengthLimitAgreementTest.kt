@@ -77,6 +77,7 @@ class CheckerLengthLimitAgreementTest {
         "number min above an ordinary max" to number(MIN to 100_000, MAX to 5),
         "number min zero" to number(MIN to 0),
         "number max sentinel" to number(MAX to -1),
+        "number min sentinel" to number(MIN to -1),
         "number max signed" to number(MAX to -2),
         "number min above a zero max" to number(MIN to 5, MAX to 0),
         "number max zero beside fractional digits" to number(MAX to 0, "minFractionalDigits" to 2, "maxFractionalDigits" to 2),
@@ -102,6 +103,7 @@ class CheckerLengthLimitAgreementTest {
         assertEquals(listOf(NOT_POSITIVE), a12("string both zero"))
         assertEquals(listOf(NOT_POSITIVE), a12("custom min above a zero max"))
         assertEquals(listOf(SIGNED), a12("number max sentinel"))
+        assertEquals(listOf(SIGNED), a12("number min sentinel"))
         assertEquals(emptyList<String>(), a12("custom max sentinel"))
         assertEquals(emptyList<String>(), a12("number deleted, max above"))
         assertEquals(listOf("MVK_ERROR_MESSAGE_AND_PATTERN_INVALID", "MVK_STRING_TYPE_PARAMS_INCONSISTENT", ABOVE),

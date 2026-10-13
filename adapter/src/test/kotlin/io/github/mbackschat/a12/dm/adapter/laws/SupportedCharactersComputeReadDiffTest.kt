@@ -59,6 +59,8 @@ class SupportedCharactersComputeReadDiffTest {
         "a lowercase lead" to """{"Manifest":{"Lead":"ab","Label":"P1","Parcels":[{"Code":"P1","Tag":"X","Weight":3}]}}""",
         "a lowercase starred tag" to """{"Manifest":{"Lead":"AB","Label":"P1","Parcels":[{"Code":"P1","Tag":"x","Weight":3}]}}""",
         "a lowercase index code" to """{"Manifest":{"Lead":"AB","Label":"p1","Parcels":[{"Code":"p1","Tag":"X","Weight":3}]}}""",
+        "a lowercase key alone" to """{"Manifest":{"Lead":"AB","Label":"p1","Parcels":[{"Code":"P1","Tag":"X","Weight":3}]}}""",
+        "a lowercase index value alone" to """{"Manifest":{"Lead":"AB","Label":"P1","Parcels":[{"Code":"p1","Tag":"X","Weight":3}]}}""",
     )
 
     @Test
@@ -88,5 +90,9 @@ class SupportedCharactersComputeReadDiffTest {
             observed("a lowercase starred tag"))
         assertEquals(all - "Picked" to listOf("TAG_COUNT@Lead", "ZeichenNichtImZeichensatz@Label",
             "ZeichenNichtImZeichensatz@Parcels[1]/Code"), observed("a lowercase index code"))
+        // The row above moves the key and the index value together; each alone, so the poisoned read is named.
+        assertEquals(all - "Picked" to listOf("TAG_COUNT@Lead", "ZeichenNichtImZeichensatz@Label"), observed("a lowercase key alone"))
+        assertEquals(all - "Picked" to listOf("TAG_COUNT@Lead", "ZeichenNichtImZeichensatz@Parcels[1]/Code"),
+            observed("a lowercase index value alone"))
     }
 }

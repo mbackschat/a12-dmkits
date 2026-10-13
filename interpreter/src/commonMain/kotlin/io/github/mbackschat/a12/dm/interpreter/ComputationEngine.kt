@@ -670,8 +670,8 @@ internal class ComputationEngine(
 
     /** Render a computed scalar to the TARGET field's stored form: a date result is reformatted from the
      *  interpreter's ISO to the format the target declares, whichever temporal kind declares it (the kernel stores
-     *  a computed date in the field's format, IF33, IF397). STRING and DATE_TIME results pass through (no datetime
-     *  re-formatter yet). */
+     *  a computed date in the field's format, IF33, IF397). STRING and DATE_TIME results are stored as
+     *  evaluated. */
     private fun renderScalarValue(iso: String, targetPath: String): String =
         model.dateStoreFormatOf(targetPath)?.let { renderDateToFormat(iso, it) } ?: iso
 

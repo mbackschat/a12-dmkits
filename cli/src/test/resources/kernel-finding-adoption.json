@@ -10512,7 +10512,7 @@
       }
     },
     "kf547": {
-      "sha256": "d9101459b8dad68fcd5c454de453b1a68ea34bb41b79d61f774bb06820c25a86",
+      "sha256": "259a208d90ce3b7065c832828d277d9c479616fd96807fd6076cc676d4cab70b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -10560,7 +10560,7 @@
       }
     },
     "kf549": {
-      "sha256": "bf3537bfcc73d13adcf66ce5b6700b79530fd2618e9d6d5644bbdeff716e9f1b",
+      "sha256": "0a0f3e33a857dfa4a6f8965cab96fdddb646920a796e97bb0f9c4377dfa4b10a",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -10728,7 +10728,7 @@
       }
     },
     "kf555": {
-      "sha256": "2460a47a67143cf97de078214c02c2a85c81d566dd4216f9ca3016dc0b3725ee",
+      "sha256": "48e854c64d9fa7e0c6ece0cfc84b39f82539e8d21e1e34c7eb71241ca9aad7ca",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -10848,7 +10848,7 @@
       }
     },
     "kf558": {
-      "sha256": "493cb3fca26b0b4b27c423fa76aa5bfc9f0744e50c74fce2f1c1e26fdcd0e17b",
+      "sha256": "23decac26f369019926cf5c1cc3dcacd478e632a9943d2599320206799eae7fc",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -11016,7 +11016,7 @@
       }
     },
     "kf560": {
-      "sha256": "72a9ccf7ea5eaf56175f11973cba82daaf76b70f4b3aa7f671b3b15f57b36a60",
+      "sha256": "b4665e833ec7279cae349efe2d06137c61bbcf6450794b5774fd75f87effafb1",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -11133,6 +11133,30 @@
         "interpreter": {"state": "APPLIED", "basis": "A literal beside a field is typed by the class the field's declared format selects (IF400).", "evidence": {"date literal beside a date-declared TIME field": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateDeclaredTimeComparisonDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter compared the literal lexically and fired neither TIME-kind rule; it now agrees with both strategies."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool evaluates through the interpreter and carries no comparison logic of its own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf34": {
+      "sha256": "5c7d27b7089242781e7fbde961b39399210fa9c213bdfc044c914b71028aa11b",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["authored-text length guard"],
+        "interpreter": ["authored-text length guard"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["authored-text length guard"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The correction concerns stored-value admission at run time, which the typed builders do not perform.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "The portable checker judges models, not stored values.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import reads no stored values.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no stored values.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The authored CRLF is counted against both kernel strategies at the 99,999 boundary.", "evidence": {"authored-text length guard": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#theGuardCountsTheAuthoredCrlfPairAsTwoUnits", "witness": "99,998 letters and an authored CRLF draw wertZuLang although they evaluate to 99,999 units."}}},
+        "interpreter": {"state": "ALREADY_CONFORMS", "basis": "The interpreter's input gates already measure the authored text before the fold (KF547).", "evidence": {"authored-text length guard": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#theGuardCountsTheAuthoredCrlfPairAsTwoUnits", "witness": "The interpreter refuses the same value and admits the 99,999-unit control, as both strategies do."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool evaluates through the interpreter and carries no input gate of its own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "The fact itself went out with KF547 in the 2026-10-13 handback; this entry only stops contradicting it.", "evidence": {}}
       }
     }
   }

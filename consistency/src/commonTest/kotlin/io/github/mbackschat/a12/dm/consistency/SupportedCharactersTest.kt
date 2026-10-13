@@ -141,7 +141,9 @@ class SupportedCharactersTest {
         // The lone halves are built at run time (CheckerFixtureReadGuardTest.noMultiplatformSourceSpellsALoneSurrogate).
         val high = Char(0xD83D)
         val lastHigh = Char(0xDBFF)
-        for (definition in listOf("""["A-Z","$high"]""", """["A-Z","\u0100-$lastHigh"]""", """["\uD83D\uDE00-\uD83D\uDE4F"]""")) {
+        // A whole pair as one entry too: two units, and still unbuilt (adapter.laws.CheckerEnumDeclarationStreamAgreementTest).
+        for (definition in listOf("""["A-Z","$high"]""", """["A-Z","\uD83D\uDED2"]""", """["A-Z","\u0100-$lastHigh"]""",
+                """["\uD83D\uDE00-\uD83D\uDE4F"]""")) {
             val report = report(definition, "beta", supplementary)
             assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.map { it.code }
                 .filter { it == CK_MODEL_NOT_BUILDABLE || it == "MVK_ENUM_VALUE_WITH_INVALID_CHARACTER" }, definition)

@@ -158,7 +158,8 @@ enum class FormalErrorCode(val id: String) {
      *  and after [VALUE_TOO_LONG]. IF43. */
     LEADING_BLANK("fuehrendesBlank"),
 
-    /** ANY field value with a **trailing** blank — the baseline-check sibling of [LEADING_BLANK] (IF43). */
+    /** A stored value with a **trailing** blank — the baseline-check sibling of [LEADING_BLANK], with its exception
+     *  and right after it (IF43, KF547). */
     TRAILING_BLANK("nachfolgendesBlank"),
 
     /** A stored value (not a raw `noValueValidation` String) containing a character outside the model's legal

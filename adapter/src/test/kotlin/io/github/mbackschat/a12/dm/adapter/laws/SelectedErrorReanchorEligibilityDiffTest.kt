@@ -170,6 +170,7 @@ class SelectedErrorReanchorEligibilityDiffTest {
         val dynamic = DocumentDifferential.kernelMessages(model, input, true, relevant)
         assertEquals(dynamic, DocumentDifferential.kernelMessages(model, input, false, relevant), "static-Java")
         assertEquals(dynamic, DocumentDifferential.interpreterMessages(model, input, relevant), "interpreter")
+        assertEquals(listOf("$DEPOT_1/Bays[-5]/Load[1]"), dynamic.filter { it.code == "OneKey" }.map { it.pointerKey })
     }
 
     private companion object {

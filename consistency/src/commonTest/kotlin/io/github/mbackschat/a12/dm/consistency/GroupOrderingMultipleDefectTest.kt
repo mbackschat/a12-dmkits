@@ -28,6 +28,7 @@ class GroupOrderingMultipleDefectTest {
         actual["a field sorted twice, plain"] = codes(false, null, listOf("Sku", "Sku"))
         actual["a field sorted THREE times"] = codes(false, null, listOf("Sku", "Sku", "Sku"))
         actual["TWO fields each sorted twice"] = codes(false, null, listOf("Sku", "Sku", "Qty", "Qty"))
+        actual["FIVE entries, repeating only beyond the third"] = codes(false, null, listOf("Sku", "Qty", "Note", "Sku", "Qty"))
 
         val expected = mutableMapOf<String, List<String>>()
         expected["plain field, both members — the control"] = emptyList()
@@ -41,6 +42,9 @@ class GroupOrderingMultipleDefectTest {
         expected["a field sorted THREE times"] = listOf(sortDuplicate)
         // Four entries: the fourth is beyond the list's capacity, and the repeat within the first three still counts.
         expected["TWO fields each sorted twice"] = listOf(sortDuplicate, "RK_SORT_LIST_ABOVE_CAPACITY")
+        // One per entry beyond the third, as A12 draws on CheckerDeclarationWithholdingAgreementTest's five entries.
+        expected["FIVE entries, repeating only beyond the third"] =
+            listOf("RK_SORT_LIST_ABOVE_CAPACITY", "RK_SORT_LIST_ABOVE_CAPACITY")
         assertEquals(expected, actual, "both ordering members report and a repeated sort field is its own")
     }
 

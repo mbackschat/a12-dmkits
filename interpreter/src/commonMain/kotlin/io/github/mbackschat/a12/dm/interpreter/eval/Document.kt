@@ -377,10 +377,11 @@ class Document(internal val config: DocumentConfig) {
             } else {
                 // CRLF→LF at EVAL ingestion (IF124): the kernel's formal-check stage feeds its eval caches the
                 // NORMALIZED value (`CheckCommand` → `FormalChecker.checkAndConvertFieldValue.normalizedValue()`
-                // = `RuntimeUtils.normalizeLinebreaks` — the `\r\n` pair only, a lone CR stays), so EVERY
-                // downstream EVALUATION read — the format measure, rule operands, compute operands — sees `\n`.
-                // Message interpolation deliberately reads [Placement.raw], outside this cache. Only this
-                // eval-side index normalizes; the consumer's raw [placements] stay untouched.
+                // = `RuntimeUtils.normalizeLinebreaks` — the `\r\n` pair only, a lone CR stays), so the format
+                // measure, rule operands and compute operands see `\n`. The input gates before the format check
+                // measure the authored text instead (KF547), which `copy` keeps as [Placement.authored]; message
+                // interpolation reads [Placement.raw]. Only this eval-side index normalizes; the consumer's raw
+                // [placements] stay untouched.
                 val q = if (p.value != null && p.value.contains("\r\n"))
                     p.copy(value = p.value.replace("\r\n", "\n")) else p
                 byKey.getOrPut(q.path) { HashMap() }.getOrPut(q.reps) { q }   // FIRST placement per (path,reps) wins

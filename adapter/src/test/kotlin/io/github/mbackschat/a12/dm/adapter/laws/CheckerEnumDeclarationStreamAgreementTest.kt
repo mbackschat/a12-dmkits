@@ -135,14 +135,14 @@ class CheckerEnumDeclarationStreamAgreementTest {
     }
 
     /**
-     * A restriction entry holding a surrogate unit, a singleton or a range endpoint or a supplementary range, leaves
-     * A12 unable to build the model, and the checker says so rather than judging values against it (KF560); the
-     * declarations it can still read stay analyzable beside that, as CONSISTENCY-API states.
+     * A restriction entry holding a surrogate unit, as a lone half, a whole pair, a range endpoint or a supplementary
+     * range, leaves A12 unable to build the model, and the checker says so rather than judging values against it
+     * (KF560); the declarations it can still read stay analyzable beside that, as CONSISTENCY-API states.
      */
     @Test
     fun aSurrogateInTheRestrictionLeavesTheModelUnbuilt() {
-        val wrong = listOf(listOf("A-Z", "\uD83D"), listOf("A-Z", "\uDED2"), listOf("A-Z", "\u0100-\uDBFF"),
-            listOf("\uDC00-\uDFFF"), listOf("\uD83D\uDE00-\uD83D\uDE4F")).mapNotNull { charset ->
+        val wrong = listOf(listOf("A-Z", "\uD83D"), listOf("A-Z", "\uDED2"), listOf("A-Z", CART),
+            listOf("A-Z", "\u0100-\uDBFF"), listOf("\uDC00-\uDFFF"), listOf("\uD83D\uDE00-\uD83D\uDE4F")).mapNotNull { charset ->
             val json = model(Row(listOf("BASIC", CART), null, charset = charset))
             val built = runCatching { oracle.checkConsistency(json, ReferenceResolvers.selfContained()) }
             val ours = ours(json)
