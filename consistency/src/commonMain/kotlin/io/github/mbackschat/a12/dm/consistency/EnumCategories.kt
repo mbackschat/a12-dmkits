@@ -21,10 +21,11 @@ import kotlinx.serialization.json.JsonPrimitive
  * The findings come in A12's blocks, every category's unclassified values first, then every surplus token,
  * then the spoilt pairings (KERNEL-FINDINGS KF551, `adapter.laws.CheckerEnumDeclarationStreamAgreementTest`).
  *
- * **A value or token carrying a supplementary-plane character is never named.** A12 reads the declaration as a
- * document of its metamodel, whose formal check refuses any UTF-16 surrogate, so such an entry is unknown to
- * the pairing rules and is reported through the codeless "unsupported signs" notification instead, which this
- * checker publishes as `RK_UNSUPPORTED_CHARACTER`. The entry still occupies its position in the pairing.
+ * **A value or token carrying a supplementary-plane character is never named**, measured: it is reported
+ * through the codeless "unsupported signs" notification instead, which this checker publishes as
+ * `RK_UNSUPPORTED_CHARACTER`, and the entry still occupies its position in the pairing. Why is a hypothesis
+ * read from source, not measured: A12 reads the declaration as a document of its metamodel, whose formal check
+ * refuses any UTF-16 surrogate (KERNEL-FINDINGS KF551).
  *
  * **The member names are measured, not read off the Java fields**
  * (`rulekit.validate.laws.EnumCategoryWireShapeLawsTest`), and that grid also settled why a checker cannot

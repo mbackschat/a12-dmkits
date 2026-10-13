@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 
 /**
  * A key that selects no row leaves a starred list below it fillable, so a fired comparison over its `Sum` is an
- * omission (KERNEL-FINDINGS KF553, a12-kernel-lean SPEC-2026-10-13-07). The computation's own generated check
+ * omission (KERNEL-FINDINGS KF554, a12-kernel-lean SPEC-2026-10-13-07). The computation's own generated check
  * meets the stale stored total as `[Total] != Sum(...)`, and an authored rule compares the same sum with a stored
  * expectation.
  *

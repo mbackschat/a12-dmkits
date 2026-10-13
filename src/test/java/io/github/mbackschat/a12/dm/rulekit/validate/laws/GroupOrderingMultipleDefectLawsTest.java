@@ -68,7 +68,7 @@ class GroupOrderingMultipleDefectLawsTest {
      * measures the per-name and capacity rows the order fixture cannot build.
      */
     @Test
-    void theSortListSpeaksOnceAboutARepeatAndOnceAboutItsOpaqueEntries() {
+    void theSortListDrawsItsRepeatClassOnceAndItsTypeClassPerOpaqueField() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("one field sorted twice — plain", ordering(false, null, "Sku", "Sku"));
         actual.put("one field sorted THREE times", ordering(false, null, "Sku", "Sku", "Sku"));

@@ -202,10 +202,9 @@ public sealed interface FieldTypeSpec {
 
         public NumberSpec {
             // The kernel caps the scale at 14 and reports an overrun as a plain, MVK-less model-check message
-            // that names neither the property nor the cap — so refuse it here, correctively. Refusing min > 14 too
-            // cannot over-reject: the kernel independently requires min ≤ max (MVK_FRACT_DIGITS_INVALID), so a
-            // min above 14 would force an illegal max. Both links are kernel-locked in
-            // rulekit.validate.laws.RuleGroupIterationLawsTest.
+            // that names neither the property nor the cap — so refuse it here, correctively. A minimum above 14
+            // draws that same sentence directly, with no maximum declared (KERNEL-FINDINGS KF559, the
+            // "fractional minimum above the scale cap" row of adapter.laws.CheckerDigitMemberRangeAgreementTest).
             if (maxFractionalDigits != null && maxFractionalDigits > MAX_SCALE) {
                 throw new IllegalArgumentException("maxFractionalDigits " + maxFractionalDigits
                         + " is refused HERE, before the kernel is asked; the kernel's documented cap is " + MAX_SCALE);
@@ -216,8 +215,9 @@ public sealed interface FieldTypeSpec {
             }
             // A12's own law, measured: the pair is compared with an ABSENT member reading as 0 — which is
             // what the emitter writes for one — and a NEGATIVE maximum takes the pair out of the check
-            // instead of being compared ([KERNEL-FINDINGS KF320]). Comparing only when both are set left a
-            // real trap: `minFractionalDigits(2)` with no maximum was accepted here and refused by A12.
+            // instead of being compared (MVK_FRACT_DIGITS_INVALID, [KERNEL-FINDINGS KF320]). Comparing only
+            // when both are set left a real trap: `minFractionalDigits(2)` with no maximum was accepted here
+            // and refused by A12.
             int declaredMin = minFractionalDigits == null ? 0 : minFractionalDigits;
             int declaredMax = maxFractionalDigits == null ? 0 : maxFractionalDigits;
             if (declaredMax >= 0 && declaredMin > declaredMax) {
