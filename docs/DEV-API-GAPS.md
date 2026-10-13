@@ -40,7 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-_None open._
+- **DG129 — a starred list or a group of TIME-kind fields declared as dates cannot be a typed `FirstFilledValue` Date operand** (found 2026-10-13, the list and group half of DG128). A12 admits `FirstFilledValue(Visits*/SeenOn)` and `FirstFilledValue(Review)` over TIME-kind fields declared `dd.MM.yyyy` and stores the Date ([KF550](KERNEL-FINDINGS.md#kf550); measured in `adapter.laws.FirstFilledDateCrossKindTargetDiffTest`, which authors both as text for this reason). `Dsl.firstFilledDate(FieldListRef)` and its group form refuse them by kind, and widening those gates alone is not enough: `Computation`'s pre-check types the result by the list's kind and refuses it too, because a `FieldRef` carries no declared format. The reader leaves both computations `Opaque`, and the editor offers no group operand for `FirstFilledValue` at all (only `BoundModel.firstFilledGroup`). Settles when a list or group operand carries its declared temporal class, as `DateRef` does for a plain field, and that test authors both typed.
 
 ## 3. Adjacent but out of scope
 

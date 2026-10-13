@@ -3215,7 +3215,9 @@ final class ConditionConverter {
             List<String> errorCodesToSuppress) {
         String computedPath = info.getCalculatedField().getFullName();
         FieldRef computed = model.field(computedPath);
-        ValueKind kind = computed.kind();
+        // A temporal target stores in the class its declared FORMAT names (KERNEL-FINDINGS KF222), and
+        // Computation admits the value by that class, so a TIME field declared as a date takes a Date expression.
+        ValueKind kind = model.fieldAt(computedPath).map(FieldInfo::temporalClass).orElse(computed.kind());
         Optional<Condition> common = info.getCommonPrecondition().map(this::convert);
         List<Computation.Alternative> alternatives = new ArrayList<>();
         for (Pair<ICondition, IOperation> partial : info.getPartialCalculations()) {
