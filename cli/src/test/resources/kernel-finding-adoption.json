@@ -8730,19 +8730,21 @@
       }
     },
     "kf58": {
-      "sha256": "c3927062329add9a1d3dcd79c37189bd6505f4732c4cbe647614d21591405ee9",
+      "sha256": "88a05ee155b2e14b9b6b3669f14cad7b8974fe3fd8add548d31bf7b11798f46e",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "ancestor structural error cache",
           "structural field occurrence and partial scope",
-          "unbounded descendant finite prefix"
+          "unbounded descendant finite prefix",
+          "own ancestry and operand inventory"
         ],
         "dmkits": [],
         "interpreter": [
           "ancestor structural error cache",
           "structural field occurrence and partial scope",
-          "unbounded descendant finite prefix"
+          "unbounded descendant finite prefix",
+          "own ancestry and operand inventory"
         ],
         "checker": [],
         "dmtool-cli": [
@@ -8753,7 +8755,8 @@
         "json-schema-export": [],
         "a12-kernel-lean": [
           "ancestor structural error cache",
-          "structural field occurrence and partial scope"
+          "structural field occurrence and partial scope",
+          "own ancestry and operand inventory"
         ]
       },
       "consumers": {
@@ -8772,6 +8775,10 @@
             "unbounded descendant finite prefix": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionOccurrenceDiffTest.kt#directUnboundedDescendantRetainsFinitePrefixStructuralDiagnostics",
               "witness": "Direct unbounded Detail retains ancestor overflow diagnostics on the held finite prefix; finite kernel caps two and three agree."
+            },
+            "own ancestry and operand inventory": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionOccurrenceScopeDiffTest.kt#everyWrittenEntityIsJudgedOnItsOwnAncestry",
+              "witness": "Siblings sharing the excess row's leading coordinate draw nothing, and a written fixed group counts as an entity; the computation channel keeps operand-path and computed-target ancestors only."
             }
           }
         },
@@ -8795,6 +8802,10 @@
             "unbounded descendant finite prefix": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionOccurrenceDiffTest.kt#directUnboundedDescendantRetainsFinitePrefixStructuralDiagnostics",
               "witness": "Direct unbounded Detail retains ancestor overflow diagnostics on the held finite prefix; finite kernel caps two and three agree."
+            },
+            "own ancestry and operand inventory": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverRepetitionOccurrenceScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter matches both strategies on the sibling-coordinate, fixed-group, malformed and computed-target documents, validation and computation alike, with no change."
             }
           }
         },
@@ -8829,7 +8840,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "SPEC-2026-10-10-18 remains pending peer verification of both committed partitions.",
+          "basis": "SPEC-2026-10-10-18 remains pending peer verification of both committed partitions; SPEC-2026-10-13-05 is reported in the 2026-10-13 handback as already satisfied, with the new lock.",
           "evidence": {
             "ancestor structural error cache": {
               "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-18",
@@ -8838,6 +8849,10 @@
             "structural field occurrence and partial scope": {
               "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-18",
               "witness": "Pending peer verification of cache and structural occurrence reconciliation."
+            },
+            "own ancestry and operand inventory": {
+              "reference": "a12-kernel-lean@73d40a62e80880d29a8144a5107f6e0f700da2af:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-05",
+              "witness": "Pending queue entry for per-entity own-ancestry checking and the computation operand inventory."
             }
           }
         }
