@@ -20,6 +20,8 @@ class RequiredEmptyFilteredReadDiffTest {
     private val model: String = run {
         val session = EditSession.read(DocumentModelDraft.named("claim-required-filtered").locale("en_US")
             .rootGroup("Claim") { c -> c.stringField("Ref") { }
+                .numberField("Limit") { it.fractionDigits(0).required() }.numberField("Extra") { it.fractionDigits(0) }
+                .numberField("Spare") { it.fractionDigits(0) }
                 .group("Covers") { v -> v.repeatable(3).numberField("Amount") { it.fractionDigits(0).required() }
                     .numberField("Bonus") { it.fractionDigits(0) }.stringField("Note") { }.stringField("Kind") { } } }
             .build().toJson())
@@ -32,6 +34,7 @@ class RequiredEmptyFilteredReadDiffTest {
                 "KeptNone" to Dsl.noFieldFilled(kept),
                 "KeptNotAll" to Dsl.notAllFieldsFilled(kept),
                 "KeptNotOne" to Dsl.notExactlyOneFieldFilled(kept),
+                "KeptOrSpareNone" to Dsl.noFieldFilled(kept, claim.field("Spare")),
             )
             for ((suffix, condition) in rules) claim.addRule {
                 it.name("$name$suffix").code("$name$suffix").errorField(claim.field("Ref"))
@@ -41,11 +44,17 @@ class RequiredEmptyFilteredReadDiffTest {
             val correlated: List<Pair<String, Condition>> = listOf(
                 "SameKindNone" to Dsl.noFieldFilled(sameKind),
                 "SameKindNotAll" to Dsl.notAllFieldsFilled(sameKind),
+                "SameKindNotOne" to Dsl.notExactlyOneFieldFilled(sameKind),
             )
             for ((suffix, condition) in correlated) covers.addRule {
                 it.name("$name$suffix").code("$name$suffix").errorField(kind.field())
                     .`when`(kind.filled().and(condition)).message(Dsl.en("Check the cover.")).build()
             }
+        }
+        for (name in listOf("Limit", "Extra")) claim.addRule {
+            it.name("${name}NoFive").code("${name}NoFive").errorField(claim.field("Ref"))
+                .`when`(claim.str("Ref").filled().and(Dsl.numberOfValueInFields(5L, claim.field(name), claim.field("Spare")).eq(0)))
+                .message(Dsl.en("Check the limits.")).build()
         }
         session.toJson()
     }
@@ -74,12 +83,14 @@ class RequiredEmptyFilteredReadDiffTest {
     @Test
     fun theKernelSilencesTheRequiredColumnAndFiresItsTwin() {
         fun fired(document: String) = DocumentDifferential.kernelMessages(model, documents.getValue(document), true)
-            .map { it.code }.filter { it.startsWith("Amount") || it.startsWith("Bonus") }.toSortedSet()
+            .map { it.code }.filter { it != "mandatoryField" }.toSortedSet()
         assertEquals(mapOf(
             "a noted cover and an empty one of the same kind" to
-                sortedSetOf("AmountKeptNotAll", "BonusKeptNone", "BonusKeptNotAll", "BonusKeptNotOne", "BonusSameKindNotAll"),
+                sortedSetOf("AmountKeptNotAll", "BonusKeptNone", "BonusKeptNotAll", "BonusKeptNotOne", "BonusKeptOrSpareNone",
+                    "BonusSameKindNotAll", "ExtraNoFive"),
             "two empty covers of the same kind" to
-                sortedSetOf("AmountKeptNotAll", "BonusKeptNone", "BonusKeptNotAll", "BonusKeptNotOne", "BonusSameKindNone", "BonusSameKindNotAll"),
+                sortedSetOf("AmountKeptNotAll", "BonusKeptNone", "BonusKeptNotAll", "BonusKeptNotOne", "BonusKeptOrSpareNone",
+                    "BonusSameKindNone", "BonusSameKindNotAll", "BonusSameKindNotOne", "ExtraNoFive"),
         ), documents.keys.associateWith(::fired))
     }
 
