@@ -10611,7 +10611,7 @@
       "sha256": "3731ffbeb0f9ff5c660fbd0062d6a040a39b111721bc6ef9e9dd6d00a72a6a31",
       "task": "F-USE-BACKLOG",
       "scope": {
-        "dmkits": ["crossed Date target"],
+        "dmkits": ["crossed Date target", "cross-kind Date target"],
         "checker": ["Date target gate", "cross-kind Date target"],
         "json-schema-import": [],
         "json-schema-export": [],
@@ -10621,7 +10621,7 @@
         "a12-kernel-lean": ["Date target gate", "Date target rendering", "cross-kind Date target"]
       },
       "consumers": {
-        "dmkits": {"state": "ALREADY_CONFORMS", "basis": "The typed builders author crossed-format, component-omitting and Base-Year-completed Date selections without refusing any of them.", "evidence": {"crossed Date target": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateTargetRenderingDiffTest.kt#theModelIsKernelConsistent", "witness": "A model authored through EditSession with six such computations passes the kernel consistency check."}}},
+        "dmkits": {"state": "APPLIED", "basis": "The typed builders author crossed-format, component-omitting and Base-Year-completed Date selections without refusing any of them. Date handles type a FirstFilledValue list as Dates whichever kind declares each field, and the reader reads such a list back the same way (DG128).", "evidence": {"crossed Date target": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateTargetRenderingDiffTest.kt#theModelIsKernelConsistent", "witness": "A model authored through EditSession with six such computations passes the kernel consistency check."}, "cross-kind Date target": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateCrossKindTargetDiffTest.kt#theChainedSelectionReadsBackTyped", "witness": "A TIME field declared dd.MM.yyyy is authored typed beside a DATE field and both the computation and the comparison read back Converted."}}},
         "checker": {"state": "ALREADY_CONFORMS", "basis": "The portable checker judges a Date computation's target through the comparison's coarse gate and the source list through its exact-profile gate; it named A12's class on every row when the lock was written.", "evidence": {"Date target gate": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFirstFilledDateTargetAgreementTest.kt#theTargetIsJudgedLikeATemporalComparison", "witness": "Crossed spellings and omitted components are admitted, a DateTime source is MVK_INVALID_COMPARE_TO_DATE and mixed source spellings MVK_VARYING_TYPES_NOT_ALLOWED on both."}, "cross-kind Date target": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateCrossKindTargetDiffTest.kt#thePortableCheckerAdmitsTheModel", "witness": "TIME-kind targets declared ISO and dotted, and a read-back over the dotted one, draw no finding."}}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import authors no computation.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not map computations.", "evidence": {}},

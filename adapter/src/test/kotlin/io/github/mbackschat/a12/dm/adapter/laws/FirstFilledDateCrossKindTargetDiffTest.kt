@@ -1,11 +1,15 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter
+import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation
+import io.github.mbackschat.a12.dm.rulekit.read.ReadResult
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -33,12 +37,20 @@ class FirstFilledDateCrossKindTargetDiffTest {
             it.name("Compute$target").calc(Dsl.firstFilledDate(claim.field("Reported"), claim.field("Confirmed")).expression())
                 .message(Dsl.en("The first known claim date.")).build()
         }
+        // A downstream computation reads the computed TIME-kind dotted cell back, through the cascade's overlay.
+        claim.addComputation(claim.field("Chained")) {
+            it.name("ComputeChained").calc(Dsl.firstFilledDate(claim.date("TimeDot"), claim.date("DateDot")).expression())
+                .message(Dsl.en("The first known claim date, read back.")).build()
+        }
+        // A rule comparing against the same selection, so the comparison side of the reader is asked too.
+        claim.addRule {
+            it.name("ReportedAfterFirst").code("REPORTED_AFTER_FIRST").errorField(claim.date("Reported"))
+                .`when`(claim.date("Reported").after(Dsl.firstFilledDate(claim.date("TimeDot"), claim.date("DateDot"))))
+                .message(Dsl.en("The report follows the first known date.")).build()
+        }
         // Constants, whose literal text is the subject (KF222's cross-kind stores): a dotted date into a TIME field
-        // declared ISO and one declared dotted, and a clock into a DATE field declared as a clock. Last, a downstream
-        // computation reads the computed TIME-kind dotted cell back through the cascade's overlay; it is text because
-        // `Dsl.firstFilledDate` refuses a TIME-kind operand whatever its declared format (DEV-API-GAPS DG128).
-        listOf("ConstIso" to "\"05.03.2024\"", "ConstDot" to "\"05.03.2024\"", "ConstClock" to "\"12:30:00\"",
-            "Chained" to "FirstFilledValue(TimeDot, DateDot)")
+        // declared ISO and one declared dotted, and a clock into a DATE field declared as a clock.
+        listOf("ConstIso" to "\"05.03.2024\"", "ConstDot" to "\"05.03.2024\"", "ConstClock" to "\"12:30:00\"")
             .fold(session.toJson()) { json, (target, literal) ->
                 RuntimeLaws.withComputation(json, "/Claim", "Assign$target", "../$target", literal)
             }
@@ -59,6 +71,16 @@ class FirstFilledDateCrossKindTargetDiffTest {
     @Test
     fun thePortableCheckerAdmitsTheModel() {
         assertEquals(emptyList<String>(), check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code })
+    }
+
+    /** The adapter reads both Date selections back typed: a TIME-kind dotted operand is a Date (DG128). */
+    @Test
+    fun theChainedSelectionReadsBackTyped() {
+        val adapter = KernelAdapter.ofJson(model)
+        val read = adapter.readComputation("/Claim/ComputeChained")
+        assertTrue(read is ReadComputation.Converted, "the chained Date selection reads typed, got: $read")
+        val rule = adapter.read("/Claim/ReportedAfterFirst")
+        assertTrue(rule is ReadResult.Converted, "the compared Date selection reads typed, got: $rule")
     }
 
     @Test

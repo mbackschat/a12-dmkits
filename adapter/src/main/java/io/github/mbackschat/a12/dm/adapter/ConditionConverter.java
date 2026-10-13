@@ -1632,6 +1632,27 @@ final class ConditionConverter {
                 + key.getClass().getSimpleName(), origin);
     }
 
+    /**
+     * A {@code FirstFilledValue} whose kind-typed list is not a Date, read as one through date handles when every
+     * operand is a plain field {@link BoundModel#date} admits by its declaration — the read twin of
+     * {@link Dsl#firstFilledDate(DateRef, DateRef, DateRef...)}, so a TIME field declared {@code dd.MM.yyyy} reads
+     * back as the Date operand A12 has it (KERNEL-FINDINGS KF550, DEV-API-GAPS DG128). Anything else stays empty
+     * and keeps the caller's refusal.
+     */
+    private Optional<Calculation> firstFilledDateHandles(IEntityListOperation aggregate) {
+        List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
+        boolean plainDates = entities.size() >= 2 && entities.stream().allMatch(entity -> entity.isField()
+                && !isWildcard(entity) && !hasSemanticIndex(entity) && !entity.isOuter()
+                && entity.getFilterCondition() == null
+                && model.fieldAt(entity.getFullName()).map(i -> i.temporalClass() == ValueKind.DATE).orElse(false));
+        if (!plainDates) {
+            return Optional.empty();
+        }
+        List<DateRef> dates = entities.stream().map(entity -> model.date(entity.getFullName())).toList();
+        return Optional.of(Dsl.firstFilledDate(dates.get(0), dates.get(1),
+                dates.subList(2, dates.size()).toArray(DateRef[]::new)).expression());
+    }
+
     /** Recover the owner kind from the fields because the kernel transport collapses several families. */
     private ValueKind firstFilledValueKind(IEntityListOperation aggregate) {
         return convertFirstFilledValue(aggregate).kind();
@@ -3090,7 +3111,8 @@ final class ConditionConverter {
         if (aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
             ValueKind kind = firstFilledValueKind(aggregate);
             if (kind != ValueKind.DATE && kind != ValueKind.DATE_FRAGMENT) {
-                throw unsupported("date FirstFilledValue with result kind " + kind, aggregate);
+                return firstFilledDateHandles(aggregate).map(DateExpr::new)
+                        .orElseThrow(() -> unsupported("date FirstFilledValue with result kind " + kind, aggregate));
             }
             return new DateExpr(convertFirstFilledValue(aggregate));
         }
@@ -3124,8 +3146,10 @@ final class ConditionConverter {
                 && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
             FirstFilledValue value = convertFirstFilledValue(aggregate);
             if (!firstFilledTargetCompatible(computedKind, value.kind())) {
-                throw unsupported("FirstFilledValue result " + value.kind()
-                        + " assigned to a " + computedKind + " field", aggregate);
+                Optional<Calculation> dates = computedKind == ValueKind.DATE
+                        ? firstFilledDateHandles(aggregate) : Optional.empty();
+                return dates.orElseThrow(() -> unsupported("FirstFilledValue result " + value.kind()
+                        + " assigned to a " + computedKind + " field", aggregate));
             }
             return value;
         }

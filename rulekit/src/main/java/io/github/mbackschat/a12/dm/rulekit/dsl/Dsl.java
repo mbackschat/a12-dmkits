@@ -521,6 +521,26 @@ public final class Dsl {
         return new DateExpr(firstFilledValue(first, ValueKind.DATE, "firstFilledDate", second, rest));
     }
 
+    /**
+     * Typed-handle form: each {@link DateRef} is read as a Date, whichever temporal kind declares its field.
+     *
+     * <p>A handle is the proof: {@link BoundModel#date} admits a field by its kind or by its declared format, and
+     * A12 reads only the format, so a TIME field declared {@code dd.MM.yyyy} is a Date operand of
+     * {@code FirstFilledValue} (KERNEL-FINDINGS KF211, KF550; DEV-API-GAPS DG128). The field forms above keep
+     * typing an operand by its kind, so this overload widens nothing they refuse or admit.
+     */
+    public static DateExpr firstFilledDate(DateRef first, DateRef second, DateRef... rest) {
+        return firstFilledDate(readAsDate(first), readAsDate(second),
+                java.util.Arrays.stream(rest).map(Dsl::readAsDate).toArray(FieldOperand[]::new));
+    }
+
+    /** The handle's field typed as the Date its handle proves it to be. */
+    private static FieldRef readAsDate(DateRef date) {
+        FieldRef field = date.field();
+        return field.kind() == ValueKind.DATE ? field : new FieldRef(field.path(), ValueKind.DATE, field.styleHint(),
+                field.correlated(), field.repeatingAncestors());
+    }
+
     /** Owner-entity form, including semantic-index fields and groups. */
     public static DateExpr firstFilledDate(
             FirstFilledOperand first, FirstFilledOperand second, FirstFilledOperand... rest) {

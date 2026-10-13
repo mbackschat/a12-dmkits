@@ -40,7 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG128 — a temporal field is typed by its declared KIND, so a TIME field declared `dd.MM.yyyy` cannot be a date operand** (found 2026-10-13). `Dsl.firstFilledDate(timeDot, dateDot)` refuses with "needs a first operand compatible with DATE; the first operand is TIME", while A12 admits `FirstFilledValue(TimeDot, DateDot)` and reads the cell as a Date, because the declared format decides at every gate and the kind is never read ([KF211](KERNEL-FINDINGS.md#kf211), [KF550](KERNEL-FINDINGS.md#kf550); measured in `adapter.laws.FirstFilledDateCrossKindTargetDiffTest`, which authors that computation as text for this reason). The refusal is broader than its measured basis. Settles when the typed surface classifies a temporal field by its declared format and that test authors the computation typed.
+_None open._
 
 ## 3. Adjacent but out of scope
 

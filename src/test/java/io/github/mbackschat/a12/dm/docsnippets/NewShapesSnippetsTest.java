@@ -324,6 +324,10 @@ class NewShapesSnippetsTest {
         // arbitrates whether the sets agree.
         Condition latestIsPromise = Dsl.latestOf(fulfilment.field("/Fulfilment/PromisedDay"),
                 fulfilment.field("/Fulfilment/ShippedOn")).eq(fulfilment.date("/Fulfilment/PromisedDay"));
+        // …and FirstFilledValue: date handles type the list as Dates, so this cell is selected beside a
+        // DATE field, where the same call over plain field references types the list by its first kind.
+        DateExpr firstKnown = Dsl.firstFilledDate(fulfilment.date("/Fulfilment/PromisedDay"),
+                fulfilment.date("/Fulfilment/ShippedOn"));
         // Read the declaration that decided it; `HoursFromTime` on the same cell is refused by the kernel.
         String declared = fulfilment.fieldAt("/Fulfilment/PromisedDay").orElseThrow().format().orElseThrow();
         // …and `temporalClass()` is that declaration's verdict: which classifier the field actually has,
@@ -344,6 +348,10 @@ class NewShapesSnippetsTest {
         assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", promisedYear.eq(2024), "../PromisedDay");
         assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", windowFollowsPromise, "../DeliveryWindow");
         assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", latestIsPromise, "../PromisedDay");
+        assertEquals("[/Fulfilment/ShippedOn] > FirstFilledValue(/Fulfilment/PromisedDay, /Fulfilment/ShippedOn)",
+                new DslRenderer().render(fulfilment.date("/Fulfilment/ShippedOn").after(firstKnown)));
+        assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment",
+                fulfilment.date("/Fulfilment/ShippedOn").after(firstKnown), "../ShippedOn");
     }
 
     private static void assertKernelAccepts(Condition condition, String errorField) {
