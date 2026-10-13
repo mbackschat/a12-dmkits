@@ -1105,10 +1105,12 @@ class Interpreter(
      * Whether the star's column holds an [unavailableEmpty] cell in this scope. The indexed tallies count every
      * empty cell as empty, and a required-empty one is undecided instead (KERNEL-FINDINGS KF552), which only
      * [naiveStarQuantTally] knows, so such a column takes it. Validation only: a computation's gate throws the
-     * poison itself, and probing it here would read the column ahead of the operator.
+     * poison itself, and probing it here would read the column ahead of the operator. A field none of whose empty
+     * cells can be unavailable skips the walk, which tripled the multi-star correlation gate's allocation
+     * (`docs/INTERPRETER-PERFORMANCE-RESULTS.md`, 2026-10-13).
      */
     private fun columnHoldsUnavailableEmpty(star: Expr.Star): Boolean {
-        if (computeMode) return false
+        if (computeMode || !emptyMayBeUnavailable(star.path)) return false
         val group = star.path.substringBeforeLast('/')
         return config.unavailableColumn(listOf(star.path, star.bindDepth, ctx.repsOf(group).take(maxOf(star.bindDepth, 0)))) {
             filterCandidates(ctx, group, star.bindDepth).any { unavailableEmpty(it, star.path) }

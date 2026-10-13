@@ -21,6 +21,12 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-10-13 — the correlated quantifiers' required-empty walk slowed multi-star correlation by a third
+
+After the charset fix two routine gates at `1b3456224` still breached `compute-overlay $-correlation` at n = 6000 (154.3 and 152.0 ms with 280 and 277 collections in the window, ceiling 151.89; records `2026-10-13T160401Z`, `2026-10-13T161924Z`). Measured alone, that lane matched the last clean commit `2293025d6` (135.5 against 133.3 ms), so its own work had not grown. Comparing every lane against `2026-10-12T124213Z` found `multi-star $-correlation` at n = 20000 up from 253.6 to 316.2 ms. That lane still passed its growth guard.
+
+A per-commit bisection of the interpreter sources, measuring that lane alone, put the step at `0190a5d78`: 254.6 ms at `7b98fae62`, 346.3 ms at `0190a5d78`. That commit made every correlated plan lookup in validation walk the starred column for a required-empty cell. The walk now runs only where an empty cell of that field can be unavailable, the precondition `27566489c` introduced, and the lane reads 258.1 and 262.0 ms. The compute-overlay breach is not counted as a regression of its own: no commit changed its isolated cost, and its window caught collections that other lanes' allocation placed there ([method](INTERPRETER-PERFORMANCE.md)).
+
 ### Checkpoint 2026-10-13 — a consumer charset copied the whole document on every call
 
 The same routine gate breached `charset grapheme` at n = 32000 (interpreter CPU median 189.0 ms with GC 116, record `2026-10-13T154756Z`). The row had read 89.5 to 91.6 ms with GC 0 through `2026-10-12T124213Z` and 187.8 to 189.2 ms from `2026-10-13T065211Z` on. `abdc13a27` made `Document.withLegalCharset` build a copy of the document under the consumer's charset on every validation call. That first slow record is labelled `c223b0f4c` because it was captured (08:52 +0200) before `abdc13a27` was committed (09:43): a record names HEAD, not the tree it measured ([IG170](INTERPRETER-GAPS.md)).
