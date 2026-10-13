@@ -70,6 +70,7 @@ class CheckerDigitMemberRangeAgreementTest {
         "fractional minimum above beside a zero maximum and a minimum length over" to
             number(MIN_FRACT to 15, MAX_FRACT to 0, MIN_LENGTH to 17),
         "fractional maximum above beside a minimum length over" to number(MAX_FRACT to 15, MIN_LENGTH to 18),
+        "fractional minimum above beside a length too small" to number(MIN_FRACT to 15, MAX_FRACT to 15, MAX_LENGTH to 5),
         "fractional minimum signed beside a length too small" to number(MIN_FRACT to -2, MAX_FRACT to 2, MAX_LENGTH to 1),
         "fractional maximum above beside a length too small" to number(MIN_FRACT to 2, MAX_FRACT to 15, MAX_LENGTH to 2),
         "amount with its scale undefined" to number(TRAIT to "amount", MAX_FRACT to -1),

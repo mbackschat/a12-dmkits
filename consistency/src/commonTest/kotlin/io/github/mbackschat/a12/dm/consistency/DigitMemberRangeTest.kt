@@ -40,6 +40,7 @@ class DigitMemberRangeTest {
         assertEquals(listOf(aboveScale), codes(""""maxIntegerDigits":14,"minFractionalDigits":15,"maxFractionalDigits":15"""))
         assertEquals(listOf("MVK_MAX_LENGTH_TOO_SMALL", aboveScale),
             codes(""""minFractionalDigits":2,"maxFractionalDigits":15,"maxLength":2"""))
+        assertEquals(listOf(aboveScale), codes(""""minFractionalDigits":15,"maxFractionalDigits":15,"maxLength":5"""))
     }
 
     /** "Has a fractional part" is an OR over the pair: a known nonzero member decides it, an out-of-range one otherwise leaves it open. */
