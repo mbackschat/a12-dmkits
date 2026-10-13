@@ -63,9 +63,9 @@ class GroupOrderingMultipleDefectLawsTest {
     /**
      * Which classes the sort LIST draws about itself — a repeat, and its opaque entries.
      *
-     * <p>A verdict here is the set of DISTINCT classes, so these rows say nothing about how often a class is
-     * drawn; `adapter.laws.CheckerDeclarationWithholdingAgreementTest` measures that on the notification list
-     * (two different opaque fields draw the type class twice, KERNEL-FINDINGS KF345).
+     * <p>A verdict keeps A12's multiplicity: two different opaque fields draw the type class twice, and the list's
+     * own duplicate class once (KERNEL-FINDINGS KF345). `adapter.laws.CheckerDeclarationWithholdingAgreementTest`
+     * measures the per-name and capacity rows the order fixture cannot build.
      */
     @Test
     void theSortListSpeaksOnceAboutARepeatAndOnceAboutItsOpaqueEntries() {
@@ -85,11 +85,11 @@ class GroupOrderingMultipleDefectLawsTest {
         expected.put("TWO fields each sorted twice", SORT_DUPLICATE);
         // …and it rides beside the type class rather than replacing it.
         expected.put("the opaque field sorted TWICE", SORT_TYPE + "," + SORT_DUPLICATE + "," + OPAQUE_STRING);
-        expected.put("TWO different opaque fields sorted", SORT_TYPE + "," + OPAQUE_STRING);
+        expected.put("TWO different opaque fields sorted", SORT_TYPE + "," + SORT_TYPE + "," + OPAQUE_STRING + "," + OPAQUE_STRING);
         expected.put("the ADDED field alone, sorted — the control", SORT_TYPE + "," + OPAQUE_STRING);
-        // …and the string-type class is itself once per model, not once per opaque field, which this row
-        // separates from the ordering rows above by removing both ordering members.
-        expected.put("two opaque fields and NO ordering member", OPAQUE_STRING);
+        // …and the string-type class is drawn once per opaque field, which this row separates from the ordering
+        // rows above by removing both ordering members.
+        expected.put("two opaque fields and NO ordering member", OPAQUE_STRING + "," + OPAQUE_STRING);
         assertEquals(expected, actual, "what the sort list draws about itself");
     }
 

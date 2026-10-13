@@ -17,6 +17,12 @@ internal fun TrackedFactBase.elementNameAlphabetFindings(element: TrackedDeclara
     }
     if (kind == DeclaredKind.GROUP) {
         if (invalid != null) return findings
+        // A12 reads the prefix off every group segment of the path, so a group below one named `xml…` draws the
+        // class at its own path too, however it is named itself — unless the path is already refused above it
+        // (KERNEL-FINDINGS KF558).
+        val segments = element.path.removePrefix("/")
+        val xmlAncestor = segments.split('/').dropLast(1).firstOrNull { it.startsWith("xml", ignoreCase = true) }
+            ?.takeIf { segments.invalidElementPathOffset(root = true, field = false) == null }
         val refusal = when {
             root && element.name.equals("Id", ignoreCase = true) -> "MVK_ROOT_GROUP_NAME_INVALID" to
                 "A12 reserves `Id` as a root group's whole name, ignoring case"
@@ -24,6 +30,9 @@ internal fun TrackedFactBase.elementNameAlphabetFindings(element: TrackedDeclara
                 "this root group's name begins with a digit; A12 requires a letter or underscore"
             element.name.startsWith("xml", ignoreCase = true) -> "MVK_NAME_STARTS_WITH_XML" to
                 "this group's name begins with the reserved prefix `xml`"
+            xmlAncestor != null -> "MVK_NAME_STARTS_WITH_XML" to
+                "this group sits below `$xmlAncestor`, and A12 reads that group's reserved prefix `xml` into every " +
+                    "group beneath it"
             !root && element.name.startsWith('_') && RESERVED_GROUP_NAMES.none {
                 element.name == it || element.name.startsWith("${it}_")
             } -> "NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN" to

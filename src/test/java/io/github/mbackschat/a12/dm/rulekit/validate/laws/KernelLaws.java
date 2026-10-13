@@ -93,7 +93,7 @@ final class KernelLaws {
 
     /**
      * What A12 says about a whole stored model — {@link #ADMITTED}, {@link #UNREADABLE},
-     * {@link #NOT_BUILDABLE}, or the distinct classes it reported, joined by commas in first-seen order.
+     * {@link #NOT_BUILDABLE}, or the classes it reported, joined by commas in A12's order with their multiplicity.
      *
      * <p><b>Four verdicts, not two, and the ones past ADMITTED are what matter.</b> A shape A12's reader
      * REFUSES makes the model unreadable, so A12 never judges it at all. Reporting an {@code MVK_*} finding
@@ -110,14 +110,14 @@ final class KernelLaws {
             return UNREADABLE;
         } catch (io.github.mbackschat.a12.dm.core.ModelConsistencyException rejected) {
             // Codeless prose is dropped deliberately: one malformed name also re-reports the path
-            // validator's sentence, unkeyed, once per element beneath the offending path, so the classes are
-            // the law and the multiplicity is a property of the fixture's shape.
+            // validator's sentence, unkeyed, once per element beneath the offending path. A coded class keeps
+            // its multiplicity: this verdict once reported distinct classes, and a "once" read off it was
+            // false wherever A12 repeats a class per carrier (KERNEL-FINDINGS KF558).
             String classes = rejected.notifications().stream()
                     .map(n -> n.message().trim())
                     .map(CLASS_KEY::matcher)
                     .filter(java.util.regex.Matcher::matches)
                     .map(m -> m.group(1))
-                    .distinct()
                     .collect(Collectors.joining(","));
             if (!classes.isEmpty()) {
                 return classes;

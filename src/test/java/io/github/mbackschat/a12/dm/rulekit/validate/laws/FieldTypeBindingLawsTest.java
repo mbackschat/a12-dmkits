@@ -409,10 +409,9 @@ class FieldTypeBindingLawsTest {
         String noCodegen = "MVK_UNSPECIFIED_TYPE_NO_CODEGEN";
         expected.put("a ROOT field — the control the grids already hold", noCodegen);
         expected.put("a NESTED field", noCodegen);
-        // The verdict repeats per declaration rather than once for the model — `verdictOf` reports DISTINCT
-        // classes, so this row cannot show the count, and the claim it does carry is that a second offender
-        // neither silences the first nor changes the class.
-        expected.put("TWO unspecified root fields", noCodegen);
+        // The verdict repeats per declaration rather than once for the model: a second offender neither
+        // silences the first nor changes the class.
+        expected.put("TWO unspecified root fields", noCodegen + "," + noCodegen);
         assertEquals(expected, actual, "the unspecified type is refused per declaration, on either carrier");
     }
 

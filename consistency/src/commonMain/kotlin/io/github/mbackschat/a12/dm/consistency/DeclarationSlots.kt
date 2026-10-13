@@ -213,19 +213,17 @@ private fun TrackedDeclaration.unprefixedErrorTextFinding(
         return emptyList()
     }
     val collected = authored.collectedTexts(declaredLocales)
-    if (declaredLocales.none { collected[it].isNullOrEmpty() }) {
-        return emptyList()
-    }
-    return listOf(
+    // One per declared locale without a text, as A12 names each language (KERNEL-FINDINGS KF558).
+    return declaredLocales.filter { collected[it].isNullOrEmpty() }.map { locale ->
         Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
             "RULE_HAS_NO_ERRORTEXT",
-            "…and A12 says so a second time under its own error-text vocabulary, which is unprefixed: a " +
-                "declaration with no text for a declared locale has no error text at all",
+            "…and A12 says so a second time under its own error-text vocabulary, which is unprefixed: this " +
+                "declaration has no text for the declared locale `$locale`, so it has no error text there at all",
             path,
-        ),
-    )
+        )
+    }
 }
 
 /**

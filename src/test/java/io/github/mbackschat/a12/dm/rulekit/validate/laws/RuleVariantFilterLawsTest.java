@@ -151,7 +151,7 @@ class RuleVariantFilterLawsTest {
         expected.put("an error target naming no field, unfiltered", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
         expected.put("an error target naming no field, ONLY", KernelLaws.ADMITTED);
         expected.put("no error message at all, unfiltered",
-                "MVK_ERROR_MESSAGE_MISSING,RULE_HAS_NO_ERRORTEXT");
+                "MVK_ERROR_MESSAGE_MISSING,RULE_HAS_NO_ERRORTEXT,RULE_HAS_NO_ERRORTEXT");
         expected.put("no error message at all, ONLY", KernelLaws.ADMITTED);
         // THE EXCEPTION, and the row that shapes the fix: an empty error code still refuses the model, with
         // no MVK code at all rather than the one it carries unfiltered. What a filter suppresses is A12's

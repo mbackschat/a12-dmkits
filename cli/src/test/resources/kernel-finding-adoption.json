@@ -10846,7 +10846,7 @@
       }
     },
     "kf345": {
-      "sha256": "cf059a0132f41500340bc19be906868da38f924c2ee6640e2c84b7a6e016d4f7",
+      "sha256": "fed45e982e5136467ac1bb07dad34b6f5769296a244f33372c23031bf28e8b79",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -10891,6 +10891,30 @@
         "interpreter": {"state": "ALREADY_CONFORMS", "basis": "The interpreter's RepetitionNotUnique leaf already contributed references only when it fired.", "evidence": {"non-firing RNU leaf references": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingReferenceDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter agreed with both strategies, references included, on all seven documents before any change."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and add no reference of their own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-09 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf558": {
+      "sha256": "493cb3fca26b0b4b27c423fa76aa5bfc9f0744e50c74fce2f1c1e26fdcd0e17b",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["class multiplicity"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["class multiplicity"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["class multiplicity"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits admit a model through the kernel and report its notifications unchanged.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The name family reports the xml class at every group below an xml group, and the slot family the unprefixed error-text class per locale.", "evidence": {"class multiplicity": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ElementNameAlphabetTest.kt#theXmlPrefixReachesEveryGroupBelowIt", "witness": "Two groups below an xml group draw the class at their own paths, where the checker had named only the xml group."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import reports no model-check notification.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reports no model-check notification.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel's notification list and the checker are compared on fourteen models, single-group controls included.", "evidence": {"class multiplicity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerClassMultiplicityAgreementTest.kt#everyRowAgrees", "witness": "Every row's multiset agrees, the xml subtree and per-locale rows included."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model-check multiplicity is not evaluation behaviour.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and count nothing of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback beside SPEC-2026-10-13-08; awaits peer review.", "evidence": {}}
       }
     }
   }

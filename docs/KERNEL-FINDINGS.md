@@ -7541,7 +7541,7 @@ So neither member withholds the other, which makes this member the field type's 
 | two DIFFERENT opaque fields sorted | `MVK_SORT_FIELD_NO_VALUE_VALIDATION`, **twice** |
 | one opaque field named twice or three times | the duplicate class and the type class, each **once** |
 
-*Corrected 2026-10-13 (a12-kernel-lean `SPEC-2026-10-13-08`, re-measured here):* the fourth row read "once" and was false. The rows were taken through `KernelLaws.verdictOf`, which reports DISTINCT classes and so cannot see multiplicity; re-measured on the notification list, a sort list judges each distinct NAME once, wherever it stands. The duplicate class reads only the three entries the list holds: a name repeated only at the fourth entry draws none. Every entry beyond the third draws a codeless capacity sentence of its own, "The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with 4, but at most 3 is allowed.", and is still judged for its name. A name outside the group draws `MVK_INVALID_SORT_FIELD` and does not stop the next entry in either order.
+*Corrected 2026-10-13 (a12-kernel-lean `SPEC-2026-10-13-08`, re-measured here):* the fourth row read "once" and was false. The rows were taken through `KernelLaws.verdictOf`, which then reported DISTINCT classes and so could not see multiplicity ([KF558](#kf558)); re-measured on the notification list, a sort list judges each distinct NAME once, wherever it stands. The duplicate class reads only the three entries the list holds: a name repeated only at the fourth entry draws none. Every entry beyond the third draws a codeless capacity sentence of its own, "The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with 4, but at most 3 is allowed.", and is still judged for its name. A name outside the group draws `MVK_INVALID_SORT_FIELD` and does not stop the next entry in either order.
 
 **An unresolvable ordering name is a different TIER and cannot be paired across.** It stops the model being built, in either member, and no member code survives beside it — so a grid putting an unresolvable name opposite a type defect would be varying buildability rather than the member.
 
@@ -13368,3 +13368,21 @@ a12-kernel-lean `SPEC-2026-10-13-09`. A warehouse's repeatable `Aisles` hold rep
 | `A`/9, `A`/1 | at both bins | the same as without the sibling |
 
 So when the sibling branch fires and the leaf does not, the message refers to none of the leaf's keys, not even the current row's, and a firing leaf contributes its duplicate cluster whether or not the sibling fires too; another aisle's duplicate does not reach this aisle's message. Locked by `adapter.laws.RepetitionNotUniqueSiblingReferenceDiffTest` on dynamic Groovy, static Java and the interpreter, which already agreed. Not measured: a leaf firing as an omission beside a sibling that fires as a value.
+
+## §13 supplement — which coded classes A12 repeats per carrier, and the laws instrument that could not see it (model check, 2026-10-13) <a id="kf558"></a>
+
+> Fold: not-foldable — the multiplicity of model-check notifications, not an evaluation behaviour.
+
+`rulekit.validate.laws.KernelLaws.verdictOf` reported each model's DISTINCT classes until 2026-10-13, so a "once" read off it was no measurement at all; [KF345](#kf345)'s two opaque sort fields were one such row. It now keeps every coded class with its multiplicity, and re-running the whole `validate.laws` tier on it moved exactly these rows:
+
+| shape | A12 repeats |
+|---|---|
+| a group whose name, or any ancestor group's name, begins with `xml` | `MVK_NAME_STARTS_WITH_XML` once per such group, each at its own path, fields not counted; none when the path is already refused (an `xml` root whose name carries an unadmitted character draws only `MVK_PATH_INVALID`) |
+| a rule with no text for several declared locales | `RULE_HAS_NO_ERRORTEXT` once per locale without a text, an empty locale code included |
+| two value-validation-off Strings without line breaks | `MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK` once per field |
+| two unspecified field types | `MVK_UNSPECIFIED_TYPE_NO_CODEGEN` once per field |
+| an enum value repeated under two categories | `MVK_CATEGORY_VALUE_DUPLICATE` once per category |
+| an enum value with characters outside the charset | once per UTF-16 unit ([KF551](#kf551)) |
+| two different opaque sort fields | the sort type class once per name ([KF345](#kf345)) |
+
+Every other "once" the tier asserts held. The portable checker counted the first two once; it now reports the xml class at every group below an `xml` group and the unprefixed class per locale. Locked by the tier itself and by `adapter.laws.CheckerClassMultiplicityAgreementTest` against the checker.

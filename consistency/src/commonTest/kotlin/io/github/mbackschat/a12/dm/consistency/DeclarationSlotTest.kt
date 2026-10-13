@@ -107,8 +107,9 @@ class DeclarationSlotTest {
                 "both locales covered — the control" to listOf(),
                 "reserved vk_vk prefix" to listOf("MVK_RULE_NAME_INVALID"),
                 "reserved prefix in another letter case" to listOf("MVK_RULE_NAME_INVALID"),
-                "no message entries at all" to listOf("MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT),
-                "no errorMessage member at all" to listOf("MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT),
+                // One unprefixed class per declared locale without a text (KF558).
+                "no message entries at all" to listOf("MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT, NO_ERROR_TEXT),
+                "no errorMessage member at all" to listOf("MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT, NO_ERROR_TEXT),
                 // One text is EMPTY and the other whitespace, so not every declared locale is answered
                 // with whitespace and the unprefixed class stands.
                 "every text blank" to listOf("MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT),
@@ -209,7 +210,7 @@ class DeclarationSlotTest {
                 // The one spelling A12 READS without producing a locale: the entry covers nothing, so the
                 // declaration is message-less — a verdict, not a refusal, and the row that keeps the table
                 // above from being stated one notch too wide.
-                "the empty locale code" to listOf("MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT),
+                "the empty locale code" to listOf("MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT, NO_ERROR_TEXT),
             )
             assertEquals(expected, actual, "shapes A12's reader refuses, on a $kind")
         }
@@ -370,7 +371,7 @@ class DeclarationSlotTest {
     fun everyFindingNamesItsDeclaration() {
         val findings = model("Computation", "vk_vk_probe", "[]").tracked().slotAndPresenceFindings()
 
-        assertEquals(listOf("MVK_RULE_NAME_INVALID", "MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT),
+        assertEquals(listOf("MVK_RULE_NAME_INVALID", "MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT, NO_ERROR_TEXT),
             findings.map { it.code })
         assertTrue(findings.all { it.at == "/Catalog/vk_vk_probe" }, "$findings")
 

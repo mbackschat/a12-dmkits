@@ -179,7 +179,8 @@ class RuleSlotMultipleDefectLawsTest {
         // Whitespace does NOT suppress the class while another declared locale is uncovered by something
         // else — so the exception is over the declared LOCALES, not over the texts that happen to be there.
         expected.put("two locales, one empty text and one whitespace text", NO_MESSAGE);
-        expected.put("two locales, both texts EMPTY", NO_MESSAGE);
+        // The unprefixed class once per declared locale without a text (KERNEL-FINDINGS KF558).
+        expected.put("two locales, both texts EMPTY", NO_MESSAGE + ",RULE_HAS_NO_ERRORTEXT");
         expected.put("two locales, BOTH texts whitespace", MESSAGE_MISSING);
         // …and the cell that refutes "every COLLECTED text is whitespace", which fits every other row.
         expected.put("two locales, one whitespace text and one ABSENT", NO_MESSAGE);

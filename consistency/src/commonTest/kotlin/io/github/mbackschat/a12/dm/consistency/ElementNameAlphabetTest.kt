@@ -195,6 +195,55 @@ class ElementNameAlphabetTest {
     }
 
     /**
+     * A group below one named `xml…` draws the class at its own path, however it is named itself, and a field
+     * below it draws nothing (KERNEL-FINDINGS KF558, `adapter.laws.CheckerClassMultiplicityAgreementTest`).
+     */
+    @Test
+    fun theXmlPrefixReachesEveryGroupBelowIt() {
+        val findings = checkRead(
+            ModelSource(
+                """
+                {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+                 "content":{"modelRoot":{"rootGroups":[
+                  {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                    {"type":"Group","id":"g1","name":"xmlAddress","Group":{"elements":[
+                      {"type":"Field","id":"f0","name":"Street","Field":{"fieldType":{"type":"StringType"}}},
+                      {"type":"Group","id":"g2","name":"Geo","Group":{"elements":[
+                        {"type":"Group","id":"g3","name":"Point","Group":{"elements":[
+                          {"type":"Field","id":"f1","name":"Lat","Field":{"fieldType":{"type":"StringType"}}}
+                        ]}}
+                      ]}}
+                    ]}}
+                  ]}}
+                 ]}}}
+                """.trimIndent(),
+            ),
+        ).findings.filter { it.code == "MVK_NAME_STARTS_WITH_XML" }.map { it.at }
+        assertEquals(listOf("/Catalog/xmlAddress", "/Catalog/xmlAddress/Geo", "/Catalog/xmlAddress/Geo/Point"), findings)
+    }
+
+    /** An `xml` root its own path already refuses names no group below it, itself included (KF558). */
+    @Test
+    fun aRefusedPathCarriesNoXmlPrefixDownward() {
+        val codes = checkRead(
+            ModelSource(
+                """
+                {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+                 "content":{"modelRoot":{"rootGroups":[
+                  {"type":"Group","id":"g0","name":"xmlCatalogé","Group":{"elements":[
+                    {"type":"Field","id":"f0","name":"Title","Field":{"fieldType":{"type":"StringType"}}},
+                    {"type":"Group","id":"g1","name":"Shelf","Group":{"elements":[
+                      {"type":"Field","id":"f1","name":"Code","Field":{"fieldType":{"type":"StringType"}}}
+                    ]}}
+                  ]}}
+                 ]}}}
+                """.trimIndent(),
+            ),
+        ).findings.filter { it.justifiesRejection }.map { it.code }
+        assertEquals(listOf("MVK_PATH_INVALID"), codes.filter { it.startsWith("MVK_") }.distinct())
+    }
+
+    /**
      * A RULE's name is asked nothing, and that is measured rather than merely unimplemented.
      *
      * A digit-initial or dotted rule name leaves A12 unable to BUILD the model, so no class exists for this

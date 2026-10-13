@@ -115,8 +115,9 @@ class EnumDeclarationShapeLawsTest {
         expected.put("a repeated VALUE with a category declared",
                 "MVK_CATEGORY_VALUE_DUPLICATE,MVK_INTERNAL_VALUES_DUPLICATE");
         expected.put("the same repeated value with NO category", "MVK_INTERNAL_VALUES_DUPLICATE");
+        // The category class once per category, the value class once.
         expected.put("the same repeated value with TWO categories",
-                "MVK_CATEGORY_VALUE_DUPLICATE,MVK_INTERNAL_VALUES_DUPLICATE");
+                "MVK_CATEGORY_VALUE_DUPLICATE,MVK_CATEGORY_VALUE_DUPLICATE,MVK_INTERNAL_VALUES_DUPLICATE");
         // …and the law is about the ENUM's values, never the category's tokens: A12 writes the enum's own
         // values into every category as `internalValue` and the tokens beside them as `categoryValue`, and
         // only the first is asked to be unique. A checker implementing the obvious reading would refuse this.

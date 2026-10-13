@@ -218,9 +218,11 @@ class DeclaredNameShapeLawsTest {
         expected.put("a ROOT group with an EMPTY name", KernelLaws.RAISED_UNTYPED);
         // …and no `MVK_PATH_INVALID` beside it, where the two carriers below the root both draw one.
         expected.put("a ROOT group starting with a digit", "MVK_NAME_STARTS_WITH_DIGIT");
-        expected.put("a ROOT group starting with `xml`", "MVK_NAME_STARTS_WITH_XML");
-        expected.put("a ROOT group starting with `XML` in capitals", "MVK_NAME_STARTS_WITH_XML");
-        expected.put("a ROOT group starting with `Xml` in mixed case", "MVK_NAME_STARTS_WITH_XML");
+        // Once per group of the tree: the root and each group below it, whose paths all begin with the prefix
+        // (KERNEL-FINDINGS KF558).
+        expected.put("a ROOT group starting with `xml`", "MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML");
+        expected.put("a ROOT group starting with `XML` in capitals", "MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML");
+        expected.put("a ROOT group starting with `Xml` in mixed case", "MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML");
         expected.put("a RULE, ordinary name — the control", KernelLaws.ADMITTED);
         expected.put("a RULE starting with `xml`", KernelLaws.ADMITTED);
         expected.put("a RULE with an EMPTY name", KernelLaws.NOT_BUILDABLE);

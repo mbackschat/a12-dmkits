@@ -132,7 +132,8 @@ class SupportedCharactersDeclarationGateLawsTest {
         actual.put("an extensible-enum HINT LIST", KernelLaws.verdictOf(suggested("beta")));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("an enum VALUE", INVALID_CHARACTER);
+        // Once per UTF-16 unit outside the set (KERNEL-FINDINGS KF551).
+        expected.put("an enum VALUE", String.join(",", java.util.Collections.nCopies(4, INVALID_CHARACTER)));
         expected.put("an element NAME", KernelLaws.ADMITTED);
         expected.put("an enum CATEGORY token", KernelLaws.ADMITTED);
         expected.put("an extensible-enum HINT LIST", KernelLaws.ADMITTED);
