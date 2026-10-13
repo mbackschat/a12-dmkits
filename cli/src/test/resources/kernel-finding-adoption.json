@@ -10613,6 +10613,54 @@
         "dmtool-cli": {"state": "APPLIED", "basis": "model eval runs the corrected interpreter address.", "evidence": {"selected error key read": {"reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/SelectedErrorKeyCliTest.kt#anInvalidKeyAddressesTheUnknownBay", "witness": "model eval reports the rule at Bays[-5] for an invalid key whose text names a bay."}}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-12-01 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf483": {
+      "sha256": "4394b8b449b892775e2925607c934ceb2c09521495c3993bb41b0d3c6c2bc2d1",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["year-presence copy"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["year-presence copy"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["year-presence copy"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The correction qualifies an admission claim; the typed builders delegate the comparison gate to the kernel.", "evidence": {}},
+        "checker": {"state": "ALREADY_CONFORMS", "basis": "The portable checker joins a computation into its comparison and applies the year-presence gate there.", "evidence": {"year-presence copy": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFirstFilledDateTargetAgreementTest.kt#aYearlessSourceNeedsABaseYearForADatedTarget", "witness": "A direct yearless copy into an ISO target is MVK_INVALID_COMPARE_TO_DATE on A12 and the checker without a Base Year, admitted on both with one."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import authors no computation.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not map computations.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The direct-copy rows are measured on the kernel beside the first-filled ones.", "evidence": {"year-presence copy": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFirstFilledDateTargetAgreementTest.kt#aYearlessSourceNeedsABaseYearForADatedTarget", "witness": "The same copy flips from refused to admitted when only the Base Year changes."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model admission is not interpreter behaviour.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's check verbs delegate to the kernel or the portable checker and add no gate of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-01 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf550": {
+      "sha256": "a4254ed6a25d2dfd6bd8ebce2f7e3a94c1b22632894e6dc7620b15728c6dbfa8",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["crossed Date target"],
+        "checker": ["Date target gate"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["Date target gate", "Date target rendering"],
+        "interpreter": ["Date target rendering"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["Date target gate", "Date target rendering"]
+      },
+      "consumers": {
+        "dmkits": {"state": "ALREADY_CONFORMS", "basis": "The typed builders author crossed-format, component-omitting and Base-Year-completed Date selections without refusing any of them.", "evidence": {"crossed Date target": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateTargetRenderingDiffTest.kt#theModelIsKernelConsistent", "witness": "A model authored through EditSession with six such computations passes the kernel consistency check."}}},
+        "checker": {"state": "ALREADY_CONFORMS", "basis": "The portable checker judges a Date computation's target through the comparison's coarse gate and the source list through its exact-profile gate; it named A12's class on every row when the lock was written.", "evidence": {"Date target gate": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFirstFilledDateTargetAgreementTest.kt#theTargetIsJudgedLikeATemporalComparison", "witness": "Crossed spellings and omitted components are admitted, a DateTime source is MVK_INVALID_COMPARE_TO_DATE and mixed source spellings MVK_VARYING_TYPES_NOT_ALLOWED on both."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import authors no computation.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not map computations.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter are compared on five documents, and the kernel against the checker on thirteen admission rows.", "evidence": {"Date target gate": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFirstFilledDateTargetAgreementTest.kt#aYearlessSourceNeedsABaseYearForADatedTarget", "witness": "A yearless source into a dated target is refused without a Base Year and admitted into a yearless target."}, "Date target rendering": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateTargetRenderingDiffTest.kt#theTargetFormatRendersTheSelectedDate", "witness": "Each crossed pair stores the target's own spelling, and a yearless source completes with the Base Year."}}},
+        "interpreter": {"state": "ALREADY_CONFORMS", "basis": "The interpreter renders the selected Date into the target's declared format and poisons on a reached malformed source.", "evidence": {"Date target rendering": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateTargetRenderingDiffTest.kt#aMalformedFirstSourceClearsTheSeededTarget", "witness": "The interpreter clears every seeded target behind a malformed first source and with nothing filled, as both kernel strategies do."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool computes through the interpreter and adds no Date rendering of its own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-01 in the 2026-10-13 handback as already satisfied, with the new locks; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }
