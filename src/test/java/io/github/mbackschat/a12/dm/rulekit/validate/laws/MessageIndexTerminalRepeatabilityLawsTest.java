@@ -187,12 +187,13 @@ class MessageIndexTerminalRepeatabilityLawsTest {
     }
 
     /**
-     * Which of two offending declarations answers: the one whose full name sorts first, not the error entity's
-     * own. Both are offending here, so only the order of the list can separate them (a12-kernel-lean
-     * {@code SPEC-2026-10-13-12}; KERNEL-FINDINGS KF280).
+     * Which of two offending declarations answers: the one whose name sorts first, not the error entity's own.
+     * Both are offending here, so only the order of the list can separate them; this pair sorts the same by full
+     * and by short name, so it cannot tell those orders apart (a12-kernel-lean {@code SPEC-2026-10-13-12};
+     * KERNEL-FINDINGS KF280).
      */
     @Test
-    void theFirstOffenderInFullNameOrderAnswers() {
+    void theFirstOffenderInNameOrderAnswers() {
         String readsAisleTier = render(Dsl.fieldFilled(M.field("/Warehouse/Bays/Note"))
                 .and(Dsl.atLeastOneFieldFilled(BoundModel.ofJson(AISLES_FIRST).flatten("/Warehouse/Aisles*/Tier"))));
         Map<String, String> actual = new LinkedHashMap<>();
@@ -207,6 +208,6 @@ class MessageIndexTerminalRepeatabilityLawsTest {
         expected.put("the error entity's own declaration sorts first", "INVALID_INDEX_FIELD_NONREP_ENUM");
         expected.put("the repeatable group's declaration sorts first", "INVALID_INDEX_FIELD_REP");
         expected.put("the repeatable group first, parameter-free — the control", ADMITTED);
-        assertEquals(expected, actual, "the repeatability scan answers its first offender in full-name order");
+        assertEquals(expected, actual, "the repeatability scan answers its first offender in name order");
     }
 }

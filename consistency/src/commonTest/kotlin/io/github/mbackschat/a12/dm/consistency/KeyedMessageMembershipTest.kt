@@ -7,7 +7,7 @@ import kotlin.test.assertEquals
  * JVM + JS mirror of `adapter.laws.KeyedMessageMembershipAgreementTest` (KERNEL-FINDINGS KF562): a keyed read is
  * no member of an unkeyed parameter, a keyed GROUP read admits a keyed parameter on each of its fields, a keyed
  * group named in the field position is the key's own class, and a group read reaching a field across a repeatable
- * child the rule does not iterate binds it as a star.
+ * child the rule does not iterate binds it as a star, a keyed group's deeper repeatable field included.
  */
 class KeyedMessageMembershipTest {
 
@@ -26,6 +26,8 @@ class KeyedMessageMembershipTest {
             "keyed and plain reads, unkeyed parameter" to emptyList(),
             "group read, its own field" to emptyList(),
             "group read, a repeatable child's field" to listOf("PARAM_VALUE_WITH_STARREFERENCE"),
+            "keyed group, a deeper repeatable field's name" to emptyList(),
+            "keyed group, a deeper repeatable field's value" to listOf("PARAM_VALUE_WITH_STARREFERENCE"),
         ), mapOf(
             "keyed field, unkeyed parameter" to refused(keyedField, "\$/Policy/Claims/Note.value\$"),
             "keyed field, the field keyed" to refused(keyedField, "\$/Policy/Claims/Note.value For \\\"c1\\\"\$"),
@@ -37,6 +39,9 @@ class KeyedMessageMembershipTest {
                 refused("$keyedField And NumberOfFilledFields(/Policy/Claims*/Note) > 0", "\$/Policy/Claims/Note.value\$"),
             "group read, its own field" to refused(office, "\$/Policy/Office/Staff.value\$"),
             "group read, a repeatable child's field" to refused(office, "\$/Policy/Office/Desks/Seats.value\$"),
+            "keyed group, a deeper repeatable field's name" to refused(keyedGroup, "\$/Policy/Claims/Items/Item For \\\"c1\\\"\$"),
+            "keyed group, a deeper repeatable field's value" to
+                refused(keyedGroup, "\$/Policy/Claims/Items/Item.value For \\\"c1\\\"\$"),
         ))
     }
 
@@ -52,7 +57,10 @@ class KeyedMessageMembershipTest {
             {"type":"Group","id":"g1","name":"Claims","Group":{"repeatability":5,"indexFieldName":"Ref","elements":[
               {"type":"Field","id":"f1","name":"Ref","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f2","name":"Note","Field":{"fieldType":{"type":"StringType"}}},
-              {"type":"Field","id":"f3","name":"Gate","Field":{"fieldType":{"type":"StringType"}}}
+              {"type":"Field","id":"f3","name":"Gate","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Group","id":"g4","name":"Items","Group":{"repeatability":3,"elements":[
+                {"type":"Field","id":"f6","name":"Item","Field":{"fieldType":{"type":"StringType"}}}
+              ]}}
             ]}},
             {"type":"Group","id":"g2","name":"Office","Group":{"elements":[
               {"type":"Field","id":"f4","name":"Staff","Field":{"fieldType":{"type":"StringType"}}},

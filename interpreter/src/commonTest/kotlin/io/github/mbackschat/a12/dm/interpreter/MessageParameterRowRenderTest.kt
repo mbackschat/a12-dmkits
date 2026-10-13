@@ -7,7 +7,8 @@ import kotlin.test.assertEquals
 
 /**
  * JVM + Node peer of `adapter.laws.MessageParameterRowDiffTest` (KERNEL-FINDINGS KF561): every spelling of a
- * message field reads the same cell, and a key-selected token reads the row its key selects. A value read through a
+ * message field reads the same cell, whitespace inside the parameter included, and a key-selected token reads the
+ * row its key selects. A value read through a
  * key that selects no row ends the rule with the evaluation-fault message alone, at the first iterated row.
  */
 class MessageParameterRowRenderTest {
@@ -41,6 +42,8 @@ class MessageParameterRowRenderTest {
                             "rel=[${'$'}../Note.value${'$'}] abs=[${'$'}/Policy/Claims/Note.value${'$'}]")} ] } },
                     ${rule("SHORT", "/Policy/Claims", "../Note", "FieldFilled(Note) And FieldFilled(/Policy/Holder)",
                         "h=[${'$'}Holder.value${'$'}] hl=[${'$'}Holder${'$'}]")},
+                    ${rule("SPACED", "/Policy/Claims", "../Note", "FieldFilled(Note) And FieldFilled(/Policy/Holder)",
+                        "s=[${'$'} Note.value${'$'}] h=[${'$'}Holder . value ${'$'}]")},
                     ${rule("MISS_ROW", "/Policy/Claims", "../Note",
                         "FieldFilled(Note) And FieldNotFilled(/Policy/Claims/Note For \\\"c9\\\")",
                         "mr=[${'$'}/Policy/Claims/Note.value For \\\"c9\\\"${'$'}]")} ] } },
@@ -69,6 +72,8 @@ class MessageParameterRowRenderTest {
                 "\$/Policy/Claims/Note.value For \"c9\"\$ selects no row",
             "SHORT h=[Ada] hl=[Holder]",
             "SHORT h=[Ada] hl=[Holder]",
+            "SPACED s=[n0] h=[Ada]",
+            "SPACED s=[n1] h=[Ada]",
         ), texts())
     }
 }

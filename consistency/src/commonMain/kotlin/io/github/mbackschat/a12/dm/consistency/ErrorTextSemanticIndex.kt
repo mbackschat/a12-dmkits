@@ -106,8 +106,8 @@ private fun TrackedFactBase.ridesAlong(asked: BoundPair, written: Set<BoundPair>
 
 /**
  * Whether the condition reads a GROUP above this field at the same spelled key. A keyed group read admits a keyed
- * parameter on each of its fields (KERNEL-FINDINGS KF562); measured one level deep, and admitting the deeper fields
- * too keeps this an under-report rather than a refusal A12 might not share.
+ * parameter on each of its fields (KERNEL-FINDINGS KF562), a field below a deeper repeatable group included; that
+ * field's value suffix then meets the star gate, since nothing binds the deeper group.
  */
 private fun TrackedFactBase.underKeyedGroup(asked: BoundPair, written: Set<BoundPair>): Boolean = written.any { bound ->
     bound.keySpec == asked.keySpec && asked.valuePath.startsWith("${bound.valuePath}/") &&

@@ -12,8 +12,9 @@ import org.junit.jupiter.api.Test
 /**
  * Which row a message parameter renders (a12-kernel-lean `SPEC-2026-10-13-12`): the firing row, the enclosing row
  * of a nested rule, a root field, the parallel partner the join pairs, and the row a literal, field or Number key
- * selects, the last also when the selected cell is empty. Every spelling of a field reads the same cell: absolute,
- * parent-relative, and a bare short name the rule's group does not own.
+ * selects, the last also when the selected cell is empty; a Number key selects by value. Every spelling of a field
+ * reads the same cell: absolute, parent-relative, a bare short name the rule's group does not own, and each with
+ * whitespace inside the parameter.
  *
  * Own domain (an insurance policy: claims keyed by reference, covers paired with limits by grade, tiers keyed by
  * number).
@@ -35,7 +36,9 @@ class MessageParameterRowDiffTest {
                     .enumField("Grade") { e -> e.value("A") { it.label("en_US", "Ace") }.value("B") { it.label("en_US", "Bee") } }
                     .numberField("Cap") { it.fractionDigits(0) } }
                 .group("Tiers") { t -> t.repeatable(3).indexField("Num")
-                    .numberField("Num") { it.fractionDigits(0) }.stringField("Label") { } } }
+                    .numberField("Num") { it.fractionDigits(0) }.stringField("Label") { } }
+                .group("Bands") { b -> b.repeatable(3).indexField("Rate")
+                    .numberField("Rate") { it.fractionDigits(2) }.stringField("Badge") { } } }
             .build().toJson()
         val session = EditSession.read(base)
         val policy = session.group("/Policy")
@@ -45,6 +48,7 @@ class MessageParameterRowDiffTest {
         val holder = policy.str("Holder")
         val pick = policy.str("Pick")
         val note = policy.str("Claims/Note")
+        val c1 = note.semanticIndex("c1")
         val ref = policy.str("Claims/Ref")
         val status = policy.enumOf("Claims/Status")
         val label = policy.str("Tiers/Label")
@@ -74,7 +78,6 @@ class MessageParameterRowDiffTest {
         covers.addRule { it.name("ShortPartner").code("SHORT_PARTNER").errorField(covers.str("Remark"))
             .`when`(covers.str("Remark").filled().and(cap.filled()))
             .message(Dsl.en("p=[\$Cap.value\$] pl=[\$Cap\$]")).build() }
-        val c1 = note.semanticIndex("c1")
         policy.addRule { it.name("Keyed").code("KEYED").errorField(holder)
             .`when`(holder.filled().and(c1.filled()))
             .message(Dsl.en("kn=[" + Dsl.fieldValue(c1) + "] kr=[" + Dsl.fieldValue(ref.semanticIndex("c1")) + "] kl=["
@@ -88,6 +91,21 @@ class MessageParameterRowDiffTest {
             .`when`(holder.filled().and(two.filled()))
             .message(Dsl.en("tv=[" + Dsl.fieldValue(two) + "] tk=[" + Dsl.fieldValue(num.semanticIndex("2")) + "] tg=["
                 + Dsl.repetitionIndex(policy.flattenGroup("Tiers").forIndex("2")) + "]")).build() }
+        // A key spelled `2` against a stored `2.00`: only a lookup by value selects the row.
+        val badge = policy.str("Bands/Badge").semanticIndex("2")
+        policy.addRule { it.name("NumberScaled").code("NUMBER_SCALED").errorField(holder)
+            .`when`(holder.filled().and(badge.filled()))
+            .message(Dsl.en("bv=[" + Dsl.fieldValue(badge) + "]")).build() }
+        // Whitespace inside a parameter, which A12 admits around every part (KERNEL-FINDINGS KF214); the spellings
+        // are the subject, so the text is raw.
+        claims.addRule { it.name("Spaced").code("SPACED").errorField(claims.str("Note"))
+            .`when`(claims.str("Note").filled().and(claims.enumOf("Status").filled()).and(holder.filled()).and(c1.filled()))
+            .message(Dsl.en("a=[\$ Note.value\$] b=[\$Note .value\$] c=[\$Note. value\$] d=[\$Status -> Band\$] " +
+                "e=[\$ Holder\$] k=[\$/Policy/Claims/Note.value  For  \"c1\"\$]")).build() }
+        // The index terminal needs a condition iterating its group alone, so its spellings take a rule of their own.
+        claims.addRule { it.name("SpacedIndex").code("SPACED_INDEX").errorField(claims.str("Note"))
+            .`when`(claims.str("Note").filled().and(claims.enumOf("Status").filled()))
+            .message(Dsl.en("g=[\$# /Policy/Claims \$] x=[\$ index( Ref ) . value \$] y=[\$Status->Band \$]")).build() }
         val c2 = note.semanticIndex("c2")
         policy.addRule { it.name("KeyedEmpty").code("KEYED_EMPTY").errorField(holder)
             .`when`(holder.filled().and(c2.notFilled()).and(status.semanticIndex("c2").filled()))
@@ -118,7 +136,8 @@ class MessageParameterRowDiffTest {
                   {"Ref":"c2","Status":"OPEN"}],
         "Covers":[{"Grade":"A","Remark":"r1"},{"Grade":"B","Remark":"r2"}],
         "Limits":[{"Grade":"B","Cap":7},{"Grade":"A","Cap":5}],
-        "Tiers":[{"Num":1,"Label":"t1"},{"Num":2,"Label":"t2"}]}}"""
+        "Tiers":[{"Num":1,"Label":"t1"},{"Num":2,"Label":"t2"}],
+        "Bands":[{"Rate":1.50,"Badge":"b1"},{"Rate":2.00,"Badge":"b2"}]}}"""
 
     @Test
     fun theModelIsKernelConsistent() {
@@ -179,6 +198,7 @@ class MessageParameterRowDiffTest {
             "KEYED_MISS_LABEL /Policy[1]/Holder[1] ml=[Note]",
             "KEYED_MISS_ROW /Policy[1]/Claims[1]/Note[1] $KERNEL_FAULT",
             "NUMBER_KEYED /Policy[1]/Holder[1] tv=[t2] tk=[2] tg=[2]",
+            "NUMBER_SCALED /Policy[1]/Holder[1] bv=[b2]",
             "PARTNER /Policy[1]/Covers[1]/Remark[1] p=[5] own=[r1] pl=[Cap]",
             "PARTNER /Policy[1]/Covers[2]/Remark[1] p=[7] own=[r2] pl=[Cap]",
             "ROOT_FIELD /Policy[1]/Claims[1]/Note[1] h=[Ada] hl=[Holder]",
@@ -189,6 +209,10 @@ class MessageParameterRowDiffTest {
             "SHORT_PARTNER /Policy[1]/Covers[2]/Remark[1] p=[7] pl=[Cap]",
             "SHORT_ROOT /Policy[1]/Claims[1]/Note[1] h=[Ada] hl=[Holder]",
             "SHORT_ROOT /Policy[1]/Claims[2]/Note[1] h=[Ada] hl=[Holder]",
+            "SPACED /Policy[1]/Claims[1]/Note[1] a=[n0] b=[n0] c=[n0] d=[HIGH] e=[Holder] k=[n1]",
+            "SPACED /Policy[1]/Claims[2]/Note[1] a=[n1] b=[n1] c=[n1] d=[LOW] e=[Holder] k=[n1]",
+            "SPACED_INDEX /Policy[1]/Claims[1]/Note[1] g=[1] x=[c0] y=[HIGH]",
+            "SPACED_INDEX /Policy[1]/Claims[2]/Note[1] g=[2] x=[c1] y=[LOW]",
             // Beside a keyed and a starred read, the unkeyed value binds no level and renders the FIRST claim's
             // note, not the keyed claim's (n1).
             "UNBOUND /Policy[1]/Holder[1] u=[n0]",

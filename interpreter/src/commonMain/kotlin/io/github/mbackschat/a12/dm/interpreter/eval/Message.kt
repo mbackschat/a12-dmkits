@@ -185,15 +185,24 @@ private const val INDEX_CATEGORY = 8
  * The base-year alternative comes FIRST so its terminal is never read as a field name — which is exactly the
  * kernel's split: the own-language spelling is the terminal, the other language's falls through to a field
  * lookup, and only [terminals] decides which is which.
+ *
+ * Whitespace may stand at every token boundary inside a parameter, [GAP] here: A12 admits `$ Note.value$`,
+ * `$Note .value$`, `$Note. value$` and `$Status -> Band$` and renders them as their tight spellings
+ * (KERNEL-FINDINGS KF214, KF561; `adapter.laws.MessageParameterRowDiffTest`).
  */
 private fun tokenPattern(terminals: MessageTerminals) = Regex(
     "\\\$\\\$" +
-        "|\\\$" + terminals.baseYear + "([+-]\\d+)?\\\$" +
-        "|\\\$#([\\w/.']+(?:\\s+" + terminals.semanticFor + "\\s+(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?)\\\$" +
-        "|\\\$((?:\\.\\./)*[\\w/']+)(?:\\.(" + terminals.value + ")|->(\\w+))?" +
-        "(\\s+" + terminals.semanticFor + "\\s+(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?\\\$" +
-        "|\\\$index\\(([\\w']+)\\)(?:\\." + terminals.value + "|->([\\w']+))\\\$",
+        "|\\\$" + GAP + terminals.baseYear + GAP + "([+-]" + GAP + "\\d+)?" + GAP + "\\\$" +
+        "|\\\$#" + GAP + "([\\w/.']+(?:\\s+" + terminals.semanticFor + "\\s+(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?)" +
+        GAP + "\\\$" +
+        "|\\\$" + GAP + "((?:\\.\\./)*[\\w/']+)(?:" + GAP + "\\." + GAP + "(" + terminals.value + ")|" + GAP + "->" + GAP +
+        "(\\w+))?" + "(\\s+" + terminals.semanticFor + "\\s+(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?" + GAP + "\\\$" +
+        "|\\\$" + GAP + "index" + GAP + "\\(" + GAP + "([\\w']+)" + GAP + "\\)" + GAP + "(?:\\." + GAP + terminals.value + "|->" + GAP +
+        "([\\w']+))" + GAP + "\\\$",
 )
+
+/** Optional whitespace between two tokens of a parameter. */
+private const val GAP = "\\s*"
 
 /**
  * The grammar's single-quote escape is PER SEGMENT, not per token — `$#/'Policy'/'Cover'$` reaches the same
@@ -204,7 +213,7 @@ private fun tokenPattern(terminals: MessageTerminals) = Regex(
 private fun unquoted(captured: String): String = captured.replace("'", "")
 
 /** A bare terminal carries no offset; `+3` / `-1` parse as a signed integer, with no bound. */
-private fun offsetOf(sign: String): Int = if (sign.isEmpty()) 0 else sign.toInt()
+private fun offsetOf(sign: String): Int = if (sign.isEmpty()) 0 else sign.filterNot { it.isWhitespace() }.toInt()
 
 /** The stored token behind a cell, for the category lookup; an absent cell reads as empty. */
 private fun storedAt(path: String, messageValueOf: (String) -> String?): String = messageValueOf(path) ?: ""

@@ -60,6 +60,7 @@ class KeyedMessageMembershipAgreementTest {
         "keyed field: unkeyed" to (Reads.KEYED_FIELD to "\$/Policy/Claims/Note.value\$"),
         "keyed field: unkeyed name" to (Reads.KEYED_FIELD to "\$/Policy/Claims/Note\$"),
         "keyed field: another key and a category" to (Reads.KEYED_FIELD to "\$/Policy/Claims/Note->Band For \"c2\"\$"),
+        "keyed field: the keyed group named" to (Reads.KEYED_FIELD to "\$/Policy/Claims For \"c1\"\$"),
         "keyed group: a field" to (Reads.KEYED_GROUP to "\$/Policy/Claims/Note.value For \"c1\"\$"),
         "keyed group: another field" to (Reads.KEYED_GROUP to "\$/Policy/Claims/Gate.value For \"c1\"\$"),
         "keyed group: the index field" to (Reads.KEYED_GROUP to "\$/Policy/Claims/Ref.value For \"c1\"\$"),
@@ -76,6 +77,7 @@ class KeyedMessageMembershipAgreementTest {
         "keyed and starred: unkeyed value" to (Reads.KEYED_AND_STARRED to "\$/Policy/Claims/Note.value\$"),
         "group read: its field" to (Reads.OFFICE to "\$/Policy/Office/Staff.value\$"),
         "group read: a repeatable child's field" to (Reads.OFFICE to "\$/Policy/Office/Desks/Seats.value\$"),
+        "group read: a keyed group named" to (Reads.OFFICE to "\$/Policy/Claims For \"c1\"\$"),
     )
 
     @Test
@@ -86,17 +88,27 @@ class KeyedMessageMembershipAgreementTest {
         }
         assertEquals(emptyMap<String, Any>(), verdicts.filterValues { it.first != it.second }
             .mapValues { "A12 ${it.value.first}, ours ${it.value.second}" })
-        // The grid is not agreement on nothing: these are A12's own verdicts, refusals and admissions both.
+        // The grid is not agreement on nothing: every row carries A12's own verdict, refusals and admissions both.
         assertEquals(mapOf(
+            "keyed field: the field" to emptyList(), "keyed field: its name" to emptyList(),
+            "keyed field: its index field" to emptyList(), "keyed field: another field" to listOf(INDEX),
+            "keyed field: another key" to listOf(INDEX), "keyed field: a field key" to listOf(INDEX),
             "keyed field: unkeyed" to listOf(FIELD), "keyed field: unkeyed name" to listOf(FIELD),
+            // A String field, so the key gate answers before a category gate could.
+            "keyed field: another key and a category" to listOf(INDEX),
+            "keyed field: the keyed group named" to listOf(INDEX),
             "keyed group: a field" to emptyList(), "keyed group: another field" to emptyList(),
-            "keyed group: the index field" to emptyList(), "keyed group: unkeyed" to listOf(FIELD),
-            "keyed group: the group named" to listOf(INDEX), "number key: a leading zero" to listOf(INDEX),
-            "number key: a fraction" to listOf(INDEX), "keyed and starred: unkeyed value" to emptyList(),
-            "group read: a repeatable child's field" to listOf(STAR),
+            "keyed group: the index field" to emptyList(), "keyed group: another key" to listOf(INDEX),
+            "keyed group: unkeyed" to listOf(FIELD), "keyed group: the group named" to listOf(INDEX),
             "keyed group: a deeper repeatable field's name" to emptyList(),
-            "keyed group: a deeper repeatable field's value" to listOf(STAR)),
-            verdicts.filterKeys { it in PINNED }.mapValues { it.value.first })
+            "keyed group: a deeper repeatable field's value" to listOf(STAR),
+            "number key: as written" to emptyList(), "number key: a leading zero" to listOf(INDEX),
+            "number key: a fraction" to listOf(INDEX),
+            "starred: unkeyed value" to listOf(STAR), "starred: keyed value" to listOf(INDEX),
+            "keyed and starred: unkeyed value" to emptyList(),
+            "group read: its field" to emptyList(), "group read: a repeatable child's field" to listOf(STAR),
+            "group read: a keyed group named" to listOf(INDEX),
+        ), verdicts.mapValues { it.value.first })
     }
 
     /**
@@ -125,10 +137,5 @@ class KeyedMessageMembershipAgreementTest {
         const val FIELD = "INVALID_FIELD"
         const val INDEX = "MVK_INDEX_FOR_ERROR_TEXT_INVALID"
         const val STAR = "PARAM_VALUE_WITH_STARREFERENCE"
-        val PINNED = setOf("keyed field: unkeyed", "keyed field: unkeyed name", "keyed group: a field",
-            "keyed group: another field", "keyed group: the index field", "keyed group: unkeyed",
-            "keyed group: the group named", "number key: a leading zero", "number key: a fraction",
-            "keyed and starred: unkeyed value", "group read: a repeatable child's field",
-            "keyed group: a deeper repeatable field's name", "keyed group: a deeper repeatable field's value")
     }
 }

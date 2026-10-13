@@ -13473,6 +13473,8 @@ a12-kernel-lean `SPEC-2026-10-13-12`. A policy keys its repeatable `Claims` by `
 | `$/Policy/Claims/Note.value For "c1"$`, its index field `Ref`, its label | root | the claim keyed `c1`: its value, `c1`, `Note` |
 | the same `For Pick`, `Pick` holding `c0` | root | the claim keyed `c0` |
 | `$/Policy/Tiers/Label.value For "2"$`, `Num`, `$#/Policy/Tiers For "2"$` | root | the tier whose Number index is 2: `t2`, `2`, `2` |
+| `$/Policy/Bands/Badge.value For "2"$`, `Bands` keyed by a Number `Rate` of two fraction digits holding `2.00` | root | `b2`: a Number key selects by value, not by spelling (*added 2026-10-13*) |
+| `$ Note.value$`, `$Note .value$`, `$Note. value$`, `$Status -> Band$`, `$ Holder$`, `$…Note.value  For  "c1"$`; `$# /Policy/Claims $`, `$ index( Ref ) . value $`, `$Status->Band $` | `Claims` | the same as each tight spelling: whitespace may stand at every token boundary inside a parameter (*added 2026-10-13*) |
 | an empty `Note` and `$…Status->Band For "c2"$` of the claim keyed `c2` | root | the empty text, the category of its `OPEN` status |
 | `$/Policy/Claims/Note.value For "c9"$`, no claim keyed `c9` | root | the rule still fires, but its WHOLE text is replaced: "An error occurred while evaluation the data check: repetition index must be > 0, or 0 for wildcard, but not negative" |
 | the same in a rule iterating `Claims` | `Claims` | that one fault message, at the first claim only; the second claim's firing reports nothing |
@@ -13514,7 +13516,9 @@ So a keyed read is a member of a keyed parameter only, and the plain read beside
 
 The portable checker agrees on every row of the table. It stays silent on the display-label class, since it declines an index name that two groups declare. It leaves a keyed group's fields below a deeper NON-repeatable group admitted and a repeatable level the rule's own group sits in plain, both unmeasured, so either can under-report and neither can refuse wrongly.
 
-*(Locked: `adapter.laws.KeyedMessageMembershipAgreementTest` — A12 and the checker row by row, A12's own verdicts pinned, and the checker's silence on the display-label class; `consistency.KeyedMessageMembershipTest` on JVM and Node; `rulekit.validate.laws.ParallelEnumIndexDisplayLawsTest`; `rulekit.validate.laws.MessageIndexTerminalRepeatabilityLawsTest.theFirstOffenderInFullNameOrderAnswers`.)*
+A keyed group named in the field position, `$/Policy/Claims For "c1"$`, draws `MVK_INDEX_FOR_ERROR_TEXT_INVALID` beside a keyed FIELD read and beside a plain group read too, not only beside a keyed group read (*added 2026-10-13*).
+
+*(Locked: `adapter.laws.KeyedMessageMembershipAgreementTest` — A12 and the checker row by row, A12's own verdict pinned on every row (*corrected 2026-10-13*, twelve rows asserted agreement only), and the checker's silence on the display-label class; `consistency.KeyedMessageMembershipTest` on JVM and Node; `rulekit.validate.laws.ParallelEnumIndexDisplayLawsTest`; `rulekit.validate.laws.MessageIndexTerminalRepeatabilityLawsTest.theFirstOffenderInNameOrderAnswers`.)*
 
 ## §13 supplement — a computation's message is gated by every member it reads and renders at the row its generated rule fires on (`checkConsistency` + both strategies, 2026-10-13) <a id="kf563"></a>
 

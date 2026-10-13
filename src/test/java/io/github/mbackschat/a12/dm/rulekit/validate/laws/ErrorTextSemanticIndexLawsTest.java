@@ -18,9 +18,10 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
  * {@code refEntities.tryGetFor(fullName, semanticIndexSpec)} and, finding nothing, answers
  * {@code MVK_INDEX_FOR_ERROR_TEXT_INVALID} when a key was written and {@code INVALID_FIELD} when none was.
  *
- * <p><b>The two surfaces spell the keyword differently</b>, which is the first thing this grid establishes:
- * a condition writes {@code [Field For key]} through the EN operator catalog, while the error-text parameter
- * grammar carries the terminal {@code FOR: 'Fuer'} in its own lexer, with no locale to follow.
+ * <p><b>The keyword follows the model's language on both surfaces</b>, although the error-text parameter
+ * lexer carries the terminal {@code FOR: 'Fuer'}: in an {@code en_US} model a parameter takes {@code For}, as a
+ * condition does, and {@code Fuer} is {@code MVK_UNEXPECTED_TOKEN} (the GERMAN-keyword row below; KERNEL-FINDINGS
+ * §13).
  *
  * <p>Own domain (an e-commerce fulfilment desk).
  */
