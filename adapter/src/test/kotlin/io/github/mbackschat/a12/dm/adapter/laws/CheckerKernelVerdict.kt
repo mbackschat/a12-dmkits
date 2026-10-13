@@ -32,11 +32,11 @@ internal fun Diagnostic.ledgerClass(): String = code().orElse(codelessClass(summ
 /**
  * The checker's name for a codeless A12 sentence, or [UNKEYED_A12_CLASS].
  *
- * Five sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
- * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), the three a metamodel member outside its range draws are the
- * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556)), and a `sortFields` entry beyond the list's capacity is
- * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)). Those three name the sentence, not the member, because
- * A12 answers other members with the same words, so only the 99,999 maximum is matched. Any other codeless
+ * Seven sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
+ * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), the five a metamodel member outside its range draws are the
+ * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556), [KF559](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf559)), and a `sortFields` entry beyond the list's capacity is
+ * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)). A member class names the sentence, not the member,
+ * because A12 answers several members with the same words, while each maximum is a sentence of its own. Any other codeless
  * diagnostic stays unkeyed, so it shows as a disagreement rather than matching by accident.
  */
 internal fun codelessClass(message: String): String = when {
@@ -58,6 +58,8 @@ private val MEMBER_RANGE_SENTENCES = mapOf(
     "Only values without a sign are allowed." to "RK_MEMBER_SIGNED",
     "Only values greater than 0 are allowed." to "RK_MEMBER_NOT_POSITIVE",
     "Only values smaller than or equal to 99999 are allowed." to "RK_MEMBER_ABOVE_TECHNICAL_LIMIT",
+    "Only values smaller than or equal to 15 are allowed." to "RK_MEMBER_ABOVE_DIGIT_BUDGET",
+    "Only values smaller than or equal to 14 are allowed." to "RK_MEMBER_ABOVE_SCALE_LIMIT",
 )
 
 /** Whole-model admission, also covering the original partial fixtures P4 preserves before hosted completion. */

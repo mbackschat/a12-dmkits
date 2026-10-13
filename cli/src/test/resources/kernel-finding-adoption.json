@@ -10752,7 +10752,7 @@
       }
     },
     "kf556": {
-      "sha256": "489e3e2f68cceaa8367610dafb9185ad7423a0014945ad15c7b0b0d549b51186",
+      "sha256": "f9e014fd3164427c84138b4231258b23d3d9394012c2cbe0fcdc3ae6b92830c7",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -10869,6 +10869,150 @@
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model-check multiplicity is not evaluation behaviour.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and count nothing of their own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback beside SPEC-2026-10-13-08; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf559": {
+      "sha256": "d7108628a2309c79b35743226f5f1bc0c1f0ca2ba67fe9d3811a6788ed1cc7c1",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["digit count range"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["digit count range"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["digit count range"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits admit a model through the kernel, which answers an out-of-range digit count itself; the typed builder refuses only a scale above 14, which A12 also refuses.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The number family judges each digit count against its range with the length members, once per sentence and field, and silences a law that reads an out-of-range count.", "evidence": {"digit count range": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/DigitMemberRangeTest.kt#theLengthBudgetAsksAThreeValuedFractionalPart", "witness": "A minimum of 15 beside a maximum of 2 keeps the length-budget class, while a minimum of -2 beside a maximum of 0 silences it; the checker had reported a build failure or nothing."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes a scale only through the typed builder, which refuses one above 14, and never an integer count.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted, which declares no digit count outside its range.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 50 number declarations, with in-range, sentinel and deleted-field controls.", "evidence": {"digit count range": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDigitMemberRangeAgreementTest.kt#everyRowAgrees", "witness": "Every row's class multiset agrees, including the derived amount counts and the three-valued fractional-part rows."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "The interpreter evaluates models A12 admitted and checks no declaration range.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no digit-count logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a measured grid; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf364": {
+      "sha256": "96c81e76269a1e3ad385840eb78c0a980271851249514b5a50692d2c316d6cd5",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["integer count sentence"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["integer count sentence"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["integer count sentence"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits admit a model through the kernel, which answers an out-of-range digit count itself; the typed builder refuses only a scale above 14, which A12 also refuses.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "An integer count above 15 is reported as its range sentence rather than as a build failure.", "evidence": {"integer count sentence": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/DigitMemberRangeTest.kt#eachCountHasItsOwnRange", "witness": "A count of 16 reports RK_MEMBER_ABOVE_DIGIT_BUDGET, where the checker had reported CK_MODEL_NOT_BUILDABLE."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes a scale only through the typed builder, which refuses one above 14, and never an integer count.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted, which declares no digit count outside its range.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel's sentence and the checker's class are compared beside an in-range fractional part.", "evidence": {"integer count sentence": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDigitMemberRangeAgreementTest.kt#theSentencesAreObservable", "witness": "An integer count of 16 beside a fractional part draws only the 15 sentence on both sides."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "The interpreter evaluates models A12 admitted and checks no declaration range.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no digit-count logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a tier correction; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf320": {
+      "sha256": "852ca717ba33debf433aac84c55533d447921a64adcff02f2447cbafc1998536",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["signed digit count"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["signed digit count"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["signed digit count"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The typed builder refuses no negative digit count, so it over-refuses nothing, and A12 answers a count below -1 itself.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "A fractional count below -1 reports the signed sentence and takes no part in the pair law.", "evidence": {"signed digit count": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/DigitMemberRangeTest.kt#eachCountHasItsOwnRange", "witness": "A minimum of -2 reports RK_MEMBER_SIGNED, where the checker had reported nothing."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes a scale only through the typed builder, which refuses one above 14, and never an integer count.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted, which declares no digit count outside its range.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on every signed fractional row.", "evidence": {"signed digit count": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDigitMemberRangeAgreementTest.kt#everyRowAgrees", "witness": "A signed maximum beside a minimum of 3 draws only the signed sentence on both sides, not the inversion class."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "The interpreter evaluates models A12 admitted and checks no declaration range.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no digit-count logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a scope correction; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf420": {
+      "sha256": "de81bd651f44e3dbea924902e1306b832c38721676d277eee7344e55f7659cd5",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["codeless sentence text"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["codeless sentence text"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["codeless sentence text"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits report A12's codeless notifications unchanged and name none of these sentences.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The integer-count sentence is published as its own class; the group-name sentence stays unpublished, owned by CONFORMANCE-PLAN M3-CODELESS.", "evidence": {"codeless sentence text": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/DigitMemberRangeTest.kt#eachCountHasItsOwnRange", "witness": "An integer count of 16 reports RK_MEMBER_ABOVE_DIGIT_BUDGET, the 15 sentence's class, not the 14 one's."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes a scale only through the typed builder, which refuses one above 14, and never an integer count.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted, which declares no digit count outside its range.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both corrected sentences are read from the kernel's own notifications.", "evidence": {"codeless sentence text": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupNameLengthSentenceLawsTest.kt#sixtyOneCharactersDrawThePathSentenceAtTheGroupAndItsField", "witness": "A 61-character nested group draws the path-shape sentence at the group and at its field, and no class."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model-check sentences are not evaluation behaviour.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no digit-count logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a sentence correction; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf494": {
+      "sha256": "e6da1a30961873ebc5a03dae1cd59eb918a1ec557bec4e06daf2a057297f553c",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["fractional scale row"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["fractional scale row"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits report A12's notifications unchanged and keep no variant-stage ledger.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The checker reports the digit-count sentence A12 states for this row, where it had reported a build failure.", "evidence": {"fractional scale row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FieldVariantStageLawsTest.kt#theVariantPopulationHasOnlyLedgeredCheckerDifferences", "witness": "The two filter-visible scale-15 inputs leave the WRONG-CLASS cluster of variants.tsv."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no variant filter.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no variant filter.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The variant-stage ledger is re-recorded with the row agreeing.", "evidence": {"fractional scale row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FieldVariantStageLawsTest.kt#theVariantPopulationHasOnlyLedgeredCheckerDifferences", "witness": "The two filter-visible scale-15 inputs leave the WRONG-CLASS cluster of variants.tsv."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Variant-stage model check is not evaluation behaviour.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and keep no ledger of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "NOT_APPLICABLE", "basis": "A harness naming change on our side; the measured kernel rows are unchanged.", "evidence": {}}
+      }
+    },
+    "kf498": {
+      "sha256": "53908ec8294a0feed2c1979cda4d5c64960db3f8d42a2f26765d7f54bea39d8e",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["integer count row"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["integer count row"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits report A12's notifications unchanged and keep no variant-stage ledger.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The checker reports the digit-count sentence A12 states for this row, where it had reported a build failure.", "evidence": {"integer count row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FieldVariantStageLawsTest.kt#theMixedFieldPopulationHasOnlyLedgeredCheckerDifferences", "witness": "The two filter-visible maxIntegerDigits-16 inputs leave the WRONG-CLASS cluster of variants-mixed.tsv, seven to five."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no variant filter.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no variant filter.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The variant-stage ledger is re-recorded with the row agreeing.", "evidence": {"integer count row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FieldVariantStageLawsTest.kt#theMixedFieldPopulationHasOnlyLedgeredCheckerDifferences", "witness": "The two filter-visible maxIntegerDigits-16 inputs leave the WRONG-CLASS cluster of variants-mixed.tsv, seven to five."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Variant-stage model check is not evaluation behaviour.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and keep no ledger of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "NOT_APPLICABLE", "basis": "A harness naming change on our side; the measured kernel rows are unchanged.", "evidence": {}}
       }
     }
   }

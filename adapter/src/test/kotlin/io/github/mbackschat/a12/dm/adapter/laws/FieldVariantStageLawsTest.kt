@@ -164,7 +164,7 @@ internal object FieldVariantPopulation {
         Witness("number digits", "Total", "MVK_FRACT_DIGITS_INVALID") { _, _, f ->
             f.withObject("/fieldType/NumberType").put("minFractionalDigits", 3)
         },
-        Witness("number scale limit", "Total", UNKEYED_A12_CLASS) { _, _, f ->
+        Witness("number scale limit", "Total", "RK_MEMBER_ABOVE_SCALE_LIMIT") { _, _, f ->
             f.withObject("/fieldType/NumberType").put("maxFractionalDigits", 15)
         },
         Witness("original model number limit", "Total", UNKEYED_A12_CLASS, FilterEffect.RETAINS_REFUSAL) { _, _, f ->
@@ -226,7 +226,7 @@ internal object FieldVariantPopulation {
         Witness("inverted number bounds", "Total", "MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE") { _, _, f ->
             f.withObject("/fieldType/NumberType").put("minValue", 2).put("maxValue", 1)
         },
-        Witness("integer digit limit", "Total", UNKEYED_A12_CLASS) { _, _, f ->
+        Witness("integer digit limit", "Total", "RK_MEMBER_ABOVE_DIGIT_BUDGET") { _, _, f ->
             f.withObject("/fieldType/NumberType").put("maxIntegerDigits", 16)
         },
     ))

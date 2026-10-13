@@ -6622,7 +6622,7 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 
 *Locked by:* `rulekit.validate.laws.StringTypeParameterLawsTest` (three grids); the read-path half by `modelkit.StringLengthSentinelReadTest`.
 
-## §7 supplement — a number type's fractional-digit law is not `min > max`: an ABSENT member reads as 0 and a NEGATIVE maximum takes the pair out of the check (measured, 2026-09-13) <a id="kf320"></a>
+## §7 supplement — a number type's fractional-digit law is not `min > max`: an ABSENT member reads as 0 and a `-1` maximum takes the pair out of the check (measured, 2026-09-13) <a id="kf320"></a>
 
 > Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §7's number-declaration material, which covers the scale but not the pair's defaulting.
 
@@ -6645,7 +6645,9 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 
 **The value range beside it is the ordinary law** — both bounds declared, equal admitted, inverted refused, a single bound admitted, a wholly negative range admitted — and it is stated separately because nothing about the digit pair predicts it.
 
-**Two client-side refusals fell to this grid, one in each direction.** `FieldTypeSpec.NumberSpec` refused a negative digit count, which A12 admits, on the READ path as well as the authoring one; and it compared the pair only when both members were set, so `minFractionalDigits(2)` with no maximum was accepted and then refused by the kernel, because the emitter always writes `maxFractionalDigits`. The scale cap the same record enforces is confirmed rather than corrected: 14 builds, 15 does not, and the transitivity argument for refusing a minimum above 14 now has its second link measured.
+*Corrected 2026-10-13:* every negative row above is `-1`, and only `-1` takes the pair out of the comparison; a count below it is itself refused with the signed sentence and is no bound for this law ([KF559](#kf559)).
+
+**Two client-side refusals fell to this grid, one in each direction.** `FieldTypeSpec.NumberSpec` refused a negative digit count, of which A12 admits `-1`, on the READ path as well as the authoring one; and it compared the pair only when both members were set, so `minFractionalDigits(2)` with no maximum was accepted and then refused by the kernel, because the emitter always writes `maxFractionalDigits`. The scale cap the same record enforces is confirmed rather than corrected: 14 builds, 15 does not, and the transitivity argument for refusing a minimum above 14 now has its second link measured.
 
 *Locked by:* `rulekit.validate.laws.NumberTypeDigitLawsTest` (two grids, 19 rows); the record's own half by `modelkit.NumberDigitPairReadTest`; the portable checker's mirror is `consistency.NumberTypeDigitTest`.
 
@@ -7587,8 +7589,9 @@ Reported by the portable checker's `CheckFamily.HINT_LIST_VALUES`.
 | the declaration | A12's sentence |
 |---|---|
 | a `DateRangeType` whose `(format, rangeSeparator)` pair is not allowlisted — including a format alone, a separator alone, and an explicit `""` | `The date range format is invalid.` |
-| a `maxFractionalDigits` of 15, or `maxIntegerDigits` past the budget | `Only values smaller than or equal to 14 are allowed.` |
-| a group name of 61 characters | `Only values with up to 60 characters are allowed.` |
+| a `maxFractionalDigits` of 15 | `Only values smaller than or equal to 14 are allowed.` |
+| a `maxIntegerDigits` past the budget | `Only values smaller than or equal to 15 are allowed.` *(Corrected 2026-10-13: this row had merged it into the 14 sentence; [KF559](#kf559))* |
+| a group name of 61 characters | `A group name may only contain letters, numbers or underscores. … Name parts may not be longer than 60 characters …`, once at the group and once at each field inside it *(Corrected 2026-10-13: this row named "Only values with up to 60 characters are allowed.", which the same nested shape does not draw)* |
 | a RULE name starting with a digit, or carrying a dot | (per-carrier prose) |
 | an empty `errorCode` under an ONLY variant filter | (per-carrier prose) |
 
@@ -9280,7 +9283,7 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 
 **A SUPPRESSED fractional member costs nothing in that threshold**: with both at `-1`, `maxLength` 17 is refused, so the branch taken is the metamodel's `== 0` one against a member the collector never wrote. A checker reading `-1` as "some fractional part" would allow 17 and under-report.
 
-**`MVK_ARITY_TOO_BIG` is reachable only from within the budget.** An integer-place count above 15 is refused at the BUILD tier with no code at all, so the law needs a count of at most 15 that a fractional part then pushes past it. The amount arm reaches it through the derived count: a minimum scale above the maximum leaves the count buildable and the sum over budget, drawing `MVK_ARITY_TOO_BIG` beside `MVK_FRACT_DIGITS_INVALID`; suppressing the maximum instead derives 16 and is refused at the build tier.
+**`MVK_ARITY_TOO_BIG` is reachable only from within the budget.** An integer-place count above 15 is refused with a codeless verdict, "Only values smaller than or equal to 15 are allowed." ([KF559](#kf559); *corrected 2026-10-13*, it read "the BUILD tier"), and is then no bound for this law, so the law needs a count of at most 15 that a fractional part then pushes past it. The amount arm reaches it through the derived count: a minimum scale above the maximum leaves the count buildable and the sum over budget, drawing `MVK_ARITY_TOO_BIG` beside `MVK_FRACT_DIGITS_INVALID`; suppressing the maximum instead derives 16 and is refused at the build tier.
 
 **`MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` is measured on this carrier because it was measured on the other one.** A12's metamodel states the law twice, once under the string type and once under the number types, and a class measured on one carrier is not a class measured on the other — [KF319](#kf319) had only the string one.
 
@@ -12162,7 +12165,7 @@ All 60 valid declaration controls are admitted. The predictions that failed matt
 
 **Source placement, separately from the measurements.** `DocumentModelConsistencyRulesProvider` runs the Number-value-limit rule on the original model, then code generation, then the serializer's basic check. `CodeGenerationRule` uses the default-variant conversion; `ValidationCodeGenerator.preCheck` runs `NoMetaModelChecks` and the `MM_Common` validation over that container. The Number fractional-digit ceiling is a metamodel field constraint. `BasicConsistencyCheck.checkEnumerationType` and `visitElement` inspect the original model's duplicate values and empty names. Thus a family containing both container and ingress/serializer checks cannot be filtered wholesale. The complete reported-code and family inventory remains R0b's work.
 
-*Locked by:* `adapter.laws.FieldVariantStageLawsTest` — predicted kernel class sets and valid controls; the same 123 inputs go through the portable checker and shared `checkerVerdict` classification. The initial R0a version of `adapter/src/test/resources/checker-near-miss/variants.tsv` recorded 27 divergent inputs in 21 clusters: 15 over-rejections, seven silent inputs and five wrong-class inputs. The codeless cases share a sentinel in this class-set oracle; it does not assert message identity, order or multiplicity. These over-rejections justify R4's default-variant view; R0a changes no production checker behavior.
+*Locked by:* `adapter.laws.FieldVariantStageLawsTest` — predicted kernel class sets and valid controls; the same 123 inputs go through the portable checker and shared `checkerVerdict` classification. The initial R0a version of `adapter/src/test/resources/checker-near-miss/variants.tsv` recorded 27 divergent inputs in 21 clusters: 15 over-rejections, seven silent inputs and five wrong-class inputs. The codeless cases share a sentinel in this class-set oracle; it does not assert message identity, order or multiplicity. *(Since 2026-10-13 the fractional-scale row is named by its sentence, `RK_MEMBER_ABOVE_SCALE_LIMIT`, and the checker agrees with it; [KF559](#kf559).)* These over-rejections justify R4's default-variant view; R0a changes no production checker behavior.
 
 ## §13 supplement — a field-name collision disappears with the filtered field, while malformed filters fail binding (kernel `checkConsistency`, 2026-09-27) <a id="kf495"></a>
 
@@ -12261,7 +12264,7 @@ On [KF494](#kf494)'s own-domain Order host, hold each defective field fixed and 
 | Total: minValue 2, maxValue 1 | MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE | admitted |
 | Total: maxIntegerDigits 16 | codeless refusal | admitted |
 
-“Load/build refusal” is the harness's combined `CK_MODEL_NOT_BUILDABLE` category; “codeless refusal” is its `(no code)` sentinel. Neither category locates an exception within the kernel stages. In particular, missing and unresolved typedef IDs have different filtered outcomes, and a missing DateType body cannot inherit the missing-member rows' admission. The measurements concern these root-level carriers, English conditions and en_US locale; no nested, mounted, runtime or diagnostic-order claim follows. The BA documentation search for `variant`, `DateRangeType`, `typeDefinitionId` and `formatOfFragment` found two unrelated uses of “variant” and no descriptor/filter contract; the executable kernel is the basis here.
+“Load/build refusal” is the harness's combined `CK_MODEL_NOT_BUILDABLE` category; “codeless refusal” is its `(no code)` sentinel, except that since 2026-10-13 the `maxIntegerDigits 16` row is named by its sentence, `RK_MEMBER_ABOVE_DIGIT_BUDGET`, which the checker now reports too ([KF559](#kf559)). Neither category locates an exception within the kernel stages. In particular, missing and unresolved typedef IDs have different filtered outcomes, and a missing DateType body cannot inherit the missing-member rows' admission. The measurements concern these root-level carriers, English conditions and en_US locale; no nested, mounted, runtime or diagnostic-order claim follows. The BA documentation search for `variant`, `DateRangeType`, `typeDefinitionId` and `formatOfFragment` found two unrelated uses of “variant” and no descriptor/filter contract; the executable kernel is the basis here.
 
 *Locked by:* `adapter.laws.FieldVariantStageLawsTest.mixedFieldArmsHaveThePredictedFilterSensitivity`. Its companion `theMixedFieldPopulationHasOnlyLedgeredCheckerDifferences` sends the same 78 inputs through the portable checker and the shared O1 classification, with a separate [variants-mixed.tsv](../adapter/src/test/resources/checker-near-miss/variants-mixed.tsv) ledger. The pre-run predictions and all 11 misses are retained in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md); the fixed inputs were not changed to fit the predictions.
 
@@ -13374,7 +13377,7 @@ A12 checks a String, Custom or Number type's `minLength` and `maxLength` against
 | `-1` | admitted, A12's "no bound" | "Only values without a sign are allowed." |
 | below `-1` | "Only values without a sign are allowed." | same |
 
-Each sentence is reported once per field: zero on both members draws one sentence, and a signed minimum beside a maximum above the limit draws two. An out-of-range member is no bound for the field's other laws: a minimum of 100,000 beside a maximum of 50 draws only the limit sentence, not `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH`, and a zero minimum beside `noValueValidation` draws no `MVK_STRING_TYPE_PARAMS_INCONSISTENT`. The type's other members are still judged, so a pattern beside `noValueValidation` keeps its two classes. Other fields are unaffected, and a field deleted from the default variant draws nothing, neither these sentences nor its ordering class. A12's order among the sentences is not claimed. Locked by `adapter.laws.CheckerLengthLimitAgreementTest` against the portable checker, which reports the three as `RK_MEMBER_ABOVE_TECHNICAL_LIMIT`, `RK_MEMBER_NOT_POSITIVE` and `RK_MEMBER_SIGNED`; the same sentences answer other members too, for instance an integer-digit count, which this finding does not cover.
+Each sentence is reported once per field: zero on both members draws one sentence, and a signed minimum beside a maximum above the limit draws two. An out-of-range member is no bound for the field's other laws: a minimum of 100,000 beside a maximum of 50 draws only the limit sentence, not `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH`, and a zero minimum beside `noValueValidation` draws no `MVK_STRING_TYPE_PARAMS_INCONSISTENT`. The type's other members are still judged, so a pattern beside `noValueValidation` keeps its two classes. Other fields are unaffected, and a field deleted from the default variant draws nothing, neither these sentences nor its ordering class. A12's order among the sentences is not claimed. Locked by `adapter.laws.CheckerLengthLimitAgreementTest` against the portable checker, which reports the three as `RK_MEMBER_ABOVE_TECHNICAL_LIMIT`, `RK_MEMBER_NOT_POSITIVE` and `RK_MEMBER_SIGNED`; the same sentences answer a number's digit counts, beside two maxima of their own ([KF559](#kf559)).
 
 ## §9 supplement — a `RepetitionNotUnique` leaf that does not fire contributes no message reference (both strategies, 2026-10-13) <a id="kf557"></a>
 
@@ -13408,3 +13411,28 @@ So when the sibling branch fires and the leaf does not, the message refers to no
 | two different opaque sort fields | the sort type class once per name ([KF345](#kf345)) |
 
 Every other "once" the tier asserts held. The portable checker counted the first two once; it now reports the xml class at every group below an `xml` group and the unprefixed class per locale. Locked by the tier itself and by `adapter.laws.CheckerClassMultiplicityAgreementTest` against the checker.
+
+## §13 supplement — a number type's digit counts have ranges of their own, and an out-of-range count is no bound for a law that reads it (model check, 2026-10-13) <a id="kf559"></a>
+
+> Fold: not-foldable — declaration-admission laws beside [KF556](#kf556)'s length ranges.
+
+A12 judges the three digit counts of a `NumberType` against ranges of its own and answers a count outside one with a sentence and no class, as [KF556](#kf556) found for the lengths. The tier is a codeless VERDICT ([KF420](#kf420)): the model builds and the declaration is judged.
+
+| count | admitted | `-1` | below `-1` | `0` | above the range |
+|---|---|---|---|---|---|
+| `maxIntegerDigits` | 1 to 15 | "Only values without a sign are allowed." | same | "Only values greater than 0 are allowed." | "Only values smaller than or equal to 15 are allowed." |
+| `minFractionalDigits`, `maxFractionalDigits` | 0 to 14 | admitted, "not declared" ([KF364](#kf364)) | "Only values without a sign are allowed." | admitted | "Only values smaller than or equal to 14 are allowed." |
+
+An amount's derived integer count, `15 - maxFractionalDigits` when it declares none ([KF364](#kf364)), is judged like a declared one, whatever the maximum holds: a suppressed maximum derives 16 and draws the 15 sentence, a maximum of 15 derives 0 and draws the positive sentence beside the 14 one, and a maximum of 17 derives `-2` and draws the signed one. A `percent` derives nothing.
+
+Each sentence is reported once per field across lengths and digit counts alike, so a signed integer count, a signed maximum and a signed length draw one sentence. A field deleted from the default variant draws nothing.
+
+**An out-of-range count is no bound for a law that reads it, and "has a fractional part" behaves as a three-valued OR.** `MVK_FRACT_DIGITS_INVALID` and `MVK_ARITY_TOO_BIG` fall silent beside a count out of range, while `MVK_MAX_LENGTH_TOO_SMALL`, which reads only the minimum, still answers beside an out-of-range maximum. The two length-budget laws ask whether a fractional part is declared:
+
+| the pair | maximum length | A12 |
+|---|---|---|
+| minimum 15, maximum 2 | 18 | the 14 sentence and `MVK_MAX_LENGTH_TOO_BIG` — the in-range 2 decides it |
+| minimum `-2`, maximum 0 | 17 | the signed sentence only — 0 cannot decide it |
+| minimum 0, maximum 15 | 18 | the 14 sentence only |
+
+Reading only the maximum gets the second row wrong, and silencing the law beside any out-of-range count gets the first. That the metamodel's own rules meet an out-of-range member as A12 meets a formally invalid field is the account these rows fit; it is a hypothesis, not measured here. Locked by `adapter.laws.CheckerDigitMemberRangeAgreementTest` against the portable checker, which reports the two maxima as `RK_MEMBER_ABOVE_DIGIT_BUDGET` and `RK_MEMBER_ABOVE_SCALE_LIMIT` beside [KF556](#kf556)'s classes; `consistency.DigitMemberRangeTest` mirrors it on JVM and JS.

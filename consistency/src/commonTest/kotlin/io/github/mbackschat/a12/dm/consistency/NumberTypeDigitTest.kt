@@ -167,26 +167,21 @@ class NumberTypeDigitTest {
         expected["integer and fractional places past the budget"] = listOf(arityTooBig)
         expected["the same places within it"] = emptyList()
         expected["integer places alone at the budget"] = emptyList()
-        expected["integer places one past the budget"] = listOf(CK_MODEL_NOT_BUILDABLE)
-        expected["an amount whose maximum scale is suppressed"] = listOf(CK_MODEL_NOT_BUILDABLE)
+        expected["integer places one past the budget"] = listOf("RK_MEMBER_ABOVE_DIGIT_BUDGET")
+        expected["an amount whose maximum scale is suppressed"] = listOf("RK_MEMBER_ABOVE_DIGIT_BUDGET")
         expected["an amount whose minimum scale exceeds its maximum"] =
             listOf(fractDigitsInvalid, arityTooBig)
         assertEquals(expected, actual, "a number type against the model-wide digit budget")
     }
 
     /**
-     * The scale cap is the BUILD tier: A12 reads the model and then cannot build it, with no code of its own.
-     *
-     * Silence there would present an unusable model as clean, which is exactly what that tier exists to stop.
+     * A scale past the cap is a codeless VERDICT, not a build failure: A12 judges the declaration and states the
+     * range sentence (KF559). The pair reports it once, and is not also an inversion.
      */
     @Test
-    fun aScalePastTheCapIsReportedAsTheBuildTierRatherThanAsAVerdict() {
+    fun aScalePastTheCapIsReportedAsItsRangeSentence() {
         assertEquals(emptyList(), codes(""""maxFractionalDigits":14"""), "14 is the admitted boundary")
-        assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), codes(""""maxFractionalDigits":15"""))
-        assertEquals(
-            listOf(CK_MODEL_NOT_BUILDABLE),
-            codes(""""minFractionalDigits":15,"maxFractionalDigits":15""").distinct(),
-            "both members carry the cap, and the pair is not also an inversion",
-        )
+        assertEquals(listOf("RK_MEMBER_ABOVE_SCALE_LIMIT"), codes(""""maxFractionalDigits":15"""))
+        assertEquals(listOf("RK_MEMBER_ABOVE_SCALE_LIMIT"), codes(""""minFractionalDigits":15,"maxFractionalDigits":15"""))
     }
 }

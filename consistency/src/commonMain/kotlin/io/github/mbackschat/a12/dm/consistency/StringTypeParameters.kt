@@ -34,14 +34,14 @@ internal fun TrackedFactBase.stringTypeParameterFindings(): List<Finding> =
         // A12 is silent on a field deleted from the default variant, on both carriers (KF556).
         if (field.body.deletesAtDefaultVariant()) return@flatMap emptyList()
         field.stringTypeBody()?.let { body ->
-            return@flatMap lengthRangeFindings(field, body, admitsUndefined = true) +
+            return@flatMap memberRangeFindings(field, body.lengthMembers(admitsUndefined = true)) +
                 noValueValidationFindings(field, body) + lengthFindings(field, body)
         }
         // The custom type carries the same two length members under the same law and answers with a class of
         // its own — measured, not transferred. Its OTHER parameters are not judged here: nothing else on this
         // carrier has been put to A12, and a law reused across it would be a refusal by analogy.
         field.customTypeBody()?.let { body ->
-            lengthRangeFindings(field, body, admitsUndefined = true) +
+            memberRangeFindings(field, body.lengthMembers(admitsUndefined = true)) +
                 lengthFindings(field, body, MIN_ABOVE_MAX_ON_A_CUSTOM_TYPE)
         } ?: emptyList()
     }

@@ -9,16 +9,17 @@ import kotlinx.serialization.json.intOrNull
  * A declared number type's fractional-digit pair and its value range.
  *
  * Measured as one grid ([KERNEL-FINDINGS KF320], `rulekit.validate.laws.NumberTypeDigitLawsTest`), and the
- * digit law is not the one its name suggests. **An ABSENT member reads as 0 and a NEGATIVE maximum takes the
+ * digit law is not the one its name suggests. **An ABSENT member reads as 0 and a `-1` maximum takes the
  * pair out of the check** — so `minFractionalDigits: 2` with no maximum IS refused, while the same minimum
  * beside an explicit `-1` is admitted. A plain `min > max` over the declared members disagrees with A12 on
  * both of those, in opposite directions.
  *
  * The value range beside it is the ordinary law: both bounds declared, equal admitted, inverted refused.
  *
- * **The scale cap is a different tier and is reported as one.** A `maxFractionalDigits` above 14 leaves A12
- * able to READ the model and unable to BUILD it — no `MVK_*` code exists for it — so a consumer handed
- * silence would read an unusable model as clean. That is what [CK_MODEL_NOT_BUILDABLE] is for.
+ * **Each digit count has a range of its own, judged before any of these laws** ([KERNEL-FINDINGS KF559],
+ * `adapter.laws.CheckerDigitMemberRangeAgreementTest`): integer places 1 to 15, fractional places 0 to 14 with
+ * `-1` for "not declared". A count outside draws a codeless sentence through [memberRangeFindings], together
+ * with the lengths so each sentence stays once per field, and it is no bound for a law that reads it.
  *
  * **Five further laws measure the same declaration against A12's model-wide DIGIT BUDGET of 15**
  * ([KERNEL-FINDINGS KF364], same lock): the fractional pair must be declared at all, the integer and
@@ -30,12 +31,56 @@ import kotlinx.serialization.json.intOrNull
 internal fun TrackedFactBase.numberTypeDigitFindings(): List<Finding> =
     defaultVariantFields().flatMap { field ->
         val body = field.numberTypeBody() ?: return@flatMap emptyList()
-        lengthRangeFindings(field, body, admitsUndefined = false) + digitPairFindings(field, body) +
-            valueRangeFindings(field, body) + budgetFindings(field, body)
+        val digits = DigitCounts.of(body)
+        memberRangeFindings(field, body.lengthMembers(admitsUndefined = false) + digits.ranged) +
+            digitPairFindings(field, digits) + valueRangeFindings(field, body) + budgetFindings(field, body, digits)
     }
 
-/** A12's declared-scale ceiling: 15 draws a codeless refusal on a surviving field (KF494). */
-private const val MAX_SCALE = 14
+/**
+ * The three digit counts as A12's metamodel holds them, each judged against its range.
+ *
+ * An ABSENT fractional count is the primitive 0. The integer count of an amount that declares none is DERIVED
+ * as `15 - maxFractionalDigits` (`TypeConverter.convertNumber`) from whatever the maximum holds, in range or
+ * not, and the derived count is judged like a declared one: a maximum of 15 derives 0 and draws both the scale
+ * and the positive sentence.
+ */
+private class DigitCounts(val integer: RangedMember?, val minFractional: RangedMember, val maxFractional: RangedMember) {
+    val ranged: List<RangedMember> get() = listOfNotNull(integer, minFractional, maxFractional)
+
+    /**
+     * Whether a fractional part is declared, as A12 reads it: an OR whose out-of-range operand is unknown.
+     *
+     * Measured both ways, and neither simpler reading survives both: a minimum of 15 beside a maximum of 2
+     * still answers yes, while a minimum of `-2` beside a maximum of 0 answers nothing, so a law asking it
+     * stays silent.
+     */
+    fun fractionalPart(): Boolean? {
+        val parts = listOf(minFractional, maxFractional).map { if (it.inRange) declaredPlaces(it.value) != 0 else null }
+        return when {
+            true in parts -> true
+            null in parts -> null
+            else -> false
+        }
+    }
+
+    companion object {
+        fun of(body: JsonObject): DigitCounts {
+            val maxFractional = body.int("maxFractionalDigits") ?: 0
+            val declared = body.int("maxIntegerDigits")
+            val integer = when {
+                declared != null -> RangedMember("`maxIntegerDigits` $declared", declared, MemberRange.INTEGER_PLACES)
+                body.string("trait") == "amount" -> (DIGIT_BUDGET - maxFractional).let {
+                    RangedMember("$it integer places (derived by A12 as `15 - maxFractionalDigits`)", it, MemberRange.INTEGER_PLACES)
+                }
+                else -> null
+            }
+            return DigitCounts(integer, fractional(body, "minFractionalDigits"), fractional(body, "maxFractionalDigits"))
+        }
+
+        private fun fractional(body: JsonObject, member: String): RangedMember =
+            (body.int(member) ?: 0).let { RangedMember("`$member` $it", it, MemberRange.FRACTIONAL_PLACES) }
+    }
+}
 
 /**
  * A12's model-wide digit budget for a number type, measured: 15.
@@ -50,34 +95,24 @@ private const val DIGIT_BUDGET = 15
 /** A12's own "not declared" spelling for the two fractional counts, which are otherwise primitive. */
 private const val SUPPRESSED = -1
 
-private fun digitPairFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> {
-    val min = body.int("minFractionalDigits") ?: 0
-    val max = body.int("maxFractionalDigits") ?: 0
-    val findings = mutableListOf<Finding>()
-    if (max >= 0 && min > max) {
-        findings += finding(
+private fun digitPairFindings(field: TrackedDeclaration, digits: DigitCounts): List<Finding> {
+    if (!digits.minFractional.inRange || !digits.maxFractional.inRange) {
+        return emptyList()
+    }
+    val min = digits.minFractional.value
+    val max = digits.maxFractional.value
+    if (max < 0 || min <= max) {
+        return emptyList()
+    }
+    return listOf(
+        finding(
             field,
             "MVK_FRACT_DIGITS_INVALID",
             "this field declares $min minimum fractional digits above its maximum of $max, which A12 " +
                 "refuses. A12 reads an ABSENT `maxFractionalDigits` as 0, so a minimum with no maximum is " +
                 "this same inversion",
-        )
-    }
-    for (member in listOf("minFractionalDigits", "maxFractionalDigits")) {
-        val declared = body.int(member) ?: continue
-        if (declared > MAX_SCALE) {
-            findings += Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                CK_MODEL_NOT_BUILDABLE,
-                "`$member` is $declared and A12 caps a declared scale at $MAX_SCALE, so A12 reads the " +
-                    "model and then fails to build it — no consistency verdict about it exists, and A12 " +
-                    "has no code of its own for this",
-                field.path,
-            )
-        }
-    }
-    return findings
+        ),
+    )
 }
 
 private fun valueRangeFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> {
@@ -105,9 +140,9 @@ private fun valueRangeFindings(field: TrackedDeclaration, body: JsonObject): Lis
  * suppressed member costs nothing in the length threshold — measured, because reading it as "some
  * fractional part" would allow one length too many.
  */
-private fun budgetFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> {
-    val minFractional = body.int("minFractionalDigits") ?: 0
-    val maxFractional = body.int("maxFractionalDigits") ?: 0
+private fun budgetFindings(field: TrackedDeclaration, body: JsonObject, digits: DigitCounts): List<Finding> {
+    val minFractional = digits.minFractional.value
+    val maxFractional = digits.maxFractional.value
     val findings = mutableListOf<Finding>()
     if (minFractional == SUPPRESSED && maxFractional == SUPPRESSED) {
         findings += finding(
@@ -118,53 +153,34 @@ private fun budgetFindings(field: TrackedDeclaration, body: JsonObject): List<Fi
                 "declaration; omitting the member entirely is read as 0 and is admitted",
         )
     }
-    findings += arityFindings(field, body, minFractional, maxFractional)
-    findings += lengthFindings(field, body, minFractional, maxFractional)
+    findings += arityFindings(field, digits)
+    findings += lengthFindings(field, body, digits)
     return findings
 }
 
 /**
- * The integer places, against the budget and against the fractional places beside them.
+ * The integer places against the fractional places beside them.
  *
- * The count A12 measures is not always the declared one: for `trait:"amount"` it derives
- * `15 - maxFractionalDigits` whenever `maxIntegerDigits` is absent (`TypeConverter.convertNumber`), so an
- * amount reaches this law through a member it never wrote. A count ABOVE the budget is refused one tier
- * earlier, with no class of its own, which is why the two outcomes are reported separately.
+ * The count A12 measures is not always the declared one: for `trait:"amount"` it is derived ([DigitCounts]),
+ * so an amount reaches this law through a member it never wrote. A count outside its range is no bound here,
+ * so the law is reachable only from a count within the budget that a fractional part then pushes past it.
  *
  * A SUPPRESSED minimum is left unjudged here: A12 would sum a member its collector never wrote, and what
  * that sum is has not been measured. Under-reporting there is safe; guessing it is not.
  */
-private fun arityFindings(
-    field: TrackedDeclaration,
-    body: JsonObject,
-    minFractional: Int,
-    maxFractional: Int,
-): List<Finding> {
-    val declared = body.int("maxIntegerDigits")
-    val amount = body.string("trait") == "amount"
-    val integerPlaces = declared ?: if (amount) DIGIT_BUDGET - maxFractional else return emptyList()
-    if (integerPlaces > DIGIT_BUDGET) {
-        val derived = if (declared == null) " (derived by A12 as `15 - maxFractionalDigits`)" else ""
-        return listOf(
-            Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                CK_MODEL_NOT_BUILDABLE,
-                "this field allows $integerPlaces digits before the decimal point$derived and A12 caps " +
-                    "them at $DIGIT_BUDGET, so A12 reads the model and then fails to build it — no " +
-                    "consistency verdict about it exists, and A12 has no code of its own for this",
-                field.path,
-            ),
-        )
-    }
-    if (minFractional < 0 || integerPlaces + minFractional <= DIGIT_BUDGET) {
+private fun arityFindings(field: TrackedDeclaration, digits: DigitCounts): List<Finding> {
+    val integer = digits.integer ?: return emptyList()
+    val minFractional = digits.minFractional.value
+    if (!integer.inRange || !digits.minFractional.inRange || minFractional < 0 ||
+        integer.value + minFractional <= DIGIT_BUDGET
+    ) {
         return emptyList()
     }
     return listOf(
         finding(
             field,
             "MVK_ARITY_TOO_BIG",
-            "this field allows $integerPlaces digits before the decimal point and requires $minFractional " +
+            "this field allows ${integer.value} digits before the decimal point and requires $minFractional " +
                 "after it, which is more than A12's budget of $DIGIT_BUDGET digits",
         ),
     )
@@ -178,37 +194,35 @@ private fun arityFindings(
  * present.
  *
  * Only a length A12's own metamodel would accept as a length is judged — it declares both members positive
- * and at most 99999 and refuses anything else on its own ([lengthRangeFindings]).
+ * and at most 99999 and refuses anything else on its own ([memberRangeFindings]). The two budget laws ask
+ * whether a fractional part is declared and stay silent when that is unknown ([DigitCounts.fractionalPart]).
  */
-private fun lengthFindings(
-    field: TrackedDeclaration,
-    body: JsonObject,
-    minFractional: Int,
-    maxFractional: Int,
-): List<Finding> {
+private fun lengthFindings(field: TrackedDeclaration, body: JsonObject, digits: DigitCounts): List<Finding> {
     val min = body.declaredLength("minLength")
     val max = body.declaredLength("maxLength")
+    val minFractional = digits.minFractional.value
     val signed = body.flag("positivesOnly") != true
-    val fractional = declaredPlaces(minFractional) != 0 || declaredPlaces(maxFractional) != 0
+    val fractionalPart = digits.fractionalPart()
+    val fractional = fractionalPart == true
     val budget = DIGIT_BUDGET + (if (signed) 1 else 0) + (if (fractional) 1 else 0)
     val spent = "$DIGIT_BUDGET digits" +
         (if (signed) " plus a sign" else "") + (if (fractional) " plus a decimal point" else "")
     val findings = mutableListOf<Finding>()
-    if (min != null && min > budget) {
+    if (fractionalPart != null && min != null && min > budget) {
         findings += finding(
             field,
             "MVK_MIN_LENGTH_TOO_BIG",
             "this field requires at least $min characters where A12 allows $budget — $spent",
         )
     }
-    if (max != null && max > budget) {
+    if (fractionalPart != null && max != null && max > budget) {
         findings += finding(
             field,
             "MVK_MAX_LENGTH_TOO_BIG",
             "this field allows up to $max characters where A12 allows $budget — $spent",
         )
     }
-    if (max != null && minFractional > 0 && max < minFractional + 2) {
+    if (max != null && digits.minFractional.inRange && minFractional > 0 && max < minFractional + 2) {
         findings += finding(
             field,
             "MVK_MAX_LENGTH_TOO_SMALL",

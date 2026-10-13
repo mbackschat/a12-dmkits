@@ -249,7 +249,7 @@ class NumberTypeDigitLawsTest {
         expected.put("the same places within it", KernelLaws.ADMITTED);
         expected.put("integer places alone at the budget", KernelLaws.ADMITTED);
         // An integer-place count ABOVE the budget draws a CODELESS verdict rather than an arity finding —
-        // `"Only values smaller than or equal to 14 are allowed."` — so the arity law is reachable only from
+        // `"Only values smaller than or equal to 15 are allowed."` (KF559) — so the arity law is reachable only from
         // a count within the budget that a fractional part then pushes past it. This is the same tier the
         // scale cap sits in, and the family reports it the same way. (These rows read `NOT BUILDABLE` until
         // 2026-09-15; the model builds and A12 judges it, it just names no class.)
