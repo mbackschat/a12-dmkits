@@ -641,12 +641,19 @@ public final class DslRenderer {
      * ({@code [Field For key]}); a {@code FieldFilled}/{@code FieldNotFilled} presence renders it bare.
      */
     private String indexBody(IndexedFieldValue index) {
+        return operandPath(index.field()) + " " + keyClause(index);
+    }
+
+    /**
+     * The {@code For key} clause alone, shared by the condition's {@code Field For key} and the message token
+     * {@code $Field.value For key$}, whose suffix sits between the field and this clause.
+     */
+    String keyClause(IndexedFieldValue index) {
         return switch (index) {
             case SemanticIndexValue v ->   // literal key: a quoted constant
-                    operandPath(v.field()) + " " + keyword(v.operatorId()) + " " + quote(v.indexValue());
+                    keyword(v.operatorId()) + " " + quote(v.indexValue());
             case SemanticIndexFieldValue v ->   // field key: a bare field path, not a quoted literal
-                    operandPath(v.field()) + " " + keyword(v.operatorId()) + " "
-                            + canonicalOperandPath(v.indexField());
+                    keyword(v.operatorId()) + " " + canonicalOperandPath(v.indexField());
         };
     }
 

@@ -2389,6 +2389,42 @@ public final class Dsl {
     }
 
     /**
+     * The value of a key-selected field, {@code $<path>.value For key$}: the suffix precedes the key. The kernel
+     * admits it only beside a condition reading the same field under the same spelled key (KERNEL-FINDINGS KF412):
+     * {@code en("Note " + fieldValue(note.semanticIndex("c1")))}.
+     */
+    public static String fieldValue(SemanticIndex selected) {
+        return keyedToken(selected.index(), ".value");
+    }
+
+    /** The label of a key-selected field, {@code $<path> For key$}; the keyed peer of {@link #fieldLabel(FieldRef)}. */
+    public static String fieldLabel(SemanticIndex selected) {
+        return keyedToken(selected.index(), "");
+    }
+
+    /** An enumeration field's category value, {@code $<path>->Category$}, for the row the message reads. */
+    public static String fieldCategory(CategoryRef category) {
+        return "$" + category.field().path() + "->" + category.name() + "$";
+    }
+
+    /**
+     * The category value of the row a literal key selects, {@code $<path>->Category For "key"$}. The selected
+     * field is the category's own, so the token cannot name two fields.
+     */
+    public static String fieldCategory(CategoryRef category, String indexValue) {
+        return keyedToken(category.field().semanticIndex(indexValue).index(), "->" + category.name());
+    }
+
+    /** The field-keyed peer of {@link #fieldCategory(CategoryRef, String)}: {@code $<path>->Category For keyField$}. */
+    public static String fieldCategory(CategoryRef category, FieldRef keyField) {
+        return keyedToken(category.field().semanticIndex(keyField).index(), "->" + category.name());
+    }
+
+    private static String keyedToken(IndexedFieldValue index, String suffix) {
+        return "$" + index.field().path() + suffix + " " + new DslRenderer().keyClause(index) + "$";
+    }
+
+    /**
      * A repetition-<em>index</em> interpolation token for an error message (FEATURE-GAPS) — renders
      * {@code $#<groupPath>$}, the kernel's placeholder for the 1-based row number of the repeatable
      * {@code group}'s current repetition. Pairs naturally with a uniqueness/per-row rule:
