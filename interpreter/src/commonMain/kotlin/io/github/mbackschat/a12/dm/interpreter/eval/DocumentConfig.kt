@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.RangeYearInterpretation
 
@@ -76,4 +77,7 @@ data class DocumentConfig(
      * a non-repeatable group as an authored repetition. Field terminal coordinates are excluded at transport.
      */
     val effectiveGroupRepetitionMaximums: Map<String, Int> = declaredReps,
+    /** The characters a stored value may hold: the model's `supportedCharacters`, else every BMP character. A value
+     *  outside it is formally invalid on every read, a computation's included (KERNEL-FINDINGS KF555). */
+    val legalCharset: LegalCharset = LegalCharset.BMP,
 )

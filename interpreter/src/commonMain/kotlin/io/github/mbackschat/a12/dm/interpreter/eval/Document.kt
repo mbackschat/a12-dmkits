@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
@@ -58,6 +59,7 @@ fun ModelDef.newDocument(): Document = Document(DocumentConfig(
     enumCategories = enumCategories,
     timeFormats = timeFormats,
     baseYear = baseYear,
+    legalCharset = legalCharset ?: LegalCharset.BMP,
     fieldConstraints = fieldConstraints,
     customFields = customTypes.keys,
     timeZone = timeZone,
@@ -571,6 +573,20 @@ class Document(internal val config: DocumentConfig) {
      *  dropped `timeZone`, so a copy could not stay in lockstep. Now it cannot drop a slot — there is no
      *  per-slot list. */
     private fun emptyCopy(): Document = Document(config)
+
+    /**
+     * This document read under [charset]: itself when it already is, else a copy. A call evaluates under its
+     * interpreter's effective charset, which a consumer may supply where the model declares none, and the
+     * document's own formal check must then agree with the call's (KERNEL-FINDINGS KF555).
+     */
+    internal fun withLegalCharset(charset: LegalCharset): Document {
+        // LegalCharset has no equals; its toString is the content-complete definition, so one declaration parsed
+        // twice still shares a document.
+        if (config.legalCharset === charset || config.legalCharset.toString() == charset.toString()) return this
+        val copy = Document(config.copy(legalCharset = charset))
+        for (p in placements) if (p.isGroup) copy.group(p.path, *p.reps.toIntArray()) else copy.copyField(p)
+        return copy
+    }
 
     /**
      * One [EvalContext] per runtime iteration row of [groupPath]. This is normally its instantiated V2 rows.
@@ -2016,8 +2032,8 @@ class Document(internal val config: DocumentConfig) {
         val precision = datePrecisions[path] ?: DatePrecision.FULL
         return formalError(kind, raw, scales[path], declaredTemporalFormat(path, kind), precision,
             rangeConfig[path]?.second,
-            fieldConstraints[path] ?: FieldConstraints.NONE, baseYear = baseYear ?: 2000, timeZone = timeZone,
-            rangeYearInterpretation = yearInterpretationOf(path), authored = authored) != null
+            fieldConstraints[path] ?: FieldConstraints.NONE, config.legalCharset, baseYear = baseYear ?: 2000,
+            timeZone = timeZone, rangeYearInterpretation = yearInterpretationOf(path), authored = authored) != null
     }
 
     private fun formallyInvalid(path: String, input: FormalInput): Boolean =

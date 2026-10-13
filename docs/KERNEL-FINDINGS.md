@@ -13322,3 +13322,18 @@ a12-kernel-lean `SPEC-2026-10-13-07`. A warehouse keys its repeatable `Bins` by 
 | empty, or absent | OMISSION | OMISSION |
 
 So a selection that matches no row reads as the all-empty list and keeps its omission potential, exactly as a selected row with an unfilled item does; only a selected row whose starred level is full is closed. Locked by `adapter.laws.UnmatchedKeyAggregatePolarityDiffTest` on dynamic Groovy, static Java and the interpreter, which already agreed. Not measured: `MinValue`, `MaxValue`, `NumberOfDifferentValues` and partial validation, which share the read.
+
+## §3 supplement — a value outside `supportedCharacters` is formally invalid on every read, a computation's included (both strategies, 2026-10-13) <a id="kf555"></a>
+
+> Fold: pending — belongs in §3's formal checks, beside the runtime charset enforcement of [KF141](#kf141).
+
+[KF141](#kf141) measured the charset on the generated formal check. The same verdict governs every read of the value: a manifest restricted to `A-Z` and `0-9` computes a lead's length, the first filled and the number of filled tags across its repeatable parcels, and a parcel weight selected by a `Label` key, and two authored rules read the tag count and the selected weight.
+
+| Lowercase value in | Computations left | Authored rules |
+|---|---|---|
+| nothing | all four | both fire |
+| `Lead` | all but the length | the tag-count rule, guarded by `Lead`, is silent |
+| one starred `Tag` | the length and the selected weight | the tag-count rule is silent |
+| the `Label` key and its matching `Code` | all but the selected weight | the selected-weight rule is silent |
+
+So a charset-invalid value poisons a computation and suppresses a rule exactly as any formally invalid value does, through a direct, a starred and a key read. Locked by `adapter.laws.SupportedCharactersComputeReadDiffTest` on dynamic Groovy, static Java and the interpreter ([IF396](INTERPRETER-FINDINGS.md#if396)).

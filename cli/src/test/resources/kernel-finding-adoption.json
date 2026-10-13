@@ -10772,6 +10772,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and type no message of their own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-07 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf555": {
+      "sha256": "2460a47a67143cf97de078214c02c2a85c81d566dd4216f9ca3016dc0b3725ee",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["charset-invalid read"],
+        "interpreter": ["charset-invalid read"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["charset-invalid read"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits declare supportedCharacters and evaluate no Document.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "How a stored value is read is runtime behaviour; the portable checker judges models only.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import evaluates no Document.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export evaluates no Document.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are compared with the interpreter on a direct, a starred and a key read, with a clean document as the control.", "evidence": {"charset-invalid read": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SupportedCharactersComputeReadDiffTest.kt#aValueOutsideTheDeclaredCharsetPoisonsEveryComputationReadingIt", "witness": "Each lowercase value clears exactly the computations reading it and silences the rule reading it, while the clean document computes all four and fires both rules."}}},
+        "interpreter": {"state": "APPLIED", "basis": "Every evaluation entry point reads the document under the effective charset, the consumer-supplied one included.", "evidence": {"charset-invalid read": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SupportedCharactersComputeReadDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter counted the lowercase starred tag and fired the tag-count rule before the change, and agrees with both strategies after it."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and read no value of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a measured row; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }

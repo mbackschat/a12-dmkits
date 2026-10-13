@@ -777,8 +777,9 @@ class DmInterpreter private constructor(
      * referencing it sees Val.Unknown (the 3VL propagates it). Every emitted message is gated by its error
      * field's relevance.
      */
-    private fun validateWith(doc: Document, locale: String, relevance: CallRelevance): ValidationOutcome =
-        observeCaches(doc) {
+    private fun validateWith(stored: Document, locale: String, relevance: CallRelevance): ValidationOutcome {
+        val doc = callDocument(stored)
+        return observeCaches(doc) {
             val isRelevant = relevance.isRelevant
             // The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible
             // clean-empty index cell's S-value into a call-local view — before the generated checks and
@@ -859,6 +860,7 @@ class DmInterpreter private constructor(
             }
             ValidationOutcome(messages, unsupported)
         }
+    }
 
     /**
      * Evaluate a SINGLE stored rule against the instance — the `rule eval` shape. [Verdict.FIRED] (a
@@ -869,12 +871,12 @@ class DmInterpreter private constructor(
     fun testRule(rulePath: String, doc: Document, locale: String = "en_US"): RuleResult {
         val rule = model.rules.firstOrNull { it.path == rulePath }
             ?: throw IllegalArgumentException("no such rule: $rulePath")
-        return evalRule(rule, doc, locale)
+        return evalRule(rule, callDocument(doc), locale)
     }
 
     /** Evaluate an injected, NON-stored candidate rule (the `model eval --condition/--field` shape). */
     fun evalCandidate(rule: RuleDef, doc: Document, locale: String = "en_US"): RuleResult =
-        evalRule(rule, doc, locale)
+        evalRule(rule, callDocument(doc), locale)
 
     /**
      * Run every computation over each row of its iteration scope and return each computed-field outcome
@@ -896,7 +898,8 @@ class DmInterpreter private constructor(
         retainedComputations(doc, locale).results
 
     /** Retain support observations without rerunning custom callbacks for a separate support audit. */
-    fun computeWithSupport(doc: Document, locale: String = "en_US"): ComputationEvaluation = try {
+    fun computeWithSupport(stored: Document, locale: String = "en_US"): ComputationEvaluation = try {
+        val doc = callDocument(stored)
         observeCaches(doc) {
             val run = engine.computeRunWithSupport(doc, locale)
             ComputationEvaluation(run.results, run.unsupported)
@@ -908,8 +911,8 @@ class DmInterpreter private constructor(
     }
 
     /** One compute pass retaining the source-relative actions consumed by both application surfaces. */
-    internal fun retainedComputations(doc: Document, locale: String = "en_US"): RetainedComputationRun =
-        observeCaches(doc) {
+    internal fun retainedComputations(stored: Document, locale: String = "en_US"): RetainedComputationRun =
+        callDocument(stored).let { doc -> observeCaches(doc) {
             val run = engine.computeRun(doc, locale)
             val applications = run.results.mapNotNull { computed ->
                 val retain = when (computed.outcome) {
@@ -940,7 +943,7 @@ class DmInterpreter private constructor(
                 computedErrors = run.computedErrors,
                 unsupported = run.unsupported,
             )
-        }
+        } }
 
     /**
      * Evaluate a SINGLE computed field against the instance — the single-computation twin of [testRule], the
@@ -955,7 +958,8 @@ class DmInterpreter private constructor(
      */
     fun computeField(fieldPath: String, doc: Document, locale: String = "en_US"): List<Computed> {
         require(model.computations.any { it.targetPath == fieldPath }) { "no computation targets field: $fieldPath" }
-        return observeCaches(doc) { engine.computeField(fieldPath, doc, locale) }
+        val call = callDocument(doc)
+        return observeCaches(call) { engine.computeField(fieldPath, call, locale) }
     }
 
     /**
@@ -1022,6 +1026,13 @@ class DmInterpreter private constructor(
         if (suppressed.isNotEmpty()) RuleResult(rule.path, Verdict.SUPPRESSED, suppressedBy = suppressed)
         else RuleResult(rule.path, Verdict.PASSED)
     }
+
+    /**
+     * [stored] read under this interpreter's effective charset. A consumer may supply a charset the model does not
+     * declare, and every read of a stored value, a computation's star read included, must judge it by the same set
+     * the formal checks use (KERNEL-FINDINGS KF555).
+     */
+    private fun callDocument(stored: Document): Document = stored.withLegalCharset(effectiveLegalCharset)
 
     private inline fun <T> observeCaches(doc: Document, action: () -> T): T {
         val observer = cacheObserver ?: return action()
