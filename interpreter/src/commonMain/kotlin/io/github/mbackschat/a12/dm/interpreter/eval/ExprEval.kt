@@ -75,6 +75,21 @@ private val DIGITS = Regex("""\d+""")
 internal fun Interpreter.semanticIndexFilled(e: Expr.SemanticIndex): Boolean = semanticIndexCell(e) != null
 
 /**
+ * Whether the cell at [path] is empty but not check-relevant, so a list reader meets it as unavailable rather than
+ * empty: a required-empty field in validation, and in a computation the empty index cell the preliminary index
+ * check invalidates, for which the gate throws the poison itself (KERNEL-FINDINGS KF552,
+ * `adapter.laws.RequiredEmptyReadDiffTest`).
+ */
+internal fun Interpreter.unavailableEmpty(c: EvalContext, path: String): Boolean = !c.filled(path) && invalid(c, path)
+
+/** Whether an instantiated row of a starred operand holds an [unavailableEmpty] cell. A12's list loops
+ *  (`anzahlAngegebenerFelder`, `combineFeldListe`, `anzahlWertInFeldlisteIntern`) return the not-check-relevant
+ *  value on the first such cell, as on a malformed one. [Expr.Star.bindDepth] scopes the rows. */
+private fun Interpreter.starHasUnavailableEmpty(c: EvalContext, operand: Expr.Star): Boolean =
+    c.firstFilledRows(operand.path.substringBeforeLast('/'), operand.bindDepth)
+        .any { row -> unavailableEmpty(row, operand.path) }
+
+/**
  * Whether a starred INDEX-field operand carries ANY NOT-CHECK-RELEVANT cell — the kernel's field-local index
  * errors (IF15/IF60, the VLQ [classifyVlqCell] mechanism generalized to the aggregate/count path): a
  * mandatory-EMPTY (or absent) cell of the auto-required index field, and EVERY cell of a DUPLICATED value
@@ -213,6 +228,7 @@ private fun Interpreter.filledFieldsCount(args: List<Expr>): Int? {
                 // field-list owner (SPEC-2026-07-23-12 follow-up); the kernel's count constructs the same
                 // EntityIterator (`anzahlAngegebenerFelder`, IF94).
                 for (rc in filteredRows(ctx, arg, FilterTraversal.SPARSE)) {
+                    if (unavailableEmpty(rc, arg.path)) return null
                     if (!rc.filled(arg.path)) continue
                     if (rc.field(arg.path) is Val.Unknown) {
                         if (computeMode) throw PoisonedReadException(arg.path)
@@ -229,6 +245,7 @@ private fun Interpreter.filledFieldsCount(args: List<Expr>): Int? {
                 // An index field's not-check-relevant cell (mandatory-empty / duplicated value) makes the count
                 // non-evaluable too — `anzahlAngegebenerFelder` returns NICHT_PRUEF_REL on the first UNKNOWN cell.
                 if (indexOperandNonEvaluable(ctx, arg.path, arg.bindDepth)) return null
+                if (starHasUnavailableEmpty(ctx, arg)) return null
                 count += cells.size
             }
         }
@@ -260,8 +277,11 @@ private fun Interpreter.filledFieldsCount(args: List<Expr>): Int? {
             } else {                                           // plain field
                 // `ctxOf`, not the ambient `ctx`: a `$`-marked operand resolves in the OUTER context, and asking
                 // the wrong one counts a different row's cell ([IF287]'s fourteenth/twenty-third instances).
-                if (ctxOf(arg).filled(path) && invalid(ctxOf(arg), path)) return null   // malformed → non-evaluable
-                if (ctxOf(arg).filled(path)) count++
+                when (filledTri(ctxOf(arg), path)) {
+                    Tri.TRUE -> count++
+                    Tri.FALSE -> {}
+                    Tri.UNKNOWN -> return null                 // malformed or required-empty → non-evaluable
+                }
             }
         }
     }
@@ -1188,6 +1208,7 @@ private fun Interpreter.countValueInFields(target: Val, operands: List<Expr>): I
                 // field-list owner (SPEC-2026-07-23-12 follow-up); the filter still drops the row first.
                 val kept = if (having == null) rows.asSequence() else keptRowsWithSuccessorLookahead(rows, having)
                 for (rc in kept) {
+                    if (unavailableEmpty(rc, arg.path)) return null
                     if (!rc.filled(arg.path)) continue                                        // empty → not counted
                     val v = rc.field(arg.path)
                     if (v is Val.Unknown) {                                                    // kept malformed → suppress
@@ -1201,6 +1222,7 @@ private fun Interpreter.countValueInFields(target: Val, operands: List<Expr>): I
                 val path = pathOf(arg)
                 // The fill test and the value read must ask ONE context — `evalExpr` goes through `ctxOf`, which
                 // is the OUTER one for a `$`-marked node ([IF287]'s fourteenth/twenty-third instances).
+                if (unavailableEmpty(ctxOf(arg), path)) return null
                 if (!ctxOf(arg).filled(path)) continue  // empty → not counted (kernel: b == FALSE)
                 val v = evalExpr(arg)
                 if (v is Val.Unknown) return null // a filled-but-malformed operand → non-evaluable
@@ -1230,7 +1252,8 @@ private fun Interpreter.productOperandValues(operand: Expr): List<Val> = when (o
         val context = ctxOf(operand)
         if (computeMode && context.starScanStates(operand.path, operand.bindDepth).any { it == CellState.INVALID })
             throw PoisonedReadException(operand.path)
-        context.starAll(operand.path, operand.bindDepth)
+        if (starHasUnavailableEmpty(context, operand)) listOf(Val.Unknown)
+        else context.starAll(operand.path, operand.bindDepth)
     }
     else -> throw UnsupportedConstructException("SumOfProducts requires starred field lists")
 }
@@ -2165,8 +2188,7 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
         } else if (outsideCoverage(operand.path, c.repsOf(operand.path))) {
             FirstFilledStep.Stop(Val.Unknown)
         } else if (!c.filled(operand.path)) {
-            walk.fillable = true
-            FirstFilledStep.Continue
+            firstFilledEmpty(c, operand.path, walk)
         } else {
             FirstFilledStep.Stop(firstFilledSelection(c, operand.path, c.repsOf(operand.path), evalExpr(operand)))
         }
@@ -2186,8 +2208,7 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
         if (outsideCoverage(operand.path, c.repsOf(operand.path))) {
             FirstFilledStep.Stop(Val.Unknown)
         } else if (!c.filled(operand.path)) {
-            walk.fillable = true
-            FirstFilledStep.Continue
+            firstFilledEmpty(c, operand.path, walk)
         } else {
             FirstFilledStep.Stop(evalExpr(operand))
         }
@@ -2350,7 +2371,8 @@ private fun Interpreter.firstFilledStar(
                 continue
             }
         } else if (!row.filled(operand.path)) {
-            walk.fillable = true
+            val step = firstFilledEmpty(row, operand.path, walk)
+            if (step is FirstFilledStep.Stop) return step
             continue
         }
         val selected = firstFilledSelection(row, operand.path, reps, row.field(operand.path))
@@ -2361,6 +2383,15 @@ private fun Interpreter.firstFilledStar(
     if (!visitedRow) walk.fillable = true
     return FirstFilledStep.Continue
 }
+
+/** An empty cell the walk passes over, unless it is not check-relevant (a required-empty field): A12 decides the
+ *  walk there as unavailable rather than reading past it (KERNEL-FINDINGS KF552). */
+private fun Interpreter.firstFilledEmpty(c: EvalContext, path: String, walk: FirstFilledWalk): FirstFilledStep =
+    if (invalid(c, path)) FirstFilledStep.Stop(Val.Unknown)
+    else {
+        walk.fillable = true
+        FirstFilledStep.Continue
+    }
 
 private fun Interpreter.firstFilledValue(f: Expr.Func): Val = firstFilledScan(f).value
 
@@ -2546,12 +2577,14 @@ private fun Interpreter.starOperandVals(star: Expr.Star, traversal: FilterTraver
         // aggregate non-evaluable — the kernel's `combineFeldListe` returns NICHT_PRUEF_REL on the first such
         // cell, so the referencing rule is suppressed (IF15/IF60 generalized to aggregates).
         if (indexOperandNonEvaluable(ctx, star.path, star.bindDepth)) return listOf(Val.Unknown)
+        if (starHasUnavailableEmpty(ctx, star)) return listOf(Val.Unknown)
         return ctx.star(star.path, star.bindDepth)
     }
     val vals = mutableListOf<Val>()
     for (rc in filteredRows(ctx, star, traversal)) {
         if (computeMode && rc.cellState(star.path) == CellState.INVALID) throw PoisonedReadException(star.path)
         if (rc.filled(star.path)) vals += rc.field(star.path)
+        else if (unavailableEmpty(rc, star.path)) return listOf(Val.Unknown)
     }
     return vals
 }

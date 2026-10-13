@@ -550,8 +550,17 @@ class Interpreter(
             // A STARRED operand carries its own binding level; an unstarred one has none, and `-1` then
             // means "cap at the operand's own path depth".
             else -> c.fillScope(path, isGroup = c.declaredKind(path) == null,
-                bindDepth = (a as? Expr.Star)?.bindDepth ?: -1)
+                bindDepth = (a as? Expr.Star)?.bindDepth ?: -1, cellValue = availableCells(c))
         }
+    }
+
+    /** The tally's cell source in [c]: an [unavailableEmpty] cell, a required-empty one above all, is undecided
+     *  rather than empty, so it lands in neither bucket (KERNEL-FINDINGS KF552). A missing declared slot is
+     *  never required and stays an ordinary empty. */
+    private fun availableCells(c: EvalContext): CellValueSource = CellValueSource { path, reps, stored ->
+        if (stored == null && unavailableEmpty(c.absentGroupRow(path.substringBeforeLast('/'), reps.dropLast(1)), path))
+            Val.Unknown
+        else stored
     }
 
     /**
@@ -565,8 +574,9 @@ class Interpreter(
      */
     private fun relevantStarFillScope(c: EvalContext, star: Expr.Star): FillScope {
         val relevant = checkNotNull(cellRelevant)
+        val available = availableCells(c)
         val scope = c.fillScope(star.path, isGroup = false, bindDepth = star.bindDepth) { path, reps, stored ->
-            if (relevant(path, reps)) stored else Val.Unknown
+            if (relevant(path, reps)) available.valueOf(path, reps, stored) else Val.Unknown
         }
         if (starFullyEnumerated?.invoke(star.path, star.bindDepth, c.repsOf(star.path)) != false) return scope
         return FillScope(scope.tInst, scope.fInst, scope.nInst + 1, hasUnknownInst = true) {
@@ -608,6 +618,7 @@ class Interpreter(
             n++
             when {
                 rc.presenceUnknown(star.path) -> {}
+                unavailableEmpty(rc, star.path) -> unknown = true
                 !rc.filled(star.path) -> f++
                 rc.field(star.path) is Val.Unknown -> unknown = true
                 else -> t++
@@ -620,6 +631,7 @@ class Interpreter(
                 if (!havingInterp(rc).keeps(having)) continue
                 when {
                     rc.presenceUnknown(star.path) -> allFilled = false
+                    unavailableEmpty(rc, star.path) -> allFilled = false
                     !rc.filled(star.path) -> { allFilled = false; anyEmpty = true }
                     rc.field(star.path) is Val.Unknown -> allFilled = false
                 }
@@ -897,7 +909,10 @@ class Interpreter(
         // is not an empty witness (`NoFieldFilled`/`NotAllGroupsFilled`/… stay silent over it). Checked
         // BEFORE the fill read; row-correct via the context's own reps. Null outside partial.
         cellRelevant?.invoke(path, c.repsOf(path)) == false -> Tri.UNKNOWN
-        !c.filled(path) -> Tri.FALSE
+        // An empty cell is a witness only while it is check-relevant: a required-empty field in validation, and an
+        // empty index cell the compute path's preliminary check invalidates, are unavailable like a malformed one
+        // (KERNEL-FINDINGS KF552, `adapter.laws.RequiredEmptyReadDiffTest`).
+        !c.filled(path) -> if (invalid(c, path)) Tri.UNKNOWN else Tri.FALSE
         invalid(c, path) -> Tri.UNKNOWN
         else -> Tri.TRUE
     }
@@ -1108,6 +1123,7 @@ class Interpreter(
             n++
             when {
                 rc.presenceUnknown(star.path) -> {}
+                unavailableEmpty(rc, star.path) -> {}
                 !rc.filled(star.path) -> f++
                 // filled-but-invalid, ROW-correct: the KEPT row's own cell (rc.field → resolveValue → Unknown,
                 // IF84) — the old `invalid(star.path)` resolved at the ENCLOSING rule row's reps, so a per-row

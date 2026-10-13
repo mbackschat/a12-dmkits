@@ -10700,6 +10700,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's check verbs relay the kernel's or the portable checker's report and add no notification of their own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-04 in the 2026-10-13 handback, including the supplementary category-token rows; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf552": {
+      "sha256": "abaa054509648dd0b677b2ca7d31e41c57666601115e7b3854999169847e32e3",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["generated requiredness scope", "required-empty reads"],
+        "interpreter": ["generated requiredness scope", "required-empty reads"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["generated requiredness scope", "required-empty reads"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author requiredness and rules; they evaluate no Document.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "Requiredness and authored reads are runtime behaviour; the portable checker judges models only.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import maps required properties to requiredness and evaluates no Document.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export states requiredness and evaluates no Document.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are compared with the interpreter on the requiredness domain, the partial selections and every reader family over a required-empty cell, each beside an optional twin.", "evidence": {"generated requiredness scope": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GeneratedRequirednessScopeDiffTest.kt#partialValidationRequiresTheFieldAndReadsSelectedContent", "witness": "Seven selections on one document agree across all three engines and are pinned, including the unselected parent content that leaves Street optional."}, "required-empty reads": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RequiredEmptyReadDiffTest.kt#theKernelSilencesEveryReadOfTheRequiredEmptyCell", "witness": "Every silenced reader's optional twin fires in the same document, so each silence is controlled."}}},
+        "interpreter": {"state": "APPLIED", "basis": "An empty cell that is not check-relevant is unavailable to presence, counts, first-filled walks, aggregates, value lists and fill tallies through one predicate; the generated requiredness domain already matched.", "evidence": {"generated requiredness scope": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GeneratedRequirednessScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter agrees with both strategies on all nine documents, including the capacity and parent-content rows."}, "required-empty reads": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RequiredEmptyReadDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "Before the change the interpreter fired every reader family over the required-empty cell; it now agrees on all four documents."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and add no read of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-06 in the 2026-10-13 handback, including the reader sweep and the computation-channel rows; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }

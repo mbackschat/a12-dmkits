@@ -13260,3 +13260,31 @@ a12-kernel-lean `SPEC-2026-10-13-04`. For one Enumeration field A12 reports in t
 Blocks 3 and 4 run over every category, so shortfalls precede surpluses whatever the category order: a surplus, a shortfall and a surplus category draw one missing-category class, then two missing-internal ones. A12 keeps one of identical notifications. So values `PLUS, PLUS` past a category's last token draw one class for that category, and tokens `STANDARD, HIGH, TOP, TOP, PEAK` over two values draw two. A value carrying any supplementary-plane character, alone or beside letters, is named by none of blocks 3, 5 and 6, and such a surplus token by no block 4 class: `STANDARD` plus U+1F6D2 over one value draws block 2 alone. It still holds its position in the pairing, so U+1F6D2 followed by `BASIC` under one token draws a missing-category class for `BASIC`, and a repeated one still draws block 7. Under the default charset, lowercase and non-ASCII BMP values are admitted.
 
 Locked by `adapter.laws.CheckerEnumDeclarationStreamAgreementTest`, which re-expresses the peer's 37-row capture in our own domain, all of whose classes it reproduces, and adds five rows with mixed values and supplementary tokens. The source agrees: A12 checks the declaration as a document of its metamodel ([KF146](#kf146)), whose formal check refuses any UTF-16 surrogate, so such an entry is unknown to the category rules, while block 7 comes from a separate serializer check over the raw values (`BasicConsistencyCheck.checkEnumerationType`), and identical notifications fall into a set. The portable checker now follows blocks 1 and 3–6 in order and multiplicity; it publishes block 2 as `RK_UNSUPPORTED_CHARACTER`, now for a category token too, after block 5, and block 7 not at all, since a repeated value always also draws block 6 or block 2. Not measured: an order inside a block, a supplementary-plane character in a category name, table-backed enumerations, and the interleaving of two enumeration fields.
+
+## §4 supplement — generated requiredness runs per held row behind held content, and selected content under partial validation; a required-empty field is unavailable to every authored read (both strategies, 2026-10-13) <a id="kf552"></a>
+
+> Fold: pending — the partial scope belongs in §4's generated rule, the unavailable read beside §3's presence 3VL.
+
+a12-kernel-lean `SPEC-2026-10-13-06`, extending [KF41](#kf41). **Where `mandatoryField` runs.** Full validation confirms KF41's domain on one model: an absolute field in an absent non-repeatable group is required (`{"Policy":{}}` reports `Holder/Phone`), a field under a repeatable group once per held row (an empty first `Covers` row reports its `Amount`; the missing second and third report nothing), and a fourth row past a capacity of three draws `zuGrosseZeile` and no requiredness. A parent-relative field is required once its group holds content: a valid `City`, a `Clause` in a nested `Terms`, or an empty repeatable `Vehicles` row; an empty `Holder` and one holding only a malformed `Zip` leave `Street` optional. **Under partial validation** the check runs only where the field itself is selected, and the parent gate reads selected content only. On a holder with a `City` and one empty cover:
+
+| selection | generated findings |
+|---|---|
+| none; `Marker` | none |
+| every cover's `Amount`; the first cover's `Amount` | `Covers[1]/Amount` |
+| the missing second cover's `Amount` | none |
+| `Street` alone | none: `City` is unselected, so `Street` is an ordinary empty and the authored `FieldNotFilled(Street)` fires |
+| `Holder` | `Holder/Phone`, `Holder/Street` |
+
+**A required-empty field is unavailable to every authored read,** as [KF30](#kf30)'s malformed field is, which generalizes [KF99](#kf99)'s index-column rule to every required field. Each row below is silent on a required-empty cell while the same rule over an optional twin fires in the same document:
+
+| reader | silent over the required-empty cell |
+|---|---|
+| presence | `FieldNotFilled`, `NoFieldFilled`, `NotAllFieldsFilled`, `FieldsNotCollectivelyFilled` over the field and a sibling; `GroupNotFilled`/`NoGroupFilled` over an absent group holding a required field |
+| counts | `NumberOfFilledFields` and `NumberOfValueInFields`, direct, starred and `Having`-filtered |
+| selection | `FirstFilledValue` reaching the cell, over a field, an enumeration category and a starred column |
+| aggregates | `Sum`, `MaxValue`, `MinValue`, `NumberOfDifferentValues`, `SumOfProducts`, unfiltered and filtered |
+| value lists | `NoFieldValueIncludedInValueList`, scalar and starred |
+
+A reader the known cells decide still fires: two filled rows around the required-empty one settle `MoreThanOneFieldFilled`, `NotExactlyOneFieldFilled` and `FieldValuesNotUnique`, a filled first row settles `FirstFilledValue`, and a missing declared row is an ordinary empty that `NotAllFieldsFilled` fires on. **Computation keeps its asymmetry** ([KF23](#kf23)): a required-empty operand stays an ordinary empty, so a presence guard over it selects the empty tier, while the empty index cell the preliminary index check invalidates poisons a presence guard and a count over its column, filtered or not.
+
+Locked by `adapter.laws.GeneratedRequirednessScopeDiffTest` (nine documents and seven partial selections) and `adapter.laws.RequiredEmptyReadDiffTest` (four documents, five required operands each with an optional twin, and the computation channel), on dynamic Groovy, static Java and the interpreter. Not measured: a sparse model above A12's dense iteration limit, and an aggregate over dates.

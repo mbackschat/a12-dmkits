@@ -116,9 +116,13 @@ private fun Interpreter.vlqOperand(e: Expr, traversal: FilterTraversal): VlqOper
             val dupIndexValues = indexColumn?.duplicated
             if (e.having == null) {
                 val cells = indexColumn?.cells ?: c.starCells(e.path, e.bindDepth)
+                // An empty cell that is not check-relevant (a required-empty field) is unavailable, not empty (KF552).
+                val unavailable = if (indexColumn != null) emptySet()
+                    else c.rowContexts(e.path.substringBeforeLast('/'), e.bindDepth)
+                        .filter { unavailableEmpty(it, e.path) }.mapTo(HashSet()) { it.repsOf(e.path) }
                 for ((reps, v) in cells) {
                     if (cellRelevant?.invoke(e.path, reps) == false) continue   // [IF267]
-                    op.add(classifyCell(v, dupIndexValues))
+                    op.add(if (v == null && reps in unavailable) Val.Unknown else classifyCell(v, dupIndexValues))
                 }
                 // An absent fixed group has no held rows, but its declared fields remain empty operands
                 // (SelectedGroupValueListDiffTest); irrelevant held cells above must not become empty ones.
@@ -140,6 +144,8 @@ private fun Interpreter.vlqOperand(e: Expr, traversal: FilterTraversal): VlqOper
                         indexValuesByRepetitions[rc.repsOf(e.path)]
                     } else if (rc.filled(e.path)) {
                         rc.field(e.path)
+                    } else if (unavailableEmpty(rc, e.path)) {
+                        Val.Unknown
                     } else {
                         null
                     }
