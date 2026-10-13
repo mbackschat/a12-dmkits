@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test
  * A declared length against the range A12's metamodel admits for it (KERNEL-FINDINGS KF556), against the portable
  * checker. On a String, Custom or Number type, `minLength` and `maxLength` must lie between 1 and 99,999; A12
  * answers a member outside that with one of three codeless sentences, once per sentence and field, and judges
- * nothing else with it. `-1`, "no bound", is admitted on the String and Custom carriers only, and a field deleted
- * from the default variant draws nothing.
+ * nothing else with it, a hint list's lengths included. `-1`, "no bound", is admitted on the String and Custom
+ * carriers only, and a field deleted from the default variant draws nothing.
  *
  * Own domain (a support ticket's description, summary, reference and effort), built by editing the drafted model's
  * JSON, because the typed builder refuses an inverted pair outright.
@@ -54,6 +54,12 @@ class CheckerLengthLimitAgreementTest {
         "string min signed, max zero" to string(MIN to -2, MAX to 0),
         "string min above a zero max" to string(MIN to 5, MAX to 0),
         "string line breaks, max zero" to string(BREAKS to true, MAX to 0),
+        "string max zero beside a hint" to string(MAX to 0, HINTS to listOf("Basic")),
+        "string max signed beside a hint" to string(MAX to -2, HINTS to listOf("Basic")),
+        "string max above beside a hint" to string(MAX to 100_000, HINTS to listOf("Basic")),
+        "string min above beside a hint" to string(MIN to 100_000, HINTS to listOf("abc")),
+        "string max sentinel beside a hint" to string(MAX to -1, HINTS to listOf("Basic")),
+        "string max three beside a hint" to string(MAX to 3, HINTS to listOf("Basic")),
         "string deleted, max above" to Row(DESCRIPTION, mapOf(MAX to 100_000), deleted = true),
         "string deleted, inverted" to Row(DESCRIPTION, mapOf(MIN to 5, MAX to 3), deleted = true),
         "custom max above" to custom(MAX to 100_000),
@@ -100,6 +106,9 @@ class CheckerLengthLimitAgreementTest {
         assertEquals(emptyList<String>(), a12("number deleted, max above"))
         assertEquals(listOf("MVK_ERROR_MESSAGE_AND_PATTERN_INVALID", "MVK_STRING_TYPE_PARAMS_INCONSISTENT", ABOVE),
             a12("string unvalidated with a pattern, max above"))
+        assertEquals(listOf("MVK_VALUE_TOO_LONG"), a12("string max three beside a hint"))
+        assertEquals(listOf(NOT_POSITIVE), a12("string max zero beside a hint"))
+        assertEquals(listOf(ABOVE), a12("string min above beside a hint"))
         assertEquals(listOf(ABOVE, ABOVE), kernel(twoFields))
         assertEquals(listOf("MVK_MIN_LENGTH_BIGGER_MAX_LENGTH", ABOVE), kernel(besideInverted))
     }
@@ -137,6 +146,8 @@ class CheckerLengthLimitAgreementTest {
                     is Int -> body.put(member, value)
                     is Boolean -> body.put(member, value)
                     is String -> body.put(member, value)
+                    is List<*> -> body.putArray(member).addObject().put("locale", "en_US").putArray("values")
+                        .also { values -> value.forEach { values.add(it as String) } }
                     else -> error(value)
                 }
             }
@@ -154,6 +165,7 @@ class CheckerLengthLimitAgreementTest {
         const val MAX = "maxLength"
         const val BREAKS = "lineBreaksPermitted"
         const val NO_VAL = "noValueValidation"
+        const val HINTS = "hintList"
         const val ABOVE = "RK_MEMBER_ABOVE_TECHNICAL_LIMIT"
         const val NOT_POSITIVE = "RK_MEMBER_NOT_POSITIVE"
         const val SIGNED = "RK_MEMBER_SIGNED"

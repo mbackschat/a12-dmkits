@@ -22,8 +22,9 @@ import kotlinx.serialization.json.intOrNull
  * entry for an undeclared locale is not examined at all, in either law, so a family judging every entry
  * present would refuse two models A12 takes.
  *
- * **`-1` is A12's "no bound"** (`IFieldType.UNDEFINED`), as everywhere else on this type, so a sentinel
- * maximum imposes nothing.
+ * **A bound outside 1 to 99,999 is no bound here**: `-1` is A12's "no bound" (`IFieldType.UNDEFINED`), and any
+ * other out-of-range member draws its own range sentence and judges no hint value (KERNEL-FINDINGS KF556,
+ * `adapter.laws.CheckerLengthLimitAgreementTest`).
  *
  * **The multiplicities are measured, not chosen.** A length finding is per offending VALUE, and a uniqueness
  * finding is per duplicated value rather than per list — two distinct values each duplicated in one list draw
@@ -67,8 +68,8 @@ private fun TrackedFactBase.judgedEntries(body: JsonObject): List<List<String>> 
         }
 
 private fun TrackedDeclaration.lengthFindings(values: List<String>, body: JsonObject): List<Finding> {
-    val maximum = body.bound("maxLength")
-    val minimum = body.bound("minLength")
+    val maximum = body.lengthInRange("maxLength")
+    val minimum = body.lengthInRange("minLength")
     return values.flatMap { value ->
         buildList {
             if (maximum != null && value.length > maximum) {
@@ -108,10 +109,6 @@ private fun TrackedDeclaration.hintFinding(code: String, explain: String): Findi
     explain,
     path,
 )
-
-/** A declared length bound, or null when the member is absent or carries A12's `-1` sentinel. */
-private fun JsonObject.bound(member: String): Int? =
-    (this[member] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 }
 
 /** Why a hint entry was skipped, or null when every entry of every list was judged. */
 private fun JsonObject.unreadableHintEntry(): String? {
