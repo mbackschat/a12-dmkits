@@ -86,8 +86,9 @@ internal fun Interpreter.unavailableEmpty(c: EvalContext, path: String): Boolean
  *  (`anzahlAngegebenerFelder`, `combineFeldListe`, `anzahlWertInFeldlisteIntern`) return the not-check-relevant
  *  value on the first such cell, as on a malformed one. [Expr.Star.bindDepth] scopes the rows. */
 private fun Interpreter.starHasUnavailableEmpty(c: EvalContext, operand: Expr.Star): Boolean =
-    c.firstFilledRows(operand.path.substringBeforeLast('/'), operand.bindDepth)
-        .any { row -> unavailableEmpty(row, operand.path) }
+    emptyMayBeUnavailable(operand.path) &&
+        c.firstFilledRows(operand.path.substringBeforeLast('/'), operand.bindDepth)
+            .any { row -> unavailableEmpty(row, operand.path) }
 
 /**
  * Whether a starred INDEX-field operand carries ANY NOT-CHECK-RELEVANT cell — the kernel's field-local index

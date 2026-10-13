@@ -257,6 +257,9 @@ internal class ComputationEngine(
             },
             computeMode = true,
             filterWalkGroups = { it in operands.ancestorGroups },
+            // The empty branch of the poison gate below, mirrored exactly: only a preliminary-invalid index cell
+            // can be unavailable when empty, so a starred scan for one is skipped wherever the gate cannot fire.
+            emptyMayBeUnavailable = emptyIndexCells.mapTo(HashSet()) { it.first }::contains,
         ).also { it.work = workLedger() }
         // A FILLED operand that is "not check-relevant" — formally invalid — makes a computation over it
         // non-evaluable (IF76, generalized IF78; poison semantics IF85). The gate is the SAME

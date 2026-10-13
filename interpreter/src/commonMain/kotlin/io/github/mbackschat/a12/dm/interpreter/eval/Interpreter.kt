@@ -102,6 +102,7 @@ class Interpreter(
     // A Having creates a row interpreter per filter read. Keep immutable call settings on EvalConfig:
     // the V8 allocation profile identified their repeated construction as material overhead (IF391).
     internal val clock get() = config.clock
+    internal val emptyMayBeUnavailable get() = config.emptyMayBeUnavailable
     internal val baseYear get() = config.baseYear
     internal val timeZone get() = config.timeZone
     internal val indexFields get() = config.indexFields

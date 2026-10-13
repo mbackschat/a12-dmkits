@@ -114,6 +114,11 @@ class EvalConfig(
      *  Validation counts every row. A computation counts only the groups holding a field some computation reads,
      *  measured on both kernel strategies by `adapter.laws.FilterMissingSlotDiffTest`. */
     val filterWalkGroups: ((String) -> Boolean)? = null,
+    /** Whether an EMPTY cell at a path can be unavailable in this call, so a starred list reader must scan its rows
+     *  for one (KERNEL-FINDINGS KF552). Validation answers it from the field's requiredness, computation from its
+     *  preliminary-invalid index cells; true, the safe answer, for a low-level [Interpreter]. Without it every
+     *  starred count paid a second row walk, doubling `GroupStarExpansionPerfTest` (2026-10-13). */
+    val emptyMayBeUnavailable: (String) -> Boolean = { true },
 ) {
 
     /** Validation-owned partial group-predicate extent check. Full validation and computation retain the

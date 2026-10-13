@@ -95,13 +95,17 @@ class RequiredEmptyFilteredReadDiffTest {
     }
 
     /**
-     * The computation's presence quantifiers: the empty index cell the preliminary index check invalidates is
-     * unavailable and poisons the tier, while a plain required-empty cell stays an ordinary empty read there.
+     * The computation's presence quantifiers and its starred count: the empty index cell the preliminary index check
+     * invalidates is unavailable and poisons the tier and the count, while a plain required-empty cell stays an
+     * ordinary empty read there.
      */
     private val computed: String = run {
         val session = EditSession.read(DocumentModelDraft.named("claim-required-quantified").locale("en_US")
             .rootGroup("Claim") { c -> c.numberField("CodeTier") { it.fractionDigits(0) }
                 .numberField("AmountTier") { it.fractionDigits(0) }
+                .numberField("CodeCount") { it.fractionDigits(0) }.numberField("AmountCount") { it.fractionDigits(0) }
+                .numberField("RankSum") { it.fractionDigits(0) }
+                .group("Tiers") { t -> t.repeatable(3).numberField("Rank") { it.fractionDigits(0) }.indexField("Rank") }
                 .group("Covers") { v -> v.repeatable(3).stringField("Code") { }
                     .numberField("Amount") { it.fractionDigits(0).required() }.indexField("Code") } }
             .build().toJson())
@@ -113,15 +117,22 @@ class RequiredEmptyFilteredReadDiffTest {
                     .`when`(Dsl.noFieldFilled(column)).calc(Dsl.number(2))
                     .message(Dsl.en("Check the cover tier.")).build()
             }
+            root.addComputation(root.num("${name}Count")) {
+                it.name("${name}CountComp").calc(Dsl.numberOfFilledFields(column))
+                    .message(Dsl.en("Check the cover count.")).build()
+            }
+        }
+        root.addComputation(root.num("RankSum")) {
+            it.name("RankSumComp").calc(Dsl.sum(root.flatten("Tiers*/Rank"))).message(Dsl.en("Check the ranks.")).build()
         }
         session.toJson()
     }
 
     @Test
     fun theComputationsPresenceQuantifierReadsOnlyThePreliminaryIndexCellAsUnavailable() {
-        val input = mapOf("a cover row with neither code nor amount" to """{"Claim":{"Covers":[{}]}}""")
+        val input = mapOf("a cover row with neither code nor amount" to """{"Claim":{"Covers":[{}],"Tiers":[{}]}}""")
         DocumentDifferential.assertAgree(computed, input)
-        assertEquals(mapOf("AmountTier" to "VALUE|2"),
+        assertEquals(mapOf("AmountCount" to "VALUE|0", "AmountTier" to "VALUE|2"),
             DocumentDifferential.kernel(computed, input.values.single(), dynamic = true).outcomes)
     }
 }

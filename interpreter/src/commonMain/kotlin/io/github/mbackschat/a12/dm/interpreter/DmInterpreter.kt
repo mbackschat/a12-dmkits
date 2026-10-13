@@ -28,6 +28,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Computed
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationEvaluation
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
+import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
@@ -1069,7 +1070,13 @@ class DmInterpreter private constructor(
             cellRelevant = relevance.isRelevant.takeUnless { it === ALL_RELEVANT },
             starRelevant = relevance.starRelevant, starExtentKnown = relevance.starExtentKnown,
             starFullyEnumerated = relevance.starFullyEnumerated,
-            customRelevant = relevance.customRelevant, groupPresence = groupPresence, groupCountGate = groupCountGate)
+            customRelevant = relevance.customRelevant, groupPresence = groupPresence, groupCountGate = groupCountGate,
+            // Outside a partial call an empty cell fails its formal check only when the field is required.
+            emptyMayBeUnavailable = if (relevance.isRelevant === ALL_RELEVANT) {
+                { path -> model.requirednessOf(path) != Requiredness.NOT_REQUIRED }
+            } else {
+                { true }
+            })
             .also { config ->
                 config.work = workLedger
                 config.absentGroupsCovered = relevance.groupExtents?.let { extents ->
