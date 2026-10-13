@@ -21,7 +21,7 @@ internal fun TrackedFactBase.messageKeyDefect(path: String, key: MessageKey, ele
         .flatMap { (_, text) -> semanticIndexUsesIn(text, conditionLanguage, keyword) }
         .mapNotNull { boundPair(it, group, element) }.toSet()
     val asked = BoundPair(path, spec)
-    return if (asked in written || ridesAlong(asked, written)) MessageCompletion.Accepted
+    return if (asked in written || ridesAlong(asked, written) || underKeyedGroup(asked, written)) MessageCompletion.Accepted
         else MessageCompletion.Refused("MVK_INDEX_FOR_ERROR_TEXT_INVALID")
 }
 
@@ -102,6 +102,16 @@ private fun TrackedFactBase.ridesAlong(asked: BoundPair, written: Set<BoundPair>
     }
     val group = declarationAt(groupPath) ?: return false
     return asked.valuePath == "$groupPath/${indexFieldNameOf(group) ?: return false}"
+}
+
+/**
+ * Whether the condition reads a GROUP above this field at the same spelled key. A keyed group read admits a keyed
+ * parameter on each of its fields (KERNEL-FINDINGS KF562); measured one level deep, and admitting the deeper fields
+ * too keeps this an under-report rather than a refusal A12 might not share.
+ */
+private fun TrackedFactBase.underKeyedGroup(asked: BoundPair, written: Set<BoundPair>): Boolean = written.any { bound ->
+    bound.keySpec == asked.keySpec && asked.valuePath.startsWith("${bound.valuePath}/") &&
+        declarationAt(bound.valuePath)?.declaredKind == DeclaredKind.GROUP
 }
 
 /**

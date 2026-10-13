@@ -25,7 +25,18 @@ private fun TrackedFactBase.pathsReadThroughAStarAlone(element: TrackedDeclarati
         val resolved = (resolveEntity(group, written.replace("*", ""), element.origin) as? Reference.Resolved)
             ?.path ?: return@forEach
         val footprint = messageReferenceFootprint(resolved)
-        if ('*' in written) starred += footprint else plain += footprint
+        if ('*' in written) starred += footprint
+        else footprint.forEach { path -> if (crossesUnboundRepetition(resolved, path, group)) starred += path else plain += path }
     }
     return starred - plain
 }
+
+/**
+ * Whether a group read reaches [path] across a repeatable level the declaring group does not iterate, which A12
+ * binds as a star: `GroupFilled(Office)` refuses `$Office/Desks/Seats.value$` (KERNEL-FINDINGS KF562). A level
+ * the declaring group sits in is its own row; that case is not measured, so it is left plain, never refused.
+ */
+private fun TrackedFactBase.crossesUnboundRepetition(read: String, path: String, group: String): Boolean =
+    crossedRepetitions(path).any { level ->
+        level.path.startsWith("$read/") && !(group == level.path || group.startsWith("${level.path}/"))
+    }

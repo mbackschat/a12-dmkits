@@ -46,12 +46,18 @@ class MessageIndexTerminalRepeatabilityLawsTest {
      * an Enumeration index of TWO values — plus a repeatable group off both paths whose index field carries
      * the same short name as the non-repeatable one's.
      */
-    private static final String WAREHOUSE = warehouse(false);
+    private static final String WAREHOUSE = warehouse(false, "Racks");
 
     /** The same model with the non-repeatable group's index field on the ADMITTED side of that gate. */
-    private static final String CLEAN_BAY_INDEX = warehouse(true);
+    private static final String CLEAN_BAY_INDEX = warehouse(true, "Racks");
 
-    private static String warehouse(boolean cleanBayIndex) {
+    /**
+     * The offending model with the repeatable group renamed so that its index field's full name sorts BEFORE the
+     * error entity's own ({@code /Warehouse/Aisles/Tier} before {@code /Warehouse/Bays/Tier}).
+     */
+    private static final String AISLES_FIRST = warehouse(false, "Aisles");
+
+    private static String warehouse(boolean cleanBayIndex, String repeatableName) {
         return DocumentModelDraft.named("warehouse-index").locale("en_US")
             .rootGroup("Warehouse", w -> w
                     .stringField("Reference", f -> { })
@@ -67,7 +73,7 @@ class MessageIndexTerminalRepeatabilityLawsTest {
                                 }
                             })
                             .stringField("Note", f -> { }))
-                    .group("Racks", r -> r.repeatable(9).indexField("Tier")
+                    .group(repeatableName, r -> r.repeatable(9).indexField("Tier")
                             .enumField("Tier", e -> e.value("BASIC").value("PREMIUM"))
                             .stringField("Label", f -> { })))
             .build().toJson();
@@ -178,5 +184,29 @@ class MessageIndexTerminalRepeatabilityLawsTest {
         expected.put("beside an ADMITTED one", "INVALID_INDEX_FIELD_REP");
         expected.put("the mixed shape, parameter-free — the control", ADMITTED);
         assertEquals(expected, actual, "a same-named repeatable index field has a class of its own");
+    }
+
+    /**
+     * Which of two offending declarations answers: the one whose full name sorts first, not the error entity's
+     * own. Both are offending here, so only the order of the list can separate them (a12-kernel-lean
+     * {@code SPEC-2026-10-13-12}; KERNEL-FINDINGS KF280).
+     */
+    @Test
+    void theFirstOffenderInFullNameOrderAnswers() {
+        String readsAisleTier = render(Dsl.fieldFilled(M.field("/Warehouse/Bays/Note"))
+                .and(Dsl.atLeastOneFieldFilled(BoundModel.ofJson(AISLES_FIRST).flatten("/Warehouse/Aisles*/Tier"))));
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the error entity's own declaration sorts first",
+                inBay(READS_RACK_TIER, "row $index(Tier).value$"));
+        actual.put("the repeatable group's declaration sorts first",
+                KernelLaws.messageVerdict(AISLES_FIRST, BAYS, "../Note", readsAisleTier, "en_US", "row $index(Tier).value$"));
+        actual.put("the repeatable group first, parameter-free — the control",
+                KernelLaws.messageVerdict(AISLES_FIRST, BAYS, "../Note", readsAisleTier, "en_US", "row"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the error entity's own declaration sorts first", "INVALID_INDEX_FIELD_NONREP_ENUM");
+        expected.put("the repeatable group's declaration sorts first", "INVALID_INDEX_FIELD_REP");
+        expected.put("the repeatable group first, parameter-free — the control", ADMITTED);
+        assertEquals(expected, actual, "the repeatability scan answers its first offender in full-name order");
     }
 }

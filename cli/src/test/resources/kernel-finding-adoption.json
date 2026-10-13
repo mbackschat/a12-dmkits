@@ -3535,7 +3535,7 @@
       }
     },
     "kf412": {
-      "sha256": "3b5a46fb7fa5eec7fcc856b9b93ba7a4d1b9727dbfa294ac146ad2169698ce89",
+      "sha256": "716d6df3510d5ec75abf9edaa7252fcb3179b4a9275d6e4a9500c029f6f2ab8a",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -3576,7 +3576,7 @@
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "The shared parameter reader supplies ordered semantic callbacks; complete kernel class lists are asserted by the typed adapter grids and their exact-byte JVM/Node replay. Dotted-tail grammar, keyed group-condition membership and index-terminal cross-field/category judgments retain their measured exclusions.",
+          "basis": "The shared parameter reader supplies ordered semantic callbacks; complete kernel class lists are asserted by the typed adapter grids and their exact-byte JVM/Node replay. Keyed group-condition membership is judged as KF562 measures it; dotted-tail grammar and index-terminal cross-field/category judgments retain their measured exclusions.",
           "evidence": {
             "nested key resolution order": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageParameterDecoderTest.kt#messageParametersReplayTheirKernelClassesAndExplicitDeclines",
@@ -10214,7 +10214,7 @@
       }
     },
     "kf280": {
-      "sha256": "c537906ed15e885d6a56bc156882ff2f6691faf262d7506ba1f4f474ce4c5db8",
+      "sha256": "0baa96d438f547fc7cb042e86e461c7795575d748323dbce84d0fe19ae43aeda",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -11060,6 +11060,30 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are pinned row by row and compared with the interpreter.", "evidence": {"message parameter row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageParameterRowDiffTest.kt#bothKernelStrategiesRenderTheRowEachParameterReads", "witness": "Both strategies render every spelling at the row it reads and fault an unmatched value read once, at the first row."}}},
         "interpreter": {"state": "APPLIED", "basis": "Field tokens resolve absolute, parent-relative and short names, and a keyed token reads the row its key selects.", "evidence": {"message parameter row": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/MessageParameterRowRenderTest.kt#everySpellingAndKeyReadsItsRow", "witness": "On JVM and Node every spelling reads its row and an unmatched value read ends the rule with one fault message."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool renders messages through the interpreter and carries no rendering of its own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-12; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf562": {
+      "sha256": "512f83f7bf52eeeeb884aed1d9dd5efc6be5d7da2c70838af527bd0b1adef804",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["index terminal classes"],
+        "checker": ["keyed message membership"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["keyed message membership"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["keyed message membership"]
+      },
+      "consumers": {
+        "dmkits": {"state": "APPLIED", "basis": "Typed models authored through the draft builder carry the two index-terminal laws to the kernel.", "evidence": {"index terminal classes": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/ParallelEnumIndexDisplayLawsTest.java#differentDisplayLabelsRefuseTheValueSuffixOnly", "witness": "Different display labels refuse the value suffix only; equal labels admit it."}}},
+        "checker": {"state": "APPLIED", "basis": "Keyed reads, keyed group reads, Number keys and group reads across an uniterated repeatable child are judged as A12 judges them; the display-label class stays silent.", "evidence": {"keyed message membership": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/KeyedMessageMembershipTest.kt#whichParametersAKeyedReadAdmits", "witness": "On JVM and Node the checker refuses and admits the measured keyed and group-read parameters."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no rule messages.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no rule messages.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the checker are compared row by row, with A12's own verdicts pinned.", "evidence": {"keyed message membership": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedMessageMembershipAgreementTest.kt#theCheckerAgreesWithA12", "witness": "Twenty-three rows agree, refusals and admissions both."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static message admission is the kernel's and the checker's; the interpreter evaluates admitted models only.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches this law through the kernel and the portable checker it already runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-12; awaits peer review.", "evidence": {}}
       }
     }

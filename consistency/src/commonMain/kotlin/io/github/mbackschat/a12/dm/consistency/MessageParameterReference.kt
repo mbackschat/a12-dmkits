@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
+import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameter
@@ -16,6 +19,10 @@ internal fun TrackedFactBase.completedFieldDefect(parameter: MessageParameter.Fi
         return if (declarationAt(path)?.declaredKind == DeclaredKind.GROUP)
             MessageCompletion.Refused("INVALID_FIELD_IN_PARAMETER") else MessageCompletion.Accepted
     }
+    // A keyed GROUP in the field position is refused by the key's own class, whatever the condition reads (KF562).
+    if (parameter.key != null && declarationAt(path)?.declaredKind == DeclaredKind.GROUP) {
+        return MessageCompletion.Refused("MVK_INDEX_FOR_ERROR_TEXT_INVALID")
+    }
     val membership = parameter.key?.let { messageKeyDefect(path, it, element) }
         ?: if (parameter.key == null && path !in entitiesReadBy(element)) MessageCompletion.Refused("INVALID_FIELD")
         else MessageCompletion.Accepted
@@ -28,15 +35,31 @@ internal fun TrackedFactBase.completedFieldDefect(parameter: MessageParameter.Fi
     return code?.let { MessageCompletion.Refused(it) } ?: MessageCompletion.Accepted
 }
 
-/** Message membership includes fields reached through group reads and the computation's own target. */
+/**
+ * Message membership includes fields reached through group reads and the computation's own target.
+ *
+ * A keyed read is no member of an unkeyed parameter, a keyed group read none of its fields: each keyed occurrence is
+ * taken out once, so the same path read plainly elsewhere still counts (KERNEL-FINDINGS KF562). The star gate reads
+ * [messageConditionReferences] whole, because a keyed read does clear it.
+ */
 internal fun TrackedFactBase.entitiesReadBy(element: TrackedDeclaration): Membership {
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    val paths = messageConditionReferences(element).mapNotNull { written ->
+    val read = messageConditionReferences(element).mapNotNull { written ->
         (resolveEntity(group, written.replace("*", ""), element.origin) as? Reference.Resolved)?.path
-    }.flatMap { messageReferenceFootprint(it) }.toSet() +
+    }.toMutableList()
+    keyedReadPaths(element, group).forEach { read.remove(it) }
+    val paths = read.flatMap { messageReferenceFootprint(it) }.toSet() +
         listOfNotNull(element.declaredReference()?.takeIf { it.role == ReferenceRole.COMPUTED_TARGET }
             ?.target?.let { (it as? Reference.Resolved)?.path })
     return Membership(paths, if (element.kind == "Rule") "errorCondition" else "computation's own members")
+}
+
+/** The value path of every keyed read in the declaration's conditions, once per occurrence. */
+private fun TrackedFactBase.keyedReadPaths(element: TrackedDeclaration, group: String): List<String> {
+    val body = element.body ?: return emptyList()
+    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
+    return conditionTexts(element.kind, body).flatMap { (_, text) -> semanticIndexUsesIn(text, conditionLanguage, keyword) }
+        .mapNotNull { use -> use.valuePath?.let { (resolveEntity(group, it.replace("*", ""), element.origin) as? Reference.Resolved)?.path } }
 }
 
 /** The rule-context token is a read too; the syntax reader deliberately returns only ordinary paths. */
