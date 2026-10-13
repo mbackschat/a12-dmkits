@@ -13261,6 +13261,8 @@ At run time the target's format decides the stored text. `2024-03-05` from an IS
 
 Locked by `adapter.laws.FirstFilledDateTargetRenderingDiffTest` (dynamic Groovy, static Java and the interpreter on five documents, outcomes pinned) and `adapter.laws.CheckerFirstFilledDateTargetAgreementTest` (the kernel against the portable checker on thirteen rows, with and without a Base Year). The `yyyy`-into-full-Date row is admission only; its stored value is not measured.
 
+*Added 2026-10-13:* the target's declared FORMAT decides, not its kind, as [KF222](#kf222) has it for a constant. A TIME-kind target declared `dd.MM.yyyy` stores the selected Date as `05.03.2024` and one declared `yyyy-MM-dd` as `2024-03-05`, and a later `FirstFilledValue(TimeDot, DateDot)` over that dotted TIME cell and a dotted DATE field is admitted and reads it back as a Date. Locked by `adapter.laws.FirstFilledDateCrossKindTargetDiffTest`, where the interpreter was ERRORED on both cross-kind rows until [IF397](INTERPRETER-FINDINGS.md#if397).
+
 ## §8 supplement — an Enumeration declaration's notifications come in blocks, identical ones once, and no coded class names a value carrying a supplementary-plane character (kernel `checkConsistency`, 2026-10-13) <a id="kf551"></a>
 
 > Fold: pending — the declaration stream belongs in §8 beside the category pairing.

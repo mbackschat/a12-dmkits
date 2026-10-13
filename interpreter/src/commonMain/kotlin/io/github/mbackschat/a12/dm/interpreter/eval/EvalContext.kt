@@ -101,6 +101,10 @@ interface EvalContext {
      *  parse the field's RAW partial value (`00.MM.yyyy`) in its own format. */
     fun dateFormatOf(path: String): String? = null
 
+    /** The temporal format a field DECLARES whatever its kind — a TIME field may declare `dd.MM.yyyy` — or null.
+     *  With [declaredKind] it decides how a computed value is stored there ([dateStoreFormat], KF222). */
+    fun declaredTemporalFormatOf(path: String): String? = null
+
     /** A [Kind.DATE] field's partial precision, used with [dateFormatOf] by `ValueAsDate`. */
     fun datePrecisionOf(path: String): DatePrecision = DatePrecision.FULL
 

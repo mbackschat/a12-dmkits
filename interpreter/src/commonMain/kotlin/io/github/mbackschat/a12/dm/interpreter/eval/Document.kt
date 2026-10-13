@@ -1338,6 +1338,8 @@ class Document(internal val config: DocumentConfig) {
 
         override fun dateFormatOf(path: String): String? = dateFormats[path]
 
+        override fun declaredTemporalFormatOf(path: String): String? = kinds[path]?.let { declaredTemporalFormat(path, it) }
+
         override fun datePrecisionOf(path: String): DatePrecision =
             datePrecisions[path] ?: DatePrecision.FULL
 
@@ -1896,6 +1898,8 @@ class Document(internal val config: DocumentConfig) {
         override fun declaredKind(path: String): Kind? = kinds[path]
 
         override fun dateFormatOf(path: String): String? = dateFormats[path]
+
+        override fun declaredTemporalFormatOf(path: String): String? = kinds[path]?.let { declaredTemporalFormat(path, it) }
 
         override fun datePrecisionOf(path: String): DatePrecision =
             datePrecisions[path] ?: DatePrecision.FULL

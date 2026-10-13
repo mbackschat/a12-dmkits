@@ -2,7 +2,9 @@ package io.github.mbackschat.a12.dm.interpreter.model
 
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.messagePointerHouseForm
+import io.github.mbackschat.a12.dm.interpreter.eval.dateStoreFormat
 import io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey
+import io.github.mbackschat.a12.dm.interpreter.eval.temporalClassifier
 
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
@@ -634,6 +636,13 @@ data class ModelDef(
         Kind.DATE_RANGE -> rangeConfig[path]?.first
         else -> null
     }
+
+    /** The format a computed value is stored in when this field's declaration classifies it as a Date, else
+     *  null — the declared format decides, not the kind ([dateStoreFormat], KF222). */
+    fun dateStoreFormatOf(path: String): String? = dateStoreFormat(kinds[path], dateLikeFormatOf(path))
+
+    /** The kind whose classifier this field's declared format selects ([temporalClassifier], KF211). */
+    fun temporalClassOf(path: String): Kind? = kinds[path]?.let { temporalClassifier(it, dateLikeFormatOf(path)) }
 
     /** The DATE_RANGE field's separator (the formal check splits the value on it), else null. */
     fun rangeSeparatorOf(path: String): String? = rangeConfig[path]?.second

@@ -49,7 +49,7 @@ Facet placement follows the dimension's *question*: `emptyOperand` + `aggregateI
 | §6 a temporal literal failure inside a filter | — | `FilterTemporalLiteralFailureDiffTest`, `FilterMissingSlotDiffTest`, `FilterCacheScopeDiffTest`, `SparseFilteredAggregateDiffTest`, `DenseUniquenessPrefixDiffTest`, `SparseFilteredFillDiffTest`, `SparseMembershipTraversalDiffTest`, `SparseOverlapPolicyDiffTest`, `OverlapFilterBindingDiffTest` | `SparseFilteredAggregateTest`, `SparseFilteredFillTest`, `SparseMembershipTraversalTest`, `SparseOverlapPolicyTest` |
 | §6 Date construction argument reads per phase | — | `ConstructionArgumentPhaseDiffTest` | — |
 | §6 shift amount phase and provenance | — | `ShiftAmountPhaseDiffTest` | — |
-| §6 a first-filled Date stored in its target's format | — | `FirstFilledDateTargetRenderingDiffTest` | — |
+| §6 a first-filled Date stored in its target's format, whichever kind declares it | — | `FirstFilledDateTargetRenderingDiffTest`, `FirstFilledDateCrossKindTargetDiffTest` | `CrossKindTemporalStoreTest` |
 | §9 parallel validation availability, dispatch and frames | — | `ParallelValidationDispatchDiffTest` | `ParallelValidationDispatchTest` |
 | §9 full-validation iteration domain | — | `ValidationIterationDomainDiffTest`, `DeeperErrorFieldIterationDiffTest` | — |
 | §11 computation-guard read order and reached poison | — | `MembershipComputationGuardDiffTest`, `OverlapComputationGuardDiffTest`, `UniquenessComputationGuardDiffTest`, `FilteredFillComputationGuardDiffTest`, `UnregisteredPredefinedTypeComputationTest`, `RootGroupGuardDependencyDiffTest` | — |

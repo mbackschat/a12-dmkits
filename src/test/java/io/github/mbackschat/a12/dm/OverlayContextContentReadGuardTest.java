@@ -43,6 +43,7 @@ class OverlayContextContentReadGuardTest {
             Map.entry("enumCategoryValue", "a projection of the value it is passed, not a read of a cell"),
             Map.entry("declaredKind", "model metadata"),
             Map.entry("dateFormatOf", "model metadata"),
+            Map.entry("declaredTemporalFormatOf", "model metadata"),
             Map.entry("datePrecisionOf", "model metadata"),
             Map.entry("signed", "model metadata: a number field's declared sign"),
             Map.entry("presenceUnknown", "a parallel iteration's invalid-index state, decided by the iteration"),

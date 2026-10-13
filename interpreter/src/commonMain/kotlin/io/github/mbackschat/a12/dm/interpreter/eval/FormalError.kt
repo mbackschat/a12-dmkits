@@ -824,6 +824,18 @@ internal fun temporalClassifier(kind: Kind, format: String?): Kind = when (kind)
     Kind.NUMBER, Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM, Kind.DATE_RANGE -> kind
 }
 
+/**
+ * The format a computed value is STORED in when its target's declaration classifies it as a Date, else null.
+ *
+ * The store side follows the same rule as [temporalClassifier]: A12 renders a computed or constant value by the
+ * target's declared format string and never reads its kind, so a TIME field declared `dd.MM.yyyy` stores a date
+ * as `05.03.2024` and one declared `yyyy-MM-dd` turns the constant `"05.03.2024"` into `2024-03-05` (KF222).
+ * Keyed on the kind, both were stored unrendered and then failed their own format check as ERRORED (IF397).
+ */
+internal fun dateStoreFormat(kind: Kind?, declaredFormat: String?): String? =
+    if (kind != null && temporalClassifier(kind, declaredFormat) == Kind.DATE) declaredFormat ?: defaultTemporalFormat(kind)
+    else null
+
 /** The format a temporal field gets when it declares none. This is the kind's own default, not a restriction. */
 internal fun defaultTemporalFormat(kind: Kind): String = when (kind) {
     Kind.TIME -> "HH:mm:ss"

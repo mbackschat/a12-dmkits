@@ -548,7 +548,7 @@ internal class ComputationEngine(
                 // has to reach the store canonicalized, or the target's own format cannot render it. The format
                 // rides along because a YEARLESS literal needs a reference year only when the target renders one.
                 return Selection(true, interp.evalExpression(
-                    alt.written, model.kinds[targetPath], model.dateFormats[targetPath]))
+                    alt.written, model.temporalClassOf(targetPath), model.dateStoreFormatOf(targetPath)))
             }
         }
         return Selection.NONE
@@ -668,13 +668,12 @@ internal class ComputationEngine(
         return if (s != null && e != null) "$s$sep$e" else "${v.start}/${v.end}"
     }
 
-    /** Render a computed scalar to the TARGET field's stored form: a DATE result is reformatted from the
-     *  interpreter's ISO to the target's declared date format (the kernel stores a computed date in the field's
-     *  format, IF33). STRING and DATE_TIME results pass through (no datetime re-formatter yet). */
+    /** Render a computed scalar to the TARGET field's stored form: a date result is reformatted from the
+     *  interpreter's ISO to the format the target declares, whichever temporal kind declares it (the kernel stores
+     *  a computed date in the field's format, IF33, IF397). STRING and DATE_TIME results pass through (no datetime
+     *  re-formatter yet). */
     private fun renderScalarValue(iso: String, targetPath: String): String =
-        if (model.kinds[targetPath] == Kind.DATE)
-            model.dateFormats[targetPath]?.let { renderDateToFormat(iso, it) } ?: iso
-        else iso
+        model.dateStoreFormatOf(targetPath)?.let { renderDateToFormat(iso, it) } ?: iso
 
     private data class OperandSelection(
         val fields: Set<String>,

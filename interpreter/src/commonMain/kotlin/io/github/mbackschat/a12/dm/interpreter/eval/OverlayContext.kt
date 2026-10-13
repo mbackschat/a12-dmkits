@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 import io.github.mbackschat.a12.dm.interpreter.CacheObserver
 import io.github.mbackschat.a12.dm.interpreter.CacheOwnerKind
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
-import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
  * Decorates an [EvalContext] so reads of a field that a PRIOR computation produced return its computed
@@ -78,8 +77,8 @@ internal class OverlayContext(
         // evaluation's `2024-01-01` (SPEC-2026-10-04-01, `adapter.laws.CalendarTargetCompletionDiffTest`).
         is CascadeOverlay.Entry.Overlaid -> when (val value = entry.value) {
             is Val.Num -> entry.numberDisplay(minFracOf(path))
-            is Val.Txt -> if (d.declaredKind(path) == Kind.DATE)
-                d.dateFormatOf(path)?.let { renderDateToFormat(value.v, it) } ?: value.v else value.v
+            is Val.Txt -> dateStoreFormat(d.declaredKind(path), d.declaredTemporalFormatOf(path))
+                ?.let { renderDateToFormat(value.v, it) } ?: value.v
             is Val.Bool -> value.v.toString()
             else -> d.displayValue(path)
         }
