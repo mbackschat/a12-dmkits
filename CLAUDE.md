@@ -209,15 +209,17 @@ Applies hardest to a claim reached by **reasoning rather than execution**: if a 
 
 **The session you are in plans, implements, and verifies.** Use plan mode or a task list for anything multi-step. **Sub-agents are read-only**: they review, search, and report findings. Never delegate implementation to one, and never use one to double-check work you can check yourself. Never let two sessions write the same tree: **one active session per worktree, always** (a read-only reviewer is compatible with that rule; concurrent editing is not).
 
-**Model tiers are symbolic (HIGH, MEDIUM, LOW).** Resolve them through the tier table in your global instructions; the maintainer's table is [Model tier mappings](https://github.com/mbackschat/coding-setup/blob/main/CLAUDE.md#model-tier-mappings). Without such a table, run HIGH on your most capable model, MEDIUM on a faster, cheaper one and LOW on the fastest, and say which models you used. Match the tier to the read-only job, cheapest first:
+**Model tiers are symbolic (HIGH, MEDIUM, LOW).** Resolve them through the tier table in your global instructions; the maintainer's table is [Model tier mappings](https://github.com/mbackschat/coding-setup/blob/main/CLAUDE.md#model-tier-mappings). Without such a table, run HIGH on your most capable model, MEDIUM on a faster, cheaper one and LOW on the fastest, and say which models you used.
 
-| Sub-agent job | Tier |
-|---|---|
-| Locating code: file and symbol searches, enumerations, "where is X used" | LOW |
-| A read-only inventory or survey that needs judgement (coverage maps, sibling sweeps, stale-claim hunts) | MEDIUM |
-| A cold adversarial review (see "Cold adversarial review gates") | HIGH |
+**Pick a sub-agent's tier by what its answer becomes, not by how big the job looks.** Choose the cheapest tier that fits, and escalate only when its result is visibly insufficient, never by default:
 
-Escalate only when a cheaper tier's result is visibly insufficient, never by default.
+| The agent's answer becomes… | Tier | Typical jobs |
+|---|---|---|
+| **Evidence you check yourself.** The job is mechanical: a stated query, an enumeration, an extraction | LOW | Locating code, callers or the guard that owns a surface; sweeping for a string or id; listing what a commit range touched |
+| **A lead you act on.** The job needs judgement to select, classify or map, but nothing ships on the agent's word alone | MEDIUM | Inventories and coverage maps; enumerating a defect class's sibling sites; finding docs a change made false; assembling a review packet; scouting where a kernel behaviour lives |
+| **A verdict or a claim that ships**, or a confident wrong answer would be expensive and invisible to the guards | HIGH | Cold adversarial reviews; a mechanism or clean-room judgement that enters a finding, a letter or a published contract |
+
+Two rules hold at every tier. A LOW or MEDIUM agent returns its evidence (the command, the matches it found and the lines it read), never a verdict on completeness; a claim of absence or completeness stays yours to state under [the oracle table](#kernel-claim-oracles). And the tier never licenses writing: every sub-agent stays read-only.
 
 Pick the review checkpoints **while writing the plan**, not while working, and record them as real tasks so they cannot be skipped silently. Planning them is this rule's job; which ones are warranted is "Cold adversarial review gates" below.
 
