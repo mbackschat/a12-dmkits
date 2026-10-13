@@ -60,6 +60,15 @@ internal class ValidationPass(
         return selected.dropLast(1) + ctx.repsOf(target).drop(parent.size + 1)
     }
 
+    /**
+     * The key a selected message reference reads from a field: its value only when the field is check-relevant —
+     * relevant and formally valid. The kernel reads the key through its checked-value accessor, which gives an
+     * empty text for any other cell, so such a key selects no row and the reference names A12's unknown row
+     * (KERNEL-FINDINGS KF549, `adapter.laws.SelectedErrorReanchorEligibilityDiffTest`).
+     */
+    fun checkedKeyValue(ctx: EvalContext, path: String): String? =
+        if (invalidOperand(ctx, path)) null else ctx.displayValue(path)
+
     val partial: Boolean = config.cellRelevant != null
     private val aggregateMemo = HashMap<AggregateMemoKey, Val>()
 

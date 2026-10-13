@@ -1312,7 +1312,7 @@ class DmInterpreter private constructor(
     ): List<Int>? {
         val key = when (val written = reference.key) {
             is SelectedKey.Literal -> written.value
-            is SelectedKey.Field -> ctx.displayValue(written.path)
+            is SelectedKey.Field -> pass.checkedKeyValue(ctx, written.path)
         }?.takeIf { it.isNotEmpty() } ?: return null
         return pass.selectedMessageRepetitions(ctx, reference.path, checkNotNull(reference.indexField), key)
     }

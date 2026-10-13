@@ -10589,6 +10589,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's check verbs delegate to the kernel by default and to the portable checker under --engine portable; neither path adds a membership gate of its own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-03 in the 2026-10-13 handback as already satisfied, with the new lock; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf549": {
+      "sha256": "bf3537bfcc73d13adcf66ce5b6700b79530fd2618e9d6d5644bbdeff716e9f1b",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["selected error key read"],
+        "interpreter": ["selected error key read"],
+        "dmtool-cli": ["selected error key read"],
+        "a12-kernel-lean": ["selected error key read"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "An error address is runtime behaviour; authoring the rule is unchanged.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "Model consistency does not compute error addresses.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import authors no rule with a selected error field.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not map rules.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter are compared on the eligibility contrasts, the missing association, an invalid payload, an invalid key and an irrelevant key.", "evidence": {"selected error key read": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedErrorReanchorEligibilityDiffTest.kt#anIrrelevantKeyFieldNamesNoRow", "witness": "Under partial validation without the key field, both strategies address Bays[-5] and so does the interpreter."}}},
+        "interpreter": {"state": "APPLIED", "basis": "selectedMessageRepetitions reads a field-valued key through ValidationPass.checkedKeyValue, the relevance and formal test the rule operands use.", "evidence": {"selected error key read": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedErrorReanchorEligibilityDiffTest.kt#aFormallyInvalidKeyNamesTheUnknownRow", "witness": "A key of two characters in a field of maximum length 1 names Bays[-5] although its text equals the second bay's code; the three-engine comparison of that document fails when the raw read is restored."}}},
+        "dmtool-cli": {"state": "APPLIED", "basis": "model eval runs the corrected interpreter address.", "evidence": {"selected error key read": {"reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/SelectedErrorKeyCliTest.kt#anInvalidKeyAddressesTheUnknownBay", "witness": "model eval reports the rule at Bays[-5] for an invalid key whose text names a bay."}}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-12-01 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }
