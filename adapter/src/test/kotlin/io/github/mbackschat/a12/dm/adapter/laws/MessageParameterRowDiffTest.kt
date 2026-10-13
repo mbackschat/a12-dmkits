@@ -106,6 +106,9 @@ class MessageParameterRowDiffTest {
         claims.addRule { it.name("KeyedMissRow").code("KEYED_MISS_ROW").errorField(claims.str("Note"))
             .`when`(claims.str("Note").filled().and(c9.notFilled()))
             .message(Dsl.en("mr=[" + Dsl.fieldValue(c9) + "]")).build() }
+        policy.addRule { it.name("Unbound").code("UNBOUND").errorField(holder)
+            .`when`(holder.filled().and(c1.filled()).and(Dsl.numberOfFilledFields(policy.flatten("Claims*/Note")).gt(0)))
+            .message(Dsl.en("u=[" + Dsl.fieldValue(note.field()) + "]")).build() }
         session.toJson()
     }
 
@@ -186,6 +189,9 @@ class MessageParameterRowDiffTest {
             "SHORT_PARTNER /Policy[1]/Covers[2]/Remark[1] p=[7] pl=[Cap]",
             "SHORT_ROOT /Policy[1]/Claims[1]/Note[1] h=[Ada] hl=[Holder]",
             "SHORT_ROOT /Policy[1]/Claims[2]/Note[1] h=[Ada] hl=[Holder]",
+            // Beside a keyed and a starred read, the unkeyed value binds no level and renders the FIRST claim's
+            // note, not the keyed claim's (n1).
+            "UNBOUND /Policy[1]/Holder[1] u=[n0]",
         )
     }
 }

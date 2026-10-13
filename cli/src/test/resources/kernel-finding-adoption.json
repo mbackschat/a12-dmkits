@@ -11040,7 +11040,7 @@
       }
     },
     "kf561": {
-      "sha256": "31b7a2151e3ef53ef006a300a9ebaa3cc84123d8ef8719e7d5e10b4668be7586",
+      "sha256": "b369551f617a8bc06b95f8a1ecabeec4d51a6c48d0443364839d9d3b01f78dd2",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["keyed message token"],
@@ -11064,7 +11064,7 @@
       }
     },
     "kf562": {
-      "sha256": "512f83f7bf52eeeeb884aed1d9dd5efc6be5d7da2c70838af527bd0b1adef804",
+      "sha256": "316d8959a5e27ffb205ec362026e5c4e38aa5002078d638022afe4aadfcaa0a2",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["index terminal classes"],

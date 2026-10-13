@@ -25,7 +25,8 @@ class KeyedMessageMembershipAgreementTest {
         .rootGroup("Policy") { p -> p
             .stringField("Holder") { }.stringField("Pick") { }
             .group("Claims") { c -> c.repeatable(5).indexField("Ref")
-                .stringField("Ref") { }.stringField("Note") { }.stringField("Gate") { } }
+                .stringField("Ref") { }.stringField("Note") { }.stringField("Gate") { }
+                .group("Items") { i -> i.repeatable(3).stringField("Item") { } } }
             .group("Tiers") { t -> t.repeatable(3).indexField("Num")
                 .numberField("Num") { it.fractionDigits(0) }.stringField("Label") { } }
             .group("Office") { o -> o.stringField("Staff") { }
@@ -65,6 +66,8 @@ class KeyedMessageMembershipAgreementTest {
         "keyed group: another key" to (Reads.KEYED_GROUP to "\$/Policy/Claims/Note.value For \"c2\"\$"),
         "keyed group: unkeyed" to (Reads.KEYED_GROUP to "\$/Policy/Claims/Note.value\$"),
         "keyed group: the group named" to (Reads.KEYED_GROUP to "\$/Policy/Claims For \"c1\"\$"),
+        "keyed group: a deeper repeatable field's name" to (Reads.KEYED_GROUP to "\$/Policy/Claims/Items/Item For \"c1\"\$"),
+        "keyed group: a deeper repeatable field's value" to (Reads.KEYED_GROUP to "\$/Policy/Claims/Items/Item.value For \"c1\"\$"),
         "number key: as written" to (Reads.KEYED_NUMBER to "\$/Policy/Tiers/Label.value For \"1\"\$"),
         "number key: a leading zero" to (Reads.KEYED_NUMBER to "\$/Policy/Tiers/Label.value For \"01\"\$"),
         "number key: a fraction" to (Reads.KEYED_NUMBER to "\$/Policy/Tiers/Label.value For \"1.0\"\$"),
@@ -90,7 +93,9 @@ class KeyedMessageMembershipAgreementTest {
             "keyed group: the index field" to emptyList(), "keyed group: unkeyed" to listOf(FIELD),
             "keyed group: the group named" to listOf(INDEX), "number key: a leading zero" to listOf(INDEX),
             "number key: a fraction" to listOf(INDEX), "keyed and starred: unkeyed value" to emptyList(),
-            "group read: a repeatable child's field" to listOf(STAR)),
+            "group read: a repeatable child's field" to listOf(STAR),
+            "keyed group: a deeper repeatable field's name" to emptyList(),
+            "keyed group: a deeper repeatable field's value" to listOf(STAR)),
             verdicts.filterKeys { it in PINNED }.mapValues { it.value.first })
     }
 
@@ -123,6 +128,7 @@ class KeyedMessageMembershipAgreementTest {
         val PINNED = setOf("keyed field: unkeyed", "keyed field: unkeyed name", "keyed group: a field",
             "keyed group: another field", "keyed group: the index field", "keyed group: unkeyed",
             "keyed group: the group named", "number key: a leading zero", "number key: a fraction",
-            "keyed and starred: unkeyed value", "group read: a repeatable child's field")
+            "keyed and starred: unkeyed value", "group read: a repeatable child's field",
+            "keyed group: a deeper repeatable field's name", "keyed group: a deeper repeatable field's value")
     }
 }
