@@ -125,7 +125,16 @@ class Document(internal val config: DocumentConfig) {
         val isGroup: Boolean,
         val raw: String? = value,
         val numberIdentity: DecimalObjectIdentity? = null,
-    )
+        /** The evaluation text BEFORE the CRLF fold, which the input gates measure (KF547); preserved by the
+         *  normalizing `copy`. Differs from [raw] only where [renderedField] re-renders a number. */
+        val authored: String? = value,
+    ) {
+        /** The formal check's view of a valued placement: evaluation text plus the authored text it came from. */
+        fun formalInput(): FormalInput? = value?.let { FormalInput(it, authored ?: it) }
+    }
+
+    /** The evaluation text of a stored value and the authored text the input gates measure. */
+    private data class FormalInput(val value: String, val authored: String)
 
     /** One declared-tail decision for a starred field in a bound row scope (IF194). */
     private data class StarOmissionKey(val path: String, val bindDepth: Int, val scope: List<Int>)
@@ -958,14 +967,15 @@ class Document(internal val config: DocumentConfig) {
                 candidates += IndexIdentityCandidate(row, null, compromises = true)
                 continue
             }
-            val raw = valueAt(idxPath, row + 1)?.value
-            if (raw.isNullOrEmpty()) {                                      // empty index cell → group invalid here
+            val input = valueAt(idxPath, row + 1)?.formalInput()
+            if (input == null || input.value.isEmpty()) {                   // empty index cell → group invalid here
                 candidates += IndexIdentityCandidate(row, null, compromises = true)
                 continue
             }
+            val raw = input.value
             val cellReps = row + 1
             val admitted = indexIdentityAdmitted?.invoke(idxPath, cellReps, raw)
-                ?: !formallyInvalid(idxPath, raw)
+                ?: !formallyInvalid(idxPath, input)
             if (!admitted) {
                 // Formal admission precedes identity. The invalid cell compromises the column like an empty one,
                 // but contributes no key and therefore cannot collide with or match a valid value.
@@ -1116,8 +1126,9 @@ class Document(internal val config: DocumentConfig) {
      */
     internal fun messageDisplayValueAt(path: String, reps: List<Int>): String? = valueAt(path, reps)?.raw
 
-    /** Custom admission precedes evaluated CRLF normalization; the stored input is the validator contract (SPEC-2026-10-10-11). */
-    internal fun customValidationInputAt(path: String, reps: List<Int>): String? = valueAt(path, reps)?.raw
+    /** The authored text of a stored cell, before evaluated CRLF normalization: the input gates measure it, and it is
+     *  the custom validator's input (SPEC-2026-10-10-11, KF547). */
+    internal fun formalInputAt(path: String, reps: List<Int>): String? = valueAt(path, reps)?.authored
 
     /**
      * The stored state of the field cell at [path]/[reps] — [StoredCellState.Absent] (no placement),
@@ -1183,7 +1194,7 @@ class Document(internal val config: DocumentConfig) {
         private var valCache: MutableMap<String, Val>? = null
         override fun field(path: String): Val =
             (valCache ?: HashMap<String, Val>().also { valCache = it }).getOrPut(path) {
-                val v = placeOf(path)?.value
+                val v = placeOf(path)?.formalInput()
                 if (v != null) resolveValue(path, v) else emptyValue(kindOf(path))
             }
 
@@ -1217,28 +1228,28 @@ class Document(internal val config: DocumentConfig) {
                 nonRepGroupFilledDepths(groupPath, group).any { (depth, prefixes) -> rowReps.take(depth) in prefixes }
 
         override fun star(path: String, bindDepth: Int): List<Val> =
-            starRows(path, bindDepth).mapNotNull { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } }
+            starRows(path, bindDepth).mapNotNull { reps -> valueAt(path, reps)?.formalInput()?.let { resolveValue(path, it) } }
 
         // Row-aligned: one entry per group row — empty → the kind's empty value (number → 0), malformed → Unknown.
         override fun starAll(path: String, bindDepth: Int): List<Val> =
-            starRows(path, bindDepth).map { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } ?: emptyValue(kindOf(path)) }
+            starRows(path, bindDepth).map { reps -> valueAt(path, reps)?.formalInput()?.let { resolveValue(path, it) } ?: emptyValue(kindOf(path)) }
 
         // Reps-aware (for the cascade overlay): one entry per group row, null = empty cell, malformed = Unknown.
         override fun starCells(path: String, bindDepth: Int): List<Pair<List<Int>, Val?>> =
-            starRows(path, bindDepth).map { reps -> reps to valueAt(path, reps)?.value?.let { resolveValue(path, it) } }
+            starRows(path, bindDepth).map { reps -> reps to valueAt(path, reps)?.formalInput()?.let { resolveValue(path, it) } }
 
         // COMPUTE-mode read states (IF85): the precise formal check, so a well-formed day-omitted date (which
         // RESOLVES Unknown for a direct reference) reads FILLED, not INVALID — only real invalidity poisons.
         override fun cellState(path: String): CellState {
-            val raw = placeOf(path)?.value ?: return CellState.EMPTY
-            return if (formallyInvalid(path, raw)) CellState.INVALID else CellState.FILLED
+            val input = placeOf(path)?.formalInput() ?: return CellState.EMPTY
+            return if (formallyInvalid(path, input)) CellState.INVALID else CellState.FILLED
         }
 
         override fun starScanStates(path: String, bindDepth: Int): List<CellState> = starRows(path, bindDepth).map { reps ->
-            val raw = valueAt(path, reps)?.value
+            val input = valueAt(path, reps)?.formalInput()
             when {
-                raw == null -> CellState.EMPTY
-                formallyInvalid(path, raw) -> CellState.INVALID
+                input == null -> CellState.EMPTY
+                formallyInvalid(path, input) -> CellState.INVALID
                 else -> CellState.FILLED
             }
         }
@@ -1336,8 +1347,8 @@ class Document(internal val config: DocumentConfig) {
         }
 
         override fun indexedValueAt(targetPath: String, repetitions: List<Int>): Val? {
-            val raw = valueAt(targetPath, repetitions)?.value
-            return if (!raw.isNullOrEmpty()) resolveValue(targetPath, raw) else null
+            val input = valueAt(targetPath, repetitions)?.formalInput()
+            return if (input != null && input.value.isNotEmpty()) resolveValue(targetPath, input) else null
         }
 
         override fun indexedCellRepetitions(
@@ -1401,8 +1412,9 @@ class Document(internal val config: DocumentConfig) {
             }
             val queryKey = indexKeyOf(indexValue, kind)
             val candidates = byValue[queryKey].orEmpty().mapNotNull { reps ->
-                val raw = valueAt(indexField, reps)?.value ?: return@mapNotNull null
-                val admitted = indexIdentityAdmitted?.invoke(indexField, reps, raw) ?: !formallyInvalid(indexField, raw)
+                val input = valueAt(indexField, reps)?.formalInput() ?: return@mapNotNull null
+                val admitted = indexIdentityAdmitted?.invoke(indexField, reps, input.value)
+                    ?: !formallyInvalid(indexField, input)
                 IndexIdentityCandidate(
                     repetitions = reps,
                     key = queryKey.takeIf { admitted },
@@ -1609,13 +1621,13 @@ class Document(internal val config: DocumentConfig) {
         }
 
         private fun scanCell(path: String, reps: List<Int>): ScanCell {
-            val raw = valueAt(path, reps)?.value
+            val input = valueAt(path, reps)?.formalInput()
             val state = when {
-                raw == null -> CellState.EMPTY
-                formallyInvalid(path, raw) -> CellState.INVALID
+                input == null -> CellState.EMPTY
+                formallyInvalid(path, input) -> CellState.INVALID
                 else -> CellState.FILLED
             }
-            return ScanCell(path, reps, raw, state, raw?.let { resolveValue(path, it) })
+            return ScanCell(path, reps, input?.value, state, input?.let { resolveValue(path, it) })
         }
 
         private fun instantiatedCellReps(
@@ -1657,7 +1669,7 @@ class Document(internal val config: DocumentConfig) {
         }
 
         private fun storedValue(field: String, reps: List<Int>): Val? =
-            valueAt(field, reps)?.value?.let { resolveValue(field, it) }
+            valueAt(field, reps)?.formalInput()?.let { resolveValue(field, it) }
 
         /** Over the FULL DECLARED repetition range of [field] in this row's scope: `(allFilledValid, anyEmpty)`. An
          *  un-instantiated declared rep reads empty. Iterates 1..declaredMax at each repeatable level below the
@@ -1846,7 +1858,7 @@ class Document(internal val config: DocumentConfig) {
         // and Val.Unknown here for value comparisons. A valid group's unmatched ref is the kind's empty value.
         override fun field(path: String): Val = when {
             unmatched(path) -> if (presenceUnknown(path)) Val.Unknown else emptyValue(kindOf(path))
-            else -> resolved(path)?.let { resolveValue(path, it) } ?: emptyValue(kindOf(path))
+            else -> placeOf(path)?.formalInput()?.let { resolveValue(path, it) } ?: emptyValue(kindOf(path))
         }
 
         override fun filled(path: String): Boolean = resolved(path) != null
@@ -1987,8 +1999,9 @@ class Document(internal val config: DocumentConfig) {
     /** [EvalContext.partialDateBoundaryAt] for a stored cell: only a formally valid partial resolves. */
     private fun partialDateBoundary(path: String, reps: List<Int>, lastDay: Boolean): Val? {
         val precision = datePrecisions[path]?.takeIf { it in PARTIAL_PRECISIONS } ?: return null
-        val raw = valueAt(path, reps)?.value?.takeIf { it.isNotEmpty() } ?: return null
-        if (formallyInvalid(path, raw)) return null
+        val input = valueAt(path, reps)?.formalInput()?.takeIf { it.value.isNotEmpty() } ?: return null
+        if (formallyInvalid(path, input)) return null
+        val raw = input.value
         val format = declaredTemporalFormat(path, kindOf(path)) ?: "yyyy-MM-dd"
         return resolvePartialDate(raw, format, precision, lastDay)?.let { Val.Txt(it) }
     }
@@ -1996,15 +2009,18 @@ class Document(internal val config: DocumentConfig) {
     /** Whether a PRESENT raw value at [path] is **formally invalid** (not check-relevant) — the [resolveValue]
      *  gate, and the COMPUTE-mode poison trigger ([EvalContext.cellState], IF85). Format + declared constraints,
      *  the full per-cell check. */
-    private fun formallyInvalid(path: String, raw: String): Boolean {
+    private fun formallyInvalid(path: String, raw: String, authored: String = raw): Boolean {
         if (path in config.customFields) return false
         val kind = kindOf(path)
         val precision = datePrecisions[path] ?: DatePrecision.FULL
         return formalError(kind, raw, scales[path], declaredTemporalFormat(path, kind), precision,
             rangeConfig[path]?.second,
             fieldConstraints[path] ?: FieldConstraints.NONE, baseYear = baseYear ?: 2000, timeZone = timeZone,
-            rangeYearInterpretation = yearInterpretationOf(path)) != null
+            rangeYearInterpretation = yearInterpretationOf(path), authored = authored) != null
     }
+
+    private fun formallyInvalid(path: String, input: FormalInput): Boolean =
+        formallyInvalid(path, input.value, input.authored)
 
     /**
      * The field's own DECLARED temporal format string, read from its kind's map (each kind stores its formats
@@ -2039,13 +2055,15 @@ class Document(internal val config: DocumentConfig) {
      * construction (the format is read, not hardcoded); a malformed value → [Val.Unknown] (the referencing rule
      * is suppressed, and the document-wide formal check reports it). Other kinds go through the plain [typedValue].
      */
-    private fun resolveValue(path: String, raw: String): Val {
+    private fun resolveValue(path: String, input: FormalInput): Val = resolveValue(path, input.value, input.authored)
+
+    private fun resolveValue(path: String, raw: String, authored: String = raw): Val {
         val kind = kindOf(path)
         // A formally-invalid value is "unknown" EVERYWHERE — a direct ref, an aggregate element, a computation
         // operand — matching the kernel (a formal error makes the value non-evaluable). This catches values
         // that parse but are still invalid: signed-zero `-0`, leading-plus `+5`, too-many-decimals. Without
         // this, an aggregate would silently fold a `-0` as 0 and fire where the kernel suppresses.
-        if (formallyInvalid(path, raw)) return Val.Unknown
+        if (formallyInvalid(path, raw, authored)) return Val.Unknown
         val precision = datePrecisions[path] ?: DatePrecision.FULL
         // The DECLARED FORMAT decides which canonicalization a temporal cell gets, never the field's kind
         // (KF211) — so a TIME field declared `dd.MM.yyyy` canonicalizes to ISO like any date and compares

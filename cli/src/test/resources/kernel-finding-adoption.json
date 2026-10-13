@@ -10493,6 +10493,78 @@
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Runtime clear state is not a JSON Schema model projection.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Current measured limitation and correction await peer receipt; no Lean repository edits.", "evidence": {}}
       }
+    },
+    "kf32": {
+      "sha256": "ffc367378acf1dd8ed99fe5afa1771b0fed2a94738962a165b2eba8798b14c7f",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": ["declared maximum above 99,999"],
+        "json-schema-export": [],
+        "adapter": ["stored input gate order", "computed String default maximum"],
+        "interpreter": ["stored input gate order", "computed String default maximum"],
+        "dmtool-cli": ["stored input gate order"],
+        "a12-kernel-lean": ["stored input gate order", "computed String default maximum"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "Stored-value admission is runtime behaviour; the typed declarations are unchanged and a declared maximum above 99,999 is refused by the kernel consistency check the builders delegate to.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "Model consistency does not check stored or computed values.", "evidence": {}},
+        "json-schema-import": {"state": "OPEN", "basis": "A JSON Schema maxLength above 99,999 maps to a declaration the kernel refuses; the importer's handling is being measured (session task).", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export maps declared field configuration only; the universal input gates (technical length, charset, blanks) belong to no declaration, like the existing baseline checks.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter are compared on the 99,999/100,000 boundaries, gate order, authored CRLF count with consumers, raw bypass, custom validator calls and computed String/Custom targets.", "evidence": {"stored input gate order": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#theGuardCountsTheAuthoredCrlfPairAsTwoUnits", "witness": "100,000 authored units folding to 99,999 are refused on both strategies, the rule and Length computation do not read them, and the 99,999-unit control is read."}, "computed String default maximum": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#aComputedValueMeetsTheTargetTypeNotTheInputGuard", "witness": "A 100,000-unit String target errs on both strategies while the Custom twin is stored, separating the type maximum from a guard on computed values."}}},
+        "interpreter": {"state": "APPLIED", "basis": "The interpreter returns first for a raw String, applies the guard over the authored text before the baseline on every stored kind including Custom, and defaults an undeclared String maximum to 99,999.", "evidence": {"stored input gate order": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#anAuthoredCrlfCountsTwoUnits", "witness": "JVM and Node both refuse 99,999 letters plus an authored CRLF with wertZuLang."}, "computed String default maximum": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#aComputedStringMeetsTheDefaultMaximum", "witness": "JVM and Node store a 99,998-unit computed String and err a 100,000-unit one."}}},
+        "dmtool-cli": {"state": "APPLIED", "basis": "model eval runs the corrected interpreter admission.", "evidence": {"stored input gate order": {"reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/CheckedInputOrderCliTest.kt#aRawStringIsNeverCheckedAndAnOverlongValueIsTooLongFirst", "witness": "model eval leaves a raw String with blanks or above the limit unreported and reports an overlong blank-led String as wertZuLang only."}}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-02 in the 2026-10-13 handback, including the correction that a computed String target is capped by its default maximum; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf36": {
+      "sha256": "10ce0b53222ef937e6426170ee559b61f92a13928e84572b755ff85c2678f94a",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": ["declared maximum above 99,999"],
+        "json-schema-export": [],
+        "adapter": ["stored input gate order", "computed String default maximum"],
+        "interpreter": ["stored input gate order", "computed String default maximum"],
+        "dmtool-cli": ["stored input gate order"],
+        "a12-kernel-lean": ["stored input gate order", "computed String default maximum"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "Stored-value admission is runtime behaviour; the typed declarations are unchanged and a declared maximum above 99,999 is refused by the kernel consistency check the builders delegate to.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "Model consistency does not check stored or computed values.", "evidence": {}},
+        "json-schema-import": {"state": "OPEN", "basis": "A JSON Schema maxLength above 99,999 maps to a declaration the kernel refuses; the importer's handling is being measured (session task).", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export maps declared field configuration only; the universal input gates (technical length, charset, blanks) belong to no declaration, like the existing baseline checks.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter are compared on the 99,999/100,000 boundaries, gate order, authored CRLF count with consumers, raw bypass, custom validator calls and computed String/Custom targets.", "evidence": {"stored input gate order": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#theGuardCountsTheAuthoredCrlfPairAsTwoUnits", "witness": "100,000 authored units folding to 99,999 are refused on both strategies, the rule and Length computation do not read them, and the 99,999-unit control is read."}, "computed String default maximum": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#aComputedValueMeetsTheTargetTypeNotTheInputGuard", "witness": "A 100,000-unit String target errs on both strategies while the Custom twin is stored, separating the type maximum from a guard on computed values."}}},
+        "interpreter": {"state": "APPLIED", "basis": "The interpreter returns first for a raw String, applies the guard over the authored text before the baseline on every stored kind including Custom, and defaults an undeclared String maximum to 99,999.", "evidence": {"stored input gate order": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#anAuthoredCrlfCountsTwoUnits", "witness": "JVM and Node both refuse 99,999 letters plus an authored CRLF with wertZuLang."}, "computed String default maximum": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#aComputedStringMeetsTheDefaultMaximum", "witness": "JVM and Node store a 99,998-unit computed String and err a 100,000-unit one."}}},
+        "dmtool-cli": {"state": "APPLIED", "basis": "model eval runs the corrected interpreter admission.", "evidence": {"stored input gate order": {"reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/CheckedInputOrderCliTest.kt#aRawStringIsNeverCheckedAndAnOverlongValueIsTooLongFirst", "witness": "model eval leaves a raw String with blanks or above the limit unreported and reports an overlong blank-led String as wertZuLang only."}}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-02 in the 2026-10-13 handback, including the correction that a computed String target is capped by its default maximum; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf547": {
+      "sha256": "c3e0a2cc9a609e18195c4c863af1e593f718f6b095bd04aad73bae27c0000d4e",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": ["declared maximum above 99,999"],
+        "json-schema-export": [],
+        "adapter": ["stored input gate order", "computed String default maximum"],
+        "interpreter": ["stored input gate order", "computed String default maximum"],
+        "dmtool-cli": ["stored input gate order"],
+        "a12-kernel-lean": ["stored input gate order", "computed String default maximum"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "Stored-value admission is runtime behaviour; the typed declarations are unchanged and a declared maximum above 99,999 is refused by the kernel consistency check the builders delegate to.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "Model consistency does not check stored or computed values.", "evidence": {}},
+        "json-schema-import": {"state": "OPEN", "basis": "A JSON Schema maxLength above 99,999 maps to a declaration the kernel refuses; the importer's handling is being measured (session task).", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export maps declared field configuration only; the universal input gates (technical length, charset, blanks) belong to no declaration, like the existing baseline checks.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter are compared on the 99,999/100,000 boundaries, gate order, authored CRLF count with consumers, raw bypass, custom validator calls and computed String/Custom targets.", "evidence": {"stored input gate order": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#theGuardCountsTheAuthoredCrlfPairAsTwoUnits", "witness": "100,000 authored units folding to 99,999 are refused on both strategies, the rule and Length computation do not read them, and the 99,999-unit control is read."}, "computed String default maximum": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#aComputedValueMeetsTheTargetTypeNotTheInputGuard", "witness": "A 100,000-unit String target errs on both strategies while the Custom twin is stored, separating the type maximum from a guard on computed values."}}},
+        "interpreter": {"state": "APPLIED", "basis": "The interpreter returns first for a raw String, applies the guard over the authored text before the baseline on every stored kind including Custom, and defaults an undeclared String maximum to 99,999.", "evidence": {"stored input gate order": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#anAuthoredCrlfCountsTwoUnits", "witness": "JVM and Node both refuse 99,999 letters plus an authored CRLF with wertZuLang."}, "computed String default maximum": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#aComputedStringMeetsTheDefaultMaximum", "witness": "JVM and Node store a 99,998-unit computed String and err a 100,000-unit one."}}},
+        "dmtool-cli": {"state": "APPLIED", "basis": "model eval runs the corrected interpreter admission.", "evidence": {"stored input gate order": {"reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/CheckedInputOrderCliTest.kt#aRawStringIsNeverCheckedAndAnOverlongValueIsTooLongFirst", "witness": "model eval leaves a raw String with blanks or above the limit unreported and reports an overlong blank-led String as wertZuLang only."}}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-02 in the 2026-10-13 handback, including the correction that a computed String target is capped by its default maximum; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }

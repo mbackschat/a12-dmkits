@@ -93,11 +93,13 @@ internal class ValueAdmissionCache(
         // path's bounds through a map probe BEFORE it can answer "no", and on an ordinary document the answer is
         // "no" for every cell (IG127.1).
         if (overRepetitionGateNeeded) checks.overRepetitionResultAt(path, reps)?.let { return it }
+        // The input gates measure the AUTHORED text (KF547). It can differ from [raw] only by a folded CRLF, which
+        // leaves an LF behind, so a cell without one skips the lookup; keying on it keeps the memo exact.
         val input = if (checks.isCustomAt(path)) {
             // The attempted value supersedes even an explicitly empty stored target (CustomTestRangeLawsTest).
             if (computedAdmissions.isNotEmpty() && CellKey(path, reps, raw) in computedAdmissions) return FormalResult.Valid
-            document.customValidationInputAt(path, reps) ?: raw
-        } else raw
+            document.formalInputAt(path, reps) ?: raw
+        } else if (raw.indexOf('\n') >= 0) document.formalInputAt(path, reps) ?: raw else raw
         return if (checks.hasCodeBasedValidatorAt(path)) {
             byCell.getOrPut(CellKey(path, reps, input)) { checks.computeValueAdmissionAt(path, raw, locale, input) }
         } else {

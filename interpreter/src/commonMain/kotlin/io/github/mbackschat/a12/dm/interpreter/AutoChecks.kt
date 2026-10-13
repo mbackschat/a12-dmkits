@@ -502,17 +502,19 @@ internal class AutoChecks(
         path: String,
         raw: String,
         locale: String,
-        customInput: String,
+        authored: String,
     ): FormalResult {
         val kind = model.kinds[path] ?: return FormalResult.Valid
+        // A custom field meets the same input gates as every other kind, and a failed gate never reaches its
+        // validator (KF547); the validator then receives the authored text.
         val formatError = if (isCustomAt(path)) {
-            io.github.mbackschat.a12.dm.interpreter.eval.baselineValueError(customInput, legalCharset)
+            io.github.mbackschat.a12.dm.interpreter.eval.inputGateError(authored, legalCharset)
         } else formalErrorCached(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
             model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset, model.baseYear ?: 2000,
-            model.timeZone, model.rangeYearInterpretationOf(path), patterns::matches)
+            model.timeZone, model.rangeYearInterpretationOf(path), authored, patterns::matches)
         formatError?.let { return FormalResult.Invalid(FormalFailure.Format(it)) }
         return try {
-            customTypeRejection(path, customInput, locale)?.let {
+            customTypeRejection(path, authored, locale)?.let {
                 if (it.code == CUSTOM_TEST_RANGE) FormalResult.Reported(it)
                 else FormalResult.Invalid(FormalFailure.Custom(it))
             } ?: FormalResult.Valid

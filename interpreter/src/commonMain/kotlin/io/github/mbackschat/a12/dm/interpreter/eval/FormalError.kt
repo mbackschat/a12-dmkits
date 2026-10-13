@@ -146,14 +146,23 @@ enum class FormalErrorCode(val id: String) {
      *  year-free DATE or DATEFRAGMENT cannot reach this class at all. */
     DATE_BEFORE_1900("datumFalsch"),
 
-    /** ANY field value with a **leading** blank — a baseline value check the kernel runs before the type format
-     *  (`checkFieldValueFormat`), for every kind (string/number/date/…). IF43. */
+    /** ANY stored value longer than the kernel's fixed technical limit of [TECHNICAL_VALUE_LIMIT] UTF-16 code
+     *  units, measured on the AUTHORED text before CRLF normalization — the kernel's `wertZuLang`
+     *  (`FormalChecker.checkFieldValueTooLong`). It is the first input gate, ahead of the charset and blank
+     *  checks, for every kind except a raw `noValueValidation` String, and it is distinct from a declared
+     *  `maxLength` ([STRING_TOO_LONG]). A computed value never meets it (KERNEL-FINDINGS KF547). */
+    VALUE_TOO_LONG("wertZuLang"),
+
+    /** A stored value with a **leading** blank — a baseline value check the kernel runs before the type format
+     *  (`checkFieldValueFormat`), for every kind (string/number/date/…) except a raw `noValueValidation` String,
+     *  and after [VALUE_TOO_LONG]. IF43. */
     LEADING_BLANK("fuehrendesBlank"),
 
     /** ANY field value with a **trailing** blank — the baseline-check sibling of [LEADING_BLANK] (IF43). */
     TRAILING_BLANK("nachfolgendesBlank"),
 
-    /** ANY field value containing a character outside the model's legal charset. With no programming-language
+    /** A stored value (not a raw `noValueValidation` String) containing a character outside the model's legal
+     *  charset, checked on the authored text before CRLF normalization. With no programming-language
      *  charset configured (a DM-JSON model), the default legal set is the **BMP** (`0x0000-0xFFFF`), so any
      *  SUPPLEMENTARY-plane character (a UTF-16 surrogate pair, e.g. an emoji) is illegal. IF43. */
     CHARSET("ZeichenNichtImZeichensatz"),
@@ -291,10 +300,12 @@ fun formalError(
     /** A DATE_RANGE field's `interpretationOfYear` — a WRAPPING yearless value such as `01.11-31.01` is
      *  ordered under [RangeYearInterpretation.FROM]/[RangeYearInterpretation.TO] and unordered without one. */
     rangeYearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
+    /** The stored text before CRLF normalization, which the input gates measure; [raw] is its evaluation form. */
+    authored: String = raw,
 ): FormalErrorCode? {
     return formalErrorCached(
         kind, raw, scale, format, datePrecision, rangeSep, constraints, legalCharset, baseYear, timeZone,
-        rangeYearInterpretation,
+        rangeYearInterpretation, authored,
     ) { pattern, value -> compilePattern(pattern).matches(value) }
 }
 
@@ -308,13 +319,18 @@ internal fun formalErrorCached(
     /** A DATE_RANGE field's `interpretationOfYear` — a WRAPPING yearless value such as `01.11-31.01` is
      *  ordered under [RangeYearInterpretation.FROM]/[RangeYearInterpretation.TO] and unordered without one. */
     rangeYearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
+    authored: String = raw,
     patternMatches: (String, String) -> Boolean,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
-    // BASELINE value checks the kernel runs for EVERY kind before the type format (`checkFieldValueFormat`,
-    // IF43): legal charset (default BMP; [legalCharset] customizes it, e.g. DIN 91379), then leading blank, then
-    // trailing blank. They pre-empt the type-specific check (a ` 2024-01-01` DATE is `fuehrendesBlank`).
-    baselineValueError(raw, legalCharset)?.let { return it }
+    // A raw `noValueValidation` String is never checked at all — the kernel returns before its technical length
+    // guard and its baseline (`FormalChecker.checkAndConvertFieldValue`, KF547).
+    if (constraints.noValueValidation) return null
+    // The INPUT gates the kernel runs for EVERY other kind before the type format, on the authored text: the
+    // technical length guard, then the baseline (IF43) — legal charset (default BMP; [legalCharset] customizes
+    // it, e.g. DIN 91379), leading blank, trailing blank. They pre-empt the type-specific check (a ` 2024-01-01`
+    // DATE is `fuehrendesBlank`).
+    inputGateError(authored, legalCharset)?.let { return it }
     return typeFormatErrorCached(
         kind, raw, scale, format, datePrecision, rangeSep, constraints, baseYear, timeZone,
         rangeYearInterpretation, patternMatches,
@@ -574,9 +590,27 @@ private fun stringConstraintError(
     // normalizes inside `validiereFormat` before these clauses.
     if (!c.pattern.isNullOrEmpty() && !patternMatches(c.pattern, raw)) return FormalErrorCode.PATTERN
     if (c.minLength != null && raw.length < c.minLength) return FormalErrorCode.STRING_TOO_SHORT
-    if (c.maxLength != null && raw.length > c.maxLength) return FormalErrorCode.STRING_TOO_LONG
+    // An undeclared maximum is not unbounded: the kernel's generated String format carries 99,999
+    // (`ExtmpToolUtils.computeMaxLength`), and a declared one above it is refused at model check. Only a computed
+    // value can reach it, because a stored one meets the equal technical limit first (KF547).
+    if (raw.length > (c.maxLength ?: DEFAULT_STRING_MAX_LENGTH)) return FormalErrorCode.STRING_TOO_LONG
     return null
 }
+
+/** The kernel's fixed technical limit on one stored value, in UTF-16 code units (`FormalChecker.MAX_WERT_LAENGE`). */
+internal const val TECHNICAL_VALUE_LIMIT = 99_999
+
+/** The maximum length the kernel gives a String that declares none (`ExtmpToolUtils.DEFAULT_MAX_VALUE_LENGTH`). */
+private const val DEFAULT_STRING_MAX_LENGTH = 99_999
+
+/**
+ * The input gates of a stored value, in the kernel's order (`FormalChecker.checkAndConvertFieldValue`): the
+ * technical length guard over the [authored] text, which counts a CRLF pair as two units, then the baseline. The
+ * first failure ends the check. A custom field meets these same gates before its registered validator.
+ */
+internal fun inputGateError(authored: String, legalCharset: LegalCharset): FormalErrorCode? =
+    if (authored.length > TECHNICAL_VALUE_LIMIT) FormalErrorCode.VALUE_TOO_LONG
+    else baselineValueError(authored, legalCharset)
 
 /**
  * Declared-constraint check for a (well-formed) NUMBER value (IF20): the minimum-fractional-digits rule (a
@@ -651,8 +685,8 @@ private fun numberFormalError(raw: String, scale: Int?, c: FieldConstraints): Fo
 }
 
 /**
- * The kernel's baseline VALUE checks (`FormalChecker.checkFieldValueFormat`, IF43), run for EVERY field kind
- * before the type-specific format check, in this order: legal **charset** → **leading** blank → **trailing**
+ * The kernel's baseline VALUE checks (`FormalChecker.checkFieldValueFormat`, IF43), run for every checked field
+ * kind after the technical length guard ([inputGateError]) and before the type-specific format check, in this order: legal **charset** → **leading** blank → **trailing**
  * blank. With no programming-language charset configured (a DM-JSON model), the default legal charset is the
  * **BMP** (`0x0000-0xFFFF`), so any supplementary-plane character — a UTF-16 surrogate (e.g. an emoji) — is
  * illegal. A leading/trailing blank is reported even when the type check would otherwise pass or fail differently.
@@ -728,6 +762,8 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Datumsbereich: Startdatum liegt nach dem Enddatum." else "Date range: the start date is after the end date."
         FormalErrorCode.STRING_TOO_SHORT ->
             if (de) "Wert ist zu kurz." else "Value is too short."
+        FormalErrorCode.VALUE_TOO_LONG ->
+            if (de) "Wert überschreitet die technische Höchstlänge." else "Value exceeds the technical maximum length."
         FormalErrorCode.STRING_TOO_LONG ->
             if (de) "Wert ist zu lang." else "Value is too long."
         FormalErrorCode.PATTERN ->
