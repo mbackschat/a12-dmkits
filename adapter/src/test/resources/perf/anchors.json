@@ -37,7 +37,7 @@
         "complex real-world (1233f/1017r) sub-quadratic|diagnostic/complexRealWorld-1233f-1017r-low-firing@1 fingerprint=31d25ee04c24ab146f81acc375aeeef618525a1d161b8d9478526a556b415ef1|n=1000|interpreter|cpu": 158.27,
         "complex real-world (1233f/1017r) sub-quadratic|diagnostic/complexRealWorld-1233f-1017r-low-firing@1 fingerprint=a676c479a10ca44a8e1602aa8d501f45abac523d9b7ca4901183169ba32f3f06|n=250|interpreter|cpu": 31.04,
         "compute-overlay $-correlation sub-quadratic|diagnostic/CO-correlation@1 fingerprint=a427be24db60bf9ee275bf8933cb624c460fb465905a9bcd4ee16022d30f2cb6|n=1500|interpreter|cpu": 23.14,
-        "compute-overlay $-correlation sub-quadratic|diagnostic/CO-correlation@1 fingerprint=d3d7fc32a4c35ff06f26cb140c73bced7f2fe515bd6fd64bf115f52e14a8bf66|n=6000|interpreter|cpu": 91.45,
+        "compute-overlay $-correlation sub-quadratic|diagnostic/CO-correlation@1 fingerprint=d3d7fc32a4c35ff06f26cb140c73bced7f2fe515bd6fd64bf115f52e14a8bf66|n=6000|interpreter|cpu": 94.6,
         "compute-overlay index-column sub-quadratic|diagnostic/CO-index@1 fingerprint=7e701e308be00c60bab101e6f5ad6148b7edf130a38c1cb0d2b53184379e4fa3|n=1500|interpreter|cpu": 5.67,
         "compute-overlay index-column sub-quadratic|diagnostic/CO-index@1 fingerprint=aff449bd5748b822c1caa9b81c74f96259f1222cabe772483fa311089f2ec4f5|n=6000|interpreter|cpu": 29.49,
         "computeField|diagnostic/B7-compute@1 fingerprint=29a11a1b034df4a0ede8a7a7f22d7589bf3e98033aa03a41f7bfe77f3657fd60|n=600|interpreter|wall": 48.3,
