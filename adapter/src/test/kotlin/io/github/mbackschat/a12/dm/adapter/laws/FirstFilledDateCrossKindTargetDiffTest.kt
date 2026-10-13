@@ -33,13 +33,13 @@ class FirstFilledDateCrossKindTargetDiffTest {
                 .dateField("Chained") { it.format(ISO) } }
             .build().toJson())
         val claim = session.group("/Claim")
-        for (target in TARGETS.take(3)) claim.addComputation(claim.field(target)) {
-            it.name("Compute$target").calc(Dsl.firstFilledDate(claim.field("Reported"), claim.field("Confirmed")).expression())
+        for (target in TARGETS.take(3)) claim.addComputation(claim.date(target)) {
+            it.name("Compute$target").calc(Dsl.firstFilledDate(claim.date("Reported"), claim.date("Confirmed")))
                 .message(Dsl.en("The first known claim date.")).build()
         }
         // A downstream computation reads the computed TIME-kind dotted cell back, through the cascade's overlay.
-        claim.addComputation(claim.field("Chained")) {
-            it.name("ComputeChained").calc(Dsl.firstFilledDate(claim.date("TimeDot"), claim.date("DateDot")).expression())
+        claim.addComputation(claim.date("Chained")) {
+            it.name("ComputeChained").calc(Dsl.firstFilledDate(claim.date("TimeDot"), claim.date("DateDot")))
                 .message(Dsl.en("The first known claim date, read back.")).build()
         }
         // A rule comparing against the same selection, so the comparison side of the reader is asked too.

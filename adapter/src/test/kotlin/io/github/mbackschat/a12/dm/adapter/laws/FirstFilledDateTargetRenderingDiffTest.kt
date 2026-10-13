@@ -36,8 +36,8 @@ class FirstFilledDateTargetRenderingDiffTest {
             "YearFromMonth" to pair("Month"), "IsoFromDay" to pair("Day"),
             "FirstVisitDot" to Dsl.firstFilledDate(claim.flatten("Visits*/VisitOn")),
         )
-        for ((target, selection) in selections) claim.addComputation(claim.field(target)) {
-            it.name("Compute$target").calc(selection.expression())
+        for ((target, selection) in selections) claim.addComputation(claim.date(target)) {
+            it.name("Compute$target").calc(selection)
                 .message(Dsl.en("The first known claim date.")).build()
         }
         session.toJson()

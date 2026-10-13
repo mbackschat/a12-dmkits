@@ -729,6 +729,10 @@ Condition latestIsPromise = Dsl.latestOf(fulfilment.field("/Fulfilment/PromisedD
 // DATE field, where the same call over plain field references types the list by its first kind.
 DateExpr firstKnown = Dsl.firstFilledDate(fulfilment.date("/Fulfilment/PromisedDay"),
         fulfilment.date("/Fulfilment/ShippedOn"));
+// …and a date computation takes that selection directly, through calc(DateExpr).
+Computation firstKnownComp = fulfilment.computation(fulfilment.date("/Fulfilment/FirstKnownOn"))
+        .name("FirstKnownComp").calc(firstKnown)
+        .message(Dsl.en("The first known date of the fulfilment.")).build();
 // Read the declaration that decided it; `HoursFromTime` on the same cell is refused by the kernel.
 String declared = fulfilment.fieldAt("/Fulfilment/PromisedDay").orElseThrow().format().orElseThrow();
 // …and `temporalClass()` is that declaration's verdict: which classifier the field actually has,

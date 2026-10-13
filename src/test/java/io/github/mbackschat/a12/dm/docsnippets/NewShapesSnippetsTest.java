@@ -74,7 +74,8 @@ class NewShapesSnippetsTest {
                     // hand-edited model really does arrive in. It stores and compares as a date.
                     .timeField("PromisedDay", f -> f.format("yyyy-MM-dd"))
                     .dateField("ShippedOn", f -> f.format("yyyy-MM-dd"))
-                    .dateRangeField("DeliveryWindow", r -> r.format("yyyy-MM-dd").separator("/")))
+                    .dateRangeField("DeliveryWindow", r -> r.format("yyyy-MM-dd").separator("/"))
+                    .dateField("FirstKnownOn", f -> f.format("dd.MM.yyyy")))
             .build().toJson();
     private static final BoundModel fulfilment = BoundModel.ofJson(FULFILMENT_JSON);
     private static final String DEPOT_JSON = DocumentModelDraft.named("depot").locale("en_US")
@@ -328,6 +329,10 @@ class NewShapesSnippetsTest {
         // DATE field, where the same call over plain field references types the list by its first kind.
         DateExpr firstKnown = Dsl.firstFilledDate(fulfilment.date("/Fulfilment/PromisedDay"),
                 fulfilment.date("/Fulfilment/ShippedOn"));
+        // …and a date computation takes that selection directly, through calc(DateExpr).
+        Computation firstKnownComp = fulfilment.computation(fulfilment.date("/Fulfilment/FirstKnownOn"))
+                .name("FirstKnownComp").calc(firstKnown)
+                .message(Dsl.en("The first known date of the fulfilment.")).build();
         // Read the declaration that decided it; `HoursFromTime` on the same cell is refused by the kernel.
         String declared = fulfilment.fieldAt("/Fulfilment/PromisedDay").orElseThrow().format().orElseThrow();
         // …and `temporalClass()` is that declaration's verdict: which classifier the field actually has,
@@ -352,6 +357,8 @@ class NewShapesSnippetsTest {
                 new DslRenderer().render(fulfilment.date("/Fulfilment/ShippedOn").after(firstKnown)));
         assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment",
                 fulfilment.date("/Fulfilment/ShippedOn").after(firstKnown), "../ShippedOn");
+        assertTrue(new RuleValidator().check(FULFILMENT_JSON, firstKnownComp.draft()).ok(),
+                "the kernel admits the date computation");
     }
 
     private static void assertKernelAccepts(Condition condition, String errorField) {

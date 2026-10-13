@@ -133,6 +133,7 @@ public final class io.github.mbackschat.a12.dm.edit.FieldEditor extends io.githu
   public io.github.mbackschat.a12.dm.edit.FieldEditor setType(io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
 
 public final class io.github.mbackschat.a12.dm.edit.GroupEditor extends io.github.mbackschat.a12.dm.edit.ElementMetadataEditor<io.github.mbackschat.a12.dm.edit.GroupEditor> implements io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
+  public io.github.mbackschat.a12.dm.edit.GroupEditor addComputation(io.github.mbackschat.a12.dm.rulekit.dsl.DateRef, java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public io.github.mbackschat.a12.dm.edit.GroupEditor addComputation(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public io.github.mbackschat.a12.dm.edit.GroupEditor addComputation(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef, java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public io.github.mbackschat.a12.dm.edit.GroupEditor addComputation(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
@@ -144,6 +145,7 @@ public final class io.github.mbackschat.a12.dm.edit.GroupEditor extends io.githu
   public io.github.mbackschat.a12.dm.edit.GroupEditor addRule(java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Rule>)
   public io.github.mbackschat.a12.dm.edit.GroupEditor addTypedefField(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef bool(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation computation(io.github.mbackschat.a12.dm.rulekit.dsl.DateRef, java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation computation(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation computation(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef, java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation computation(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)

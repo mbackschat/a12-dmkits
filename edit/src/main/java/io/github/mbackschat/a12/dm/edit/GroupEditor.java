@@ -292,6 +292,13 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
         return this;
     }
 
+    /** As {@link #addComputation(NumberRef, Function)} for a DATE computed field (via {@link #date(String)}),
+     *  including a field another temporal kind declares with a date format. Chains. */
+    public GroupEditor addComputation(DateRef computed, Function<Computation.Builder, Computation> body) {
+        session.addComputation(m -> body.apply(m.computation(computed)));
+        return this;
+    }
+
     /** As {@link #addComputation(NumberRef, Function)} for any computed field kind (via {@link #field(String)})
      *  — the general form behind the typed conveniences. Chains. */
     public GroupEditor addComputation(FieldRef computed, Function<Computation.Builder, Computation> body) {
@@ -327,6 +334,12 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
     /** As {@link #computation(NumberRef, Function)} for a STRING computed field — the compose peer of
      *  {@link #addComputation(StringRef, Function)}. */
     public Computation computation(StringRef computed, Function<Computation.Builder, Computation> body) {
+        return body.apply(session.boundModel().computation(computed));
+    }
+
+    /** As {@link #computation(NumberRef, Function)} for a DATE computed field — the compose peer of
+     *  {@link #addComputation(DateRef, Function)}. */
+    public Computation computation(DateRef computed, Function<Computation.Builder, Computation> body) {
         return body.apply(session.boundModel().computation(computed));
     }
 

@@ -789,6 +789,7 @@ public static record io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alterna
 public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Computation.AlternativeBuilder
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
@@ -797,6 +798,7 @@ public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Bu
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation build()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
