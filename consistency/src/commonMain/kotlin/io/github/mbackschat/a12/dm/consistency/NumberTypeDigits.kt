@@ -30,7 +30,8 @@ import kotlinx.serialization.json.intOrNull
 internal fun TrackedFactBase.numberTypeDigitFindings(): List<Finding> =
     defaultVariantFields().flatMap { field ->
         val body = field.numberTypeBody() ?: return@flatMap emptyList()
-        digitPairFindings(field, body) + valueRangeFindings(field, body) + budgetFindings(field, body)
+        lengthRangeFindings(field, body, admitsUndefined = false) + digitPairFindings(field, body) +
+            valueRangeFindings(field, body) + budgetFindings(field, body)
     }
 
 /** A12's declared-scale ceiling: 15 draws a codeless refusal on a surviving field (KF494). */
@@ -177,7 +178,7 @@ private fun arityFindings(
  * present.
  *
  * Only a length A12's own metamodel would accept as a length is judged — it declares both members positive
- * and at most 99999, and what A12 answers outside that has not been measured.
+ * and at most 99999 and refuses anything else on its own ([lengthRangeFindings]).
  */
 private fun lengthFindings(
     field: TrackedDeclaration,
@@ -229,9 +230,7 @@ private fun lengthFindings(
 /** A fractional count as the threshold reads it: the suppression sentinel spends nothing. */
 private fun declaredPlaces(count: Int): Int = if (count == SUPPRESSED) 0 else count
 
-/** A length A12's metamodel would accept as one, or null — outside its own bounds nothing is measured. */
-private fun JsonObject.declaredLength(member: String): Int? =
-    (this[member] as? JsonPrimitive)?.intOrNull?.takeIf { it in 1..99999 }
+private fun JsonObject.declaredLength(member: String): Int? = lengthInRange(member)
 
 /** The `NumberType` body this field declares, or null when it declares another type or none. */
 private fun TrackedDeclaration.numberTypeBody(): JsonObject? {

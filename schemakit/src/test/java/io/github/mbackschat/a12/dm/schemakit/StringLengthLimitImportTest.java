@@ -13,6 +13,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * declaration and caps every stored value at that limit anyway (KERNEL-FINDINGS KF547,
  * `validate.laws.StringLengthDeclarationBoundLawsTest`); the import reports the narrower effective bound instead.
  * A bound at the limit is declared as usual.
+ *
+ * <p>The other end of the same range: A12 admits a length from 1 (KERNEL-FINDINGS KF556,
+ * `adapter.laws.CheckerLengthLimitAgreementTest`), so a JSON Schema {@code minLength} of 0, which constrains
+ * nothing, is not declared, and a {@code maxLength} of 0, which A12 cannot express, is reported.
  */
 class StringLengthLimitImportTest {
 
@@ -44,5 +48,27 @@ class StringLengthLimitImportTest {
             assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains(field)
                     && d.contains("99999")), () -> field + " is reported: " + imported.report().diagnostics());
         }
+    }
+
+    @Test
+    void aZeroBoundIsNeverDeclared() throws Exception {
+        var imported = new JsonSchemaImporter().importSchema("""
+                {
+                  "type": "object",
+                  "properties": {
+                    "nickname": { "type": "string", "minLength": 0, "maxLength": 40 },
+                    "blank":    { "type": "string", "maxLength": 0 }
+                  }
+                }
+                """);
+        SchemaTestSupport.assertKernelAccepts(imported.dmJson());
+
+        JsonNode model = MAPPER.readTree(imported.dmJson());
+        assertEquals(java.util.List.of(40), model.findValues("maxLength").stream().map(JsonNode::asInt).toList());
+        assertTrue(model.findValues("minLength").isEmpty(), "a zero minimum constrains nothing");
+        assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains("blank") && d.contains("maxLength 0")),
+                () -> "the zero maximum is reported: " + imported.report().diagnostics());
+        assertTrue(imported.report().diagnostics().stream().noneMatch(d -> d.contains("nickname")),
+                () -> "a zero minimum needs no report: " + imported.report().diagnostics());
     }
 }

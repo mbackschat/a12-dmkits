@@ -2,8 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.intOrNull
 
 /**
  * A declared string type's own parameters, against each other.
@@ -33,15 +31,19 @@ import kotlinx.serialization.json.intOrNull
  */
 internal fun TrackedFactBase.stringTypeParameterFindings(): List<Finding> =
     declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+        // A12 is silent on a field deleted from the default variant, on both carriers (KF556).
+        if (field.body.deletesAtDefaultVariant()) return@flatMap emptyList()
         field.stringTypeBody()?.let { body ->
-            if (field.body.deletesAtDefaultVariant()) return@flatMap emptyList()
-            return@flatMap noValueValidationFindings(field, body) + lengthFindings(field, body)
+            return@flatMap lengthRangeFindings(field, body, admitsUndefined = true) +
+                noValueValidationFindings(field, body) + lengthFindings(field, body)
         }
         // The custom type carries the same two length members under the same law and answers with a class of
         // its own — measured, not transferred. Its OTHER parameters are not judged here: nothing else on this
         // carrier has been put to A12, and a law reused across it would be a refusal by analogy.
-        field.customTypeBody()?.let { body -> lengthFindings(field, body, MIN_ABOVE_MAX_ON_A_CUSTOM_TYPE) }
-            ?: emptyList()
+        field.customTypeBody()?.let { body ->
+            lengthRangeFindings(field, body, admitsUndefined = true) +
+                lengthFindings(field, body, MIN_ABOVE_MAX_ON_A_CUSTOM_TYPE)
+        } ?: emptyList()
     }
 
 /** The four laws that hold only when the type declares `noValueValidation`. */
@@ -145,10 +147,10 @@ private fun JsonObject.declares(member: String): Boolean = when (member) {
  * The length this member declares, or null when it declares none.
  *
  * `-1` is A12's `IFieldType.UNDEFINED`, so a model may spell "no bound" either by omitting the member or by
- * writing the sentinel, and both are measured ADMITTED wherever a bound would have been refused.
+ * writing the sentinel, and both are measured ADMITTED wherever a bound would have been refused. A member
+ * outside A12's metamodel range is no bound either: A12 refuses it on its own and judges nothing else with it.
  */
-private fun JsonObject.declaredLength(member: String): Int? =
-    (this[member] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 }
+private fun JsonObject.declaredLength(member: String): Int? = lengthInRange(member)
 
 private fun JsonObject.hintList(): List<*> = (this["hintList"] as? JsonArray) ?: emptyList<Any>()
 

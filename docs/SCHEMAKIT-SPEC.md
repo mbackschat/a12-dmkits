@@ -149,7 +149,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `type:[X,"null"]` (nullable) | optional `X` | structure |
 | `format: date` / `date-time` / `time` | DATE / DATE_TIME / TIME field | structure |
 | `required` | field requiredness | structure |
-| `minLength` / `maxLength` / `pattern` | string field config; empty pattern remains inactive without a message ([KF543](KERNEL-FINDINGS.md#kf543)); a length bound above 99,999 is reported, not declared, because A12 refuses it and caps every stored value there ([KF547](KERNEL-FINDINGS.md#kf547)) | field-config |
+| `minLength` / `maxLength` / `pattern` | string field config; empty pattern remains inactive without a message ([KF543](KERNEL-FINDINGS.md#kf543)); a length bound above 99,999 is reported, not declared, because A12 refuses it and caps every stored value there ([KF547](KERNEL-FINDINGS.md#kf547)); a zero minimum constrains nothing and is dropped, while a zero maximum, which A12 cannot declare, is reported ([KF556](KERNEL-FINDINGS.md#kf556)) | field-config |
 | `minimum` / `maximum` | number value bounds | field-config |
 | `format: email` / `uuid` | STRING + standard pattern | field-config (profile: format) |
 | `exclusiveMinimum` / `exclusiveMaximum` | strict `<` / `>` rule | rule (Tier A+) |

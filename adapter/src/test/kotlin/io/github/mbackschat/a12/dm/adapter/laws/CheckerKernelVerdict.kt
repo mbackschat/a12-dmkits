@@ -26,21 +26,34 @@ internal fun checkerVerdict(a12: Set<String>, ours: Set<String>): String? = when
     else -> "WRONG-CLASS"
 }
 
+/** The class a ledger records for one A12 diagnostic: its key, or for a codeless one [codelessClass]. */
+internal fun Diagnostic.ledgerClass(): String = code().orElse(codelessClass(summary()))
+
 /**
- * The class a ledger records for one A12 diagnostic: its key, or for a codeless one the checker's name for it.
+ * The checker's name for a codeless A12 sentence, or [UNKEYED_A12_CLASS].
  *
- * Only one codeless refusal has a name here: the charset sentence, which the checker reports as its own
- * `RK_UNSUPPORTED_CHARACTER` because A12 gives it no class ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)). Any other codeless
- * diagnostic stays [UNKEYED_A12_CLASS], so it shows as a disagreement rather than matching by accident.
+ * Four sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
+ * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), and the three a metamodel member outside its range draws are the
+ * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556)). Those three name the sentence, not the member, because
+ * A12 answers other members with the same words, so only the 99,999 maximum is matched. Any other codeless
+ * diagnostic stays unkeyed, so it shows as a disagreement rather than matching by accident.
  */
-internal fun Diagnostic.ledgerClass(): String =
-    code().orElse(if (A12_REPERTOIRE_REFUSAL in summary()) RK_UNSUPPORTED_CHARACTER else UNKEYED_A12_CLASS)
+internal fun codelessClass(message: String): String = when {
+    A12_REPERTOIRE_REFUSAL in message -> RK_UNSUPPORTED_CHARACTER
+    else -> MEMBER_RANGE_SENTENCES.entries.firstOrNull { message.trim().endsWith(it.key) }?.value ?: UNKEYED_A12_CLASS
+}
 
 /** How a ledger row spells a diagnostic A12 raises without a class key. */
 internal const val UNKEYED_A12_CLASS = "(no code)"
 
 private const val A12_REPERTOIRE_REFUSAL = "The field contains one or several unsupported signs."
 private const val RK_UNSUPPORTED_CHARACTER = "RK_UNSUPPORTED_CHARACTER"
+
+private val MEMBER_RANGE_SENTENCES = mapOf(
+    "Only values without a sign are allowed." to "RK_MEMBER_SIGNED",
+    "Only values greater than 0 are allowed." to "RK_MEMBER_NOT_POSITIVE",
+    "Only values smaller than or equal to 99999 are allowed." to "RK_MEMBER_ABOVE_TECHNICAL_LIMIT",
+)
 
 /** Whole-model admission, also covering the original partial fixtures P4 preserves before hosted completion. */
 internal fun kernelModelClasses(json: String): Set<String> = try {
@@ -54,8 +67,7 @@ internal fun kernelModelClasses(json: String): Set<String> = try {
     messages.map { message ->
         Regex("\\[(\\w+)]$").find(message)?.groupValues?.get(1) ?: when {
             message.contains("the kernel could not build this model:") -> "CK_MODEL_NOT_BUILDABLE"
-            message.contains(A12_REPERTOIRE_REFUSAL) -> RK_UNSUPPORTED_CHARACTER
-            else -> UNKEYED_A12_CLASS
+            else -> codelessClass(message)
         }
     }.toSet()
 }

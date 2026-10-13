@@ -1504,25 +1504,29 @@ public final class JsonSchemaImporter {
     private static final int TECHNICAL_LENGTH_LIMIT = 99_999;
 
     /**
-     * Declares the schema's {@code minLength}/{@code maxLength} on [s], each only up to A12's technical limit.
+     * Declares the schema's {@code minLength}/{@code maxLength} on [s], each only within the 1 to 99,999 A12 admits.
      *
-     * <p>A12 refuses a declared bound above the limit, and its input guard refuses any longer stored value anyway
-     * (KERNEL-FINDINGS KF547, {@code validate.laws.StringLengthDeclarationBoundLawsTest}). So a larger maximum is
-     * left undeclared with the narrower effective bound reported, and a larger minimum, which no stored value can
-     * reach, is reported rather than turned into a model A12 cannot load.
+     * <p>A12 refuses a declared bound above its technical limit, and its input guard refuses any longer stored value
+     * anyway (KERNEL-FINDINGS KF547, {@code validate.laws.StringLengthDeclarationBoundLawsTest}). So a larger maximum
+     * is left undeclared with the narrower effective bound reported, and a larger minimum, which no stored value can
+     * reach, is reported rather than turned into a model A12 cannot load. A12 refuses a zero length too (KF556): a
+     * zero minimum constrains nothing and is dropped silently, while a zero maximum, which admits only the empty
+     * string, has no A12 spelling and is reported.
      */
     private static void declareLengths(StringFieldBuilder s, JsonNode schema, String path, Ctx ctx) {
         if (schema.has("minLength")) {
             int min = schema.get("minLength").asInt();
-            if (min <= TECHNICAL_LENGTH_LIMIT) s.minLength(min);
-            else ctx.report().diagnostic("minLength " + min + " at '" + path + "' exceeds A12's " + TECHNICAL_LENGTH_LIMIT
-                    + "-unit limit on every stored value, so no value can satisfy it — not declared; constrain it by hand");
+            if (min > TECHNICAL_LENGTH_LIMIT) ctx.report().diagnostic("minLength " + min + " at '" + path + "' exceeds A12's "
+                    + TECHNICAL_LENGTH_LIMIT + "-unit limit on every stored value, so no value can satisfy it — not declared; constrain it by hand");
+            else if (min > 0) s.minLength(min);
         }
         if (schema.has("maxLength")) {
             int max = schema.get("maxLength").asInt();
-            if (max <= TECHNICAL_LENGTH_LIMIT) s.maxLength(max);
-            else ctx.report().diagnostic("maxLength " + max + " at '" + path + "' exceeds A12's " + TECHNICAL_LENGTH_LIMIT
-                    + "-unit limit on every stored value — not declared; the effective maximum is " + TECHNICAL_LENGTH_LIMIT);
+            if (max > TECHNICAL_LENGTH_LIMIT) ctx.report().diagnostic("maxLength " + max + " at '" + path + "' exceeds A12's "
+                    + TECHNICAL_LENGTH_LIMIT + "-unit limit on every stored value — not declared; the effective maximum is " + TECHNICAL_LENGTH_LIMIT);
+            else if (max > 0) s.maxLength(max);
+            else ctx.report().diagnostic("maxLength " + max + " at '" + path + "' admits only the empty string, which A12 "
+                    + "cannot declare (a length is at least 1) — not declared; constrain it by hand");
         }
     }
 
