@@ -16,10 +16,12 @@ import org.junit.jupiter.api.Test
  */
 class PartialDeclaredRowDomainDiffTest {
 
-    private val model: String = run {
+    private val model: String = lease(capacity = 3)
+
+    private fun lease(capacity: Int): String = run {
         val session = EditSession.read(DocumentModelDraft.named("lease-unit-domain").locale("en_US")
             .rootGroup("Lease") { l -> l.stringField("Tenant") { }
-                .group("Units") { u -> u.repeatable(3).numberField("Rent") { it.fractionDigits(0) }
+                .group("Units") { u -> u.repeatable(capacity).numberField("Rent") { it.fractionDigits(0) }
                     .group("Inspection") { it.numberField("Score") { n -> n.fractionDigits(0) } } } }
             .build().toJson())
         val units = session.group("/Lease/Units")
@@ -82,5 +84,30 @@ class PartialDeclaredRowDomainDiffTest {
             assertEquals(expected.getValue(document).getValue(label).sorted(),
                 dynamic.map { "${it.code}@${it.pointer.removePrefix("/Lease[1]/")}" }.sorted(), "$document / $label")
         }
+    }
+
+    /**
+     * Above A12's dense iteration limit, a capacity of eight, the selection covers only the slots full validation
+     * would walk: the first unit and every unit the document holds, so a selected fifth slot runs nothing.
+     */
+    @Test
+    fun aSparseModelRunsOnlyTheSlotsFullValidationWalks() {
+        val sparse = lease(capacity = 8)
+        val sparseDocuments = linkedMapOf("no units" to documents.getValue("no units"),
+            "units one and three at rent 500" to """{"Lease":{"Tenant":"T","Units":[{"Rent":500},{},{"Rent":500}]}}""")
+        val sparseSelections = linkedMapOf("every unit's rent" to setOf(RelevantEntity.anyRep("/Lease/Units/Rent")),
+            "the fifth unit's rent" to setOf(RelevantEntity("/Lease/Units/Rent", listOf(0, 5, 0))))
+        val actual = sparseDocuments.mapValues { (_, json) -> sparseSelections.mapValues { (_, selected) ->
+            val dynamic = DocumentDifferential.kernelMessages(sparse, json, true, selected)
+            assertEquals(dynamic, DocumentDifferential.kernelMessages(sparse, json, false, selected), "static")
+            assertEquals(dynamic, DocumentDifferential.interpreterMessages(sparse, json, selected), "interpreter")
+            dynamic.map { "${it.code}@${it.pointer.removePrefix("/Lease[1]/")}" }.sorted()
+        } }
+        assertEquals(mapOf(
+            "no units" to mapOf("every unit's rent" to listOf("RENT_FLOOR@Units[1]/Rent"), "the fifth unit's rent" to emptyList()),
+            // The empty second unit fires; the fifth slot, which no held unit's coordinate reaches, never runs.
+            "units one and three at rent 500" to
+                mapOf("every unit's rent" to listOf("RENT_FLOOR@Units[2]/Rent"), "the fifth unit's rent" to emptyList()),
+        ), actual)
     }
 }
