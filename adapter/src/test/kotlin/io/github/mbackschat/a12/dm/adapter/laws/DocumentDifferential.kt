@@ -75,7 +75,35 @@ internal data class DocumentObservation(
     val messages: List<MessageSignature>,
     val outcomes: Map<String, String>,
     val operandErrors: List<MessageSignature>,
+    /**
+     * `code address text` of every message an authored rule or computation raised. A signature leaves the text out,
+     * and the renderer can then read the wrong row unseen (KERNEL-FINDINGS KF561). Kernel-owned prose is not
+     * compared: generated rules carry other codes, and an evaluation fault's sentence is the interpreter's own
+     * (INTERPRETER-FINDINGS IF3), so it compares as [AUTHORED_FAULT].
+     */
+    val authoredTexts: List<String>,
 )
+
+private const val AUTHORED_FAULT = "(the evaluation-fault text)"
+private val EVALUATION_FAULT = Regex("^An error occurred while evaluati(on|ng) the data check: .*$", RegexOption.DOT_MATCHES_ALL)
+
+/** The codes the model's own rules and computations raise; a computation's generated rule carries its name. */
+private fun authoredCodes(model: String): Set<String> {
+    val codes = mutableSetOf<String>()
+    fun walk(node: com.fasterxml.jackson.databind.JsonNode) {
+        when (node["type"]?.asText()) {
+            "Rule" -> node["Rule"]?.get("errorCode")?.asText()?.let(codes::add)
+            "Computation" -> node["name"]?.asText()?.let(codes::add)
+        }
+        node.forEach(::walk)
+    }
+    walk(com.fasterxml.jackson.databind.ObjectMapper().readTree(model))
+    return codes
+}
+
+private fun authoredTexts(codes: Set<String>, messages: List<Triple<String, String, String>>): List<String> =
+    messages.filter { it.first in codes }
+        .map { (code, address, text) -> "$code $address ${if (EVALUATION_FAULT.matches(text)) AUTHORED_FAULT else text}" }.sorted()
 
 /** The evaluation instant handed to each engine, for a model whose rules read `Today` or `Now`. */
 internal data class DifferentialClock(val kernel: Date, val interpreter: EvalClock)
@@ -161,6 +189,7 @@ internal object DocumentDifferential {
                 }
             }.toSortedMap(),
             computation.formalErrorsInOperands().map(::kernelSignature).sorted(),
+            authoredTexts(authoredCodes(model), messages.map { Triple(it.errorCode, pointer(it.errorFieldPointer), it.errorText) }),
         )
     }
 
@@ -171,9 +200,10 @@ internal object DocumentDifferential {
     fun interpreter(model: String, json: String, clock: DifferentialClock? = null): DocumentObservation {
         val def = ModelLoader.load(model)
         val engine = DmInterpreter(def, clock?.interpreter)
-        val messages = engine.validate(def.readDocumentJson(json)).also {
+        val report = engine.validate(def.readDocumentJson(json)).also {
             assertEquals(emptyList<Any>(), it.unsupported, "every construct must be evaluable")
-        }.messages.map {
+        }
+        val messages = report.messages.map {
             MessageSignature(it.code, typeName(it.type.name), pointer(it.errorPointer),
                 it.referencedPointers.map(::pointer).sorted(), it.fillToFixPointers.map(::pointer).sorted())
         }.sorted()
@@ -197,7 +227,8 @@ internal object DocumentDifferential {
                 MessageSignature(it.code, typeName(it.type.name), pointer(it.errorPath),
                     it.referenced.map(::pointer).sorted(), it.fillToFix.map(::pointer).sorted())
             }.sorted()
-        return DocumentObservation(messages, outcomes, operandErrors)
+        return DocumentObservation(messages, outcomes, operandErrors,
+            authoredTexts(authoredCodes(model), report.messages.map { Triple(it.code, pointer(it.errorPointer), it.text) }))
     }
 
     /** Asserts that static Java and the interpreter each observe every Document as dynamic Groovy does. */
