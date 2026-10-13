@@ -841,15 +841,15 @@ public final class JsonSchemaImporter {
                     + "object array's property, without other assertions); retain source-schema validation");
             return;
         }
-        int minContains = arraySchema.path("minContains").isInt() ? arraySchema.get("minContains").asInt() : 1;
+        int minContains = arraySchema.path("minContains").isIntegralNumber() ? saturatedInt(arraySchema.get("minContains")) : 1;
         if (minContains >= 1 && canEnforceArrayMinimum(groupPath, "minContains", required, ctx)) {
             ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, clauses.get(), objectArray
                     ? RuleSynthesis.ContainsSubject.OBJECT_PROPERTIES : RuleSynthesis.ContainsSubject.SCALAR_VALUE, true, minContains));
         }
-        if (arraySchema.path("maxContains").isInt()) {
+        if (arraySchema.path("maxContains").isIntegralNumber()) {
             ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, clauses.get(), objectArray
                     ? RuleSynthesis.ContainsSubject.OBJECT_PROPERTIES : RuleSynthesis.ContainsSubject.SCALAR_VALUE, false,
-                    arraySchema.get("maxContains").asInt()));
+                    saturatedInt(arraySchema.get("maxContains"))));
         }
     }
 
@@ -904,8 +904,8 @@ public final class JsonSchemaImporter {
      * fallback cap is flagged in the report (it is a chosen bound, not from the schema).
      */
     private static int resolvedCap(JsonNode bound, String name, String boundKey, Ctx ctx) {
-        if (bound != null && bound.asInt() >= 2) {
-            return bound.asInt();
+        if (bound != null && saturatedInt(bound) >= 2) {
+            return saturatedInt(bound);
         }
         int fallback = ctx.profile().defaultRepeatCap();
         if (fallback >= 2) {
@@ -939,9 +939,9 @@ public final class JsonSchemaImporter {
         } else if (hasOnlyAssertion(not, "maximum") && not.get("maximum").isNumber()) {
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenBound(path, false, not.get("maximum").asText()));
         } else if (hasOnlyAssertion(not, "minLength") && not.get("minLength").isNumber()) {
-            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenLength(path, true, not.get("minLength").asInt()));
+            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenLength(path, true, saturatedInt(not.get("minLength"))));
         } else if (hasOnlyAssertion(not, "maxLength") && not.get("maxLength").isNumber()) {
-            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenLength(path, false, not.get("maxLength").asInt()));
+            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenLength(path, false, saturatedInt(not.get("maxLength"))));
         } else {
             ctx.report().diagnostic("property '" + name + "' uses a nested or compound 'not', or one that isn't a simple "
                     + "const/enum/pattern/minimum/maximum/minLength/maxLength — not mapped; add the constraint by hand");
@@ -977,9 +977,9 @@ public final class JsonSchemaImporter {
      *  is collected here; {@link RuleSynthesis} resolves the actual row anchor post-build and skips gracefully if
      *  the array did not import as a repeatable group (e.g. no cap). {@code minItems <= 0} is a no-op (always met). */
     private static void collectMinItems(JsonNode schema, String path, boolean required, Ctx ctx) {
-        if (schema.has("minItems") && schema.get("minItems").asInt() >= 1
+        if (schema.has("minItems") && saturatedInt(schema.get("minItems")) >= 1
                 && canEnforceArrayMinimum(path, "minItems", required, ctx)) {
-            ctx.ruleNeeds().add(new RuleSynthesis.MinItemsCount(path, schema.get("minItems").asInt()));
+            ctx.ruleNeeds().add(new RuleSynthesis.MinItemsCount(path, saturatedInt(schema.get("minItems"))));
         }
     }
 
@@ -1018,7 +1018,7 @@ public final class JsonSchemaImporter {
     private static EmptyStringAdmission emptyStringAdmission(JsonNode items) {
         String type = items.path("type").asText("");
         if (!"string".equals(type) && !(type.isEmpty() && hasEnum(items))) return EmptyStringAdmission.EXCLUDED;
-        if (items.path("minLength").asInt(0) >= 1
+        if (saturatedInt(items.path("minLength")) >= 1
                 || (hasEnum(items) && java.util.Arrays.stream(enumArrayValues(items)).noneMatch(String::isEmpty))
                 || (items.has("const") && !items.path("const").asText().isEmpty())) return EmptyStringAdmission.EXCLUDED;
         if ((items.has("pattern") && !items.path("pattern").asText().isEmpty()) || items.has("format")) {
@@ -1500,8 +1500,20 @@ public final class JsonSchemaImporter {
         if (isRequired) s.required();
     }
 
-    /** A12's technical limit on every stored value, and so the largest length bound it admits as a declaration. */
+    /** A12's technical limit on a checked String input, and the largest length bound it admits as a declaration. */
     private static final int TECHNICAL_LENGTH_LIMIT = 99_999;
+
+    /**
+     * A schema's integer keyword as an {@code int}, saturating past the 32-bit range.
+     *
+     * <p>Jackson's {@code asInt()} keeps only the low 32 bits of a larger integer, so a {@code maxLength} of
+     * 4,294,967,301 read as 5, a bound far narrower than the schema's, with no report. Every keyword read through
+     * here is a bound or a count, and saturating keeps it on the same side of each comparison the importer makes.
+     */
+    private static int saturatedInt(JsonNode keyword) {
+        if (!keyword.isIntegralNumber() || keyword.canConvertToInt()) return keyword.asInt();
+        return keyword.bigIntegerValue().signum() < 0 ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+    }
 
     /**
      * Declares the schema's {@code minLength}/{@code maxLength} on [s], each only within the 1 to 99,999 A12 admits.
@@ -1515,17 +1527,17 @@ public final class JsonSchemaImporter {
      */
     private static void declareLengths(StringFieldBuilder s, JsonNode schema, String path, Ctx ctx) {
         if (schema.has("minLength")) {
-            int min = schema.get("minLength").asInt();
-            if (min > TECHNICAL_LENGTH_LIMIT) ctx.report().diagnostic("minLength " + min + " at '" + path + "' exceeds A12's "
-                    + TECHNICAL_LENGTH_LIMIT + "-unit limit on every stored value, so no value can satisfy it — not declared; constrain it by hand");
+            int min = saturatedInt(schema.get("minLength"));
+            if (min > TECHNICAL_LENGTH_LIMIT) ctx.report().diagnostic("minLength " + schema.get("minLength").asText() + " at '" + path
+                    + "' exceeds A12's " + TECHNICAL_LENGTH_LIMIT + "-unit limit on a String value, so no value can satisfy it — not declared; constrain it by hand");
             else if (min > 0) s.minLength(min);
         }
         if (schema.has("maxLength")) {
-            int max = schema.get("maxLength").asInt();
-            if (max > TECHNICAL_LENGTH_LIMIT) ctx.report().diagnostic("maxLength " + max + " at '" + path + "' exceeds A12's "
-                    + TECHNICAL_LENGTH_LIMIT + "-unit limit on every stored value — not declared; the effective maximum is " + TECHNICAL_LENGTH_LIMIT);
+            int max = saturatedInt(schema.get("maxLength"));
+            if (max > TECHNICAL_LENGTH_LIMIT) ctx.report().diagnostic("maxLength " + schema.get("maxLength").asText() + " at '" + path
+                    + "' exceeds A12's " + TECHNICAL_LENGTH_LIMIT + "-unit limit on a String value — not declared; the effective maximum is " + TECHNICAL_LENGTH_LIMIT);
             else if (max > 0) s.maxLength(max);
-            else ctx.report().diagnostic("maxLength " + max + " at '" + path + "' admits only the empty string, which A12 "
+            else ctx.report().diagnostic("maxLength " + schema.get("maxLength").asText() + " at '" + path + "' admits only the empty string, which A12 "
                     + "cannot declare (a length is at least 1) — not declared; constrain it by hand");
         }
     }

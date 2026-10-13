@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * A string length bound above A12's 99,999-unit technical limit is not declared, since A12 refuses such a
- * declaration and caps every stored value at that limit anyway (KERNEL-FINDINGS KF547,
+ * declaration and holds a validated String's input and computed values to that limit anyway (KERNEL-FINDINGS KF547,
  * `validate.laws.StringLengthDeclarationBoundLawsTest`); the import reports the narrower effective bound instead.
  * A bound at the limit is declared as usual.
  *
@@ -48,6 +48,49 @@ class StringLengthLimitImportTest {
             assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains(field)
                     && d.contains("99999")), () -> field + " is reported: " + imported.report().diagnostics());
         }
+    }
+
+    /**
+     * A bound past the 32-bit range is still above the limit: read as Jackson's {@code asInt()} it kept only its low
+     * 32 bits, so 4,294,967,301 became a declared maximum of 5 and 4,294,967,297 a minimum of 1.
+     */
+    @Test
+    void aBoundPastTheIntRangeIsReportedWithItsOwnValue() throws Exception {
+        var imported = new JsonSchemaImporter().importSchema("""
+                {
+                  "type": "object",
+                  "properties": {
+                    "transcript": { "type": "string", "maxLength": 4294967301 },
+                    "archive":    { "type": "string", "minLength": 4294967297 }
+                  }
+                }
+                """);
+        SchemaTestSupport.assertKernelAccepts(imported.dmJson());
+
+        JsonNode model = MAPPER.readTree(imported.dmJson());
+        assertTrue(model.findValues("maxLength").isEmpty(), "no maximum is declared");
+        assertTrue(model.findValues("minLength").isEmpty(), "no minimum is declared");
+        for (String row : java.util.List.of("transcript maxLength 4294967301", "archive minLength 4294967297")) {
+            String[] parts = row.split(" ", 2);
+            assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains(parts[0]) && d.contains(parts[1])),
+                    () -> row + " is reported: " + imported.report().diagnostics());
+        }
+    }
+
+    /** The same wrap read {@code minItems} 4,294,967,296 as 0, a minimum that constrains nothing. */
+    @Test
+    void aCountPastTheIntRangeStillConstrains() throws Exception {
+        var imported = new JsonSchemaImporter().importSchema("""
+                {
+                  "type": "object",
+                  "required": ["parcels"],
+                  "properties": {
+                    "parcels": { "type": "array", "minItems": 4294967296, "maxItems": 3, "items": { "type": "string" } }
+                  }
+                }
+                """);
+        assertTrue(imported.dmJson().contains("NumberOfFilledGroups"),
+                () -> "the minimum is enforced: " + imported.dmJson());
     }
 
     @Test

@@ -14,8 +14,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
 /**
  * The largest String length A12 admits as a declaration (KERNEL-FINDINGS KF547): the 99,999 units its technical
- * input guard enforces on every stored value, so a declared bound above it could never be reached anyway. A12
- * answers a bound above it with a sentence and no class.
+ * guard enforces on a checked input value, and the maximum a computed String meets when none is declared, so a
+ * declared bound above it could never be reached on a validated String. A12 answers a bound above it with a
+ * sentence and no class.
  *
  * <p>Own domain (a support ticket's free-text description).
  */
