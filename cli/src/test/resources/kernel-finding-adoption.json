@@ -10565,6 +10565,30 @@
         "dmtool-cli": {"state": "APPLIED", "basis": "model eval runs the corrected interpreter admission.", "evidence": {"stored input gate order": {"reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/CheckedInputOrderCliTest.kt#aRawStringIsNeverCheckedAndAnOverlongValueIsTooLongFirst", "witness": "model eval leaves a raw String with blanks or above the limit unreported and reports an overlong blank-led String as wertZuLang only."}}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-02 in the 2026-10-13 handback, including the correction that a computed String target is capped by its default maximum; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf548": {
+      "sha256": "eaeb59ac1a6e9fef41285453b4ea5d4b8fafce0e1ee31b97384a59b589794f92",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["duplicate gate after an operand read"],
+        "checker": ["membership operand read order"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["membership operand read order"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["membership operand read order"]
+      },
+      "consumers": {
+        "dmkits": {"state": "ALREADY_CONFORMS", "basis": "The membership records refuse a duplicate before the kernel but withhold its class whenever an operand's own read may answer first, so they never name MVK_DUPLICATE_PARAM1 where an unbound or missing read decides.", "evidence": {"duplicate gate after an operand read": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/EntityListReadStageLawsTest.java#rulekitWithholdsFromTheFirstOperandThatAStageMayRefuse", "witness": "Every refused row whose list holds an operand a read stage may refuse carries no class."}}},
+        "checker": {"state": "ALREADY_CONFORMS", "basis": "The portable checker reads each operand's path and binding before the next and runs the whole-list gates at the call site afterwards; it named A12's class on every row when the lock was written.", "evidence": {"membership operand read order": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerMembershipReadOrderAgreementTest.kt#eachOperandIsBoundBeforeTheNextIsRead", "witness": "Unbound-then-missing answers MVK_NO_WILDCARD and its reversed twin MVK_INVALID_ENTITY on both A12 and the checker."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import authors no computation precondition.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export emits no computation precondition.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 23 rows, including the whole-list gates and the No, NotAll and scalar siblings.", "evidence": {"membership operand read order": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerMembershipReadOrderAgreementTest.kt#wholeListGatesFollowEveryOperandRead", "witness": "A repeated subject or member before an unbound read answers MVK_NO_WILDCARD, and a kind mismatch before a missing name answers MVK_INVALID_ENTITY."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model consistency is not interpreter behaviour; the interpreter evaluates only models the gate admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's check verbs delegate to the kernel by default and to the portable checker under --engine portable; neither path adds a membership gate of its own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-03 in the 2026-10-13 handback as already satisfied, with the new lock; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }
