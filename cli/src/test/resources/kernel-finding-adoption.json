@@ -10632,7 +10632,7 @@
       }
     },
     "kf551": {
-      "sha256": "776cd86262962b66fdfa462c4a1e080aaf8791d4fe0cf0e701851b8f9083a499",
+      "sha256": "c744946c70ff2a84d948343e77b9ad7aad96cddb2fd54e5e861932105398ba45",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -10776,7 +10776,7 @@
       }
     },
     "kf339": {
-      "sha256": "bec326806f1336e240c546248b42552043b470961a525e8e11e10245884dd317",
+      "sha256": "b180e744b024a67b749c597898fbbd4d011b1db5c08713ec8742644edf01d44b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -10800,7 +10800,7 @@
       }
     },
     "kf345": {
-      "sha256": "fed45e982e5136467ac1bb07dad34b6f5769296a244f33372c23031bf28e8b79",
+      "sha256": "d15282e7b81040d15b019e5e4479fbbf0dcce68562aa36a7c03f290bfe595300",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -11013,6 +11013,30 @@
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Variant-stage model check is not evaluation behaviour.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and keep no ledger of their own.", "evidence": {}},
         "a12-kernel-lean": {"state": "NOT_APPLICABLE", "basis": "A harness naming change on our side; the measured kernel rows are unchanged.", "evidence": {}}
+      }
+    },
+    "kf560": {
+      "sha256": "72a9ccf7ea5eaf56175f11973cba82daaf76b70f4b3aa7f671b3b15f57b36a60",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["supplementary charset unit"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["supplementary charset unit"],
+        "interpreter": ["stored supplementary value"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["supplementary charset unit"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The typed builder already refuses a supportedCharacters entry holding a surrogate, which A12 cannot build, and judges no enum value against the restriction.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The charset family refuses every high surrogate unit and reports a surrogate entry as CK_MODEL_NOT_BUILDABLE with no value judged against it.", "evidence": {"supplementary charset unit": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/SupportedCharactersTest.kt#aSupplementaryCharactersHighUnitIsNeverAdmitted", "witness": "Under U+0020-U+FFFD a supplementary value draws one invalid-character class, where the checker had drawn none."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no supportedCharacters restriction.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no supportedCharacters restriction.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on five spanning and non-spanning rows and five unbuildable restrictions.", "evidence": {"supplementary charset unit": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumDeclarationStreamAgreementTest.kt#theCodedStreamAgreesInOrderAndMultiplicity", "witness": "Every spanning-range row's coded stream agrees, two values sharing a high unit drawing two classes on both sides."}}},
+        "interpreter": {"state": "ALREADY_CONFORMS", "basis": "The interpreter's stored-value charset check already refused a supplementary character under the spanning range.", "evidence": {"stored supplementary value": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SupportedCharactersSupplementaryDiffTest.kt#allThreeEnginesAgreeUnderTheSpanningRange", "witness": "A note carrying U+1F6D2 is formally invalid on both kernel strategies and the interpreter, and a BMP letter inside the range is admitted on all three."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no charset logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-11; awaits peer review.", "evidence": {}}
       }
     }
   }

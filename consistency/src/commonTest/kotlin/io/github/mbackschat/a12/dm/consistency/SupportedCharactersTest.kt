@@ -121,6 +121,34 @@ class SupportedCharactersTest {
         assertEquals(true, finding.explain.contains("`FASTx` carries `x`"), finding.explain)
     }
 
+    /**
+     * A supplementary character's high unit is refused even under a range spanning the surrogate block, while its
+     * low unit is judged by the ranges (KERNEL-FINDINGS KF560, `adapter.laws.CheckerEnumDeclarationStreamAgreementTest`).
+     */
+    @Test
+    fun aSupplementaryCharactersHighUnitIsNeverAdmitted() {
+        val spanning = """["\u0020-\uFFFD"]"""
+        val second = "" + Char(0xd83d) + Char(0xde4f)
+        assertEquals(invalid, codes(spanning, "BETA", supplementary))
+        assertEquals(invalid, codes(spanning, "BETA", supplementary + second))
+        assertEquals(invalid + invalid, codes(spanning, supplementary, second))
+        assertEquals(invalid + invalid, codes("""["A-Z"]""", "BETA", supplementary))
+    }
+
+    /** An entry holding a surrogate unit leaves A12 unable to build the model; the family judges nothing against it. */
+    @Test
+    fun aSurrogateInTheRestrictionIsReportedAsUnbuildable() {
+        // The lone halves are built at run time (CheckerFixtureReadGuardTest.noMultiplatformSourceSpellsALoneSurrogate).
+        val high = Char(0xD83D)
+        val lastHigh = Char(0xDBFF)
+        for (definition in listOf("""["A-Z","$high"]""", """["A-Z","\u0100-$lastHigh"]""", """["\uD83D\uDE00-\uD83D\uDE4F"]""")) {
+            val report = report(definition, "beta", supplementary)
+            assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.map { it.code }
+                .filter { it == CK_MODEL_NOT_BUILDABLE || it == "MVK_ENUM_VALUE_WITH_INVALID_CHARACTER" }, definition)
+            assertEquals(emptyList(), report.gaps.filter { it.reason.contains("NO enum value was judged") }, definition)
+        }
+    }
+
     /** Everything the family deliberately says nothing about. */
     @Test
     fun anUnreadableRestrictionOrAnUnmeasuredCarrierIsLeftToA12() {

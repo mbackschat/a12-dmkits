@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
+import io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.Severity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -17,8 +18,9 @@ import org.junit.jupiter.api.Test
  * SPEC-2026-10-13-04), against the portable checker. A12 reports one enum field in blocks: invalid characters,
  * the unsupported-signs sentence, every category's unclassified values, every surplus token, the spoilt
  * pairings, the value duplicates and the repeated-value sentence. It keeps one of identical notifications, judges
- * a restricted charset per UTF-16 unit, and names no value carrying a supplementary-plane character in a coded
- * class. The rows re-express a12-kernel-lean's 37-row capture in our own domain and add five more: mixed values
+ * a restricted charset per UTF-16 unit, refusing a supplementary character's high unit even under a range that
+ * spans the surrogate block (KF560), and names no value carrying a supplementary-plane character in a coded class
+ * other than that charset class. The rows re-express a12-kernel-lean's 37-row capture in our own domain and add five more: mixed values
  * (a letter beside a supplementary character) and supplementary surplus tokens, which settle that any such
  * character withholds the entry.
  *
@@ -28,7 +30,7 @@ import org.junit.jupiter.api.Test
 class CheckerEnumDeclarationStreamAgreementTest {
 
     private data class Row(val values: List<String>, val categories: List<Pair<String, List<String>>>?,
-        val restricted: Boolean = false, val label: String? = null)
+        val restricted: Boolean = false, val label: String? = null, val charset: List<String>? = null)
 
     private val rows = linkedMapOf(
         "control" to Row(listOf("BASIC", "PLUS", "GOLD"), listOf(BAND to listOf("STANDARD", "HIGH", "TOP"),
@@ -84,6 +86,13 @@ class CheckerEnumDeclarationStreamAgreementTest {
             listOf(BAND to listOf("STANDARD", "HIGH"))),
         "a sign surplus token" to Row(listOf("BASIC"), listOf(BAND to listOf("STANDARD", CART))),
         "a mixed sign surplus token beside a plain one" to Row(listOf("BASIC"), listOf(BAND to listOf("STANDARD", "o$CART", "TOP"))),
+        "a supplementary character under a spanning range" to Row(listOf("BASIC", CART), null, charset = listOf(SPANNING)),
+        "two supplementary values sharing a high unit, spanning" to Row(listOf(CART, BAG), null, charset = listOf(SPANNING)),
+        "two supplementary characters in one value, spanning" to Row(listOf("BASIC", CART + BAG), null, charset = listOf(SPANNING)),
+        "a letter beside a supplementary character, spanning" to
+            Row(listOf("BASIC", "o$CART"), null, charset = listOf("A-Z", "\u3000-\uFFFD")),
+        "a supplementary character beside a range missing the block" to
+            Row(listOf("BASIC", CART), null, charset = listOf("A-Z", "\u0100-\uD7FF")),
         "shortfall, surplus, shortfall" to Row(listOf("BASIC", "PLUS"), listOf(BAND to listOf("RETAIL"),
             SEGMENT to listOf("STANDARD", "HIGH", "TOP"), REGION to listOf("NORTH"))),
     )
@@ -125,6 +134,27 @@ class CheckerEnumDeclarationStreamAgreementTest {
         assertTrue(wrong.isEmpty(), wrong.joinToString("\n", "rows that disagree:\n"))
     }
 
+    /**
+     * A restriction entry holding a surrogate unit, a singleton or a range endpoint or a supplementary range, leaves
+     * A12 unable to build the model, and the checker says so rather than judging values against it (KF560); the
+     * declarations it can still read stay analyzable beside that, as CONSISTENCY-API states.
+     */
+    @Test
+    fun aSurrogateInTheRestrictionLeavesTheModelUnbuilt() {
+        val wrong = listOf(listOf("A-Z", "\uD83D"), listOf("A-Z", "\uDED2"), listOf("A-Z", "\u0100-\uDBFF"),
+            listOf("\uDC00-\uDFFF"), listOf("\uD83D\uDE00-\uD83D\uDE4F")).mapNotNull { charset ->
+            val json = model(Row(listOf("BASIC", CART), null, charset = charset))
+            val built = runCatching { oracle.checkConsistency(json, ReferenceResolvers.selfContained()) }
+            val ours = ours(json)
+            when {
+                built.exceptionOrNull() !is ConsistencyCheckFailedException -> "$charset: A12 built it"
+                UNBUILDABLE !in ours || BAD in ours -> "$charset: ours $ours"
+                else -> null
+            }
+        }
+        assertTrue(wrong.isEmpty(), wrong.joinToString("\n", "rows that disagree:\n"))
+    }
+
     /** Whole streams on the rows that carry every block, so the comparisons above are not vacuous. */
     @Test
     fun theBlocksAreObservable() {
@@ -137,6 +167,10 @@ class CheckerEnumDeclarationStreamAgreementTest {
             kernel(model(rows.getValue("a surplus category beside a duplicate"))))
         assertEquals(listOf(SURPLUS), kernel(model(rows.getValue("a repeated surplus token"))))
         assertEquals(listOf(SIGNS), kernel(model(rows.getValue("a mixed sign value unclassified"))))
+        assertEquals(listOf(BAD, SIGNS), kernel(model(rows.getValue("a supplementary character under a spanning range"))))
+        assertEquals(listOf(BAD, BAD, SIGNS), kernel(model(rows.getValue("two supplementary values sharing a high unit, spanning"))))
+        assertEquals(listOf(BAD, SIGNS), kernel(model(rows.getValue("two supplementary characters in one value, spanning"))))
+        assertEquals(listOf(BAD, BAD, SIGNS), kernel(model(rows.getValue("a supplementary character beside a range missing the block"))))
     }
 
     private val oracle = KernelConsistencyOracle()
@@ -158,10 +192,12 @@ class CheckerEnumDeclarationStreamAgreementTest {
     private fun model(row: Row): String {
         val draft = DocumentModelDraft.named("store-tiers").locale("en_US")
             .let { if (row.restricted) it.supportedCharacters("A-Z") else it }
+
             .rootGroup("Store") { s -> s.stringField("Reference") { }
                 .enumField("Tier") { t -> t.value("BASIC").category(BAND, "STANDARD") } }
             .build().toJson()
         val root = mapper.readTree(draft) as ObjectNode
+        row.charset?.let { entries -> val list = (root.path("content") as ObjectNode).withObject("/modelConfig").putArray("supportedCharacters"); entries.forEach { list.add(it) } }
         val tier = root.path("content").path("modelRoot").path("rootGroups")[0].path("Group").path("elements")
             .first { it.path("name").asText() == "Tier" }
         val enumeration = tier.path("Field").path("fieldType").path("EnumerationType") as ObjectNode
@@ -189,6 +225,9 @@ class CheckerEnumDeclarationStreamAgreementTest {
         /** U+1F6D2 and U+1F6CD, each a surrogate pair. */
         const val CART = "\uD83D\uDED2"
         const val BAG = "\uD83D\uDECD"
+        /** A restriction spanning the whole surrogate block, and the class an unbuildable one draws. */
+        const val SPANNING = "\u0020-\uFFFD"
+        const val UNBUILDABLE = "CK_MODEL_NOT_BUILDABLE"
         const val SIGNS = "RK_UNSUPPORTED_CHARACTER"
         const val REPEATED = "codeless:repeated-value"
         const val BAD = "MVK_ENUM_VALUE_WITH_INVALID_CHARACTER"

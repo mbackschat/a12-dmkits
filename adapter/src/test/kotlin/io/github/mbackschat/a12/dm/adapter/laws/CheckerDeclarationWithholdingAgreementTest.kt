@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test
 
 /**
  * What one declaration's report withholds and what still stands, and how often a `sortFields` list speaks
- * (KERNEL-FINDINGS KF339 and KF345, a12-kernel-lean SPEC-2026-10-13-08), against the portable checker, with the
- * notification list's multiplicity kept.
+ * (KERNEL-FINDINGS KF339 and KF345, a12-kernel-lean SPEC-2026-10-13-08 and -11), against the portable checker,
+ * with the notification list's multiplicity kept.
  *
  * A rule whose error target names nothing reports its target pair, and a refused condition its own class; beside
  * either, the rule's name, its code and its message's presence classes stand, while the condition's class and
@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test
  * name once wherever it stands, its duplicate class reads only the three entries it holds, and every entry beyond
  * those draws a codeless capacity sentence. `The error code is empty.`, a codeless sentence that only ever
  * accompanies `MVK_ERROR_CODE_MISSING`, is not published, and an unbuildable model only has to be reported so.
+ * The -11 rows add a model with no declared locale, a group as the error target, two texts for one locale in either
+ * order, and a five-entry sort list, which draws the capacity sentence twice.
  *
  * Own domain (a claims policy and its items), built by editing the drafted model's JSON, because the typed
  * builder refuses every defective shape here outright.
@@ -36,6 +38,8 @@ class CheckerDeclarationWithholdingAgreementTest {
         val code: String? = "C1",
         val texts: Map<String, String> = mapOf("en_US" to "see it"),
         val bilingual: Boolean = false,
+        val extra: List<Pair<String, String>> = emptyList(),
+        val noLocale: Boolean = false,
     )
 
     private val tab = "see" + Char(9) + "it"
@@ -70,6 +74,17 @@ class CheckerDeclarationWithholdingAgreementTest {
         "twin blank text" to RuleRow(texts = mapOf("en_US" to "")),
         "twin tab" to RuleRow(texts = mapOf("en_US" to tab)),
         "twin second locale missing" to RuleRow(bilingual = true),
+        "no locale, a text" to RuleRow(noLocale = true),
+        "no locale, no text" to RuleRow(noLocale = true, texts = emptyMap()),
+        "group target" to RuleRow(target = "../Items"),
+        "group target, tab" to RuleRow(target = "../Items", texts = mapOf("en_US" to tab)),
+        "group target, unresolved name" to RuleRow(target = "../Items", condition = "FieldFilled(NoSuchField)"),
+        "group target, read inside" to RuleRow(target = "../Items", condition = "FieldFilled(Items/Kind)"),
+        "same locale twice, tab then plain" to RuleRow(texts = mapOf("en_US" to tab), extra = listOf("en_US" to "see it")),
+        "same locale twice, plain then tab" to RuleRow(extra = listOf("en_US" to tab)),
+        "same locale twice, empty then plain" to RuleRow(texts = mapOf("en_US" to ""), extra = listOf("en_US" to "see it")),
+        "same locale twice, plain then empty" to RuleRow(extra = listOf("en_US" to "")),
+        "two locales without a text" to RuleRow(bilingual = true, texts = emptyMap(), extra = listOf("en_US" to "")),
     )
 
     private val sortRows = linkedMapOf(
@@ -136,6 +151,12 @@ class CheckerDeclarationWithholdingAgreementTest {
         assertEquals(listOf(DUPLICATE, "RK_SORT_LIST_ABOVE_CAPACITY"), a12("sort two names twice"))
         assertEquals(listOf(SORT_TYPE, "RK_SORT_LIST_ABOVE_CAPACITY"), a12("sort opaque repeat at the fourth"))
         assertEquals(listOf("MVK_INVALID_SORT_FIELD", DUPLICATE), a12("sort outside name twice"))
+        assertEquals(listOf(SORT_TYPE, SORT_TYPE, "RK_SORT_LIST_ABOVE_CAPACITY", "RK_SORT_LIST_ABOVE_CAPACITY"),
+            a12("sort five entries"))
+        assertEquals(listOf("MVK_ERROR_MESSAGE_MISSING", "MVK_SUPP_LANGUAGES_MISSING"), a12("no locale, a text"))
+        assertEquals(listOf("MVK_ERROR_FIELD_NOT_REFERENCED"), a12("group target, tab"))
+        assertEquals(listOf("INVALID_CHARACTERS"), a12("same locale twice, plain then tab"))
+        assertEquals(emptyList<String>(), a12("same locale twice, tab then plain"))
     }
 
     private val oracle = KernelConsistencyOracle()
@@ -183,6 +204,8 @@ class CheckerDeclarationWithholdingAgreementTest {
         row.code?.let { body.put("errorCode", it) }
         val messages = body.putArray("errorMessage")
         row.texts.forEach { (locale, text) -> messages.addObject().put("locale", locale).put("text", text) }
+        row.extra.forEach { (locale, text) -> messages.addObject().put("locale", locale).put("text", text) }
+        if (row.noLocale) (root.path("header") as ObjectNode).putArray("locales")
         return mapper.writeValueAsString(root)
     }
 

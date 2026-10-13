@@ -32,9 +32,13 @@ import kotlinx.serialization.json.JsonPrimitive
  * value declared TWICE adds nothing. All three rows are measured, and none is inferable from the others —
  * the middle one alone would leave "distinct" ambiguous between the character's scope and the value's.
  *
- * **A supplementary-plane character is judged per UTF-16 unit.** A12 tests the value unit by unit, so
- * `o` followed by one such character draws three findings under `A-Z`: the letter and both surrogate halves
- * (KERNEL-FINDINGS KF551, `adapter.laws.CheckerEnumDeclarationStreamAgreementTest`).
+ * **A supplementary-plane character is judged per UTF-16 unit, and its high unit is never admitted.** A12
+ * tests the value unit by unit, so `o` followed by one such character draws three findings under `A-Z`: the
+ * letter and both surrogate halves (KERNEL-FINDINGS KF551). A range spanning the whole surrogate block, such as
+ * `U+0020-U+FFFD`, admits the low unit and still refuses the high one, so the character draws one finding
+ * (KF560, `adapter.laws.CheckerEnumDeclarationStreamAgreementTest`). No buildable restriction separates the two
+ * halves otherwise: an entry holding a surrogate unit leaves A12 unable to build the model, which this family
+ * reports as [CK_MODEL_NOT_BUILDABLE] and judges nothing further.
  *
  * **What it leaves alone**, all of it under-reporting: a restriction carrying an entry this checker cannot
  * read as a singleton or an inclusive `x-y` range — a COMBINED grapheme (more than one code point) is a
@@ -42,6 +46,19 @@ import kotlinx.serialization.json.JsonPrimitive
  * reading of it would refuse values A12 admits. That silence is published as a [CoverageGap].
  */
 internal fun TrackedFactBase.supportedCharacterFindings(): List<Finding> {
+    if (declaresSurrogate(supportedCharacters)) {
+        return listOf(
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                CK_MODEL_NOT_BUILDABLE,
+                "this model's `supportedCharacters` holds an entry with a surrogate unit, and A12 cannot build a " +
+                    "model from that, so no consistency verdict about it exists; a supplementary-plane character " +
+                    "cannot be admitted by any entry",
+                null,
+            ),
+        )
+    }
     val admitted = admittedRanges(supportedCharacters) ?: return emptyList()
     return defaultVariantFields().flatMap { field ->
         val values = field.enumerationBody()?.get("values") as? JsonArray ?: return@flatMap emptyList()
@@ -60,7 +77,7 @@ internal fun TrackedFactBase.supportedCharacterFindings(): List<Finding> {
  * skip is declaration-level for the ordinary reason — a consumer needs to know which enum was left to A12.
  */
 internal fun TrackedFactBase.supportedCharacterGaps(): List<CoverageGap> {
-    if (supportedCharacters.isEmpty()) {
+    if (supportedCharacters.isEmpty() || declaresSurrogate(supportedCharacters)) {
         return emptyList()
     }
     if (admittedRanges(supportedCharacters) == null) {
@@ -108,6 +125,9 @@ private fun admittedRanges(declared: List<String>): List<CharRange>? {
     }
 }
 
+/** Whether an entry holds a surrogate unit, which leaves A12 unable to build the model (KF560). */
+private fun declaresSurrogate(declared: List<String>): Boolean = declared.any { entry -> entry.any(Char::isSurrogate) }
+
 /** The spelling this entry declares, or null when it spells no string `value`. */
 private fun JsonElement.declaredValue(): String? =
     ((this as? JsonObject)?.get("value") as? JsonPrimitive)?.takeIf { it.isString }?.content
@@ -115,7 +135,7 @@ private fun JsonElement.declaredValue(): String? =
 /** One declared value's offending UTF-16 units, each named once however often it occurs in that value. */
 private fun TrackedDeclaration.offendersIn(value: String, admitted: List<CharRange>): List<Finding> {
     return value.toCharArray().distinct()
-        .filterNot { character -> admitted.any { character in it } }
+        .filterNot { character -> !character.isHighSurrogate() && admitted.any { character in it } }
         .map { character ->
             Finding(
                 FindingCategory.A12_CONSTRAINT,
