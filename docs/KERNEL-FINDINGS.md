@@ -12971,9 +12971,29 @@ A fixed root `/Policy` reports on a field of the repeatable `Claims` (capacity 3
 | the same filter UNMARKED (`Amount`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `Claims*/Amount` alone (`Amount`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-Read as slots: a per-row read of the iterated row is bound, while a fixed-root field is one INDEPENDENT slot and a starred field counts as many independent slots as its declared capacity. `AtLeastOneFieldFilled` and `FieldsNotCollectivelyFilled` refuse at one independent slot, `MoreThanOneFieldFilled` and `FieldValuesNotUnique` at two, so the root pair separates the two thresholds and the capacity-3 star exceeds both. The three negatives refuse any operand list with a per-row read. The marked filter binds the rule to the claim, which is why it reaches the gate at all, but it does not make the starred list a per-row read, so the negatives admit it and the positives see three independent slots. An unmarked filter read binds nothing, so neither does a bare star, and neither rule iterates. A guard on the bound row admits every row, and `AllFieldsFilled` admits every shape. The slot reading follows a12-kernel-lean's `IterationNotValidVisitor` account (`SPEC-2026-10-09-05`); the rows above are what was measured here. That a capacity-1 star counts as one slot is not measured.
+Read as slots: a per-row read of the iterated row is bound, while a fixed-root field is one INDEPENDENT slot and a starred field counts as many independent slots as its declared capacity. `AtLeastOneFieldFilled` and `FieldsNotCollectivelyFilled` refuse at one independent slot, `MoreThanOneFieldFilled` and `FieldValuesNotUnique` at two, so the root pair separates the two thresholds and the capacity-3 star exceeds both. The three negatives refuse any operand list with a per-row read. The marked filter binds the rule to the claim, which is why it reaches the gate at all, but it does not make the starred list a per-row read, so the negatives admit it and the positives see three independent slots. An unmarked filter read binds nothing, so neither does a bare star, and neither rule iterates. A guard on the bound row admits every row, and `AllFieldsFilled` admits every shape. The slot reading follows a12-kernel-lean's `IterationNotValidVisitor` account (`SPEC-2026-10-09-05`); the rows above are what was measured here.
 
-*(Locked: `validate.laws.IterationBindingLawsTest.theIterationGuardCountsIndependentSlots`.)*
+*Added 2026-10-13 (a12-kernel-lean `SPEC-2026-10-13-10`, re-measured here):* the other operand kinds, for `FieldValuesNotUnique` beside the claim's own field, on its Number, String and Date overloads alike:
+
+| operand beside `Claims/Amount` | slots | verdict |
+|---|---|---|
+| a selected cell, `Covers/Amount For "c1"` | 1 | admitted |
+| two selected cells, or one beside a root field | 2 | refused |
+| a root group of two fields | 2 | refused |
+| a root group of one field | 1 | admitted; refused beside a root field |
+| a selected group of two fields, `Covers/Limits For "c1"` | 2 | refused |
+| a selected group of one field | 1 | admitted |
+| a group inside the claim, alone, beside the claim's field or beside a root field | 0 | admitted |
+| a root group whose one field sits in a repeatable child of capacity 2, with or without a field of its own | 2–3 | refused |
+| the same child starred, `Region/Branches*` | 2 | refused |
+| a selected group whose one field sits in a repeatable child of capacity 2 | 2 | refused |
+| a root group whose one field sits in a NON-repeatable child | 1 | admitted |
+| a claim group holding a repeatable child of capacity 2 | 0 | admitted |
+| a star over a group of capacity 1, `Endorsement*/Amount` | — | `MVK_INVALID_WILDCARD` |
+
+So a selection gives one slot per field it reads and a group one per field it expands to, a field below a repeatable child weighing that child's capacity exactly as a starred field does; a group inside the iterated row gives none. The two one-field rows are the controls: a non-repeatable child weighs one, so the refusal two rows above comes from the child's capacity and not from nesting, and a selected group is counted by its fields, not as a fixed two. A capacity-1 star is no slot count at all, since it is refused as a wildcard before the guard runs, which is also the kernel basis for `BoundModel.flatten` refusing it. The three overloads agree on every row.
+
+*(Locked: `validate.laws.IterationBindingLawsTest.theIterationGuardCountsIndependentSlots`; the operand kinds by `validate.laws.UniquenessGuardSlotLawsTest`, and the portable checker, which leaves this gate to A12, by `adapter.laws.CheckerUniquenessGuardAgreementTest`: silent on every refused row, refusing no admitted one.)*
 
 ## §9 supplement — a `$` operand inside a filter is admitted in every field slot measured and reads the rule's own row (kernel + both strategies, 2026-10-09) <a id="kf534"></a>
 

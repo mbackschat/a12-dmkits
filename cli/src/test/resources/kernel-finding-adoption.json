@@ -7499,73 +7499,27 @@
       }
     },
     "kf533": {
-      "sha256": "358e5208ca9d2104bc2332adc9be66fbc04c6f2b07ae6a915e224df1a420247a",
+      "sha256": "8e8b26bef1bf7e004b0a503c8f9d50a90c4475d7ce36306c9e77063cd7f37951",
       "task": "F-USE-BACKLOG",
       "scope": {
-        "adapter": [
-          "fill quantifiers count independent slots once a rule iterates"
-        ],
+        "adapter": ["fill quantifiers count independent slots once a rule iterates", "uniqueness guard slots over selections, groups and nested capacity"],
         "dmkits": [],
         "interpreter": [],
-        "checker": [],
+        "checker": ["uniqueness guard slots over selections, groups and nested capacity"],
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "a12-kernel-lean": [
-          "fill quantifiers count independent slots once a rule iterates"
-        ]
+        "a12-kernel-lean": ["fill quantifiers count independent slots once a rule iterates", "uniqueness guard slots over selections, groups and nested capacity"]
       },
       "consumers": {
-        "adapter": {
-          "state": "APPLIED",
-          "basis": "All 56 iteration-guard rows and their computation twins are measured; the checker stays silent where A12 draws the negative-iteration class.",
-          "evidence": {
-            "fill quantifiers count independent slots once a rule iterates": {
-              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationBindingAgreementTest.kt#theCheckerNamesA12sBindingClassOnEveryRow",
-              "witness": "No row draws a checker class A12 does not."
-            }
-          }
-        },
-        "dmkits": {
-          "state": "NOT_APPLICABLE",
-          "basis": "The negative-iteration law is kernel-delegated by design (MVK-LEDGER); the enricher's existing corrective applies.",
-          "evidence": {}
-        },
-        "interpreter": {
-          "state": "NOT_APPLICABLE",
-          "basis": "A static admission refusal never reaches evaluation.",
-          "evidence": {}
-        },
-        "checker": {
-          "state": "NOT_APPLICABLE",
-          "basis": "MVK_NEG_CONDITION_IN_ITERATION is kernel-delegated by design (MVK-LEDGER, decided 2026-06-04); the agreement test asserts the checker's silence on these rows.",
-          "evidence": {}
-        },
-        "dmtool-cli": {
-          "state": "NOT_APPLICABLE",
-          "basis": "dmtool checks through the kernel or the checker assessed here.",
-          "evidence": {}
-        },
-        "json-schema-import": {
-          "state": "NOT_APPLICABLE",
-          "basis": "A rule's admission does not change JSON Schema import.",
-          "evidence": {}
-        },
-        "json-schema-export": {
-          "state": "NOT_APPLICABLE",
-          "basis": "A rule's admission does not change JSON Schema export.",
-          "evidence": {}
-        },
-        "a12-kernel-lean": {
-          "state": "ALREADY_CONFORMS",
-          "basis": "Peer-originated SPEC-2026-10-09-05, accepted at 5472a915 after inspecting our committed locks at d132307f7; the peer did not rerun them.",
-          "evidence": {
-            "fill quantifiers count independent slots once a rule iterates": {
-              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-05",
-              "witness": "All 56 conditions and computation twins corroborated; singleton direct AllFieldsFilled and capacity-one wildcard remain source-derived (KF533)."
-            }
-          }
-        }
+        "adapter": {"state": "APPLIED", "basis": "All 56 iteration-guard rows and their computation twins are measured; the checker stays silent where A12 draws the negative-iteration class.", "evidence": {"fill quantifiers count independent slots once a rule iterates": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationBindingAgreementTest.kt#theCheckerNamesA12sBindingClassOnEveryRow", "witness": "No row draws a checker class A12 does not."}, "uniqueness guard slots over selections, groups and nested capacity": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/UniquenessGuardSlotLawsTest.java#aSelectionOrGroupGivesOneSlotPerFieldItReadsOnEveryOverload", "witness": "Thirty-nine overload rows on Number, String and Date, each a kernel verdict; the nested-capacity rows and their controls sit in the sibling method."}}},
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The negative-iteration law is kernel-delegated by design (MVK-LEDGER); the enricher's existing corrective applies.", "evidence": {}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "A static admission refusal never reaches evaluation.", "evidence": {}},
+        "checker": {"state": "ALREADY_CONFORMS", "basis": "MVK_NEG_CONDITION_IN_ITERATION is kernel-delegated by design (MVK-LEDGER, decided 2026-06-04); the agreement tests assert the checker's silence where A12 draws it and no refusal where A12 admits.", "evidence": {"uniqueness guard slots over selections, groups and nested capacity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUniquenessGuardAgreementTest.kt#theCheckerAgreesWithA12OrLeavesTheGuardToIt", "witness": "Forty-seven rows: silent on the twenty-five A12 refuses with the guard, refusing no admitted one, the capacity-1 star's wildcard class shared."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel or the checker assessed here.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "A rule's admission does not change JSON Schema import.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "A rule's admission does not change JSON Schema export.", "evidence": {}},
+        "a12-kernel-lean": {"state": "ALREADY_CONFORMS", "basis": "Peer-originated SPEC-2026-10-09-05, accepted at 5472a915 after inspecting our committed locks at d132307f7; the peer did not rerun them. SPEC-2026-10-13-10 is peer-originated as well; its rows are re-measured here and agree.", "evidence": {"fill quantifiers count independent slots once a rule iterates": {"reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-05", "witness": "All 56 conditions and computation twins corroborated; singleton direct AllFieldsFilled and capacity-one wildcard remain source-derived (KF533)."}, "uniqueness guard slots over selections, groups and nested capacity": {"reference": "a12-kernel-lean@9afd55a198f4c1b8f06aed3db985aaa499db3e5e:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-10", "witness": "Their 44 model-check rows; every one re-measured on our own model agrees, as do three discriminating controls they did not hold."}}}
       }
     },
     "kf534": {
