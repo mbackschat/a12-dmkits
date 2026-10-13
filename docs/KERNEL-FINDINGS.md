@@ -3821,6 +3821,8 @@ Empty stored text is present and value-free on all four, and the grid behind thi
 | `HoursFromTime(TimeAsDate) == 0` | refused `MVK_WRONG_DATE_FORMAT_FOR_OP` | — (the mirror control: the TIME kind's own extractor refuses the TIME field, because its declared format exposes no time component) |
 | `DifferenceInDays(TimeAsDate, DateAsDate) == 0` | **admitted** | fires when equal, and also when the operand is EMPTY — the symmetric-zero rule of the difference family |
 
+*Extended 2026-10-13:* a quoted date constant on the other side is a date too. Against a TIME field declared `dd.MM.yyyy` holding `05.03.2023`, `Incident < "01.01.2024"` and `Incident == "05.03.2023"` both fire, exactly as on a DATE-kind twin with the same format, and neither fires on `05.03.2025` (`adapter.laws.DateDeclaredTimeComparisonDiffTest`, both strategies; the interpreter's fix is [IF400](INTERPRETER-FINDINGS.md#if400)).
+
 So the Gregorian floor, direct comparability, component extraction and the difference family all key on the **declared format's component set**. The sharpest single row is the extractor pair: on one cell, `YearFromDate` is admitted and `HoursFromTime` is refused, though the field's kind is TIME.
 
 This corrects [KF207](#kf207) above, whose "because a clock has no position in time" reasoned from the kind: the correct reading is that a *time-format declaration* exposes no position in time, and after [KF206](#kf206) a TIME field need not carry one.

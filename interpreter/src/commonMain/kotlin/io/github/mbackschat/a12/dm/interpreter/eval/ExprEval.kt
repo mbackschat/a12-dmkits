@@ -671,9 +671,16 @@ internal fun Interpreter.evalCmpOperand(self: Expr, other: Expr): Val = when {
     else -> evalExpr(self)
 }
 
-/** The declared date format of a plain field operand, for typing a literal against it; null for anything else. */
+/** The declared date format of a plain field operand, for typing a literal against it; null for anything else.
+ *  A TIME field declared `dd.MM.yyyy` is a date operand too, so the format is read whatever the kind (KF211). */
 private fun Interpreter.declaredDateFormat(e: Expr): String? =
-    if (e is Expr.Field) ctxOf(e).dateFormatOf(e.path) else null
+    if (e is Expr.Field && ctxOf(e).temporalClassOf(e.path) == Kind.DATE) ctxOf(e).declaredTemporalFormatOf(e.path)
+        ?: ctxOf(e).dateFormatOf(e.path)
+    else null
+
+/** The class a field's declared FORMAT selects, never its kind alone ([temporalClassifier], KF211). */
+private fun EvalContext.temporalClassOf(path: String): Kind? =
+    declaredKind(path)?.let { temporalClassifier(it, declaredTemporalFormatOf(path)) }
 
 /**
  * Evaluate an expression being ASSIGNED to a typed target. An assignment adds exactly one resolution over
@@ -727,19 +734,20 @@ private fun Interpreter.dateTimeLiteral(text: String): Val {
 private const val DATE_TIME_LITERAL_FORMAT = "dd.MM.yyyy'T'HH:mm:ss"
 
 /** Whether [e] statically yields a DATE or DATE_TIME value — the signal that a counterpart string LITERAL is a
- *  temporal literal ([coerceTemporalLiteral]), not a plain string. A DATE or DATE_TIME field, the temporal
+ *  temporal literal ([coerceTemporalLiteral]), not a plain string. A field whose declared format is a date or a
+ *  date-time, whatever its kind (KF211; `adapter.laws.DateDeclaredTimeComparisonDiffTest`), the temporal
  *  constants (`Today`/`BaseYear`/`Now`), a temporal-producing function, or a min/max whose operands are temporal
  *  ([dateAggregate] — the kernel types `Min`/`MinValue` polymorphically by their operands, so a literal beside a
  *  temporal min is a temporal literal). */
 private fun Interpreter.producesTemporal(e: Expr): Boolean = when (e) {
-    is Expr.Field -> ctx.declaredKind(e.path).let { it == Kind.DATE || it == Kind.DATE_TIME }
+    is Expr.Field -> ctx.temporalClassOf(e.path).let { it == Kind.DATE || it == Kind.DATE_TIME }
     is Expr.Const -> ConstantOp.byName(e.name).let {
         it == ConstantOp.TODAY || it == ConstantOp.BASE_YEAR || it == ConstantOp.NOW
     }
     is Expr.Func -> FunctionOp.byName(e.name).let { op ->
         op in DATE_PRODUCING_FUNCS || op in DATE_TIME_PRODUCING_FUNCS || (op in MIN_MAX_FUNCS && dateAggregate(e))
     }
-    is Expr.SemanticIndex -> ctx.declaredKind(e.path).let { it == Kind.DATE || it == Kind.DATE_TIME }
+    is Expr.SemanticIndex -> ctx.temporalClassOf(e.path).let { it == Kind.DATE || it == Kind.DATE_TIME }
     else -> false
 }
 

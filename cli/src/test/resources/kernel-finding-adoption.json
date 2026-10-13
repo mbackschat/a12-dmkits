@@ -11110,6 +11110,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches this law through the kernel, the portable checker and the interpreter it already runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-12; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf211": {
+      "sha256": "80f0e5fccda45e6a150bd9eae819be159453533989c8d53c0d765f0b5aff351c",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["date literal beside a date-declared TIME field"],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["date literal beside a date-declared TIME field"],
+        "interpreter": ["date literal beside a date-declared TIME field"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["date literal beside a date-declared TIME field"]
+      },
+      "consumers": {
+        "dmkits": {"state": "ALREADY_CONFORMS", "basis": "The typed surface already hands a TIME field declared dd.MM.yyyy out as a Date operand, so the comparison is authored typed.", "evidence": {"date literal beside a date-declared TIME field": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateDeclaredTimeComparisonDiffTest.kt#theModelIsKernelConsistent", "witness": "Both comparisons, authored through claim.date on the TIME-kind field, pass the kernel consistency check."}}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "The finding's revision is runtime comparison semantics; the checker judges no comparison value.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no comparison rule against a TIME field.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no comparison rule.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel's verdicts on both strategies are pinned beside a DATE-kind twin.", "evidence": {"date literal beside a date-declared TIME field": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateDeclaredTimeComparisonDiffTest.kt#theDeclaredFormatTypesTheLiteral", "witness": "On 05.03.2023 both rules fire on the TIME-kind field exactly as on the DATE-kind twin, and none fires on 05.03.2025."}}},
+        "interpreter": {"state": "APPLIED", "basis": "A literal beside a field is typed by the class the field's declared format selects (IF400).", "evidence": {"date literal beside a date-declared TIME field": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateDeclaredTimeComparisonDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter compared the literal lexically and fired neither TIME-kind rule; it now agrees with both strategies."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool evaluates through the interpreter and carries no comparison logic of its own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }
